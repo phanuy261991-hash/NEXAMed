@@ -18,6 +18,15 @@ export default tseslint.config(
     },
   },
   {
+    files: ['scripts/**/*.mjs', 'eslint.config.js'],
+    languageOptions: {
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+      },
+    },
+  },
+  {
     files: ['packages/core/**/*.ts'],
     rules: {
       'no-restricted-imports': [

@@ -14,7 +14,7 @@ Monorepo: `apps/web` (SPA React), `apps/api` (NestJS), `packages/shared` (type +
 
 - React 18.3 + Vite 5.4 + TypeScript 5.6 (strict mode)
 - NestJS 10.4 trên Node 20 LTS, REST + OpenAPI
-- PostgreSQL 16, Prisma 5.x làm ORM/migration
+- PostgreSQL 18, Prisma 5.x làm ORM/migration
 - Zod (validation dùng chung web/api), TanStack Query 5 (server state), Zustand (client state)
 - pnpm 9 workspaces — bắt buộc, lockfile là `pnpm-lock.yaml`. Không dùng npm/yarn.
 - Vitest (unit/integration), Playwright (e2e), ESLint + Prettier
@@ -24,7 +24,7 @@ Monorepo: `apps/web` (SPA React), `apps/api` (NestJS), `packages/shared` (type +
 
 ```bash
 pnpm install                        # cài dependency toàn workspace
-docker compose up -d                # PostgreSQL 16 tại localhost:5432
+docker compose up -d                # PostgreSQL 18 tại localhost:5432
 pnpm db:migrate                     # prisma migrate dev + seed danh mục ICD-10
 pnpm dev                            # chạy song song web (5173) + api (3000)
 pnpm build                          # build production cả hai app
@@ -51,6 +51,7 @@ Chi tiết đầy đủ và edge case xem `.claude/docs/clinical-workflow.md`.
 - Không viết code cho module ngoài phạm vi v1, kể cả khi schema đã để sẵn chỗ.
 - Trước khi thêm hàm/component mới, tìm trong `packages/core` và `packages/shared` xem đã có chưa. Không tạo bản sao logic. Trùng lặp lần thứ hai là dấu hiệu phải trích xuất ra dùng chung.
 - Code viết theo hướng tái sử dụng toàn hệ thống: logic nghiệp vụ thuần đặt ở `packages/core`, không nhét vào component React hay controller NestJS.
+- **Viết component/hàm tiện ích ở nơi dùng chung (`packages/shared`, `packages/core`, `apps/web/src/shared`) với chủ đích tái dùng ngay từ lần viết đầu tiên**: nhận dữ liệu qua props/tham số thay vì gắn cứng chi tiết của màn hình/nghiệp vụ hiện tại, không hardcode text/logic riêng của một nơi gọi khi rõ ràng sẽ còn nơi khác cần — để tích hợp hệ thống khác sau này tái dùng được thay vì viết lại. Không mâu thuẫn với nguyên tắc "trùng lặp lần hai mới trích xuất" ở trên: quy tắc đó áp dụng cho *logic nghiệp vụ đặc thù* (chưa biết có dùng lại hay không); quy tắc này áp dụng cho *thành phần đã biết trước sẽ dùng chung* (UI primitive, hook tiện ích, adapter tích hợp). Không dựng abstraction cho tình huống hoàn toàn chưa xảy ra.
 
 ### Cơ sở dữ liệu
 

@@ -8,6 +8,22 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: nexamed
+          POSTGRES_PASSWORD: nexamed
+          POSTGRES_DB: nexamed
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://nexamed:nexamed@localhost:5432/nexamed?schema=public
     steps:
       - uses: actions/checkout@v4
 
@@ -22,6 +38,12 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Check mandatory columns (8 cột bắt buộc)
+        run: pnpm db:check-schema
+
+      - name: Prisma migrate deploy (áp migration lên Postgres thật)
+        run: pnpm --filter @nexamed/api exec prisma migrate deploy
 
       - name: Lint
         run: pnpm lint

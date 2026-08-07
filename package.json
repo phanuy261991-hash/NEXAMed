@@ -13,7 +13,8 @@
     "test": "pnpm --recursive run test",
     "lint": "eslint .",
     "typecheck": "pnpm --recursive run typecheck",
-    "db:migrate": "pnpm --filter @nexamed/api run db:migrate"
+    "db:migrate": "pnpm --filter @nexamed/api run db:migrate",
+    "db:check-schema": "node scripts/check-mandatory-columns.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",

@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nexamed
+      POSTGRES_PASSWORD: nexamed
+      POSTGRES_DB: nexamed
+    ports:
+      # 5433 (không phải 5432 mặc định) — máy dev có thể đã có Postgres native
+      # chiếm 5432 (ví dụ cài sẵn từ trước), tránh xung đột cổng.
+      - '5433:5432'
+    volumes:
+      # PostgreSQL 18+ đổi quy ước: mount thẳng /var/lib/postgresql (không phải .../data
+      # như PG16), image tự tạo thư mục con theo major version (kiểu pg_ctlcluster).
+      - postgres_data:/var/lib/postgresql
+
+volumes:
+  postgres_data:

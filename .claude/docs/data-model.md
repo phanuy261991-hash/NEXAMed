@@ -15,7 +15,7 @@
 | `created_by` | `uuid NOT NULL` | User thực hiện |
 | `updated_by` | `uuid NOT NULL` | User sửa gần nhất |
 
-Thiếu một cột là migration không hợp lệ. Ngoại lệ duy nhất: bảng danh mục toàn hệ thống (`icd10_catalog`, `province`) và `audit_log` (append-only, không có `updated_at`, `deleted_at`, `version`).
+Thiếu một cột là migration không hợp lệ. Ngoại lệ duy nhất: bảng danh mục toàn hệ thống (`icd10_catalog`, `province`) và `audit_log` (append-only, không có `updated_at`, `deleted_at`, `version`, `created_at`, `created_by`, `updated_by` — dùng `occurred_at` làm mốc thời gian và `actor_id` làm actor, không có khái niệm "người tạo dòng log" khác với actor thực hiện hành động). `tenant` cũng là ngoại lệ với riêng cột `tenant_id` (bảng này là gốc của tenant, không tự tham chiếu chính mình).
 
 Mọi `UPDATE` kèm điều kiện `WHERE version = ?` và tăng `version` lên 1; không khớp thì ném `CONCURRENT_MODIFICATION`, không ghi đè im lặng.
 

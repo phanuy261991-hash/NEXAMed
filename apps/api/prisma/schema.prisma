@@ -1,0 +1,190 @@
+// Schema nền tảng — Sprint 1 (xem docs/ERD.md mục 6 "Thứ tự tạo bảng theo sprint").
+// Chỉ chứa nhóm bảng "Nền tảng và tenant": tenant, tenant_setting, room,
+// user_account, user_role, code_sequence, audit_log.
+// Các bảng patient/appointment/encounter... thuộc Sprint 2-3, chưa thêm ở đây.
+//
+// Quy ước bắt buộc — xem .claude/docs/data-model.md:
+// - Mọi bảng nghiệp vụ có đủ 8 cột: id, tenant_id, created_at, updated_at,
+//   deleted_at, version, created_by, updated_by.
+// - Ngoại lệ: `tenant` không có tenant_id (chính nó là gốc của tenant),
+//   `audit_log` không có updated_at/deleted_at/version (append-only).
+// - `created_by`/`updated_by` là UUID ghi nhận actor, KHÔNG khai báo @relation
+//   (xem docs/DECISIONS.md #005) — tránh vòng phụ thuộc lúc khởi tạo tenant đầu tiên.
+// - id dùng uuidv7() (PostgreSQL 18 trở lên, có sẵn trong core) — khớp đúng
+//   "UUID v7, sinh phía DB" trong data-model.md. Xem docs/DECISIONS.md #009.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id        String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  name      String
+  taxCode   String? @map("tax_code")
+  address   String?
+  licenseNo String? @map("license_no")
+  isActive  Boolean @default(true) @map("is_active")
+
+  // 8 cột bắt buộc (trừ tenant_id — bảng này là gốc của tenant)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenantSettings TenantSetting[]
+  rooms          Room[]
+  userAccounts   UserAccount[]
+  codeSequences  CodeSequence[]
+  auditLogs      AuditLog[]
+
+  @@map("tenant")
+}
+
+model TenantSetting {
+  id        String @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId  String @map("tenant_id") @db.Uuid
+  key       String
+  valueJson Json   @map("value_json") @db.JsonB
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, key])
+  @@map("tenant_setting")
+}
+
+model Room {
+  id       String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId String  @map("tenant_id") @db.Uuid
+  name     String
+  isActive Boolean @default(true) @map("is_active")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@map("room")
+}
+
+model UserAccount {
+  id           String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String  @map("tenant_id") @db.Uuid
+  username     String
+  passwordHash String  @map("password_hash")
+  fullName     String  @map("full_name")
+  licenseNo    String? @map("license_no")
+  isActive     Boolean @default(true) @map("is_active")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id])
+  userRoles UserRole[]
+
+  // Đích của composite FK (tenant_id, id) từ user_role — chống trỏ chéo tenant (C5 trong ERD.md).
+  @@unique([tenantId, id])
+  @@unique([tenantId, username])
+  @@map("user_account")
+}
+
+enum UserRoleName {
+  receptionist
+  nurse
+  doctor
+  clinic_admin
+  system_admin
+
+  @@map("user_role_name")
+}
+
+model UserRole {
+  id       String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId String       @map("tenant_id") @db.Uuid
+  userId   String       @map("user_id") @db.Uuid
+  role     UserRoleName
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  // Composite FK (tenant_id, user_id) -> user_account(tenant_id, id): không thể trỏ
+  // sang user_account của tenant khác kể cả khi code service sai.
+  userAccount UserAccount @relation(fields: [tenantId, userId], references: [tenantId, id])
+
+  @@unique([tenantId, userId, role])
+  @@map("user_role")
+}
+
+model CodeSequence {
+  id           String @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String @map("tenant_id") @db.Uuid
+  prefix       String
+  currentValue BigInt @default(0) @map("current_value")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, prefix])
+  @@map("code_sequence")
+}
+
+// Append-only — không updated_at, không deleted_at, không version (ngoại lệ đã ghi trong data-model.md).
+model AuditLog {
+  id         String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  actorId    String?  @map("actor_id") @db.Uuid
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id") @db.Uuid
+  beforeJson Json?    @map("before_json") @db.JsonB
+  afterJson  Json?    @map("after_json") @db.JsonB
+  ip         String?
+  userAgent  String?  @map("user_agent")
+  occurredAt DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@map("audit_log")
+}
