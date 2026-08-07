@@ -54,6 +54,7 @@ Quyết định kiến trúc/nghiệp vụ đã chốt, ngoài những gì đã 
 **Quyết định**: Migration S1-02 chỉ tạo bảng + FK + unique index. Chưa bật Row Level Security (C1 trong `docs/ERD.md`), chưa thêm `CHECK (version >= 1)` (C6), chưa thu hồi quyền `DELETE` của app user (C9).
 **Vì sao**: `docs/product/plan.md` chia rõ: RLS và tenant context thuộc **S1-03** ("Tenant context: middleware set `app.current_tenant_id`, RLS policy, unit of work"), không phải S1-02 ("Prisma schema nền"). Giữ đúng ranh giới việc theo plan đã chốt.
 **Ảnh hưởng**: Trước khi có dữ liệu thật hoặc trước gate cuối Sprint 1, S1-03 **bắt buộc** phải bật RLS cho mọi bảng — nếu bỏ sót, đây là lỗ hổng cách ly tenant nghiêm trọng. Chủ dự án đã xác nhận (2026-08-07): khi làm S1-03 phải hoàn thiện đầy đủ cả ba (RLS + CHECK + thu hồi DELETE), không được để dở dang.
+**Hoàn thành**: Đã làm đủ cả ba trong migration `20260807170922_tenant_context`, xác minh thật qua integration test (`apps/api/src/infrastructure/persistence/tenant-isolation.spec.ts`) — xem #010.
 
 ## 009 — Thay thế #006: nâng lên PostgreSQL 18, dùng `uuidv7()` thật thay vì `gen_random_uuid()`
 
@@ -61,3 +62,24 @@ Quyết định kiến trúc/nghiệp vụ đã chốt, ngoài những gì đã 
 **Quyết định**: Nâng phiên bản Postgres đã chốt trong `CLAUDE.md` từ 16 lên **18**. Đổi `id` mọi bảng sang `DEFAULT uuidv7()` (hàm dựng sẵn trong core PostgreSQL 18, RFC 9562). Cập nhật `CLAUDE.md` (Tech Stack + Dev Commands), `docker-compose.yml`, `.github/workflows/ci.yml` sang `postgres:18`. Sinh lại migration `prisma/migrations/*_init` (an toàn vì chưa từng áp lên DB thật).
 **Vì sao**: Chủ dự án chọn nâng version thay vì cài extension `pg_uuidv7` — sạch hơn, không phải build/maintain Docker image tuỳ biến cho local dev/CI/on-prem, có index insert tuần tự tốt như thiết kế ban đầu của `data-model.md` ("UUID v7, sinh phía DB").
 **Ảnh hưởng**: PostgreSQL 18 mới hơn PG16 (ít track record sản xuất hơn tại thời điểm chốt), cần lưu ý khi chọn base image cho `deploy/on-prem` sau này (S4-05). Giải quyết dứt điểm #006 — không cần quyết định lại trước khi có dữ liệu thật.
+
+## 010 — Hai role DB tách biệt: `nexamed` (migration) và `nexamed_app` (runtime)
+
+**Ngày**: 2026-08-08
+**Quyết định**: Thêm role Postgres mới `nexamed_app` (không `SUPERUSER`, không `BYPASSRLS`, không `CREATEDB`/`CREATEROLE`), chỉ có `SELECT`/`INSERT`/`UPDATE` (không `DELETE`; `audit_log` không có cả `UPDATE`). API runtime (`DATABASE_URL`) kết nối bằng role này. Role cũ `nexamed` (superuser, tạo bởi `POSTGRES_USER` của image Postgres) chỉ dùng để chạy migration, qua biến `MIGRATE_DATABASE_URL` mới và script `apps/api/scripts/with-migrate-url.mjs`.
+**Vì sao**: Phát hiện khi thật sự thử nghiệm RLS — role `nexamed` là **superuser**, và superuser **luôn bypass RLS bất kể policy**, kể cả khi RLS đã "bật" đúng cú pháp. Nếu API runtime tiếp tục dùng role `nexamed` như ở S1-02, mọi policy RLS viết ra sẽ vô tác dụng một cách âm thầm — không có cách nào phát hiện qua đọc code, chỉ lộ ra khi test thật trên DB thật. Đây là lý do S1-07 (test cách ly tenant trên Postgres thật) quan trọng hơn review code.
+**Ảnh hưởng**: Mọi migration mới tạo bảng phải nằm trong phạm vi `ALTER DEFAULT PRIVILEGES` đã set (tự động cấp SELECT/INSERT/UPDATE cho `nexamed_app`) — nếu bảng cần hành vi khác (ví dụ bảng append-only như `audit_log` cần thu hồi thêm `UPDATE`), phải tự thêm REVOKE trong chính migration đó. Mật khẩu `nexamed_app` hiện hard-code trong migration (`'nexamed_app'`) — chỉ dùng được cho local dev/CI; khi triển khai on-prem thật (S4-05) **bắt buộc** đổi bằng `ALTER ROLE ... PASSWORD` ngoài version control, không dùng giá trị trong migration.
+
+## 011 — `tenant` không bật Row Level Security
+
+**Ngày**: 2026-08-08
+**Quyết định**: RLS chỉ áp cho 6 bảng có cột `tenant_id` (`tenant_setting`, `room`, `user_account`, `user_role`, `code_sequence`, `audit_log`). Bảng `tenant` không có policy nào.
+**Vì sao**: `.claude/docs/multi-tenancy.md` ràng buộc 2 nói "Bật RLS cho tất cả bảng có `tenant_id`" — `tenant` không có cột này (nó là gốc của tenant, không tự tham chiếu chính mình, xem #005/`data-model.md`). Ngoài ra `system_admin` cần thấy được nhiều/mọi tenant (`.claude/docs/security-audit.md`), nên hạn chế mỗi phiên chỉ thấy một `tenant` bằng RLS sẽ mâu thuẫn với vai trò đó.
+**Ảnh hưởng**: Việc ai được xem/sửa bản ghi `tenant` nào phải kiểm ở tầng service/guard theo vai trò (`clinic_admin` chỉ sửa tenant của mình, `system_admin` xem được nhiều tenant) — không có lớp phòng thủ RLS ở tầng DB cho riêng bảng này. Cần nhớ khi viết module `clinic`/`tenant` (chưa tới lượt).
+
+## 012 — Tenant context tạm thời đọc từ header, chưa qua JWT
+
+**Ngày**: 2026-08-08
+**Quyết định**: `TenantContextMiddleware` (`apps/api/src/common`) đọc `tenantId`/`actorId` từ header `x-tenant-id`/`x-actor-id` thay vì claim JWT đã xác thực.
+**Vì sao**: S1-04 (auth/JWT) chưa làm, nhưng S1-03 cần middleware "set `app.current_tenant_id`" tồn tại và test được ngay theo `docs/product/plan.md`. Tách nguồn dữ liệu (header tạm) khỏi cơ chế (`AsyncLocalStorage` + `UnitOfWorkService`) để S1-04 chỉ cần đổi *nguồn đọc*, không đổi middleware hay unit-of-work.
+**Ảnh hưởng**: **Không được dùng cơ chế này khi có endpoint thật nhận traffic ngoài** — bất kỳ client nào cũng tự set header tuỳ ý, không có xác thực, giả mạo tenant khác dễ dàng. Bắt buộc thay bằng JWT claim trước khi có domain module/controller đầu tiên nhận request thật (S2). Không phải rủi ro ở S1-03 vì chưa có controller nào expose ra ngoài.

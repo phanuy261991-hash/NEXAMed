@@ -23,7 +23,10 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
-      DATABASE_URL: postgresql://nexamed:nexamed@localhost:5432/nexamed?schema=public
+      # Role app (không superuser/BYPASSRLS/DELETE) — dùng cho build/test, giống runtime thật.
+      DATABASE_URL: postgresql://nexamed_app:nexamed_app@localhost:5432/nexamed?schema=public
+      # Role đặc quyền — chỉ dùng để chạy migration (bước "Prisma migrate deploy" bên dưới).
+      MIGRATE_DATABASE_URL: postgresql://nexamed:nexamed@localhost:5432/nexamed?schema=public
     steps:
       - uses: actions/checkout@v4
 
@@ -42,8 +45,11 @@ jobs:
       - name: Check mandatory columns (8 cột bắt buộc)
         run: pnpm db:check-schema
 
-      - name: Prisma migrate deploy (áp migration lên Postgres thật)
-        run: pnpm --filter @nexamed/api exec prisma migrate deploy
+      - name: Prisma migrate deploy (áp migration lên Postgres thật, dùng role đặc quyền)
+        run: pnpm --filter @nexamed/api run db:deploy
+
+      - name: Prisma generate
+        run: pnpm --filter @nexamed/api run db:generate
 
       - name: Lint
         run: pnpm lint

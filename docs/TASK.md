@@ -17,7 +17,7 @@ Quy ước trạng thái: `[ ]` chưa làm, `[~]` đang làm, `[x]` xong.
 
 - [x] S1-01 — Khởi tạo monorepo pnpm, cấu trúc thư mục theo `project-structure.md`, ESLint boundary rules, CI
 - [x] S1-02 — Prisma schema nền: 8 cột bắt buộc, base model, quy ước migration, `code_sequence` (migration **đã áp thật lên Postgres 18.4** qua `prisma migrate deploy`, xác minh `uuidv7()` sinh đúng UUID v7)
-- [ ] S1-03 — Tenant context: middleware `app.current_tenant_id`, RLS policy, unit of work — **ưu tiên cao**, xem `docs/DECISIONS.md` #008 (RLS chưa bật)
+- [x] S1-03 — Tenant context: middleware `app.current_tenant_id`, RLS policy, unit of work. RLS/CHECK/thu hồi DELETE **đã bật thật** trên Postgres, xác minh bằng integration test 4/4 pass. Middleware tạm đọc header (chưa qua JWT — xem `docs/DECISIONS.md` #012, phải thay trước khi có controller thật ở S2)
 - [ ] S1-04 — Auth: JWT + refresh rotation, Argon2id, khoá tài khoản, 5 vai trò, RBAC guard
 - [ ] S1-05 — Audit log: interceptor ghi trong cùng transaction, bảng append-only, quyền DB
 - [ ] S1-06 — `packages/core`: khung entity, lớp lỗi + mã lỗi, `ports/` 6 interface, adapter no-op, đăng ký DI
@@ -28,7 +28,7 @@ Quy ước trạng thái: `[ ]` chưa làm, `[~]` đang làm, `[x]` xong.
 **Gate cuối sprint 1** (từ `plan.md`):
 - [x] CI fail khi `packages/core` import NestJS/Prisma/React (đã kiểm chứng thủ công với ESLint; CI thật chỉ chạy khi có remote GitHub)
 - [x] CI fail khi migration tạo bảng thiếu một trong 8 cột bắt buộc (`scripts/check-mandatory-columns.mjs`, đã kiểm chứng chặn được lỗi thật lúc viết script)
-- [ ] Test cách ly tenant chạy được: đăng nhập tenant A gọi ID của tenant B trả 404
+- [~] Test cách ly tenant chạy được: đăng nhập tenant A gọi ID của tenant B trả 404 — cơ chế RLS đã xác minh thật ở tầng repository (`tenant-isolation.spec.ts`), nhưng "đăng nhập" cần S1-04 (auth) chưa có; chưa test được xuyên qua một endpoint HTTP thật vì chưa có controller nào (S2)
 - [ ] Mọi thao tác ghi mẫu đều sinh dòng `audit_log`; rollback audit thì rollback cả thao tác
 
 ## Sprint 2+

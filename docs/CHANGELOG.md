@@ -2,6 +2,18 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-08
+
+S1-03 — Tenant context (RLS, unit of work):
+
+- Migration `20260807170922_tenant_context`: role Postgres mới `nexamed_app` (không superuser/BYPASSRLS/CREATEDB/CREATEROLE), chỉ `SELECT`/`INSERT`/`UPDATE` (không `DELETE`; `audit_log` không cả `UPDATE`); `CHECK (version >= 1)` trên 6 bảng; Row Level Security thật (policy `USING`+`WITH CHECK`) trên 6 bảng có `tenant_id` (không áp cho `tenant`, xem `docs/DECISIONS.md` #011).
+- **Phát hiện quan trọng**: role cũ `nexamed` là superuser nên **luôn bypass RLS** dù policy đúng — API runtime phải chuyển sang role mới `nexamed_app`. Tách `DATABASE_URL` (app, runtime) khỏi `MIGRATE_DATABASE_URL` (đặc quyền, chỉ migration) — xem `docs/DECISIONS.md` #010. Thêm `apps/api/scripts/with-migrate-url.mjs` chạy migrate bằng đúng role.
+- `apps/api/src/infrastructure/persistence/`: `prisma.service.ts`, `unit-of-work.service.ts` (mở transaction + `SET LOCAL app.current_tenant_id`, validate UUID chống injection), `tenant-context.store.ts` (AsyncLocalStorage), `persistence.module.ts` — wire vào `AppModule`.
+- `apps/api/src/common/tenant-context.middleware.ts`: tạm đọc `x-tenant-id`/`x-actor-id` từ header, chờ JWT thật ở S1-04 (xem `docs/DECISIONS.md` #012) — **không dùng khi có controller thật nhận traffic ngoài**.
+- Integration test thật trên Postgres (`tenant-isolation.spec.ts`, 4/4 pass, không mock): cách ly tenant đúng; quên set tenant context → lỗi (fail closed, không rò dữ liệu); không xoá được; không insert xuyên tenant được (RLS `WITH CHECK`).
+- `apps/api/vitest.config.ts` + `vitest.setup.ts`: tự nạp `.env` cho test, khớp luồng `pnpm test` đã ghi trong `CLAUDE.md`.
+- CI: tách `DATABASE_URL`/`MIGRATE_DATABASE_URL`, thêm bước `Prisma generate` sau `migrate deploy` (trước đây thiếu — `migrate deploy` không tự generate client như `migrate dev`, có thể làm build/typecheck CI fail nếu chạy trên máy sạch).
+
 ## 2026-08-07 (5)
 
 Xác minh migration trên Postgres thật (sau khi cài Docker lên máy dev):
