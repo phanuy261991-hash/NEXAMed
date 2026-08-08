@@ -2,6 +2,24 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-08 (3)
+
+- `CLAUDE.md`: thêm Tailwind CSS vào Tech Stack (`docs/DECISIONS.md` #017); thêm quy định bắt buộc đọc `.claude/docs/ui-guidelines.md` + `docs/design/*.md` trước khi thiết kế UI/UX, hỏi trước khi điều chỉnh, cập nhật tài liệu khi đổi quyết định thiết kế; thêm tham chiếu `docs/Hybrid Authorization.md` (định hướng platform/đa module v3+, chưa triển khai, chỉ tham khảo).
+- Phát hiện và xử lý mâu thuẫn giữa `ui-guidelines.md` và `docs/design/AI_AVOID_RULES.md` (số lượng màu, độ đậm shadow) — chốt `ui-guidelines.md` thắng, ghi chú ngay trong `AI_AVOID_RULES.md` (`docs/DECISIONS.md` #018).
+
+## 2026-08-08 (2)
+
+S1-04b — Thay mô hình vai trò cứng bằng RBAC + Data Scope (theo yêu cầu chủ dự án, tài liệu `PhanQuyen.md`):
+
+- Cập nhật tài liệu chốt trước khi code: `.claude/docs/security-audit.md` (mô hình mới, ma trận mặc định, break-glass), `.claude/docs/data-model.md`, `docs/ERD.md` (v1.1), `docs/product/prd.md` (v1.1 — ADM-06, ADM-07, R10), `docs/product/plan.md` (v1.1 — S1-04b/S1-04c, sprint 1 tăng 34→40 dev-day), `docs/DECISIONS.md` #013-#016.
+- Schema: bỏ enum `UserRoleName` cứng, thêm `department`, `role` (theo tenant), `permission` (danh mục toàn hệ thống, 23 permission), `role_permission` (ma trận `role × permission → data_scope`), `break_glass_session`. Enum `data_scope`: `none`/`personal`/`department`/`global` — **không có `branch`** (đa chi nhánh hoãn, khớp PRD Q6).
+- Migration `20260808015619_rbac_data_scope`: đổi `user_role` từ cột `role` enum sang `role_id` FK; RLS + `CHECK(version>=1)` cho bảng mới; `permission` read-only cho role app (`REVOKE INSERT, UPDATE`); `break_glass_session` không cho `UPDATE` (append-only).
+- Gặp sự cố khi áp migration: bảng `_prisma_migrations` bị mất dấu vết dù dữ liệu bảng cũ vẫn còn — baseline lại 2 migration cũ bằng `prisma migrate resolve --applied` trước khi áp migration mới.
+- Logic nghiệp vụ thuần (danh mục permission + ma trận mặc định) đặt ở `packages/core/src/rbac/permissions.ts` — nguồn sự thật duy nhất, dùng chung cho seed script, guard sau này, và có thể dùng lại ở web. `packages/shared/src/data-scope.ts`: enum Data Scope dùng chung web/api.
+- `apps/api/src/infrastructure/persistence/seed-permissions.ts`, `seed-tenant-roles.ts`: seed danh mục + seed 5 vai trò/ma trận cho một tenant (`prisma/seed/index.ts` là entrypoint mỏng gọi vào, chạy bằng role đặc quyền vì `permission` đã revoke ghi từ role app).
+- Integration test thật (`rbac.spec.ts`, 4/4 pass, không mock): seed đúng 5 vai trò/tenant; RLS cách ly `role`/`role_permission` theo tenant; `permission` đọc được nhưng không ghi được qua role app; `doctor.encounter.read = global` đúng thiết kế (không bắt break-glass cho tiền sử — khớp PRD ENC-01 P0, khác ví dụ minh hoạ chung của ngành).
+- CI: thêm bước seed sau `migrate deploy` (không tự seed như `migrate dev`).
+
 ## 2026-08-08
 
 S1-03 — Tenant context (RLS, unit of work):

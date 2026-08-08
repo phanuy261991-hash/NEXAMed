@@ -4,7 +4,7 @@ Trạng thái hiện tại của dự án. Cập nhật file này mỗi khi tr�
 
 ## Giai đoạn
 
-Sprint 1 — Nền tảng (tuần 1-2 theo `docs/product/plan.md`). S1-01, S1-02, S1-03 đã xong.
+Sprint 1 — Nền tảng (tuần 1-2 theo `docs/product/plan.md`). S1-01, S1-02, S1-03, S1-04b đã xong.
 
 ## Đã có
 
@@ -16,14 +16,18 @@ Sprint 1 — Nền tảng (tuần 1-2 theo `docs/product/plan.md`). S1-01, S1-02
 - **S1-02 xong**: `apps/api/prisma/schema.prisma` với 7 bảng nền tảng (`tenant`, `tenant_setting`, `room`, `user_account`, `user_role`, `code_sequence`, `audit_log`), migration đầu tiên (`prisma/migrations/20260807090207_init`), script kiểm 8 cột bắt buộc (`scripts/check-mandatory-columns.mjs`, nối vào CI), Zod env validation ở `apps/api/src/config` (đã kiểm chứng: API crash đúng khi thiếu `DATABASE_URL`/`JWT_SECRET`/`ENCRYPTION_KEY`, chạy được khi đủ), `docker-compose.yml` gốc cho Postgres local dev, `apps/api/.env.example`. `packages/shared` có enum 5 vai trò (`roles.ts`).
 - **Postgres nâng lên bản 18** (từ 16) để dùng `uuidv7()` thật cho mọi `id` — xem `docs/DECISIONS.md` #009.
 - **S1-03 xong**: role Postgres riêng `nexamed_app` (không superuser/BYPASSRLS/DELETE) cho API runtime, tách khỏi role `nexamed` (chỉ dùng cho migration qua `MIGRATE_DATABASE_URL` + `apps/api/scripts/with-migrate-url.mjs`); RLS thật trên 6 bảng có `tenant_id`; `CHECK (version >= 1)`; `PrismaService` + `UnitOfWorkService` (`apps/api/src/infrastructure/persistence`, mở transaction + `SET LOCAL app.current_tenant_id`); `TenantContextMiddleware` (tạm đọc header, chờ JWT ở S1-04 — xem `docs/DECISIONS.md` #012) wire global vào `AppModule`. **Đã xác minh thật bằng integration test** (`tenant-isolation.spec.ts`, 4/4 pass trên Postgres thật): cách ly tenant đúng, không set context thì lỗi thay vì rò dữ liệu, không xoá được, không insert xuyên tenant được.
+- **RBAC + Data Scope xong (S1-04b)** — thay hoàn toàn mô hình "5 vai trò cứng" theo yêu cầu chủ dự án (`docs/DECISIONS.md` #013-#016): bảng `department`, `role`, `permission` (danh mục toàn hệ thống, 23 permission), `role_permission` (ma trận `role × permission → data_scope`, 4 mức `none`/`personal`/`department`/`global`, không có `branch`), migration `*_rbac_data_scope` (RLS + CHECK + REVOKE cho bảng mới). Ma trận mặc định + logic seed đặt ở `packages/core/src/rbac/permissions.ts` (nguồn sự thật, dùng chung seed script/guard/web sau này). `seedDefaultRolesForTenant`/`seedPermissionCatalog` ở `apps/api/src/infrastructure/persistence/`. **Đã xác minh thật** (`rbac.spec.ts`, 4/4 pass): seed đúng 5 vai trò/tenant, RLS cách ly `role`/`role_permission` theo tenant, `permission` đọc được nhưng không ghi được qua role app, `doctor.encounter.read = global` đúng thiết kế (không break-glass cho tiền sử — khớp PRD ENC-01 P0).
 - `docs/design/` — có `UI_GUIDELINE.md`, `AI_AVOID_RULES.md`.
 
 ## Đang chờ
 
-- S1-04: Auth (JWT, Argon2id, RBAC) — **ưu tiên cao**: `TenantContextMiddleware` đang đọc header không xác thực, phải thay bằng JWT trước khi có domain module/controller nhận traffic thật (xem `docs/DECISIONS.md` #012).
+- S1-04: Auth (JWT, Argon2id) — **ưu tiên cao**: `TenantContextMiddleware` đang đọc header không xác thực, phải thay bằng JWT trước khi có domain module/controller nhận traffic thật (xem `docs/DECISIONS.md` #012).
+- S1-04c: Break-glass (endpoint xin vượt quyền, `break_glass_session`, tích hợp guard) — bảng đã có RLS sẵn, chưa có endpoint/logic.
+- Guard đọc `role_permission` theo `data_scope` thật trong request — schema/seed đã xong, guard NestJS áp vào controller thật là việc của S2 (khi có controller đầu tiên).
 - S1-05: Audit log interceptor.
 - S1-06: `packages/core` ports thật (6 interface) + adapter no-op + đăng ký DI.
 - S1-07: Test harness cách ly tenant (testcontainers).
+- ADM-07 (P1): UI cấu hình ma trận phân quyền.
 
 ## Lưu ý môi trường
 

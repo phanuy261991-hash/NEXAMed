@@ -18,9 +18,13 @@ const REQUIRED_COLUMNS = ['tenant_id', 'created_at', 'updated_at', 'deleted_at',
 // AuditLog: dùng occurred_at + actor_id thay cho created_at/created_by (xem docs/DECISIONS.md #005 —
 // ERD.md liệt kê chi tiết cột của audit_log không có created_at/created_by/updated_by, dù câu tóm tắt
 // trong data-model.md chỉ nhắc updated_at/deleted_at/version).
+const APPEND_ONLY_EXEMPT = ['created_at', 'updated_at', 'deleted_at', 'version', 'created_by', 'updated_by'];
+
 const EXEMPTIONS = {
   Tenant: ['tenant_id'], // là gốc của tenant, không tự tham chiếu chính mình
-  AuditLog: ['created_at', 'updated_at', 'deleted_at', 'version', 'created_by', 'updated_by'],
+  AuditLog: APPEND_ONLY_EXEMPT,
+  BreakGlassSession: APPEND_ONLY_EXEMPT, // append-only như audit_log, xem security-audit.md
+  Permission: [...APPEND_ONLY_EXEMPT, 'tenant_id'], // danh mục toàn hệ thống, giống icd10_catalog
 };
 
 const schema = readFileSync(SCHEMA_PATH, 'utf8');

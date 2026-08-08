@@ -51,6 +51,9 @@ jobs:
       - name: Prisma generate
         run: pnpm --filter @nexamed/api run db:generate
 
+      - name: Seed danh mục permission (migrate deploy không tự seed như migrate dev)
+        run: pnpm --filter @nexamed/api run db:seed
+
       - name: Lint
         run: pnpm lint
 

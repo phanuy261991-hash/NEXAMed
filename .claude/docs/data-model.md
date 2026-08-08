@@ -15,7 +15,7 @@
 | `created_by` | `uuid NOT NULL` | User thực hiện |
 | `updated_by` | `uuid NOT NULL` | User sửa gần nhất |
 
-Thiếu một cột là migration không hợp lệ. Ngoại lệ duy nhất: bảng danh mục toàn hệ thống (`icd10_catalog`, `province`) và `audit_log` (append-only, không có `updated_at`, `deleted_at`, `version`, `created_at`, `created_by`, `updated_by` — dùng `occurred_at` làm mốc thời gian và `actor_id` làm actor, không có khái niệm "người tạo dòng log" khác với actor thực hiện hành động). `tenant` cũng là ngoại lệ với riêng cột `tenant_id` (bảng này là gốc của tenant, không tự tham chiếu chính mình).
+Thiếu một cột là migration không hợp lệ. Ngoại lệ duy nhất: bảng danh mục toàn hệ thống (`icd10_catalog`, `province`, `permission`) và bảng append-only (`audit_log`, `break_glass_session` — không có `updated_at`, `deleted_at`, `version`, `created_at`, `created_by`, `updated_by`; dùng `occurred_at` làm mốc thời gian và `actor_id` làm actor, không có khái niệm "người tạo dòng log" khác với actor thực hiện hành động). `tenant` cũng là ngoại lệ với riêng cột `tenant_id` (bảng này là gốc của tenant, không tự tham chiếu chính mình).
 
 Mọi `UPDATE` kèm điều kiện `WHERE version = ?` và tăng `version` lên 1; không khớp thì ném `CONCURRENT_MODIFICATION`, không ghi đè im lặng.
 
@@ -28,8 +28,23 @@ Mọi `UPDATE` kèm điều kiện `WHERE version = ?` và tăng `version` lên 
 
 ## Bảng v1
 
-### clinic / tenant_setting / room / user_account / user_role
-Tenant và cấu hình. `tenant_setting (tenant_id, key, value_json)` giữ giờ làm việc, độ dài slot, ngưỡng `NO_SHOW`.
+### clinic / tenant_setting / room / department / user_account
+Tenant và cấu hình. `tenant_setting (tenant_id, key, value_json)` giữ giờ làm việc, độ dài slot, ngưỡng `NO_SHOW`, `break_glass_duration_minutes` (mặc định 120).
+`department`: `name` — khoa/phòng trong tenant, phục vụ Data Scope `department` (xem `security-audit.md`). v1 phần lớn phòng khám không dùng nhưng bảng luôn tồn tại.
+`user_account` có thêm `department_id uuid NULL` (FK `(tenant_id, id)` tới `department`).
+
+### role / permission / role_permission — RBAC + Data Scope (xem `security-audit.md` để biết quy tắc nghiệp vụ đầy đủ)
+
+Thay thế mô hình vai trò cứng cũ (enum `UserRoleName` trực tiếp trên `user_role`) — quyết định 2026-08-08, `docs/DECISIONS.md` #013.
+
+- `role`: `tenant_id`, `name`, `is_system_default boolean`. Theo tenant — seed 5 vai trò mặc định (`receptionist`, `nurse`, `doctor`, `clinic_admin`, `system_admin`) khi tạo tenant, `clinic_admin` tạo thêm được vai trò tuỳ biến sau này. Unique `(tenant_id, name)`.
+- `permission`: **toàn hệ thống**, không có `tenant_id` (giống `icd10_catalog`) — `module`, `action`, `description`. Seed cố định theo code, không do phòng khám tự thêm. Unique `(module, action)`.
+- `role_permission`: `tenant_id`, `role_id`, `permission_id`, `data_scope` (enum `none`/`personal`/`department`/`global`). Composite FK `(tenant_id, role_id)` → `role`. Unique `(tenant_id, role_id, permission_id)`.
+- `user_role`: bảng nối `user_account` ↔ `role` (giữ tên cũ, đổi bản chất từ "user + enum vai trò" sang "user + role_id" — xem `docs/DECISIONS.md` #013). `tenant_id`, `user_id`, `role_id`. Composite FK cả hai chiều `(tenant_id, user_id)` → `user_account`, `(tenant_id, role_id)` → `role`. Unique `(tenant_id, user_id, role_id)` — một user có thể có nhiều vai trò.
+
+### break_glass_session
+
+`tenant_id`, `actor_id`, `entity_type`, `entity_id`, `reason`, `occurred_at`, `expires_at`. Append-only như `audit_log` (không `updated_at`/`deleted_at`/`version`/`created_by`/`updated_by`) — mỗi lần "phá kính" là một bản ghi mới, không sửa/gia hạn bản ghi cũ. Xem quy tắc đầy đủ ở `security-audit.md` mục Break-glass.
 
 ### patient
 `full_name`, `dob`, `gender`, `phone`, `national_id`, `address_json`, `allergy_note`.
@@ -74,6 +89,8 @@ v1 không trừ tồn kho, không có `unit_price` — dược/kho ngoài phạm
 - `encounter (tenant_id, patient_id, checked_in_at DESC)` — lịch sử khám.
 - `appointment (tenant_id, doctor_id, scheduled_at)` — dựng lịch.
 - `audit_log (tenant_id, entity_type, entity_id, occurred_at DESC)` — tra vết bệnh án.
+- `role_permission (tenant_id, role_id)` — tra ma trận quyền lúc mỗi request, cần nhanh.
+- `break_glass_session (tenant_id, actor_id, entity_type, entity_id, expires_at DESC)` — kiểm tra phiên còn hạn lúc mỗi request.
 - Partial index `WHERE deleted_at IS NULL` cho các bảng lâm sàng.
 
 ### drug

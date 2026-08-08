@@ -51,27 +51,34 @@ Quy tắc: **BE1 sở hữu các quyết định chạm nền tảng** (schema c
 
 ---
 
-## 4. Sprint 1 — Nền tảng (Tuần 1-2) · 34 dev-day
+## 4. Sprint 1 — Nền tảng (Tuần 1-2) · 40 dev-day
 
 Mục tiêu: mọi ràng buộc trong `CLAUDE.md` được ép bằng code và CI, không bằng lời nhắc.
+
+**Cập nhật 2026-08-08**: RBAC chuyển từ "5 vai trò cố định" sang RBAC + Data Scope + break-glass (xem PRD R10, `docs/DECISIONS.md` #013-#016) — tăng tổng dev-day sprint 1 từ 34 lên 40 (thêm S1-04b, S1-04c). Nếu trễ, ưu tiên cắt ADM-07 (UI cấu hình ma trận, P1) trước, không cắt S1-04b/c (nền tảng an toàn dữ liệu lâm sàng, P0).
 
 | ID | Việc | Est | Người | Phụ thuộc |
 |---|---|---|---|---|
 | S1-01 | Khởi tạo monorepo pnpm, cấu trúc thư mục theo `project-structure.md`, ESLint boundary rules, CI | 3 | BE1 | — |
 | S1-02 | Prisma schema nền: bộ 8 cột bắt buộc, base model, quy ước migration, `code_sequence` | 3 | BE1 | S1-01 |
 | S1-03 | Tenant context: middleware set `app.current_tenant_id`, RLS policy, unit of work | 5 | BE1 | S1-02 |
-| S1-04 | Auth: JWT + refresh rotation, Argon2id, khoá tài khoản, 5 vai trò, RBAC guard | 5 | BE2 | S1-02 |
+| S1-04 | Auth: JWT + refresh rotation, Argon2id, khoá tài khoản | 5 | BE2 | S1-02 |
+| S1-04b | RBAC schema: `role`/`permission`/`role_permission`/`department`, seed danh mục permission + 5 vai trò mặc định, guard đọc `role_permission` theo `data_scope` | 3 | BE1 | S1-03 |
+| S1-04c | Break-glass: endpoint xin vượt quyền (xác thực lại mật khẩu + lý do), `break_glass_session`, tích hợp guard, ghi audit, gọi `NotificationPort` (no-op) | 3 | BE2 | S1-04, S1-04b |
 | S1-05 | Audit log: interceptor ghi trong cùng transaction, bảng append-only, quyền DB | 4 | BE2 | S1-03 |
 | S1-06 | `packages/core`: khung entity, lớp lỗi + mã lỗi, `ports/` 6 interface, adapter no-op, đăng ký DI | 3 | BE1 | S1-01 |
 | S1-07 | Test harness cách ly tenant: testcontainers Postgres, helper tạo 2 tenant, template test | 3 | BE2 | S1-03 |
 | S1-08 | Web: app shell, router, provider, luồng đăng nhập, layout, design token | 5 | FE1 | S1-04 |
 | S1-09 | Web: api client sinh từ OpenAPI, TanStack Query setup với cache key có `tenantId`, xử lý lỗi chung | 3 | FE2 | S1-08 |
 
+ADM-07 (UI cấu hình ma trận phân quyền, dropdown chọn scope) là P1 — chưa xếp dev-day cụ thể ở sprint 1, dời sang sprint có FE rảnh (sớm nhất sprint 2) nếu không trễ tiến độ.
+
 **Gate cuối sprint 1** — không đạt thì không sang sprint 2:
 - [ ] CI fail khi `packages/core` import NestJS/Prisma/React
 - [ ] CI fail khi migration tạo bảng thiếu một trong 8 cột bắt buộc (viết script kiểm tra)
 - [ ] Test cách ly tenant chạy được: đăng nhập tenant A gọi ID của tenant B trả 404
 - [ ] Mọi thao tác ghi mẫu đều sinh dòng `audit_log`; rollback audit thì rollback cả thao tác
+- [ ] Guard chặn đúng theo `data_scope`: user có `personal` không đọc được bản ghi không phải của mình; user có `none` bị chặn hoàn toàn; break-glass mở được và tự hết hạn đúng giờ cấu hình
 
 ---
 
@@ -252,3 +259,4 @@ Các dấu hiệu cần dừng lại và tính lại kế hoạch, thay vì cố
 | Version | Ngày | Thay đổi |
 |---|---|---|
 | v1.0 | 07/08/2026 | Bản đầu tiên, dựng từ PRD v1.0 theo phương án timeline B |
+| v1.1 | 08/08/2026 | Thêm S1-04b (RBAC schema), S1-04c (break-glass) — sprint 1 tăng từ 34 lên 40 dev-day, khớp PRD v1.1/R10 |

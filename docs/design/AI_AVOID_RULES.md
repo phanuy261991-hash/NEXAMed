@@ -1,5 +1,7 @@
 # AI Design Avoid Rules
 
+> Đây là nguyên tắc chung, không phải đặc tả chi tiết. Khi mâu thuẫn với `.claude/docs/ui-guidelines.md`
+> (ví dụ số lượng màu ở mục 2.1, độ đậm shadow ở mục 2.2), **ui-guidelines.md thắng**.
 
 Never use:
 

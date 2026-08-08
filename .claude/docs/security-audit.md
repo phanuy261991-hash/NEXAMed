@@ -1,16 +1,61 @@
 # Security & Audit — NEXAMed
 
-## Vai trò trong v1
+## Mô hình phân quyền: RBAC + Data Scope (thay thế mô hình vai trò cứng)
 
-| Vai trò | Được xem | Được ghi |
-|---|---|---|
-| `receptionist` | Hồ sơ hành chính, lịch hẹn, hàng đợi | Tạo/sửa hồ sơ hành chính, đặt lịch, check-in |
-| `nurse` | Dữ liệu lâm sàng của lượt khám đang phụ trách | Sinh hiệu, ghi chú điều dưỡng |
-| `doctor` | Toàn bộ dữ liệu lâm sàng của bệnh nhân trong phòng khám | Chẩn đoán, ghi chú SOAP, kê đơn, ký |
-| `clinic_admin` | Cấu hình, người dùng, danh mục của tenant mình | Cấu hình phòng khám; **không** ghi dữ liệu lâm sàng |
-| `system_admin` | Danh mục toàn hệ thống, tenant | Không truy cập dữ liệu bệnh nhân của tenant |
+**Quyết định 2026-08-08** (xem `docs/DECISIONS.md` #013-#016): thay mô hình "5 vai trò cứng, quyền hardcode trong service" bằng RBAC kết hợp phạm vi dữ liệu (Data Scope) cấu hình qua bảng, cộng cơ chế break-glass. Chi tiết bảng/migration xem `data-model.md`. Phần này mô tả **quy tắc nghiệp vụ**.
 
-Nguyên tắc: quyền kiểm ở tầng service/repository, không chỉ ẩn nút trên UI. `system_admin` không có đường tắt xem dữ liệu lâm sàng — cần thao tác hỗ trợ thì dùng quy trình cấp quyền tạm có audit và thời hạn.
+### Bảng cốt lõi
+
+- `role` — vai trò, theo tenant (mỗi tenant có bản sao riêng, cho phép `clinic_admin` tạo vai trò tuỳ biến sau này). Seed sẵn 5 vai trò mặc định (`is_system_default = true`) khi tenant được tạo: `receptionist`, `nurse`, `doctor`, `clinic_admin`, `system_admin`.
+- `permission` — danh mục hành động, **toàn hệ thống** (giống `icd10_catalog`, không có `tenant_id`, seed sẵn, không do phòng khám tự định nghĩa). Định dạng `<module>.<action>`, ví dụ `clinical_note.sign`.
+- `role_permission` — ma trận: `(tenant_id, role_id, permission_id) → data_scope`.
+- `department` — khoa/phòng trong 1 tenant, phục vụ scope `department`. v1 phần lớn phòng khám không dùng (1-3 bác sĩ, không chia khoa), nhưng bảng luôn tồn tại.
+
+### Data Scope (4 mức — **không có mức `branch`**, xem `docs/DECISIONS.md` #013)
+
+| Scope | Ý nghĩa |
+|---|---|
+| `none` | Không được phép |
+| `personal` | Chỉ bản ghi do mình tạo hoặc được gán phụ trách (`owner_id`/`assigned_to` — với `encounter` là `doctor_id`, với `vital_sign`/`clinical_note` kế thừa `encounter.doctor_id`) |
+| `department` | Toàn bộ bản ghi của khoa/phòng mình trực thuộc (`user_account.department_id`) |
+| `global` | Toàn bộ dữ liệu trong tenant |
+
+Không có mức `branch` — v1 một phòng khám một địa điểm (`docs/product/prd.md`, PRD Q6 đã hoãn đa chi nhánh). Nếu sau này cần đa chi nhánh, thêm scope `branch` giữa `department` và `global`, không đổi 4 mức hiện có.
+
+### Ma trận mặc định seed cho 5 vai trò hệ thống
+
+Seed cụ thể nằm trong `apps/api/prisma/seed/permissions.seed.ts` (nguồn sự thật) — bảng dưới đây tóm tắt để đọc nhanh, **không tự suy ra ma trận khác khi seed đã tồn tại**:
+
+| Permission | receptionist | nurse | doctor | clinic_admin | system_admin |
+|---|---|---|---|---|---|
+| `patient.read` | global | global | global | global | none |
+| `patient.create` / `patient.update` | global | none | none | global | none |
+| `patient.merge` | none | none | none | global | none |
+| `appointment.read/create/update/cancel` | global | none | personal | global | none |
+| `encounter.read` | none | personal | global | global | none |
+| `vital_sign.create` | none | personal | personal | none | none |
+| `diagnosis.create` | none | none | personal | none | none |
+| `clinical_note.create/update/sign` | none | none | personal | none | none |
+| `prescription.create/sign/print` | none | none | personal | none | none |
+| `clinic_config.read/update` | none | none | none | global | none |
+| `user_account.read/manage` | none | none | none | global | global |
+| `role_permission.manage` | none | none | none | global | none |
+| `audit_log.read` | none | none | none | global | global |
+
+Lý do `doctor.encounter.read = global` (không phải `personal`+break-glass như ví dụ minh hoạ chung của ngành): PRD yêu cầu P0 **ENC-01** — bác sĩ phải xem được toàn bộ tiền sử khám của bệnh nhân ngay khi vào màn hình khám, kể cả lượt khám trước do bác sĩ khác phụ trách (phòng khám 1-3 bác sĩ, thường thay nhau khám cùng bệnh nhân). Bắt break-glass cho thao tác này sẽ phá vỡ chính giá trị cốt lõi sản phẩm. Break-glass dành cho tình huống **thật sự ngoài phạm vi công việc thường ngày** — xem mục dưới.
+
+### Break-glass (phá kính — vượt quyền tạm thời)
+
+Áp dụng khi một request bị chặn bởi scope `personal`/`department` (ví dụ điều dưỡng cần xem ghi chú của một lượt khám không do mình phụ trách trong ca trực đột xuất).
+
+- Bị chặn → API trả `403` kèm `breakGlassAvailable: true` thay vì `403` thường.
+- Client gọi endpoint break-glass riêng: nhập **lại mật khẩu đăng nhập** (Argon2id verify — không thêm PIN riêng, xem `docs/DECISIONS.md` #014) + lý do bắt buộc (free text, tối thiểu ý nghĩa — ví dụ "cấp cứu").
+- Tạo bản ghi `break_glass_session` (`actor_id`, `entity_type`, `entity_id`, `reason`, `expires_at` = `occurred_at + 2 giờ`, cấu hình được qua `tenant_setting`).
+- Trong thời hạn, request tới đúng `(actor_id, entity_type, entity_id)` được cho qua, ghi thêm dòng `audit_log` action `break_glass.access` mỗi lần dùng phiên.
+- Gọi `NotificationPort` báo `clinic_admin`/`system_admin` — **v1 adapter vẫn no-op** (chỉ ghi log), gửi thật (SMS/Zalo) là việc của giai đoạn sau khi `NotificationPort` có adapter thật (xem `docs/DECISIONS.md` #015). Không tự ý cài adapter thật ở v1.
+- `break_glass_session` append-only như `audit_log` — không sửa/xoá.
+
+Nguyên tắc chung: quyền kiểm ở tầng service/repository (guard đọc `role_permission` + lọc theo `data_scope`), không chỉ ẩn nút trên UI. `system_admin` **không** có `patient.read`/`encounter.read` nào ở mức nào — không có đường tắt xem dữ liệu lâm sàng thường trực, chỉ qua break-glass như mọi vai trò khác.
 
 ## Xác thực
 
@@ -29,7 +74,7 @@ Nguyên tắc: quyền kiểm ở tầng service/repository, không chỉ ẩn n
 
 ## Audit log
 
-Ghi bắt buộc cho: đăng nhập/đăng xuất, **xem hồ sơ bệnh nhân**, tạo/sửa/soft-delete dữ liệu lâm sàng, ký ghi chú và đơn thuốc, chuyển trạng thái encounter, in đơn, gộp hồ sơ, đổi vai trò người dùng, export.
+Ghi bắt buộc cho: đăng nhập/đăng xuất, **xem hồ sơ bệnh nhân**, tạo/sửa/soft-delete dữ liệu lâm sàng, ký ghi chú và đơn thuốc, chuyển trạng thái encounter, in đơn, gộp hồ sơ, đổi vai trò người dùng, sửa `role_permission`, dùng break-glass (`break_glass.request`, `break_glass.access`), export.
 
 Bảng `audit_log` append-only: không endpoint sửa/xoá; quyền DB của app user chỉ `INSERT` và `SELECT`. Ghi audit nằm cùng transaction với thao tác nghiệp vụ — ghi audit lỗi thì rollback thao tác.
 
@@ -46,3 +91,4 @@ v1 dùng chữ ký logic: `signed_at` + `signed_by` + ghi audit. Cột `signatur
 - Không tắt guard ở môi trường dev bằng biến môi trường; dùng tài khoản seed đúng vai trò.
 - File upload: chỉ nhận `pdf, jpg, png, dcm`; kiểm magic byte thay vì tin `Content-Type`; lưu ngoài web root; phục vụ qua signed URL có hạn.
 - Rate limit riêng cho endpoint tra cứu bệnh nhân — chống dò dữ liệu bằng cách quét mã.
+- Không hardcode kiểm tra `role.name === 'doctor'` trong service/controller — luôn tra `role_permission` (permission + data_scope) qua guard dùng chung. Hardcode theo tên vai trò làm ma trận cấu hình được ở `role_permission` mất tác dụng.

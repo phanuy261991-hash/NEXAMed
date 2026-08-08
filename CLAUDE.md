@@ -13,6 +13,7 @@ Monorepo: `apps/web` (SPA React), `apps/api` (NestJS), `packages/shared` (type +
 ## Tech Stack
 
 - React 18.3 + Vite 5.4 + TypeScript 5.6 (strict mode)
+- Tailwind CSS — styling duy nhất cho `apps/web`. Không dùng CSS-in-JS, không viết class CSS tự do ngoài hệ thống token (xem `.claude/docs/ui-guidelines.md`)
 - NestJS 10.4 trên Node 20 LTS, REST + OpenAPI
 - PostgreSQL 18, Prisma 5.x làm ORM/migration
 - Zod (validation dùng chung web/api), TanStack Query 5 (server state), Zustand (client state)
@@ -52,6 +53,7 @@ Chi tiết đầy đủ và edge case xem `.claude/docs/clinical-workflow.md`.
 - Trước khi thêm hàm/component mới, tìm trong `packages/core` và `packages/shared` xem đã có chưa. Không tạo bản sao logic. Trùng lặp lần thứ hai là dấu hiệu phải trích xuất ra dùng chung.
 - Code viết theo hướng tái sử dụng toàn hệ thống: logic nghiệp vụ thuần đặt ở `packages/core`, không nhét vào component React hay controller NestJS.
 - **Viết component/hàm tiện ích ở nơi dùng chung (`packages/shared`, `packages/core`, `apps/web/src/shared`) với chủ đích tái dùng ngay từ lần viết đầu tiên**: nhận dữ liệu qua props/tham số thay vì gắn cứng chi tiết của màn hình/nghiệp vụ hiện tại, không hardcode text/logic riêng của một nơi gọi khi rõ ràng sẽ còn nơi khác cần — để tích hợp hệ thống khác sau này tái dùng được thay vì viết lại. Không mâu thuẫn với nguyên tắc "trùng lặp lần hai mới trích xuất" ở trên: quy tắc đó áp dụng cho *logic nghiệp vụ đặc thù* (chưa biết có dùng lại hay không); quy tắc này áp dụng cho *thành phần đã biết trước sẽ dùng chung* (UI primitive, hook tiện ích, adapter tích hợp). Không dựng abstraction cho tình huống hoàn toàn chưa xảy ra.
+- **Trước khi thiết kế hoặc viết bất kỳ giao diện UI/UX nào, phải đọc** `.claude/docs/ui-guidelines.md` và mọi file trong `docs/design/` để nắm quy tắc thiết kế đã chốt, đảm bảo tính đồng nhất xuyên suốt sản phẩm. Nếu hai tài liệu mâu thuẫn nhau, `.claude/docs/ui-guidelines.md` (chi tiết, có hệ thống token) thắng — `docs/design/*.md` chỉ là nguyên tắc chung, không phải đặc tả. Cần điều chỉnh quy tắc hoặc có ý tưởng tốt hơn thì dừng lại hỏi trước, không tự đổi. Có quyết định thiết kế mới thì cập nhật lại đúng file liên quan trong cùng lúc, không để tài liệu lệch với thực tế.
 
 ### Cơ sở dữ liệu
 
@@ -87,6 +89,8 @@ Chi tiết đầy đủ và edge case xem `.claude/docs/clinical-workflow.md`.
 - `.claude/docs/data-model.md` — dùng khi viết migration, sửa schema, thiết kế bảng mới.
 - `.claude/docs/clinical-workflow.md` — dùng khi làm tính năng đặt lịch, tiếp nhận, khám bệnh, kê đơn.
 - `.claude/docs/security-audit.md` — dùng khi làm phân quyền, audit log, mã hoá, xử lý dữ liệu định danh.
+- `.claude/docs/ui-guidelines.md` — dùng khi thiết kế hoặc viết bất kỳ UI/UX nào ở `apps/web`: token màu, spacing, trạng thái loading/empty/error, chi tiết component, a11y. Đặc tả chi tiết, thắng nếu mâu thuẫn với `docs/design/*.md`.
+- `docs/design/UI_GUIDELINE.md`, `docs/design/AI_AVOID_RULES.md` — nguyên tắc chung về phong cách thiết kế (tránh phong cách nào, cảm giác sản phẩm nên giống gì). Đọc cùng lúc với `ui-guidelines.md`.
 - `docs/product/prd.md` — dùng để biết yêu cầu sản phẩm, mục tiêu, tiêu chí chấp nhận.
 - `docs/product/plan.md` — dùng để biết kế hoạch theo giai đoạn/sprint, thứ tự ưu tiên.
 - `docs/ERD.md` — dùng để biết sơ đồ quan hệ dữ liệu đầy đủ, ràng buộc DB, index, thứ tự tạo bảng theo sprint.
@@ -94,3 +98,4 @@ Chi tiết đầy đủ và edge case xem `.claude/docs/clinical-workflow.md`.
 - `docs/TASK.md` — dùng để biết việc nào đang làm, việc nào đã xong theo phase.
 - `docs/CHANGELOG.md` — dùng để tra lịch sử thay đổi; cập nhật khi hoàn thành một thay đổi đáng kể.
 - `docs/DECISIONS.md` — dùng để tra quyết định kiến trúc/nghiệp vụ đã chốt ngoài phạm vi `.claude/docs/`; cập nhật khi có quyết định mới cần lưu vết.
+- `docs/Hybrid Authorization.md` — định hướng kiến trúc phân quyền cho giai đoạn platform/đa module (v3+): Centralized Identity (SSO) + Module-Specific Authorization. **Chưa triển khai ở v1** — chỉ tham khảo, chủ động gợi ý khi thấy phù hợp (ví dụ khi bàn về mở rộng đa module/tenant liên hệ thống), không tự ý bắt đầu code theo hướng này.

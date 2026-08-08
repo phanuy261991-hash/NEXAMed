@@ -161,11 +161,15 @@ Ký hiệu: **P0** bắt buộc cho v1, **P1** làm nếu còn thời gian, **P2
 
 | ID | Yêu cầu | Ưu tiên |
 |---|---|---|
-| ADM-01 | Quản lý tài khoản và 5 vai trò đã định nghĩa | P0 |
+| ADM-01 | Quản lý tài khoản và 5 vai trò mặc định (seed sẵn theo tenant, `clinic_admin` gán được nhiều vai trò/user) | P0 |
 | ADM-02 | Cấu hình phòng khám: giờ làm việc, độ dài slot, phòng, mẫu in | P0 |
 | ADM-03 | Nhật ký hoạt động: ai xem, ai sửa hồ sơ nào, lúc nào; tra cứu theo bệnh nhân và theo người dùng | P0 |
 | ADM-04 | Sao lưu dữ liệu tự động theo lịch, có hướng dẫn phục hồi | P0 |
 | ADM-05 | Xuất bệnh án của một bệnh nhân ra PDF | P1 |
+| ADM-06 | **Break-glass**: khi bị chặn truy cập ngoài phạm vi dữ liệu (data scope), cho phép nhập lại mật khẩu + lý do để vượt quyền tạm thời (mặc định 2 giờ); ghi nhật ký vĩnh viễn, báo `clinic_admin` (v1: qua log, chưa gửi SMS/Zalo thật — xem mục 6) | P0 |
+| ADM-07 | Màn hình cấu hình ma trận phân quyền: chọn vai trò × tính năng → chọn phạm vi dữ liệu (`none`/`personal`/`department`/`global`) qua dropdown; `clinic_admin` tạo được vai trò tuỳ biến ngoài 5 vai trò mặc định | P1 |
+
+**Ghi chú kiến trúc phân quyền (chốt 2026-08-08, thay thế mô tả "5 vai trò cố định" ở bản v1.0)**: hệ thống dùng RBAC kết hợp Data Scope (4 mức: `none`/`personal`/`department`/`global`) thay vì quyền on/off đơn thuần. Chi tiết đầy đủ xem `.claude/docs/security-audit.md`. Mức `branch` (đa chi nhánh) **chưa triển khai** — khớp với quyết định hoãn ở câu hỏi Q6 mục 10 bên dưới; ADM-07 (UI cấu hình) là P1, có thể lùi nếu timeline căng (xem mục 7).
 
 ---
 
@@ -281,6 +285,7 @@ Hai phương án:
 | R7 | Chi phí kiến trúc multi-tenant + `packages/core` làm chậm v1 | Trung bình | Chấp nhận có ý thức; nếu tuần 4 trễ tiến độ, gộp `packages/core` vào api trước, tách sau |
 | R8 | Không đo được hiện trạng nên không chứng minh được giá trị | Trung bình | Đo thủ công tại pilot trong 3 ngày trước khi cài đặt |
 | R9 | Cạnh tranh: sản phẩm hiện có trên thị trường đã đủ tốt cho phân khúc này | Cần kiểm chứng | Khảo sát 3 sản phẩm đối thủ trong tuần 1-2, điều chỉnh định vị nếu cần |
+| R10 | RBAC + Data Scope + break-glass (quyết định 2026-08-08) nặng hơn "5 vai trò cố định" ban đầu, có thể trễ S1-04 | Trung bình | ADM-07 (UI cấu hình ma trận) là P1 — cắt trước nếu trễ tiến độ; guard đọc `role_permission` vẫn bắt buộc (P0) vì đây là toàn bộ nền tảng an toàn dữ liệu lâm sàng |
 
 ---
 
@@ -341,3 +346,4 @@ Các câu hỏi cần trả lời, kèm hạn chót vì chúng ảnh hưởng t�
 | Version | Ngày | Thay đổi |
 |---|---|---|
 | v1.0 | 07/08/2026 | Bản đầu tiên, dựa trên phạm vi kỹ thuật đã chốt |
+| v1.1 | 08/08/2026 | Thay mô tả "5 vai trò cố định" bằng RBAC + Data Scope (ADM-01 cập nhật, thêm ADM-06 break-glass, ADM-07 UI cấu hình ma trận), thêm rủi ro R10 |

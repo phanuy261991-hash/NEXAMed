@@ -18,7 +18,9 @@ Quy ước trạng thái: `[ ]` chưa làm, `[~]` đang làm, `[x]` xong.
 - [x] S1-01 — Khởi tạo monorepo pnpm, cấu trúc thư mục theo `project-structure.md`, ESLint boundary rules, CI
 - [x] S1-02 — Prisma schema nền: 8 cột bắt buộc, base model, quy ước migration, `code_sequence` (migration **đã áp thật lên Postgres 18.4** qua `prisma migrate deploy`, xác minh `uuidv7()` sinh đúng UUID v7)
 - [x] S1-03 — Tenant context: middleware `app.current_tenant_id`, RLS policy, unit of work. RLS/CHECK/thu hồi DELETE **đã bật thật** trên Postgres, xác minh bằng integration test 4/4 pass. Middleware tạm đọc header (chưa qua JWT — xem `docs/DECISIONS.md` #012, phải thay trước khi có controller thật ở S2)
-- [ ] S1-04 — Auth: JWT + refresh rotation, Argon2id, khoá tài khoản, 5 vai trò, RBAC guard
+- [ ] S1-04 — Auth: JWT + refresh rotation, Argon2id, khoá tài khoản
+- [x] S1-04b — RBAC schema: `role`/`permission`/`role_permission`/`department`, seed danh mục permission (23) + 5 vai trò mặc định + ma trận, guard đọc `role_permission` — **đã xác minh thật** (`rbac.spec.ts`, 4/4 pass). Guard NestJS thật áp vào controller là việc của S2 (chưa có controller)
+- [ ] S1-04c — Break-glass: endpoint xin vượt quyền, `break_glass_session`, tích hợp guard, ghi audit (bảng + RLS đã có từ S1-04b, chưa có endpoint/logic)
 - [ ] S1-05 — Audit log: interceptor ghi trong cùng transaction, bảng append-only, quyền DB
 - [ ] S1-06 — `packages/core`: khung entity, lớp lỗi + mã lỗi, `ports/` 6 interface, adapter no-op, đăng ký DI
 - [ ] S1-07 — Test harness cách ly tenant: testcontainers Postgres, helper tạo 2 tenant, template test
@@ -30,6 +32,7 @@ Quy ước trạng thái: `[ ]` chưa làm, `[~]` đang làm, `[x]` xong.
 - [x] CI fail khi migration tạo bảng thiếu một trong 8 cột bắt buộc (`scripts/check-mandatory-columns.mjs`, đã kiểm chứng chặn được lỗi thật lúc viết script)
 - [~] Test cách ly tenant chạy được: đăng nhập tenant A gọi ID của tenant B trả 404 — cơ chế RLS đã xác minh thật ở tầng repository (`tenant-isolation.spec.ts`), nhưng "đăng nhập" cần S1-04 (auth) chưa có; chưa test được xuyên qua một endpoint HTTP thật vì chưa có controller nào (S2)
 - [ ] Mọi thao tác ghi mẫu đều sinh dòng `audit_log`; rollback audit thì rollback cả thao tác
+- [~] Guard chặn đúng theo `data_scope` — RLS + ma trận đã xác minh thật ở tầng repository (`rbac.spec.ts`), nhưng chưa có guard NestJS thật gắn vào request/controller (cần S1-04 auth + S2 controller đầu tiên); break-glass (S1-04c) chưa làm
 
 ## Sprint 2+
 

@@ -1,7 +1,11 @@
 // Schema nền tảng — Sprint 1 (xem docs/ERD.md mục 6 "Thứ tự tạo bảng theo sprint").
-// Chỉ chứa nhóm bảng "Nền tảng và tenant": tenant, tenant_setting, room,
-// user_account, user_role, code_sequence, audit_log.
+// Chỉ chứa nhóm bảng "Nền tảng và tenant": tenant, tenant_setting, room, department,
+// user_account, role, permission, role_permission, user_role, code_sequence,
+// break_glass_session, audit_log.
 // Các bảng patient/appointment/encounter... thuộc Sprint 2-3, chưa thêm ở đây.
+//
+// RBAC + Data Scope (thay mô hình vai trò cứng) — xem .claude/docs/security-audit.md
+// và docs/DECISIONS.md #013-#016.
 //
 // Quy ước bắt buộc — xem .claude/docs/data-model.md:
 // - Mọi bảng nghiệp vụ có đủ 8 cột: id, tenant_id, created_at, updated_at,
@@ -39,11 +43,15 @@ model Tenant {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenantSettings TenantSetting[]
-  rooms          Room[]
-  userAccounts   UserAccount[]
-  codeSequences  CodeSequence[]
-  auditLogs      AuditLog[]
+  tenantSettings    TenantSetting[]
+  rooms             Room[]
+  departments       Department[]
+  userAccounts      UserAccount[]
+  roles             Role[]
+  rolePermissions   RolePermission[]
+  codeSequences     CodeSequence[]
+  auditLogs         AuditLog[]
+  breakGlassSessions BreakGlassSession[]
 
   @@map("tenant")
 }
@@ -89,9 +97,34 @@ model Room {
   @@map("room")
 }
 
+// Khoa/phòng trong 1 tenant — phục vụ Data Scope `department` (security-audit.md).
+// v1 phần lớn phòng khám không dùng (1-3 bác sĩ, không chia khoa) nhưng bảng luôn tồn tại.
+model Department {
+  id       String @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  name     String
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  userAccounts UserAccount[]
+
+  // Đích của composite FK (tenant_id, id) từ user_account.
+  @@unique([tenantId, id])
+  @@map("department")
+}
+
 model UserAccount {
   id           String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
   tenantId     String  @map("tenant_id") @db.Uuid
+  departmentId String? @map("department_id") @db.Uuid
   username     String
   passwordHash String  @map("password_hash")
   fullName     String  @map("full_name")
@@ -107,8 +140,11 @@ model UserAccount {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant    Tenant     @relation(fields: [tenantId], references: [id])
-  userRoles UserRole[]
+  tenant     Tenant      @relation(fields: [tenantId], references: [id])
+  // Composite FK (tenant_id, department_id) -> department(tenant_id, id): department_id
+  // nullable nên FK chỉ áp khi có giá trị (Postgres MATCH SIMPLE — xem docs/DECISIONS.md).
+  department Department? @relation(fields: [tenantId, departmentId], references: [tenantId, id])
+  userRoles  UserRole[]
 
   // Đích của composite FK (tenant_id, id) từ user_role — chống trỏ chéo tenant (C5 trong ERD.md).
   @@unique([tenantId, id])
@@ -116,21 +152,13 @@ model UserAccount {
   @@map("user_account")
 }
 
-enum UserRoleName {
-  receptionist
-  nurse
-  doctor
-  clinic_admin
-  system_admin
-
-  @@map("user_role_name")
-}
-
-model UserRole {
-  id       String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId String       @map("tenant_id") @db.Uuid
-  userId   String       @map("user_id") @db.Uuid
-  role     UserRoleName
+// Vai trò theo tenant (không còn enum cứng) — clinic_admin tạo thêm được vai trò tuỳ biến.
+// Seed 5 vai trò mặc định (is_system_default = true) lúc tạo tenant — xem prisma/seed/.
+model Role {
+  id              String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId        String  @map("tenant_id") @db.Uuid
+  name            String
+  isSystemDefault Boolean @default(false) @map("is_system_default")
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -141,12 +169,107 @@ model UserRole {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  // Composite FK (tenant_id, user_id) -> user_account(tenant_id, id): không thể trỏ
-  // sang user_account của tenant khác kể cả khi code service sai.
-  userAccount UserAccount @relation(fields: [tenantId, userId], references: [tenantId, id])
+  tenant          Tenant           @relation(fields: [tenantId], references: [id])
+  userRoles       UserRole[]
+  rolePermissions RolePermission[]
 
-  @@unique([tenantId, userId, role])
+  // Đích của composite FK (tenant_id, id) từ user_role/role_permission.
+  @@unique([tenantId, id])
+  @@unique([tenantId, name])
+  @@map("role")
+}
+
+// Danh mục hành động — TOÀN HỆ THỐNG (giống icd10_catalog), không có tenant_id, seed cố
+// định theo code, không do phòng khám tự định nghĩa. Định dạng "<module>.<action>".
+model Permission {
+  id          String @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  module      String
+  action      String
+  description String
+
+  rolePermissions RolePermission[]
+
+  @@unique([module, action])
+  @@map("permission")
+}
+
+enum DataScope {
+  none
+  personal
+  department
+  global
+
+  @@map("data_scope")
+}
+
+// Ma trận phân quyền: (role, permission) -> data_scope. Xem security-audit.md để biết
+// bảng giá trị mặc định seed cho 5 vai trò hệ thống.
+model RolePermission {
+  id           String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
+  roleId       String    @map("role_id") @db.Uuid
+  permissionId String    @map("permission_id") @db.Uuid
+  dataScope    DataScope @map("data_scope")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  // Composite FK (tenant_id, role_id) -> role(tenant_id, id): chống trỏ chéo tenant.
+  role       Role       @relation(fields: [tenantId, roleId], references: [tenantId, id])
+  permission Permission @relation(fields: [permissionId], references: [id])
+
+  @@unique([tenantId, roleId, permissionId])
+  @@map("role_permission")
+}
+
+model UserRole {
+  id       String @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  userId   String @map("user_id") @db.Uuid
+  roleId   String @map("role_id") @db.Uuid
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  // Composite FK (tenant_id, user_id) -> user_account(tenant_id, id) và
+  // (tenant_id, role_id) -> role(tenant_id, id): không thể trỏ sang tenant khác kể cả
+  // khi code service sai.
+  userAccount UserAccount @relation(fields: [tenantId, userId], references: [tenantId, id])
+  role        Role        @relation(fields: [tenantId, roleId], references: [tenantId, id])
+
+  @@unique([tenantId, userId, roleId])
   @@map("user_role")
+}
+
+// Phiên "phá kính" — vượt quyền tạm thời khi bị chặn bởi data_scope. Append-only như
+// audit_log (không updated_at/deleted_at/version/created_by/updated_by) — xem
+// security-audit.md mục Break-glass.
+model BreakGlassSession {
+  id         String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  actorId    String   @map("actor_id") @db.Uuid
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id") @db.Uuid
+  reason     String
+  occurredAt DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  expiresAt  DateTime @map("expires_at") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@map("break_glass_session")
 }
 
 model CodeSequence {

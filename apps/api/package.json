@@ -10,7 +10,11 @@
     "test": "vitest run --passWithNoTests",
     "db:migrate": "node scripts/with-migrate-url.mjs migrate dev",
     "db:generate": "prisma generate",
-    "db:deploy": "node scripts/with-migrate-url.mjs migrate deploy"
+    "db:deploy": "node scripts/with-migrate-url.mjs migrate deploy",
+    "db:seed": "tsx prisma/seed/index.ts"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed/index.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.15",
@@ -30,6 +34,7 @@
     "@types/node": "^20.17.6",
     "dotenv": "^16.4.5",
     "prisma": "^5.22.0",
+    "tsx": "^4.19.2",
     "typescript": "^5.6.3",
     "vitest": "^2.1.4"
   }

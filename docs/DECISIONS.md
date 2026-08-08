@@ -83,3 +83,45 @@ Quyết định kiến trúc/nghiệp vụ đã chốt, ngoài những gì đã 
 **Quyết định**: `TenantContextMiddleware` (`apps/api/src/common`) đọc `tenantId`/`actorId` từ header `x-tenant-id`/`x-actor-id` thay vì claim JWT đã xác thực.
 **Vì sao**: S1-04 (auth/JWT) chưa làm, nhưng S1-03 cần middleware "set `app.current_tenant_id`" tồn tại và test được ngay theo `docs/product/plan.md`. Tách nguồn dữ liệu (header tạm) khỏi cơ chế (`AsyncLocalStorage` + `UnitOfWorkService`) để S1-04 chỉ cần đổi *nguồn đọc*, không đổi middleware hay unit-of-work.
 **Ảnh hưởng**: **Không được dùng cơ chế này khi có endpoint thật nhận traffic ngoài** — bất kỳ client nào cũng tự set header tuỳ ý, không có xác thực, giả mạo tenant khác dễ dàng. Bắt buộc thay bằng JWT claim trước khi có domain module/controller đầu tiên nhận request thật (S2). Không phải rủi ro ở S1-03 vì chưa có controller nào expose ra ngoài.
+
+## 013 — Thay mô hình vai trò cứng bằng RBAC + Data Scope (4 mức, không có `branch`)
+
+**Ngày**: 2026-08-08
+**Quyết định**: Theo yêu cầu chủ dự án (tài liệu `PhanQuyen.md`), thay `user_role.role` (enum `UserRoleName` cứng) bằng mô hình RBAC + Data Scope: bảng `role` (theo tenant), `permission` (toàn hệ thống), `role_permission` (ma trận `role × permission → data_scope`), `department` (phục vụ scope `department`). `data_scope` chỉ có **4 mức**: `none`/`personal`/`department`/`global` — **không có mức `branch`**. Áp dụng đầy đủ ngay ở v1 (không phải bản rút gọn), thay thế hoàn toàn mô tả "5 vai trò cố định" trong `security-audit.md`/`PRD` v1.0.
+**Vì sao**: Chủ dự án xác nhận muốn mô hình phân quyền cấu hình được (không hardcode) làm nền tảng lâu dài, chấp nhận tăng chi phí S1-04 (xem #016). Bỏ `branch`: PRD (Q6, mục 10) đã hoãn đa chi nhánh cho v1 — phòng khám 1-3 bác sĩ, 1 địa điểm, thêm scope `branch` bây giờ là dựng abstraction cho tình huống chưa xảy ra (trái nguyên tắc trong `CLAUDE.md`). Giữ `department`: dù v1 hầu hết không dùng, khái niệm "khoa/phòng trong 1 phòng khám" thực tế hơn "chi nhánh" — có thể cần sớm hơn (ví dụ tách khám nội/ngoại) nên giữ lại, khác với `branch` (chắc chắn chưa cần).
+**Ảnh hưởng**: Migration `20260807090207_init`/`20260807170922_tenant_context` (đã áp thật) giữ nguyên (forward-only, không sửa) — thêm migration mới thay đổi cấu trúc `user_role`, xoá enum `UserRoleName`. Cập nhật đồng bộ: `security-audit.md`, `data-model.md`, `docs/ERD.md`, `docs/product/prd.md` (ADM-06, ADM-07, R10), `docs/product/plan.md` (S1-04b, S1-04c, sprint 1 tăng lên 40 dev-day).
+
+## 014 — Break-glass xác thực bằng mật khẩu đăng nhập, không thêm PIN riêng
+
+**Ngày**: 2026-08-08
+**Quyết định**: Endpoint break-glass yêu cầu nhập lại mật khẩu tài khoản hiện tại (verify Argon2id, không tạo bí mật mới) + lý do bắt buộc.
+**Vì sao**: Chủ dự án chọn phương án này thay vì PIN riêng — tránh thêm một hệ thống bí mật/màn hình đặt PIN mới, giảm việc cần làm mà vẫn đạt mục đích xác nhận chính chủ trước khi vượt quyền.
+**Ảnh hưởng**: Không cần cột/bảng lưu PIN. Endpoint break-glass phải áp rate-limit riêng (giống endpoint login) để tránh dò mật khẩu qua đường này.
+
+## 015 — Alert break-glass v1 vẫn qua `NotificationPort` no-op, chưa gửi SMS/Zalo thật
+
+**Ngày**: 2026-08-08
+**Quyết định**: Khi break-glass được dùng, hệ thống gọi `NotificationPort` (adapter no-op hiện tại — chỉ ghi log) để "báo" `clinic_admin`, **không** tích hợp SMS/Zalo/email thật ở v1.
+**Vì sao**: Chủ dự án chọn giữ đúng phạm vi v1 đã chốt trong `project-structure.md` (adapter thật cho `NotificationPort` là việc của giai đoạn sau). Tài liệu `PhanQuyen.md` yêu cầu "bắn Alert ngay lập tức" nhưng đây là goal chung của ngành, không phải ràng buộc kỹ thuật bắt buộc phải làm ngay.
+**Ảnh hưởng**: `clinic_admin` v1 biết có break-glass qua xem nhật ký/`audit_log`, không có thông báo đẩy thời gian thực. Ghi rõ trong PRD (ADM-06) để không hiểu nhầm là đã có alert thật.
+
+## 016 — Sprint 1 tăng từ 34 lên 40 dev-day vì RBAC mở rộng
+
+**Ngày**: 2026-08-08
+**Quyết định**: Thêm S1-04b (RBAC schema, 3 dev-day) và S1-04c (break-glass, 3 dev-day) vào Sprint 1, giữ nguyên các việc khác. Nếu cần cắt để giữ tiến độ, cắt ADM-07 (UI cấu hình ma trận, P1) trước — không cắt S1-04b/S1-04c (P0, nền tảng an toàn dữ liệu lâm sàng).
+**Vì sao**: Thay đổi #013 là mở rộng phạm vi thật, không phải chi tiết triển khai — phải phản ánh vào ước lượng thay vì âm thầm nhét vào S1-04 cũ (5 dev-day, không đủ cho cả JWT lẫn RBAC schema lẫn break-glass).
+**Ảnh hưởng**: Tổng dev-day dự án tăng tương ứng; mốc tuần 8 (pilot)/tuần 12 (GA) trong PRD **chưa được tính lại** — cần chủ dự án xem lại timeline tổng nếu Sprint 1 trễ do việc thêm này.
+
+## 017 — Thêm Tailwind CSS vào Tech Stack
+
+**Ngày**: 2026-08-08
+**Quyết định**: Tailwind CSS là giải pháp styling duy nhất cho `apps/web`. Không dùng CSS-in-JS, không viết CSS tự do ngoài hệ thống token trong `.claude/docs/ui-guidelines.md`.
+**Vì sao**: `.claude/docs/ui-guidelines.md` (do chủ dự án cung cấp) viết toàn bộ bằng class Tailwind, nhưng `CLAUDE.md` v1.0 chưa từng liệt kê Tailwind trong Tech Stack — để tài liệu thiết kế giả định một công nghệ chưa chốt là mâu thuẫn tiềm ẩn. Chủ dự án xác nhận chốt luôn Tailwind.
+**Ảnh hưởng**: `apps/web` cần cài `tailwindcss` + cấu hình PostCSS/Vite plugin khi bắt đầu S1-08 (web app shell) — chưa cài ở thời điểm quyết định này (S1-08 chưa tới lượt).
+
+## 018 — `ui-guidelines.md` thắng khi mâu thuẫn với `docs/design/*.md`
+
+**Ngày**: 2026-08-08
+**Quyết định**: `.claude/docs/ui-guidelines.md` là đặc tả chi tiết, thắng khi mâu thuẫn với `docs/design/UI_GUIDELINE.md`/`AI_AVOID_RULES.md` (nguyên tắc chung). Đã phát hiện 2 mâu thuẫn cụ thể lúc quyết định: số lượng màu tối đa (`AI_AVOID_RULES.md` nói ≤5, `ui-guidelines.md` mục 2.1 định nghĩa nhiều hơn) và độ đậm shadow (`AI_AVOID_RULES.md` nói tránh shadow lớn, `ui-guidelines.md` mục 2.2 định nghĩa `shadow-lg`/`shadow-xl` cho dropdown/modal).
+**Vì sao**: Chủ dự án chọn phương án này thay vì tự sửa lại 2 file hoặc để tôi tự hoà giải nội dung — `ui-guidelines.md` có hệ thống token cụ thể hơn nên dùng làm nguồn thực thi.
+**Ảnh hưởng**: Đã ghi chú thứ tự ưu tiên này ngay trong `docs/design/AI_AVOID_RULES.md` để không bị hiểu nhầm khi đọc riêng file đó. Khi thực sự viết UI (S1-08 trở đi), theo đúng token/quy tắc trong `ui-guidelines.md`; các câu "Avoid" trong `AI_AVOID_RULES.md` chỉ áp dụng ở những chỗ `ui-guidelines.md` không nói tới.

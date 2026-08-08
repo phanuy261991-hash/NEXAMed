@@ -25,11 +25,19 @@ erDiagram
     TENANT ||--o{ CODE_SEQUENCE : "cap ma"
     TENANT ||--o{ PATIENT : "quan ly"
     TENANT ||--o{ DRUG : "danh muc thuoc"
+    TENANT ||--o{ DEPARTMENT : "co"
+    TENANT ||--o{ ROLE : "co"
+
+    DEPARTMENT ||--o{ USER_ACCOUNT : "thuoc ve"
+    ROLE ||--o{ USER_ROLE : "gan cho"
+    ROLE ||--o{ ROLE_PERMISSION : "duoc cau hinh"
+    PERMISSION ||--o{ ROLE_PERMISSION : "ap dung"
 
     USER_ACCOUNT ||--o{ USER_ROLE : "duoc gan"
     USER_ACCOUNT ||--o{ APPOINTMENT : "bac si phu trach"
     USER_ACCOUNT ||--o{ ENCOUNTER : "bac si kham"
     USER_ACCOUNT ||--o{ AUDIT_LOG : "thuc hien"
+    USER_ACCOUNT ||--o{ BREAK_GLASS_SESSION : "pha kinh"
 
     PATIENT ||--o{ INSURANCE_CARD : "co the"
     PATIENT ||--o{ APPOINTMENT : "dat lich"
@@ -63,6 +71,7 @@ erDiagram
     USER_ACCOUNT {
         uuid id PK
         uuid tenant_id FK
+        uuid department_id FK
         text username UK
         text password_hash
         text full_name
@@ -70,11 +79,50 @@ erDiagram
         boolean is_active
     }
 
+    DEPARTMENT {
+        uuid id PK
+        uuid tenant_id FK
+        text name
+    }
+
+    ROLE {
+        uuid id PK
+        uuid tenant_id FK
+        text name
+        boolean is_system_default
+    }
+
+    PERMISSION {
+        uuid id PK
+        text module
+        text action
+        text description
+    }
+
+    ROLE_PERMISSION {
+        uuid id PK
+        uuid tenant_id FK
+        uuid role_id FK
+        uuid permission_id FK
+        text data_scope
+    }
+
     USER_ROLE {
         uuid id PK
         uuid tenant_id FK
         uuid user_id FK
-        text role
+        uuid role_id FK
+    }
+
+    BREAK_GLASS_SESSION {
+        uuid id PK
+        uuid tenant_id FK
+        uuid actor_id FK
+        text entity_type
+        uuid entity_id
+        text reason
+        timestamptz occurred_at
+        timestamptz expires_at
     }
 
     PATIENT {
@@ -256,8 +304,13 @@ erDiagram
 | `tenant` | Một phòng khám | Bảng gốc; `tenant_id` của chính nó là `id` |
 | `tenant_setting` | Cấu hình theo phòng khám | Giờ làm việc, `slot_duration_minutes`, ngưỡng no-show, ngưỡng sinh hiệu, mẫu in. Unique `(tenant_id, key)` |
 | `room` | Phòng khám vật lý | |
-| `user_account` | Tài khoản người dùng | `password_hash` Argon2id; `license_no` cho bác sĩ |
-| `user_role` | Gán vai trò | Bảng nối vì một người có thể vừa là bác sĩ vừa là quản lý. Unique `(tenant_id, user_id, role)` |
+| `department` | Khoa/phòng trong tenant | Phục vụ Data Scope `department`; v1 phần lớn phòng khám không dùng nhưng bảng luôn tồn tại |
+| `user_account` | Tài khoản người dùng | `password_hash` Argon2id; `license_no` cho bác sĩ; `department_id` tuỳ chọn |
+| `role` | Vai trò theo tenant | Seed 5 vai trò mặc định lúc tạo tenant, `clinic_admin` tạo thêm được. Unique `(tenant_id, name)` |
+| `permission` | Danh mục hành động toàn hệ thống | Không có `tenant_id`, seed cố định theo code (giống `icd10_catalog`). Unique `(module, action)` |
+| `role_permission` | Ma trận phân quyền | `(role_id, permission_id) → data_scope` (`none`/`personal`/`department`/`global`). Unique `(tenant_id, role_id, permission_id)` |
+| `user_role` | Gán vai trò cho user | Bảng nối, một người có nhiều vai trò. Unique `(tenant_id, user_id, role_id)` |
+| `break_glass_session` | Phiên vượt quyền tạm thời | Append-only, `expires_at` giới hạn thời hạn (mặc định 2 giờ, cấu hình qua `tenant_setting`) |
 | `code_sequence` | Cấp mã hiển thị theo tenant | `SELECT ... FOR UPDATE` trong transaction |
 | `audit_log` | Nhật ký | Append-only, quyền DB chỉ `INSERT`/`SELECT` |
 
@@ -346,7 +399,8 @@ Khớp với `docs/product/plan.md`.
 
 | Sprint | Bảng tạo mới |
 |---|---|
-| S1 (tuần 1-2) | `tenant`, `tenant_setting`, `room`, `user_account`, `user_role`, `code_sequence`, `audit_log` |
+| S1 (tuần 1-2) | `tenant`, `tenant_setting`, `room`, `user_account`, `code_sequence`, `audit_log` |
+| S1 (bổ sung, RBAC — 2026-08-08) | `department`, `role`, `permission`, `role_permission`, `user_role`, `break_glass_session` — thay mô hình vai trò cứng, xem `docs/DECISIONS.md` #013 |
 | S2 (tuần 3-4) | `patient`, `insurance_card`, `appointment` |
 | S3 (tuần 5-6) | `icd10_catalog`, `encounter`, `vital_sign`, `diagnosis`, `clinical_note` |
 | S4 (tuần 7-8) | `drug`, `prescription`, `prescription_item` |
@@ -389,3 +443,4 @@ Khi thêm, các bảng này vẫn phải đủ 8 cột bắt buộc và tuân th
 | Version | Ngày | Thay đổi |
 |---|---|---|
 | v1.0 | 07/08/2026 | Bản đầu tiên, dựng từ PRD v1.0 và PLAN v1.0 |
+| v1.1 | 08/08/2026 | Thay mô hình vai trò cứng (`user_role.role` enum) bằng RBAC + Data Scope: thêm `department`, `role`, `permission`, `role_permission`, `break_glass_session`; `user_role` đổi sang trỏ `role_id`. Xem `docs/DECISIONS.md` #013-#016. Scope `branch`/đa chi nhánh (liên quan E4) vẫn hoãn — chỉ giữ 4 mức `none`/`personal`/`department`/`global`. |
