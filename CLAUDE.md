@@ -47,7 +47,7 @@ Chi tiết đầy đủ và edge case xem `.claude/docs/clinical-workflow.md`.
 
 ### Quy trình làm việc
 
-- **Trước khi bắt đầu bất kỳ công việc nào, phải đọc qua** `docs/product/prd.md`, `docs/product/plan.md`, `docs/ERD.md`, `docs/CURRENT.md`, `docs/TASK.md`, `docs/CHANGELOG.md`.
+- **Trước khi bắt đầu bất kỳ công việc nào, phải đọc qua** `docs/product/prd.md`, `docs/product/plan.md`, `docs/ERD.md`, `docs/CURRENT.md`, `docs/TASK.md`, `docs/CHANGELOG.md`, `.claude/docs/ui-guidelines.md`.
 - **Không tự ý thay đổi hay suy diễn cấu trúc đã chốt.** Schema, tên bảng/cột, state machine, ranh giới module, contract API trong `.claude/docs/` là đã chốt. Cần đổi thì dừng lại, nêu vấn đề và hỏi trước — không tự sửa rồi báo sau.
 - Không viết code cho module ngoài phạm vi v1, kể cả khi schema đã để sẵn chỗ.
 - Trước khi thêm hàm/component mới, tìm trong `packages/core` và `packages/shared` xem đã có chưa. Không tạo bản sao logic. Trùng lặp lần thứ hai là dấu hiệu phải trích xuất ra dùng chung.

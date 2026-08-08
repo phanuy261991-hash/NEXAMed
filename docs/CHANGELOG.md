@@ -2,6 +2,10 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-08 (4)
+
+- `CLAUDE.md`: thêm `.claude/docs/ui-guidelines.md` vào danh sách tài liệu bắt buộc đọc trước khi bắt đầu bất kỳ công việc nào (trước đây chỉ bắt buộc đọc khi làm UI/UX) — đảm bảo agent nắm token/quy tắc thiết kế xuyên suốt, không chỉ khi chạm trực tiếp vào `apps/web`.
+
 ## 2026-08-08 (3)
 
 - `CLAUDE.md`: thêm Tailwind CSS vào Tech Stack (`docs/DECISIONS.md` #017); thêm quy định bắt buộc đọc `.claude/docs/ui-guidelines.md` + `docs/design/*.md` trước khi thiết kế UI/UX, hỏi trước khi điều chỉnh, cập nhật tài liệu khi đổi quyết định thiết kế; thêm tham chiếu `docs/Hybrid Authorization.md` (định hướng platform/đa module v3+, chưa triển khai, chỉ tham khảo).
