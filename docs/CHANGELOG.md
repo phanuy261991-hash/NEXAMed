@@ -2,6 +2,11 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-08 (5)
+
+- Thêm `docs/demo.md`: hướng dẫn chạy `pnpm dev` để xem giao diện lúc phát triển, ghi rõ trạng thái thật hiện nay (`apps/web` mới có bootstrap tối thiểu, chưa tới S1-08 nên chưa có màn hình nghiệp vụ để demo) và sự cố thường gặp.
+- Thêm `docs/Deploy.md`: hướng dẫn triển khai on-premise (mục tiêu chính thức v1, dựa theo kiến trúc đã chốt ở `.claude/docs/project-structure.md`, ghi rõ S4-05 chưa bắt đầu nên đây là kế hoạch chứ chưa chạy được ngay) và cloud (v3+, chưa có quyết định — chỉ liệt kê phần kiến trúc port/adapter đã chuẩn bị sẵn).
+
 ## 2026-08-08 (4)
 
 - `CLAUDE.md`: thêm `.claude/docs/ui-guidelines.md` vào danh sách tài liệu bắt buộc đọc trước khi bắt đầu bất kỳ công việc nào (trước đây chỉ bắt buộc đọc khi làm UI/UX) — đảm bảo agent nắm token/quy tắc thiết kế xuyên suốt, không chỉ khi chạm trực tiếp vào `apps/web`.
