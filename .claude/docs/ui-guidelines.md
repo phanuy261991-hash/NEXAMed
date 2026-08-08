@@ -87,3 +87,17 @@ Khi tôi yêu cầu bạn viết UI nhưng chưa có backend, hãy dùng dữ li
 
 ---
 **[KẾT THÚC CHỈ THỊ]** Mọi đoạn code bạn sinh ra từ bây giờ phải tuân thủ nghiêm ngặt chuẩn Promax này.
+
+## 7.Yêu cầu quan trọng về Icon:
+
+BẮT BUỘC sử dụng thư viện Phosphor Icons.
+
+- Cú pháp import chuẩn: import { [Tên_Icon] } from '@phosphor-icons/react';
+
+- Cú pháp sử dụng: Các icon phải luôn có thuộc tính size (ví dụ: size={24} hoặc size={20}) và thuộc tính weight.
+
+- Tôi muốn dùng giao diện gọn gàng, hãy đặt weight="regular" cho các icon menu bình thường, và weight="fill" cho các icon ở trạng thái active (đang được chọn).
+
+- Sử dụng class của Tailwind để tô màu cho icon. Ví dụ: <Stethoscope className="text-gray-500" size="{24}" weight="regular"/>.
+
+- Hãy chọn các icon y tế và quản lý phù hợp từ thư viện Phosphor (như Stethoscope, Pill, Users, CurrencyCircle, ChartBar...) để ráp vào giao diện."
