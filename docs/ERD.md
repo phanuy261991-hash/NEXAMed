@@ -1,6 +1,6 @@
 # ERD: NEXAMed v1
 
-**Version**: v1.0 — 07/08/2026
+**Version**: v1.2 — 10/08/2026 (xem mục 9 để biết lịch sử thay đổi)
 **Phạm vi**: chỉ các bảng thuộc v1 (Đặt lịch, Tiếp nhận, Khám bệnh, Kê đơn). Bảng của v2+ (viện phí, kho thuốc, BHYT) **không** tạo ở giai đoạn này.
 **Căn cứ**: `docs/product/prd.md` v1.0, `docs/product/plan.md` v1.0, `.claude/docs/data-model.md`
 
@@ -38,6 +38,8 @@ erDiagram
     USER_ACCOUNT ||--o{ ENCOUNTER : "bac si kham"
     USER_ACCOUNT ||--o{ AUDIT_LOG : "thuc hien"
     USER_ACCOUNT ||--o{ BREAK_GLASS_SESSION : "pha kinh"
+    USER_ACCOUNT ||--o{ USER_SESSION : "dang nhap"
+    USER_SESSION ||--o| USER_SESSION : "replaced_by"
 
     PATIENT ||--o{ INSURANCE_CARD : "co the"
     PATIENT ||--o{ APPOINTMENT : "dat lich"
@@ -77,6 +79,21 @@ erDiagram
         text full_name
         text license_no
         boolean is_active
+        int failed_login_count
+        timestamptz last_failed_login_at
+        timestamptz locked_until
+    }
+
+    USER_SESSION {
+        uuid id PK
+        uuid tenant_id FK
+        uuid user_id FK
+        text refresh_token_hash UK
+        timestamptz issued_at
+        timestamptz expires_at
+        uuid replaced_by_session_id FK
+        text ip
+        text user_agent
     }
 
     DEPARTMENT {
@@ -311,6 +328,7 @@ erDiagram
 | `role_permission` | Ma trận phân quyền | `(role_id, permission_id) → data_scope` (`none`/`personal`/`department`/`global`). Unique `(tenant_id, role_id, permission_id)` |
 | `user_role` | Gán vai trò cho user | Bảng nối, một người có nhiều vai trò. Unique `(tenant_id, user_id, role_id)` |
 | `break_glass_session` | Phiên vượt quyền tạm thời | Append-only, `expires_at` giới hạn thời hạn (mặc định 2 giờ, cấu hình qua `tenant_setting`) |
+| `user_session` | Phiên refresh token | Rotation + reuse detection (S1-04); thu hồi = soft delete (`deleted_reason`: `logout`/`rotated`/`expired`/`reuse_detected`/`account_disabled`) |
 | `code_sequence` | Cấp mã hiển thị theo tenant | `SELECT ... FOR UPDATE` trong transaction |
 | `audit_log` | Nhật ký | Append-only, quyền DB chỉ `INSERT`/`SELECT` |
 
@@ -388,6 +406,7 @@ Những ràng buộc này đặt ở DB, không chỉ ở tầng ứng dụng.
 | GIN trên `icd10_catalog (search_key)` dùng `pg_trgm` | Tìm mã ICD-10 theo tên tiếng Việt (ENC-03) |
 | `audit_log (tenant_id, entity_type, entity_id, occurred_at DESC)` | Tra vết sửa đổi hồ sơ (ADM-03) |
 | `audit_log (tenant_id, actor_id, occurred_at DESC)` | Tra nhật ký theo người dùng |
+| `user_session (tenant_id, user_id, expires_at DESC) WHERE deleted_at IS NULL` | Tra phiên còn hiệu lực của một user (thu hồi hàng loạt) |
 
 `patient.search_key` là cột dẫn xuất (tên đã bỏ dấu, viết thường), cập nhật bằng trigger hoặc generated column — không tính lại trong câu truy vấn.
 
@@ -401,6 +420,7 @@ Khớp với `docs/product/plan.md`.
 |---|---|
 | S1 (tuần 1-2) | `tenant`, `tenant_setting`, `room`, `user_account`, `code_sequence`, `audit_log` |
 | S1 (bổ sung, RBAC — 2026-08-08) | `department`, `role`, `permission`, `role_permission`, `user_role`, `break_glass_session` — thay mô hình vai trò cứng, xem `docs/DECISIONS.md` #013 |
+| S1 (bổ sung, Auth — 2026-08-10) | `user_session` (S1-04, rotation + reuse detection); `user_account` thêm `failed_login_count`/`last_failed_login_at`/`locked_until` — xem `docs/DECISIONS.md` #019 |
 | S2 (tuần 3-4) | `patient`, `insurance_card`, `appointment` |
 | S3 (tuần 5-6) | `icd10_catalog`, `encounter`, `vital_sign`, `diagnosis`, `clinical_note` |
 | S4 (tuần 7-8) | `drug`, `prescription`, `prescription_item` |
@@ -444,3 +464,4 @@ Khi thêm, các bảng này vẫn phải đủ 8 cột bắt buộc và tuân th
 |---|---|---|
 | v1.0 | 07/08/2026 | Bản đầu tiên, dựng từ PRD v1.0 và PLAN v1.0 |
 | v1.1 | 08/08/2026 | Thay mô hình vai trò cứng (`user_role.role` enum) bằng RBAC + Data Scope: thêm `department`, `role`, `permission`, `role_permission`, `break_glass_session`; `user_role` đổi sang trỏ `role_id`. Xem `docs/DECISIONS.md` #013-#016. Scope `branch`/đa chi nhánh (liên quan E4) vẫn hoãn — chỉ giữ 4 mức `none`/`personal`/`department`/`global`. |
+| v1.2 | 10/08/2026 | S1-04 (Auth): thêm `user_session` (refresh token, rotation + reuse detection); `user_account` thêm `failed_login_count`/`last_failed_login_at`/`locked_until` (khoá tài khoản tạm). Xem `docs/DECISIONS.md` #019-#020. |

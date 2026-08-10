@@ -2,6 +2,50 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-10 (4)
+
+S1-05 — Audit log (interceptor + helper dùng chung):
+
+- Không có gì mới ở bảng `audit_log`/quyền DB — đã xong từ S1-03 (append-only, `nexamed_app` chỉ `INSERT`/`SELECT`).
+- Làm rõ và ghi lại một điểm kiến trúc quan trọng (`docs/DECISIONS.md` #021): một NestJS interceptor chạy ở tầng HTTP không thể tham gia vào transaction Prisma mà service tự mở/đóng kín bên trong chính nó (`UnitOfWorkService.runInTenantScope` là callback trọn vẹn) — nên "interceptor ghi audit cho mọi thao tác" theo cách đọc chữ nghĩa ban đầu của `docs/product/plan.md` S1-05 là không khả thi an toàn cho thao tác **ghi**. Chốt hai cơ chế: ghi → lời gọi tường minh trong transaction (đã dùng đúng ở S1-04/S1-04c); xem → interceptor thật (không có transaction nghiệp vụ nào để đồng bộ cùng nên an toàn).
+- Dời `writeAuditLog` từ `apps/api/src/modules/iam/audit-log.helper.ts` sang `apps/api/src/infrastructure/persistence/audit-log.helper.ts` — đây là hạ tầng cross-cutting mọi module domain tương lai (patient/appointment/encounter/prescription, S2+) đều cần gọi, để trong `modules/iam/` buộc module khác import xuyên qua domain `iam`, sát ranh giới cấm trong `coding-standards.md`. Cập nhật import ở `auth.service.ts`, `break-glass.service.ts` — hành vi giữ nguyên, test cũ (`auth.spec.ts`, `break-glass.spec.ts`) pass y nguyên sau khi dời.
+- `apps/api/src/common/`: `audit-view.decorator.ts` (`@AuditView(entityType, {paramName?})`), `audit-view.interceptor.ts` (`AuditViewInterceptor` — đọc `tenantId`/`actorId` từ `tenantContextStorage` đã có sẵn từ JWT, `entityId` từ route param; dùng `mergeMap` không phải `tap` để đợi ghi audit xong mới trả response và để lỗi ghi audit nổi lên; handler lỗi thì không audit; không có metadata `@AuditView` thì passthrough). Đăng ký vào `CommonModule` — **chưa áp vào controller nào** (chưa có controller nghiệp vụ, S2).
+- Cập nhật `.claude/docs/security-audit.md` mục Audit log: ghi rõ quy ước hai cơ chế trên cho S2 trở đi theo, tránh mỗi module tự nghĩ cách khác nhau.
+- Integration test thật trên Postgres (`audit-view.interceptor.spec.ts`, 3/3 pass, không mock): handler thành công + có `@AuditView` → ghi đúng 1 dòng `<entityType>.viewed`; handler ném lỗi → không ghi audit; không có `@AuditView` → passthrough không ghi audit.
+- Toàn bộ 31 test trên `apps/api` (bao gồm 3 test mới) pass; typecheck/lint/build sạch toàn workspace.
+
+## 2026-08-10 (3)
+
+S1-04c — Break-glass (vượt quyền tạm thời):
+
+- Không cần migration mới: `break_glass_session` đã đủ cột/RLS/revoke `UPDATE` từ migration `*_rbac_data_scope` (S1-04b).
+- `packages/core/src/iam/break-glass.ts`: hằng số `DEFAULT_BREAK_GLASS_DURATION_MINUTES=120`, hàm thuần `computeExpiresAt`/`isSessionActive`, unit test 3/3. `packages/core/src/ports/notification.port.ts`: `NotificationPort` + DI token `NOTIFICATION_PORT` — chỉ 1/6 port của S1-06 được kéo lên trước (giống cách S1-04 đã kéo trước một phần `errors/`), 5 port còn lại vẫn để dành S1-06.
+- `apps/api/src/infrastructure/notification/noop.adapter.ts`: adapter no-op (chỉ log `tenantId`/`type`, không log nội dung).
+- `apps/api/src/modules/iam/`: `break-glass.repository.ts` (đọc/ghi `break_glass_session` + đọc `tenant_setting` key `break_glass_duration_minutes` với fallback mặc định), `break-glass.service.ts` (`request()`: xác thực lại mật khẩu — tái dùng `UserAccountAuthRepository.findById` + `InvalidCredentialsError` đã có từ S1-04, không tạo lỗi mới; `tryConsume()`: primitive kiểm tra phiên còn hiệu lực + ghi `audit_log` `break_glass.access`, tự mở transaction riêng vì một guard tương lai không có sẵn transaction của service nghiệp vụ), `break-glass.controller.ts` (`POST /break-glass`, `@UseGuards(JwtAuthGuard, ThrottlerGuard)` — lần đầu `JwtAuthGuard` viết ở S1-04 được dùng thật).
+- `packages/shared/src/break-glass.ts`: Zod `breakGlassRequestSchema`/`breakGlassResponseSchema`.
+- Integration test thật trên Postgres (`break-glass.spec.ts`, 6/6 pass, không mock — cùng pattern `auth.spec.ts`): đúng mật khẩu tạo phiên đúng hạn (mặc định 120 phút và theo `tenant_setting` tuỳ chỉnh), sai mật khẩu không tạo phiên/không gọi `NotificationPort`, `tryConsume` đúng entity trong hạn → `granted:true` + có dòng audit, entity khác/hết hạn → `granted:false`.
+- Kiểm thử thủ công qua curl trên server thật: không có access token → 401; sai mật khẩu → 401 kèm rate-limit header; đúng mật khẩu → 200 kèm `expiresAt` đúng +120 phút.
+- Cập nhật `docs/TASK.md`, `docs/CURRENT.md`. Không đổi `.claude/docs/data-model.md`/`docs/ERD.md` (không đổi schema).
+
+## 2026-08-10 (2)
+
+S1-04 — Auth (JWT + refresh rotation, Argon2id, khoá tài khoản):
+
+- Migration `20260810150400_auth_sessions`: bảng mới `user_session` (refresh token đã hash, rotation chain qua `replaced_by_session_id`, RLS + `CHECK(version>=1)` + index `(tenant_id,user_id,expires_at DESC) WHERE deleted_at IS NULL`); `user_account` thêm `failed_login_count`/`last_failed_login_at`/`locked_until`. Xem `docs/DECISIONS.md` #019-#020 (2 quyết định đã hỏi và chốt với chủ dự án trước khi code: bảng session thay vì bộ đếm `token_version`, client gửi `tenantId` tường minh lúc đăng nhập).
+- `packages/core/src/iam/`: `lockout.ts` (ngưỡng khoá 5 lần sai/15 phút, hàm thuần `isAccountLocked`/`recordFailedLogin`/`resetLoginAttempts`, unit test 9/9 — mọi cạnh của ngưỡng/cửa sổ) + `constants.ts` (TTL token). `packages/core/src/errors/`: `DomainError` (lớp gốc) + 5 lỗi auth cụ thể — khởi đầu tối thiểu của lớp lỗi nghiệp vụ mà `coding-standards.md` yêu cầu (S1-06 mở rộng thêm sau, không làm lại).
+- `packages/shared/src/auth.ts`: Zod schema `loginRequestSchema`/`loginResponseSchema`/`jwtPayloadSchema` dùng chung controller và web (S1-09).
+- `apps/api/src/modules/iam/`: `AuthController` (`POST /auth/login|refresh|logout`), `AuthService` (điều phối, mở transaction qua `UnitOfWorkService`), `TokenService` (ký/verify JWT, một `JWT_SECRET` dùng chung phân biệt bằng claim `typ`), `SessionRepository`, `UserAccountAuthRepository`, `audit-log.helper.ts` (ghi trực tiếp các sự kiện auth mà `security-audit.md` liệt kê tên rõ — chưa phải interceptor tổng quát, đó là S1-05).
+- **Phát hiện quan trọng lúc viết test**: `prisma.$transaction(async (tx) => ...)` rollback toàn bộ nếu callback throw — kể cả khi throw đó là một kết quả nghiệp vụ bình thường (sai mật khẩu, phát hiện refresh token bị dùng lại) mà cần **commit** (đếm số lần sai, thu hồi phiên). Sửa bằng cách để callback trả về một outcome thay vì throw, transaction luôn commit, rồi throw `DomainError` tương ứng sau khi transaction đã xong — áp dụng cho cả `login()` và `refresh()`.
+- `apps/api/src/common/`: `tenant-context.middleware.ts` đổi hẳn sang đọc JWT access token thật qua `Authorization: Bearer` (không còn header tạm `x-tenant-id`/`x-actor-id` — hoàn thành cam kết ở `docs/DECISIONS.md` #012, vì đây là controller thật đầu tiên nhận traffic). Thêm `jwt-auth.guard.ts` (xác thực tối thiểu, viết + test sẵn, chưa áp vào controller nào), `response.interceptor.ts` + `domain-exception.filter.ts` (response envelope `{data,meta}`/`{error}` theo `architecture.md` — lần đầu cần dùng tới).
+- `main.ts`: `cookie-parser`, CORS (`WEB_ORIGIN`, `credentials:true` cho cookie refresh token), wire global interceptor/filter, đọc `PORT` qua `ConfigService` thay vì hard-code.
+- Rate limit riêng cho `/auth/login` (`@nestjs/throttler`, 10 request/phút/IP) — không áp toàn cục.
+- Integration test thật trên Postgres (`auth.spec.ts`, 9/9 pass, không mock — cùng pattern `rbac.spec.ts`/`tenant-isolation.spec.ts`): login đúng/sai mật khẩu, khoá tài khoản đúng ngưỡng, tài khoản vô hiệu hoá, sai `tenantId` bị coi như sai thông tin đăng nhập, refresh rotation, phát hiện reuse thu hồi toàn bộ phiên, logout, token hỏng. `jwt-auth.guard.spec.ts` (5/5 pass).
+- Cập nhật `.claude/docs/data-model.md`, `docs/ERD.md` (v1.2) trong cùng lúc theo `coding-standards.md`.
+
+## 2026-08-10
+
+- Thêm `docs/product/future-modules-reference.md`: gom ý tưởng kiến trúc từ 3 tài liệu đặc tả HIS/EMR tổng quát do chủ dự án cung cấp (Dược/kho FEFO + BOM tiêu hao tự động, Viện phí/bảng giá đa đối tượng, danh mục dùng chung — địa giới hành chính/BHYT/ICD-10/đường dùng thuốc..., luồng khám mở rộng). Tài liệu **chưa chốt**, chỉ tham khảo cho v2/v2.1/v3 — đã ghi rõ 6 điểm mâu thuẫn với schema/state machine/quy ước đặt tên đã chốt ở v1 (state `encounter` khác, PascalCase vs snake_case, thiếu `tenant_id`/RLS, thiếu 8 cột bắt buộc, đề xuất module ngoài phạm vi v1, tiền dùng `Decimal` thay vì `bigint`) để không bị dùng nhầm làm nguồn đã chốt.
+
 ## 2026-08-08 (5)
 
 - Thêm `docs/demo.md`: hướng dẫn chạy `pnpm dev` để xem giao diện lúc phát triển, ghi rõ trạng thái thật hiện nay (`apps/web` mới có bootstrap tối thiểu, chưa tới S1-08 nên chưa có màn hình nghiệp vụ để demo) và sự cố thường gặp.

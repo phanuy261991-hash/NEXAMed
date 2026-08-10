@@ -6,6 +6,9 @@ export const envSchema = z.object({
   DATABASE_URL: z.string().min(1, 'DATABASE_URL là bắt buộc'),
   JWT_SECRET: z.string().min(16, 'JWT_SECRET phải có ít nhất 16 ký tự'),
   ENCRYPTION_KEY: z.string().min(32, 'ENCRYPTION_KEY phải có ít nhất 32 ký tự'),
+  // CORS cho web dev (Vite mặc định 5173) — refresh token là cookie nên cần credentials:true +
+  // origin tường minh (không dùng '*'). Xem apps/api/src/main.ts.
+  WEB_ORIGIN: z.string().url().default('http://localhost:5173'),
 });
 
 export type Env = z.infer<typeof envSchema>;

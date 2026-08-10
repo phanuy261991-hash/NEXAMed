@@ -1,7 +1,7 @@
 // Schema nền tảng — Sprint 1 (xem docs/ERD.md mục 6 "Thứ tự tạo bảng theo sprint").
 // Chỉ chứa nhóm bảng "Nền tảng và tenant": tenant, tenant_setting, room, department,
 // user_account, role, permission, role_permission, user_role, code_sequence,
-// break_glass_session, audit_log.
+// break_glass_session, audit_log, user_session (S1-04, xem docs/DECISIONS.md #019).
 // Các bảng patient/appointment/encounter... thuộc Sprint 2-3, chưa thêm ở đây.
 //
 // RBAC + Data Scope (thay mô hình vai trò cứng) — xem .claude/docs/security-audit.md
@@ -52,6 +52,7 @@ model Tenant {
   codeSequences     CodeSequence[]
   auditLogs         AuditLog[]
   breakGlassSessions BreakGlassSession[]
+  userSessions      UserSession[]
 
   @@map("tenant")
 }
@@ -131,6 +132,12 @@ model UserAccount {
   licenseNo    String? @map("license_no")
   isActive     Boolean @default(true) @map("is_active")
 
+  // Khoá tài khoản tạm sau 5 lần đăng nhập sai trong 15 phút — xem
+  // .claude/docs/security-audit.md mục Xác thực, packages/core/src/iam/lockout.ts.
+  failedLoginCount  Int       @default(0) @map("failed_login_count")
+  lastFailedLoginAt DateTime? @map("last_failed_login_at") @db.Timestamptz(6)
+  lockedUntil       DateTime? @map("locked_until") @db.Timestamptz(6)
+
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -145,11 +152,52 @@ model UserAccount {
   // nullable nên FK chỉ áp khi có giá trị (Postgres MATCH SIMPLE — xem docs/DECISIONS.md).
   department Department? @relation(fields: [tenantId, departmentId], references: [tenantId, id])
   userRoles  UserRole[]
+  sessions   UserSession[]
 
   // Đích của composite FK (tenant_id, id) từ user_role — chống trỏ chéo tenant (C5 trong ERD.md).
   @@unique([tenantId, id])
   @@unique([tenantId, username])
   @@map("user_account")
+}
+
+// Phiên refresh token — cho phép "xoay vòng mỗi lần refresh" (rotation) + phát hiện token bị
+// đánh cắp (reuse detection): mỗi lần refresh, phiên cũ bị soft-delete (deleted_reason =
+// 'rotated') và trỏ replacedBySessionId sang phiên mới. Nếu một hash đã bị rotate còn bị dùng
+// lại, đó là dấu hiệu token rò rỉ — service thu hồi toàn bộ phiên của user (deleted_reason =
+// 'reuse_detected'). Thu hồi = soft delete, dùng đúng pattern deleted_at/deleted_reason sẵn có
+// trong hệ thống, không cần cột "revoked" riêng. Xem .claude/docs/security-audit.md mục Xác
+// thực, docs/DECISIONS.md #019.
+model UserSession {
+  id               String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String  @map("tenant_id") @db.Uuid
+  userId           String  @map("user_id") @db.Uuid
+  refreshTokenHash String  @unique @map("refresh_token_hash")
+  issuedAt         DateTime @default(now()) @map("issued_at") @db.Timestamptz(6)
+  expiresAt        DateTime @map("expires_at") @db.Timestamptz(6)
+  // Composite FK (tenant_id, replaced_by_session_id) -> user_session(tenant_id, id): phiên kế
+  // tiếp trong chuỗi rotation, null nếu đây vẫn là phiên hiện hành hoặc đã bị thu hồi thẳng
+  // (logout/reuse_detected/role_changed) chứ không phải rotate.
+  replacedBySessionId String? @map("replaced_by_session_id") @db.Uuid
+  ip                   String? @db.Text
+  userAgent            String? @map("user_agent") @db.Text
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  // Composite FK (tenant_id, user_id) -> user_account(tenant_id, id): chống trỏ chéo tenant.
+  user        UserAccount   @relation(fields: [tenantId, userId], references: [tenantId, id])
+  replacedBy  UserSession?  @relation("SessionRotation", fields: [tenantId, replacedBySessionId], references: [tenantId, id])
+  previousOf  UserSession[] @relation("SessionRotation")
+
+  @@unique([tenantId, id])
+  @@map("user_session")
 }
 
 // Vai trò theo tenant (không còn enum cứng) — clinic_admin tạo thêm được vai trò tuỳ biến.

@@ -78,6 +78,11 @@ Ghi bắt buộc cho: đăng nhập/đăng xuất, **xem hồ sơ bệnh nhân**
 
 Bảng `audit_log` append-only: không endpoint sửa/xoá; quyền DB của app user chỉ `INSERT` và `SELECT`. Ghi audit nằm cùng transaction với thao tác nghiệp vụ — ghi audit lỗi thì rollback thao tác.
 
+**Cách hiện thực (chốt ở S1-05, xem `docs/DECISIONS.md`)** — hai đường tuỳ loại thao tác, vì một interceptor HTTP không thể tham gia vào transaction Prisma mà service tự mở/đóng bên trong chính nó:
+
+- **Thao tác ghi** (login, break-glass, tạo/sửa/soft-delete dữ liệu lâm sàng...): gọi tường minh `writeAuditLog(tx, tenantId, {...})` (`apps/api/src/infrastructure/persistence/audit-log.helper.ts`) ngay bên trong transaction service đang mở qua `UnitOfWorkService` — cùng transaction, đúng yêu cầu "ghi audit lỗi thì rollback thao tác". Ví dụ: `apps/api/src/modules/iam/auth.service.ts`, `break-glass.service.ts`.
+- **Thao tác xem** (`GET`, không có transaction nghiệp vụ nào để đồng bộ cùng — bản thân việc xem không ghi gì): áp `@AuditView('entityType')` (`apps/api/src/common/audit-view.decorator.ts`) lên handler + `@UseInterceptors(AuditViewInterceptor)` (`apps/api/src/common/audit-view.interceptor.ts`). Interceptor tự mở transaction riêng của nó sau khi handler trả về thành công, ghi `<entityType>.viewed`; request lỗi thì không ghi; ghi audit tự nó lỗi thì lỗi đó nổi lên thành response lỗi, không nuốt.
+
 Lưu trữ tối thiểu theo thời hạn quy định với bệnh án; thời hạn cụ thể chưa chốt với nghiệp vụ, không tự đặt job xoá audit.
 
 ## Chữ ký số (chưa triển khai ở v1)

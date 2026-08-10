@@ -32,6 +32,13 @@ Mọi `UPDATE` kèm điều kiện `WHERE version = ?` và tăng `version` lên 
 Tenant và cấu hình. `tenant_setting (tenant_id, key, value_json)` giữ giờ làm việc, độ dài slot, ngưỡng `NO_SHOW`, `break_glass_duration_minutes` (mặc định 120).
 `department`: `name` — khoa/phòng trong tenant, phục vụ Data Scope `department` (xem `security-audit.md`). v1 phần lớn phòng khám không dùng nhưng bảng luôn tồn tại.
 `user_account` có thêm `department_id uuid NULL` (FK `(tenant_id, id)` tới `department`).
+`user_account` có thêm (S1-04) `failed_login_count int NOT NULL DEFAULT 0`, `last_failed_login_at timestamptz NULL`, `locked_until timestamptz NULL` — khoá tài khoản tạm sau 5 lần đăng nhập sai trong 15 phút, xem `security-audit.md` mục Xác thực và `packages/core/src/iam/lockout.ts` (nguồn sự thật của ngưỡng/logic).
+
+### user_session (S1-04 — xem `security-audit.md` mục Xác thực, `docs/DECISIONS.md` #019)
+
+Phiên refresh token, phục vụ "xoay vòng mỗi lần refresh" (rotation) + phát hiện token bị đánh cắp (reuse detection). Đủ 8 cột bắt buộc, cộng: `user_id` (composite FK `(tenant_id, user_id)` → `user_account`), `refresh_token_hash text UNIQUE NOT NULL` (SHA-256 của refresh token thật — **không** lưu token thô), `issued_at`, `expires_at`, `replaced_by_session_id uuid NULL` (composite FK `(tenant_id, replaced_by_session_id)` → chính bảng này — phiên kế tiếp trong chuỗi rotation), `ip`, `user_agent`.
+
+Thu hồi = soft delete (`deleted_at` + `deleted_reason`: `logout`/`rotated`/`expired`/`reuse_detected`/`account_disabled`) — tái dùng đúng pattern sẵn có, không có cột `revoked` riêng. RLS + `CHECK(version >= 1)` như mọi bảng có `tenant_id`. Index `(tenant_id, user_id, expires_at DESC) WHERE deleted_at IS NULL`.
 
 ### role / permission / role_permission — RBAC + Data Scope (xem `security-audit.md` để biết quy tắc nghiệp vụ đầy đủ)
 
@@ -91,6 +98,7 @@ v1 không trừ tồn kho, không có `unit_price` — dược/kho ngoài phạm
 - `audit_log (tenant_id, entity_type, entity_id, occurred_at DESC)` — tra vết bệnh án.
 - `role_permission (tenant_id, role_id)` — tra ma trận quyền lúc mỗi request, cần nhanh.
 - `break_glass_session (tenant_id, actor_id, entity_type, entity_id, expires_at DESC)` — kiểm tra phiên còn hạn lúc mỗi request.
+- `user_session (tenant_id, user_id, expires_at DESC) WHERE deleted_at IS NULL` — tra phiên còn hiệu lực của một user (thu hồi hàng loạt khi đổi vai trò/tenant, S2-07).
 - Partial index `WHERE deleted_at IS NULL` cho các bảng lâm sàng.
 
 ### drug
