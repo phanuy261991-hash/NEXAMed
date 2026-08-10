@@ -9,6 +9,9 @@ export const envSchema = z.object({
   // CORS cho web dev (Vite mặc định 5173) — refresh token là cookie nên cần credentials:true +
   // origin tường minh (không dùng '*'). Xem apps/api/src/main.ts.
   WEB_ORIGIN: z.string().url().default('http://localhost:5173'),
+  // Thư mục gốc lưu file của StoragePort (adapter local-disk, S1-06) — đặt ngoài web root theo
+  // .claude/docs/security-audit.md. Đường dẫn tương đối tính từ thư mục chạy tiến trình API.
+  STORAGE_DIR: z.string().min(1).default('./storage'),
 });
 
 export type Env = z.infer<typeof envSchema>;

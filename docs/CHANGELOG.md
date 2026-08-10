@@ -2,6 +2,19 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-10 (5)
+
+S1-06 — Hoàn thiện `packages/core` (khung entity + 5 port còn lại + đăng ký DI):
+
+- `packages/core/src/entity/base-entity.ts`: `BaseEntity` (8 cột bắt buộc), `AppendOnlyEntity` (audit_log/break_glass_session), `SignableEntity` (dữ liệu lâm sàng ký được) + hàm thuần `isSigned()` — nguồn sự thật duy nhất cho quy tắc "bản ghi đã ký bất biến" (`.claude/docs/clinical-workflow.md`), unit test 2/2.
+- `packages/core/src/ports/`: thêm 5 interface còn lại (`NotificationPort` đã có từ S1-04c) — `StoragePort`, `EventBusPort`, `SignaturePort`, `InsuranceGatewayPort`, `PatientIdentityPort`. Mỗi port có docstring trỏ về đúng mục trong `.claude/docs/project-structure.md`/`multi-tenancy.md`/`security-audit.md`/`clinical-workflow.md` giải thích lý do tồn tại và adapter v1 tương ứng.
+- `apps/api/src/infrastructure/`: 5 adapter — `storage/local-disk.adapter.ts` (ghi/đọc/xoá file thật dưới `STORAGE_DIR/<tenantId>/<key>`, chặn key chứa `..`), `eventbus/in-memory.adapter.ts` (publish/subscribe đồng bộ, handler lỗi ném lên để service rollback transaction gốc — đúng quy ước ở `.claude/docs/coding-standards.md` mục Event), `signature/noop.adapter.ts` (chữ ký logic, `signaturePayload: null`), `insurance/noop.adapter.ts` (ném `NOT_IMPLEMENTED`, đúng bảng port/adapter đã chốt), `patient-identity/same-tenant.adapter.ts` (trả chính `patient.id`). `ports.module.ts` (`@Global()`) đăng ký DI cho cả 5 — không đụng `NOTIFICATION_PORT` (vẫn ở `IamModule` như S1-04c), wire vào `AppModule`.
+- Thêm `STORAGE_DIR` vào `apps/api/src/config/env.schema.ts` (mặc định `./storage`) + `.env.example`; thêm `/storage/` vào `.gitignore`.
+- Không có folder `patient-identity/` sẵn trong cây thư mục minh hoạ ở `project-structure.md` (chỉ liệt kê storage/eventbus/signature/insurance/notification) — tạo thêm đúng theo pattern "một thư mục cho mỗi port" đã có sẵn cho 5 port kia, không phải suy diễn lại cấu trúc đã chốt.
+- Test thật (không mock): `base-entity.spec.ts` (2/2), `local-disk.adapter.spec.ts` (4/4, ghi/đọc/xoá file thật trên disk tạm + chặn path traversal), `in-memory.adapter.spec.ts` (3/3, đúng thứ tự handler + rollback khi handler lỗi). Build thật (`node dist/main.js`) xác nhận `PortsModule dependencies initialized` + `Nest application successfully started` qua NestJS DI container thật — khác các test trước chỉ `new Service(...)` tay bỏ qua Nest, nên đây là lần đầu DI thật của `AppModule` được xác minh chạy được từ đầu đến cuối.
+- Toàn bộ 52 test trên workspace (14 `packages/core` + 38 `apps/api`, cộng 9 test mới trong đó) pass; lint/typecheck/build sạch toàn workspace.
+- Cập nhật `docs/TASK.md`, `docs/CURRENT.md`.
+
 ## 2026-08-10 (4)
 
 S1-05 — Audit log (interceptor + helper dùng chung):
