@@ -11,7 +11,8 @@
     "db:migrate": "node scripts/with-migrate-url.mjs migrate dev",
     "db:generate": "prisma generate",
     "db:deploy": "node scripts/with-migrate-url.mjs migrate deploy",
-    "db:seed": "tsx prisma/seed/index.ts"
+    "db:seed": "tsx prisma/seed/index.ts",
+    "db:seed:dev-tenant": "tsx scripts/seed-dev-tenant.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed/index.ts"

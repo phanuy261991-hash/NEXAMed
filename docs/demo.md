@@ -15,36 +15,38 @@ Hướng dẫn chạy NEXAMed ở máy dev để xem/thử giao diện trong lú
    pnpm install
    ```
 2. Tạo file env cho API: copy `apps/api/.env.example` → `apps/api/.env`. Giá trị mẫu dùng được thẳng cho dev/local (không dùng cho production — xem `docs/Deploy.md`).
-3. Bật PostgreSQL:
+3. Tạo file cấu hình runtime cho web: copy `apps/web/public/config.example.json` → `apps/web/public/config.json`. `tenantId` điền ở bước 6 (chưa có lúc này, cứ để giá trị mẫu tạm).
+4. Bật PostgreSQL:
    ```bash
    docker compose up -d
    ```
    Container map ra cổng **5433**, không phải 5432 mặc định (máy dev có thể có sẵn Postgres native chiếm 5432 — xem ghi chú trong `docker-compose.yml` và `docs/DECISIONS.md`). Không cần đổi gì nếu dùng đúng `.env.example`.
-4. Migrate + seed database:
+5. Migrate + seed database:
    ```bash
    pnpm db:migrate
+   pnpm --filter @nexamed/api run db:seed
    ```
-   Seed permission/role hiện chạy riêng qua `pnpm --filter @nexamed/api run db:seed` (script gọi `prisma/seed/index.ts`) — chưa gộp vào `db:migrate`.
-5. Chạy song song web + api:
+   `db:seed` seed danh mục `permission` toàn hệ thống (23 permission) — chạy riêng, chưa gộp vào `db:migrate`.
+6. **Tạo tenant + tài khoản đăng nhập thử** (chưa có màn hình "tạo phòng khám mới" — đó là module `clinic` ở S2, chưa làm):
+   ```bash
+   pnpm --filter @nexamed/api run db:seed:dev-tenant
+   ```
+   Script in ra `tenantId`, `username` (`dev.admin`), `password` (`Dev@12345`) — vai trò `clinic_admin`. Dán `tenantId` vào `apps/web/public/config.json` (đè lên giá trị mẫu ở bước 3). Chạy lại script này bất cứ lúc nào để tạo thêm tenant/tài khoản khác (mỗi lần chạy tạo một tenant mới, không dùng chung).
+7. Chạy song song web + api:
    ```bash
    pnpm dev
    ```
    - API: http://localhost:3000
-   - Web: http://localhost:5173
+   - Web: http://localhost:5173 — vào thẳng sẽ tự chuyển tới `/login`; đăng nhập bằng tài khoản ở bước 6.
 
 ## Trạng thái giao diện hiện tại
 
 Cập nhật tới thời điểm viết (xem `docs/CURRENT.md` để biết trạng thái mới nhất — mục này có thể lạc hậu nếu sprint đã tiến thêm):
 
-- `apps/web` mới chỉ có bootstrap tối thiểu (`App.tsx` render một dòng chữ tĩnh) — **chưa có** router, layout, luồng đăng nhập, design token, hay bất kỳ màn hình nghiệp vụ nào (những việc này thuộc S1-08, chưa làm).
-- API chưa có domain module/controller nào nhận traffic thật; tenant context hiện đọc tạm từ header, chưa qua JWT (`docs/DECISIONS.md` #012) — chưa có gì để gọi từ giao diện dù có màn hình.
-- Vì vậy `pnpm dev` lúc này chỉ xác nhận môi trường chạy được, **chưa dùng để demo giao diện nghiệp vụ**. Mục này phải cập nhật ngay khi S1-08 (app shell) hoàn thành.
-
-## Khi đã có màn hình thật để demo (từ S1-08 trở đi — bổ sung khi tới lúc)
-
-- Đăng nhập bằng tài khoản seed đúng vai trò (`receptionist`/`nurse`/`doctor`/`clinic_admin`/`system_admin`) — không tắt guard bằng biến môi trường (`.claude/docs/security-audit.md`).
-- Cách seed dữ liệu mẫu (bệnh nhân, lịch hẹn...) để demo có nội dung, không demo trên DB rỗng.
-- Cách reset lại DB dev về trạng thái sạch giữa các lần demo.
+- **S1-08 đã xong**: `apps/web` có app shell đầy đủ — router, luồng đăng nhập (kèm khôi phục phiên khi reload trang), layout với sidebar cố định trái, design token theo `.claude/docs/ui-guidelines.md`.
+- Sau đăng nhập thấy 2 mục sidebar: **Tổng quan** (Dashboard, mọi vai trò) và **Quản trị** (chỉ `clinic_admin`/`system_admin`) — cả hai hiện dạng "chưa có dữ liệu" (empty state), vì patient/appointment/encounter/prescription và các màn hình quản trị thật (tài khoản, cấu hình, nhật ký) đều thuộc S2 trở đi, chưa làm.
+- Menu Đặt lịch/Tiếp nhận/Khám bệnh/Kê đơn **chưa hiện** — chỉ hiện menu module đã có backend thật, thêm dần đúng sprint có module tương ứng.
+- API client phía web hiện là bản tối giản tự viết, chỉ đủ cho luồng đăng nhập (S1-09 sẽ thay bằng client sinh từ OpenAPI + TanStack Query).
 
 ## Sự cố thường gặp
 
@@ -53,7 +55,9 @@ Cập nhật tới thời điểm viết (xem `docs/CURRENT.md` để biết tr�
 | API crash lúc khởi động | Thiếu `DATABASE_URL`/`JWT_SECRET`/`ENCRYPTION_KEY` trong `apps/api/.env` | Copy lại từ `.env.example`, không xoá biến nào |
 | Không kết nối được Postgres ở cổng 5432 | Container map ra 5433, không phải 5432 | Dùng đúng `.env.example` (đã trỏ 5433); nếu đổi máy dev không xung đột cổng, có thể đổi lại 5432 trong `docker-compose.yml` |
 | pnpm cảnh báo Node version | Máy dev chạy Node khác 20 LTS | Chỉ warning, không chặn dev; dùng đúng Node 20 khi đóng gói triển khai |
-| `pnpm dev` chạy nhưng web chỉ hiện chữ trống | Đúng như mô tả — `apps/web` chưa có màn hình nghiệp vụ | Không phải lỗi, xem mục "Trạng thái giao diện hiện tại" ở trên |
+| Web hiện lỗi đỏ "Không tải được /config.json" hoặc "/config.json không hợp lệ" | Chưa copy `config.example.json` → `config.json` (bước 3), hoặc `tenantId` không phải UUID hợp lệ | Copy lại file, dán đúng `tenantId` in ra ở bước 6 |
+| Đăng nhập báo sai thông tin dù đúng `username`/`password` | `tenantId` trong `apps/web/public/config.json` không khớp tenant chứa tài khoản đó | Chạy `pnpm --filter @nexamed/api run db:seed:dev-tenant`, dán đúng `tenantId` mới in ra |
+| Đăng nhập xong không thấy mục "Quản trị" | Tài khoản không có vai trò `clinic_admin`/`system_admin` | Bình thường nếu test tài khoản khác — `db:seed:dev-tenant` luôn tạo tài khoản vai trò `clinic_admin` |
 
 ## Cập nhật tài liệu này
 
