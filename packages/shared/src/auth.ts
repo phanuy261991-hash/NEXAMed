@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { userRoleSchema } from './roles';
 
 /**
  * Request/response đăng nhập — dùng chung controller (validate) và web (S1-09).
@@ -13,17 +14,32 @@ export const loginRequestSchema = z.object({
 
 export type LoginRequest = z.infer<typeof loginRequestSchema>;
 
+/**
+ * Danh tính + vai trò của user đang đăng nhập — dùng chung cho `loginResponseSchema.user` và
+ * `GET /auth/me` (S1-08, docs/DECISIONS.md #022) để web quyết định ẩn/hiện menu theo vai trò mà
+ * không cần đoán/hardcode. `roles` có thể rỗng (user chưa được gán vai trò nào).
+ */
+export const currentUserSchema = z.object({
+  id: z.string().uuid(),
+  username: z.string(),
+  fullName: z.string(),
+  roles: z.array(userRoleSchema),
+});
+
+export type CurrentUser = z.infer<typeof currentUserSchema>;
+
 export const loginResponseSchema = z.object({
   accessToken: z.string(),
   expiresIn: z.number().int().positive(),
-  user: z.object({
-    id: z.string().uuid(),
-    username: z.string(),
-    fullName: z.string(),
-  }),
+  user: currentUserSchema,
 });
 
 export type LoginResponse = z.infer<typeof loginResponseSchema>;
+
+/** Response của `GET /auth/me` — cùng hình dạng `currentUserSchema` (xem trên). */
+export const meResponseSchema = currentUserSchema;
+
+export type MeResponse = z.infer<typeof meResponseSchema>;
 
 /**
  * Payload JWT dùng chung cho việc verify ở cả access và refresh token — `typ` phân biệt hai

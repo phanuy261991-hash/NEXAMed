@@ -1,7 +1,7 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import type { Response } from 'express';
 import { DomainError } from '@nexamed/core';
-import { ZodError } from 'zod';
+import type { ZodError } from 'zod';
 
 /**
  * Map lỗi sang response `{ error: { code, message, details } }` — theo .claude/docs/
@@ -18,6 +18,21 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   AUTH_REFRESH_TOKEN_REUSED: HttpStatus.UNAUTHORIZED,
 };
 
+/**
+ * Nhận diện `ZodError` theo cấu trúc thay vì `instanceof` — `loginRequestSchema` (và mọi schema
+ * dùng chung khác) được định nghĩa ở `@nexamed/shared`, biên dịch sẵn thành CommonJS, còn file
+ * này nằm trong `apps/api`. Hai bên có thể nạp gói `zod` qua hai đường module khác nhau tuỳ
+ * bundler/runtime (đã xác nhận qua Vitest + SWC), khiến `err instanceof ZodError` sai dù đúng là
+ * ZodError — `.name`/`.issues` thì ổn định qua mọi ranh giới module.
+ */
+function isZodError(err: unknown): err is ZodError {
+  return (
+    err instanceof Error &&
+    err.name === 'ZodError' &&
+    Array.isArray((err as { issues?: unknown }).issues)
+  );
+}
+
 @Catch()
 export class DomainExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(DomainExceptionFilter.name);
@@ -32,7 +47,7 @@ export class DomainExceptionFilter implements ExceptionFilter {
       return;
     }
 
-    if (exception instanceof ZodError) {
+    if (isZodError(exception)) {
       response.status(HttpStatus.BAD_REQUEST).json({
         error: { code: 'VALIDATION_ERROR', message: 'Dữ liệu gửi lên không hợp lệ.', details: exception.issues },
       });

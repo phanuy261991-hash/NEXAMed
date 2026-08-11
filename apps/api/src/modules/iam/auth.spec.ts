@@ -13,6 +13,8 @@ import {
 } from '@nexamed/core';
 import { PrismaService } from '../../infrastructure/persistence/prisma.service';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
+import { seedPermissionCatalog } from '../../infrastructure/persistence/seed-permissions';
+import { seedDefaultRolesForTenant } from '../../infrastructure/persistence/seed-tenant-roles';
 import { AuthService } from './auth.service';
 import { TokenService } from './token.service';
 import { SessionRepository } from './session.repository';
@@ -74,11 +76,29 @@ describe('AuthService — login/refresh/logout', () => {
       },
     });
     userAId = userA.id;
+
+    // Gán vai trò 'doctor' cho userA — xác minh login()/getCurrentUser() trả đúng roles
+    // (S1-08, docs/DECISIONS.md #022).
+    await seedPermissionCatalog(privileged);
+    await seedDefaultRolesForTenant(privileged, tenantAId, SYSTEM_ACTOR);
+    const doctorRole = await privileged.role.findFirstOrThrow({ where: { tenantId: tenantAId, name: 'doctor' } });
+    await privileged.userRole.create({
+      data: {
+        tenantId: tenantAId,
+        userId: userAId,
+        roleId: doctorRole.id,
+        createdBy: SYSTEM_ACTOR,
+        updatedBy: SYSTEM_ACTOR,
+      },
+    });
   });
 
   afterAll(async () => {
     await privileged.auditLog.deleteMany({ where: { tenantId: { in: [tenantAId, tenantBId] } } });
     await privileged.userSession.deleteMany({ where: { tenantId: { in: [tenantAId, tenantBId] } } });
+    await privileged.userRole.deleteMany({ where: { tenantId: { in: [tenantAId, tenantBId] } } });
+    await privileged.rolePermission.deleteMany({ where: { tenantId: { in: [tenantAId, tenantBId] } } });
+    await privileged.role.deleteMany({ where: { tenantId: { in: [tenantAId, tenantBId] } } });
     await privileged.userAccount.deleteMany({ where: { tenantId: { in: [tenantAId, tenantBId] } } });
     await privileged.tenant.deleteMany({ where: { id: { in: [tenantAId, tenantBId] } } });
     await privileged.$disconnect();
@@ -101,6 +121,7 @@ describe('AuthService — login/refresh/logout', () => {
     expect(result.accessToken).toBeTruthy();
     expect(result.refreshToken).toBeTruthy();
     expect(result.user.username).toBe(usernameA);
+    expect(result.user.roles).toEqual(['doctor']);
 
     const sessions = await privileged.userSession.findMany({ where: { userId: userAId } });
     expect(sessions).toHaveLength(1);
@@ -193,5 +214,15 @@ describe('AuthService — login/refresh/logout', () => {
 
   it('logout không có cookie/token → không lỗi (idempotent)', async () => {
     await expect(authService.logout(undefined, REQUEST_META)).resolves.toBeUndefined();
+  });
+
+  it('getCurrentUser: trả đúng danh tính + vai trò', async () => {
+    const result = await authService.getCurrentUser(tenantAId, userAId);
+    expect(result).toEqual({ id: userAId, username: usernameA, fullName: 'Bác sĩ A', roles: ['doctor'] });
+  });
+
+  it('getCurrentUser: tài khoản is_active=false → AccountDisabledError', async () => {
+    await privileged.userAccount.update({ where: { id: userAId }, data: { isActive: false } });
+    await expect(authService.getCurrentUser(tenantAId, userAId)).rejects.toBeInstanceOf(AccountDisabledError);
   });
 });

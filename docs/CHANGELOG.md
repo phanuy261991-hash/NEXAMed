@@ -2,6 +2,46 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-11 (2)
+
+S1-08 — Web app shell (router, luồng đăng nhập, layout, menu, design token):
+
+- Trước khi code, hỏi chốt với chủ dự án về luồng/menu (yêu cầu mới, ghi vào memory): menu sidebar kết hợp theo luồng nghiệp vụ + ẩn/hiện theo vai trò; có Dashboard chung dạng empty-state; Quản trị là mục sidebar riêng (không gộp avatar) chỉ hiện với `clinic_admin`/`system_admin`; chỉ hiện menu module đã có backend thật; màu/token theo `.claude/docs/ui-guidelines.md`; `tenantId` nạp runtime qua `config.json`. Đọc `docs/design/UI_GUIDELINE.md` theo yêu cầu chủ dự án — dùng làm tham khảo cho cấu trúc menu/layout (sidebar cố định không collapse, không "3 card ngang bằng nhau"...), không dùng bảng màu/font riêng của tài liệu đó.
+- **Backend mở rộng nhỏ** (`docs/DECISIONS.md` #022, tiền đề bắt buộc cho menu theo vai trò): `packages/shared/src/auth.ts` — `loginResponseSchema.user` thêm `roles: UserRole[]`, tách `currentUserSchema` dùng chung với response mới. `apps/api/src/modules/iam/`: `user-account-auth.repository.ts` thêm `findRoleNamesForUser()`; `auth.service.ts` thêm `getCurrentUser()`, `login()` trả kèm `roles`; `auth.controller.ts` thêm `GET /auth/me` (`JwtAuthGuard` — lần dùng thật thứ hai sau `POST /break-glass`) phục vụ khôi phục danh tính lúc web reload trang (chỉ còn refresh cookie). Không migration mới. Test mở rộng: `auth.spec.ts` (11/11, seed vai trò `doctor`), `auth-login-http.spec.ts` (5/5, seed vai trò `nurse` + test `/auth/me` có/không token).
+- **Frontend** — `apps/web` từ bare Vite+React scaffold thành app shell đầy đủ:
+  - Dependencies: `react-router-dom` v7, `@phosphor-icons/react` (khai báo tường minh, trước chỉ có ở root), Tailwind **v4** qua `@tailwindcss/vite` — phát hiện lúc cài rằng v4 không cần `tailwind.config.js`/`postcss.config.js` như giả định ban đầu (kế hoạch viết cho v3), chỉ cần `@import 'tailwindcss'` trong CSS + plugin Vite; cùng lớp class Tailwind utility nên không ảnh hưởng token đã chốt.
+  - `apps/web/public/config.json` (gitignore) + `config.example.json`: runtime config `{apiBaseUrl, tenantId}`, Vite copy nguyên vào `dist/` — sửa trực tiếp lúc deploy on-prem không cần rebuild.
+  - `apps/web/src/shared/api/client.ts`: wrapper `fetch` tối giản (`credentials:'include'` cho cookie refresh, parse envelope `{data,meta}`/`{error}`) — chỉ đủ cho auth flow, S1-09 thay hẳn bằng client sinh từ OpenAPI + TanStack Query.
+  - `apps/web/src/features/auth/`: Zustand `auth.store.ts` (session state, không phải server entity — đúng `.claude/docs/architecture.md`), `auth.api.ts`, `LoginPage.tsx` (theo `ui-guidelines.md` mục 4.1: required `*` đỏ, focus ring, nút loading), `RequireAuth.tsx`.
+  - `apps/web/src/app/AppBootstrap.tsx`: khôi phục phiên lúc app khởi động — gọi `/auth/refresh` (cookie) rồi `/auth/me` (roles).
+  - `apps/web/src/shared/layout/`: `AppShell.tsx` (sidebar `w-60 bg-slate-900` cố định + nội dung `max-w-[1400px]`), `Sidebar.tsx` (active state `weight="fill"`, Quản trị lọc theo vai trò), `UserMenu.tsx`.
+  - `apps/web/src/features/dashboard/DashboardPage.tsx`, `.../admin/AdminPage.tsx`: empty-state đúng `ui-guidelines.md` mục 3 (không bịa số liệu).
+  - `apps/web/src/shared/ui/`: `Button.tsx`, `EmptyState.tsx` dùng chung.
+  - Dùng skill `ui-ux-pro-max` (theo yêu cầu chủ dự án) tra cứu icon/layout/empty-state cho enterprise dashboard mật độ dữ liệu cao — chỉ lấy phần layout/spacing/icon, không lấy bảng màu (đã có token riêng).
+- **Sự cố kỹ thuật gặp và xử lý lúc build**:
+  - `@nestjs/testing` bị pnpm resolve nhầm bản `11.x` (dự án dùng NestJS 10.4) — gỡ, cài lại ghim `^10.4.15`.
+  - `vite.config.ts` build lỗi `ESM-only` vì `@tailwindcss/vite` là gói ESM thuần nhưng Vite bundle config theo CJS — đổi tên file sang `vite.config.mts` (cách sửa chính thức của Vite).
+  - `main.tsx`: TypeScript không narrow được `HTMLElement | null` xuyên qua closure của hàm `bootstrap()` khai báo riêng — sửa bằng truyền `rootElement` làm tham số thay vì đọc biến ngoài closure.
+- **Phát hiện + sửa 1 race condition lúc kiểm bằng trình duyệt thật** (không phải bug nghiệp vụ, chỉ dev-only): React StrictMode gọi effect 2 lần khiến `AppBootstrap` bắn 2 request `/auth/refresh` gần đồng thời, có thể đụng cơ chế phát hiện reuse-token (S1-04, thu hồi toàn bộ phiên khi token đã rotate bị dùng lại) — chặn bằng `useRef` guard đảm bảo effect chỉ chạy thật một lần.
+- **Xác minh thật bằng trình duyệt**: môi trường chưa có project skill `run` cho dự án này — tự cài Playwright + Chromium headless (npm trong thư mục scratchpad, không thêm vào dependencies của dự án), chạy `pnpm dev` thật (api :3000 + web :5173), tạo 1 tenant + user `clinic_admin` thử qua script tạm (xoá sau khi xong, không commit), lái trình duyệt qua toàn bộ luồng: chưa đăng nhập → `/login`; đăng nhập đúng → Dashboard đúng token màu, thấy đủ Tổng quan + Quản trị; empty-state đúng cả hai trang; F5 giữ nguyên phiên; đăng xuất → `/login`. Chụp ảnh màn hình xác nhận từng bước, kiểm `console --errors` không có lỗi thật (chỉ 401 dự kiến ở lần refresh đầu tiên khi chưa có phiên).
+- `pnpm -w lint/typecheck/build` sạch toàn workspace; `apps/api` 45 test pass (11 auth.spec.ts + 5 auth-login-http.spec.ts, còn lại giữ nguyên).
+- Cập nhật `docs/DECISIONS.md` (#022), `docs/TASK.md`, `docs/CURRENT.md`.
+
+## 2026-08-11
+
+S1-07 — Test harness cách ly tenant (testcontainers + HTTP e2e đầu tiên):
+
+- `apps/api/src/testing/global-setup.ts`: Vitest `globalSetup` — dựng Postgres 18 tạm bằng `@testcontainers/postgresql`, chạy `prisma migrate deploy` thật lên đó, set `DATABASE_URL`/`MIGRATE_DATABASE_URL` TRƯỚC khi Vitest tách worker chạy từng file test. Vì 6 spec đã có (`tenant-isolation`, `rbac`, `auth`, `break-glass`, `audit-view.interceptor`, `jwt-auth.guard`) đều đọc hai biến này qua `process.env`/Prisma datasource mặc định, không phải sửa lại file nào — `pnpm test` giờ tự dựng DB sạch, không cần `docker compose up -d` trước. CI service Postgres (`db:check-schema`/`db:deploy`/`db:seed`) giữ nguyên, không đụng — vẫn xác minh migration/seed chạy được độc lập.
+- `apps/api/src/testing/tenant-fixture.ts`: `createTwoTenantFixture()` — helper tạo 2 tenant + `cleanup()` đúng thứ tự FK, thay cho boilerplate lặp lại 4 lần ở các spec cũ (không retrofit spec cũ — dùng cho test mới từ S2 trở đi).
+- `apps/api/src/modules/iam/auth-login-http.spec.ts`: test HTTP e2e thật đầu tiên của dự án — boot toàn bộ `AppModule` qua `@nestjs/testing` (đúng wiring của `main.ts`: prefix, cookie-parser, interceptor, filter) rồi gọi qua supertest, khác `auth.spec.ts` (S1-04) gọi thẳng service bỏ qua controller/guard/filter. Dùng làm template cho endpoint nghiệp vụ đầu tiên ở S2.
+- Hai vấn đề hạ tầng test mới lộ ra khi viết test HTTP e2e đầu tiên (đã xác minh cả hai chỉ là artifact môi trường Vitest, KHÔNG phải bug thật — kiểm bằng `node dist/main.js` + `curl` trên production build):
+  1. **DI âm thầm ra `undefined`**: Vitest transform TypeScript bằng esbuild mặc định, esbuild không emit `design:paramtypes` (decorator metadata) mà NestJS DI cần để suy ra kiểu tham số constructor không có `@Inject()` tường minh. `Test.createTestingModule` vẫn compile thành công nhưng inject `undefined` thay vì lỗi rõ ràng. Sửa bằng `unplugin-swc` + `apps/api/.swcrc` (`decoratorMetadata: true`) thay esbuild — đúng khuyến nghị chính thức NestJS (docs.nestjs.com/recipes/swc mục Vitest). Chỉ ảnh hưởng lúc test; build production vẫn `tsc`/`nest build` như cũ.
+  2. **`exception instanceof ZodError` sai qua ranh giới package**: `loginRequestSchema` định nghĩa ở `@nexamed/shared` (build sẵn CommonJS), còn `domain-exception.filter.ts` ở `apps/api` (transform qua SWC/ESM lúc test) — hai bên nạp gói `zod` qua hai đường module khác nhau trong Vitest, khiến `instanceof` sai dù đúng là `ZodError`. Đổi `apps/api/src/common/domain-exception.filter.ts` sang `isZodError()` kiểm theo cấu trúc (`err.name === 'ZodError'` + `issues` là mảng) thay vì `instanceof` — bền vững hơn qua mọi ranh giới module/bundler, không chỉ vá cho môi trường test.
+- Thêm devDependencies `apps/api`: `@testcontainers/postgresql`, `@nestjs/testing` (ghim đúng `^10.4.x` khớp NestJS 10.4 — lần đầu cài bị pnpm resolve nhầm `11.x`, đã sửa lại), `supertest`, `@types/supertest`, `unplugin-swc`, `@swc/core`.
+- Cũng thêm `import 'reflect-metadata'` vào `vitest.setup.ts` (trước nay chỉ `main.ts` cần vì các test trước giờ đều `new Service(...)` tay, không qua NestJS DI container thật).
+- **Đã xác minh thật**: toàn bộ 41 test `apps/api` pass (38 cũ giữ nguyên hành vi + 3 mới), chạy lại nhiều lần ổn định không flaky; lint/typecheck/build sạch toàn workspace.
+- Cập nhật `docs/TASK.md`, `docs/CURRENT.md`.
+
 ## 2026-08-10 (5)
 
 S1-06 — Hoàn thiện `packages/core` (khung entity + 5 port còn lại + đăng ký DI):

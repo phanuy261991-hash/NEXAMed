@@ -22,10 +22,17 @@ export interface RequestMeta {
   userAgent: string | null;
 }
 
+export interface CurrentUserResult {
+  id: string;
+  username: string;
+  fullName: string;
+  roles: string[];
+}
+
 export interface LoginResult {
   accessToken: string;
   expiresIn: number;
-  user: { id: string; username: string; fullName: string };
+  user: CurrentUserResult;
   refreshToken: string;
   refreshExpiresIn: number;
 }
@@ -106,6 +113,7 @@ export class AuthService {
 
       await this.userAccountAuthRepository.recordSuccessfulLogin(tx, request.tenantId, user.id);
       const issued = await this.issueSession(tx, request.tenantId, user.id, meta);
+      const roles = await this.userAccountAuthRepository.findRoleNamesForUser(tx, request.tenantId, user.id);
 
       await writeAuditLog(tx, request.tenantId, {
         actorId: user.id,
@@ -123,7 +131,7 @@ export class AuthService {
         result: {
           accessToken: accessToken.token,
           expiresIn: accessToken.expiresIn,
-          user: { id: user.id, username: user.username, fullName: user.fullName },
+          user: { id: user.id, username: user.username, fullName: user.fullName, roles },
           refreshToken: issued.rawRefreshToken,
           refreshExpiresIn: issued.expiresIn,
         },
@@ -264,6 +272,22 @@ export class AuthService {
         ip: meta.ip,
         userAgent: meta.userAgent,
       });
+    });
+  }
+
+  /**
+   * Danh tính + vai trò của user đang đăng nhập — dùng cho `GET /auth/me` (S1-08, xem
+   * docs/DECISIONS.md #022). Không ghi gì nên không cần lo transaction rollback-vì-throw như
+   * login()/refresh() — throw thẳng trong callback là an toàn.
+   */
+  async getCurrentUser(tenantId: string, userId: string): Promise<CurrentUserResult> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const user = await this.userAccountAuthRepository.findById(tx, tenantId, userId);
+      if (!user || !user.isActive) {
+        throw new AccountDisabledError();
+      }
+      const roles = await this.userAccountAuthRepository.findRoleNamesForUser(tx, tenantId, userId);
+      return { id: user.id, username: user.username, fullName: user.fullName, roles };
     });
   }
 

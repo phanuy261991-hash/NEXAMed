@@ -1,9 +1,10 @@
-import { Body, Controller, HttpCode, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { loginRequestSchema } from '@nexamed/shared';
 import { RefreshTokenInvalidError } from '@nexamed/core';
+import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { AuthService, type RequestMeta } from './auth.service';
 
 const REFRESH_COOKIE_NAME = 'refresh_token';
@@ -45,6 +46,20 @@ export class AuthController {
     await this.authService.logout(token, this.requestMeta(req));
     res.clearCookie(REFRESH_COOKIE_NAME, { path: REFRESH_COOKIE_PATH });
     return { success: true };
+  }
+
+  /**
+   * Danh tính + vai trò của user đang đăng nhập — web gọi sau khi khôi phục phiên qua
+   * `/auth/refresh` lúc reload trang (chỉ có access token mới, chưa có `user`/`roles` trong bộ
+   * nhớ). Xem docs/DECISIONS.md #022.
+   */
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(200)
+  async me(@Req() req: Request) {
+    // req.user luôn có giá trị ở đây — JwtAuthGuard đã throw UnauthorizedException trước đó nếu thiếu.
+    const { userId, tenantId } = req.user!;
+    return this.authService.getCurrentUser(tenantId, userId);
   }
 
   private readRefreshCookie(req: Request): string | undefined {

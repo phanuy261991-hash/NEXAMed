@@ -10,3 +10,6 @@ coverage/
 .DS_Store
 .turbo/
 /storage/
+# Cấu hình runtime của apps/web (tenantId/apiBaseUrl) — sửa trực tiếp lúc triển khai on-prem,
+# không commit giá trị thật. Xem apps/web/public/config.example.json.
+apps/web/public/config.json

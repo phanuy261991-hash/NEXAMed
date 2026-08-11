@@ -46,4 +46,14 @@ export class UserAccountAuthRepository {
       },
     });
   }
+
+  /**
+   * Tên các vai trò đã gán cho user — dùng cho `loginResponseSchema.user.roles` và `GET /auth/me`
+   * (S1-08, docs/DECISIONS.md #022) để web ẩn/hiện menu theo vai trò. Không phải guard phân quyền
+   * thật (đó là việc của S2 đọc `role_permission`/`data_scope`) — chỉ trả tên vai trò để hiển thị.
+   */
+  async findRoleNamesForUser(tx: Prisma.TransactionClient, tenantId: string, userId: string): Promise<string[]> {
+    const rows = await tx.userRole.findMany({ where: { tenantId, userId }, include: { role: true } });
+    return rows.map((r) => r.role.name);
+  }
 }
