@@ -15,7 +15,7 @@ Hướng dẫn chạy NEXAMed ở máy dev để xem/thử giao diện trong lú
    pnpm install
    ```
 2. Tạo file env cho API: copy `apps/api/.env.example` → `apps/api/.env`. Giá trị mẫu dùng được thẳng cho dev/local (không dùng cho production — xem `docs/Deploy.md`).
-3. Tạo file cấu hình runtime cho web: copy `apps/web/public/config.example.json` → `apps/web/public/config.json`. `tenantId` điền ở bước 6 (chưa có lúc này, cứ để giá trị mẫu tạm).
+3. Tạo file cấu hình runtime cho web — **chỉ làm nếu chưa có** `apps/web/public/config.json` (copy đè lên file đã điền `tenantId` thật sẽ làm mất cấu hình, gây lỗi đăng nhập "sai thông tin" dù đúng mật khẩu — vì `tenantId` sai): copy `apps/web/public/config.example.json` → `apps/web/public/config.json`. `tenantId` điền ở bước 6.
 4. Bật PostgreSQL:
    ```bash
    docker compose up -d
