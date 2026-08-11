@@ -41,6 +41,21 @@ export const meResponseSchema = currentUserSchema;
 
 export type MeResponse = z.infer<typeof meResponseSchema>;
 
+/** Response của `POST /auth/refresh` — không kèm `user`, xem docs/DECISIONS.md #022. */
+export const refreshResponseSchema = z.object({
+  accessToken: z.string(),
+  expiresIn: z.number().int().positive(),
+});
+
+export type RefreshResponse = z.infer<typeof refreshResponseSchema>;
+
+/** Response của `POST /auth/logout`. */
+export const logoutResponseSchema = z.object({
+  success: z.boolean(),
+});
+
+export type LogoutResponse = z.infer<typeof logoutResponseSchema>;
+
 /**
  * Payload JWT dùng chung cho việc verify ở cả access và refresh token — `typ` phân biệt hai
  * loại vì hệ thống dùng chung một JWT_SECRET (xem docs/DECISIONS.md #019). Refresh token không

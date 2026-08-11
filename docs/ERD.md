@@ -1,6 +1,6 @@
 # ERD: NEXAMed v1
 
-**Version**: v1.2 — 10/08/2026 (xem mục 9 để biết lịch sử thay đổi)
+**Version**: v1.3 — 11/08/2026 (xem mục 9 để biết lịch sử thay đổi)
 **Phạm vi**: chỉ các bảng thuộc v1 (Đặt lịch, Tiếp nhận, Khám bệnh, Kê đơn). Bảng của v2+ (viện phí, kho thuốc, BHYT) **không** tạo ở giai đoạn này.
 **Căn cứ**: `docs/product/prd.md` v1.0, `docs/product/plan.md` v1.0, `.claude/docs/data-model.md`
 
@@ -152,9 +152,11 @@ erDiagram
         text phone
         bytea national_id_enc
         text national_id_hash
+        jsonb address_json
         text allergy_note
         uuid merged_into_id FK
         uuid global_patient_ref
+        timestamptz identity_verified_at
     }
 
     INSURANCE_CARD {
@@ -336,12 +338,12 @@ erDiagram
 
 | Bảng | Vai trò | Ghi chú |
 |---|---|---|
-| `patient` | Hồ sơ hành chính | `national_id_enc` mã hoá AES-256-GCM; `national_id_hash` để tra trùng |
+| `patient` | Hồ sơ hành chính | `national_id_enc` mã hoá AES-256-GCM; `national_id_hash` để tra trùng; `address_json` lưu địa chỉ (PAT-01) |
 | `insurance_card` | Thẻ BHYT | v1 chỉ lưu và hiển thị, không tính chi trả |
 
 `patient.merged_into_id` tự trỏ về `patient` trong cùng tenant, dùng cho luồng gộp hồ sơ trùng (PAT-04). Bản ghi nguồn không xoá, chỉ ngừng cho tạo lượt khám mới.
 
-`patient.global_patient_ref` luôn `NULL` ở v1. Cột này để sẵn cho hồ sơ dùng chung liên tenant ở v3+; mọi tra cứu hiện tại đi qua `PatientIdentityPort`.
+`patient.global_patient_ref` và `patient.identity_verified_at` luôn `NULL` ở v1. Hai cột này để sẵn cho hồ sơ dùng chung liên tenant ở v3+ (`identity_verified_at` ghi thời điểm xác minh danh tính khi bật master patient index); mọi tra cứu hiện tại đi qua `PatientIdentityPort`.
 
 ### 3.3 Lịch hẹn và lượt khám
 
@@ -465,3 +467,4 @@ Khi thêm, các bảng này vẫn phải đủ 8 cột bắt buộc và tuân th
 | v1.0 | 07/08/2026 | Bản đầu tiên, dựng từ PRD v1.0 và PLAN v1.0 |
 | v1.1 | 08/08/2026 | Thay mô hình vai trò cứng (`user_role.role` enum) bằng RBAC + Data Scope: thêm `department`, `role`, `permission`, `role_permission`, `break_glass_session`; `user_role` đổi sang trỏ `role_id`. Xem `docs/DECISIONS.md` #013-#016. Scope `branch`/đa chi nhánh (liên quan E4) vẫn hoãn — chỉ giữ 4 mức `none`/`personal`/`department`/`global`. |
 | v1.2 | 10/08/2026 | S1-04 (Auth): thêm `user_session` (refresh token, rotation + reuse detection); `user_account` thêm `failed_login_count`/`last_failed_login_at`/`locked_until` (khoá tài khoản tạm). Xem `docs/DECISIONS.md` #019-#020. |
+| v1.3 | 11/08/2026 | S2-01 (patient): vá lệch giữa sơ đồ mermaid và mô tả chi tiết ở `.claude/docs/data-model.md` — thêm `address_json` (PRD PAT-01, P0) và `identity_verified_at` (cột chờ sẵn liên-tenant v2+, đi cùng `global_patient_ref`) vào bảng `PATIENT`. Xem `docs/DECISIONS.md` #024. |

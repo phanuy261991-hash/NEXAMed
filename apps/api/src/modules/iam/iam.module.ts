@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { NOTIFICATION_PORT } from '@nexamed/core';
@@ -18,7 +18,14 @@ import { NoopNotificationAdapter } from '../../infrastructure/notification/noop.
  * class+method+IP) — không áp ThrottlerGuard toàn cục để không vô tình giới hạn các endpoint
  * tương lai chưa bàn tới. Xem docs/DECISIONS.md #014 (break-glass coi login đã có rate limit sẵn
  * làm tiền lệ).
+ *
+ * `@Global()` (S2-01): `BreakGlassService` cần visible từ MỌI module domain tương lai
+ * (patient/appointment/encounter/prescription) vì `PermissionGuard` (đặt ở `CommonModule`,
+ * cũng global) inject nó — Nest resolve dependency của một global provider theo context của
+ * module đang DÙNG guard đó (ví dụ `PatientModule`), không phải module định nghĩa guard, nên
+ * `BreakGlassService` phải tự nó global thay vì chỉ "chảy qua" `CommonModule.imports`.
  */
+@Global()
 @Module({
   imports: [JwtModule.register({}), ThrottlerModule.forRoot([{ name: 'login', ttl: 60_000, limit: 10 }])],
   controllers: [AuthController, BreakGlassController],
@@ -31,5 +38,6 @@ import { NoopNotificationAdapter } from '../../infrastructure/notification/noop.
     BreakGlassRepository,
     { provide: NOTIFICATION_PORT, useClass: NoopNotificationAdapter },
   ],
+  exports: [BreakGlassService],
 })
 export class IamModule {}

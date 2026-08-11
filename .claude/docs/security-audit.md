@@ -57,6 +57,8 @@ Lý do `doctor.encounter.read = global` (không phải `personal`+break-glass nh
 
 Nguyên tắc chung: quyền kiểm ở tầng service/repository (guard đọc `role_permission` + lọc theo `data_scope`), không chỉ ẩn nút trên UI. `system_admin` **không** có `patient.read`/`encounter.read` nào ở mức nào — không có đường tắt xem dữ liệu lâm sàng thường trực, chỉ qua break-glass như mọi vai trò khác.
 
+**Hiện thực (chốt ở S2-01, `apps/api/src/common/permission.guard.ts`)**: `PermissionGuard` + decorator `@RequirePermission(module, action, { entityIdParam? })`. Guard gộp `data_scope` từ mọi vai trò user đang giữ (`maxDataScope`, lấy scope rộng nhất — `packages/core/src/rbac/data-scope.ts`); `none`/không có dòng `role_permission` nào → nếu route có `entityIdParam` thì thử `BreakGlassService.tryConsume()`, không có phiên hợp lệ thì `403` với `error.details.breakGlassAvailable: true`; route list/create không có `entityIdParam` nên bị chặn `none` là chặn hẳn, không break-glass được (đúng tinh thần "break-glass áp dụng khi bị chặn bởi scope cho một bản ghi cụ thể"). Scope khác `none` (`personal`/`department`/`global`) được gắn vào `req.dataScope` cho service/repository tự quyết định có cần lọc thêm hay không — **giới hạn đã biết**: các bảng chưa có khái niệm "chủ sở hữu" rõ ràng trong tài liệu này (ví dụ `patient`) coi `personal`/`department` tương đương `global` (không lọc), vì ma trận mặc định seed sẵn (`packages/core/src/rbac/permissions.ts`) không dùng hai scope đó cho các permission như vậy — chỉ trở thành vấn đề thật nếu `clinic_admin` tự cấu hình vai trò tuỳ biến qua ADM-07 (P1, chưa hiện thực).
+
 ## Xác thực
 
 - JWT access token 15 phút + refresh token httpOnly cookie, xoay vòng mỗi lần refresh.

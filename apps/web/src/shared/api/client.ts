@@ -1,16 +1,38 @@
+import createClient, { type Middleware } from 'openapi-fetch';
 import type { AppConfig } from '../../app/config';
+import type { paths } from './openapi-schema';
 
 /**
- * Wrapper `fetch` tối giản — chỉ đủ dùng cho luồng đăng nhập (login/refresh/logout/me) ở S1-08.
- * S1-09 sẽ thay bằng client sinh từ OpenAPI + TanStack Query (đúng phạm vi plan.md) — không mở
- * rộng thêm ở đây (không retry, không cache, không tự refresh khi 401 — S1-09 lo).
+ * Client HTTP sinh từ OpenAPI (`apps/api/openapi/openapi.json`, sinh từ Zod schema ở
+ * `@nexamed/shared` — xem `apps/api/scripts/generate-openapi.ts`). Thay thế wrapper `fetch` tự
+ * viết ở S1-08 (S1-09, xem docs/DECISIONS.md). Chạy `pnpm --filter @nexamed/web run api:codegen`
+ * sau khi `pnpm --filter @nexamed/api run openapi:generate` để cập nhật type khi contract đổi.
  */
 let currentConfig: AppConfig | null = null;
+let currentAccessToken: string | undefined;
 
 /** Gọi đúng 1 lần ở `main.tsx` sau khi `loadAppConfig()` xong, trước khi render app. */
 export function configureApiClient(config: AppConfig): void {
   currentConfig = config;
+  client = createClient<paths>({ baseUrl: config.apiBaseUrl, credentials: 'include' });
+  client.use(authMiddleware);
 }
+
+/** Gọi mỗi khi phiên đăng nhập đổi (login/refresh/logout) — xem `auth.store.ts`. */
+export function setAccessToken(token: string | undefined): void {
+  currentAccessToken = token;
+}
+
+const authMiddleware: Middleware = {
+  onRequest({ request }) {
+    if (currentAccessToken) {
+      request.headers.set('Authorization', `Bearer ${currentAccessToken}`);
+    }
+    return request;
+  },
+};
+
+let client = createClient<paths>({ baseUrl: '', credentials: 'include' });
 
 export class ApiError extends Error {
   constructor(
@@ -23,37 +45,30 @@ export class ApiError extends Error {
   }
 }
 
-export interface ApiFetchOptions {
-  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-  body?: unknown;
-  accessToken?: string;
+/** Truy cập client đã cấu hình `baseUrl`/cookie/Authorization — dùng trong `*.api.ts` của từng feature. */
+export function getApiClient() {
+  if (!currentConfig) {
+    throw new Error('getApiClient() gọi trước khi configureApiClient() — kiểm tra thứ tự bootstrap trong main.tsx.');
+  }
+  return client;
 }
 
-/** Parse envelope `{data,meta}`/`{error}` theo .claude/docs/architecture.md. */
-export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
-  if (!currentConfig) {
-    throw new Error('apiFetch gọi trước khi configureApiClient() — kiểm tra thứ tự bootstrap trong main.tsx.');
+interface Envelope<T> {
+  data: T;
+}
+
+interface ErrorEnvelope {
+  error: { code: string; message: string; details?: unknown };
+}
+
+/** Bóc `{data,meta}` thành `T`, hoặc ném `ApiError` từ `{error}` — theo .claude/docs/architecture.md. */
+export function unwrap<T>(result: { data?: Envelope<T>; error?: ErrorEnvelope }): T {
+  if (result.error) {
+    const err = result.error.error;
+    throw new ApiError(err?.code ?? 'UNKNOWN_ERROR', err?.message ?? 'Có lỗi xảy ra, vui lòng thử lại.', err?.details);
   }
-
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (options.accessToken) {
-    headers.Authorization = `Bearer ${options.accessToken}`;
+  if (!result.data) {
+    throw new ApiError('UNKNOWN_ERROR', 'Không nhận được dữ liệu từ server.');
   }
-
-  const res = await fetch(`${currentConfig.apiBaseUrl}${path}`, {
-    method: options.method ?? 'GET',
-    headers,
-    // Bắt buộc để cookie refresh_token (httpOnly, path=/api/v1/auth) tự gửi kèm request.
-    credentials: 'include',
-    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
-  });
-
-  const json: unknown = await res.json().catch(() => null);
-
-  if (!res.ok) {
-    const error = (json as { error?: { code?: string; message?: string; details?: unknown } } | null)?.error;
-    throw new ApiError(error?.code ?? 'UNKNOWN_ERROR', error?.message ?? `HTTP ${res.status}`, error?.details);
-  }
-
-  return (json as { data: T }).data;
+  return result.data.data;
 }

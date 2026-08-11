@@ -53,6 +53,7 @@ model Tenant {
   auditLogs         AuditLog[]
   breakGlassSessions BreakGlassSession[]
   userSessions      UserSession[]
+  patients          Patient[]
 
   @@map("tenant")
 }
@@ -339,6 +340,59 @@ model CodeSequence {
 
   @@unique([tenantId, prefix])
   @@map("code_sequence")
+}
+
+// Hồ sơ hành chính bệnh nhân (S2-01, PAT-01) — xem .claude/docs/data-model.md, docs/ERD.md.
+// `nationalIdEnc`/`nationalIdHash`: mã hoá AES-256-GCM + hash HMAC-SHA256 tra trùng
+// (apps/api/src/infrastructure/crypto/pii-encryption.ts), CCCD tuỳ chọn (PAT-01) nên cả hai
+// nullable. `addressJson`/`identityVerifiedAt`: thêm ở S2-01 để vá lệch ERD.md/data-model.md
+// (docs/DECISIONS.md #024) — `identityVerifiedAt` luôn null ở v1, chuẩn bị cho liên-tenant v3+
+// cùng `globalPatientRef`. Unique `(tenantId, nationalIdHash)` WHERE NOT NULL không biểu diễn
+// được bằng Prisma schema (partial unique index) — thêm bằng raw SQL trong migration.
+model Patient {
+  id                 String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId           String    @map("tenant_id") @db.Uuid
+  patientCode        String    @map("patient_code")
+  fullName           String    @map("full_name")
+  dob                DateTime  @db.Date
+  gender             String
+  phone              String
+  nationalIdEnc      Bytes?    @map("national_id_enc")
+  nationalIdHash     String?   @map("national_id_hash")
+  addressJson        Json?     @map("address_json") @db.JsonB
+  allergyNote        String?   @map("allergy_note")
+  mergedIntoId       String?   @map("merged_into_id") @db.Uuid
+  globalPatientRef   String?   @map("global_patient_ref") @db.Uuid
+  identityVerifiedAt DateTime? @map("identity_verified_at") @db.Timestamptz(6)
+  // Cột dẫn xuất (S2-02, PAT-02) — Postgres GENERATED ALWAYS AS (...) STORED từ full_name (bỏ
+  // dấu + viết thường qua hàm nexamed_unaccent_lower(), xem migration `*_patient_search`).
+  // KHÔNG bao giờ ghi trực tiếp field này từ Prisma (DB tự tính, ghi vào sẽ lỗi) —
+  // PatientRepository không đưa searchKey vào bất kỳ `data: {...}` create/update nào. Khai báo
+  // `String?` (không phải `String`) dù thực tế DB không bao giờ null (full_name NOT NULL) — chỉ
+  // để Prisma không bắt buộc field này trong `PatientCreateInput`/`PatientUncheckedCreateInput`
+  // (Prisma không có khái niệm "generated column, chỉ đọc" nên coi mọi field NOT NULL là bắt
+  // buộc phải truyền lúc tạo).
+  searchKey          String?   @map("search_key")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  // Composite FK (tenant_id, merged_into_id) -> patient(tenant_id, id): luồng gộp hồ sơ trùng
+  // (PAT-04, chưa hiện thực ở S2-01) — bản ghi nguồn không xoá, chỉ trỏ sang bản ghi đích.
+  mergedInto Patient?  @relation("PatientMerge", fields: [tenantId, mergedIntoId], references: [tenantId, id])
+  mergedFrom Patient[] @relation("PatientMerge")
+
+  // Đích của composite FK (tenant_id, id) từ appointment/encounter (S2-05, S3) sau này.
+  @@unique([tenantId, id])
+  @@unique([tenantId, patientCode])
+  @@map("patient")
 }
 
 // Append-only — không updated_at, không deleted_at, không version (ngoại lệ đã ghi trong data-model.md).

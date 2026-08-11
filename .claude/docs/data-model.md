@@ -55,10 +55,10 @@ Thay thế mô hình vai trò cứng cũ (enum `UserRoleName` trực tiếp trê
 
 ### patient
 `full_name`, `dob`, `gender`, `phone`, `national_id`, `address_json`, `allergy_note`.
-- `national_id` mã hoá at-rest; cột `national_id_hash` (SHA-256 + salt hệ thống) để tra trùng.
-- Unique `(tenant_id, national_id_hash)`. Trùng họ tên + ngày sinh chỉ cảnh báo ở UI, không chặn.
+- `national_id` mã hoá at-rest (AES-256-GCM, `apps/api/src/infrastructure/crypto/pii-encryption.ts`); cột `national_id_hash` (HMAC-SHA256 dùng chính `ENCRYPTION_KEY` làm khoá — tương đương "SHA-256 + salt hệ thống") để tra trùng.
+- Partial unique `(tenant_id, national_id_hash) WHERE national_id_hash IS NOT NULL` (CCCD tuỳ chọn — không thể `UNIQUE` thường vì sẽ chặn nhiều bệnh nhân cùng NULL). Trùng họ tên + ngày sinh chỉ cảnh báo ở UI, không chặn (S2-03).
 - Có `merged_into_id` phục vụ luồng gộp hồ sơ trùng trong cùng tenant; không xoá bản ghi nguồn.
-- **Chuẩn bị cho hồ sơ dùng chung liên tenant (v2+)**: cột `global_patient_ref uuid NULL` + `identity_verified_at timestamptz NULL`. v1 luôn để null, mọi truy vấn vẫn đi theo `(tenant_id, id)`. Việc phân giải danh tính đi qua `PatientIdentityPort` (adapter v1 trả chính `patient.id`), nên khi bật master patient index chỉ cần thay adapter, không sửa service. **Không** viết code đọc dữ liệu bệnh nhân xuyên tenant ở v1.
+- **Chuẩn bị cho hồ sơ dùng chung liên tenant (v3+)**: cột `global_patient_ref uuid NULL` + `identity_verified_at timestamptz NULL`. v1 luôn để null, mọi truy vấn vẫn đi theo `(tenant_id, id)`. Việc phân giải danh tính đi qua `PatientIdentityPort` (adapter v1 trả chính `patient.id`), nên khi bật master patient index chỉ cần thay adapter, không sửa service. **Không** viết code đọc dữ liệu bệnh nhân xuyên tenant ở v1.
 
 ### insurance_card
 `patient_id`, `card_no` (mã hoá), `valid_from`, `valid_to`, `benefit_rate`, `initial_facility_code`.

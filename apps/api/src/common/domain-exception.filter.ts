@@ -16,6 +16,10 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   AUTH_ACCOUNT_DISABLED: HttpStatus.FORBIDDEN,
   AUTH_REFRESH_TOKEN_INVALID: HttpStatus.UNAUTHORIZED,
   AUTH_REFRESH_TOKEN_REUSED: HttpStatus.UNAUTHORIZED,
+  // Xung đột với trạng thái hiện có (trùng CCCD, mất optimistic lock) — 409, không phải 422
+  // (422 dành cho vi phạm quy tắc nghiệp vụ không liên quan tới trạng thái đồng thời).
+  PATIENT_DUPLICATE_NATIONAL_ID: HttpStatus.CONFLICT,
+  CONCURRENT_MODIFICATION: HttpStatus.CONFLICT,
 };
 
 /**
@@ -57,8 +61,24 @@ export class DomainExceptionFilter implements ExceptionFilter {
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
       const body = exception.getResponse();
-      const message = typeof body === 'string' ? body : ((body as { message?: string }).message ?? exception.message);
-      response.status(status).json({ error: { code: HttpStatus[status] ?? 'ERROR', message } });
+      if (typeof body === 'string') {
+        response.status(status).json({ error: { code: HttpStatus[status] ?? 'ERROR', message: body } });
+        return;
+      }
+      // Cho phép exception ném body dạng object mang thêm field tuỳ biến (ví dụ
+      // `breakGlassAvailable` của PermissionGuard) — field lạ ngoài message/code/statusCode/error
+      // mặc định của Nest được gói vào `details`, không đổi hình dạng response cho các
+      // HttpException thường (không có field lạ thì không có `details`).
+      const bodyObj = body as Record<string, unknown>;
+      const knownKeys = new Set(['message', 'code', 'statusCode', 'error']);
+      const details = Object.fromEntries(Object.entries(bodyObj).filter(([key]) => !knownKeys.has(key)));
+      response.status(status).json({
+        error: {
+          code: typeof bodyObj.code === 'string' ? bodyObj.code : (HttpStatus[status] ?? 'ERROR'),
+          message: typeof bodyObj.message === 'string' ? bodyObj.message : exception.message,
+          ...(Object.keys(details).length > 0 ? { details } : {}),
+        },
+      });
       return;
     }
 

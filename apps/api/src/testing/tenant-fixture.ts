@@ -39,6 +39,11 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       // Thứ tự xoá theo FK: bảng con trước bảng cha. deleteMany trên bảng không có dòng nào
       // khớp là no-op an toàn — không cần biết trước caller có seed role/session hay không.
       await prisma.auditLog.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // patient tự tham chiếu (merged_into_id) — bỏ tham chiếu trước khi xoá để không đụng FK
+      // dù test S2-01 hiện chưa seed dữ liệu gộp hồ sơ (PAT-04 chưa hiện thực).
+      await prisma.patient.updateMany({ where: { tenantId: { in: tenantIds } }, data: { mergedIntoId: null } });
+      await prisma.patient.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await prisma.codeSequence.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.userSession.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.rolePermission.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.userRole.deleteMany({ where: { tenantId: { in: tenantIds } } });

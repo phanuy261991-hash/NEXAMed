@@ -28,7 +28,7 @@ export function AppBootstrap() {
     async function bootstrap() {
       try {
         const token = await refresh();
-        const user = await getMe(token.accessToken);
+        const user = await getMe();
         setSession(token.accessToken, user);
       } catch {
         clear();

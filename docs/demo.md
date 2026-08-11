@@ -46,7 +46,7 @@ Cập nhật tới thời điểm viết (xem `docs/CURRENT.md` để biết tr�
 - **S1-08 đã xong**: `apps/web` có app shell đầy đủ — router, luồng đăng nhập (kèm khôi phục phiên khi reload trang), layout với sidebar cố định trái, design token theo `.claude/docs/ui-guidelines.md`.
 - Sau đăng nhập thấy 2 mục sidebar: **Tổng quan** (Dashboard, mọi vai trò) và **Quản trị** (chỉ `clinic_admin`/`system_admin`) — cả hai hiện dạng "chưa có dữ liệu" (empty state), vì patient/appointment/encounter/prescription và các màn hình quản trị thật (tài khoản, cấu hình, nhật ký) đều thuộc S2 trở đi, chưa làm.
 - Menu Đặt lịch/Tiếp nhận/Khám bệnh/Kê đơn **chưa hiện** — chỉ hiện menu module đã có backend thật, thêm dần đúng sprint có module tương ứng.
-- API client phía web hiện là bản tối giản tự viết, chỉ đủ cho luồng đăng nhập (S1-09 sẽ thay bằng client sinh từ OpenAPI + TanStack Query).
+- **S1-09 đã xong**: API client phía web sinh từ OpenAPI (`openapi-fetch` + `openapi-typescript`, xem `docs/DECISIONS.md` #023), không còn là wrapper `fetch` tự viết. Đổi contract endpoint hiện có phải chạy lại `pnpm --filter @nexamed/api run openapi:generate` rồi `pnpm --filter @nexamed/web run api:codegen` trước khi thấy type mới ở web.
 
 ## Sự cố thường gặp
 

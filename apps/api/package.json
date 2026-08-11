@@ -12,7 +12,9 @@
     "db:generate": "prisma generate",
     "db:deploy": "node scripts/with-migrate-url.mjs migrate deploy",
     "db:seed": "tsx prisma/seed/index.ts",
-    "db:seed:dev-tenant": "tsx scripts/seed-dev-tenant.ts"
+    "db:seed:dev-tenant": "tsx scripts/seed-dev-tenant.ts",
+    "openapi:generate": "tsx scripts/generate-openapi.ts",
+    "perf:patient-search": "tsx scripts/perf-patient-search.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed/index.ts"
@@ -34,6 +36,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@asteasolutions/zod-to-openapi": "^7.3.0",
     "@nestjs/cli": "^10.4.9",
     "@nestjs/testing": "^10.4.15",
     "@swc/core": "^1.15.47",
