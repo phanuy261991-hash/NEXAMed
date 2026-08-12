@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { getMe, refresh } from '../features/auth/auth.api';
 import { useAuthStore } from '../features/auth/auth.store';
+import { setSessionExpiredHandler } from '../shared/api/client';
 
 /**
  * Khôi phục phiên đăng nhập lúc app khởi động (reload trang) — chỉ còn cookie refresh_token
@@ -24,6 +25,10 @@ export function AppBootstrap() {
       return;
     }
     hasRun.current = true;
+
+    // Access token hết hạn giữa chừng và refresh token (cookie) cũng không còn dùng được nữa —
+    // client.ts đã tự thử làm mới trước khi tới đây; chỉ khi đó thất bại mới coi là hết phiên thật.
+    setSessionExpiredHandler(clear);
 
     async function bootstrap() {
       try {
