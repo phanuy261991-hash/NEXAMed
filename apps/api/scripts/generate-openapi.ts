@@ -223,6 +223,35 @@ registry.registerPath({
 
 registry.registerPath({
   method: 'post',
+  path: '/api/v1/patients/{id}/photo',
+  tags: ['patient'],
+  summary: 'Upload/thay ảnh đại diện (docs/DECISIONS.md #034) — chỉ JPG/PNG (kiểm magic byte), tối đa 3MB, kèm version hiện có',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: patientIdParams,
+    body: {
+      content: {
+        'multipart/form-data': {
+          schema: z.object({
+            file: z.string().openapi({ format: 'binary', description: 'Ảnh JPG hoặc PNG' }),
+            version: z.coerce.number().int().positive(),
+          }),
+        },
+      },
+    },
+  },
+  responses: {
+    200: jsonResponse('Upload thành công, trả hồ sơ kèm photoUrl mới', envelope(patientDetailSchema)),
+    400: errorResponse('Sai định dạng ảnh (PATIENT_INVALID_PHOTO) hoặc quá 3MB'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền patient.update (có thể xin break-glass)'),
+    404: errorResponse('Không tìm thấy hồ sơ (không tồn tại hoặc thuộc tenant khác)'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
   path: '/api/v1/appointments',
   tags: ['appointment'],
   summary: 'Đặt lịch hẹn (APP-02) — chặn trùng khung giờ cùng bác sĩ ở tầng DB (APP-03)',

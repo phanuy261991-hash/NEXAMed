@@ -37,7 +37,7 @@ export function PatientDetailPage() {
 
   if (query.isPending) {
     return (
-      <div className="mx-auto max-w-4xl space-y-4 p-8">
+      <div className="space-y-4 p-6">
         <Skeleton className="h-6 w-40" />
         <Skeleton className="h-64 w-full rounded-lg" />
       </div>
@@ -100,7 +100,7 @@ export function PatientDetailPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl p-8">
+    <div className="p-6">
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">{patient.fullName}</h1>
@@ -122,6 +122,10 @@ export function PatientDetailPage() {
           values={editing && formValues ? formValues : patientDetailToFormValues(patient)}
           onChange={setFormValues}
           disabled={!editing}
+          patientId={patient.id}
+          patientCode={patient.patientCode}
+          photoUrl={patient.photoUrl}
+          version={patient.version}
         />
 
         {editing && (

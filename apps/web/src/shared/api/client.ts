@@ -124,6 +124,29 @@ export function getApiClient() {
   return client;
 }
 
+/**
+ * Upload `multipart/form-data` — `openapi-fetch` không tự serialize `FormData` (chỉ JSON.stringify
+ * body mặc định), nên endpoint upload file (ảnh đại diện bệnh nhân, docs/DECISIONS.md #034) gọi
+ * `fetch` trực tiếp thay vì qua `getApiClient()`. Không có retry-on-401 tự động như
+ * `authMiddleware` (chấp nhận được — ảnh không phải luồng chính, hết phiên giữa lúc upload thì
+ * người dùng thử lại là đủ, không đáng thêm độ phức tạp dùng chung cho một chỗ gọi duy nhất).
+ */
+export async function uploadFile<T>(path: string, formData: FormData): Promise<T> {
+  if (!currentConfig) {
+    throw new Error('uploadFile() gọi trước khi configureApiClient().');
+  }
+  const response = await fetch(`${currentConfig.apiBaseUrl}${path}`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: currentAccessToken ? { Authorization: `Bearer ${currentAccessToken}` } : undefined,
+    body: formData,
+  });
+  const body: unknown = await response.json();
+  return response.ok
+    ? unwrap<T>({ data: body as Envelope<T> })
+    : unwrap<T>({ error: body as ErrorEnvelope });
+}
+
 interface Envelope<T> {
   data: T;
 }

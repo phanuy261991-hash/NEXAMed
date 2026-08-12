@@ -14,10 +14,25 @@ export interface CreatePatientData {
   // (khác Json bắt buộc, nơi `null` bị hiểu là literal JSON "null") — xem prisma.io/docs.
   addressJson: Prisma.InputJsonValue | typeof Prisma.JsonNull;
   allergyNote: string | null;
+  // Mở rộng hồ sơ hành chính (docs/DECISIONS.md #034) — text/date tự do, không danh mục.
+  nationalIdIssuedAt: Date | null;
+  nationalIdIssuedPlace: string | null;
+  ethnicity: string | null;
+  nationality: string | null;
+  occupation: string | null;
+  insuranceNumber: string | null;
+  relativeFullName: string | null;
+  relativeRelationship: string | null;
+  relativePhone: string | null;
+  relativeAddress: string | null;
 }
 
-/** Chỉ field thật sự đổi mới nằm trong object — service tự quyết field nào có mặt. */
-export type UpdatePatientData = Partial<CreatePatientData>;
+/**
+ * Chỉ field thật sự đổi mới nằm trong object — service tự quyết field nào có mặt. `photoKey`
+ * không thuộc `CreatePatientData` (ảnh chỉ đổi qua endpoint upload riêng, `PatientService.
+ * uploadPhoto()` — không tạo được lúc `POST /patients` vì chưa có `id` để đặt tên key).
+ */
+export type UpdatePatientData = Partial<CreatePatientData> & { photoKey?: string | null };
 
 /** Chỗ DUY NHẤT gọi Prisma cho bảng `patient` — theo .claude/docs/coding-standards.md. */
 @Injectable()

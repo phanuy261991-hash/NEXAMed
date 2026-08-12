@@ -373,6 +373,21 @@ model Patient {
   mergedIntoId       String?   @map("merged_into_id") @db.Uuid
   globalPatientRef   String?   @map("global_patient_ref") @db.Uuid
   identityVerifiedAt DateTime? @map("identity_verified_at") @db.Timestamptz(6)
+  // Mở rộng hồ sơ hành chính (docs/DECISIONS.md #034) — tất cả nullable, không backfill, không
+  // ràng buộc DB mới. `nationality`/`ethnicity`/`occupation` là text tự do (không có danh mục
+  // DB — thiếu nguồn dữ liệu chính thức, cùng lý do đã tạm hoãn ICD-10 ở S3-01).
+  // `insuranceNumber` độc lập với module `insurance_card` (S2-04, chưa làm) — chỉ lưu/hiển thị.
+  photoKey                String?   @map("photo_key")
+  nationalIdIssuedAt      DateTime? @map("national_id_issued_at") @db.Date
+  nationalIdIssuedPlace   String?   @map("national_id_issued_place")
+  ethnicity               String?
+  nationality             String?
+  occupation              String?
+  insuranceNumber         String?   @map("insurance_number")
+  relativeFullName        String?   @map("relative_full_name")
+  relativeRelationship    String?   @map("relative_relationship")
+  relativePhone           String?   @map("relative_phone")
+  relativeAddress         String?   @map("relative_address")
   // Cột dẫn xuất (S2-02, PAT-02) — Postgres GENERATED ALWAYS AS (...) STORED từ full_name (bỏ
   // dấu + viết thường qua hàm nexamed_unaccent_lower(), xem migration `*_patient_search`).
   // KHÔNG bao giờ ghi trực tiếp field này từ Prisma (DB tự tính, ghi vào sẽ lỗi) —

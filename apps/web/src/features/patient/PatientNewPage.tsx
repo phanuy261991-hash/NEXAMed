@@ -61,7 +61,7 @@ export function PatientNewPage() {
   const submitting = checking || createMutation.isPending;
 
   return (
-    <div className="mx-auto max-w-4xl p-8">
+    <div className="p-6">
       <h1 className="mb-6 text-2xl font-semibold text-slate-900">Thêm bệnh nhân</h1>
 
       {duplicates && duplicates.length > 0 && (

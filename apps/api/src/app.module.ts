@@ -2,6 +2,7 @@ import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from './config/config.module';
 import { PersistenceModule } from './infrastructure/persistence/persistence.module';
 import { PortsModule } from './infrastructure/ports.module';
+import { StorageHttpModule } from './infrastructure/storage/storage-http.module';
 import { CommonModule } from './common/common.module';
 import { IamModule } from './modules/iam/iam.module';
 import { PatientModule } from './modules/patient/patient.module';
@@ -14,6 +15,7 @@ import { TenantContextMiddleware } from './common/tenant-context.middleware';
     ConfigModule,
     PersistenceModule,
     PortsModule,
+    StorageHttpModule,
     CommonModule,
     IamModule,
     PatientModule,

@@ -43,6 +43,7 @@
     "@testcontainers/postgresql": "^12.1.0",
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.0",
+    "@types/multer": "^2.2.0",
     "@types/node": "^20.17.6",
     "@types/supertest": "^7.2.1",
     "dotenv": "^16.4.5",

@@ -1,5 +1,21 @@
-import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Req,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import type { Request } from 'express';
+import { z } from 'zod';
 import {
   checkPatientDuplicateQuerySchema,
   createPatientRequestSchema,
@@ -12,7 +28,10 @@ import { RequirePermission } from '../../common/require-permission.decorator';
 import { AuditView } from '../../common/audit-view.decorator';
 import { AuditViewInterceptor } from '../../common/audit-view.interceptor';
 import { extractRequestMeta } from '../../common/request-meta';
-import { PatientService } from './patient.service';
+import { MAX_PHOTO_SIZE_BYTES, PatientService } from './patient.service';
+
+/** `version` đến từ multipart field dạng text (multer đặt vào `req.body` như mọi field không phải file). */
+const uploadPatientPhotoFormSchema = z.object({ version: z.coerce.number().int().positive() });
 
 @Controller('patients')
 @UseGuards(JwtAuthGuard, PermissionGuard)
@@ -69,5 +88,28 @@ export class PatientController {
     const dto = updatePatientRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
     return this.patientService.updatePatient(tenantId, userId, id, dto, extractRequestMeta(req));
+  }
+
+  /**
+   * Upload/thay ảnh đại diện (docs/DECISIONS.md #034) — tái dùng quyền `patient.update` (đổi
+   * ảnh cũng là sửa hồ sơ hành chính). Magic-byte/kích thước kiểm ở `PatientService.uploadPhoto`
+   * (không tin `Content-Type` multer đọc từ header — .claude/docs/security-audit.md).
+   */
+  @Post(':id/photo')
+  @RequirePermission('patient', 'update', { entityIdParam: 'id' })
+  @HttpCode(200)
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_PHOTO_SIZE_BYTES } }))
+  async uploadPhoto(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Body() body: unknown,
+    @Req() req: Request,
+  ) {
+    if (!file) {
+      throw new BadRequestException('Thiếu file ảnh.');
+    }
+    const { version } = uploadPatientPhotoFormSchema.parse(body);
+    const { userId, tenantId } = req.user!;
+    return this.patientService.uploadPhoto(tenantId, userId, id, version, file.buffer, extractRequestMeta(req));
   }
 }

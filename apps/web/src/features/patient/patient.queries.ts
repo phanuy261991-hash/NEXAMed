@@ -2,7 +2,7 @@ import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClie
 import type { CreatePatientRequest, UpdatePatientRequest } from '@nexamed/shared';
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
-import { createPatient, getPatient, listPatients, updatePatient } from './patient.api';
+import { createPatient, getPatient, listPatients, updatePatient, uploadPatientPhoto } from './patient.api';
 
 const PATIENT_LIST_LIMIT = 50;
 
@@ -71,6 +71,19 @@ export function useUpdatePatientMutation(id: string) {
     onSuccess: (updated) => {
       queryClient.setQueryData(queryKey(tenantId, 'patient', 'detail', id), updated);
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'patient', 'list') });
+    },
+  });
+}
+
+/** Ảnh đại diện (docs/DECISIONS.md #034) — cập nhật thẳng cache chi tiết, không cần invalidate
+ * danh sách (list không hiển thị ảnh, xem ghi chú ở `patientSummarySchema`). */
+export function useUploadPatientPhotoMutation(id: string) {
+  const { tenantId } = useAppConfig();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ file, version }: { file: File; version: number }) => uploadPatientPhoto(id, file, version),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(queryKey(tenantId, 'patient', 'detail', id), updated);
     },
   });
 }

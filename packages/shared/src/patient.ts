@@ -11,33 +11,85 @@ export type PatientGender = z.infer<typeof patientGenderSchema>;
 /**
  * Địa chỉ — cấu trúc tối thiểu cho v1 (chưa dùng mã địa giới hành chính chuẩn, xem
  * docs/product/future-modules-reference.md mục 2.1, để dành cho v3+ khi làm XML BHYT).
+ * `neighborhood` (Khu phố) thêm ở docs/DECISIONS.md #034. `district` (Quận/Huyện) giữ lại để
+ * tương thích ngược với dữ liệu cũ nhưng không còn input trên UI (đã sáp nhập 2 cấp Tỉnh→Xã).
  */
 export const patientAddressSchema = z.object({
   street: z.string().min(1).optional(),
   ward: z.string().min(1).optional(),
+  neighborhood: z.string().min(1).optional(),
   district: z.string().min(1).optional(),
   province: z.string().min(1).optional(),
 });
 export type PatientAddress = z.infer<typeof patientAddressSchema>;
 
-export const createPatientRequestSchema = z.object({
+/**
+ * Mở rộng hồ sơ hành chính (docs/DECISIONS.md #034) — `ethnicity`/`nationality`/`occupation` là
+ * text tự do (không danh mục DB, thiếu nguồn dữ liệu chính thức). `insuranceNumber` độc lập với
+ * module Thẻ BHYT (`insurance_card`, S2-04 chưa làm) — chỉ lưu/hiển thị, không tính chi trả.
+ */
+const patientRequestFieldsSchema = z.object({
   fullName: z.string().min(1),
   dob: z.string().date(),
   gender: patientGenderSchema,
   phone: z.string().min(8).max(15),
   nationalId: z.string().min(9).max(12).optional(),
+  nationalIdIssuedAt: z.string().date().optional(),
+  nationalIdIssuedPlace: z.string().min(1).optional(),
+  ethnicity: z.string().min(1).optional(),
+  nationality: z.string().min(1).optional(),
+  occupation: z.string().min(1).optional(),
+  insuranceNumber: z.string().min(1).optional(),
   address: patientAddressSchema.optional(),
   allergyNote: z.string().optional(),
+  relativeFullName: z.string().min(1).optional(),
+  relativeRelationship: z.string().min(1).optional(),
+  relativePhone: z.string().min(1).optional(),
+  relativeAddress: z.string().min(1).optional(),
+});
+
+/** Ngưỡng tuổi trưởng thành — dùng cho ràng buộc CCCD bắt buộc bên dưới (docs/DECISIONS.md #035). */
+const ADULT_AGE_THRESHOLD = 18;
+
+/** Tuổi tròn năm tính từ `dob` (chuỗi `YYYY-MM-DD`) tới `now`. Tham số `now` chỉ để test tái lập được. */
+export function calculateAgeYears(dob: string, now: Date = new Date()): number {
+  const birth = new Date(dob);
+  let age = now.getFullYear() - birth.getFullYear();
+  const hasHadBirthdayThisYear =
+    now.getMonth() > birth.getMonth() || (now.getMonth() === birth.getMonth() && now.getDate() >= birth.getDate());
+  if (!hasHadBirthdayThisYear) age -= 1;
+  return age;
+}
+
+/**
+ * PAT-01 mở rộng (docs/DECISIONS.md #035, yêu cầu chủ dự án): bệnh nhân từ 18 tuổi bắt buộc có
+ * CCCD; dưới 18 vẫn tuỳ chọn (khớp edge case "trẻ em/người không giấy tờ" đã có ở
+ * .claude/docs/clinical-workflow.md). **Chỉ áp cho TẠO MỚI** — không áp lại cho sửa hồ sơ (tránh
+ * chặn sửa các hồ sơ người lớn đã tạo trước khi có ràng buộc này mà chưa có CCCD).
+ */
+export const createPatientRequestSchema = patientRequestFieldsSchema.superRefine((data, ctx) => {
+  if (calculateAgeYears(data.dob) >= ADULT_AGE_THRESHOLD && !data.nationalId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['nationalId'],
+      message: `Bệnh nhân từ ${ADULT_AGE_THRESHOLD} tuổi trở lên bắt buộc nhập CCCD/CMND.`,
+    });
+  }
 });
 export type CreatePatientRequest = z.infer<typeof createPatientRequestSchema>;
 
 /** Sửa hồ sơ — bắt buộc gửi kèm `version` đang có ở client cho optimistic locking. */
-export const updatePatientRequestSchema = createPatientRequestSchema.partial().extend({
+export const updatePatientRequestSchema = patientRequestFieldsSchema.partial().extend({
   version: z.number().int().positive(),
 });
 export type UpdatePatientRequest = z.infer<typeof updatePatientRequestSchema>;
 
-/** Dòng trong danh sách — không kèm CCCD đầy đủ, chỉ báo có/không để tránh giải mã hàng loạt. */
+/**
+ * Dòng trong danh sách — không kèm CCCD đầy đủ. `nationalIdMasked` (docs/DECISIONS.md #034, cột
+ * CCCD ở màn hình Danh sách bệnh nhân) chỉ lộ 4 số cuối ("••••1234"), không phải giá trị giải mã
+ * đầy đủ như `patientDetailSchema.nationalId` — vẫn giữ tinh thần "tránh lộ nguyên CCCD trên màn
+ * hình dùng chung" dù server phải giải mã để cắt lấy 4 số cuối.
+ */
 export const patientSummarySchema = z.object({
   id: z.string().uuid(),
   patientCode: z.string(),
@@ -46,15 +98,32 @@ export const patientSummarySchema = z.object({
   gender: patientGenderSchema,
   phone: z.string(),
   hasNationalId: z.boolean(),
+  nationalIdMasked: z.string().nullable(),
+  address: patientAddressSchema.nullable(),
   version: z.number().int(),
 });
 export type PatientSummary = z.infer<typeof patientSummarySchema>;
 
-/** Chi tiết một hồ sơ — kèm CCCD đã giải mã (chỉ khi xem đúng 1 bản ghi, không phải danh sách). */
+/**
+ * Chi tiết một hồ sơ — kèm CCCD đã giải mã (chỉ khi xem đúng 1 bản ghi, không phải danh sách).
+ * `photoUrl`: signed URL có hạn tính tại thời điểm response (không phải giá trị lưu DB — DB chỉ
+ * giữ `photoKey`), null khi chưa có ảnh. Xem `apps/api/src/infrastructure/storage/signed-url.ts`.
+ */
 export const patientDetailSchema = patientSummarySchema.extend({
   nationalId: z.string().nullable(),
+  nationalIdIssuedAt: z.string().nullable(),
+  nationalIdIssuedPlace: z.string().nullable(),
+  ethnicity: z.string().nullable(),
+  nationality: z.string().nullable(),
+  occupation: z.string().nullable(),
+  insuranceNumber: z.string().nullable(),
   address: patientAddressSchema.nullable(),
   allergyNote: z.string().nullable(),
+  relativeFullName: z.string().nullable(),
+  relativeRelationship: z.string().nullable(),
+  relativePhone: z.string().nullable(),
+  relativeAddress: z.string().nullable(),
+  photoUrl: z.string().nullable(),
   mergedIntoId: z.string().uuid().nullable(),
 });
 export type PatientDetail = z.infer<typeof patientDetailSchema>;

@@ -371,6 +371,14 @@ export interface paths {
                                     gender: "male" | "female" | "other";
                                     phone: string;
                                     hasNationalId: boolean;
+                                    nationalIdMasked: string | null;
+                                    address: {
+                                        street?: string;
+                                        ward?: string;
+                                        neighborhood?: string;
+                                        district?: string;
+                                        province?: string;
+                                    } | null;
                                     version: number;
                                 }[];
                                 nextCursor: string | null;
@@ -430,13 +438,25 @@ export interface paths {
                         gender: "male" | "female" | "other";
                         phone: string;
                         nationalId?: string;
+                        /** Format: date */
+                        nationalIdIssuedAt?: string;
+                        nationalIdIssuedPlace?: string;
+                        ethnicity?: string;
+                        nationality?: string;
+                        occupation?: string;
+                        insuranceNumber?: string;
                         address?: {
                             street?: string;
                             ward?: string;
+                            neighborhood?: string;
                             district?: string;
                             province?: string;
                         };
                         allergyNote?: string;
+                        relativeFullName?: string;
+                        relativeRelationship?: string;
+                        relativePhone?: string;
+                        relativeAddress?: string;
                     };
                 };
             };
@@ -458,15 +478,28 @@ export interface paths {
                                 gender: "male" | "female" | "other";
                                 phone: string;
                                 hasNationalId: boolean;
-                                version: number;
-                                nationalId: string | null;
+                                nationalIdMasked: string | null;
                                 address: {
                                     street?: string;
                                     ward?: string;
+                                    neighborhood?: string;
                                     district?: string;
                                     province?: string;
                                 } | null;
+                                version: number;
+                                nationalId: string | null;
+                                nationalIdIssuedAt: string | null;
+                                nationalIdIssuedPlace: string | null;
+                                ethnicity: string | null;
+                                nationality: string | null;
+                                occupation: string | null;
+                                insuranceNumber: string | null;
                                 allergyNote: string | null;
+                                relativeFullName: string | null;
+                                relativeRelationship: string | null;
+                                relativePhone: string | null;
+                                relativeAddress: string | null;
+                                photoUrl: string | null;
                                 /** Format: uuid */
                                 mergedIntoId: string | null;
                             };
@@ -565,6 +598,14 @@ export interface paths {
                                     gender: "male" | "female" | "other";
                                     phone: string;
                                     hasNationalId: boolean;
+                                    nationalIdMasked: string | null;
+                                    address: {
+                                        street?: string;
+                                        ward?: string;
+                                        neighborhood?: string;
+                                        district?: string;
+                                        province?: string;
+                                    } | null;
                                     version: number;
                                 }[];
                             };
@@ -648,15 +689,28 @@ export interface paths {
                                 gender: "male" | "female" | "other";
                                 phone: string;
                                 hasNationalId: boolean;
-                                version: number;
-                                nationalId: string | null;
+                                nationalIdMasked: string | null;
                                 address: {
                                     street?: string;
                                     ward?: string;
+                                    neighborhood?: string;
                                     district?: string;
                                     province?: string;
                                 } | null;
+                                version: number;
+                                nationalId: string | null;
+                                nationalIdIssuedAt: string | null;
+                                nationalIdIssuedPlace: string | null;
+                                ethnicity: string | null;
+                                nationality: string | null;
+                                occupation: string | null;
+                                insuranceNumber: string | null;
                                 allergyNote: string | null;
+                                relativeFullName: string | null;
+                                relativeRelationship: string | null;
+                                relativePhone: string | null;
+                                relativeAddress: string | null;
+                                photoUrl: string | null;
                                 /** Format: uuid */
                                 mergedIntoId: string | null;
                             };
@@ -736,13 +790,25 @@ export interface paths {
                         gender?: "male" | "female" | "other";
                         phone?: string;
                         nationalId?: string;
+                        /** Format: date */
+                        nationalIdIssuedAt?: string;
+                        nationalIdIssuedPlace?: string;
+                        ethnicity?: string;
+                        nationality?: string;
+                        occupation?: string;
+                        insuranceNumber?: string;
                         address?: {
                             street?: string;
                             ward?: string;
+                            neighborhood?: string;
                             district?: string;
                             province?: string;
                         };
                         allergyNote?: string;
+                        relativeFullName?: string;
+                        relativeRelationship?: string;
+                        relativePhone?: string;
+                        relativeAddress?: string;
                         version: number;
                     };
                 };
@@ -765,15 +831,28 @@ export interface paths {
                                 gender: "male" | "female" | "other";
                                 phone: string;
                                 hasNationalId: boolean;
-                                version: number;
-                                nationalId: string | null;
+                                nationalIdMasked: string | null;
                                 address: {
                                     street?: string;
                                     ward?: string;
+                                    neighborhood?: string;
                                     district?: string;
                                     province?: string;
                                 } | null;
+                                version: number;
+                                nationalId: string | null;
+                                nationalIdIssuedAt: string | null;
+                                nationalIdIssuedPlace: string | null;
+                                ethnicity: string | null;
+                                nationality: string | null;
+                                occupation: string | null;
+                                insuranceNumber: string | null;
                                 allergyNote: string | null;
+                                relativeFullName: string | null;
+                                relativeRelationship: string | null;
+                                relativePhone: string | null;
+                                relativeAddress: string | null;
+                                photoUrl: string | null;
                                 /** Format: uuid */
                                 mergedIntoId: string | null;
                             };
@@ -843,6 +922,167 @@ export interface paths {
                 };
             };
         };
+        trace?: never;
+    };
+    "/api/v1/patients/{id}/photo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload/thay ảnh đại diện (docs/DECISIONS.md #034) — chỉ JPG/PNG (kiểm magic byte), tối đa 3MB, kèm version hiện có */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "multipart/form-data": {
+                        /**
+                         * Format: binary
+                         * @description Ảnh JPG hoặc PNG
+                         */
+                        file: string;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Upload thành công, trả hồ sơ kèm photoUrl mới */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                patientCode: string;
+                                fullName: string;
+                                dob: string;
+                                /** @enum {string} */
+                                gender: "male" | "female" | "other";
+                                phone: string;
+                                hasNationalId: boolean;
+                                nationalIdMasked: string | null;
+                                address: {
+                                    street?: string;
+                                    ward?: string;
+                                    neighborhood?: string;
+                                    district?: string;
+                                    province?: string;
+                                } | null;
+                                version: number;
+                                nationalId: string | null;
+                                nationalIdIssuedAt: string | null;
+                                nationalIdIssuedPlace: string | null;
+                                ethnicity: string | null;
+                                nationality: string | null;
+                                occupation: string | null;
+                                insuranceNumber: string | null;
+                                allergyNote: string | null;
+                                relativeFullName: string | null;
+                                relativeRelationship: string | null;
+                                relativePhone: string | null;
+                                relativeAddress: string | null;
+                                photoUrl: string | null;
+                                /** Format: uuid */
+                                mergedIntoId: string | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Sai định dạng ảnh (PATIENT_INVALID_PHOTO) hoặc quá 3MB */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền patient.update (có thể xin break-glass) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy hồ sơ (không tồn tại hoặc thuộc tenant khác) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/appointments": {

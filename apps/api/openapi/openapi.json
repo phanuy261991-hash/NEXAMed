@@ -596,6 +596,30 @@
                     "minLength": 9,
                     "maxLength": 12
                   },
+                  "nationalIdIssuedAt": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "nationalIdIssuedPlace": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "ethnicity": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "nationality": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "occupation": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "insuranceNumber": {
+                    "type": "string",
+                    "minLength": 1
+                  },
                   "address": {
                     "type": "object",
                     "properties": {
@@ -604,6 +628,10 @@
                         "minLength": 1
                       },
                       "ward": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "neighborhood": {
                         "type": "string",
                         "minLength": 1
                       },
@@ -619,6 +647,22 @@
                   },
                   "allergyNote": {
                     "type": "string"
+                  },
+                  "relativeFullName": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "relativeRelationship": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "relativePhone": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "relativeAddress": {
+                    "type": "string",
+                    "minLength": 1
                   }
                 },
                 "required": [
@@ -669,10 +713,7 @@
                         "hasNationalId": {
                           "type": "boolean"
                         },
-                        "version": {
-                          "type": "integer"
-                        },
-                        "nationalId": {
+                        "nationalIdMasked": {
                           "type": [
                             "string",
                             "null"
@@ -692,6 +733,10 @@
                               "type": "string",
                               "minLength": 1
                             },
+                            "neighborhood": {
+                              "type": "string",
+                              "minLength": 1
+                            },
                             "district": {
                               "type": "string",
                               "minLength": 1
@@ -702,7 +747,82 @@
                             }
                           }
                         },
+                        "version": {
+                          "type": "integer"
+                        },
+                        "nationalId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "nationalIdIssuedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "nationalIdIssuedPlace": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "ethnicity": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "nationality": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "occupation": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "insuranceNumber": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "allergyNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "relativeFullName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "relativeRelationship": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "relativePhone": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "relativeAddress": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "photoUrl": {
                           "type": [
                             "string",
                             "null"
@@ -724,10 +844,22 @@
                         "gender",
                         "phone",
                         "hasNationalId",
+                        "nationalIdMasked",
+                        "address",
                         "version",
                         "nationalId",
-                        "address",
+                        "nationalIdIssuedAt",
+                        "nationalIdIssuedPlace",
+                        "ethnicity",
+                        "nationality",
+                        "occupation",
+                        "insuranceNumber",
                         "allergyNote",
+                        "relativeFullName",
+                        "relativeRelationship",
+                        "relativePhone",
+                        "relativeAddress",
+                        "photoUrl",
                         "mergedIntoId"
                       ]
                     },
@@ -924,6 +1056,40 @@
                               "hasNationalId": {
                                 "type": "boolean"
                               },
+                              "nationalIdMasked": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "address": {
+                                "type": [
+                                  "object",
+                                  "null"
+                                ],
+                                "properties": {
+                                  "street": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "ward": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "neighborhood": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "district": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "province": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                }
+                              },
                               "version": {
                                 "type": "integer"
                               }
@@ -936,6 +1102,8 @@
                               "gender",
                               "phone",
                               "hasNationalId",
+                              "nationalIdMasked",
+                              "address",
                               "version"
                             ]
                           }
@@ -1104,6 +1272,40 @@
                               "hasNationalId": {
                                 "type": "boolean"
                               },
+                              "nationalIdMasked": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "address": {
+                                "type": [
+                                  "object",
+                                  "null"
+                                ],
+                                "properties": {
+                                  "street": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "ward": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "neighborhood": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "district": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "province": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                }
+                              },
                               "version": {
                                 "type": "integer"
                               }
@@ -1116,6 +1318,8 @@
                               "gender",
                               "phone",
                               "hasNationalId",
+                              "nationalIdMasked",
+                              "address",
                               "version"
                             ]
                           }
@@ -1263,10 +1467,7 @@
                         "hasNationalId": {
                           "type": "boolean"
                         },
-                        "version": {
-                          "type": "integer"
-                        },
-                        "nationalId": {
+                        "nationalIdMasked": {
                           "type": [
                             "string",
                             "null"
@@ -1286,6 +1487,10 @@
                               "type": "string",
                               "minLength": 1
                             },
+                            "neighborhood": {
+                              "type": "string",
+                              "minLength": 1
+                            },
                             "district": {
                               "type": "string",
                               "minLength": 1
@@ -1296,7 +1501,82 @@
                             }
                           }
                         },
+                        "version": {
+                          "type": "integer"
+                        },
+                        "nationalId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "nationalIdIssuedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "nationalIdIssuedPlace": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "ethnicity": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "nationality": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "occupation": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "insuranceNumber": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "allergyNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "relativeFullName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "relativeRelationship": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "relativePhone": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "relativeAddress": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "photoUrl": {
                           "type": [
                             "string",
                             "null"
@@ -1318,10 +1598,22 @@
                         "gender",
                         "phone",
                         "hasNationalId",
+                        "nationalIdMasked",
+                        "address",
                         "version",
                         "nationalId",
-                        "address",
+                        "nationalIdIssuedAt",
+                        "nationalIdIssuedPlace",
+                        "ethnicity",
+                        "nationality",
+                        "occupation",
+                        "insuranceNumber",
                         "allergyNote",
+                        "relativeFullName",
+                        "relativeRelationship",
+                        "relativePhone",
+                        "relativeAddress",
+                        "photoUrl",
                         "mergedIntoId"
                       ]
                     },
@@ -1486,6 +1778,30 @@
                     "minLength": 9,
                     "maxLength": 12
                   },
+                  "nationalIdIssuedAt": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "nationalIdIssuedPlace": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "ethnicity": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "nationality": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "occupation": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "insuranceNumber": {
+                    "type": "string",
+                    "minLength": 1
+                  },
                   "address": {
                     "type": "object",
                     "properties": {
@@ -1494,6 +1810,10 @@
                         "minLength": 1
                       },
                       "ward": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "neighborhood": {
                         "type": "string",
                         "minLength": 1
                       },
@@ -1509,6 +1829,22 @@
                   },
                   "allergyNote": {
                     "type": "string"
+                  },
+                  "relativeFullName": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "relativeRelationship": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "relativePhone": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "relativeAddress": {
+                    "type": "string",
+                    "minLength": 1
                   },
                   "version": {
                     "type": "integer",
@@ -1560,10 +1896,7 @@
                         "hasNationalId": {
                           "type": "boolean"
                         },
-                        "version": {
-                          "type": "integer"
-                        },
-                        "nationalId": {
+                        "nationalIdMasked": {
                           "type": [
                             "string",
                             "null"
@@ -1583,6 +1916,10 @@
                               "type": "string",
                               "minLength": 1
                             },
+                            "neighborhood": {
+                              "type": "string",
+                              "minLength": 1
+                            },
                             "district": {
                               "type": "string",
                               "minLength": 1
@@ -1593,7 +1930,82 @@
                             }
                           }
                         },
+                        "version": {
+                          "type": "integer"
+                        },
+                        "nationalId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "nationalIdIssuedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "nationalIdIssuedPlace": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "ethnicity": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "nationality": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "occupation": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "insuranceNumber": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "allergyNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "relativeFullName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "relativeRelationship": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "relativePhone": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "relativeAddress": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "photoUrl": {
                           "type": [
                             "string",
                             "null"
@@ -1615,10 +2027,22 @@
                         "gender",
                         "phone",
                         "hasNationalId",
+                        "nationalIdMasked",
+                        "address",
                         "version",
                         "nationalId",
-                        "address",
+                        "nationalIdIssuedAt",
+                        "nationalIdIssuedPlace",
+                        "ethnicity",
+                        "nationality",
+                        "occupation",
+                        "insuranceNumber",
                         "allergyNote",
+                        "relativeFullName",
+                        "relativeRelationship",
+                        "relativePhone",
+                        "relativeAddress",
+                        "photoUrl",
                         "mergedIntoId"
                       ]
                     },
@@ -1730,6 +2154,411 @@
           },
           "409": {
             "description": "version không khớp (dữ liệu đã đổi) hoặc trùng CCCD với bệnh nhân khác",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/patients/{id}/photo": {
+      "post": {
+        "tags": [
+          "patient"
+        ],
+        "summary": "Upload/thay ảnh đại diện (docs/DECISIONS.md #034) — chỉ JPG/PNG (kiểm magic byte), tối đa 3MB, kèm version hiện có",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Ảnh JPG hoặc PNG"
+                  },
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "file",
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Upload thành công, trả hồ sơ kèm photoUrl mới",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "patientCode": {
+                          "type": "string"
+                        },
+                        "fullName": {
+                          "type": "string"
+                        },
+                        "dob": {
+                          "type": "string"
+                        },
+                        "gender": {
+                          "type": "string",
+                          "enum": [
+                            "male",
+                            "female",
+                            "other"
+                          ]
+                        },
+                        "phone": {
+                          "type": "string"
+                        },
+                        "hasNationalId": {
+                          "type": "boolean"
+                        },
+                        "nationalIdMasked": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "address": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "street": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "ward": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "neighborhood": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "district": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "province": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          }
+                        },
+                        "version": {
+                          "type": "integer"
+                        },
+                        "nationalId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "nationalIdIssuedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "nationalIdIssuedPlace": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "ethnicity": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "nationality": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "occupation": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "insuranceNumber": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "allergyNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "relativeFullName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "relativeRelationship": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "relativePhone": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "relativeAddress": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "photoUrl": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "mergedIntoId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "patientCode",
+                        "fullName",
+                        "dob",
+                        "gender",
+                        "phone",
+                        "hasNationalId",
+                        "nationalIdMasked",
+                        "address",
+                        "version",
+                        "nationalId",
+                        "nationalIdIssuedAt",
+                        "nationalIdIssuedPlace",
+                        "ethnicity",
+                        "nationality",
+                        "occupation",
+                        "insuranceNumber",
+                        "allergyNote",
+                        "relativeFullName",
+                        "relativeRelationship",
+                        "relativePhone",
+                        "relativeAddress",
+                        "photoUrl",
+                        "mergedIntoId"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Sai định dạng ảnh (PATIENT_INVALID_PHOTO) hoặc quá 3MB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền patient.update (có thể xin break-glass)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy hồ sơ (không tồn tại hoặc thuộc tenant khác)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp (CONCURRENT_MODIFICATION)",
             "content": {
               "application/json": {
                 "schema": {

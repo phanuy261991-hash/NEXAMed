@@ -9,9 +9,16 @@ import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
 import { usePatientsQuery } from './patient.queries';
+import { computeBirthYear, formatAddressLine } from './patient-form.utils';
 
 const GENDER_LABEL: Record<string, string> = { male: 'Nam', female: 'Nữ', other: 'Khác' };
-const GRID_COLUMNS = '160px minmax(0,1fr) 130px 90px 150px';
+/**
+ * Thứ tự cột (docs/DECISIONS.md #034): Mã BN, Họ tên, CCCD, Giới tính, Năm sinh, Điện thoại, Địa
+ * chỉ. Hai cột dài (Họ tên, Địa chỉ) CÙNG chia phần rộng còn lại (`minmax(0,*fr)`) thay vì một cột
+ * `1fr` duy nhất nuốt hết chiều rộng — đó là nguyên nhân khoảng cách quá rộng ở bản trước (màn
+ * hình đã bỏ `max-w`, 1fr một mình kéo giãn ra toàn bộ phần dư).
+ */
+const GRID_COLUMNS = '130px minmax(0,1.3fr) 120px 90px 90px 130px minmax(0,1.6fr)';
 const ROW_HEIGHT_PX = 44;
 
 /**
@@ -130,13 +137,15 @@ export function PatientListPage() {
             <div
               role="row"
               style={{ gridTemplateColumns: GRID_COLUMNS }}
-              className="grid flex-shrink-0 border-b border-slate-200 bg-slate-50 px-4 text-xs font-medium uppercase tracking-wide text-slate-500"
+              className="grid flex-shrink-0 gap-x-4 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-semibold uppercase tracking-wide text-slate-700"
             >
-              <div role="columnheader" className="py-2.5">Mã BN</div>
+              <div role="columnheader" className="py-2.5">Mã bệnh nhân</div>
               <div role="columnheader" className="py-2.5">Họ tên</div>
-              <div role="columnheader" className="py-2.5">Ngày sinh</div>
+              <div role="columnheader" className="py-2.5">CCCD</div>
               <div role="columnheader" className="py-2.5">Giới tính</div>
-              <div role="columnheader" className="py-2.5">Số điện thoại</div>
+              <div role="columnheader" className="py-2.5">Năm sinh</div>
+              <div role="columnheader" className="py-2.5">Điện thoại</div>
+              <div role="columnheader" className="py-2.5">Địa chỉ</div>
             </div>
 
             <div ref={scrollParentRef} className="flex-1 overflow-y-auto">
@@ -168,7 +177,7 @@ export function PatientListPage() {
                       tabIndex={0}
                       onKeyDown={(e) => onRowKeyDown(e, patient.id)}
                       style={{ ...rowStyle, gridTemplateColumns: GRID_COLUMNS }}
-                      className="grid items-center border-b border-slate-100 px-4 text-sm hover:bg-slate-50 focus:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500/40"
+                      className="grid items-center gap-x-4 border-b border-slate-100 px-4 text-sm hover:bg-slate-50 focus:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500/40"
                     >
                       <div
                         role="cell"
@@ -178,9 +187,11 @@ export function PatientListPage() {
                         {patient.patientCode}
                       </div>
                       <div role="cell" className="truncate text-slate-900">{patient.fullName}</div>
-                      <div role="cell" className="text-slate-600">{patient.dob}</div>
+                      <div role="cell" className="text-slate-600">{patient.nationalIdMasked ?? '—'}</div>
                       <div role="cell" className="text-slate-600">{GENDER_LABEL[patient.gender]}</div>
+                      <div role="cell" className="text-slate-600">{computeBirthYear(patient.dob)}</div>
                       <div role="cell" className="text-slate-600">{patient.phone}</div>
+                      <div role="cell" className="truncate text-slate-600">{formatAddressLine(patient.address) || '—'}</div>
                     </div>
                   );
                 })}

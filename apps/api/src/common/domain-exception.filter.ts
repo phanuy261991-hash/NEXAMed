@@ -19,6 +19,8 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   // Xung đột với trạng thái hiện có (trùng CCCD, mất optimistic lock) — 409, không phải 422
   // (422 dành cho vi phạm quy tắc nghiệp vụ không liên quan tới trạng thái đồng thời).
   PATIENT_DUPLICATE_NATIONAL_ID: HttpStatus.CONFLICT,
+  // Sai định dạng/kích thước ảnh — lỗi input của client, không phải xung đột trạng thái.
+  PATIENT_INVALID_PHOTO: HttpStatus.BAD_REQUEST,
   CONCURRENT_MODIFICATION: HttpStatus.CONFLICT,
   APPOINTMENT_SLOT_CONFLICT: HttpStatus.CONFLICT,
   APPOINTMENT_NOT_CANCELLABLE: HttpStatus.CONFLICT,
