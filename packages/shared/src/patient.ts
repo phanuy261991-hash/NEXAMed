@@ -76,3 +76,19 @@ export const listPatientsQuerySchema = z.object({
   q: z.string().min(1).max(100).optional(),
 });
 export type ListPatientsQuery = z.infer<typeof listPatientsQuerySchema>;
+
+/**
+ * PAT-03 — chống trùng "mềm": gọi TRƯỚC khi `POST /patients` để cảnh báo nghi trùng tên + ngày
+ * sinh (trùng CCCD đã chặn cứng bằng DB constraint ở S2-01, không cần endpoint này). Không chặn
+ * tạo mới — chỉ trả danh sách hồ sơ đã có khớp để client tự quyết định tiếp tục hay không.
+ */
+export const checkPatientDuplicateQuerySchema = z.object({
+  fullName: z.string().min(1),
+  dob: z.string().date(),
+});
+export type CheckPatientDuplicateQuery = z.infer<typeof checkPatientDuplicateQuerySchema>;
+
+export const checkPatientDuplicateResponseSchema = z.object({
+  items: z.array(patientSummarySchema),
+});
+export type CheckPatientDuplicateResponse = z.infer<typeof checkPatientDuplicateResponseSchema>;

@@ -65,6 +65,24 @@ export class PatientRepository {
   }
 
   /**
+   * PAT-03 — trùng "mềm": khớp CHÍNH XÁC `searchKey` (cột dẫn xuất, đã bỏ dấu + viết thường —
+   * xem S2-02) + `dob`, khác `list()` dùng `contains` cho tìm kiếm gợi ý. `take: 10` chặn kết quả
+   * phòng trường hợp bất thường (nhiều hồ sơ trùng cả tên lẫn ngày sinh) — về nghiệp vụ số này
+   * gần như luôn 0 hoặc 1.
+   */
+  findPossibleDuplicates(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    params: { normalizedFullName: string; dob: Date },
+  ): Promise<Patient[]> {
+    return tx.patient.findMany({
+      where: { tenantId, deletedAt: null, searchKey: params.normalizedFullName, dob: params.dob },
+      orderBy: { id: 'asc' },
+      take: 10,
+    });
+  }
+
+  /**
    * `updateMany` + kiểm `count` (không phải `update`) vì cần điều kiện `version = ?` trong cùng
    * `WHERE` cho optimistic locking (.claude/docs/data-model.md) — `update()` của Prisma chỉ nhận
    * unique field làm điều kiện, không ghép thêm được `version`.

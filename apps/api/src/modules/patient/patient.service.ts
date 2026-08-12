@@ -8,6 +8,8 @@ import {
   stripVietnameseDiacritics,
 } from '@nexamed/core';
 import type {
+  CheckPatientDuplicateQuery,
+  CheckPatientDuplicateResponse,
   CreatePatientRequest,
   ListPatientsQuery,
   ListPatientsResponse,
@@ -121,6 +123,23 @@ export class PatientService {
       const lastItem = items[items.length - 1];
       const nextCursor = hasMore && lastItem ? lastItem.id : null;
       return { items: items.map((p) => this.toSummary(p)), nextCursor };
+    });
+  }
+
+  /**
+   * PAT-03 — trùng "mềm": khớp CHÍNH XÁC tên đã chuẩn hoá (không dấu/viết thường, cùng hàm
+   * `stripVietnameseDiacritics` đã dùng cho tìm kiếm PAT-02) + ngày sinh, khác `contains` của
+   * `listPatients` vì mục đích là phát hiện hai hồ sơ trùng gần như tuyệt đối, không phải gợi ý
+   * mọi tên chứa từ khoá. Không chặn tạo mới — chỉ trả danh sách để client tự quyết định.
+   */
+  async checkDuplicates(tenantId: string, query: CheckPatientDuplicateQuery): Promise<CheckPatientDuplicateResponse> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const normalizedFullName = stripVietnameseDiacritics(query.fullName);
+      const rows = await this.patientRepository.findPossibleDuplicates(tx, tenantId, {
+        normalizedFullName,
+        dob: new Date(query.dob),
+      });
+      return { items: rows.map((p) => this.toSummary(p)) };
     });
   }
 

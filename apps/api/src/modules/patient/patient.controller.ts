@@ -1,6 +1,11 @@
 import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
 import type { Request } from 'express';
-import { createPatientRequestSchema, listPatientsQuerySchema, updatePatientRequestSchema } from '@nexamed/shared';
+import {
+  checkPatientDuplicateQuerySchema,
+  createPatientRequestSchema,
+  listPatientsQuerySchema,
+  updatePatientRequestSchema,
+} from '@nexamed/shared';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
@@ -35,6 +40,18 @@ export class PatientController {
     const dto = listPatientsQuerySchema.parse(query);
     const { tenantId } = req.user!;
     return this.patientService.listPatients(tenantId, dto);
+  }
+
+  /**
+   * PAT-03 — phải khai báo TRƯỚC `@Get(':id')`: NestJS/Express khớp route theo thứ tự khai báo,
+   * nếu để sau thì `GET /patients/check-duplicate` sẽ bị `:id` nuốt mất (id = "check-duplicate").
+   */
+  @Get('check-duplicate')
+  @RequirePermission('patient', 'read')
+  async checkDuplicate(@Query() query: unknown, @Req() req: Request) {
+    const dto = checkPatientDuplicateQuerySchema.parse(query);
+    const { tenantId } = req.user!;
+    return this.patientService.checkDuplicates(tenantId, dto);
   }
 
   @Get(':id')

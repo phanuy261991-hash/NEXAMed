@@ -297,4 +297,79 @@ describe('HTTP e2e — /api/v1/patients', () => {
       expect(res.body.data.items.some((p: { id: string }) => p.id === searchPatientId)).toBe(false);
     });
   });
+
+  describe('GET /api/v1/patients/check-duplicate — chống trùng mềm (S2-03, PAT-03)', () => {
+    let duplicatePatientId: string;
+    const duplicateName = 'Phạm Văn Cường';
+    const duplicateDob = '1985-03-12';
+
+    beforeAll(async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/patients')
+        .set(authed(receptionistToken))
+        .send({ ...validPayload, fullName: duplicateName, dob: duplicateDob, nationalId: undefined, phone: '0966777888' });
+      duplicatePatientId = res.body.data.id;
+    });
+
+    it('trùng tên (không dấu, không phân biệt hoa/thường) + đúng ngày sinh → trả về hồ sơ đã có, KHÔNG tạo bản ghi mới', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/v1/patients/check-duplicate')
+        .query({ fullName: 'pham van cuong', dob: duplicateDob })
+        .set(authed(receptionistToken));
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.items.some((p: { id: string }) => p.id === duplicatePatientId)).toBe(true);
+    });
+
+    it('đúng tên nhưng khác ngày sinh → không coi là trùng', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/v1/patients/check-duplicate')
+        .query({ fullName: duplicateName, dob: '1985-03-13' })
+        .set(authed(receptionistToken));
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.items.some((p: { id: string }) => p.id === duplicatePatientId)).toBe(false);
+    });
+
+    it('khác tên (chỉ gần giống, không khớp tuyệt đối) → không coi là trùng', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/v1/patients/check-duplicate')
+        .query({ fullName: 'Phạm Văn Cường An', dob: duplicateDob })
+        .set(authed(receptionistToken));
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.items.some((p: { id: string }) => p.id === duplicatePatientId)).toBe(false);
+    });
+
+    it('không tạo bản ghi mới nào khi chỉ gọi check-duplicate (chỉ cảnh báo, không chặn/không ghi)', async () => {
+      const before = await privileged.patient.count({ where: { tenantId: fixture.tenantA.id } });
+      await request(app.getHttpServer())
+        .get('/api/v1/patients/check-duplicate')
+        .query({ fullName: duplicateName, dob: duplicateDob })
+        .set(authed(receptionistToken));
+      const after = await privileged.patient.count({ where: { tenantId: fixture.tenantA.id } });
+
+      expect(after).toBe(before);
+    });
+
+    it('cách ly theo tenant — tenant B không thấy bệnh nhân trùng của tenant A', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/v1/patients/check-duplicate')
+        .query({ fullName: duplicateName, dob: duplicateDob })
+        .set(authed(tenantBAdminToken));
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.items.some((p: { id: string }) => p.id === duplicatePatientId)).toBe(false);
+    });
+
+    it('thiếu tham số bắt buộc (dob) → 400 VALIDATION_ERROR', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/v1/patients/check-duplicate')
+        .query({ fullName: duplicateName })
+        .set(authed(receptionistToken));
+
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
+    });
+  });
 });
