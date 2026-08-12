@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import { seedPermissionCatalog } from '../../src/infrastructure/persistence/seed-permissions';
 import { seedReferenceCatalog } from '../../src/infrastructure/persistence/seed-reference-catalog';
+import { seedGeo } from '../../src/infrastructure/persistence/seed-geo';
 
 // Seed toàn cục — danh mục `permission` + `reference_catalog` (không có tenant_id). Seed vai
 // trò/ma trận cho từng tenant cụ thể dùng seedDefaultRolesForTenant (src/infrastructure/
@@ -20,6 +21,8 @@ async function main() {
     console.log('✓ Seed permission catalog xong.');
     await seedReferenceCatalog(prisma);
     console.log('✓ Seed reference catalog xong.');
+    await seedGeo(prisma);
+    console.log('✓ Seed province/ward xong.');
   } finally {
     await prisma.$disconnect();
   }

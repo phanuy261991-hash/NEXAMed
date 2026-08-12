@@ -1,5 +1,6 @@
 export * from './rbac/permissions';
 export * from './reference-catalog/data';
+export * from './geo/data';
 export * from './rbac/data-scope';
 export * from './errors';
 export * from './iam/lockout';

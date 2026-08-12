@@ -61,6 +61,17 @@ Quyền: `reference_catalog.read` (`global`) cho mọi vai trò lâm sàng (`rec
 
 Seed dữ liệu thật (không phải placeholder) tại `packages/core/src/reference-catalog/data.ts` — 54 dân tộc + 30 quốc tịch, nguồn từ file chủ dự án cung cấp, không tự thêm/bớt/sửa chính tả.
 
+### province / ward (`docs/DECISIONS.md` #038)
+
+Danh mục hành chính Tỉnh/Phường-Xã toàn hệ thống (theo sáp nhập hành chính 2025, mã Bộ Nội vụ) — dùng để điền `patient.address_json.province`/`.ward`. Cùng bản chất `icd10_catalog`: không `tenant_id`, không đủ 8 cột bắt buộc, không `version`/`is_active`. **Khác `reference_catalog`**: read-only lúc chạy (không có endpoint create/update/delete) — dữ liệu hành chính chính thức, không ai cần sửa qua UI; vì vậy REVOKE `INSERT`/`UPDATE` khỏi `nexamed_app` (giống `permission`), chỉ seed script (role đặc quyền) ghi được.
+
+`province`: `code` (PK, "1".."34" theo mã Bộ Nội vụ), `name`, `sort_order`.
+`ward`: `code` (PK, 8 chữ số — **duy nhất toàn quốc**, không chỉ trong phạm vi tỉnh, đã xác nhận lúc soạn seed nên không cần composite key), `name`, `province_code` (FK → `province.code`), `sort_order`. Index `(province_code)`.
+
+Quyền: dùng lại `patient.read` (không thêm permission mới) — v1 danh mục này chỉ phục vụ điền `patient.address_json`, cùng đối tượng vai trò (`receptionist`/`nurse`/`doctor`/`clinic_admin`) như ma trận mặc định của `patient.read`, tránh lặp lại vấn đề "chưa có cơ chế backfill `role_permission` cho tenant cũ" đã ghi ở `docs/CURRENT.md`.
+
+Seed dữ liệu thật tại `packages/core/src/geo/data.ts` — 34 tỉnh/thành + 3321 phường/xã, nguồn từ file chủ dự án cung cấp (`docs/data/Danh-muc-Phuong-xa_moi.md`), không tự thêm/bớt/sửa chính tả.
+
 ### break_glass_session
 
 `tenant_id`, `actor_id`, `entity_type`, `entity_id`, `reason`, `occurred_at`, `expires_at`. Append-only như `audit_log` (không `updated_at`/`deleted_at`/`version`/`created_by`/`updated_by`) — mỗi lần "phá kính" là một bản ghi mới, không sửa/gia hạn bản ghi cũ. Xem quy tắc đầy đủ ở `security-audit.md` mục Break-glass.
@@ -74,6 +85,7 @@ Seed dữ liệu thật (không phải placeholder) tại `packages/core/src/ref
 - **Chuẩn bị cho hồ sơ dùng chung liên tenant (v3+)**: cột `global_patient_ref uuid NULL` + `identity_verified_at timestamptz NULL`. v1 luôn để null, mọi truy vấn vẫn đi theo `(tenant_id, id)`. Việc phân giải danh tính đi qua `PatientIdentityPort` (adapter v1 trả chính `patient.id`), nên khi bật master patient index chỉ cần thay adapter, không sửa service. **Không** viết code đọc dữ liệu bệnh nhân xuyên tenant ở v1.
 - **Mở rộng hồ sơ hành chính (`docs/DECISIONS.md` #034)**: `photo_key` (text null — key trên `StoragePort`, không phải URL; phục vụ qua signed URL có hạn, xem `apps/api/src/infrastructure/storage/signed-url.ts`), `national_id_issued_at` (date), `national_id_issued_place`, `occupation` (text tự do, **không** danh mục DB — thiếu nguồn dữ liệu chính thức, cùng lý do tạm hoãn ICD-10 ở S3-01), `insurance_number` (text độc lập, **không** liên kết `insurance_card`/S2-04), `relative_full_name`, `relative_relationship`, `relative_phone`, `relative_address` (1 bộ người thân trên mỗi `patient`, không tách bảng). `address_json` có thêm khoá `neighborhood` (Khu phố); khoá `district` (Quận/Huyện) vẫn hợp lệ trong schema (dữ liệu cũ) nhưng không còn input trên UI (đã sáp nhập 2 cấp Tỉnh→Xã).
 - **`ethnicity`/`nationality` (`docs/DECISIONS.md` #037, đảo ngược #034 cho riêng 2 field này)**: vẫn cột `String?` tự do ở tầng DB/Zod, nhưng nay lưu **mã (`code`)** tham chiếu bảng `reference_catalog` (ví dụ `"VNM"`, `"1"`), chọn qua dropdown ở web thay vì gõ tay. Không có FK thật (bảng `reference_catalog` không tenant_id, composite FK `(tenant_id, id)` không áp dụng được) và không validate khớp danh mục ở tầng Zod — tránh chặn sửa hồ sơ cũ có giá trị dạng tên tự do (ví dụ `"Việt Nam"`) lưu trước #037.
+- **`address_json.province`/`.ward` (`docs/DECISIONS.md` #038, đảo ngược tiếp phần Tỉnh/Xã của #034)**: cùng cách làm với `ethnicity`/`nationality` ở trên — lưu **mã** tham chiếu bảng `province`/`ward` mới (ví dụ `"1"`, `"10105001"`), không lưu tên, chọn qua Combobox cascading (chọn Tỉnh trước để lọc Xã) thay vì gõ tay. Không FK thật trong `address_json` (giá trị nằm trong JSON, không phải cột quan hệ) và không validate khớp danh mục ở tầng Zod — hồ sơ cũ có giá trị dạng tên tự do (trước #038) vẫn hiển thị đúng qua `withLegacyValueOption()` ở web, không mất dữ liệu.
 
 ### insurance_card
 `patient_id`, `card_no` (mã hoá), `valid_from`, `valid_to`, `benefit_rate`, `initial_facility_code`.

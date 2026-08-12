@@ -1,8 +1,9 @@
-import type { PatientGender, ReferenceCatalogItem } from '@nexamed/shared';
+import type { PatientGender } from '@nexamed/shared';
 import { calculateAgeYears, computeAgeLabel, computeBirthYear } from './patient-form.utils';
 import { PatientAvatarUpload } from './PatientAvatarUpload';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
-import { Combobox, type ComboboxOption } from '../../shared/ui/Combobox';
+import { useProvincesQuery, useWardsQuery } from '../geo/geo.queries';
+import { Combobox, withLegacyValueOption, type ComboboxOption } from '../../shared/ui/Combobox';
 
 /** Khớp `ADULT_AGE_THRESHOLD` trong `packages/shared/src/patient.ts` (docs/DECISIONS.md #035). */
 const ADULT_AGE_THRESHOLD = 18;
@@ -71,22 +72,6 @@ const sectionBadgeClassName =
 /** Lưới trường tra dày hơn (gap hẹp) theo đúng mật độ trong ảnh tham khảo, thay cho gap-6 trước đây. */
 const fieldGridClassName = 'grid grid-cols-2 gap-x-3 gap-y-3 sm:grid-cols-3 lg:grid-cols-4';
 
-/**
- * Hồ sơ cũ lưu `ethnicity`/`nationality` dạng text tự do (trước docs/DECISIONS.md đảo ngược
- * #034) hoặc mục danh mục đã bị `clinic_admin` ẩn sau khi hồ sơ đã lưu — giá trị đó sẽ không
- * khớp `code` nào trong danh sách hiện tại. Chèn thêm 1 option giữ nguyên giá trị cũ (label =
- * value = giá trị cũ) để không mất dữ liệu/không tự xoá khi mở form sửa.
- */
-function withLegacyValueOption(items: ReferenceCatalogItem[], currentValue: string): ReferenceCatalogItem[] {
-  if (currentValue === '' || items.some((i) => i.code === currentValue)) {
-    return items;
-  }
-  return [
-    { id: 'legacy', category: items[0]?.category ?? 'ETHNICITY', code: currentValue, name: currentValue, sortOrder: -1, isActive: true },
-    ...items,
-  ];
-}
-
 function Field({
   id,
   label,
@@ -143,8 +128,30 @@ export function PatientFormFields({
 
   const ethnicityQuery = useReferenceCatalogQuery('ETHNICITY');
   const nationalityQuery = useReferenceCatalogQuery('NATIONALITY');
-  const ethnicityOptions = withLegacyValueOption(ethnicityQuery.data?.items ?? [], values.ethnicity);
-  const nationalityOptions = withLegacyValueOption(nationalityQuery.data?.items ?? [], values.nationality);
+  const ethnicityOptions = withLegacyValueOption(
+    (ethnicityQuery.data?.items ?? []).map((i) => ({ value: i.code, label: i.name })),
+    values.ethnicity,
+  );
+  const nationalityOptions = withLegacyValueOption(
+    (nationalityQuery.data?.items ?? []).map((i) => ({ value: i.code, label: i.name })),
+    values.nationality,
+  );
+
+  // Cascading Tỉnh → Phường/Xã (docs/DECISIONS.md #038). Đổi Tỉnh thì Phường/Xã cũ (nếu có) hết
+  // hợp lệ — xoá luôn để tránh lưu một cặp province/ward không khớp nhau.
+  const provinceQuery = useProvincesQuery();
+  const wardQuery = useWardsQuery(values.province);
+  const provinceOptions = withLegacyValueOption(
+    (provinceQuery.data?.items ?? []).map((p) => ({ value: p.code, label: p.name })),
+    values.province,
+  );
+  const wardOptions = withLegacyValueOption(
+    (wardQuery.data?.items ?? []).map((w) => ({ value: w.code, label: w.name })),
+    values.ward,
+  );
+  function setProvince(code: string) {
+    onChange({ ...values, province: code, ward: '' });
+  }
 
   const birthYear = computeBirthYear(values.dob);
   const ageLabel = computeAgeLabel(values.dob);
@@ -268,7 +275,7 @@ export function PatientFormFields({
               disabled={disabled}
               value={values.ethnicity}
               onChange={(v) => set('ethnicity', v)}
-              options={ethnicityOptions.map((item) => ({ value: item.code, label: item.name }))}
+              options={ethnicityOptions}
             />
           </Field>
 
@@ -278,7 +285,7 @@ export function PatientFormFields({
               disabled={disabled}
               value={values.nationality}
               onChange={(v) => set('nationality', v)}
-              options={nationalityOptions.map((item) => ({ value: item.code, label: item.name }))}
+              options={nationalityOptions}
             />
           </Field>
 
@@ -303,22 +310,23 @@ export function PatientFormFields({
           </Field>
 
           <Field id="province" label="Tỉnh/Thành phố">
-            <input
+            <Combobox
               id="province"
               disabled={disabled}
               value={values.province}
-              onChange={(e) => set('province', e.target.value)}
-              className={inputClassName}
+              onChange={setProvince}
+              options={provinceOptions}
             />
           </Field>
 
           <Field id="ward" label="Phường/Xã">
-            <input
+            <Combobox
               id="ward"
-              disabled={disabled}
+              disabled={disabled || values.province === ''}
+              placeholder={values.province === '' ? 'Chọn Tỉnh/Thành phố trước' : 'Gõ để tìm...'}
               value={values.ward}
-              onChange={(e) => set('ward', e.target.value)}
-              className={inputClassName}
+              onChange={(v) => set('ward', v)}
+              options={wardOptions}
             />
           </Field>
 

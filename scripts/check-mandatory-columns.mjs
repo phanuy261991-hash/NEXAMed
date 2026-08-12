@@ -25,6 +25,13 @@ const EXEMPTIONS = {
   AuditLog: APPEND_ONLY_EXEMPT,
   BreakGlassSession: APPEND_ONLY_EXEMPT, // append-only như audit_log, xem security-audit.md
   Permission: [...APPEND_ONLY_EXEMPT, 'tenant_id'], // danh mục toàn hệ thống, giống icd10_catalog
+  // Danh mục toàn hệ thống, quản lý qua API (docs/DECISIONS.md #037) — có `id` riêng, thiếu
+  // exemption này từ lúc thêm bảng (phát hiện lại lúc thêm Province/Ward, không phải bug mới).
+  ReferenceCatalog: [...APPEND_ONLY_EXEMPT, 'tenant_id'],
+  // Danh mục hành chính Tỉnh/Phường-Xã toàn hệ thống, read-only (docs/DECISIONS.md #038) — PK là
+  // `code` (giống icd10_catalog), không có cột `id` riêng.
+  Province: [...APPEND_ONLY_EXEMPT, 'tenant_id', 'id'],
+  Ward: [...APPEND_ONLY_EXEMPT, 'tenant_id', 'id'],
 };
 
 const schema = readFileSync(SCHEMA_PATH, 'utf8');
@@ -45,7 +52,7 @@ while ((match = modelRegex.exec(schema)) !== null) {
   });
 
   const hasId = /^\s*id\s+\S+.*@id/m.test(body);
-  if (!hasId) missing.unshift('id');
+  if (!hasId && !exempt.includes('id')) missing.unshift('id');
 
   if (missing.length > 0) {
     hasError = true;

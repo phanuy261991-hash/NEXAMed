@@ -97,10 +97,23 @@ export function computeAgeLabel(dob: string): string {
   return years >= 3 ? `${years} tuổi` : `${months} tháng tuổi`;
 }
 
-/** Địa chỉ 1 dòng cho màn hình danh sách (docs/DECISIONS.md #034) — bỏ qua `district` (không còn nhập, xem `toAddress`), rỗng nếu chưa có địa chỉ nào. */
-export function formatAddressLine(address: PatientAddress | null): string {
+/**
+ * Địa chỉ 1 dòng cho màn hình danh sách (docs/DECISIONS.md #034) — bỏ qua `district` (không còn
+ * nhập, xem `toAddress`), rỗng nếu chưa có địa chỉ nào. `province`/`ward` lưu **mã** (không lưu
+ * tên, docs/DECISIONS.md #038, giống ethnicity/nationality ở #037) nên cần bảng tra code→tên
+ * (`provinceNameByCode`/`wardNameByCode`, xem `PatientListPage.tsx`) để hiển thị đúng tên thay vì
+ * mã thô; không tra được (hồ sơ cũ lưu text tự do trước #038, hoặc chưa tải xong danh mục) thì
+ * hiện nguyên giá trị đang có — không mất thông tin.
+ */
+export function formatAddressLine(
+  address: PatientAddress | null,
+  provinceNameByCode: Record<string, string> = {},
+  wardNameByCode: Record<string, string> = {},
+): string {
   if (!address) return '';
-  return [address.street, address.neighborhood, address.ward, address.province].filter(Boolean).join(', ');
+  const province = address.province ? (provinceNameByCode[address.province] ?? address.province) : undefined;
+  const ward = address.ward ? (wardNameByCode[address.ward] ?? address.ward) : undefined;
+  return [address.street, address.neighborhood, ward, province].filter(Boolean).join(', ');
 }
 
 /**

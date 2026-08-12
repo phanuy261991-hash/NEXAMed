@@ -276,6 +276,34 @@ model ReferenceCatalog {
   @@map("reference_catalog")
 }
 
+// Danh mục hành chính Tỉnh/Phường-Xã — TOÀN HỆ THỐNG (cùng bản chất icd10_catalog/permission),
+// không tenant_id, không đủ 8 cột bắt buộc, không version/is_active. Read-only lúc chạy (khác
+// reference_catalog — không có endpoint create/update/delete): dữ liệu hành chính chính thức Bộ
+// Nội vụ, không ai cần sửa qua UI. `code` phường/xã 8 chữ số duy nhất toàn quốc (không chỉ trong
+// phạm vi tỉnh — đã xác nhận không trùng khi soạn seed), nên PK thẳng bằng `code`, không cần FK
+// hỗn hợp province_code trong PK. Xem docs/DECISIONS.md #038.
+model Province {
+  code      String @id
+  name      String
+  sortOrder Int    @default(0) @map("sort_order")
+
+  wards Ward[]
+
+  @@map("province")
+}
+
+model Ward {
+  code         String @id
+  name         String
+  provinceCode String @map("province_code")
+  sortOrder    Int    @default(0) @map("sort_order")
+
+  province Province @relation(fields: [provinceCode], references: [code])
+
+  @@index([provinceCode])
+  @@map("ward")
+}
+
 enum DataScope {
   none
   personal

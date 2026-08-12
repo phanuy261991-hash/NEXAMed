@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MagnifyingGlass, Users } from '@phosphor-icons/react';
 import { useVirtualizer } from '@tanstack/react-virtual';
@@ -10,6 +10,7 @@ import { Skeleton } from '../../shared/ui/Skeleton';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
 import { usePatientsQuery } from './patient.queries';
 import { computeBirthYear, formatAddressLine } from './patient-form.utils';
+import { useAllWardsQuery, useProvincesQuery } from '../geo/geo.queries';
 
 const GENDER_LABEL: Record<string, string> = { male: 'Nam', female: 'Nữ', other: 'Khác' };
 /**
@@ -40,6 +41,20 @@ export function PatientListPage() {
   const [q, setQ] = useState('');
   const debouncedQ = useDebouncedValue(q, 300);
   const query = usePatientsQuery(debouncedQ);
+
+  // Bảng tra code→tên cho cột Địa chỉ (docs/DECISIONS.md #038) — `patient.address.province`/
+  // `.ward` lưu mã, không lưu tên. Tải 1 lần, cache mãi (`staleTime: Infinity`), memo hoá thành
+  // Record để formatAddressLine tra O(1) mỗi hàng thay vì Array.find trong danh sách ~3321 dòng.
+  const provincesQuery = useProvincesQuery();
+  const wardsQuery = useAllWardsQuery();
+  const provinceNameByCode = useMemo(
+    () => Object.fromEntries((provincesQuery.data?.items ?? []).map((p) => [p.code, p.name])),
+    [provincesQuery.data],
+  );
+  const wardNameByCode = useMemo(
+    () => Object.fromEntries((wardsQuery.data?.items ?? []).map((w) => [w.code, w.name])),
+    [wardsQuery.data],
+  );
 
   const patients = query.data?.pages.flatMap((page) => page.items) ?? [];
   const hasNextPage = query.hasNextPage ?? false;
@@ -186,7 +201,9 @@ export function PatientListPage() {
                       <div role="cell" className="text-slate-600">{GENDER_LABEL[patient.gender]}</div>
                       <div role="cell" className="text-slate-600">{computeBirthYear(patient.dob)}</div>
                       <div role="cell" className="text-slate-600">{patient.phone}</div>
-                      <div role="cell" className="truncate text-slate-600">{formatAddressLine(patient.address) || '—'}</div>
+                      <div role="cell" className="truncate text-slate-600">
+                        {formatAddressLine(patient.address, provinceNameByCode, wardNameByCode) || '—'}
+                      </div>
                     </div>
                   );
                 })}

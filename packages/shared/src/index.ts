@@ -7,3 +7,4 @@ export * from './appointment';
 export * from './user-account';
 export * from './clinic';
 export * from './reference-catalog';
+export * from './geo';

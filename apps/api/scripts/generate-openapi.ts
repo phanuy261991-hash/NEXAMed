@@ -26,8 +26,10 @@ import {
   listDoctorsResponseSchema,
   listPatientsQuerySchema,
   listPatientsResponseSchema,
+  listProvincesResponseSchema,
   listReferenceCatalogResponseSchema,
   listRoomsResponseSchema,
+  listWardsResponseSchema,
   listUserAccountsQuerySchema,
   listUserAccountsResponseSchema,
   loginRequestSchema,
@@ -638,6 +640,35 @@ registry.registerPath({
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền reference_catalog.manage'),
     404: errorResponse('Không tìm thấy'),
+  },
+});
+
+const listWardsQueryParams = z.object({ provinceCode: z.string().min(1).optional() });
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/geo/provinces',
+  tags: ['geo'],
+  summary: 'Danh mục Tỉnh/Thành phố toàn hệ thống (read-only, theo mã Bộ Nội vụ)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(listProvincesResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền patient.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/geo/wards',
+  tags: ['geo'],
+  summary: 'Danh mục Phường/Xã — có provinceCode: cascading theo Tỉnh; bỏ trống: toàn bộ (~3321 dòng, dựng bảng tra code→tên)',
+  security: [{ bearerAuth: [] }],
+  request: { query: listWardsQueryParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listWardsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền patient.read'),
   },
 });
 

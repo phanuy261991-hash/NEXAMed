@@ -6,6 +6,21 @@ export interface ComboboxOption {
   label: string;
 }
 
+/**
+ * Hồ sơ cũ lưu giá trị tự do (trước khi trường đổi sang danh mục cố định) hoặc mục danh mục đã bị
+ * ẩn/xoá sau khi hồ sơ đã lưu — giá trị đó sẽ không khớp `value` nào trong `options` hiện tại.
+ * Chèn thêm 1 option giữ nguyên giá trị cũ (label = value = giá trị cũ) để không mất dữ liệu/
+ * không tự xoá khi mở form sửa. Dùng chung cho mọi Combobox theo mã (ethnicity/nationality —
+ * docs/DECISIONS.md #037, province/ward — #038), tách ra sau khi lặp lại lần thứ hai theo
+ * CLAUDE.md.
+ */
+export function withLegacyValueOption(options: ComboboxOption[], currentValue: string): ComboboxOption[] {
+  if (currentValue === '' || options.some((o) => o.value === currentValue)) {
+    return options;
+  }
+  return [{ value: currentValue, label: currentValue }, ...options];
+}
+
 const ROW_HEIGHT_PX = 36;
 const VISIBLE_ROWS = 5;
 
