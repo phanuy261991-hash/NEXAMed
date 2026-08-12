@@ -6,7 +6,13 @@ Trạng thái hiện tại của dự án. Cập nhật file này mỗi khi tr�
 
 Sprint 1 — Nền tảng đã xong toàn bộ 11 việc (S1-01 → S1-09). **Sprint 2 — Bệnh nhân + Đặt lịch đã xong toàn bộ** (tuần 3-4 theo `docs/product/plan.md` mục 5): S2-01, S2-02, S2-03, S2-05, S2-06, S2-07, S2-08, S2-09, S2-10 (cả 3 gate cuối sprint đã đạt, xem `docs/TASK.md`). S2-04 (BHYT) lùi lại sau Sprint 3 theo quyết định đã chốt, không chặn.
 
-**Sprint 3 (Tiếp nhận + Khám bệnh) đang tạm hoãn theo yêu cầu chủ dự án** — S3-01 (danh mục ICD-10) chặn ngay từ đầu vì thiếu file danh mục chính thức (T2, `docs/product/plan.md` mục 3), chủ dự án chọn quay lại hiệu chỉnh giao diện Thêm/Sửa hồ sơ bệnh nhân trước (xem mục mở rộng PAT-01 bên dưới, `docs/DECISIONS.md` #034) thay vì bắt đầu S3-02. Chưa quay lại Sprint 3.
+**Sprint 3 (Tiếp nhận + Khám bệnh) đang tạm hoãn theo yêu cầu chủ dự án** — S3-01 (danh mục ICD-10) chặn ngay từ đầu vì thiếu file danh mục chính thức (T2, `docs/product/plan.md` mục 3), chủ dự án chọn quay lại hiệu chỉnh giao diện Thêm/Sửa hồ sơ bệnh nhân trước (xem mục mở rộng PAT-01 bên dưới, `docs/DECISIONS.md` #034-#036, đã commit + push lên `master`). Chưa quay lại Sprint 3.
+
+**Việc đang treo, CHƯA làm — chờ chỉ thị tiếp**: chủ dự án nêu ý định xây "hệ thống danh mục dùng chung" trong Quản trị trước khi tiếp tục Sprint 3. Đã bàn và chốt 2 điểm phạm vi qua hỏi-đáp (chưa code, chưa ghi vào DECISIONS.md — chủ dự án huỷ tiếp tục ngay trước bước viết kế hoạch cuối, nói "chờ chỉ thị"):
+- Phạm vi đợt đầu: chỉ **Dân tộc + Quốc tịch** (2 field đang là text tự do trên form bệnh nhân từ #034) — không đụng Nghề nghiệp (danh sách quá mở) hay Địa chỉ Tỉnh/Xã (đã chốt để dành v3+ ở #034, cần nguồn dữ liệu địa giới hành chính lớn).
+- Mô hình tổ chức: **toàn hệ thống, seed sẵn, chỉ xem** — giống bản chất `icd10_catalog`/`permission` (không `tenant_id`, không đủ 8 cột bắt buộc — đúng ngoại lệ đã có trong `.claude/docs/data-model.md`), `clinic_admin` xem trong Quản trị nhưng không sửa.
+- Thiết kế sơ bộ đã phác (chưa duyệt cuối, chưa implement): 1 bảng `reference_catalog` dùng chung 2 danh mục qua cột `category` (đúng ngưỡng "trùng lần 2" của `CLAUDE.md` — không phải tạo trước cho 1 trường hợp), endpoint `GET /api/v1/reference-catalog/:category`, dữ liệu seed do soạn thủ công (54 dân tộc VN + danh sách quốc gia — không cần chờ file như ICD-10, nhưng cần chủ dự án soát lại trước khi seed thật). Đổi 2 input text Dân tộc/Quốc tịch trên `PatientFormFields.tsx` thành dropdown. Thêm mục xem trong `AdminPage.tsx` (hiện đang trống hoàn toàn — ADM-01/02/03 chưa có UI).
+- **Trước khi làm tiếp**: hỏi lại chủ dự án có muốn tiếp tục hướng này không, hay quay về Sprint 3 (S3-02 state machine encounter, không phụ thuộc ICD-10) hay việc khác.
 
 ## Đã có
 
