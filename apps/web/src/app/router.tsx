@@ -1,5 +1,6 @@
 import { createBrowserRouter, Outlet } from 'react-router-dom';
 import { AdminPage } from '../features/admin/AdminPage';
+import { AppointmentSchedulePage } from '../features/appointment/AppointmentSchedulePage';
 import { LoginPage } from '../features/auth/LoginPage';
 import { RequireAuth } from '../features/auth/RequireAuth';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
@@ -24,6 +25,7 @@ export const router = createBrowserRouter([
       { path: 'patients', element: <PatientListPage /> },
       { path: 'patients/new', element: <PatientNewPage /> },
       { path: 'patients/:id', element: <PatientDetailPage /> },
+      { path: 'appointments', element: <AppointmentSchedulePage /> },
       { path: 'admin', element: <AdminPage /> },
     ],
   },
