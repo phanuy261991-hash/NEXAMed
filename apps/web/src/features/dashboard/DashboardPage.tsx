@@ -1,4 +1,5 @@
 import { CalendarBlank } from '@phosphor-icons/react';
+import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { EmptyState } from '../../shared/ui/EmptyState';
 
 /**
@@ -6,8 +7,10 @@ import { EmptyState } from '../../shared/ui/EmptyState';
  * encounter chưa tồn tại tới S2-S3. Thay bằng thẻ thống kê thật khi các module đó ra đời.
  */
 export function DashboardPage() {
+  useBreadcrumb([{ label: 'Tổng quan' }]);
+
   return (
-    <div>
+    <div className="mx-auto max-w-[1400px] p-8">
       <h1 className="mb-6 text-2xl font-semibold text-slate-900">Tổng quan</h1>
       <EmptyState
         icon={CalendarBlank}

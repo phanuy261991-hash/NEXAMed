@@ -1,10 +1,13 @@
 import { GearSix } from '@phosphor-icons/react';
+import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { EmptyState } from '../../shared/ui/EmptyState';
 
 /** Trang Quản trị — empty state, ADM-01/02/03 (tài khoản/cấu hình/nhật ký) thuộc sprint sau. */
 export function AdminPage() {
+  useBreadcrumb([{ label: 'Quản trị' }]);
+
   return (
-    <div>
+    <div className="mx-auto max-w-[1400px] p-8">
       <h1 className="mb-6 text-2xl font-semibold text-slate-900">Quản trị</h1>
       <EmptyState
         icon={GearSix}
