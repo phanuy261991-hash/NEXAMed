@@ -9,3 +9,4 @@ export * from './entity';
 export * from './code-sequence/format-display-code';
 export * from './search/strip-vietnamese-diacritics';
 export * from './date/vietnam-day-range';
+export * from './specialty/registry';

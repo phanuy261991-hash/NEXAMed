@@ -71,8 +71,10 @@ Constraint chống trùng khung giờ cùng bác sĩ dùng `EXCLUDE USING gist` 
 **Đặt lịch "lead capture" (`docs/DECISIONS.md` #032)**: v1 **không** tạo/gắn `patient` lúc đặt lịch — chỉ ghi nhận `full_name`/`phone`/`reason` (tuỳ chọn) trực tiếp trên `appointment`. `patient_id` **nullable**, để sẵn cho lúc Tiếp nhận (Sprint 3, chưa xây) gắn/tạo hồ sơ `patient` thật khi khách check-in tại quầy — hiện tại luôn `NULL`. `booking_code` (mã đặt lịch khách trình lúc đến, `UNIQUE (tenant_id, booking_code)`, prefix `LH`, cùng khuôn `patient_code`/`encounter_no` qua `formatDisplayCode()`/`code_sequence`). Index `(tenant_id, phone)` phục vụ tra cứu lịch sử đặt lịch theo SĐT (tự điền tên, cảnh báo spam ≥5 lần huỷ — ngưỡng này chỉ so sánh ở `apps/web`, `apps/api` không tự chặn). Check-in chuyển thẳng `status: SCHEDULED → CONVERTED`, không sinh trạng thái mới trong enum.
 
 ### encounter
-`patient_id`, `doctor_id`, `appointment_id?`, `status`, `checked_in_at`, `started_at`, `completed_at`, `chief_complaint`, `insurance_snapshot_json`.
+`patient_id`, `doctor_id`, `appointment_id?`, `status`, `specialty`, `checked_in_at`, `started_at`, `completed_at`, `chief_complaint`, `insurance_snapshot_json`.
 Bảng trung tâm; sinh hiệu, chẩn đoán, ghi chú, đơn thuốc đều trỏ về `encounter_id`.
+
+**Khung tối thiểu cho đa chuyên khoa (`docs/DECISIONS.md` #033, chưa triển khai ở v1)**: `specialty` (text, mặc định `'general'`) — chuyên khoa của lượt khám này, không phải của tenant. v1 luôn `'general'`. Không thêm bảng tầng cha dài hạn (thai kỳ, lộ trình điều trị) hay logic rẽ nhánh theo chuyên khoa ở v1 — chỉ chuẩn bị cột để Sprint 3 không phải retrofit sau. Màn hình khám (S3-06) và mọi component liên quan phải nhận cấu hình trường qua props, không hard-code riêng cho một chuyên khoa.
 
 ### vital_sign
 `encounter_id`, `temperature`, `pulse`, `blood_pressure_systolic`, `blood_pressure_diastolic`, `respiratory_rate`, `spo2`, `weight_gram`, `height_mm`, `measured_at`, `measured_by`.

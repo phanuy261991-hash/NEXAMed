@@ -71,6 +71,9 @@ Sprint 1 — Nền tảng đã xong toàn bộ 11 việc (S1-01 → S1-09). **Sp
 - **Fix Lịch hẹn + S2-10 (test cách ly tenant, đạt gate cuối cùng của Sprint 2)** — chủ dự án báo bug thật: chế độ Danh sách không lọc theo ngày đã chọn (`AppointmentListView` gọi query thiếu tham số `date`, trong khi backend đã hỗ trợ kết hợp `date`+`cursor` từ S2-09) — đã sửa (`useAppointmentsListQuery(date)`); kèm 2 việc UX theo yêu cầu (badge "N lịch hẹn trong ngày" chuyển xuống ngang hàng nút "Hôm nay", đổi màu nổi bật, hiện cho cả 2 chế độ; phím tắt F2 + tooltip cho nút "Đặt lịch"). Sau đó làm S2-10: rà soát + bổ sung 7 test cách ly tenant còn thiếu ở `appointment-http.spec.ts` (+4: `/doctors`, `/schedule-config`, `/lookup?phone=`, danh sách) và `user-account-http.spec.ts` (+3: danh sách, `PATCH :id`, `reset-password` xuyên tenant) — **không tìm thấy bug thật**, code đã lọc `tenantId` đúng từ đầu, chỉ thiếu test xác nhận theo `.claude/docs/multi-tenancy.md`. `clinic-http.spec.ts` đã đủ từ S2-07, không cần thêm.
   **Đã xác minh thật**: 159/159 test `apps/api` pass (152 cũ + 7 mới, không regress), `pnpm -w typecheck` sạch toàn workspace, Playwright xác nhận đổi ngày ở Danh sách cập nhật đúng số dòng + badge.
 
+- **Định hướng đa chuyên khoa (nhi/sản/nha) — chốt "specialty pack" + khung tối thiểu (`docs/DECISIONS.md` #033)** — chủ dự án hỏi khả năng thương mại hoá một source cho nhiều loại phòng khám. Phân tích khả thi đầy đủ ở `docs/product/multi-specialty-analysis.md` (mới, tài liệu chưa chốt triển khai). Đã hỏi và chốt phạm vi: **chỉ chuẩn bị khung tối thiểu**, giữ nguyên Sprint 3 theo kế hoạch (không xây hẳn 1 gói thật ngay, không đảo lộn roadmap). Đã làm phần không phụ thuộc `encounter` (bảng chưa được code, Sprint 3 chưa bắt đầu): thêm `encounter.specialty` (mặc định `'general'`) vào đặc tả thiết kế (`.claude/docs/data-model.md`, `docs/ERD.md` v1.5 — không migration/DB thật nào chạy); `packages/core/src/specialty/registry.ts` (mới) — `SpecialtyPack`/`createSpecialtyRegistry()`, hoàn toàn trơ (chỉ có gói `general`), chưa có specialty pack thật nào đăng ký.
+  **Đã xác minh thật**: `registry.spec.ts` 5/5 pass, 35/35 test `packages/core` không regress, `pnpm -w typecheck` sạch toàn workspace.
+
 ## Đang chờ
 
 - ADM-07 (P1): UI cấu hình ma trận phân quyền.
@@ -79,6 +82,7 @@ Sprint 1 — Nền tảng đã xong toàn bộ 11 việc (S1-01 → S1-09). **Sp
 - "Ca làm việc riêng từng bác sĩ" (lưới chỉ hiện bác sĩ có ca hôm đó) — nhu cầu thật chủ dự án nêu lúc duyệt S2-09, đã hỏi và chốt **chưa làm** (cần bảng mới ngoài ERD đã chốt + UI Quản trị cấu hình chưa tồn tại). Xem `docs/DECISIONS.md` #030 mục 5 nếu quay lại làm sau.
 - Tiếp nhận thật (Sprint 3): khi xây, thao tác Check-in hiện tại (chỉ đổi trạng thái `appointment`) cần nối thêm bước tạo `encounter` + gắn/tạo `patient_id` — xem `docs/DECISIONS.md` #032.
 - Menu "Tiếp nhận" (S3): thêm làm mục con trong nhóm sidebar "Tiếp nhận và Đặt lịch" đã có sẵn (`Sidebar.tsx`, đã có "Danh sách bệnh nhân"/"Lịch hẹn") khi backend tương ứng ra đời — không tạo nhóm mới.
+- Đa chuyên khoa (nhi/sản/nha): chưa xây gói thật nào — chỉ mới có khung tối thiểu (`docs/DECISIONS.md` #033). Khi làm S3-06 (màn hình khám), component nhận cấu hình trường qua props, không hard-code riêng một chuyên khoa. Chọn gói đầu tiên khi có khách hàng thật trả tiền, không dựng khung trước — xem `docs/product/multi-specialty-analysis.md` mục 9.
 
 ## Lưu ý môi trường
 

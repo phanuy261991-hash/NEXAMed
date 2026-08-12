@@ -2,6 +2,17 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-12 (17)
+
+Định hướng đa chuyên khoa (nhi/sản/nha) — chốt kiến trúc "specialty pack" + khung tối thiểu (docs/DECISIONS.md #033):
+
+- **Phân tích khả thi theo yêu cầu chủ dự án** (thương mại hoá một source cho nhiều loại phòng khám, mỗi loại có form/quy trình/biểu mẫu bệnh án khác nhau + câu hỏi độ nặng source + ảnh hưởng khi chuyển cloud sau này): viết đầy đủ ở `docs/product/multi-specialty-analysis.md` (file mới). Kết luận chính: 3 tầng biến thiên chi phí chênh nhau rất xa (form nhập/biểu mẫu in rẻ, quy trình nghiệp vụ dài hạn như thai kỳ/lộ trình niềng răng đắt vì cần mô hình dữ liệu mới, không giải bằng form động); hướng đúng là "specialty pack" làm sẵn, **không** phải form builder cho khách tự dựng (rủi ro pháp lý — mẫu bệnh án do Bộ Y tế quy định); `encounter` không cần đổi state machine, chỉ thêm tầng cha dài hạn sau; chuyển cloud không đội chi phí theo số chuyên khoa (nằm ở tầng hạ tầng đã tách qua port), thứ đổi bản chất là cơ chế "gói" (on-prem = cấu hình, cloud = module `subscription` thật).
+- **Đã hỏi và chốt phạm vi cụ thể** (chủ dự án chọn giữa 3 hướng: chỉ chuẩn bị khung tối thiểu / xây hẳn 1 gói thật ngay / đảo lộn roadmap sang multi-specialty) — chọn **khung tối thiểu**, giữ nguyên Sprint 3 theo kế hoạch, không lùi pilot tuần 8.
+- **Thực hiện phần khung tối thiểu không phụ thuộc `encounter`** (bảng này chưa được code — Sprint 3 chưa bắt đầu, không đụng DB thật):
+  - `.claude/docs/data-model.md`, `docs/ERD.md` (v1.5): thêm `encounter.specialty` (text, mặc định `'general'`) vào đặc tả thiết kế — sửa đặc tả trước khi Sprint 3 code, tránh retrofit sau.
+  - `packages/core/src/specialty/registry.ts` (mới): `SpecialtyPack`/`createSpecialtyRegistry()` — registry hoàn toàn trơ (chỉ có gói `general` mặc định), factory không phải singleton toàn tiến trình (tránh rò state ngoài ý muốn). Chưa có specialty pack thật nào, chỉ chuẩn bị nơi tra cứu hợp lệ cho `encounter.specialty`.
+- **Đã xác minh thật**: `registry.spec.ts` 5/5 pass, 35/35 test `packages/core` tổng không regress. `pnpm -w typecheck` sạch toàn workspace. Không migration/OpenAPI nào đổi (chưa có bảng/endpoint thật nào chạm tới).
+
 ## 2026-08-12 (16)
 
 S2-10 — Test cách ly tenant cho toàn bộ endpoint mới + vá lỗi (đạt gate cuối cùng còn treo của Sprint 2):
