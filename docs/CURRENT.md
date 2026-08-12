@@ -4,7 +4,7 @@ Trạng thái hiện tại của dự án. Cập nhật file này mỗi khi tr�
 
 ## Giai đoạn
 
-Sprint 1 — Nền tảng đã xong toàn bộ 11 việc (S1-01 → S1-09). Sprint 2 — Bệnh nhân + Đặt lịch (tuần 3-4 theo `docs/product/plan.md` mục 5): S2-01, S2-02, S2-03, S2-05, S2-06, S2-07, S2-08, S2-09 đã xong (gate "đặt trùng giờ đồng thời → APPOINTMENT_SLOT_CONFLICT" đã đạt). Còn S2-10 (S2-04 BHYT lùi lại sau Sprint 3, không chặn).
+Sprint 1 — Nền tảng đã xong toàn bộ 11 việc (S1-01 → S1-09). **Sprint 2 — Bệnh nhân + Đặt lịch đã xong toàn bộ** (tuần 3-4 theo `docs/product/plan.md` mục 5): S2-01, S2-02, S2-03, S2-05, S2-06, S2-07, S2-08, S2-09, S2-10 (cả 3 gate cuối sprint đã đạt, xem `docs/TASK.md`). S2-04 (BHYT) lùi lại sau Sprint 3 theo quyết định đã chốt, không chặn. Sẵn sàng bắt đầu Sprint 3 — Tiếp nhận + Khám bệnh.
 
 ## Đã có
 
@@ -68,11 +68,14 @@ Sprint 1 — Nền tảng đã xong toàn bộ 11 việc (S1-01 → S1-09). Spri
   `AppointmentQuickCreatePanel.tsx` bỏ hẳn `PatientPicker` (giữ nguyên file, không xoá), thay bằng form SĐT/Họ tên/Lý do khám + banner spam + dialog xác nhận đặt lịch (nội dung đúng nguyên văn chủ dự án yêu cầu). `AppointmentDetailPanel.tsx` thêm nút Check-in + dialog thông báo. Migration `20260812012715_appointment_lead_capture` viết tay (không dùng `prisma migrate diff`, tránh drift giả với exclusion constraint C2).
   **Đã xác minh thật**: `appointment-http.spec.ts` viết lại toàn bộ (50/50 pass, 152 test `apps/api` tổng không regress); `pnpm -w lint/typecheck/build` sạch; Playwright qua dữ liệu thật xác nhận đúng dialog xác nhận, tự điền tên theo SĐT, banner spam, check-in chuyển trạng thái. 1 bug bundler thật (Rollup không dò được named export hằng số giá trị thuần từ `packages/shared` qua `vite build`, dù Node `require()` thấy đúng) — xử lý bằng chuyển hằng số ngưỡng spam sang khai báo tại `apps/web` (đúng vị trí kiến trúc thật, không chỉ né bug — xem `docs/DECISIONS.md` #032 để biết chi tiết + ghi chú cho lần sau).
 
+- **Fix Lịch hẹn + S2-10 (test cách ly tenant, đạt gate cuối cùng của Sprint 2)** — chủ dự án báo bug thật: chế độ Danh sách không lọc theo ngày đã chọn (`AppointmentListView` gọi query thiếu tham số `date`, trong khi backend đã hỗ trợ kết hợp `date`+`cursor` từ S2-09) — đã sửa (`useAppointmentsListQuery(date)`); kèm 2 việc UX theo yêu cầu (badge "N lịch hẹn trong ngày" chuyển xuống ngang hàng nút "Hôm nay", đổi màu nổi bật, hiện cho cả 2 chế độ; phím tắt F2 + tooltip cho nút "Đặt lịch"). Sau đó làm S2-10: rà soát + bổ sung 7 test cách ly tenant còn thiếu ở `appointment-http.spec.ts` (+4: `/doctors`, `/schedule-config`, `/lookup?phone=`, danh sách) và `user-account-http.spec.ts` (+3: danh sách, `PATCH :id`, `reset-password` xuyên tenant) — **không tìm thấy bug thật**, code đã lọc `tenantId` đúng từ đầu, chỉ thiếu test xác nhận theo `.claude/docs/multi-tenancy.md`. `clinic-http.spec.ts` đã đủ từ S2-07, không cần thêm.
+  **Đã xác minh thật**: 159/159 test `apps/api` pass (152 cũ + 7 mới, không regress), `pnpm -w typecheck` sạch toàn workspace, Playwright xác nhận đổi ngày ở Danh sách cập nhật đúng số dòng + badge.
+
 ## Đang chờ
 
 - ADM-07 (P1): UI cấu hình ma trận phân quyền.
 - Đổi contract bất kỳ endpoint nào phải chạy lại `pnpm --filter @nexamed/api run openapi:generate` rồi `pnpm --filter @nexamed/web run api:codegen` — không sửa tay `openapi.json`/`openapi-schema.d.ts`.
-- S2-10 (test cách ly tenant bổ sung cho toàn bộ endpoint mới) — xem `docs/TASK.md`. S2-04 (BHYT) lùi lại sau Sprint 3 theo quyết định đã chốt.
+- S2-04 (BHYT) lùi lại sau Sprint 3 theo quyết định đã chốt, không chặn.
 - "Ca làm việc riêng từng bác sĩ" (lưới chỉ hiện bác sĩ có ca hôm đó) — nhu cầu thật chủ dự án nêu lúc duyệt S2-09, đã hỏi và chốt **chưa làm** (cần bảng mới ngoài ERD đã chốt + UI Quản trị cấu hình chưa tồn tại). Xem `docs/DECISIONS.md` #030 mục 5 nếu quay lại làm sau.
 - Tiếp nhận thật (Sprint 3): khi xây, thao tác Check-in hiện tại (chỉ đổi trạng thái `appointment`) cần nối thêm bước tạo `encounter` + gắn/tạo `patient_id` — xem `docs/DECISIONS.md` #032.
 - Menu "Tiếp nhận" (S3): thêm làm mục con trong nhóm sidebar "Tiếp nhận và Đặt lịch" đã có sẵn (`Sidebar.tsx`, đã có "Danh sách bệnh nhân"/"Lịch hẹn") khi backend tương ứng ra đời — không tạo nhóm mới.

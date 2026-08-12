@@ -2,6 +2,17 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-12 (16)
+
+S2-10 — Test cách ly tenant cho toàn bộ endpoint mới + vá lỗi (đạt gate cuối cùng còn treo của Sprint 2):
+
+- Rà soát `appointment-http.spec.ts` (S2-05→S2-09b), `user-account-http.spec.ts` (S2-07), `clinic-http.spec.ts` (S2-07) theo yêu cầu `.claude/docs/multi-tenancy.md` — "mỗi endpoint chạm dữ liệu... phải có test cách ly tenant: tenant A gọi ID/dữ liệu tenant B → 404, không phải 403". `clinic-http.spec.ts` đã đủ từ trước (room list/PATCH, clinic-settings độc lập theo tenant), không thêm gì.
+- **Bổ sung 7 test còn thiếu — không tìm thấy bug thật**, chỉ thiếu xác nhận (đã đọc lại `AppointmentRepository`/`UserAccountRepository`: mọi query đều ghép `tenantId` của actor vào `WHERE`, `findById`/`updateIfVersionMatches` không có đường nào bỏ sót):
+  - `appointment` (+4): `GET /appointments/doctors` — tenant B không thấy bác sĩ tenant A; `GET /appointments/schedule-config` — tenant B độc lập, không lẫn cấu hình tenant A; `GET /appointments/lookup?phone=` — tenant B tra đúng SĐT đã đặt ở tenant A vẫn không lộ tên/lịch sử (trả như chưa từng đặt) — điểm đáng chú ý nhất vì endpoint này tra theo SĐT chứ không theo ID cụ thể, rủi ro lộ PII cao hơn nếu quên lọc tenant; `GET /appointments` (danh sách, scope global) — tenant B không thấy lịch hẹn tenant A.
+  - `user-account` (+3): `GET /users` (danh sách) — tenant B không thấy tài khoản tenant A; `PATCH /users/:id` — tenant B sửa tài khoản tenant A → 404 (trước đó chỉ có test cho `GET /users/:id`, chưa có cho `PATCH`); `POST /users/:id/reset-password` — tenant B đặt lại mật khẩu tài khoản tenant A → 404, xác nhận thêm mật khẩu cũ vẫn dùng được (không có tác dụng phụ nào lọt qua).
+- **Đã xác minh thật**: 159/159 test `apps/api` pass (152 cũ không regress + 7 mới). `pnpm -w typecheck` sạch toàn workspace. Không có migration/schema/OpenAPI nào đổi — thuần bổ sung test theo endpoint đã có, không sửa code nghiệp vụ.
+- Cập nhật `docs/TASK.md` (đánh dấu S2-10 xong, Sprint 2 hoàn tất toàn bộ), `docs/CURRENT.md`.
+
 ## 2026-08-12 (15)
 
 Fix — Web Lịch hẹn: chế độ Danh sách không lọc theo ngày đã chọn; UX — badge tổng số lịch hẹn, phím tắt F2 cho "Đặt lịch":

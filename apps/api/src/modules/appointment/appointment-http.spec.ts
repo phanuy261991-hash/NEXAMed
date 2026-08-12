@@ -289,6 +289,13 @@ describe('HTTP e2e — /api/v1/appointments', () => {
     expect(res.body.data.items.every((a: { doctorId: string }) => a.doctorId === doctorBUserId)).toBe(true);
   });
 
+  it('cách ly tenant (S2-10): GET danh sách — tenant B (scope global) không thấy lịch hẹn nào của tenant A', async () => {
+    const res = await request(app.getHttpServer()).get('/api/v1/appointments').set(authed(tenantBReceptionistToken)).query({ limit: 100 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.items.every((a: { doctorId: string }) => a.doctorId !== doctorAUserId && a.doctorId !== doctorBUserId)).toBe(true);
+  });
+
   it('walk-in (APP-06): tạo lịch qua đúng POST /appointments với source=walk_in → 200, status SCHEDULED (chưa check-in/chưa tạo encounter — module Tiếp nhận là Sprint 3)', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/v1/appointments')
@@ -309,6 +316,13 @@ describe('HTTP e2e — /api/v1/appointments', () => {
       expect(res.body.data.items.every((d: { fullName: string }) => typeof d.fullName === 'string')).toBe(true);
     });
 
+    it('cách ly tenant (S2-10): tenant B không thấy bác sĩ của tenant A trong /doctors', async () => {
+      const res = await request(app.getHttpServer()).get('/api/v1/appointments/doctors').set(authed(tenantBReceptionistToken));
+      expect(res.status).toBe(200);
+      const ids = res.body.data.items.map((d: { id: string }) => d.id);
+      expect(ids).not.toEqual(expect.arrayContaining([doctorAUserId, doctorBUserId]));
+    });
+
     it('bác sĩ (scope personal) cũng gọi được /doctors → 200', async () => {
       const res = await request(app.getHttpServer()).get('/api/v1/appointments/doctors').set(authed(doctorAToken));
       expect(res.status).toBe(200);
@@ -325,6 +339,13 @@ describe('HTTP e2e — /api/v1/appointments', () => {
       expect(res.status).toBe(200);
       expect(res.body.data).toHaveProperty('businessHours');
       expect(typeof res.body.data.slotDurationMinutes).toBe('number');
+    });
+
+    it('cách ly tenant (S2-10): /schedule-config của tenant B độc lập, không lẫn cấu hình tenant A', async () => {
+      const res = await request(app.getHttpServer()).get('/api/v1/appointments/schedule-config').set(authed(tenantBReceptionistToken));
+      expect(res.status).toBe(200);
+      // tenant B chưa từng cấu hình (chỉ tenant A dùng module `clinic` ở test khác) — phải là mặc định.
+      expect(res.body.data.slotDurationMinutes).toBe(15);
     });
   });
 
@@ -384,6 +405,20 @@ describe('HTTP e2e — /api/v1/appointments', () => {
     it('nurse (không có appointment.read) → 403 PERMISSION_DENIED', async () => {
       const res = await request(app.getHttpServer()).get('/api/v1/appointments/lookup').set(authed(nurseToken)).query({ phone: '0987000333' });
       expect(res.status).toBe(403);
+    });
+
+    it('cách ly tenant (S2-10): tenant B tra cứu đúng SĐT đã đặt ở tenant A → không lộ tên/lịch sử, trả như chưa từng đặt', async () => {
+      const phone = '0987000444';
+      const created = await request(app.getHttpServer())
+        .post('/api/v1/appointments')
+        .set(authed(receptionistToken))
+        .send(bookingPayload(doctorAUserId, isoAt(9, 30, 21), { phone, fullName: 'Bí mật tenant A' }));
+      expect(created.status).toBe(200);
+
+      const res = await request(app.getHttpServer()).get('/api/v1/appointments/lookup').set(authed(tenantBReceptionistToken)).query({ phone });
+      expect(res.status).toBe(200);
+      expect(res.body.data.suggestedFullName).toBeNull();
+      expect(res.body.data.cancelledCount).toBe(0);
     });
   });
 

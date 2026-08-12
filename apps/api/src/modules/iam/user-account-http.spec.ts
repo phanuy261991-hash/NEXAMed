@@ -168,6 +168,12 @@ describe('HTTP e2e — /api/v1/users', () => {
       expect(res.body.data.items.some((u: { id: string }) => u.id === userId)).toBe(true);
     });
 
+    it('cách ly tenant (S2-10): GET danh sách — tenant B không thấy tài khoản vừa tạo ở tenant A', async () => {
+      const res = await request(app.getHttpServer()).get('/api/v1/users').set(authed(tenantBAdminToken));
+      expect(res.status).toBe(200);
+      expect(res.body.data.items.some((u: { id: string }) => u.id === userId)).toBe(false);
+    });
+
     it('GET :id → đúng chi tiết; tenant B không thấy được → 404', async () => {
       const ok = await request(app.getHttpServer()).get(`/api/v1/users/${userId}`).set(authed(clinicAdminToken));
       expect(ok.status).toBe(200);
@@ -187,6 +193,29 @@ describe('HTTP e2e — /api/v1/users', () => {
       expect(res.body.data.fullName).toBe('Tên đã sửa');
       expect(res.body.data.roleNames).toEqual(['nurse']);
       expect(res.body.data.version).toBe(2);
+    });
+
+    it('cách ly tenant (S2-10): tenant B PATCH tài khoản của tenant A → 404, không phải 403', async () => {
+      const res = await request(app.getHttpServer())
+        .patch(`/api/v1/users/${userId}`)
+        .set(authed(tenantBAdminToken))
+        .send({ fullName: 'Không được phép', version: 2 });
+
+      expect(res.status).toBe(404);
+    });
+
+    it('cách ly tenant (S2-10): tenant B đặt lại mật khẩu tài khoản của tenant A → 404, mật khẩu cũ vẫn dùng được', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/users/${userId}/reset-password`)
+        .set(authed(tenantBAdminToken))
+        .send({ newPassword: 'Hacked@98765', version: 2 });
+
+      expect(res.status).toBe(404);
+
+      const loginStillWorks = await request(app.getHttpServer())
+        .post('/api/v1/auth/login')
+        .send({ tenantId: fixture.tenantA.id, username, password: staffPassword });
+      expect(loginStillWorks.status).toBe(200);
     });
 
     it('PATCH :id với version cũ → 409 CONCURRENT_MODIFICATION', async () => {
