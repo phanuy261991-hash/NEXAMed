@@ -11,7 +11,7 @@ export function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-[1400px] p-8">
-      <h1 className="mb-6 text-2xl font-semibold text-slate-900">Tổng quan</h1>
+      <h1 className="sr-only">Tổng quan</h1>
       <EmptyState
         icon={CalendarBlank}
         title="Chưa có dữ liệu để hiển thị"

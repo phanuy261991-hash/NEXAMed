@@ -6,3 +6,4 @@ export * from './patient';
 export * from './appointment';
 export * from './user-account';
 export * from './clinic';
+export * from './reference-catalog';

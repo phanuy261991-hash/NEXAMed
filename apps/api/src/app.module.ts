@@ -8,6 +8,7 @@ import { IamModule } from './modules/iam/iam.module';
 import { PatientModule } from './modules/patient/patient.module';
 import { AppointmentModule } from './modules/appointment/appointment.module';
 import { ClinicModule } from './modules/clinic/clinic.module';
+import { ReferenceCatalogModule } from './modules/reference-catalog/reference-catalog.module';
 import { TenantContextMiddleware } from './common/tenant-context.middleware';
 
 @Module({
@@ -21,6 +22,7 @@ import { TenantContextMiddleware } from './common/tenant-context.middleware';
     PatientModule,
     AppointmentModule,
     ClinicModule,
+    ReferenceCatalogModule,
   ],
 })
 export class AppModule implements NestModule {

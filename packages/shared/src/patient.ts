@@ -24,8 +24,11 @@ export const patientAddressSchema = z.object({
 export type PatientAddress = z.infer<typeof patientAddressSchema>;
 
 /**
- * Mở rộng hồ sơ hành chính (docs/DECISIONS.md #034) — `ethnicity`/`nationality`/`occupation` là
- * text tự do (không danh mục DB, thiếu nguồn dữ liệu chính thức). `insuranceNumber` độc lập với
+ * Mở rộng hồ sơ hành chính (docs/DECISIONS.md #034). `occupation` là text tự do (không danh mục
+ * DB, thiếu nguồn dữ liệu chính thức). `ethnicity`/`nationality` đảo ngược #034 — nay là mã
+ * (`code`) tham chiếu `reference_catalog` (ví dụ "VNM", "1"), chọn qua dropdown ở web; vẫn khai
+ * `z.string()` tự do ở tầng này (không validate khớp danh mục) để không chặn sửa hồ sơ cũ có
+ * giá trị dạng tên tự do (ví dụ "Việt Nam") lưu trước khi đổi. `insuranceNumber` độc lập với
  * module Thẻ BHYT (`insurance_card`, S2-04 chưa làm) — chỉ lưu/hiển thị, không tính chi trả.
  */
 const patientRequestFieldsSchema = z.object({

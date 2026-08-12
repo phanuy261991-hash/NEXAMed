@@ -247,6 +247,35 @@ model Permission {
   @@map("permission")
 }
 
+enum ReferenceCatalogCategory {
+  ETHNICITY
+  NATIONALITY
+
+  @@map("reference_catalog_category")
+}
+
+// Danh mục dùng chung — TOÀN HỆ THỐNG (cùng bản chất permission/icd10_catalog), không có
+// tenant_id, không đủ 8 cột bắt buộc, không version (rủi ro ghi đè đồng thời thấp — clinic_admin
+// sửa không thường xuyên). Quản lý được qua API (create/update/deactivate) bởi clinic_admin
+// (reference_catalog.manage), khác `permission` — vì vậy GRANT mặc định của nexamed_app (SELECT/
+// INSERT/UPDATE, đã cấp qua ALTER DEFAULT PRIVILEGES) được giữ nguyên, không REVOKE gì thêm.
+// DELETE đã bị revoke toàn cục cho nexamed_app (migration *_tenant_context) — "xoá" thật ra là
+// isActive=false (soft), không phải SQL DELETE. `code` là mã chính thức (dân tộc: "1".."54" theo
+// Tổng cục Thống kê; quốc tịch: ISO 3166-1 alpha-3) — đây là giá trị lưu trên
+// patient.ethnicity/patient.nationality (docs/DECISIONS.md, đảo ngược #034 phần ethnicity/
+// nationality — occupation vẫn text tự do, không đổi).
+model ReferenceCatalog {
+  id        String                    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  category  ReferenceCatalogCategory
+  code      String
+  name      String
+  sortOrder Int                       @default(0) @map("sort_order")
+  isActive  Boolean                   @default(true) @map("is_active")
+
+  @@unique([category, code])
+  @@map("reference_catalog")
+}
+
 enum DataScope {
   none
   personal

@@ -26,6 +26,7 @@ Tên module trùng nhau giữa web và api.
 | `prescription` | Kê đơn thuốc, ký đơn, in đơn |
 | `iam` | Tài khoản, vai trò, phiên đăng nhập, audit log |
 | `clinic` | Tenant, cấu hình phòng khám, phòng, danh mục nội bộ |
+| `reference-catalog` | Danh mục dùng chung toàn hệ thống (Dân tộc, Quốc tịch — không tenant_id, khác "danh mục nội bộ" của `clinic`), quản lý được qua API bởi `clinic_admin` (`docs/DECISIONS.md` #037) |
 
 **Ngoài v1 (không tạo module, không viết code):** `pharmacy`, `billing`, `insurance`, `report`.
 

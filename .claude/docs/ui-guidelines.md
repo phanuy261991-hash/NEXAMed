@@ -59,6 +59,20 @@ Claude PHẢI luôn code đủ 4 trạng thái này cho mọi màn hình/compone
 - **Focus Ring:** Khi input đang focus, BẮT BUỘC có viền sáng nổi bật (VD: `focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500`).
 - **Phản hồi tức thì:** Nút "Lưu/Xác nhận" phải chuyển sang trạng thái disabled và có icon loading nhỏ bên trong khi đang submit (gửi dữ liệu).
 
+### 4.1b. Combobox — chuẩn bắt buộc cho MỌI dropdown chọn 1 giá trị (chốt 2026-08-12, `docs/DECISIONS.md`)
+
+**BẮT BUỘC dùng `Combobox`** (`apps/web/src/shared/ui/Combobox.tsx`) cho mọi trường chọn 1 giá trị từ danh sách — **cấm dùng thẻ `<select>` HTML thuần** trong code mới, kể cả danh sách ngắn 3-4 mục (đồng nhất thị giác toàn app quan trọng hơn việc "danh sách ngắn không cần tìm kiếm"). Lý do chốt thành chuẩn: mũi tên mặc định của trình duyệt xấu, không đồng nhất giữa các trình duyệt/hệ điều hành, và `<select>` tự chọn hướng xổ lên/xuống theo khoảng trống còn lại trên màn hình — không kiểm soát được.
+
+Đặc tả `Combobox`:
+- Mũi tên riêng (`CaretDown` Phosphor, không phải mũi tên mặc định trình duyệt) — đổi màu xanh (`text-blue-600`) và xoay 180° khi đang mở.
+- Panel danh sách LUÔN mở CỐ ĐỊNH bên dưới ô nhập (`top-full`), không bao giờ xổ lên trên.
+- Cao tối đa đúng **5 dòng** (~188px) rồi cuộn (`overflow-y-auto`) — không giới hạn số lượng option trong DOM, chỉ giới hạn phần hiển thị.
+- Gõ trực tiếp vào ô để lọc danh sách (không phân biệt hoa/thường, khớp theo tên hiển thị hoặc mã).
+- Điều hướng bàn phím đầy đủ: `↓`/`↑` di chuyển, `Enter` chọn, `Escape`/`Tab` đóng; click ra ngoài tự đóng.
+- Props: `id`, `value` (string), `options: {value, label}[]`, `onChange(value)`, `disabled?`, `required?`, `placeholder?`. Giá trị không phải string (ví dụ số) tự chuyển đổi ở nơi gọi (`String(n)` lúc hiển thị, `Number(v)` lúc `onChange`).
+
+Ví dụ đã áp dụng: Dân tộc/Quốc tịch/Giới tính (`PatientFormFields.tsx`), chọn bác sĩ + thời lượng khi đặt/sửa lịch hẹn (`AppointmentQuickCreatePanel.tsx`, `AppointmentDetailPanel.tsx`). Component mới phát sinh nhu cầu chọn 1 giá trị từ danh sách thì dùng lại `Combobox`, không viết `<select>` mới hay dựng component chọn khác.
+
 ### 4.2. Bảng dữ liệu y tế (Medical Data Tables)
 - **Cột:** Phải có tính năng cố định (sticky) cột "Tên bệnh nhân" ở bên trái và cột "Hành động" ở bên phải.
 - **Hàng (Row):** Có thể click vào bất cứ đâu trên hàng để xem chi tiết (không chỉ click vào nút xem).
@@ -127,6 +141,7 @@ Dải ngang cố định (`h-14`, `border-b border-slate-200 bg-white`) phía tr
   - Đoạn **cuối cùng** (trang hiện tại, không click): nổi bật bằng nền — `rounded-md bg-blue-50 px-2 py-1 font-semibold text-blue-700` (không chỉ đổi đậm nhạt chữ như bản nháp đầu).
   - Dùng dạng phẳng (`Nhóm cha › Trang hiện tại`), **không dùng vòng số bước (①②...)** kiểu wizard — chỉ dùng số bước cho luồng thật sự tuần tự nhiều bước (ví dụ sau này có luồng khám bệnh nhiều bước), không dùng cho màn hình danh sách/chi tiết thông thường.
   - **Nguồn dữ liệu breadcrumb**: `BreadcrumbProvider` (bọc toàn bộ `AppShell`) + hook `useBreadcrumb(items)` gọi trong chính component trang (không phải khai báo tĩnh theo route, vì có đoạn động cần dữ liệu đã tải — ví dụ tên bệnh nhân ở trang chi tiết). **BẮT BUỘC mọi component trang (mọi phần tử trong `router.tsx`) phải gọi `useBreadcrumb([...])` ngay khi mount** — xem lỗi đã xảy ra ở mục 8.3.
+  - **Breadcrumb là định danh trang DUY NHẤT (chốt 2026-08-12)** — trang KHÔNG hiển thị tiêu đề `<h1>` lặp lại tên đã có ở đoạn cuối breadcrumb (ví dụ trang Lịch hẹn không còn chữ "Lịch hẹn" to phía dưới topbar) và KHÔNG có dòng mô tả/chú thích phụ đi kèm tiêu đề đó — tránh trùng lặp thông tin và tiết kiệm không gian dọc. Vẫn giữ `<h1 className="sr-only">{tên trang}</h1>` (visually hidden, không hiện thị) ngay đầu component trang để giữ đúng cấu trúc heading cho screen reader/document outline — không được bỏ hẳn thẻ `h1`. Nội dung trang bắt đầu ngay bằng toolbar/hành động chính (nút "+"/tìm kiếm/tab...), căn theo mục 4.1/9 — nút hành động chính đặt góc phải, dùng `justify-end` nếu không còn tiêu đề để `justify-between` cùng. **Ngoại lệ**: trang chi tiết một bản ghi cụ thể (ví dụ tên bệnh nhân ở `PatientDetailPage`) vẫn hiển thị tiêu đề — đó là dữ liệu định danh bản ghi (an toàn người bệnh: xác nhận đúng bệnh nhân đang xem), không phải tên trang điều hướng, không thuộc diện bỏ.
 - **Phải**: lời chào `Xin chào, {họ tên}` + avatar tròn (`bg-blue-50 text-blue-600`, chữ viết tắt tối đa 2 ký tự — lọc bỏ từ không bắt đầu bằng chữ cái trước khi lấy viết tắt, ví dụ hậu tố `(dev)` của tài khoản seed không được tính) mở dropdown nhỏ chứa "Đăng xuất". **Không có icon chuông thông báo** — v1 chưa có hệ thống thông báo trong ứng dụng (ngoài phạm vi PRD, xem `docs/product/prd.md`). **Không hiện tên khoa (`KHOA: ...`)** cạnh lời chào ở v1 — API `/auth/me` hiện chưa trả trường này và phần lớn phòng khám 1-3 bác sĩ không dùng `department`; chỉ thêm nếu có yêu cầu cụ thể sau này (cần mở rộng contract `/auth/me`).
 
 ### 8.3 Lỗi đã xảy ra thật lúc triển khai — tránh lặp lại

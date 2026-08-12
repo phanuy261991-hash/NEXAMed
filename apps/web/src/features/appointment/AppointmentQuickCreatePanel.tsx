@@ -3,7 +3,10 @@ import { WarningCircle, X } from '@phosphor-icons/react';
 import type { AppointmentSource, AppointmentSummary, DoctorOption } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { Button } from '../../shared/ui/Button';
+import { Combobox } from '../../shared/ui/Combobox';
 import { APPOINTMENT_SPAM_CANCELLED_THRESHOLD } from './appointment-status';
+
+const DURATION_OPTIONS = [15, 30, 45, 60].map((m) => ({ value: String(m), label: `${m} phút` }));
 import { useAppointmentPhoneLookupQuery, useCreateAppointmentMutation } from './appointment.queries';
 import { formatDateLabel, minutesToLabel, toMinutes, vnDateTimeToIso, vnTimeOfDayMinutes } from './schedule-grid.utils';
 
@@ -154,18 +157,12 @@ export function AppointmentQuickCreatePanel({
                 <label htmlFor="quick-create-duration" className="mb-1.5 block text-xs font-semibold text-slate-600">
                   Thời lượng
                 </label>
-                <select
+                <Combobox
                   id="quick-create-duration"
-                  value={durationMinutes}
-                  onChange={(e) => setDurationMinutes(Number(e.target.value))}
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                >
-                  {[15, 30, 45, 60].map((m) => (
-                    <option key={m} value={m}>
-                      {m} phút
-                    </option>
-                  ))}
-                </select>
+                  value={String(durationMinutes)}
+                  onChange={(v) => setDurationMinutes(Number(v))}
+                  options={DURATION_OPTIONS}
+                />
               </div>
             </div>
 

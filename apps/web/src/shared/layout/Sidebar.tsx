@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
   CalendarBlank,
   CaretRight,
+  FolderSimple,
   GearSix,
   House,
   SidebarSimple,
@@ -20,6 +21,9 @@ const APPOINTMENT_ROLES = ['receptionist', 'doctor', 'clinic_admin'];
 
 /** Đường dẫn thuộc nhóm "Tiếp nhận và Đặt lịch" — dùng để tự mở nhóm khi route đang active nằm trong đó. */
 const RECEPTION_GROUP_PATHS = ['/patients', '/appointments'];
+/** Đường dẫn thuộc nhóm "Quản trị" — hiện chỉ có 1 mục con thật (Danh mục dùng chung); thêm
+ * ADM-01/02/03 vào đây khi có UI thật, không dựng placeholder trước. */
+const ADMIN_GROUP_PATHS = ['/admin'];
 
 interface NavItemProps {
   to: string;
@@ -67,11 +71,15 @@ export function Sidebar() {
   const [receptionGroupOpen, setReceptionGroupOpen] = useState(
     RECEPTION_GROUP_PATHS.some((path) => location.pathname.startsWith(path)),
   );
+  const [adminGroupOpen, setAdminGroupOpen] = useState(
+    ADMIN_GROUP_PATHS.some((path) => location.pathname.startsWith(path)),
+  );
 
   const isAdmin = user?.roles.some((role) => ADMIN_ROLES.includes(role)) ?? false;
   const canSeePatients = user?.roles.some((role) => PATIENT_ROLES.includes(role)) ?? false;
   const canSeeAppointments = user?.roles.some((role) => APPOINTMENT_ROLES.includes(role)) ?? false;
-  const groupExpanded = receptionGroupOpen && !collapsed;
+  const receptionGroupExpanded = receptionGroupOpen && !collapsed;
+  const adminGroupExpanded = adminGroupOpen && !collapsed;
 
   return (
     <aside
@@ -105,7 +113,7 @@ export function Sidebar() {
                     setReceptionGroupOpen((v) => !v);
                   }
                 }}
-                aria-expanded={groupExpanded}
+                aria-expanded={receptionGroupExpanded}
                 className={`flex w-full items-center gap-3 rounded-md py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800/60 hover:text-white ${
                   collapsed ? 'justify-center px-2' : 'px-3'
                 }`}
@@ -118,12 +126,12 @@ export function Sidebar() {
                       size={13}
                       weight="bold"
                       aria-hidden="true"
-                      className={`ml-auto flex-shrink-0 transition-transform ${groupExpanded ? 'rotate-90' : ''}`}
+                      className={`ml-auto flex-shrink-0 transition-transform ${receptionGroupExpanded ? 'rotate-90' : ''}`}
                     />
                   </>
                 )}
               </button>
-              {groupExpanded && (
+              {receptionGroupExpanded && (
                 <ul className="mt-0.5 flex flex-col gap-0.5 border-l border-slate-800 pl-3.5">
                   {canSeePatients && <NavItem to="/patients" label="Danh sách bệnh nhân" icon={Users} collapsed={false} indent />}
                   {canSeeAppointments && <NavItem to="/appointments" label="Lịch hẹn" icon={CalendarBlank} collapsed={false} indent />}
@@ -132,7 +140,47 @@ export function Sidebar() {
             </li>
           )}
 
-          {isAdmin && <NavItem to="/admin" label="Quản trị" icon={GearSix} collapsed={collapsed} />}
+          {isAdmin && (
+            <li>
+              <button
+                type="button"
+                title={collapsed ? 'Quản trị' : undefined}
+                onClick={() => {
+                  if (collapsed) {
+                    // Cùng quy tắc bắt buộc ở nhóm "Tiếp nhận và Đặt lịch" (.claude/docs/
+                    // ui-guidelines.md mục 8.1/8.3): bấm icon lúc thu gọn phải mở lại sidebar,
+                    // không được là no-op.
+                    setCollapsed(false);
+                    setAdminGroupOpen(true);
+                  } else {
+                    setAdminGroupOpen((v) => !v);
+                  }
+                }}
+                aria-expanded={adminGroupExpanded}
+                className={`flex w-full items-center gap-3 rounded-md py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800/60 hover:text-white ${
+                  collapsed ? 'justify-center px-2' : 'px-3'
+                }`}
+              >
+                <GearSix size={collapsed ? 20 : 18} weight="regular" aria-hidden="true" className="flex-shrink-0" />
+                {!collapsed && (
+                  <>
+                    <span className="truncate text-left">Quản trị</span>
+                    <CaretRight
+                      size={13}
+                      weight="bold"
+                      aria-hidden="true"
+                      className={`ml-auto flex-shrink-0 transition-transform ${adminGroupExpanded ? 'rotate-90' : ''}`}
+                    />
+                  </>
+                )}
+              </button>
+              {adminGroupExpanded && (
+                <ul className="mt-0.5 flex flex-col gap-0.5 border-l border-slate-800 pl-3.5">
+                  <NavItem to="/admin/reference-catalog" label="Danh mục dùng chung" icon={FolderSimple} collapsed={false} indent />
+                </ul>
+              )}
+            </li>
+          )}
         </ul>
       </nav>
 

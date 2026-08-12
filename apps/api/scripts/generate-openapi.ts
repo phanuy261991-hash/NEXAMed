@@ -26,6 +26,7 @@ import {
   listDoctorsResponseSchema,
   listPatientsQuerySchema,
   listPatientsResponseSchema,
+  listReferenceCatalogResponseSchema,
   listRoomsResponseSchema,
   listUserAccountsQuerySchema,
   listUserAccountsResponseSchema,
@@ -34,12 +35,15 @@ import {
   logoutResponseSchema,
   meResponseSchema,
   patientDetailSchema,
+  createReferenceCatalogRequestSchema,
+  referenceCatalogItemSchema,
   refreshResponseSchema,
   rescheduleAppointmentRequestSchema,
   resetUserPasswordRequestSchema,
   roomSummarySchema,
   updateClinicSettingsRequestSchema,
   updatePatientRequestSchema,
+  updateReferenceCatalogRequestSchema,
   updateRoomRequestSchema,
   updateUserAccountRequestSchema,
   userAccountSummarySchema,
@@ -551,6 +555,89 @@ registry.registerPath({
     200: jsonResponse('Sửa thành công', envelope(clinicSettingsSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền clinic_config.update'),
+  },
+});
+
+const referenceCatalogCategoryParams = z.object({ category: z.enum(['ETHNICITY', 'NATIONALITY']) });
+const referenceCatalogListQuery = z.object({ includeInactive: z.enum(['true', 'false']).optional() });
+const referenceCatalogIdParams = z.object({ id: z.string().uuid() });
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/reference-catalog/{category}',
+  tags: ['reference-catalog'],
+  summary: 'Danh mục dùng chung theo loại (Dân tộc/Quốc tịch) — includeInactive=true để xem cả mục đã ẩn (màn hình quản lý)',
+  security: [{ bearerAuth: [] }],
+  request: { params: referenceCatalogCategoryParams, query: referenceCatalogListQuery },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listReferenceCatalogResponseSchema)),
+    400: errorResponse('category không hợp lệ'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền reference_catalog.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/reference-catalog',
+  tags: ['reference-catalog'],
+  summary: 'Thêm mục mới vào danh mục dùng chung',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createReferenceCatalogRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Tạo thành công', envelope(referenceCatalogItemSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền reference_catalog.manage'),
+    409: errorResponse('Trùng mã (code) trong cùng danh mục'),
+  },
+});
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/reference-catalog/{id}',
+  tags: ['reference-catalog'],
+  summary: 'Sửa một mục trong danh mục dùng chung',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: referenceCatalogIdParams,
+    body: { content: { 'application/json': { schema: updateReferenceCatalogRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Sửa thành công', envelope(referenceCatalogItemSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền reference_catalog.manage'),
+    404: errorResponse('Không tìm thấy'),
+    409: errorResponse('Trùng mã (code) với mục khác trong cùng danh mục'),
+  },
+});
+
+registry.registerPath({
+  method: 'delete',
+  path: '/api/v1/reference-catalog/{id}',
+  tags: ['reference-catalog'],
+  summary: 'Ẩn một mục (soft — role DB không có quyền DELETE thật)',
+  security: [{ bearerAuth: [] }],
+  request: { params: referenceCatalogIdParams },
+  responses: {
+    200: jsonResponse('Đã ẩn', envelope(referenceCatalogItemSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền reference_catalog.manage'),
+    404: errorResponse('Không tìm thấy'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/reference-catalog/{id}/reactivate',
+  tags: ['reference-catalog'],
+  summary: 'Khôi phục một mục đã ẩn',
+  security: [{ bearerAuth: [] }],
+  request: { params: referenceCatalogIdParams },
+  responses: {
+    200: jsonResponse('Đã khôi phục', envelope(referenceCatalogItemSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền reference_catalog.manage'),
+    404: errorResponse('Không tìm thấy'),
   },
 });
 

@@ -15,7 +15,7 @@
 | `created_by` | `uuid NOT NULL` | User thực hiện |
 | `updated_by` | `uuid NOT NULL` | User sửa gần nhất |
 
-Thiếu một cột là migration không hợp lệ. Ngoại lệ duy nhất: bảng danh mục toàn hệ thống (`icd10_catalog`, `province`, `permission`) và bảng append-only (`audit_log`, `break_glass_session` — không có `updated_at`, `deleted_at`, `version`, `created_at`, `created_by`, `updated_by`; dùng `occurred_at` làm mốc thời gian và `actor_id` làm actor, không có khái niệm "người tạo dòng log" khác với actor thực hiện hành động). `tenant` cũng là ngoại lệ với riêng cột `tenant_id` (bảng này là gốc của tenant, không tự tham chiếu chính mình).
+Thiếu một cột là migration không hợp lệ. Ngoại lệ duy nhất: bảng danh mục toàn hệ thống (`icd10_catalog`, `province`, `permission`, `reference_catalog`) và bảng append-only (`audit_log`, `break_glass_session` — không có `updated_at`, `deleted_at`, `version`, `created_at`, `created_by`, `updated_by`; dùng `occurred_at` làm mốc thời gian và `actor_id` làm actor, không có khái niệm "người tạo dòng log" khác với actor thực hiện hành động). `tenant` cũng là ngoại lệ với riêng cột `tenant_id` (bảng này là gốc của tenant, không tự tham chiếu chính mình).
 
 Mọi `UPDATE` kèm điều kiện `WHERE version = ?` và tăng `version` lên 1; không khớp thì ném `CONCURRENT_MODIFICATION`, không ghi đè im lặng.
 
@@ -49,6 +49,18 @@ Thay thế mô hình vai trò cứng cũ (enum `UserRoleName` trực tiếp trê
 - `role_permission`: `tenant_id`, `role_id`, `permission_id`, `data_scope` (enum `none`/`personal`/`department`/`global`). Composite FK `(tenant_id, role_id)` → `role`. Unique `(tenant_id, role_id, permission_id)`.
 - `user_role`: bảng nối `user_account` ↔ `role` (giữ tên cũ, đổi bản chất từ "user + enum vai trò" sang "user + role_id" — xem `docs/DECISIONS.md` #013). `tenant_id`, `user_id`, `role_id`. Composite FK cả hai chiều `(tenant_id, user_id)` → `user_account`, `(tenant_id, role_id)` → `role`. Unique `(tenant_id, user_id, role_id)` — một user có thể có nhiều vai trò.
 
+### reference_catalog (`docs/DECISIONS.md` #037)
+
+Danh mục dùng chung toàn hệ thống (Dân tộc, Quốc tịch — đảo ngược `docs/DECISIONS.md` #034 phần `ethnicity`/`nationality`; `occupation` vẫn text tự do, không đổi). Cùng bản chất `permission`/`icd10_catalog`: không `tenant_id`, không đủ 8 cột bắt buộc. Thêm **không có `version`** (khác `room`/`user_account` — rủi ro ghi đè đồng thời thấp, `clinic_admin` sửa không thường xuyên).
+
+`category` (enum `ETHNICITY`/`NATIONALITY`), `code` (mã chính thức: dân tộc "1".."54" theo Tổng cục Thống kê, quốc tịch ISO 3166-1 alpha-3 — đây là giá trị lưu trên `patient.ethnicity`/`patient.nationality`), `name` (tên hiển thị tiếng Việt), `sort_order` (thứ tự hiển thị), `is_active` (soft-delete — xem dưới). Unique `(category, code)`.
+
+**Khác `permission`**: bảng này quản lý được qua chính API bởi `clinic_admin` (`reference_catalog.manage`), không chỉ qua seed script đặc quyền — vì vậy **không** REVOKE `INSERT`/`UPDATE` khỏi `nexamed_app` (giữ nguyên GRANT mặc định qua `ALTER DEFAULT PRIVILEGES`). `DELETE` đã bị revoke toàn cục cho `nexamed_app` từ migration `*_tenant_context` (áp dụng cho mọi bảng, kể cả bảng tạo sau) — "xoá" trong UI quản lý là `is_active=false` (soft), không phải `DELETE` thật.
+
+Quyền: `reference_catalog.read` (`global`) cho mọi vai trò lâm sàng (`receptionist`/`nurse`/`doctor`/`clinic_admin` — ai điền form bệnh nhân cũng cần thấy dropdown); `reference_catalog.manage` (`global`) chỉ `clinic_admin`. **Giới hạn đã biết**: không có cách ly theo tenant (bảng không có `tenant_id`) — nếu triển khai tập trung nhiều phòng khám sau này (v3+), sửa ở một tenant ảnh hưởng mọi tenant khác. Chấp nhận có ý thức ở v1 (on-premise, một tenant/instance).
+
+Seed dữ liệu thật (không phải placeholder) tại `packages/core/src/reference-catalog/data.ts` — 54 dân tộc + 30 quốc tịch, nguồn từ file chủ dự án cung cấp, không tự thêm/bớt/sửa chính tả.
+
 ### break_glass_session
 
 `tenant_id`, `actor_id`, `entity_type`, `entity_id`, `reason`, `occurred_at`, `expires_at`. Append-only như `audit_log` (không `updated_at`/`deleted_at`/`version`/`created_by`/`updated_by`) — mỗi lần "phá kính" là một bản ghi mới, không sửa/gia hạn bản ghi cũ. Xem quy tắc đầy đủ ở `security-audit.md` mục Break-glass.
@@ -60,7 +72,8 @@ Thay thế mô hình vai trò cứng cũ (enum `UserRoleName` trực tiếp trê
 - **Ràng buộc nghiệp vụ (`docs/DECISIONS.md` #036, không phải ràng buộc DB)**: `createPatientRequestSchema` (`packages/shared/src/patient.ts`) bắt buộc `national_id` khi bệnh nhân >= 18 tuổi tại thời điểm tạo hồ sơ (tính từ `dob`); dưới 18 vẫn tuỳ chọn. **Chỉ áp cho tạo mới**, không áp lại cho `updatePatientRequestSchema` — sửa hồ sơ người lớn cũ chưa có CCCD (tạo trước ràng buộc này) không bị chặn.
 - Có `merged_into_id` phục vụ luồng gộp hồ sơ trùng trong cùng tenant; không xoá bản ghi nguồn.
 - **Chuẩn bị cho hồ sơ dùng chung liên tenant (v3+)**: cột `global_patient_ref uuid NULL` + `identity_verified_at timestamptz NULL`. v1 luôn để null, mọi truy vấn vẫn đi theo `(tenant_id, id)`. Việc phân giải danh tính đi qua `PatientIdentityPort` (adapter v1 trả chính `patient.id`), nên khi bật master patient index chỉ cần thay adapter, không sửa service. **Không** viết code đọc dữ liệu bệnh nhân xuyên tenant ở v1.
-- **Mở rộng hồ sơ hành chính (`docs/DECISIONS.md` #034)**: `photo_key` (text null — key trên `StoragePort`, không phải URL; phục vụ qua signed URL có hạn, xem `apps/api/src/infrastructure/storage/signed-url.ts`), `national_id_issued_at` (date), `national_id_issued_place`, `ethnicity`, `nationality`, `occupation` (text tự do, **không** danh mục DB — thiếu nguồn dữ liệu chính thức, cùng lý do tạm hoãn ICD-10 ở S3-01), `insurance_number` (text độc lập, **không** liên kết `insurance_card`/S2-04), `relative_full_name`, `relative_relationship`, `relative_phone`, `relative_address` (1 bộ người thân trên mỗi `patient`, không tách bảng). `address_json` có thêm khoá `neighborhood` (Khu phố); khoá `district` (Quận/Huyện) vẫn hợp lệ trong schema (dữ liệu cũ) nhưng không còn input trên UI (đã sáp nhập 2 cấp Tỉnh→Xã).
+- **Mở rộng hồ sơ hành chính (`docs/DECISIONS.md` #034)**: `photo_key` (text null — key trên `StoragePort`, không phải URL; phục vụ qua signed URL có hạn, xem `apps/api/src/infrastructure/storage/signed-url.ts`), `national_id_issued_at` (date), `national_id_issued_place`, `occupation` (text tự do, **không** danh mục DB — thiếu nguồn dữ liệu chính thức, cùng lý do tạm hoãn ICD-10 ở S3-01), `insurance_number` (text độc lập, **không** liên kết `insurance_card`/S2-04), `relative_full_name`, `relative_relationship`, `relative_phone`, `relative_address` (1 bộ người thân trên mỗi `patient`, không tách bảng). `address_json` có thêm khoá `neighborhood` (Khu phố); khoá `district` (Quận/Huyện) vẫn hợp lệ trong schema (dữ liệu cũ) nhưng không còn input trên UI (đã sáp nhập 2 cấp Tỉnh→Xã).
+- **`ethnicity`/`nationality` (`docs/DECISIONS.md` #037, đảo ngược #034 cho riêng 2 field này)**: vẫn cột `String?` tự do ở tầng DB/Zod, nhưng nay lưu **mã (`code`)** tham chiếu bảng `reference_catalog` (ví dụ `"VNM"`, `"1"`), chọn qua dropdown ở web thay vì gõ tay. Không có FK thật (bảng `reference_catalog` không tenant_id, composite FK `(tenant_id, id)` không áp dụng được) và không validate khớp danh mục ở tầng Zod — tránh chặn sửa hồ sơ cũ có giá trị dạng tên tự do (ví dụ `"Việt Nam"`) lưu trước #037.
 
 ### insurance_card
 `patient_id`, `card_no` (mã hoá), `valid_from`, `valid_to`, `benefit_rate`, `initial_facility_code`.

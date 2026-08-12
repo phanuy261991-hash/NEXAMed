@@ -41,8 +41,12 @@ Seed cụ thể nằm trong `apps/api/prisma/seed/permissions.seed.ts` (nguồn 
 | `user_account.read/manage` | none | none | none | global | global |
 | `role_permission.manage` | none | none | none | global | none |
 | `audit_log.read` | none | none | none | global | global |
+| `reference_catalog.read` | global | global | global | global | none |
+| `reference_catalog.manage` | none | none | none | global | none |
 
 Lý do `doctor.encounter.read = global` (không phải `personal`+break-glass như ví dụ minh hoạ chung của ngành): PRD yêu cầu P0 **ENC-01** — bác sĩ phải xem được toàn bộ tiền sử khám của bệnh nhân ngay khi vào màn hình khám, kể cả lượt khám trước do bác sĩ khác phụ trách (phòng khám 1-3 bác sĩ, thường thay nhau khám cùng bệnh nhân). Bắt break-glass cho thao tác này sẽ phá vỡ chính giá trị cốt lõi sản phẩm. Break-glass dành cho tình huống **thật sự ngoài phạm vi công việc thường ngày** — xem mục dưới.
+
+**`reference_catalog.*` (`docs/DECISIONS.md` #037)**: danh mục dùng chung Dân tộc/Quốc tịch — toàn hệ thống, không `tenant_id`, không cách ly theo tenant (chấp nhận có ý thức ở v1 on-premise một tenant/instance, xem ghi chú trong `data-model.md`). `PermissionGuard` áp dụng bình thường (không lệch pattern) nhưng **không** gắn `entityIdParam` cho `PATCH`/`DELETE` — break-glass không có ý nghĩa với dữ liệu không có chủ sở hữu/không nhạy cảm lâm sàng, `none` bị chặn hẳn.
 
 ### Break-glass (phá kính — vượt quyền tạm thời)
 

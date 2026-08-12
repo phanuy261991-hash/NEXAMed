@@ -76,12 +76,7 @@ export function PatientListPage() {
 
   return (
     <div className="flex h-full flex-col gap-3 p-4">
-      <div className="flex flex-shrink-0 items-center justify-between px-1">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Danh sách bệnh nhân</h1>
-          <p className="mt-0.5 text-xs text-slate-400">Nhấp đúp vào mã bệnh nhân để mở hồ sơ</p>
-        </div>
-      </div>
+      <h1 className="sr-only">Danh sách bệnh nhân</h1>
 
       <div className="flex-shrink-0 px-1">
         <div className="relative max-w-md">

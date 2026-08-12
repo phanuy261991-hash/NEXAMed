@@ -76,8 +76,8 @@ export function AppointmentSchedulePage() {
 
   return (
     <div className="flex h-full flex-col gap-3 p-4">
-      <div className="flex flex-shrink-0 items-center justify-between px-1">
-        <h1 className="text-2xl font-semibold text-slate-900">Lịch hẹn</h1>
+      <div className="flex flex-shrink-0 items-center justify-end px-1">
+        <h1 className="sr-only">Lịch hẹn</h1>
         <Button type="button" title="Đặt lịch nhanh — bấm F2 để mở nhanh" onClick={() => openQuickCreate(null, '08:00')}>
           <Plus size={15} weight="bold" aria-hidden="true" />
           Đặt lịch

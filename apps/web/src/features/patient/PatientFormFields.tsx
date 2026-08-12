@@ -1,6 +1,8 @@
-import type { PatientGender } from '@nexamed/shared';
+import type { PatientGender, ReferenceCatalogItem } from '@nexamed/shared';
 import { calculateAgeYears, computeAgeLabel, computeBirthYear } from './patient-form.utils';
 import { PatientAvatarUpload } from './PatientAvatarUpload';
+import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
+import { Combobox, type ComboboxOption } from '../../shared/ui/Combobox';
 
 /** Khớp `ADULT_AGE_THRESHOLD` trong `packages/shared/src/patient.ts` (docs/DECISIONS.md #035). */
 const ADULT_AGE_THRESHOLD = 18;
@@ -37,8 +39,8 @@ export const EMPTY_PATIENT_FORM: PatientFormValues = {
   nationalId: '',
   nationalIdIssuedAt: '',
   nationalIdIssuedPlace: '',
-  ethnicity: '',
-  nationality: 'Việt Nam',
+  ethnicity: '1',
+  nationality: 'VNM',
   occupation: '',
   insuranceNumber: '',
   street: '',
@@ -52,6 +54,12 @@ export const EMPTY_PATIENT_FORM: PatientFormValues = {
   relativeAddress: '',
 };
 
+const GENDER_OPTIONS: ComboboxOption[] = [
+  { value: 'female', label: 'Nữ' },
+  { value: 'male', label: 'Nam' },
+  { value: 'other', label: 'Khác' },
+];
+
 const inputClassName =
   'w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 const readOnlyInputClassName = `${inputClassName} bg-slate-50 text-slate-500`;
@@ -62,6 +70,22 @@ const sectionBadgeClassName =
   'absolute -top-3 left-4 rounded-md bg-blue-600 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white';
 /** Lưới trường tra dày hơn (gap hẹp) theo đúng mật độ trong ảnh tham khảo, thay cho gap-6 trước đây. */
 const fieldGridClassName = 'grid grid-cols-2 gap-x-3 gap-y-3 sm:grid-cols-3 lg:grid-cols-4';
+
+/**
+ * Hồ sơ cũ lưu `ethnicity`/`nationality` dạng text tự do (trước docs/DECISIONS.md đảo ngược
+ * #034) hoặc mục danh mục đã bị `clinic_admin` ẩn sau khi hồ sơ đã lưu — giá trị đó sẽ không
+ * khớp `code` nào trong danh sách hiện tại. Chèn thêm 1 option giữ nguyên giá trị cũ (label =
+ * value = giá trị cũ) để không mất dữ liệu/không tự xoá khi mở form sửa.
+ */
+function withLegacyValueOption(items: ReferenceCatalogItem[], currentValue: string): ReferenceCatalogItem[] {
+  if (currentValue === '' || items.some((i) => i.code === currentValue)) {
+    return items;
+  }
+  return [
+    { id: 'legacy', category: items[0]?.category ?? 'ETHNICITY', code: currentValue, name: currentValue, sortOrder: -1, isActive: true },
+    ...items,
+  ];
+}
 
 function Field({
   id,
@@ -117,6 +141,11 @@ export function PatientFormFields({
     onChange({ ...values, [key]: value });
   }
 
+  const ethnicityQuery = useReferenceCatalogQuery('ETHNICITY');
+  const nationalityQuery = useReferenceCatalogQuery('NATIONALITY');
+  const ethnicityOptions = withLegacyValueOption(ethnicityQuery.data?.items ?? [], values.ethnicity);
+  const nationalityOptions = withLegacyValueOption(nationalityQuery.data?.items ?? [], values.nationality);
+
   const birthYear = computeBirthYear(values.dob);
   const ageLabel = computeAgeLabel(values.dob);
 
@@ -158,18 +187,14 @@ export function PatientFormFields({
           </Field>
 
           <Field id="gender" label="Giới tính" required>
-            <select
+            <Combobox
               id="gender"
               required
               disabled={disabled}
               value={values.gender}
-              onChange={(e) => set('gender', e.target.value as PatientGender)}
-              className={inputClassName}
-            >
-              <option value="female">Nữ</option>
-              <option value="male">Nam</option>
-              <option value="other">Khác</option>
-            </select>
+              onChange={(v) => set('gender', v as PatientGender)}
+              options={GENDER_OPTIONS}
+            />
           </Field>
 
           <Field id="dob" label="Ngày sinh" required>
@@ -238,22 +263,22 @@ export function PatientFormFields({
           </Field>
 
           <Field id="ethnicity" label="Dân tộc">
-            <input
+            <Combobox
               id="ethnicity"
               disabled={disabled}
               value={values.ethnicity}
-              onChange={(e) => set('ethnicity', e.target.value)}
-              className={inputClassName}
+              onChange={(v) => set('ethnicity', v)}
+              options={ethnicityOptions.map((item) => ({ value: item.code, label: item.name }))}
             />
           </Field>
 
           <Field id="nationality" label="Quốc tịch">
-            <input
+            <Combobox
               id="nationality"
               disabled={disabled}
               value={values.nationality}
-              onChange={(e) => set('nationality', e.target.value)}
-              className={inputClassName}
+              onChange={(v) => set('nationality', v)}
+              options={nationalityOptions.map((item) => ({ value: item.code, label: item.name }))}
             />
           </Field>
 

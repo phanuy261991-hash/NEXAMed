@@ -62,7 +62,7 @@ export function PatientNewPage() {
 
   return (
     <div className="p-6">
-      <h1 className="mb-6 text-2xl font-semibold text-slate-900">Thêm bệnh nhân</h1>
+      <h1 className="sr-only">Thêm bệnh nhân</h1>
 
       {duplicates && duplicates.length > 0 && (
         <div className="mb-6 rounded-lg border border-amber-300 bg-amber-50 p-4">

@@ -39,6 +39,8 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   { module: 'user_account', action: 'manage', description: 'Tạo/sửa/khoá tài khoản, gán vai trò' },
   { module: 'role_permission', action: 'manage', description: 'Cấu hình ma trận phân quyền' },
   { module: 'audit_log', action: 'read', description: 'Xem nhật ký hoạt động' },
+  { module: 'reference_catalog', action: 'read', description: 'Xem danh mục dùng chung (dân tộc, quốc tịch...)' },
+  { module: 'reference_catalog', action: 'manage', description: 'Thêm/sửa/ẩn mục trong danh mục dùng chung' },
 ] as const;
 
 export function permissionKey(p: Pick<PermissionDefinition, 'module' | 'action'>): string {
@@ -60,11 +62,13 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'appointment.create': 'global',
     'appointment.update': 'global',
     'appointment.cancel': 'global',
+    'reference_catalog.read': 'global',
   },
   nurse: {
     'patient.read': 'global',
     'encounter.read': 'personal',
     'vital_sign.create': 'personal',
+    'reference_catalog.read': 'global',
   },
   doctor: {
     'patient.read': 'global',
@@ -81,6 +85,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'prescription.create': 'personal',
     'prescription.sign': 'personal',
     'prescription.print': 'personal',
+    'reference_catalog.read': 'global',
   },
   clinic_admin: {
     'patient.read': 'global',
@@ -97,6 +102,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'user_account.manage': 'global',
     'role_permission.manage': 'global',
     'audit_log.read': 'global',
+    'reference_catalog.read': 'global',
+    'reference_catalog.manage': 'global',
   },
   system_admin: {
     'user_account.read': 'global',

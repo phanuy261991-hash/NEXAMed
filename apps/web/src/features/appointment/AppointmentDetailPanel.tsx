@@ -3,7 +3,10 @@ import { CheckCircle, Clock, Warning, X } from '@phosphor-icons/react';
 import type { AppointmentSummary, DoctorOption } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { Button } from '../../shared/ui/Button';
+import { Combobox } from '../../shared/ui/Combobox';
 import { APPOINTMENT_SOURCE_LABEL, APPOINTMENT_STATUS_META, isAppointmentLate } from './appointment-status';
+
+const DURATION_OPTIONS = [15, 30, 45, 60].map((m) => ({ value: String(m), label: `${m} phút` }));
 import { useCancelAppointmentMutation, useCheckinAppointmentMutation, useRescheduleAppointmentMutation } from './appointment.queries';
 import { minutesToLabel, vnDateTimeToIso, vnTimeOfDayMinutes } from './schedule-grid.utils';
 
@@ -180,18 +183,12 @@ export function AppointmentDetailPanel({
                 <label htmlFor="edit-doctor" className="mb-1.5 block text-xs font-semibold text-slate-600">
                   Bác sĩ
                 </label>
-                <select
+                <Combobox
                   id="edit-doctor"
                   value={editDoctorId}
-                  onChange={(e) => setEditDoctorId(e.target.value)}
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                >
-                  {doctors.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.fullName}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setEditDoctorId}
+                  options={doctors.map((d) => ({ value: d.id, label: d.fullName }))}
+                />
               </div>
               <div className="flex gap-2.5">
                 <div className="flex-1">
@@ -211,18 +208,12 @@ export function AppointmentDetailPanel({
                   <label htmlFor="edit-duration" className="mb-1.5 block text-xs font-semibold text-slate-600">
                     Thời lượng
                   </label>
-                  <select
+                  <Combobox
                     id="edit-duration"
-                    value={editDuration}
-                    onChange={(e) => setEditDuration(Number(e.target.value))}
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  >
-                    {[15, 30, 45, 60].map((m) => (
-                      <option key={m} value={m}>
-                        {m} phút
-                      </option>
-                    ))}
-                  </select>
+                    value={String(editDuration)}
+                    onChange={(v) => setEditDuration(Number(v))}
+                    options={DURATION_OPTIONS}
+                  />
                 </div>
               </div>
             </div>
