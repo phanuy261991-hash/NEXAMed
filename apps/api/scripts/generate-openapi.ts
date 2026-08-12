@@ -7,18 +7,42 @@ import { z } from 'zod';
 // (patch vào ZodType.prototype) để tự sinh định nghĩa parameter từ field của z.object thường.
 extendZodWithOpenApi(z);
 import {
+  appointmentPhoneLookupQuerySchema,
+  appointmentPhoneLookupResponseSchema,
+  appointmentSummarySchema,
   breakGlassRequestSchema,
   breakGlassResponseSchema,
+  cancelAppointmentRequestSchema,
+  checkinAppointmentRequestSchema,
+  checkPatientDuplicateQuerySchema,
+  checkPatientDuplicateResponseSchema,
+  clinicSettingsSchema,
+  createAppointmentRequestSchema,
   createPatientRequestSchema,
+  createRoomRequestSchema,
+  createUserAccountRequestSchema,
+  listAppointmentsQuerySchema,
+  listAppointmentsResponseSchema,
+  listDoctorsResponseSchema,
   listPatientsQuerySchema,
   listPatientsResponseSchema,
+  listRoomsResponseSchema,
+  listUserAccountsQuerySchema,
+  listUserAccountsResponseSchema,
   loginRequestSchema,
   loginResponseSchema,
   logoutResponseSchema,
   meResponseSchema,
   patientDetailSchema,
   refreshResponseSchema,
+  rescheduleAppointmentRequestSchema,
+  resetUserPasswordRequestSchema,
+  roomSummarySchema,
+  updateClinicSettingsRequestSchema,
   updatePatientRequestSchema,
+  updateRoomRequestSchema,
+  updateUserAccountRequestSchema,
+  userAccountSummarySchema,
 } from '@nexamed/shared';
 
 /**
@@ -151,6 +175,20 @@ registry.registerPath({
 
 registry.registerPath({
   method: 'get',
+  path: '/api/v1/patients/check-duplicate',
+  tags: ['patient'],
+  summary: 'Kiểm tra nghi trùng tên + ngày sinh trước khi tạo hồ sơ mới (PAT-03, chỉ cảnh báo)',
+  security: [{ bearerAuth: [] }],
+  request: { query: checkPatientDuplicateQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công (mảng rỗng nếu không nghi trùng)', envelope(checkPatientDuplicateResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền patient.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
   path: '/api/v1/patients/{id}',
   tags: ['patient'],
   summary: 'Chi tiết một hồ sơ bệnh nhân (kèm CCCD đã giải mã)',
@@ -180,6 +218,310 @@ registry.registerPath({
     403: errorResponse('Không có quyền patient.update (có thể xin break-glass)'),
     404: errorResponse('Không tìm thấy hồ sơ (không tồn tại hoặc thuộc tenant khác)'),
     409: errorResponse('version không khớp (dữ liệu đã đổi) hoặc trùng CCCD với bệnh nhân khác'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/appointments',
+  tags: ['appointment'],
+  summary: 'Đặt lịch hẹn (APP-02) — chặn trùng khung giờ cùng bác sĩ ở tầng DB (APP-03)',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createAppointmentRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Tạo thành công', envelope(appointmentSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền appointment.create, hoặc bác sĩ (scope personal) cố đặt hộ bác sĩ khác'),
+    409: errorResponse('Trùng khung giờ với lịch hẹn khác của cùng bác sĩ (APPOINTMENT_SLOT_CONFLICT)'),
+    422: errorResponse('Bệnh nhân/bác sĩ/phòng không tồn tại hoặc thuộc tenant khác'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/appointments',
+  tags: ['appointment'],
+  summary: 'Danh sách lịch hẹn, phân trang cursor (APP-01)',
+  security: [{ bearerAuth: [] }],
+  request: { query: listAppointmentsQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listAppointmentsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền appointment.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/appointments/doctors',
+  tags: ['appointment'],
+  summary: 'Danh sách bác sĩ (S2-09, màn hình lịch hẹn) — chiếu tối thiểu, gắn quyền appointment.read thay vì user_account.read',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(listDoctorsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền appointment.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/appointments/schedule-config',
+  tags: ['appointment'],
+  summary: 'Giờ làm việc + độ dài slot (S2-09) — cùng dữ liệu GET /clinic-settings nhưng gắn quyền appointment.read',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(clinicSettingsSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền appointment.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/appointments/lookup',
+  tags: ['appointment'],
+  summary: 'Tra cứu theo SĐT lúc đặt lịch — tự điền tên, cảnh báo spam theo số lần huỷ (docs/DECISIONS.md #032)',
+  security: [{ bearerAuth: [] }],
+  request: { query: appointmentPhoneLookupQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(appointmentPhoneLookupResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền appointment.read'),
+  },
+});
+
+const appointmentIdParams = z.object({ id: z.string().uuid() });
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/appointments/{id}',
+  tags: ['appointment'],
+  summary: 'Chi tiết một lịch hẹn',
+  security: [{ bearerAuth: [] }],
+  request: { params: appointmentIdParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(appointmentSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền appointment.read (có thể xin break-glass)'),
+    404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal của bác sĩ)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/appointments/{id}/cancel',
+  tags: ['appointment'],
+  summary: 'Huỷ lịch hẹn (APP-04) — bắt buộc lý do, kèm version hiện có (optimistic locking)',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: appointmentIdParams,
+    body: { content: { 'application/json': { schema: cancelAppointmentRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Huỷ thành công', envelope(appointmentSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền appointment.cancel'),
+    404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal của bác sĩ)'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION), hoặc lịch không còn ở trạng thái SCHEDULED (APPOINTMENT_NOT_CANCELLABLE)'),
+  },
+});
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/appointments/{id}/reschedule',
+  tags: ['appointment'],
+  summary: 'Đổi/dời lịch hẹn (S2-09) — đổi giờ/bác sĩ/phòng, kèm version hiện có (optimistic locking)',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: appointmentIdParams,
+    body: { content: { 'application/json': { schema: rescheduleAppointmentRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Đổi lịch thành công', envelope(appointmentSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền appointment.update, hoặc bác sĩ (scope personal) cố đổi lịch cho bác sĩ khác'),
+    404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal của bác sĩ)'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION), lịch không còn SCHEDULED (APPOINTMENT_NOT_CANCELLABLE), hoặc trùng khung giờ khác của cùng bác sĩ (APPOINTMENT_SLOT_CONFLICT)'),
+    422: errorResponse('Bác sĩ/phòng không tồn tại hoặc thuộc tenant khác'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/appointments/{id}/checkin',
+  tags: ['appointment'],
+  summary: 'Check-in (docs/DECISIONS.md #032) — chuyển thẳng SCHEDULED → CONVERTED, kèm version hiện có',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: appointmentIdParams,
+    body: { content: { 'application/json': { schema: checkinAppointmentRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Check-in thành công', envelope(appointmentSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền appointment.update'),
+    404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal của bác sĩ)'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION), hoặc lịch không còn ở trạng thái SCHEDULED (APPOINTMENT_NOT_CANCELLABLE)'),
+  },
+});
+
+const userIdParams = z.object({ id: z.string().uuid() });
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/users',
+  tags: ['user-account'],
+  summary: 'Tạo tài khoản nhân viên + gán vai trò (ADM-01)',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createUserAccountRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Tạo thành công', envelope(userAccountSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền user_account.manage'),
+    409: errorResponse('Trùng tên đăng nhập (USER_ACCOUNT_DUPLICATE_USERNAME)'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/users',
+  tags: ['user-account'],
+  summary: 'Danh sách tài khoản, phân trang cursor',
+  security: [{ bearerAuth: [] }],
+  request: { query: listUserAccountsQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listUserAccountsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền user_account.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/users/{id}',
+  tags: ['user-account'],
+  summary: 'Chi tiết một tài khoản',
+  security: [{ bearerAuth: [] }],
+  request: { params: userIdParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(userAccountSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền user_account.read'),
+    404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
+  },
+});
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/users/{id}',
+  tags: ['user-account'],
+  summary: 'Sửa hồ sơ/vai trò/trạng thái tài khoản — đổi vai trò hoặc vô hiệu hoá thu hồi toàn bộ phiên đang mở',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: userIdParams,
+    body: { content: { 'application/json': { schema: updateUserAccountRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Sửa thành công', envelope(userAccountSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền user_account.manage'),
+    404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/users/{id}/reset-password',
+  tags: ['user-account'],
+  summary: 'Đặt lại mật khẩu — thu hồi toàn bộ phiên đang mở của tài khoản đó',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: userIdParams,
+    body: { content: { 'application/json': { schema: resetUserPasswordRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Thành công', envelope(userAccountSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền user_account.manage'),
+    404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/rooms',
+  tags: ['clinic'],
+  summary: 'Tạo phòng khám (ADM-02)',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createRoomRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Tạo thành công', envelope(roomSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinic_config.update'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/rooms',
+  tags: ['clinic'],
+  summary: 'Danh sách phòng khám (không phân trang — quy mô nhỏ)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(listRoomsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinic_config.read'),
+  },
+});
+
+const roomIdParams = z.object({ id: z.string().uuid() });
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/rooms/{id}',
+  tags: ['clinic'],
+  summary: 'Sửa/khoá phòng khám — bắt buộc kèm version hiện có',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: roomIdParams,
+    body: { content: { 'application/json': { schema: updateRoomRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Sửa thành công', envelope(roomSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinic_config.update'),
+    404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION)'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/clinic-settings',
+  tags: ['clinic'],
+  summary: 'Xem cấu hình phòng khám: giờ làm việc, độ dài slot (ADM-02, trừ mẫu in)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(clinicSettingsSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinic_config.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/clinic-settings',
+  tags: ['clinic'],
+  summary: 'Sửa cấu hình phòng khám — chỉ field có mặt trong body mới bị ghi đè',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: updateClinicSettingsRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Sửa thành công', envelope(clinicSettingsSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinic_config.update'),
   },
 });
 
