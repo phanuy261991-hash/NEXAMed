@@ -4,3 +4,5 @@ export * from './event-bus.port';
 export * from './signature.port';
 export * from './insurance.port';
 export * from './patient-identity.port';
+export * from './doctor-directory.port';
+export * from './clinic-config-reader.port';

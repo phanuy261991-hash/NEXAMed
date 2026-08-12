@@ -20,6 +20,8 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   // (422 dành cho vi phạm quy tắc nghiệp vụ không liên quan tới trạng thái đồng thời).
   PATIENT_DUPLICATE_NATIONAL_ID: HttpStatus.CONFLICT,
   CONCURRENT_MODIFICATION: HttpStatus.CONFLICT,
+  APPOINTMENT_SLOT_CONFLICT: HttpStatus.CONFLICT,
+  APPOINTMENT_NOT_CANCELLABLE: HttpStatus.CONFLICT,
 };
 
 /**

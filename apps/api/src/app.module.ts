@@ -5,10 +5,19 @@ import { PortsModule } from './infrastructure/ports.module';
 import { CommonModule } from './common/common.module';
 import { IamModule } from './modules/iam/iam.module';
 import { PatientModule } from './modules/patient/patient.module';
+import { AppointmentModule } from './modules/appointment/appointment.module';
 import { TenantContextMiddleware } from './common/tenant-context.middleware';
 
 @Module({
-  imports: [ConfigModule, PersistenceModule, PortsModule, CommonModule, IamModule, PatientModule],
+  imports: [
+    ConfigModule,
+    PersistenceModule,
+    PortsModule,
+    CommonModule,
+    IamModule,
+    PatientModule,
+    AppointmentModule,
+  ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

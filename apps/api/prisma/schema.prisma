@@ -54,6 +54,7 @@ model Tenant {
   breakGlassSessions BreakGlassSession[]
   userSessions      UserSession[]
   patients          Patient[]
+  appointments      Appointment[]
 
   @@map("tenant")
 }
@@ -94,8 +95,11 @@ model Room {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant Tenant @relation(fields: [tenantId], references: [id])
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  appointments Appointment[]
 
+  // Đích của composite FK (tenant_id, id) từ appointment (S2-05).
+  @@unique([tenantId, id])
   @@map("room")
 }
 
@@ -154,6 +158,7 @@ model UserAccount {
   department Department? @relation(fields: [tenantId, departmentId], references: [tenantId, id])
   userRoles  UserRole[]
   sessions   UserSession[]
+  appointmentsAsDoctor Appointment[] @relation("AppointmentDoctor")
 
   // Đích của composite FK (tenant_id, id) từ user_role — chống trỏ chéo tenant (C5 trong ERD.md).
   @@unique([tenantId, id])
@@ -388,11 +393,78 @@ model Patient {
   // (PAT-04, chưa hiện thực ở S2-01) — bản ghi nguồn không xoá, chỉ trỏ sang bản ghi đích.
   mergedInto Patient?  @relation("PatientMerge", fields: [tenantId, mergedIntoId], references: [tenantId, id])
   mergedFrom Patient[] @relation("PatientMerge")
+  appointments Appointment[]
 
   // Đích của composite FK (tenant_id, id) từ appointment/encounter (S2-05, S3) sau này.
   @@unique([tenantId, id])
   @@unique([tenantId, patientCode])
   @@map("patient")
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CANCELLED
+  NO_SHOW
+  CONVERTED
+
+  @@map("appointment_status")
+}
+
+enum AppointmentSource {
+  walk_in
+  phone
+  online
+
+  @@map("appointment_source")
+}
+
+// Lịch hẹn (S2-05, APP-01/02/03) — xem .claude/docs/clinical-workflow.md mục "Đặt lịch",
+// docs/ERD.md mục 3.3/4. `roomId` nullable: đặt lịch qua điện thoại/online chưa chắc gán phòng
+// ngay (module `tenant`/cấu hình phòng là S2-07, chưa tồn tại lúc này) — không phải yêu cầu đã
+// chốt, chỉ là lựa chọn ít ràng buộc hơn, dễ siết lại (thêm NOT NULL) hơn là nới lỏng sau.
+// Chống trùng giờ bác sĩ (C2, docs/ERD.md mục 4) dùng EXCLUDE USING gist — Prisma không hỗ trợ
+// cú pháp EXCLUDE constraint nên thêm bằng raw SQL trong migration, không khai báo được ở đây.
+//
+// Đổi mô hình đặt lịch (docs/DECISIONS.md #032): không tạo/gắn `patient` lúc đặt — chỉ ghi nhận
+// `fullName`/`phone`/`reason` trực tiếp trên `appointment` ("lead capture"), có `bookingCode` để
+// khách trình lúc đến. `patientId` chuyển thành nullable — để sẵn cho Tiếp nhận (Sprint 3) gắn
+// hồ sơ `patient` thật lúc check-in, chưa có luồng nào ghi giá trị này ở v1 hiện tại.
+model Appointment {
+  id              String            @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId        String            @map("tenant_id") @db.Uuid
+  patientId       String?           @map("patient_id") @db.Uuid
+  doctorId        String            @map("doctor_id") @db.Uuid
+  roomId          String?           @map("room_id") @db.Uuid
+  bookingCode     String            @map("booking_code")
+  fullName        String            @map("full_name")
+  phone           String
+  reason          String?
+  scheduledAt     DateTime          @map("scheduled_at") @db.Timestamptz(6)
+  durationMinutes Int               @map("duration_minutes")
+  status          AppointmentStatus @default(SCHEDULED)
+  source          AppointmentSource
+  cancelReason    String?           @map("cancel_reason")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  // Composite FK (tenant_id, patient_id/doctor_id/room_id) -> ...(tenant_id, id): chống trỏ chéo
+  // tenant (C5, docs/ERD.md mục 4), room_id/patient_id nullable nên FK chỉ áp khi có giá trị.
+  patient Patient?    @relation(fields: [tenantId, patientId], references: [tenantId, id])
+  doctor  UserAccount @relation("AppointmentDoctor", fields: [tenantId, doctorId], references: [tenantId, id])
+  room    Room?       @relation(fields: [tenantId, roomId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, bookingCode])
+  @@index([tenantId, phone])
+  @@map("appointment")
 }
 
 // Append-only — không updated_at, không deleted_at, không version (ngoại lệ đã ghi trong data-model.md).
