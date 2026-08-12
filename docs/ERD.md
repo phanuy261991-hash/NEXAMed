@@ -1,6 +1,6 @@
 # ERD: NEXAMed v1
 
-**Version**: v1.3 — 11/08/2026 (xem mục 9 để biết lịch sử thay đổi)
+**Version**: v1.4 — 12/08/2026 (xem mục 9 để biết lịch sử thay đổi)
 **Phạm vi**: chỉ các bảng thuộc v1 (Đặt lịch, Tiếp nhận, Khám bệnh, Kê đơn). Bảng của v2+ (viện phí, kho thuốc, BHYT) **không** tạo ở giai đoạn này.
 **Căn cứ**: `docs/product/prd.md` v1.0, `docs/product/plan.md` v1.0, `.claude/docs/data-model.md`
 
@@ -42,7 +42,7 @@ erDiagram
     USER_SESSION ||--o| USER_SESSION : "replaced_by"
 
     PATIENT ||--o{ INSURANCE_CARD : "co the"
-    PATIENT ||--o{ APPOINTMENT : "dat lich"
+    PATIENT |o--o{ APPOINTMENT : "gan sau khi tiep nhan"
     PATIENT ||--o{ ENCOUNTER : "den kham"
     PATIENT ||--o| PATIENT : "merged_into"
 
@@ -172,9 +172,13 @@ erDiagram
     APPOINTMENT {
         uuid id PK
         uuid tenant_id FK
-        uuid patient_id FK
+        uuid patient_id FK "NULL, gan sau khi Tiep nhan (v1 chua co)"
         uuid doctor_id FK
         uuid room_id FK
+        text booking_code UK
+        text full_name
+        text phone
+        text reason
         timestamptz scheduled_at
         int duration_minutes
         text status
@@ -354,6 +358,8 @@ erDiagram
 
 `encounter.appointment_id` cho phép `NULL` để hỗ trợ walk-in tạo trực tiếp. Quan hệ là một-một: mỗi lịch hẹn sinh tối đa một lượt khám.
 
+**Đặt lịch "lead capture" (v1.4, `docs/DECISIONS.md` #032)**: `appointment` **không** bắt buộc gắn `patient` lúc đặt — chỉ ghi nhận trực tiếp `full_name`/`phone`/`reason` (lý do khám, tuỳ chọn) trên chính bảng này, kèm `booking_code` (mã đặt lịch hiển thị cho khách, cùng khuôn `patient_code`/`encounter_no`: `<prefix><yyMM><seq6>`, prefix `LH`). `patient_id` **nullable** — để sẵn cho lúc Tiếp nhận (Sprint 3, chưa xây) gắn/tạo hồ sơ `patient` thật khi khách check-in; v1 hiện tại luôn `NULL`, chưa có luồng nào ghi giá trị này. Check-in (nút "Check-in" trên web, chưa có màn hình Tiếp nhận thật) chuyển thẳng `SCHEDULED → CONVERTED`, không sinh trạng thái mới.
+
 `encounter.insurance_snapshot` là bản chụp thẻ BHYT tại thời điểm check-in (số thẻ đã che, tỷ lệ hưởng, nơi đăng ký, hạn thẻ, `self_pay`). Không join động về `insurance_card` khi in hay tra cứu về sau.
 
 ### 3.4 Dữ liệu lâm sàng
@@ -386,7 +392,7 @@ Những ràng buộc này đặt ở DB, không chỉ ở tầng ứng dụng.
 | C1 | RLS policy `tenant_id = current_setting('app.current_tenant_id')::uuid` | Mọi bảng có `tenant_id` | Lớp phòng thủ cuối chống rò rỉ giữa tenant |
 | C2 | `EXCLUDE USING gist (doctor_id WITH =, tstzrange(scheduled_at, scheduled_at + duration) WITH &&) WHERE (status = 'SCHEDULED' AND deleted_at IS NULL)` | `appointment` | Chống đặt trùng khung giờ khi hai lễ tân thao tác đồng thời |
 | C3 | `UNIQUE (tenant_id, national_id_hash) WHERE national_id_hash IS NOT NULL` | `patient` | Chặn trùng CCCD trong cùng phòng khám, vẫn cho phép bệnh nhân không có CCCD |
-| C4 | `UNIQUE (tenant_id, patient_code)`, `UNIQUE (tenant_id, encounter_no)` | `patient`, `encounter` | Mã hiển thị duy nhất trong phạm vi tenant |
+| C4 | `UNIQUE (tenant_id, patient_code)`, `UNIQUE (tenant_id, encounter_no)`, `UNIQUE (tenant_id, booking_code)` | `patient`, `encounter`, `appointment` | Mã hiển thị duy nhất trong phạm vi tenant |
 | C5 | Composite FK `(tenant_id, id)` cho mọi quan hệ nghiệp vụ | Toàn bộ | Không thể trỏ chéo tenant kể cả khi code sai |
 | C6 | `CHECK (version >= 1)` và mọi `UPDATE` kèm `WHERE version = ?` | Mọi bảng nghiệp vụ | Optimistic locking |
 | C7 | Partial index `WHERE deleted_at IS NULL` | Bảng lâm sàng | Truy vấn mặc định chỉ đọc bản còn hiệu lực |
@@ -405,6 +411,7 @@ Những ràng buộc này đặt ở DB, không chỉ ở tầng ứng dụng.
 | `encounter (tenant_id, patient_id, checked_in_at DESC)` | Tải tiền sử ở màn hình khám (ENC-01), mục tiêu dưới 2 giây |
 | `appointment (tenant_id, doctor_id, scheduled_at)` | Lịch theo bác sĩ theo ngày (APP-01) |
 | `appointment (tenant_id, status, scheduled_at) WHERE deleted_at IS NULL` | Job đánh dấu no-show (APP-05) |
+| `appointment (tenant_id, phone)` | Tra cứu lịch sử đặt lịch theo SĐT — tự điền tên, cảnh báo spam (v1.4, `docs/DECISIONS.md` #032) |
 | GIN trên `icd10_catalog (search_key)` dùng `pg_trgm` | Tìm mã ICD-10 theo tên tiếng Việt (ENC-03) |
 | `audit_log (tenant_id, entity_type, entity_id, occurred_at DESC)` | Tra vết sửa đổi hồ sơ (ADM-03) |
 | `audit_log (tenant_id, actor_id, occurred_at DESC)` | Tra nhật ký theo người dùng |
@@ -468,3 +475,4 @@ Khi thêm, các bảng này vẫn phải đủ 8 cột bắt buộc và tuân th
 | v1.1 | 08/08/2026 | Thay mô hình vai trò cứng (`user_role.role` enum) bằng RBAC + Data Scope: thêm `department`, `role`, `permission`, `role_permission`, `break_glass_session`; `user_role` đổi sang trỏ `role_id`. Xem `docs/DECISIONS.md` #013-#016. Scope `branch`/đa chi nhánh (liên quan E4) vẫn hoãn — chỉ giữ 4 mức `none`/`personal`/`department`/`global`. |
 | v1.2 | 10/08/2026 | S1-04 (Auth): thêm `user_session` (refresh token, rotation + reuse detection); `user_account` thêm `failed_login_count`/`last_failed_login_at`/`locked_until` (khoá tài khoản tạm). Xem `docs/DECISIONS.md` #019-#020. |
 | v1.3 | 11/08/2026 | S2-01 (patient): vá lệch giữa sơ đồ mermaid và mô tả chi tiết ở `.claude/docs/data-model.md` — thêm `address_json` (PRD PAT-01, P0) và `identity_verified_at` (cột chờ sẵn liên-tenant v2+, đi cùng `global_patient_ref`) vào bảng `PATIENT`. Xem `docs/DECISIONS.md` #024. |
+| v1.4 | 12/08/2026 | Đổi mô hình đặt lịch sang "lead capture" — `appointment.patient_id` chuyển nullable (gắn sau lúc Tiếp nhận, Sprint 3), thêm `booking_code`/`full_name`/`phone`/`reason` ghi trực tiếp trên `appointment`, không còn bắt buộc tạo/chọn `patient` lúc đặt lịch. Thêm C4 (unique `booking_code`) và index `(tenant_id, phone)`. Xem `docs/DECISIONS.md` #032. |

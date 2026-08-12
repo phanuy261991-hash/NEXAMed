@@ -101,3 +101,49 @@ BẮT BUỘC sử dụng thư viện Phosphor Icons.
 - Sử dụng class của Tailwind để tô màu cho icon. Ví dụ: <Stethoscope className="text-gray-500" size="{24}" weight="regular"/>.
 
 - Hãy chọn các icon y tế và quản lý phù hợp từ thư viện Phosphor (như Stethoscope, Pill, Users, CurrencyCircle, ChartBar...) để ráp vào giao diện."
+
+---
+
+## 8. App Shell v2 — Sidebar, Header, Breadcrumb (chốt 2026-08-11, triển khai xong cùng ngày)
+
+Thay thế mô tả app shell đơn giản ở S1-08 (sidebar cố định + user card ở chân sidebar, không có thanh trên cùng). Đã triển khai đủ ở `apps/web/src/shared/layout/` (`AppShell.tsx`, `Sidebar.tsx`, `TopBar.tsx`, `breadcrumb.context.tsx`) — mọi màn hình mới dùng nguyên các component này, không viết lại.
+
+### 8.1 Sidebar
+
+- Ba vùng theo chiều dọc: **vùng logo** (đỉnh, tách biệt bằng đường viền dưới) → **menu điều hướng** (cuộn riêng nếu dài) → **nút thu gọn** (chân sidebar).
+- Menu hỗ trợ **nhóm cha/con** (accordion): mục cha có mũi tên, bấm mở/đóng danh sách con thụt lề. Nhóm chứa route đang active tự mở sẵn. Chỉ tạo nhóm cha khi đã có ít nhất một mục con thật (không dựng nhóm rỗng chờ tương lai).
+- Nút **"Thu gọn"** chuyển sidebar từ `w-60` (đầy đủ nhãn) sang dạng chỉ-icon (`w-16`, không hiện chữ, nhóm cha/con ẩn hẳn phần lồng). Trạng thái này không cần lưu lại giữa các phiên ở v1 (không có yêu cầu cụ thể).
+- **Khi sidebar đang thu gọn, bấm vào icon của một mục nhóm cha PHẢI mở lại sidebar (về `w-60`) và mở luôn nhóm đó** — không được để `onClick` im lặng không làm gì khi collapsed (lỗi thật đã xảy ra: `onClick={() => !collapsed && setOpen(...)}` khiến bấm icon lúc thu gọn không phản hồi gì, người dùng tưởng nút hỏng). Quy tắc chung: **mọi phần tử có thể bấm trong sidebar phải luôn có phản hồi ở MỌI trạng thái** (thu gọn hay không), không được có nhánh no-op.
+- **Không còn user card (tên/đăng xuất) ở chân sidebar** — chuyển lên thanh trên cùng (mục 8.2) để không vướng khi sidebar thu gọn.
+
+### 8.2 Thanh trên cùng (Topbar)
+
+Dải ngang cố định (`h-14`, `border-b border-slate-200 bg-white`) phía trên vùng nội dung chính (không phủ lên sidebar), hai vùng:
+
+- **Trái — breadcrumb phân cấp**, thay thế hoàn toàn các link "← Quay lại danh sách" trên trang con. Đặc tả thị giác đã chốt (xem `TopBar.tsx`):
+  - Icon `House` (Phosphor, 15px, `text-slate-400`) mở đầu, link về `/`, khối vuông bo góc `hover:bg-slate-100`.
+  - Phân cách giữa các đoạn: `CaretRight` 11px `text-slate-300` (không dùng dấu `/` hay `>` ký tự thô).
+  - Đoạn **không phải cuối cùng** (có thể click): `rounded-md px-2 py-1 font-medium text-slate-500`, hover `bg-slate-100 text-slate-800`.
+  - Đoạn **cuối cùng** (trang hiện tại, không click): nổi bật bằng nền — `rounded-md bg-blue-50 px-2 py-1 font-semibold text-blue-700` (không chỉ đổi đậm nhạt chữ như bản nháp đầu).
+  - Dùng dạng phẳng (`Nhóm cha › Trang hiện tại`), **không dùng vòng số bước (①②...)** kiểu wizard — chỉ dùng số bước cho luồng thật sự tuần tự nhiều bước (ví dụ sau này có luồng khám bệnh nhiều bước), không dùng cho màn hình danh sách/chi tiết thông thường.
+  - **Nguồn dữ liệu breadcrumb**: `BreadcrumbProvider` (bọc toàn bộ `AppShell`) + hook `useBreadcrumb(items)` gọi trong chính component trang (không phải khai báo tĩnh theo route, vì có đoạn động cần dữ liệu đã tải — ví dụ tên bệnh nhân ở trang chi tiết). **BẮT BUỘC mọi component trang (mọi phần tử trong `router.tsx`) phải gọi `useBreadcrumb([...])` ngay khi mount** — xem lỗi đã xảy ra ở mục 8.3.
+- **Phải**: lời chào `Xin chào, {họ tên}` + avatar tròn (`bg-blue-50 text-blue-600`, chữ viết tắt tối đa 2 ký tự — lọc bỏ từ không bắt đầu bằng chữ cái trước khi lấy viết tắt, ví dụ hậu tố `(dev)` của tài khoản seed không được tính) mở dropdown nhỏ chứa "Đăng xuất". **Không có icon chuông thông báo** — v1 chưa có hệ thống thông báo trong ứng dụng (ngoài phạm vi PRD, xem `docs/product/prd.md`). **Không hiện tên khoa (`KHOA: ...`)** cạnh lời chào ở v1 — API `/auth/me` hiện chưa trả trường này và phần lớn phòng khám 1-3 bác sĩ không dùng `department`; chỉ thêm nếu có yêu cầu cụ thể sau này (cần mở rộng contract `/auth/me`).
+
+### 8.3 Lỗi đã xảy ra thật lúc triển khai — tránh lặp lại
+
+Hai lỗi dưới đây đã xảy ra thật khi làm màn hình bệnh nhân đầu tiên theo App Shell v2, phát hiện qua chủ dự án dùng thử (không phải review code phát hiện trước) — ghi lại làm quy tắc bắt buộc cho mọi màn hình sau:
+
+1. **Breadcrumb tồn đọng (stale) khi trang mới không tự khai báo.** `useBreadcrumb` KHÔNG dọn về rỗng lúc unmount (cố ý — tránh nháy trắng giữa hai trang, xem comment trong `breadcrumb.context.tsx`). Hệ quả: nếu một trang được thêm vào router mà **quên** gọi `useBreadcrumb(...)`, breadcrumb của trang TRƯỚC đó (bất kỳ trang nào user vừa ở) vẫn hiển thị nguyên, sai hoàn toàn với trang đang đứng — đã xảy ra thật với `DashboardPage`/`AdminPage` lúc mới viết `TopBar`/`Sidebar` (chỉ thêm breadcrumb cho 3 trang bệnh nhân, quên 2 trang còn lại). **Quy tắc**: thêm route mới vào `router.tsx` thì bắt buộc thêm `useBreadcrumb([...])` ngay dòng đầu component đó trong cùng lúc — không tách làm hai bước.
+2. **Icon trong sidebar thu gọn không phản hồi khi bấm** — xem mục 8.1. Gốc rễ: logic chặn hành động dựa trên điều kiện `collapsed` mà quên tính trường hợp bấm CHÍNH icon đó để mở lại. Quy tắc: viết `onClick` cho mọi phần tử điều hướng trong sidebar, luôn tự hỏi "bấm cái này lúc đang thu gọn thì xảy ra chuyện gì" trước khi thêm điều kiện chặn.
+
+## 9. Mẫu màn hình danh sách dữ liệu lớn (List Screen Pattern)
+
+Áp dụng cho mọi màn hình danh sách chính (bệnh nhân, và sau này lịch hẹn/hàng đợi tiếp nhận...), thay cho cách làm trung tâm + `max-w-[1400px]` đã dùng ở S2-08.
+
+- **Khung rộng gần hết chiều ngang** (chỉ chừa khoảng đệm nhỏ hai bên, không căn giữa `max-w`) — áp dụng riêng cho màn hình *danh sách*. Màn hình *form* (tạo mới/chi tiết-sửa) vẫn giữ `max-w` hợp lý để dòng nhập liệu không kéo dài hết màn hình rộng, khó đọc.
+- **Khung bảng cố định chiều cao**: chiếm hết phần còn lại của viewport bên dưới tiêu đề + ô tìm kiếm (hai phần này đứng yên, không cuộn theo). Bảng cuộn **bên trong** khung đó (`overflow-y-auto` trên chính bảng, không phải cuộn cả trang).
+- **Phân trang cursor giữ nguyên** (đã chốt ở `.claude/docs/architecture.md`, không đổi sang offset dù một số tham khảo thiết kế bên ngoài dùng kiểu "1-N trên tổng M"). Trải nghiệm là **cuộn tới đâu tự tải thêm tới đó** (infinite scroll, sentinel ở cuối danh sách) thay cho nút "Tải thêm" thủ công — tối thiểu 50 bản ghi mỗi lần tải (không phải 20 như bản đầu S2-08). Không hiển thị tổng số bản ghi (cursor không có khái niệm này).
+- **Virtualization bắt buộc** cho các danh sách có thể phình tới quy mô PRD đã nêu (ví dụ bệnh nhân, mục tiêu 50.000 hồ sơ/tenant ở `docs/product/prd.md` mục 5) — dùng `@tanstack/react-virtual` (cùng họ với `@tanstack/react-query` đã có sẵn), chỉ render các dòng nằm trong khung nhìn bất kể đã tải bao nhiêu trang. Lý do: cuộn vô hạn không giới hạn làm DOM phình to dần, ảnh hưởng hiệu năng trình duyệt (không phải hiệu năng API) khi người dùng cuộn sâu thay vì tìm kiếm.
+- **Không có nút "Thêm mới"** trên các màn hình danh sách thuần xem/tra cứu — việc tạo mới chuyển sang màn hình nghiệp vụ gốc (ví dụ bệnh nhân mới tạo tại luồng Đặt lịch hoặc Tiếp nhận, không tạo trực tiếp từ Danh sách bệnh nhân) rồi liên kết ngược lại danh sách khi cần.
+- **Mở chi tiết/sửa bằng double-click vào cột định danh** (ví dụ mã bệnh nhân), không phải click cả hàng — tránh mở nhầm khi người dùng chỉ muốn chọn/copy text trong hàng. Tương đương bàn phím (giữ đúng triết lý Keyboard-First mục 1): `Tab` focus vào hàng, `Enter` mở — vì double-click không có phím tương đương trực tiếp.
+- **Thao tác sửa chỉ hiện với vai trò có quyền cập nhật tương ứng** (tra theo ma trận mặc định ở `.claude/docs/security-audit.md`, ví dụ `patient.update`) — ẩn hẳn nút/khả năng sửa với vai trò không có quyền (không chỉ vô hiệu hoá `disabled`), theo cùng kiểu mảng vai trò tĩnh phía client đã dùng ở `Sidebar.tsx` (`ADMIN_ROLES`/`PATIENT_ROLES`) — không phát minh cơ chế phân quyền phía client mới.

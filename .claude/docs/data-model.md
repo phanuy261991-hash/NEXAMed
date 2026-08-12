@@ -65,8 +65,10 @@ Thay thế mô hình vai trò cứng cũ (enum `UserRoleName` trực tiếp trê
 v1 **chỉ lưu và hiển thị**, không tính toán chi trả, không gọi cổng giám định.
 
 ### appointment
-`patient_id`, `doctor_id`, `room_id`, `scheduled_at`, `duration_minutes`, `status`, `source` (walk-in / online / phone), `cancel_reason`.
+`patient_id` (NULL — xem dưới), `doctor_id`, `room_id`, `booking_code`, `full_name`, `phone`, `reason`, `scheduled_at`, `duration_minutes`, `status`, `source` (walk-in / online / phone), `cancel_reason`.
 Constraint chống trùng khung giờ cùng bác sĩ dùng `EXCLUDE USING gist` trên `(doctor_id WITH =, tstzrange(scheduled_at, scheduled_at + duration) WITH &&)` — kiểm tra ở DB, không chỉ ở service.
+
+**Đặt lịch "lead capture" (`docs/DECISIONS.md` #032)**: v1 **không** tạo/gắn `patient` lúc đặt lịch — chỉ ghi nhận `full_name`/`phone`/`reason` (tuỳ chọn) trực tiếp trên `appointment`. `patient_id` **nullable**, để sẵn cho lúc Tiếp nhận (Sprint 3, chưa xây) gắn/tạo hồ sơ `patient` thật khi khách check-in tại quầy — hiện tại luôn `NULL`. `booking_code` (mã đặt lịch khách trình lúc đến, `UNIQUE (tenant_id, booking_code)`, prefix `LH`, cùng khuôn `patient_code`/`encounter_no` qua `formatDisplayCode()`/`code_sequence`). Index `(tenant_id, phone)` phục vụ tra cứu lịch sử đặt lịch theo SĐT (tự điền tên, cảnh báo spam ≥5 lần huỷ — ngưỡng này chỉ so sánh ở `apps/web`, `apps/api` không tự chặn). Check-in chuyển thẳng `status: SCHEDULED → CONVERTED`, không sinh trạng thái mới trong enum.
 
 ### encounter
 `patient_id`, `doctor_id`, `appointment_id?`, `status`, `checked_in_at`, `started_at`, `completed_at`, `chief_complaint`, `insurance_snapshot_json`.
@@ -95,6 +97,7 @@ v1 không trừ tồn kho, không có `unit_price` — dược/kho ngoài phạm
 
 - `encounter (tenant_id, patient_id, checked_in_at DESC)` — lịch sử khám.
 - `appointment (tenant_id, doctor_id, scheduled_at)` — dựng lịch.
+- `appointment (tenant_id, phone)` — tra cứu lịch sử đặt lịch theo SĐT (`docs/DECISIONS.md` #032).
 - `audit_log (tenant_id, entity_type, entity_id, occurred_at DESC)` — tra vết bệnh án.
 - `role_permission (tenant_id, role_id)` — tra ma trận quyền lúc mỗi request, cần nhanh.
 - `break_glass_session (tenant_id, actor_id, entity_type, entity_id, expires_at DESC)` — kiểm tra phiên còn hạn lúc mỗi request.

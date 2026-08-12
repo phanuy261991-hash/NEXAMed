@@ -23,6 +23,12 @@ Quy tắc:
 - Walk-in tạo `appointment` với `source = walk-in` và check-in ngay trong cùng transaction.
 - Huỷ lịch bắt buộc có `cancel_reason`. Lịch đã `CHECKED_IN` không huỷ được, chỉ chuyển `CANCELLED` qua luồng bỏ về.
 
+**Đặt lịch "lead capture" (`docs/DECISIONS.md` #032, thay thế mô tả cũ "đặt lịch cho một `patient` đã có")**:
+- Đặt lịch **không** tạo hoặc gắn hồ sơ `patient` — chỉ ghi nhận trực tiếp Họ tên/SĐT/lý do khám lên chính `appointment` (`full_name`/`phone`/`reason`). Việc tạo/khớp hồ sơ `patient` chuyển hẳn sang lúc Tiếp nhận (check-in tại quầy, module `encounter` — Sprint 3, chưa xây).
+- Mỗi lịch hẹn có `booking_code` (mã đặt lịch, sinh atomic qua `code_sequence` giống `patient_code`) — khách trình mã này lúc đến, lễ tân tra theo mã hoặc theo lưới/danh sách.
+- Nhập SĐT lúc đặt: tra `appointment (tenant_id, phone)` lấy Họ tên của lần đặt gần nhất để tự điền (không bắt gõ lại), và đếm số lần `status=CANCELLED` cùng SĐT — đạt ngưỡng (mặc định 5) thì cảnh báo khả năng spam trên UI, **không chặn** đặt lịch (ngưỡng này chỉ so sánh ở web, API chỉ trả số đếm thô).
+- **Check-in** (nút trên web, chưa có màn hình Tiếp nhận thật): chuyển thẳng `SCHEDULED → CONVERTED`, không sinh trạng thái mới trong enum, không tạo `encounter`, không gắn `patient_id`. Khi Sprint 3 xây Tiếp nhận thật, bước tạo `encounter` + gắn/tạo `patient` sẽ nối vào đúng thao tác check-in này (giản lược tạm thời hiện tại chỉ đổi trạng thái).
+
 ## Tiếp nhận (check-in)
 
 - Tạo `encounter` từ `appointment`, snapshot thông tin thẻ BHYT vào `insurance_snapshot_json` (số thẻ, tỷ lệ hưởng, nơi đăng ký, hạn thẻ). v1 chỉ lưu để hiển thị và in, **không tính chi trả**.
