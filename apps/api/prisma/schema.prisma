@@ -304,7 +304,11 @@ model UserRole {
   userAccount UserAccount @relation(fields: [tenantId, userId], references: [tenantId, id])
   role        Role        @relation(fields: [tenantId, roleId], references: [tenantId, id])
 
-  @@unique([tenantId, userId, roleId])
+  // UNIQUE(tenant_id, user_id, role_id) là PARTIAL (WHERE deleted_at IS NULL) — thêm ở S2-07 khi
+  // gán lại vai trò (soft-delete gán cũ + tạo dòng mới) mới thật sự cần: unique thường sẽ chặn
+  // gán lại đúng vai trò đã từng bị gỡ trước đó (dòng cũ đã soft-delete vẫn tính vào unique
+  // thường). Không khai báo được `@@unique` có `WHERE` bằng Prisma schema (giống C3
+  // `patient.national_id_hash`) — viết raw SQL trong migration, không khai báo ở đây.
   @@map("user_role")
 }
 

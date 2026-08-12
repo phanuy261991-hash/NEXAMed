@@ -1,7 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { ThrottlerModule } from '@nestjs/throttler';
-import { NOTIFICATION_PORT } from '@nexamed/core';
+import { DOCTOR_DIRECTORY_PORT, NOTIFICATION_PORT } from '@nexamed/core';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { TokenService } from './token.service';
@@ -10,7 +10,11 @@ import { UserAccountAuthRepository } from './user-account-auth.repository';
 import { BreakGlassController } from './break-glass.controller';
 import { BreakGlassService } from './break-glass.service';
 import { BreakGlassRepository } from './break-glass.repository';
+import { UserAccountController } from './user-account.controller';
+import { UserAccountService } from './user-account.service';
+import { UserAccountRepository } from './user-account.repository';
 import { NoopNotificationAdapter } from '../../infrastructure/notification/noop.adapter';
+import { DoctorDirectoryAdapter } from '../../infrastructure/directory/doctor-directory.adapter';
 
 /**
  * Rate limit riêng cho /auth/login và /break-glass (10 request/phút/IP mỗi endpoint — mỗi
@@ -23,12 +27,17 @@ import { NoopNotificationAdapter } from '../../infrastructure/notification/noop.
  * (patient/appointment/encounter/prescription) vì `PermissionGuard` (đặt ở `CommonModule`,
  * cũng global) inject nó — Nest resolve dependency của một global provider theo context của
  * module đang DÙNG guard đó (ví dụ `PatientModule`), không phải module định nghĩa guard, nên
- * `BreakGlassService` phải tự nó global thay vì chỉ "chảy qua" `CommonModule.imports`.
+ * `BreakGlassService` phải tự nó global thay vì chỉ "chảy qua" `CommonModule.imports`. Cùng lý do
+ * đó áp dụng cho `DOCTOR_DIRECTORY_PORT` (S2-09) — `AppointmentModule` cần inject port này mà
+ * không tự `imports: [IamModule]`. Lưu ý: `@Global()` KHÔNG tự động "chảy" mọi provider ra ngoài
+ * — chỉ những gì có trong `exports` mới global thật sự (bug thật gặp lúc chạy test đầu tiên:
+ * quên thêm `DOCTOR_DIRECTORY_PORT` vào `exports`, Nest báo không resolve được dependency dù
+ * module đã global).
  */
 @Global()
 @Module({
   imports: [JwtModule.register({}), ThrottlerModule.forRoot([{ name: 'login', ttl: 60_000, limit: 10 }])],
-  controllers: [AuthController, BreakGlassController],
+  controllers: [AuthController, BreakGlassController, UserAccountController],
   providers: [
     AuthService,
     TokenService,
@@ -36,8 +45,11 @@ import { NoopNotificationAdapter } from '../../infrastructure/notification/noop.
     UserAccountAuthRepository,
     BreakGlassService,
     BreakGlassRepository,
+    UserAccountService,
+    UserAccountRepository,
     { provide: NOTIFICATION_PORT, useClass: NoopNotificationAdapter },
+    { provide: DOCTOR_DIRECTORY_PORT, useClass: DoctorDirectoryAdapter },
   ],
-  exports: [BreakGlassService],
+  exports: [BreakGlassService, DOCTOR_DIRECTORY_PORT],
 })
 export class IamModule {}

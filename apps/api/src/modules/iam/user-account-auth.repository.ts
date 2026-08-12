@@ -53,7 +53,11 @@ export class UserAccountAuthRepository {
    * thật (đó là việc của S2 đọc `role_permission`/`data_scope`) — chỉ trả tên vai trò để hiển thị.
    */
   async findRoleNamesForUser(tx: Prisma.TransactionClient, tenantId: string, userId: string): Promise<string[]> {
-    const rows = await tx.userRole.findMany({ where: { tenantId, userId }, include: { role: true } });
+    // deletedAt: null bắt buộc — thiếu điều kiện này chưa từng lộ vấn đề vì trước S2-07 chưa có
+    // đường nào soft-delete user_role (không có gán lại vai trò). Từ S2-07,
+    // UserAccountRepository.replaceUserRoles() soft-delete gán cũ khi đổi vai trò, thiếu filter
+    // này sẽ khiến vai trò đã gỡ vẫn hiện ở đây (login response, GET /auth/me).
+    const rows = await tx.userRole.findMany({ where: { tenantId, userId, deletedAt: null }, include: { role: true } });
     return rows.map((r) => r.role.name);
   }
 }
