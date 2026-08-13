@@ -126,6 +126,17 @@ export function AppointmentGridView({
               {label}
             </div>
           ))}
+          {/* Nhãn giờ đóng cửa (biên dưới) — mỗi nhãn ở trên chỉ đánh dấu ĐẦU 1 khung 30 phút, nên
+              hàng cuối ("16:30") trông như lưới dừng ở đó dù thực chất khung đó kéo dài tới đúng
+              giờ đóng cửa. Thêm nhãn biên `range.close` ngay dưới hàng cuối để xác nhận trực quan
+              lưới đã hiển thị đủ tới giờ đóng cửa thật (phát hiện thật lúc chủ dự án xem trên màn
+              hình: "chỉ hiển thị đến 16h30 trong khi giờ làm việc là 7h30-17h"). */}
+          <div
+            className="absolute right-2 text-right text-[11.5px] font-semibold text-slate-400"
+            style={{ top: totalHeight - 6 }}
+          >
+            {range.close}
+          </div>
           {/* Chấm + nhãn giờ của đường kẻ "bây giờ" — phần đường kẻ nằm trong từng cột bác sĩ bên
               dưới (mỗi cột tự vẽ đoạn ngang cùng toạ độ `top`, ghép lại thành một đường liền mạch
               qua các cột — tránh đặt overlay làm 1 grid item riêng chồng lên hàng 2: item chiếm

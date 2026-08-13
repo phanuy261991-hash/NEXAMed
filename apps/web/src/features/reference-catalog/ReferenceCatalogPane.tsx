@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { ArrowCounterClockwise, MagnifyingGlass, PencilSimple, Plus, Trash } from '@phosphor-icons/react';
 import type { ReferenceCatalogCategory, ReferenceCatalogItem } from '@nexamed/shared';
 import { useAuthStore } from '../auth/auth.store';
-import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
@@ -18,12 +17,6 @@ import {
 /** Khớp `reference_catalog.manage` (chỉ clinic_admin) — .claude/docs/security-audit.md. */
 const MANAGE_ROLES = ['clinic_admin'];
 
-/** Mảng cấu hình — thêm category mới sau này chỉ cần thêm 1 dòng, không sửa logic bên dưới. */
-const CATEGORY_TABS: { value: ReferenceCatalogCategory; label: string }[] = [
-  { value: 'ETHNICITY', label: 'Dân tộc' },
-  { value: 'NATIONALITY', label: 'Quốc tịch' },
-];
-
 const inputClassName =
   'w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 
@@ -33,27 +26,31 @@ interface ModalState {
 }
 
 /**
- * Quản lý danh mục dùng chung toàn hệ thống (Dân tộc, Quốc tịch) — docs/DECISIONS.md, đảo ngược
- * #034 phần ethnicity/nationality. "Xoá" là soft (is_active=false, role DB không có quyền DELETE
- * thật) — có nút "Khôi phục" cho mục đã ẩn khi bật "Hiện cả mục đã ẩn".
+ * Bảng CRUD cho một category của `reference_catalog` — tách từ `ReferenceCatalogAdminPage.tsx`
+ * cũ (bỏ tab bar/`useBreadcrumb`) để dùng làm nội dung cột phải trong trang "Danh mục"
+ * (`.claude/docs/ui-guidelines.md` mục 10, `docs/DECISIONS.md` #039). Nhận `category` qua prop
+ * thay vì tự quản lý state chuyển tab — mỗi category giờ là 1 mục riêng trong danh sách cấp 2.
  */
-export function ReferenceCatalogAdminPage() {
-  useBreadcrumb([{ label: 'Quản trị' }, { label: 'Danh mục dùng chung' }]);
-
+export function ReferenceCatalogPane({
+  category,
+  categoryLabel,
+}: {
+  category: ReferenceCatalogCategory;
+  categoryLabel: string;
+}) {
   const user = useAuthStore((s) => s.user);
   const canManage = user?.roles.some((role) => MANAGE_ROLES.includes(role)) ?? false;
 
-  const [activeCategory, setActiveCategory] = useState<ReferenceCatalogCategory>('ETHNICITY');
   const [search, setSearch] = useState('');
   const [includeInactive, setIncludeInactive] = useState(false);
   const [modal, setModal] = useState<ModalState | null>(null);
   const [deactivateTarget, setDeactivateTarget] = useState<ReferenceCatalogItem | null>(null);
 
-  const query = useReferenceCatalogQuery(activeCategory, includeInactive);
-  const createMutation = useCreateReferenceCatalogItemMutation(activeCategory);
-  const updateMutation = useUpdateReferenceCatalogItemMutation(activeCategory);
-  const deactivateMutation = useDeactivateReferenceCatalogItemMutation(activeCategory);
-  const reactivateMutation = useReactivateReferenceCatalogItemMutation(activeCategory);
+  const query = useReferenceCatalogQuery(category, includeInactive);
+  const createMutation = useCreateReferenceCatalogItemMutation(category);
+  const updateMutation = useUpdateReferenceCatalogItemMutation(category);
+  const deactivateMutation = useDeactivateReferenceCatalogItemMutation(category);
+  const reactivateMutation = useReactivateReferenceCatalogItemMutation(category);
 
   const items = useMemo(() => {
     const all = query.data?.items ?? [];
@@ -62,32 +59,8 @@ export function ReferenceCatalogAdminPage() {
     return all.filter((i) => i.name.toLowerCase().includes(q) || i.code.toLowerCase().includes(q));
   }, [query.data, search]);
 
-  function switchTab(category: ReferenceCatalogCategory) {
-    setActiveCategory(category);
-    setSearch('');
-  }
-
   return (
-    <div className="p-6">
-      <h1 className="sr-only">Danh mục dùng chung</h1>
-
-      <div className="mb-4 flex gap-1 border-b border-slate-200">
-        {CATEGORY_TABS.map((tab) => (
-          <button
-            key={tab.value}
-            type="button"
-            onClick={() => switchTab(tab.value)}
-            className={`border-b-2 px-1 pb-2.5 pt-1 text-sm font-semibold ${
-              activeCategory === tab.value
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
+    <div className="flex h-full flex-col">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="relative w-64">
@@ -191,8 +164,7 @@ export function ReferenceCatalogAdminPage() {
 
       {modal && (
         <ItemFormModal
-          category={activeCategory}
-          categoryLabel={CATEGORY_TABS.find((t) => t.value === activeCategory)?.label ?? ''}
+          categoryLabel={categoryLabel}
           mode={modal.mode}
           item={modal.item}
           submitting={createMutation.isPending || updateMutation.isPending}
@@ -200,7 +172,7 @@ export function ReferenceCatalogAdminPage() {
           onSubmit={(dto) => {
             const onSettled = () => setModal(null);
             if (modal.mode === 'create') {
-              createMutation.mutate({ category: activeCategory, ...dto }, { onSuccess: onSettled });
+              createMutation.mutate({ category, ...dto }, { onSuccess: onSettled });
             } else if (modal.item) {
               updateMutation.mutate({ id: modal.item.id, body: dto }, { onSuccess: onSettled });
             }
@@ -244,7 +216,6 @@ function ItemFormModal({
   onCancel,
   onSubmit,
 }: {
-  category: ReferenceCatalogCategory;
   categoryLabel: string;
   mode: 'create' | 'edit';
   item?: ReferenceCatalogItem;

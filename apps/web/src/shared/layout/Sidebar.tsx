@@ -6,6 +6,7 @@ import {
   GearSix,
   House,
   SidebarSimple,
+  SlidersHorizontal,
   Users,
   type Icon,
 } from '@phosphor-icons/react';
@@ -21,8 +22,8 @@ const APPOINTMENT_ROLES = ['receptionist', 'doctor', 'clinic_admin'];
 
 /** Đường dẫn thuộc nhóm "Tiếp nhận và Đặt lịch" — dùng để tự mở nhóm khi route đang active nằm trong đó. */
 const RECEPTION_GROUP_PATHS = ['/patients', '/appointments'];
-/** Đường dẫn thuộc nhóm "Quản trị" — hiện chỉ có 1 mục con thật (Danh mục dùng chung); thêm
- * ADM-01/02/03 vào đây khi có UI thật, không dựng placeholder trước. */
+/** Đường dẫn thuộc nhóm "Quản trị" — hiện chỉ có 1 mục con thật (Danh mục); thêm ADM-01/03 vào
+ * đây khi có UI thật, không dựng placeholder trước. */
 const ADMIN_GROUP_PATHS = ['/admin'];
 
 interface NavItemProps {
@@ -176,7 +177,8 @@ export function Sidebar() {
               </button>
               {adminGroupExpanded && (
                 <ul className="mt-0.5 flex flex-col gap-0.5 border-l border-slate-800 pl-3.5">
-                  <NavItem to="/admin/reference-catalog" label="Danh mục dùng chung" icon={FolderSimple} collapsed={false} indent />
+                  <NavItem to="/admin/catalog" label="Danh mục" icon={FolderSimple} collapsed={false} indent />
+                  <NavItem to="/admin/system-config" label="Cấu hình hệ thống" icon={SlidersHorizontal} collapsed={false} indent />
                 </ul>
               )}
             </li>
