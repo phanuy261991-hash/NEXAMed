@@ -30,6 +30,8 @@ Mọi `UPDATE` kèm điều kiện `WHERE version = ?` và tăng `version` lên 
 
 ### clinic / tenant_setting / room / department / user_account
 Tenant và cấu hình. `tenant_setting (tenant_id, key, value_json)` giữ giờ làm việc, độ dài slot, ngưỡng `NO_SHOW`, `break_glass_duration_minutes` (mặc định 120).
+
+`tenant` — ngoài `name`/`address`/`taxCode`/`licenseNo` có sẵn, thêm (2026-08-13, trang "Thông tin phòng khám"): `phone text NULL`, `email text NULL`, `currency text NOT NULL DEFAULT 'VND'`, `timezone text NOT NULL DEFAULT 'Asia/Ho_Chi_Minh'`, `logo_key text NULL` (logo chính 220×110, khoá lưu trên `StoragePort`, cùng mẫu `patient.photo_key`), `print_logo_key text NULL` (logo dùng cho mẫu in 110×110, chuẩn bị cho PRE-04/S4-04). **`currency`/`timezone` chỉ lưu giá trị hiển thị** — chưa nối vào logic tính tiền (viện phí là v2+, hiện chưa có nơi nào hiển thị/tính tiền trong hệ thống) hay logic ngày giờ hệ thống (vẫn hard-code UTC+7 ở `packages/core/src/date/vietnam-day-range.ts` và các nơi khác — xem `docs/DECISIONS.md` #041). Không permission mới — dùng lại `clinic_config.read`/`clinic_config.update`.
 `department`: `name` — khoa/phòng trong tenant, phục vụ Data Scope `department` (xem `security-audit.md`). v1 phần lớn phòng khám không dùng nhưng bảng luôn tồn tại.
 `user_account` có thêm `department_id uuid NULL` (FK `(tenant_id, id)` tới `department`).
 `user_account` có thêm (S1-04) `failed_login_count int NOT NULL DEFAULT 0`, `last_failed_login_at timestamptz NULL`, `locked_until timestamptz NULL` — khoá tài khoản tạm sau 5 lần đăng nhập sai trong 15 phút, xem `security-audit.md` mục Xác thực và `packages/core/src/iam/lockout.ts` (nguồn sự thật của ngưỡng/logic).

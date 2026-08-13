@@ -16,6 +16,7 @@ import {
   checkinAppointmentRequestSchema,
   checkPatientDuplicateQuerySchema,
   checkPatientDuplicateResponseSchema,
+  clinicProfileSchema,
   clinicSettingsSchema,
   createAppointmentRequestSchema,
   createPatientRequestSchema,
@@ -43,6 +44,7 @@ import {
   rescheduleAppointmentRequestSchema,
   resetUserPasswordRequestSchema,
   roomSummarySchema,
+  updateClinicProfileRequestSchema,
   updateClinicSettingsRequestSchema,
   updatePatientRequestSchema,
   updateReferenceCatalogRequestSchema,
@@ -557,6 +559,77 @@ registry.registerPath({
     200: jsonResponse('Sửa thành công', envelope(clinicSettingsSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền clinic_config.update'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/clinic-profile',
+  tags: ['clinic'],
+  summary: 'Xem thông tin phòng khám: tên, điện thoại, địa chỉ, email, mã số thuế, đơn vị tiền tệ, múi giờ, logo',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(clinicProfileSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinic_config.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/clinic-profile',
+  tags: ['clinic'],
+  summary: 'Sửa thông tin phòng khám — bắt buộc kèm version hiện có (optimistic locking)',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: updateClinicProfileRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Sửa thành công', envelope(clinicProfileSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinic_config.update'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION)'),
+  },
+});
+
+const uploadLogoBody = {
+  content: {
+    'multipart/form-data': {
+      schema: z.object({
+        file: z.string().openapi({ format: 'binary', description: 'Ảnh JPG hoặc PNG' }),
+        version: z.coerce.number().int().positive(),
+      }),
+    },
+  },
+};
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/clinic-profile/logo',
+  tags: ['clinic'],
+  summary: 'Upload/thay logo chính (khuyến nghị 220×110px) — chỉ JPG/PNG (kiểm magic byte), tối đa 2MB, kèm version hiện có',
+  security: [{ bearerAuth: [] }],
+  request: { body: uploadLogoBody },
+  responses: {
+    200: jsonResponse('Upload thành công, trả hồ sơ kèm logoUrl mới', envelope(clinicProfileSchema)),
+    400: errorResponse('Sai định dạng ảnh (CLINIC_INVALID_LOGO) hoặc quá 2MB'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinic_config.update'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/clinic-profile/print-logo',
+  tags: ['clinic'],
+  summary: 'Upload/thay logo dùng cho mẫu in (khuyến nghị 110×110px) — chỉ JPG/PNG (kiểm magic byte), tối đa 2MB, kèm version hiện có',
+  security: [{ bearerAuth: [] }],
+  request: { body: uploadLogoBody },
+  responses: {
+    200: jsonResponse('Upload thành công, trả hồ sơ kèm printLogoUrl mới', envelope(clinicProfileSchema)),
+    400: errorResponse('Sai định dạng ảnh (CLINIC_INVALID_LOGO) hoặc quá 2MB'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinic_config.update'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION)'),
   },
 });
 

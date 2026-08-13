@@ -172,7 +172,8 @@ Hai lỗi dưới đây đã xảy ra thật khi làm màn hình bệnh nhân đ
 - **Badge tiêu đề nổi trên viền**, không dùng heading thường: `absolute -top-3 left-4 rounded-md bg-blue-600 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white`. Áp dụng đồng nhất cho MỌI khối trong cùng form — không trộn một khối có badge với khối kia chỉ có chữ thường/divider (đã thử ở bản đầu, chủ dự án phản hồi phần không có khối viền/badge trông "nhạt" hơn hẳn phần có).
 - **Lưới trường dày**: `grid grid-cols-2 gap-x-3 gap-y-3 sm:grid-cols-3 lg:grid-cols-4` — gap hẹp hơn hẳn `gap-6` mặc định của mục 4.1, vì đây là nhiều input ngắn (không phải vài input dài). Textarea/trường dài vẫn kéo full-width bằng `col-span-*` như mục 4.1.
 - **Khung trang bỏ `max-w`, dùng `p-6` full-width** (xem ngoại lệ ở mục 9) — khớp cảm giác rộng rãi của khối viền, không bị bó hẹp giữa trang.
-- **Ảnh/file đính kèm đặt ở khối đầu tiên**, cạnh các trường định danh cơ bản (không tách khối riêng) — dùng flex `flex-col gap-4 sm:flex-row` với khung ảnh cố định kích thước (`h-28 w-28`) đứng cạnh lưới trường.
+- **Ảnh/file đính kèm đặt ở khối đầu tiên**, cạnh các trường định danh cơ bản (không tách khối riêng) — dùng flex `flex-col gap-4 sm:flex-row` với khung ảnh cố định kích thước (`h-28 w-28`, hoặc tỷ lệ khác nếu ảnh không vuông — ví dụ logo phòng khám 220×110/110×110) đứng cạnh lưới trường.
+- **Upload ảnh CHỈ bấm được khi đang ở chế độ Sửa** (chốt 2026-08-13, `docs/DECISIONS.md` #041) — ẩn hẳn nút "Chọn ảnh" (không chỉ `disabled`) lúc form ở chế độ xem, hiện lại khi bấm "Sửa". Nhất quán với mọi trường văn bản khác trong form — đổi lại từ `PatientAvatarUpload.tsx` bản đầu (cho phép upload độc lập với chế độ Sửa, chủ dự án phản hồi gây nhầm lẫn khi làm logo phòng khám theo đúng khuôn đó) — áp dụng cho mọi nơi upload ảnh từ nay, kể cả khi upload là request API riêng không đi qua nút "Lưu" của form.
 
 ## 10. Mẫu màn hình Cấu hình 2 cột (Two-panel Config Screen Pattern — chốt 2026-08-13)
 

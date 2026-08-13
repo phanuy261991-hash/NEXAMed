@@ -1,6 +1,6 @@
 import { useRef, useState, type ChangeEvent } from 'react';
 import { Camera, User } from '@phosphor-icons/react';
-import { ApiError } from '../../shared/api/client';
+import { ApiError, resolveApiUrl } from '../../shared/api/client';
 import { useUploadPatientPhotoMutation } from './patient.queries';
 
 /**
@@ -13,10 +13,14 @@ export function PatientAvatarUpload({
   patientId,
   photoUrl,
   version,
+  disabled = false,
 }: {
   patientId: string | undefined;
   photoUrl: string | null;
   version: number | undefined;
+  /** Chưa vào chế độ "Sửa hồ sơ" — ẩn nút "Chọn ảnh", chỉ xem ảnh hiện có (đã hỏi và chốt với chủ
+   * dự án 2026-08-13: đổi ảnh phải vào chế độ Sửa trước, nhất quán với các trường văn bản khác). */
+  disabled?: boolean;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +44,7 @@ export function PatientAvatarUpload({
       <span className="mb-1 block text-sm font-medium text-slate-700">Ảnh đại diện</span>
       <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-lg border border-slate-300 bg-slate-50">
         {photoUrl ? (
-          <img src={photoUrl} alt="Ảnh đại diện bệnh nhân" className="h-full w-full object-cover" />
+          <img src={resolveApiUrl(photoUrl)} alt="Ảnh đại diện bệnh nhân" className="h-full w-full object-cover" />
         ) : (
           <User size={40} weight="regular" className="text-slate-300" aria-hidden="true" />
         )}
@@ -48,7 +52,7 @@ export function PatientAvatarUpload({
 
       {patientId === undefined ? (
         <p className="mt-2 max-w-[7rem] text-xs text-slate-500">Lưu hồ sơ trước, sau đó có thể thêm ảnh.</p>
-      ) : (
+      ) : disabled ? null : (
         <>
           <button
             type="button"

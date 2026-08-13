@@ -8,3 +8,5 @@ export * from './user-account';
 export * from './clinic';
 export * from './reference-catalog';
 export * from './geo';
+export * from './currency';
+export * from './timezone';

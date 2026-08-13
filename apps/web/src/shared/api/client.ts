@@ -116,6 +116,23 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Ghép `apiBaseUrl` vào đường dẫn tương đối server trả về (ví dụ `photoUrl`/`logoUrl` dạng
+ * `/api/v1/files/<token>` từ `signFileToken`, xem `apps/api/src/infrastructure/storage/
+ * signed-url.ts`) — BUG THẬT phát hiện lúc kiểm bằng trình duyệt (2026-08-13): `<img src="/api/
+ * v1/files/...">` bị trình duyệt phân giải theo origin của TRANG WEB (`apiBaseUrl` khác origin ở
+ * mọi môi trường thật — dev 5173≠3000, on-prem qua nginx cũng tách domain/path riêng), Vite dev
+ * server lại tự trả `index.html` (SPA fallback) cho path lạ thay vì 404 — ảnh vỡ âm thầm, không
+ * console error rõ ràng. Ảnh hưởng CẢ `PatientAvatarUpload.tsx` có sẵn (docs/DECISIONS.md #034)
+ * lẫn logo phòng khám mới — sửa 1 chỗ dùng chung thay vì vá riêng từng nơi.
+ */
+export function resolveApiUrl(path: string): string {
+  if (!currentConfig) {
+    throw new Error('resolveApiUrl() gọi trước khi configureApiClient().');
+  }
+  return path.startsWith('http://') || path.startsWith('https://') ? path : `${currentConfig.apiBaseUrl}${path}`;
+}
+
 /** Truy cập client đã cấu hình `baseUrl`/cookie/Authorization — dùng trong `*.api.ts` của từng feature. */
 export function getApiClient() {
   if (!currentConfig) {

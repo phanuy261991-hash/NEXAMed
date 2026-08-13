@@ -34,6 +34,16 @@ model Tenant {
   licenseNo String? @map("license_no")
   isActive  Boolean @default(true) @map("is_active")
 
+  // Cấu hình "Thông tin phòng khám" (2026-08-13) — phone/email tự do; currency/timezone luôn có
+  // giá trị hiển thị (default) nhưng CHƯA nối vào logic tính toán/ngày giờ hệ thống, chỉ lưu
+  // trước; logoKey/printLogoKey khoá lưu trên StoragePort, cùng mẫu patient.photoKey.
+  phone        String?
+  email        String?
+  currency     String  @default("VND")
+  timezone     String  @default("Asia/Ho_Chi_Minh")
+  logoKey      String? @map("logo_key")
+  printLogoKey String? @map("print_logo_key")
+
   // 8 cột bắt buộc (trừ tenant_id — bảng này là gốc của tenant)
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)

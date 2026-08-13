@@ -3049,6 +3049,431 @@ export interface paths {
         };
         trace?: never;
     };
+    "/api/v1/clinic-profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Xem thông tin phòng khám: tên, điện thoại, địa chỉ, email, mã số thuế, đơn vị tiền tệ, múi giờ, logo */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                name: string;
+                                phone: string | null;
+                                address: string | null;
+                                email: string | null;
+                                /** @enum {string} */
+                                currency: "VND" | "USD" | "EUR" | "JPY" | "KRW" | "CNY" | "GBP" | "AUD" | "THB" | "SGD";
+                                taxCode: string | null;
+                                /** @enum {string} */
+                                timezone: "Asia/Ho_Chi_Minh" | "Asia/Bangkok" | "Asia/Singapore" | "Asia/Shanghai" | "Asia/Tokyo" | "Asia/Seoul" | "UTC" | "Europe/London" | "America/New_York" | "Australia/Sydney";
+                                logoUrl: string | null;
+                                printLogoUrl: string | null;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền clinic_config.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Sửa thông tin phòng khám — bắt buộc kèm version hiện có (optimistic locking) */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        name?: string;
+                        phone?: string | null;
+                        address?: string | null;
+                        /** Format: email */
+                        email?: string | null;
+                        /** @enum {string} */
+                        currency?: "VND" | "USD" | "EUR" | "JPY" | "KRW" | "CNY" | "GBP" | "AUD" | "THB" | "SGD";
+                        taxCode?: string | null;
+                        /** @enum {string} */
+                        timezone?: "Asia/Ho_Chi_Minh" | "Asia/Bangkok" | "Asia/Singapore" | "Asia/Shanghai" | "Asia/Tokyo" | "Asia/Seoul" | "UTC" | "Europe/London" | "America/New_York" | "Australia/Sydney";
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Sửa thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                name: string;
+                                phone: string | null;
+                                address: string | null;
+                                email: string | null;
+                                /** @enum {string} */
+                                currency: "VND" | "USD" | "EUR" | "JPY" | "KRW" | "CNY" | "GBP" | "AUD" | "THB" | "SGD";
+                                taxCode: string | null;
+                                /** @enum {string} */
+                                timezone: "Asia/Ho_Chi_Minh" | "Asia/Bangkok" | "Asia/Singapore" | "Asia/Shanghai" | "Asia/Tokyo" | "Asia/Seoul" | "UTC" | "Europe/London" | "America/New_York" | "Australia/Sydney";
+                                logoUrl: string | null;
+                                printLogoUrl: string | null;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền clinic_config.update */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/clinic-profile/logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload/thay logo chính (khuyến nghị 220×110px) — chỉ JPG/PNG (kiểm magic byte), tối đa 2MB, kèm version hiện có */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "multipart/form-data": {
+                        /**
+                         * Format: binary
+                         * @description Ảnh JPG hoặc PNG
+                         */
+                        file: string;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Upload thành công, trả hồ sơ kèm logoUrl mới */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                name: string;
+                                phone: string | null;
+                                address: string | null;
+                                email: string | null;
+                                /** @enum {string} */
+                                currency: "VND" | "USD" | "EUR" | "JPY" | "KRW" | "CNY" | "GBP" | "AUD" | "THB" | "SGD";
+                                taxCode: string | null;
+                                /** @enum {string} */
+                                timezone: "Asia/Ho_Chi_Minh" | "Asia/Bangkok" | "Asia/Singapore" | "Asia/Shanghai" | "Asia/Tokyo" | "Asia/Seoul" | "UTC" | "Europe/London" | "America/New_York" | "Australia/Sydney";
+                                logoUrl: string | null;
+                                printLogoUrl: string | null;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Sai định dạng ảnh (CLINIC_INVALID_LOGO) hoặc quá 2MB */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền clinic_config.update */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinic-profile/print-logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload/thay logo dùng cho mẫu in (khuyến nghị 110×110px) — chỉ JPG/PNG (kiểm magic byte), tối đa 2MB, kèm version hiện có */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "multipart/form-data": {
+                        /**
+                         * Format: binary
+                         * @description Ảnh JPG hoặc PNG
+                         */
+                        file: string;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Upload thành công, trả hồ sơ kèm printLogoUrl mới */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                name: string;
+                                phone: string | null;
+                                address: string | null;
+                                email: string | null;
+                                /** @enum {string} */
+                                currency: "VND" | "USD" | "EUR" | "JPY" | "KRW" | "CNY" | "GBP" | "AUD" | "THB" | "SGD";
+                                taxCode: string | null;
+                                /** @enum {string} */
+                                timezone: "Asia/Ho_Chi_Minh" | "Asia/Bangkok" | "Asia/Singapore" | "Asia/Shanghai" | "Asia/Tokyo" | "Asia/Seoul" | "UTC" | "Europe/London" | "America/New_York" | "Australia/Sydney";
+                                logoUrl: string | null;
+                                printLogoUrl: string | null;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Sai định dạng ảnh (CLINIC_INVALID_LOGO) hoặc quá 2MB */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền clinic_config.update */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/reference-catalog/{category}": {
         parameters: {
             query?: never;

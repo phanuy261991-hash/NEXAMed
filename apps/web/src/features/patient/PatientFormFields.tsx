@@ -169,7 +169,7 @@ export function PatientFormFields({
         <span className={sectionBadgeClassName}>Thông tin hành chính</span>
 
         <div className="flex flex-col gap-4 sm:flex-row">
-        <PatientAvatarUpload patientId={patientId} photoUrl={photoUrl ?? null} version={version} />
+        <PatientAvatarUpload patientId={patientId} photoUrl={photoUrl ?? null} version={version} disabled={disabled} />
 
         <div className={`flex-1 ${fieldGridClassName}`}>
           <Field id="patientCode" label="Mã bệnh nhân">

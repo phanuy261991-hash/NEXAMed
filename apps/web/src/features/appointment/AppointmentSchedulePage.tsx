@@ -75,15 +75,12 @@ export function AppointmentSchedulePage() {
   }, []);
 
   return (
-    <div className="flex h-full flex-col gap-3 p-4">
-      <div className="flex flex-shrink-0 items-center justify-end px-1">
-        <h1 className="sr-only">Lịch hẹn</h1>
-        <Button type="button" title="Đặt lịch nhanh — bấm F2 để mở nhanh" onClick={() => openQuickCreate(null, '08:00')}>
-          <Plus size={15} weight="bold" aria-hidden="true" />
-          Đặt lịch
-        </Button>
-      </div>
+    <div className="flex h-full flex-col gap-2.5 p-3">
+      <h1 className="sr-only">Lịch hẹn</h1>
 
+      {/* Gộp 2 hàng công cụ cũ (nút "Đặt lịch" riêng + hàng điều hướng ngày) thành 1 hàng —
+          nhường thêm vùng nhìn thấy cho lưới mà không đổi ROW_HEIGHT_PX/bước 30 phút (quyết
+          định đã chốt lúc S2-09, không tự đổi mật độ dữ liệu — xem docs/CURRENT.md). */}
       <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-2.5 px-1">
         <div className="flex items-center gap-1.5">
           <button
@@ -122,7 +119,7 @@ export function AppointmentSchedulePage() {
 
         <div className="flex items-center gap-3">
           {view === 'grid' && (
-            <div className="hidden items-center gap-3.5 text-xs text-slate-500 md:flex">
+            <div className="hidden items-center gap-3.5 text-xs text-slate-500 lg:flex">
               {LEGEND.map((l) => (
                 <span key={l.label} className="flex items-center gap-1.5">
                   <span className={`h-2 w-2 rounded-full ${l.className}`} aria-hidden="true" />
@@ -161,6 +158,10 @@ export function AppointmentSchedulePage() {
               Danh sách
             </button>
           </div>
+          <Button type="button" title="Đặt lịch nhanh — bấm F2 để mở nhanh" onClick={() => openQuickCreate(null, '08:00')}>
+            <Plus size={15} weight="bold" aria-hidden="true" />
+            Đặt lịch
+          </Button>
         </div>
       </div>
 

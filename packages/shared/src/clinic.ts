@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import { DEFAULT_APPOINTMENT_DURATION_MINUTES } from './appointment';
+import { currencyCodeSchema } from './currency';
+import { timezoneSchema } from './timezone';
 
 /**
  * Cấu hình phòng khám (S2-07, ADM-02 — trừ "mẫu in", lùi lại tới khi làm PRE-04/S4-04) — module
@@ -74,3 +76,36 @@ export const updateClinicSettingsRequestSchema = z.object({
 export type UpdateClinicSettingsRequest = z.infer<typeof updateClinicSettingsRequestSchema>;
 
 export const DEFAULT_SLOT_DURATION_MINUTES = DEFAULT_APPOINTMENT_DURATION_MINUTES;
+
+/**
+ * Trang "Thông tin phòng khám" (2026-08-13, `/admin/system-config`) — mở rộng `tenant`
+ * (`.claude/docs/data-model.md`, `docs/DECISIONS.md` #041). Dùng lại quyền `clinic_config.read`/
+ * `.update` sẵn có, không thêm permission mới. `currency`/`timezone` chỉ lưu giá trị hiển thị,
+ * chưa nối vào logic tính toán/ngày giờ hệ thống — xem comment ở `currency.ts`/`timezone.ts`.
+ */
+export const clinicProfileSchema = z.object({
+  name: z.string(),
+  phone: z.string().nullable(),
+  address: z.string().nullable(),
+  email: z.string().nullable(),
+  currency: currencyCodeSchema,
+  taxCode: z.string().nullable(),
+  timezone: timezoneSchema,
+  logoUrl: z.string().nullable(),
+  printLogoUrl: z.string().nullable(),
+  version: z.number().int(),
+});
+export type ClinicProfile = z.infer<typeof clinicProfileSchema>;
+
+/** PATCH từng phần, `version` bắt buộc cho optimistic locking (cùng mẫu `updateRoomRequestSchema`). */
+export const updateClinicProfileRequestSchema = z.object({
+  name: z.string().min(1).optional(),
+  phone: z.string().nullable().optional(),
+  address: z.string().nullable().optional(),
+  email: z.string().email().nullable().optional(),
+  currency: currencyCodeSchema.optional(),
+  taxCode: z.string().nullable().optional(),
+  timezone: timezoneSchema.optional(),
+  version: z.number().int().positive(),
+});
+export type UpdateClinicProfileRequest = z.infer<typeof updateClinicProfileRequestSchema>;

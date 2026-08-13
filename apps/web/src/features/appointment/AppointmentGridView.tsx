@@ -106,7 +106,7 @@ export function AppointmentGridView({
         {doctors.map((d) => (
           <div
             key={d.id}
-            className="sticky top-0 z-10 flex items-center gap-2.5 border-b border-r border-slate-200 bg-white px-3.5 py-2.5 last:border-r-0"
+            className="sticky top-0 z-10 flex items-center gap-2.5 border-b border-r border-slate-200 bg-white px-3.5 py-2 last:border-r-0"
           >
             <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blue-50 text-xs font-bold text-blue-600">
               {initials(d.fullName)}

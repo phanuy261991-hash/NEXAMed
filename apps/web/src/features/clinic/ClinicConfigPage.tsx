@@ -1,18 +1,23 @@
 import { useState } from 'react';
-import { Clock } from '@phosphor-icons/react';
+import { Buildings, Clock } from '@phosphor-icons/react';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { ConfigScreenShell, type ConfigScreenPill } from '../../shared/ui/ConfigScreenShell';
 import { ClinicHoursPane } from './ClinicHoursPane';
+import { ClinicInfoPane } from './ClinicInfoPane';
 
 /**
- * 1 pill/1 mục thật — chỉ có "Cấu hình phòng khám" ở v1. Không dựng thêm pill/mục "Sắp có"
+ * 1 pill, 2 mục — "Thông tin phòng khám" (2026-08-13, mặc định mở đầu tiên) đặt TRƯỚC "Giờ làm
+ * việc & Slot" theo yêu cầu chủ dự án. Không dựng thêm pill/mục "Sắp có"
  * (.claude/docs/ui-guidelines.md mục 10), thêm khi có module thật đứng sau.
  */
 const PILLS: ConfigScreenPill[] = [
   {
     key: 'clinic',
     label: 'Cấu hình phòng khám',
-    items: [{ key: 'hours', label: 'Giờ làm việc & Slot', icon: Clock }],
+    items: [
+      { key: 'info', label: 'Thông tin phòng khám', icon: Buildings },
+      { key: 'hours', label: 'Giờ làm việc & Slot', icon: Clock },
+    ],
   },
 ];
 const FIRST_PILL = PILLS[0]!;
@@ -46,6 +51,7 @@ export function ClinicConfigPage() {
       onSelectPill={selectPill}
       onSelectItem={setActiveItemKey}
     >
+      {activeItemKey === 'info' && <ClinicInfoPane />}
       {activeItemKey === 'hours' && <ClinicHoursPane />}
     </ConfigScreenShell>
   );
