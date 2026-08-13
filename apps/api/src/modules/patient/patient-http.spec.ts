@@ -638,4 +638,70 @@ describe('HTTP e2e — /api/v1/patients', () => {
       expect(res.status).toBe(403);
     });
   });
+
+  describe('GET /api/v1/patients/by-phone — tra trùng SĐT (SĐT được phép trùng, Sprint 3 Tiếp nhận)', () => {
+    const sharedPhone = '0977888999';
+
+    it('2 hồ sơ cùng SĐT (mẹ dùng chung cho 2 con) → cả hai được TẠO thành công (không chặn)', async () => {
+      const first = await request(app.getHttpServer())
+        .post('/api/v1/patients')
+        .set(authed(receptionistToken))
+        .send({ ...validPayload, fullName: 'Bé A', dob: '2018-01-01', nationalId: undefined, phone: sharedPhone });
+      const second = await request(app.getHttpServer())
+        .post('/api/v1/patients')
+        .set(authed(receptionistToken))
+        .send({ ...validPayload, fullName: 'Bé B', dob: '2020-01-01', nationalId: undefined, phone: sharedPhone });
+
+      expect(first.status).toBe(200);
+      expect(second.status).toBe(200);
+
+      const res = await request(app.getHttpServer())
+        .get('/api/v1/patients/by-phone')
+        .query({ phone: sharedPhone })
+        .set(authed(receptionistToken));
+
+      expect(res.status).toBe(200);
+      const names = (res.body.data.items as Array<{ fullName: string }>).map((p) => p.fullName);
+      expect(names).toEqual(expect.arrayContaining(['Bé A', 'Bé B']));
+    });
+
+    it('khớp CHÍNH XÁC số điện thoại — SĐT khác không lộ vào kết quả', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/v1/patients/by-phone')
+        .query({ phone: '0900000000' })
+        .set(authed(receptionistToken));
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.items).toEqual([]);
+    });
+
+    it('excludePatientId — loại chính hồ sơ đang sửa khỏi kết quả', async () => {
+      const created = await request(app.getHttpServer())
+        .post('/api/v1/patients')
+        .set(authed(receptionistToken))
+        .send({ ...validPayload, fullName: 'Tự loại trừ', phone: '0977111222', nationalId: randomNationalId() });
+      const id = created.body.data.id as string;
+
+      const withoutExclude = await request(app.getHttpServer())
+        .get('/api/v1/patients/by-phone')
+        .query({ phone: '0977111222' })
+        .set(authed(receptionistToken));
+      expect(withoutExclude.body.data.items).toHaveLength(1);
+
+      const withExclude = await request(app.getHttpServer())
+        .get('/api/v1/patients/by-phone')
+        .query({ phone: '0977111222', excludePatientId: id })
+        .set(authed(receptionistToken));
+      expect(withExclude.body.data.items).toEqual([]);
+    });
+
+    it('cách ly tenant — tenant B không thấy hồ sơ trùng SĐT của tenant A', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/v1/patients/by-phone')
+        .query({ phone: sharedPhone })
+        .set(authed(tenantBAdminToken));
+
+      expect(res.body.data.items).toEqual([]);
+    });
+  });
 });

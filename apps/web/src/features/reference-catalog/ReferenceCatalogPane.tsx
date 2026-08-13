@@ -6,6 +6,7 @@ import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { EmptyState } from '../../shared/ui/EmptyState';
+import { formatVnd } from '../../shared/format/currency';
 import {
   useCreateReferenceCatalogItemMutation,
   useDeactivateReferenceCatalogItemMutation,
@@ -109,6 +110,7 @@ export function ReferenceCatalogPane({
               <tr className="border-b-2 border-blue-600 bg-slate-100 text-left text-xs font-semibold uppercase tracking-wide text-slate-700">
                 <th className="w-24 px-4 py-2.5">Mã</th>
                 <th className="px-4 py-2.5">Tên hiển thị</th>
+                {category === 'EXAM_TYPE' && <th className="w-32 px-4 py-2.5">Giá</th>}
                 <th className="w-24 px-4 py-2.5">Thứ tự</th>
                 {canManage && <th className="w-32 px-4 py-2.5 text-right">Thao tác</th>}
               </tr>
@@ -121,6 +123,9 @@ export function ReferenceCatalogPane({
                     {item.name}
                     {!item.isActive && <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">Đã ẩn</span>}
                   </td>
+                  {category === 'EXAM_TYPE' && (
+                    <td className="px-4 py-2 text-slate-600">{item.price !== null ? formatVnd(item.price) : '—'}</td>
+                  )}
                   <td className="px-4 py-2 text-slate-500">{item.sortOrder}</td>
                   {canManage && (
                     <td className="px-4 py-2 text-right">
@@ -164,6 +169,7 @@ export function ReferenceCatalogPane({
 
       {modal && (
         <ItemFormModal
+          category={category}
           categoryLabel={categoryLabel}
           mode={modal.mode}
           item={modal.item}
@@ -209,6 +215,7 @@ export function ReferenceCatalogPane({
 }
 
 function ItemFormModal({
+  category,
   categoryLabel,
   mode,
   item,
@@ -216,16 +223,19 @@ function ItemFormModal({
   onCancel,
   onSubmit,
 }: {
+  category: ReferenceCatalogCategory;
   categoryLabel: string;
   mode: 'create' | 'edit';
   item?: ReferenceCatalogItem;
   submitting: boolean;
   onCancel: () => void;
-  onSubmit: (dto: { code: string; name: string; sortOrder: number }) => void;
+  onSubmit: (dto: { code: string; name: string; sortOrder: number; price?: number }) => void;
 }) {
   const [code, setCode] = useState(item?.code ?? '');
   const [name, setName] = useState(item?.name ?? '');
   const [sortOrder, setSortOrder] = useState(item?.sortOrder ?? 0);
+  const [price, setPrice] = useState(item?.price !== null && item?.price !== undefined ? String(item.price) : '');
+  const isExamType = category === 'EXAM_TYPE';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
@@ -247,6 +257,23 @@ function ItemFormModal({
           <input id="rc-name" value={name} onChange={(e) => setName(e.target.value)} className={inputClassName} />
         </div>
 
+        {isExamType && (
+          <div className="mb-3.5 flex flex-col gap-1.5">
+            <label htmlFor="rc-price" className="text-xs font-semibold text-slate-600">
+              Giá (đồng)
+            </label>
+            <input
+              id="rc-price"
+              type="number"
+              min={0}
+              step={1000}
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              className={inputClassName}
+            />
+          </div>
+        )}
+
         <div className="mb-4 flex flex-col gap-1.5">
           <label htmlFor="rc-sort-order" className="text-xs font-semibold text-slate-600">
             Thứ tự hiển thị
@@ -267,8 +294,15 @@ function ItemFormModal({
           <Button
             type="button"
             loading={submitting}
-            disabled={code.trim() === '' || name.trim() === ''}
-            onClick={() => onSubmit({ code: code.trim(), name: name.trim(), sortOrder })}
+            disabled={code.trim() === '' || name.trim() === '' || (isExamType && price.trim() === '')}
+            onClick={() =>
+              onSubmit({
+                code: code.trim(),
+                name: name.trim(),
+                sortOrder,
+                price: isExamType && price.trim() !== '' ? Number(price) : undefined,
+              })
+            }
           >
             Lưu
           </Button>

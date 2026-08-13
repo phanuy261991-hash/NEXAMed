@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Globe, MapPinLine, MapTrifold, Users } from '@phosphor-icons/react';
+import { ClipboardText, Globe, MapPinLine, MapTrifold, Users, UsersThree } from '@phosphor-icons/react';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { ConfigScreenShell, type ConfigScreenPill } from '../../shared/ui/ConfigScreenShell';
 import { ReferenceCatalogPane } from '../reference-catalog/ReferenceCatalogPane';
@@ -8,10 +8,11 @@ import { GeoPane } from '../geo/GeoPane';
 /**
  * 1 nhóm THẬT đã có backend — không dựng pill/mục "Sắp có" cho tính năng chưa xây
  * (.claude/docs/ui-guidelines.md mục 10). Thêm nhóm mới ở đây khi có module thật đứng sau, không
- * phải khi có ý tưởng. "Danh mục dùng chung" gộp cả `reference_catalog` (Dân tộc/Quốc tịch, quản
- * lý được) lẫn `geo` (Tỉnh/Thành, Phường/Xã, chỉ đọc — #038) chung 1 pill — 2 nguồn dữ liệu khác
- * nhau nhưng cùng bản chất "danh mục tra cứu". Cấu hình phòng khám đã tách sang trang riêng
- * "Cấu hình hệ thống" (`ClinicConfigPage`, docs/DECISIONS.md #040), không còn ở đây.
+ * phải khi có ý tưởng. "Danh mục dùng chung" gộp cả `reference_catalog` (Dân tộc/Quốc tịch/Nguồn
+ * khách hàng/Loại khám, quản lý được) lẫn `geo` (Tỉnh/Thành, Phường/Xã, chỉ đọc — #038) chung 1
+ * pill — cùng bản chất "danh mục tra cứu". "Nguồn khách hàng"/"Loại khám" phục vụ trang "Tiếp
+ * nhận bệnh nhân" (Sprint 3). Cấu hình phòng khám đã tách sang trang riêng "Cấu hình hệ thống"
+ * (`ClinicConfigPage`, docs/DECISIONS.md #040), không còn ở đây.
  */
 const PILLS: ConfigScreenPill[] = [
   {
@@ -22,6 +23,8 @@ const PILLS: ConfigScreenPill[] = [
       { key: 'ward', label: 'Phường/Xã', icon: MapPinLine },
       { key: 'province', label: 'Tỉnh/Thành', icon: MapTrifold },
       { key: 'nationality', label: 'Quốc tịch', icon: Globe },
+      { key: 'patient-source', label: 'Nguồn khách hàng', icon: UsersThree },
+      { key: 'exam-type', label: 'Loại khám', icon: ClipboardText },
     ],
   },
 ];
@@ -59,6 +62,8 @@ export function CatalogAdminPage() {
     >
       {activeItemKey === 'ethnicity' && <ReferenceCatalogPane category="ETHNICITY" categoryLabel="Dân tộc" />}
       {activeItemKey === 'nationality' && <ReferenceCatalogPane category="NATIONALITY" categoryLabel="Quốc tịch" />}
+      {activeItemKey === 'patient-source' && <ReferenceCatalogPane category="PATIENT_SOURCE" categoryLabel="Nguồn khách hàng" />}
+      {activeItemKey === 'exam-type' && <ReferenceCatalogPane category="EXAM_TYPE" categoryLabel="Loại khám" />}
       {activeItemKey === 'province' && <GeoPane mode="province" />}
       {activeItemKey === 'ward' && <GeoPane mode="ward" />}
     </ConfigScreenShell>

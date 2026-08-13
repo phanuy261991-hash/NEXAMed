@@ -13,3 +13,5 @@ export * from './search/strip-vietnamese-diacritics';
 export * from './date/vietnam-day-range';
 export * from './specialty/registry';
 export * from './storage/sniff-image-extension';
+export * from './encounter/encounter-state-machine';
+export * from './vital-sign/vital-sign-thresholds';

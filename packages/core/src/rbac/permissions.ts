@@ -25,6 +25,13 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   { module: 'appointment', action: 'update', description: 'Sửa lịch hẹn' },
   { module: 'appointment', action: 'cancel', description: 'Huỷ lịch hẹn' },
   { module: 'encounter', action: 'read', description: 'Xem lượt khám và tiền sử' },
+  // 3 permission mới (Sprint 3, Tiếp nhận) — vá lỗ hổng ma trận seed từ S1-04b (chỉ có
+  // encounter.read, chưa tính actor nào thực sự tạo/chuyển trạng thái encounter). Xem
+  // docs/DECISIONS.md (entry Tiếp nhận) — receptionist check-in tạo encounter, bác sĩ chuyển
+  // CHECKED_IN→IN_CONSULTATION, "bỏ về" (CHECKED_IN→CANCELLED) mirror appointment.cancel.
+  { module: 'encounter', action: 'create', description: 'Tạo lượt khám (check-in)' },
+  { module: 'encounter', action: 'update', description: 'Chuyển trạng thái lượt khám (bắt đầu khám)' },
+  { module: 'encounter', action: 'cancel', description: 'Huỷ lượt khám ("bỏ về")' },
   { module: 'vital_sign', action: 'create', description: 'Ghi sinh hiệu' },
   { module: 'diagnosis', action: 'create', description: 'Ghi chẩn đoán' },
   { module: 'clinical_note', action: 'create', description: 'Ghi chú SOAP' },
@@ -62,12 +69,24 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'appointment.create': 'global',
     'appointment.update': 'global',
     'appointment.cancel': 'global',
+    // Tiếp nhận (Sprint 3) — lễ tân check-in (tạo encounter) + xem hàng đợi. Trước đây
+    // encounter.read = none (chưa từng chốt lễ tân xem lượt khám) — đổi vì hàng đợi Tiếp nhận
+    // chính là danh sách encounter đang CHECKED_IN/IN_CONSULTATION, đây là công việc thường ngày
+    // của lễ tân, không phải xem dữ liệu lâm sàng nhạy cảm (chẩn đoán/ghi chú SOAP vẫn ở module
+    // encounter/khám bệnh riêng, chưa cấp quyền nào ở đây).
+    'encounter.read': 'global',
+    'encounter.create': 'global',
+    'encounter.cancel': 'global',
     'reference_catalog.read': 'global',
   },
   nurse: {
     'patient.read': 'global',
-    'encounter.read': 'personal',
-    'vital_sign.create': 'personal',
+    // Đổi personal→global (Sprint 3, Tiếp nhận): "personal" theo .claude/docs/security-audit.md
+    // nghĩa là chủ = encounter.doctor_id — điều dưỡng không phải bác sĩ nên scope này chưa từng
+    // thật sự cho phép truy cập gì (luôn rỗng). Phòng khám 1-3 bác sĩ, điều dưỡng phục vụ mọi bác
+    // sĩ — cùng lý do doctor.encounter.read=global đã chốt trước đó.
+    'encounter.read': 'global',
+    'vital_sign.create': 'global',
     'reference_catalog.read': 'global',
   },
   doctor: {
@@ -77,6 +96,10 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'appointment.update': 'personal',
     'appointment.cancel': 'personal',
     'encounter.read': 'global',
+    // Bắt đầu khám (CHECKED_IN→IN_CONSULTATION) chỉ cho lượt khám do chính bác sĩ phụ trách —
+    // mirror appointment.update=personal đã có. "Bỏ về" mirror appointment.cancel=personal.
+    'encounter.update': 'personal',
+    'encounter.cancel': 'personal',
     'vital_sign.create': 'personal',
     'diagnosis.create': 'personal',
     'clinical_note.create': 'personal',
@@ -96,6 +119,10 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'appointment.create': 'global',
     'appointment.update': 'global',
     'appointment.cancel': 'global',
+    // Cần global cho cả 3 để clinic_admin quản lý được toàn bộ Tiếp nhận, cùng mức appointment.*.
+    'encounter.read': 'global',
+    'encounter.create': 'global',
+    'encounter.cancel': 'global',
     'clinic_config.read': 'global',
     'clinic_config.update': 'global',
     'user_account.read': 'global',

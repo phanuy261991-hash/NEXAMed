@@ -2,7 +2,8 @@ import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClie
 import type { CreatePatientRequest, UpdatePatientRequest } from '@nexamed/shared';
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
-import { createPatient, getPatient, listPatients, updatePatient, uploadPatientPhoto } from './patient.api';
+import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
+import { createPatient, findPatientsByPhone, getPatient, listPatients, updatePatient, uploadPatientPhoto } from './patient.api';
 
 const PATIENT_LIST_LIMIT = 50;
 
@@ -41,6 +42,22 @@ export function usePatientSearchQuery(q: string) {
     queryFn: () => listPatients({ q, limit: PATIENT_PICKER_LIMIT }),
     enabled: q.trim().length > 0,
     placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * Tra trùng SĐT (Sprint 3) — debounce 300ms (cùng khuôn `usePatientSearchQuery`), chỉ gọi khi đủ
+ * độ dài hợp lệ (khớp `phone: z.string().min(8).max(15)` ở packages/shared). Dùng cho cảnh báo
+ * mềm form Thêm/Sửa (`PatientFormFields`) VÀ chọn khách hàng ở trang Tiếp nhận.
+ */
+export function usePatientByPhoneQuery(phone: string, excludePatientId?: string) {
+  const { tenantId } = useAppConfig();
+  const debouncedPhone = useDebouncedValue(phone);
+  const enabled = debouncedPhone.length >= 8 && debouncedPhone.length <= 15;
+  return useQuery({
+    queryKey: queryKey(tenantId, 'patient', 'by-phone', debouncedPhone, excludePatientId),
+    queryFn: () => findPatientsByPhone(debouncedPhone, excludePatientId),
+    enabled,
   });
 }
 

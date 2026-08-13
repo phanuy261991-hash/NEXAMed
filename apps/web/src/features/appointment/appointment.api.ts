@@ -2,7 +2,6 @@ import type {
   AppointmentPhoneLookupResponse,
   AppointmentSummary,
   CancelAppointmentRequest,
-  CheckinAppointmentRequest,
   ClinicSettings,
   CreateAppointmentRequest,
   ListAppointmentsResponse,
@@ -53,11 +52,4 @@ export async function lookupAppointmentByPhone(phone: string): Promise<Appointme
   return unwrap(
     await getApiClient().GET('/api/v1/appointments/lookup', { params: { query: { phone } } }),
   ) as AppointmentPhoneLookupResponse;
-}
-
-/** Check-in (docs/DECISIONS.md #032) — chuyển thẳng SCHEDULED → CONVERTED. */
-export async function checkinAppointment(id: string, body: CheckinAppointmentRequest): Promise<AppointmentSummary> {
-  return unwrap(
-    await getApiClient().POST('/api/v1/appointments/{id}/checkin', { params: { path: { id } }, body }),
-  ) as AppointmentSummary;
 }

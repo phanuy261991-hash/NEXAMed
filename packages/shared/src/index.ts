@@ -4,6 +4,7 @@ export * from './auth';
 export * from './break-glass';
 export * from './patient';
 export * from './appointment';
+export * from './encounter';
 export * from './user-account';
 export * from './clinic';
 export * from './reference-catalog';

@@ -98,6 +98,31 @@ export class PatientRepository {
   }
 
   /**
+   * Tra trùng SĐT — khớp CHÍNH XÁC (không `startsWith` như `list()`), dùng index có sẵn
+   * `(tenant_id, phone)`. `excludePatientId`: loại chính hồ sơ đang sửa. Xem
+   * `packages/shared/src/patient.ts` (`patientByPhoneQuerySchema`) — KHÁC PAT-03
+   * (`findPossibleDuplicates`, khớp tên+ngày sinh): SĐT được phép trùng thật sự, đây chỉ liệt kê
+   * để cảnh báo mềm hoặc để lễ tân chọn đúng người ở trang Tiếp nhận, không phải phát hiện trùng
+   * hồ sơ.
+   */
+  findByPhone(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    params: { phone: string; excludePatientId?: string },
+  ): Promise<Patient[]> {
+    return tx.patient.findMany({
+      where: {
+        tenantId,
+        deletedAt: null,
+        phone: params.phone,
+        ...(params.excludePatientId ? { id: { not: params.excludePatientId } } : {}),
+      },
+      orderBy: { id: 'asc' },
+      take: 10,
+    });
+  }
+
+  /**
    * `updateMany` + kiểm `count` (không phải `update`) vì cần điều kiện `version = ?` trong cùng
    * `WHERE` cho optimistic locking (.claude/docs/data-model.md) — `update()` của Prisma chỉ nhận
    * unique field làm điều kiện, không ghép thêm được `version`.

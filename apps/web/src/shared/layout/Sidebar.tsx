@@ -2,11 +2,14 @@ import { useState } from 'react';
 import {
   CalendarBlank,
   CaretRight,
+  ClipboardText,
   FolderSimple,
   GearSix,
   House,
+  ListChecks,
   SidebarSimple,
   SlidersHorizontal,
+  UserPlus,
   Users,
   type Icon,
 } from '@phosphor-icons/react';
@@ -19,9 +22,13 @@ const ADMIN_ROLES = ['clinic_admin', 'system_admin'];
 const PATIENT_ROLES = ['receptionist', 'nurse', 'doctor', 'clinic_admin'];
 /** Khớp `appointment.read` (S2-09) — receptionist/clinic_admin=global, doctor=personal; nurse/system_admin không có (none). */
 const APPOINTMENT_ROLES = ['receptionist', 'doctor', 'clinic_admin'];
+/** Khớp `encounter.read` (Sprint 3, sau khi vá ma trận) — receptionist/nurse/doctor/clinic_admin=global; system_admin không có. */
+const RECEPTION_ROLES = ['receptionist', 'nurse', 'doctor', 'clinic_admin'];
+/** "Hàng đợi khám" — khu vực RIÊNG cho bác sĩ (đã chốt lại với chủ dự án), không cần cho lễ tân/điều dưỡng. */
+const DOCTOR_QUEUE_ROLES = ['doctor', 'clinic_admin'];
 
 /** Đường dẫn thuộc nhóm "Tiếp nhận và Đặt lịch" — dùng để tự mở nhóm khi route đang active nằm trong đó. */
-const RECEPTION_GROUP_PATHS = ['/patients', '/appointments'];
+const RECEPTION_GROUP_PATHS = ['/patients', '/appointments', '/reception'];
 /** Đường dẫn thuộc nhóm "Quản trị" — hiện chỉ có 1 mục con thật (Danh mục); thêm ADM-01/03 vào
  * đây khi có UI thật, không dựng placeholder trước. */
 const ADMIN_GROUP_PATHS = ['/admin'];
@@ -79,6 +86,8 @@ export function Sidebar() {
   const isAdmin = user?.roles.some((role) => ADMIN_ROLES.includes(role)) ?? false;
   const canSeePatients = user?.roles.some((role) => PATIENT_ROLES.includes(role)) ?? false;
   const canSeeAppointments = user?.roles.some((role) => APPOINTMENT_ROLES.includes(role)) ?? false;
+  const canSeeReception = user?.roles.some((role) => RECEPTION_ROLES.includes(role)) ?? false;
+  const canSeeDoctorQueue = user?.roles.some((role) => DOCTOR_QUEUE_ROLES.includes(role)) ?? false;
   const receptionGroupExpanded = receptionGroupOpen && !collapsed;
   const adminGroupExpanded = adminGroupOpen && !collapsed;
 
@@ -99,7 +108,7 @@ export function Sidebar() {
         <ul className="flex flex-col gap-0.5">
           <NavItem to="/" label="Tổng quan" icon={House} end collapsed={collapsed} />
 
-          {(canSeePatients || canSeeAppointments) && (
+          {(canSeePatients || canSeeAppointments || canSeeReception || canSeeDoctorQueue) && (
             <li>
               <button
                 type="button"
@@ -136,6 +145,9 @@ export function Sidebar() {
                 <ul className="mt-0.5 flex flex-col gap-0.5 border-l border-slate-800 pl-3.5">
                   {canSeePatients && <NavItem to="/patients" label="Danh sách bệnh nhân" icon={Users} collapsed={false} indent />}
                   {canSeeAppointments && <NavItem to="/appointments" label="Lịch hẹn" icon={CalendarBlank} collapsed={false} indent />}
+                  {canSeeReception && <NavItem to="/reception" label="Danh sách tiếp nhận" icon={ClipboardText} end collapsed={false} indent />}
+                  {canSeeReception && <NavItem to="/reception/new" label="Tiếp nhận bệnh nhân" icon={UserPlus} collapsed={false} indent />}
+                  {canSeeDoctorQueue && <NavItem to="/reception/doctor-queue" label="Hàng đợi khám" icon={ListChecks} collapsed={false} indent />}
                 </ul>
               )}
             </li>

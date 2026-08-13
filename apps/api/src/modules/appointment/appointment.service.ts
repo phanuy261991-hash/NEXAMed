@@ -17,7 +17,6 @@ import {
   type AppointmentPhoneLookupResponse,
   type AppointmentSummary,
   type CancelAppointmentRequest,
-  type CheckinAppointmentRequest,
   type ClinicSettings,
   type CreateAppointmentRequest,
   type DataScope,
@@ -306,51 +305,6 @@ export class AppointmentService {
         entityId: id,
         beforeJson: { scheduledAt: existing.scheduledAt.toISOString(), doctorId: existing.doctorId },
         afterJson: { scheduledAt: dto.scheduledAt, doctorId: dto.doctorId },
-        ip: meta.ip,
-        userAgent: meta.userAgent,
-      });
-
-      const updated = await this.appointmentRepository.findById(tx, tenantId, id);
-      if (!updated) {
-        throw new NotFoundException();
-      }
-      return this.toSummary(updated);
-    });
-  }
-
-  /**
-   * Check-in (docs/DECISIONS.md #032) — chuyển thẳng `SCHEDULED → CONVERTED`, không tạo `encounter`
-   * (Tiếp nhận thật là việc Sprint 3, chưa xây — đã hỏi và chốt với chủ dự án). Cùng khuôn
-   * `cancelAppointment()`/`rescheduleAppointment()`: 404 ngoài tenant/scope, 409 khi không còn
-   * `SCHEDULED` hoặc version lệch.
-   */
-  async checkinAppointment(
-    tenantId: string,
-    actorId: string,
-    dataScope: DataScope,
-    id: string,
-    dto: CheckinAppointmentRequest,
-    meta: RequestMeta,
-  ): Promise<AppointmentSummary> {
-    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.appointmentRepository.findById(tx, tenantId, id);
-      if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId)) {
-        throw new NotFoundException();
-      }
-      if (existing.status !== 'SCHEDULED') {
-        throw new AppointmentNotCancellableError();
-      }
-
-      const count = await this.appointmentRepository.checkin(tx, tenantId, id, dto.version, actorId);
-      if (count === 0) {
-        throw new ConcurrentModificationError();
-      }
-
-      await writeAuditLog(tx, tenantId, {
-        actorId,
-        action: 'appointment.checked_in',
-        entityType: 'appointment',
-        entityId: id,
         ip: meta.ip,
         userAgent: meta.userAgent,
       });

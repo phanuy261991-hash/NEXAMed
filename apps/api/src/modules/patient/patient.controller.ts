@@ -20,6 +20,7 @@ import {
   checkPatientDuplicateQuerySchema,
   createPatientRequestSchema,
   listPatientsQuerySchema,
+  patientByPhoneQuerySchema,
   updatePatientRequestSchema,
 } from '@nexamed/shared';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
@@ -71,6 +72,18 @@ export class PatientController {
     const dto = checkPatientDuplicateQuerySchema.parse(query);
     const { tenantId } = req.user!;
     return this.patientService.checkDuplicates(tenantId, dto);
+  }
+
+  /**
+   * Tra trùng SĐT (cảnh báo mềm form Thêm/Sửa khách hàng; chọn khách hàng ở trang Tiếp nhận) —
+   * khai TRƯỚC `@Get(':id')`, cùng lý do `check-duplicate` ở trên. Tái dùng `patient.read`.
+   */
+  @Get('by-phone')
+  @RequirePermission('patient', 'read')
+  async findByPhone(@Query() query: unknown, @Req() req: Request) {
+    const dto = patientByPhoneQuerySchema.parse(query);
+    const { tenantId } = req.user!;
+    return this.patientService.findByPhone(tenantId, dto);
   }
 
   @Get(':id')

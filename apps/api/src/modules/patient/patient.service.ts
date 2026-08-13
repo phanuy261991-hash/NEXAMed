@@ -18,6 +18,8 @@ import type {
   ListPatientsQuery,
   ListPatientsResponse,
   PatientAddress,
+  PatientByPhoneQuery,
+  PatientByPhoneResponse,
   PatientDetail,
   PatientGender,
   PatientSummary,
@@ -162,6 +164,18 @@ export class PatientService {
       const rows = await this.patientRepository.findPossibleDuplicates(tx, tenantId, {
         normalizedFullName,
         dob: new Date(query.dob),
+      });
+      return { items: rows.map((p) => this.toSummary(p, encryptionKey)) };
+    });
+  }
+
+  /** Tra trùng SĐT (cảnh báo mềm form Thêm/Sửa; chọn khách hàng ở trang Tiếp nhận) — xem `PatientRepository.findByPhone()`. */
+  async findByPhone(tenantId: string, query: PatientByPhoneQuery): Promise<PatientByPhoneResponse> {
+    const encryptionKey = this.configService.getOrThrow<string>('ENCRYPTION_KEY');
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const rows = await this.patientRepository.findByPhone(tx, tenantId, {
+        phone: query.phone,
+        excludePatientId: query.excludePatientId,
       });
       return { items: rows.map((p) => this.toSummary(p, encryptionKey)) };
     });

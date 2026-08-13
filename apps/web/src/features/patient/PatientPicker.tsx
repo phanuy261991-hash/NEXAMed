@@ -24,11 +24,15 @@ export interface PickedPatient {
 export function PatientPicker({
   value,
   onChange,
+  initialQuery,
 }: {
   value: PickedPatient | null;
   onChange: (patient: PickedPatient | null) => void;
+  /** Tự điền + chạy tìm kiếm ngay khi mount (Sprint 3, trang Tiếp nhận truyền SĐT của lịch hẹn để
+   * lễ tân thấy ngay danh sách khách hàng trùng SĐT, không phải gõ lại thủ công). */
+  initialQuery?: string;
 }) {
-  const [q, setQ] = useState('');
+  const [q, setQ] = useState(initialQuery ?? '');
   const [creating, setCreating] = useState(false);
   const [createForm, setCreateForm] = useState<PatientFormValues>(EMPTY_PATIENT_FORM);
   const [createError, setCreateError] = useState<string | null>(null);

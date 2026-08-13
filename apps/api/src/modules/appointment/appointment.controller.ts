@@ -3,7 +3,6 @@ import type { Request } from 'express';
 import {
   appointmentPhoneLookupQuerySchema,
   cancelAppointmentRequestSchema,
-  checkinAppointmentRequestSchema,
   createAppointmentRequestSchema,
   listAppointmentsQuerySchema,
   rescheduleAppointmentRequestSchema,
@@ -91,18 +90,5 @@ export class AppointmentController {
     const dto = rescheduleAppointmentRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
     return this.appointmentService.rescheduleAppointment(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
-  }
-
-  /**
-   * Check-in (docs/DECISIONS.md #032) — chuyển thẳng `SCHEDULED → CONVERTED`. Tái dùng quyền
-   * `appointment.update` đã có (giống `reschedule`) — không cần permission mới.
-   */
-  @Post(':id/checkin')
-  @RequirePermission('appointment', 'update', { entityIdParam: 'id' })
-  @HttpCode(200)
-  async checkin(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
-    const dto = checkinAppointmentRequestSchema.parse(body);
-    const { userId, tenantId } = req.user!;
-    return this.appointmentService.checkinAppointment(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 }

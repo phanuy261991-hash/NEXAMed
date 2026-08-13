@@ -126,16 +126,6 @@ export const listDoctorsResponseSchema = z.object({
 export type ListDoctorsResponse = z.infer<typeof listDoctorsResponseSchema>;
 
 /**
- * Check-in (docs/DECISIONS.md #032) — chuyển thẳng `SCHEDULED → CONVERTED`, không phát sinh
- * trạng thái mới (đúng chốt của chủ dự án: bấm check-in coi như đã chuyển đổi thành lượt khám,
- * Tiếp nhận thật/tạo `encounter` là việc Sprint 3). Chỉ cần `version` — không có lý do như huỷ.
- */
-export const checkinAppointmentRequestSchema = z.object({
-  version: z.number().int().positive(),
-});
-export type CheckinAppointmentRequest = z.infer<typeof checkinAppointmentRequestSchema>;
-
-/**
  * Tra cứu theo SĐT lúc đặt lịch (docs/DECISIONS.md #032) — tự điền Họ tên nếu SĐT đã từng đặt,
  * cảnh báo spam nếu số lần huỷ đạt ngưỡng. Không trả danh sách lịch hẹn đầy đủ (không cần cho UI,
  * tránh lộ dữ liệu thừa) — chỉ 2 trường tối thiểu form cần.

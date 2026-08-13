@@ -59,16 +59,21 @@ export class AppointmentRepository {
    * vì mục đích khác nhau — đây phục vụ xem lịch, không phải phân trang hồ sơ); kèm `id` làm khoá
    * phụ để có thứ tự ổn định khi trùng `scheduledAt`. Không còn join `patient` (docs/DECISIONS.md
    * #032 — `fullName`/`phone` giờ là cột riêng của `appointment`, đơn giản hoá lại phần join thêm
-   * ở S2-09).
+   * ở S2-09). `status`: lọc theo trạng thái — thêm ở Sprint 3 cho `ReceptionService.listQueue()`
+   * (chỉ cần `SCHEDULED`, không lộ lịch đã CANCELLED/NO_SHOW/CONVERTED vào hàng đợi); tuỳ chọn,
+   * không ảnh hưởng caller cũ (`AppointmentService.listAppointments()` không truyền).
    */
   list(
     tx: Prisma.TransactionClient,
     tenantId: string,
-    params: { cursor?: string; take: number; doctorId?: string; scheduledAtFrom?: Date; scheduledAtTo?: Date },
+    params: { cursor?: string; take: number; doctorId?: string; scheduledAtFrom?: Date; scheduledAtTo?: Date; status?: Appointment['status'] },
   ): Promise<Appointment[]> {
     const where: Prisma.AppointmentWhereInput = { tenantId, deletedAt: null };
     if (params.doctorId) {
       where.doctorId = params.doctorId;
+    }
+    if (params.status) {
+      where.status = params.status;
     }
     if (params.scheduledAtFrom || params.scheduledAtTo) {
       where.scheduledAt = {
@@ -153,14 +158,23 @@ export class AppointmentRepository {
   }
 
   /**
-   * Check-in (docs/DECISIONS.md #032) — chuyển thẳng `SCHEDULED → CONVERTED`, cùng khuôn
-   * `cancel()`/`reschedule()`. Chưa gắn `patientId`/tạo `encounter` (Tiếp nhận thật là việc
-   * Sprint 3) — chỉ đổi trạng thái, xem `AppointmentService.checkinAppointment()`.
+   * Check-in (Sprint 3, Tiếp nhận) — chuyển `SCHEDULED → CONVERTED` VÀ gắn `patientId` (hồ sơ đã
+   * resolve xong ở web trước khi gọi — tìm/tạo `patient`, xem `ReceptionService.checkIn()`), cùng
+   * khuôn `cancel()`/`reschedule()`. Gọi từ `ReceptionModule` (không phải `AppointmentModule`) qua
+   * `AppointmentRepository` export — xem docs/DECISIONS.md (quyết định kiến trúc chia sẻ
+   * Repository giữa 2 module trong cùng 1 transaction check-in).
    */
-  async checkin(tx: Prisma.TransactionClient, tenantId: string, id: string, expectedVersion: number, actorId: string): Promise<number> {
+  async checkin(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    id: string,
+    patientId: string,
+    expectedVersion: number,
+    actorId: string,
+  ): Promise<number> {
     const result = await tx.appointment.updateMany({
       where: { tenantId, id, version: expectedVersion, deletedAt: null, status: 'SCHEDULED' },
-      data: { status: 'CONVERTED', updatedBy: actorId, version: { increment: 1 } },
+      data: { status: 'CONVERTED', patientId, updatedBy: actorId, version: { increment: 1 } },
     });
     return result.count;
   }

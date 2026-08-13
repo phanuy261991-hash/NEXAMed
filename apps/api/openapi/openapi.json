@@ -553,6 +553,216 @@
         }
       }
     },
+    "/api/v1/patients/by-phone": {
+      "get": {
+        "tags": [
+          "patient"
+        ],
+        "summary": "Tra trùng số điện thoại (cảnh báo mềm form Thêm/Sửa; chọn khách hàng ở trang Tiếp nhận) — khớp CHÍNH XÁC, SĐT được phép trùng",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 15
+            },
+            "required": true,
+            "name": "phone",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "excludePatientId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công (mảng rỗng nếu chưa ai dùng SĐT này)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "patientCode": {
+                                "type": "string"
+                              },
+                              "fullName": {
+                                "type": "string"
+                              },
+                              "dob": {
+                                "type": "string"
+                              },
+                              "gender": {
+                                "type": "string",
+                                "enum": [
+                                  "male",
+                                  "female",
+                                  "other"
+                                ]
+                              },
+                              "phone": {
+                                "type": "string"
+                              },
+                              "hasNationalId": {
+                                "type": "boolean"
+                              },
+                              "nationalIdMasked": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "address": {
+                                "type": [
+                                  "object",
+                                  "null"
+                                ],
+                                "properties": {
+                                  "street": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "ward": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "neighborhood": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "district": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "province": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                }
+                              },
+                              "version": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "patientCode",
+                              "fullName",
+                              "dob",
+                              "gender",
+                              "phone",
+                              "hasNationalId",
+                              "nationalIdMasked",
+                              "address",
+                              "version"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền patient.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/patients": {
       "post": {
         "tags": [
@@ -4499,26 +4709,15 @@
         }
       }
     },
-    "/api/v1/appointments/{id}/checkin": {
+    "/api/v1/reception/check-in": {
       "post": {
         "tags": [
-          "appointment"
+          "reception"
         ],
-        "summary": "Check-in (docs/DECISIONS.md #032) — chuyển thẳng SCHEDULED → CONVERTED, kèm version hiện có",
+        "summary": "Tiếp nhận — check-in (Sprint 3): tạo lượt khám (encounter) + chuyển lịch hẹn sang CONVERTED, atomic. patientId đã resolve xong ở web (tìm/tạo trước)",
         "security": [
           {
             "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "required": true,
-            "name": "id",
-            "in": "path"
           }
         ],
         "requestBody": {
@@ -4527,13 +4726,83 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "appointmentId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "patientId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
                   "version": {
+                    "type": "integer"
+                  },
+                  "chiefComplaint": {
+                    "type": "string"
+                  },
+                  "patientSourceCode": {
+                    "type": "string"
+                  },
+                  "examTypeCode": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "examTypeName": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "examTypePrice": {
                     "type": "integer",
-                    "exclusiveMinimum": 0
+                    "minimum": 0
+                  },
+                  "pulse": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 300
+                  },
+                  "temperatureC": {
+                    "type": "number",
+                    "minimum": 30,
+                    "maximum": 45
+                  },
+                  "bpSystolic": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 300
+                  },
+                  "bpDiastolic": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 200
+                  },
+                  "respiratoryRate": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 120
+                  },
+                  "spo2": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "weightGram": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 300000
+                  },
+                  "heightMm": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2500
                   }
                 },
                 "required": [
-                  "version"
+                  "appointmentId",
+                  "patientId",
+                  "version",
+                  "examTypeCode",
+                  "examTypeName",
+                  "examTypePrice"
                 ]
               }
             }
@@ -4554,63 +4823,54 @@
                           "type": "string",
                           "format": "uuid"
                         },
-                        "bookingCode": {
+                        "encounterNo": {
                           "type": "string"
                         },
                         "patientId": {
-                          "type": [
-                            "string",
-                            "null"
-                          ],
+                          "type": "string",
                           "format": "uuid"
-                        },
-                        "fullName": {
-                          "type": "string"
-                        },
-                        "phone": {
-                          "type": "string"
-                        },
-                        "reason": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
                         },
                         "doctorId": {
                           "type": "string",
                           "format": "uuid"
                         },
-                        "roomId": {
+                        "appointmentId": {
                           "type": [
                             "string",
                             "null"
                           ],
                           "format": "uuid"
                         },
-                        "scheduledAt": {
-                          "type": "string"
-                        },
-                        "durationMinutes": {
-                          "type": "integer"
-                        },
                         "status": {
                           "type": "string",
                           "enum": [
                             "SCHEDULED",
+                            "CHECKED_IN",
+                            "IN_CONSULTATION",
+                            "COMPLETED",
                             "CANCELLED",
-                            "NO_SHOW",
-                            "CONVERTED"
+                            "NO_SHOW"
                           ]
                         },
-                        "source": {
-                          "type": "string",
-                          "enum": [
-                            "walk_in",
-                            "phone",
-                            "online"
+                        "specialty": {
+                          "type": "string"
+                        },
+                        "checkedInAt": {
+                          "type": "string"
+                        },
+                        "startedAt": {
+                          "type": [
+                            "string",
+                            "null"
                           ]
                         },
-                        "cancelReason": {
+                        "completedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "chiefComplaint": {
                           "type": [
                             "string",
                             "null"
@@ -4622,18 +4882,16 @@
                       },
                       "required": [
                         "id",
-                        "bookingCode",
+                        "encounterNo",
                         "patientId",
-                        "fullName",
-                        "phone",
-                        "reason",
                         "doctorId",
-                        "roomId",
-                        "scheduledAt",
-                        "durationMinutes",
+                        "appointmentId",
                         "status",
-                        "source",
-                        "cancelReason",
+                        "specialty",
+                        "checkedInAt",
+                        "startedAt",
+                        "completedAt",
+                        "chiefComplaint",
                         "version"
                       ]
                     },
@@ -4682,7 +4940,7 @@
             }
           },
           "403": {
-            "description": "Không có quyền appointment.update",
+            "description": "Không có quyền encounter.create",
             "content": {
               "application/json": {
                 "schema": {
@@ -4713,7 +4971,7 @@
             }
           },
           "404": {
-            "description": "Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal của bác sĩ)",
+            "description": "Không tìm thấy lịch hẹn (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal) hoặc patientId không hợp lệ",
             "content": {
               "application/json": {
                 "schema": {
@@ -4744,7 +5002,1368 @@
             }
           },
           "409": {
-            "description": "version không khớp (CONCURRENT_MODIFICATION), hoặc lịch không còn ở trạng thái SCHEDULED (APPOINTMENT_NOT_CANCELLABLE)",
+            "description": "version không khớp (CONCURRENT_MODIFICATION), lịch không còn SCHEDULED (APPOINTMENT_NOT_CANCELLABLE), hoặc đã check-in trước đó (ENCOUNTER_ALREADY_EXISTS)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reception/direct": {
+      "post": {
+        "tags": [
+          "reception"
+        ],
+        "summary": "\"Tiếp nhận bệnh nhân\" — tạo lượt khám (encounter) trực tiếp, KHÔNG qua lịch hẹn (khách đến thẳng phòng khám)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "patientId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "doctorId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "checkedInAt": {
+                    "type": "string"
+                  },
+                  "chiefComplaint": {
+                    "type": "string"
+                  },
+                  "patientSourceCode": {
+                    "type": "string"
+                  },
+                  "examTypeCode": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "examTypeName": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "examTypePrice": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "pulse": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 300
+                  },
+                  "temperatureC": {
+                    "type": "number",
+                    "minimum": 30,
+                    "maximum": 45
+                  },
+                  "bpSystolic": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 300
+                  },
+                  "bpDiastolic": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 200
+                  },
+                  "respiratoryRate": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 120
+                  },
+                  "spo2": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "weightGram": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 300000
+                  },
+                  "heightMm": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2500
+                  }
+                },
+                "required": [
+                  "patientId",
+                  "doctorId",
+                  "checkedInAt",
+                  "examTypeCode",
+                  "examTypeName",
+                  "examTypePrice"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tiếp nhận thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "encounterNo": {
+                          "type": "string"
+                        },
+                        "patientId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "doctorId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "appointmentId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "SCHEDULED",
+                            "CHECKED_IN",
+                            "IN_CONSULTATION",
+                            "COMPLETED",
+                            "CANCELLED",
+                            "NO_SHOW"
+                          ]
+                        },
+                        "specialty": {
+                          "type": "string"
+                        },
+                        "checkedInAt": {
+                          "type": "string"
+                        },
+                        "startedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "completedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "chiefComplaint": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "encounterNo",
+                        "patientId",
+                        "doctorId",
+                        "appointmentId",
+                        "status",
+                        "specialty",
+                        "checkedInAt",
+                        "startedAt",
+                        "completedAt",
+                        "chiefComplaint",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền encounter.create",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "patientId/doctorId không hợp lệ hoặc thuộc tenant khác",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reception/list": {
+      "get": {
+        "tags": [
+          "reception"
+        ],
+        "summary": "\"Danh sách tiếp nhận\" (mặc định) / \"Hàng đợi khám\" (kèm doctorId) — CHỈ encounter đã tiếp nhận trong ngày, KHÔNG gồm lịch hẹn chưa đến",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": false,
+            "name": "date",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "doctorId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "encounterId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "encounterNo": {
+                                "type": "string"
+                              },
+                              "appointmentId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "patientId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "fullName": {
+                                "type": "string"
+                              },
+                              "phone": {
+                                "type": "string"
+                              },
+                              "doctorId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "SCHEDULED",
+                                  "CHECKED_IN",
+                                  "IN_CONSULTATION",
+                                  "COMPLETED",
+                                  "CANCELLED",
+                                  "NO_SHOW"
+                                ]
+                              },
+                              "checkedInAt": {
+                                "type": "string"
+                              },
+                              "startedAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "completedAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "version": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "encounterId",
+                              "encounterNo",
+                              "appointmentId",
+                              "patientId",
+                              "fullName",
+                              "phone",
+                              "doctorId",
+                              "status",
+                              "checkedInAt",
+                              "startedAt",
+                              "completedAt",
+                              "version"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền encounter.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reception/encounters/{encounterId}/vital-signs": {
+      "post": {
+        "tags": [
+          "reception"
+        ],
+        "summary": "Nhập sinh hiệu (REC-02) — luôn cho lưu, warnings chỉ để cảnh báo ngoài ngưỡng theo tuổi (REC-03), không chặn",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "encounterId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "pulse": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 300
+                  },
+                  "temperatureC": {
+                    "type": "number",
+                    "minimum": 30,
+                    "maximum": 45
+                  },
+                  "bpSystolic": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 300
+                  },
+                  "bpDiastolic": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 200
+                  },
+                  "respiratoryRate": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 120
+                  },
+                  "spo2": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "weightGram": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 300000
+                  },
+                  "heightMm": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2500
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Lưu thành công, kèm warnings[] nếu có chỉ số ngoài ngưỡng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "encounterId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "pulse": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "temperatureC": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "bpSystolic": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "bpDiastolic": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "respiratoryRate": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "spo2": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "weightGram": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "heightMm": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "measuredAt": {
+                          "type": "string"
+                        },
+                        "warnings": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "out_of_range",
+                                  "implausible"
+                                ]
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "field",
+                              "kind",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "encounterId",
+                        "pulse",
+                        "temperatureC",
+                        "bpSystolic",
+                        "bpDiastolic",
+                        "respiratoryRate",
+                        "spo2",
+                        "weightGram",
+                        "heightMm",
+                        "measuredAt",
+                        "warnings"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền vital_sign.create",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy lượt khám (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Lượt khám không còn ở trạng thái CHECKED_IN (ENCOUNTER_NOT_CHECKED_IN)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/encounters/{id}/start": {
+      "post": {
+        "tags": [
+          "encounter"
+        ],
+        "summary": "\"Bắt đầu khám\" — CHECKED_IN → IN_CONSULTATION, chỉ bác sĩ phụ trách chính lượt khám (data_scope=personal)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "encounterNo": {
+                          "type": "string"
+                        },
+                        "patientId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "doctorId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "appointmentId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "SCHEDULED",
+                            "CHECKED_IN",
+                            "IN_CONSULTATION",
+                            "COMPLETED",
+                            "CANCELLED",
+                            "NO_SHOW"
+                          ]
+                        },
+                        "specialty": {
+                          "type": "string"
+                        },
+                        "checkedInAt": {
+                          "type": "string"
+                        },
+                        "startedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "completedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "chiefComplaint": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "encounterNo",
+                        "patientId",
+                        "doctorId",
+                        "appointmentId",
+                        "status",
+                        "specialty",
+                        "checkedInAt",
+                        "startedAt",
+                        "completedAt",
+                        "chiefComplaint",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền encounter.update",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Chuyển trạng thái không hợp lệ (ENCOUNTER_INVALID_TRANSITION) hoặc version không khớp (CONCURRENT_MODIFICATION)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/encounters/{id}/cancel": {
+      "post": {
+        "tags": [
+          "encounter"
+        ],
+        "summary": "\"Bỏ về\" — CHECKED_IN → CANCELLED, bắt buộc lý do",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "cancelReason": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "version": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "cancelReason",
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "encounterNo": {
+                          "type": "string"
+                        },
+                        "patientId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "doctorId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "appointmentId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "SCHEDULED",
+                            "CHECKED_IN",
+                            "IN_CONSULTATION",
+                            "COMPLETED",
+                            "CANCELLED",
+                            "NO_SHOW"
+                          ]
+                        },
+                        "specialty": {
+                          "type": "string"
+                        },
+                        "checkedInAt": {
+                          "type": "string"
+                        },
+                        "startedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "completedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "chiefComplaint": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "encounterNo",
+                        "patientId",
+                        "doctorId",
+                        "appointmentId",
+                        "status",
+                        "specialty",
+                        "checkedInAt",
+                        "startedAt",
+                        "completedAt",
+                        "chiefComplaint",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền encounter.cancel",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Chuyển trạng thái không hợp lệ (ENCOUNTER_INVALID_TRANSITION) hoặc version không khớp (CONCURRENT_MODIFICATION)",
             "content": {
               "application/json": {
                 "schema": {
@@ -8112,7 +9731,7 @@
         "tags": [
           "reference-catalog"
         ],
-        "summary": "Danh mục dùng chung theo loại (Dân tộc/Quốc tịch) — includeInactive=true để xem cả mục đã ẩn (màn hình quản lý)",
+        "summary": "Danh mục dùng chung theo loại (Dân tộc/Quốc tịch/Nguồn khách hàng/Loại khám) — includeInactive=true để xem cả mục đã ẩn (màn hình quản lý)",
         "security": [
           {
             "bearerAuth": []
@@ -8124,7 +9743,9 @@
               "type": "string",
               "enum": [
                 "ETHNICITY",
-                "NATIONALITY"
+                "NATIONALITY",
+                "PATIENT_SOURCE",
+                "EXAM_TYPE"
               ]
             },
             "required": true,
@@ -8168,7 +9789,9 @@
                                 "type": "string",
                                 "enum": [
                                   "ETHNICITY",
-                                  "NATIONALITY"
+                                  "NATIONALITY",
+                                  "PATIENT_SOURCE",
+                                  "EXAM_TYPE"
                                 ]
                               },
                               "code": {
@@ -8182,6 +9805,13 @@
                               },
                               "isActive": {
                                 "type": "boolean"
+                              },
+                              "price": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ],
+                                "minimum": 0
                               }
                             },
                             "required": [
@@ -8190,7 +9820,8 @@
                               "code",
                               "name",
                               "sortOrder",
-                              "isActive"
+                              "isActive",
+                              "price"
                             ]
                           }
                         }
@@ -8329,7 +9960,9 @@
                     "type": "string",
                     "enum": [
                       "ETHNICITY",
-                      "NATIONALITY"
+                      "NATIONALITY",
+                      "PATIENT_SOURCE",
+                      "EXAM_TYPE"
                     ]
                   },
                   "code": {
@@ -8343,6 +9976,10 @@
                   "sortOrder": {
                     "type": "integer",
                     "default": 0
+                  },
+                  "price": {
+                    "type": "integer",
+                    "minimum": 0
                   }
                 },
                 "required": [
@@ -8373,7 +10010,9 @@
                           "type": "string",
                           "enum": [
                             "ETHNICITY",
-                            "NATIONALITY"
+                            "NATIONALITY",
+                            "PATIENT_SOURCE",
+                            "EXAM_TYPE"
                           ]
                         },
                         "code": {
@@ -8387,6 +10026,13 @@
                         },
                         "isActive": {
                           "type": "boolean"
+                        },
+                        "price": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ],
+                          "minimum": 0
                         }
                       },
                       "required": [
@@ -8395,7 +10041,8 @@
                         "code",
                         "name",
                         "sortOrder",
-                        "isActive"
+                        "isActive",
+                        "price"
                       ]
                     },
                     "meta": {
@@ -8545,6 +10192,10 @@
                   },
                   "sortOrder": {
                     "type": "integer"
+                  },
+                  "price": {
+                    "type": "integer",
+                    "minimum": 0
                   }
                 }
               }
@@ -8570,7 +10221,9 @@
                           "type": "string",
                           "enum": [
                             "ETHNICITY",
-                            "NATIONALITY"
+                            "NATIONALITY",
+                            "PATIENT_SOURCE",
+                            "EXAM_TYPE"
                           ]
                         },
                         "code": {
@@ -8584,6 +10237,13 @@
                         },
                         "isActive": {
                           "type": "boolean"
+                        },
+                        "price": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ],
+                          "minimum": 0
                         }
                       },
                       "required": [
@@ -8592,7 +10252,8 @@
                         "code",
                         "name",
                         "sortOrder",
-                        "isActive"
+                        "isActive",
+                        "price"
                       ]
                     },
                     "meta": {
@@ -8774,7 +10435,9 @@
                           "type": "string",
                           "enum": [
                             "ETHNICITY",
-                            "NATIONALITY"
+                            "NATIONALITY",
+                            "PATIENT_SOURCE",
+                            "EXAM_TYPE"
                           ]
                         },
                         "code": {
@@ -8788,6 +10451,13 @@
                         },
                         "isActive": {
                           "type": "boolean"
+                        },
+                        "price": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ],
+                          "minimum": 0
                         }
                       },
                       "required": [
@@ -8796,7 +10466,8 @@
                         "code",
                         "name",
                         "sortOrder",
-                        "isActive"
+                        "isActive",
+                        "price"
                       ]
                     },
                     "meta": {
@@ -8949,7 +10620,9 @@
                           "type": "string",
                           "enum": [
                             "ETHNICITY",
-                            "NATIONALITY"
+                            "NATIONALITY",
+                            "PATIENT_SOURCE",
+                            "EXAM_TYPE"
                           ]
                         },
                         "code": {
@@ -8963,6 +10636,13 @@
                         },
                         "isActive": {
                           "type": "boolean"
+                        },
+                        "price": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ],
+                          "minimum": 0
                         }
                       },
                       "required": [
@@ -8971,7 +10651,8 @@
                         "code",
                         "name",
                         "sortOrder",
-                        "isActive"
+                        "isActive",
+                        "price"
                       ]
                     },
                     "meta": {

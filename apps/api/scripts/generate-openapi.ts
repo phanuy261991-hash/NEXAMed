@@ -13,7 +13,8 @@ import {
   breakGlassRequestSchema,
   breakGlassResponseSchema,
   cancelAppointmentRequestSchema,
-  checkinAppointmentRequestSchema,
+  cancelEncounterRequestSchema,
+  checkInRequestSchema,
   checkPatientDuplicateQuerySchema,
   checkPatientDuplicateResponseSchema,
   clinicProfileSchema,
@@ -22,6 +23,7 @@ import {
   createPatientRequestSchema,
   createRoomRequestSchema,
   createUserAccountRequestSchema,
+  encounterSummarySchema,
   listAppointmentsQuerySchema,
   listAppointmentsResponseSchema,
   listDoctorsResponseSchema,
@@ -37,13 +39,21 @@ import {
   loginResponseSchema,
   logoutResponseSchema,
   meResponseSchema,
+  patientByPhoneQuerySchema,
+  patientByPhoneResponseSchema,
   patientDetailSchema,
   createReferenceCatalogRequestSchema,
+  receptionListQuerySchema,
+  receptionListResponseSchema,
+  recordVitalSignRequestSchema,
+  referenceCatalogCategorySchema,
   referenceCatalogItemSchema,
+  registerReceptionRequestSchema,
   refreshResponseSchema,
   rescheduleAppointmentRequestSchema,
   resetUserPasswordRequestSchema,
   roomSummarySchema,
+  startConsultationRequestSchema,
   updateClinicProfileRequestSchema,
   updateClinicSettingsRequestSchema,
   updatePatientRequestSchema,
@@ -51,6 +61,7 @@ import {
   updateRoomRequestSchema,
   updateUserAccountRequestSchema,
   userAccountSummarySchema,
+  vitalSignResponseSchema,
 } from '@nexamed/shared';
 
 /**
@@ -147,6 +158,20 @@ registry.registerPath({
   responses: {
     200: jsonResponse('Tạo phiên break-glass thành công', envelope(breakGlassResponseSchema)),
     401: errorResponse('Thiếu access token hoặc sai mật khẩu'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/patients/by-phone',
+  tags: ['patient'],
+  summary: 'Tra trùng số điện thoại (cảnh báo mềm form Thêm/Sửa; chọn khách hàng ở trang Tiếp nhận) — khớp CHÍNH XÁC, SĐT được phép trùng',
+  security: [{ bearerAuth: [] }],
+  request: { query: patientByPhoneQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công (mảng rỗng nếu chưa ai dùng SĐT này)', envelope(patientByPhoneResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền patient.read'),
   },
 });
 
@@ -386,20 +411,107 @@ registry.registerPath({
 
 registry.registerPath({
   method: 'post',
-  path: '/api/v1/appointments/{id}/checkin',
-  tags: ['appointment'],
-  summary: 'Check-in (docs/DECISIONS.md #032) — chuyển thẳng SCHEDULED → CONVERTED, kèm version hiện có',
+  path: '/api/v1/reception/check-in',
+  tags: ['reception'],
+  summary: 'Tiếp nhận — check-in (Sprint 3): tạo lượt khám (encounter) + chuyển lịch hẹn sang CONVERTED, atomic. patientId đã resolve xong ở web (tìm/tạo trước)',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: checkInRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Check-in thành công', envelope(encounterSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền encounter.create'),
+    404: errorResponse('Không tìm thấy lịch hẹn (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal) hoặc patientId không hợp lệ'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION), lịch không còn SCHEDULED (APPOINTMENT_NOT_CANCELLABLE), hoặc đã check-in trước đó (ENCOUNTER_ALREADY_EXISTS)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/reception/direct',
+  tags: ['reception'],
+  summary: '"Tiếp nhận bệnh nhân" — tạo lượt khám (encounter) trực tiếp, KHÔNG qua lịch hẹn (khách đến thẳng phòng khám)',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: registerReceptionRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Tiếp nhận thành công', envelope(encounterSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền encounter.create'),
+    404: errorResponse('patientId/doctorId không hợp lệ hoặc thuộc tenant khác'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/reception/list',
+  tags: ['reception'],
+  summary: '"Danh sách tiếp nhận" (mặc định) / "Hàng đợi khám" (kèm doctorId) — CHỈ encounter đã tiếp nhận trong ngày, KHÔNG gồm lịch hẹn chưa đến',
+  security: [{ bearerAuth: [] }],
+  request: { query: receptionListQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(receptionListResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền encounter.read'),
+  },
+});
+
+const encounterIdParams = z.object({ encounterId: z.string().uuid() });
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/reception/encounters/{encounterId}/vital-signs',
+  tags: ['reception'],
+  summary: 'Nhập sinh hiệu (REC-02) — luôn cho lưu, warnings chỉ để cảnh báo ngoài ngưỡng theo tuổi (REC-03), không chặn',
   security: [{ bearerAuth: [] }],
   request: {
-    params: appointmentIdParams,
-    body: { content: { 'application/json': { schema: checkinAppointmentRequestSchema } } },
+    params: encounterIdParams,
+    body: { content: { 'application/json': { schema: recordVitalSignRequestSchema } } },
   },
   responses: {
-    200: jsonResponse('Check-in thành công', envelope(appointmentSummarySchema)),
+    200: jsonResponse('Lưu thành công, kèm warnings[] nếu có chỉ số ngoài ngưỡng', envelope(vitalSignResponseSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
-    403: errorResponse('Không có quyền appointment.update'),
-    404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal của bác sĩ)'),
-    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION), hoặc lịch không còn ở trạng thái SCHEDULED (APPOINTMENT_NOT_CANCELLABLE)'),
+    403: errorResponse('Không có quyền vital_sign.create'),
+    404: errorResponse('Không tìm thấy lượt khám (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal)'),
+    409: errorResponse('Lượt khám không còn ở trạng thái CHECKED_IN (ENCOUNTER_NOT_CHECKED_IN)'),
+  },
+});
+
+const encounterActionIdParams = z.object({ id: z.string().uuid() });
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/encounters/{id}/start',
+  tags: ['encounter'],
+  summary: '"Bắt đầu khám" — CHECKED_IN → IN_CONSULTATION, chỉ bác sĩ phụ trách chính lượt khám (data_scope=personal)',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: encounterActionIdParams,
+    body: { content: { 'application/json': { schema: startConsultationRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Thành công', envelope(encounterSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền encounter.update'),
+    404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal)'),
+    409: errorResponse('Chuyển trạng thái không hợp lệ (ENCOUNTER_INVALID_TRANSITION) hoặc version không khớp (CONCURRENT_MODIFICATION)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/encounters/{id}/cancel',
+  tags: ['encounter'],
+  summary: '"Bỏ về" — CHECKED_IN → CANCELLED, bắt buộc lý do',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: encounterActionIdParams,
+    body: { content: { 'application/json': { schema: cancelEncounterRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Thành công', envelope(encounterSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền encounter.cancel'),
+    404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal)'),
+    409: errorResponse('Chuyển trạng thái không hợp lệ (ENCOUNTER_INVALID_TRANSITION) hoặc version không khớp (CONCURRENT_MODIFICATION)'),
   },
 });
 
@@ -633,7 +745,7 @@ registry.registerPath({
   },
 });
 
-const referenceCatalogCategoryParams = z.object({ category: z.enum(['ETHNICITY', 'NATIONALITY']) });
+const referenceCatalogCategoryParams = z.object({ category: referenceCatalogCategorySchema });
 const referenceCatalogListQuery = z.object({ includeInactive: z.enum(['true', 'false']).optional() });
 const referenceCatalogIdParams = z.object({ id: z.string().uuid() });
 
@@ -641,7 +753,7 @@ registry.registerPath({
   method: 'get',
   path: '/api/v1/reference-catalog/{category}',
   tags: ['reference-catalog'],
-  summary: 'Danh mục dùng chung theo loại (Dân tộc/Quốc tịch) — includeInactive=true để xem cả mục đã ẩn (màn hình quản lý)',
+  summary: 'Danh mục dùng chung theo loại (Dân tộc/Quốc tịch/Nguồn khách hàng/Loại khám) — includeInactive=true để xem cả mục đã ẩn (màn hình quản lý)',
   security: [{ bearerAuth: [] }],
   request: { params: referenceCatalogCategoryParams, query: referenceCatalogListQuery },
   responses: {

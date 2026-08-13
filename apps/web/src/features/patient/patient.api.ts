@@ -2,6 +2,7 @@ import type {
   CheckPatientDuplicateResponse,
   CreatePatientRequest,
   ListPatientsResponse,
+  PatientByPhoneResponse,
   PatientDetail,
   UpdatePatientRequest,
 } from '@nexamed/shared';
@@ -32,6 +33,16 @@ export async function checkPatientDuplicate(fullName: string, dob: string): Prom
   return unwrap(
     await getApiClient().GET('/api/v1/patients/check-duplicate', { params: { query: { fullName, dob } } }),
   ) as CheckPatientDuplicateResponse;
+}
+
+/**
+ * Tra trùng SĐT (KHÁC PAT-03 — SĐT được phép trùng thật sự, không phải "nghi trùng hồ sơ") — dùng
+ * ở cảnh báo mềm form Thêm/Sửa VÀ để chọn khách hàng ở trang Tiếp nhận (Sprint 3).
+ */
+export async function findPatientsByPhone(phone: string, excludePatientId?: string): Promise<PatientByPhoneResponse> {
+  return unwrap(
+    await getApiClient().GET('/api/v1/patients/by-phone', { params: { query: { phone, excludePatientId } } }),
+  ) as PatientByPhoneResponse;
 }
 
 /** Upload/thay ảnh đại diện (docs/DECISIONS.md #034) — multipart, xem shared/api/client.ts#uploadFile. */

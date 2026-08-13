@@ -1,13 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle, Clock, Warning, X } from '@phosphor-icons/react';
+import { Clock, Warning, X } from '@phosphor-icons/react';
 import type { AppointmentSummary, DoctorOption } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { Button } from '../../shared/ui/Button';
 import { Combobox } from '../../shared/ui/Combobox';
+import { useAuthStore } from '../auth/auth.store';
+import { ReceptionIntakeDialog } from '../reception/ReceptionIntakeDialog';
+import type { ReceptionIntakeCheckinContext } from '../reception/ReceptionIntakeForm';
 import { APPOINTMENT_SOURCE_LABEL, APPOINTMENT_STATUS_META, isAppointmentLate } from './appointment-status';
 
 const DURATION_OPTIONS = [15, 30, 45, 60].map((m) => ({ value: String(m), label: `${m} phút` }));
-import { useCancelAppointmentMutation, useCheckinAppointmentMutation, useRescheduleAppointmentMutation } from './appointment.queries';
+/** Khớp `encounter.create` (packages/core/src/rbac/permissions.ts) — nút Tiếp nhận chỉ hiện đúng nơi có quyền, backend vẫn là lớp chặn thật. */
+const CHECK_IN_ROLES = ['receptionist', 'clinic_admin'];
+import { useCancelAppointmentMutation, useRescheduleAppointmentMutation } from './appointment.queries';
 import { minutesToLabel, vnDateTimeToIso, vnTimeOfDayMinutes } from './schedule-grid.utils';
 
 /**
@@ -34,11 +39,13 @@ export function AppointmentDetailPanel({
   const [editDuration, setEditDuration] = useState(defaultDurationMinutes);
   const [editDoctorId, setEditDoctorId] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [checkinDone, setCheckinDone] = useState(false);
+  const [checkInTarget, setCheckInTarget] = useState<ReceptionIntakeCheckinContext | null>(null);
+
+  const currentUser = useAuthStore((s) => s.user);
+  const canCheckIn = currentUser?.roles.some((r) => CHECK_IN_ROLES.includes(r)) ?? false;
 
   const cancelMutation = useCancelAppointmentMutation();
   const rescheduleMutation = useRescheduleAppointmentMutation();
-  const checkinMutation = useCheckinAppointmentMutation();
 
   const doctorNameById = useMemo(() => new Map(doctors.map((d) => [d.id, d.fullName])), [doctors]);
 
@@ -47,7 +54,6 @@ export function AppointmentDetailPanel({
     setMode('view');
     setCancelReason('');
     setError(null);
-    setCheckinDone(false);
     setEditTime(minutesToLabel(vnTimeOfDayMinutes(appointment.scheduledAt)));
     setEditDuration(appointment.durationMinutes);
     setEditDoctorId(appointment.doctorId);
@@ -66,22 +72,6 @@ export function AppointmentDetailPanel({
     try {
       await cancelMutation.mutateAsync({ id: appointment.id, body: { cancelReason, version: appointment.version } });
       onClose();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Có lỗi xảy ra, vui lòng thử lại.');
-    }
-  }
-
-  /**
-   * Check-in (docs/DECISIONS.md #032) — chuyển thẳng SCHEDULED → CONVERTED, chưa tạo `encounter`
-   * (Tiếp nhận thật là việc Sprint 3, đã chốt với chủ dự án). Không đóng panel ngay — hiện thông
-   * báo đã ghi nhận trước, người dùng tự đóng.
-   */
-  async function handleCheckin() {
-    if (!appointment) return;
-    setError(null);
-    try {
-      await checkinMutation.mutateAsync({ id: appointment.id, body: { version: appointment.version } });
-      setCheckinDone(true);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Có lỗi xảy ra, vui lòng thử lại.');
     }
@@ -230,9 +220,25 @@ export function AppointmentDetailPanel({
           {mode === 'view' ? (
             editable && (
               <>
-                <Button type="button" loading={checkinMutation.isPending} onClick={() => void handleCheckin()}>
-                  Check-in
-                </Button>
+                {canCheckIn && (
+                  <Button
+                    type="button"
+                    className="w-full"
+                    onClick={() =>
+                      setCheckInTarget({
+                        appointmentId: appointment.id,
+                        appointmentVersion: appointment.version,
+                        doctorId: appointment.doctorId,
+                        doctorName: doctorNameById.get(appointment.doctorId) ?? '—',
+                        fullName: appointment.fullName,
+                        phone: appointment.phone,
+                        reason: appointment.reason ?? undefined,
+                      })
+                    }
+                  >
+                    Tiếp nhận
+                  </Button>
+                )}
                 <div className="flex gap-2.5">
                   <Button type="button" variant="secondary" className="flex-1" onClick={() => setMode('edit')}>
                     Sửa lịch hẹn
@@ -263,23 +269,14 @@ export function AppointmentDetailPanel({
         </div>
       </div>
 
-      {checkinDone && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/50 px-4">
-          <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-2xl">
-            <div className="mb-3 flex items-center gap-2 text-emerald-600">
-              <CheckCircle size={22} weight="fill" aria-hidden="true" />
-              <h3 className="text-base font-bold text-slate-900">Đã ghi nhận khách đến</h3>
-            </div>
-            <p className="mb-5 text-sm text-slate-700">
-              Lịch hẹn của <span className="font-semibold">{appointment.fullName}</span> đã chuyển sang trạng thái "Đã chuyển khám". Màn hình Tiếp
-              nhận đầy đủ (tạo hồ sơ khám) sẽ có ở giai đoạn sau.
-            </p>
-            <Button type="button" className="w-full" onClick={onClose}>
-              Đóng
-            </Button>
-          </div>
-        </div>
-      )}
+      <ReceptionIntakeDialog
+        context={checkInTarget}
+        onClose={() => setCheckInTarget(null)}
+        onSuccess={() => {
+          setCheckInTarget(null);
+          onClose();
+        }}
+      />
     </>
   );
 }

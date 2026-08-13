@@ -10,6 +10,8 @@ import { AppointmentModule } from './modules/appointment/appointment.module';
 import { ClinicModule } from './modules/clinic/clinic.module';
 import { ReferenceCatalogModule } from './modules/reference-catalog/reference-catalog.module';
 import { GeoModule } from './modules/geo/geo.module';
+import { EncounterModule } from './modules/encounter/encounter.module';
+import { ReceptionModule } from './modules/reception/reception.module';
 import { TenantContextMiddleware } from './common/tenant-context.middleware';
 
 @Module({
@@ -25,6 +27,8 @@ import { TenantContextMiddleware } from './common/tenant-context.middleware';
     ClinicModule,
     ReferenceCatalogModule,
     GeoModule,
+    EncounterModule,
+    ReceptionModule,
   ],
 })
 export class AppModule implements NestModule {

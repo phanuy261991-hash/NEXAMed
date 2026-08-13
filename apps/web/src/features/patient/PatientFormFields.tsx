@@ -1,6 +1,7 @@
 import type { PatientGender } from '@nexamed/shared';
 import { calculateAgeYears, computeAgeLabel, computeBirthYear } from './patient-form.utils';
 import { PatientAvatarUpload } from './PatientAvatarUpload';
+import { PhoneDuplicateWarning } from './PhoneDuplicateWarning';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { useProvincesQuery, useWardsQuery } from '../geo/geo.queries';
 import { Combobox, withLegacyValueOption, type ComboboxOption } from '../../shared/ui/Combobox';
@@ -234,6 +235,7 @@ export function PatientFormFields({
               onChange={(e) => set('phone', e.target.value)}
               className={inputClassName}
             />
+            {!disabled && <PhoneDuplicateWarning phone={values.phone} excludePatientId={patientId} />}
           </Field>
 
           <Field id="nationalId" label="CCCD/CMND" required={requireNationalId}>

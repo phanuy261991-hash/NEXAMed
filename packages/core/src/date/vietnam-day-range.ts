@@ -23,3 +23,17 @@ export function vietnamDayRange(dateStr: string): { startUtc: Date; endUtc: Date
   const endUtc = new Date(startUtc.getTime() + 24 * 60 * 60_000);
   return { startUtc, endUtc };
 }
+
+/**
+ * "Hôm nay" theo giờ Việt Nam, dạng `YYYY-MM-DD` — dùng phía SERVER khi cần mặc định một ngày mà
+ * không có tham số client gửi lên (ví dụ `GET /reception/queue` không truyền `date`, xem
+ * `ReceptionService.listQueue()`). Tham số `nowUtc` chỉ để test tái lập được, cùng quy ước
+ * `calculateAgeYears(dob, now)` ở `packages/shared/src/patient.ts`.
+ */
+export function getVietnamDateString(nowUtc: Date = new Date()): string {
+  const shifted = new Date(nowUtc.getTime() + VIETNAM_UTC_OFFSET_MINUTES * 60_000);
+  const year = shifted.getUTCFullYear();
+  const month = String(shifted.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(shifted.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}

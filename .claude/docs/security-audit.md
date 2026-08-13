@@ -32,8 +32,11 @@ Seed cụ thể nằm trong `apps/api/prisma/seed/permissions.seed.ts` (nguồn 
 | `patient.create` / `patient.update` | global | none | none | global | none |
 | `patient.merge` | none | none | none | global | none |
 | `appointment.read/create/update/cancel` | global | none | personal | global | none |
-| `encounter.read` | none | personal | global | global | none |
-| `vital_sign.create` | none | personal | personal | none | none |
+| `encounter.read` | global | global | global | global | none |
+| `encounter.create` | global | none | none | global | none |
+| `encounter.update` | none | none | personal | none | none |
+| `encounter.cancel` | global | none | personal | global | none |
+| `vital_sign.create` | none | global | personal | none | none |
 | `diagnosis.create` | none | none | personal | none | none |
 | `clinical_note.create/update/sign` | none | none | personal | none | none |
 | `prescription.create/sign/print` | none | none | personal | none | none |
@@ -45,6 +48,11 @@ Seed cụ thể nằm trong `apps/api/prisma/seed/permissions.seed.ts` (nguồn 
 | `reference_catalog.manage` | none | none | none | global | none |
 
 Lý do `doctor.encounter.read = global` (không phải `personal`+break-glass như ví dụ minh hoạ chung của ngành): PRD yêu cầu P0 **ENC-01** — bác sĩ phải xem được toàn bộ tiền sử khám của bệnh nhân ngay khi vào màn hình khám, kể cả lượt khám trước do bác sĩ khác phụ trách (phòng khám 1-3 bác sĩ, thường thay nhau khám cùng bệnh nhân). Bắt break-glass cho thao tác này sẽ phá vỡ chính giá trị cốt lõi sản phẩm. Break-glass dành cho tình huống **thật sự ngoài phạm vi công việc thường ngày** — xem mục dưới.
+
+**Sprint 3 (Tiếp nhận) — vá 2 lỗ hổng ma trận seed từ S1-04b, ghi lại vì đây là thay đổi trên ma trận đã "chốt" trước đó (`docs/DECISIONS.md`)**:
+- Thêm 3 permission mới `encounter.create`/`encounter.update`/`encounter.cancel` — ma trận cũ chỉ có `encounter.read`, chưa từng tính actor nào thực sự TẠO hay CHUYỂN TRẠNG THÁI encounter (module này chưa tồn tại lúc S1-04b seed ma trận mặc định). `encounter.create` (check-in, module `reception`) chỉ receptionist/clinic_admin — không phải bác sĩ, khớp PRD REC-01 (lễ tân tiếp nhận). `encounter.update` ("bắt đầu khám") chỉ bác sĩ, `personal` (chỉ lượt khám của chính mình) — mirror `appointment.update`. `encounter.cancel` ("bỏ về") mirror `appointment.cancel`.
+- Đổi `encounter.read`/`vital_sign.create` của **nurse** từ `personal`→`global`: theo định nghĩa `personal` ở trên (chủ = `doctor_id`), điều dưỡng không phải bác sĩ nên scope `personal` trên 2 permission này **chưa từng thật sự cho phép truy cập gì** kể từ khi seed lần đầu (luôn tương đương `none` trên thực tế) — không phải một hành vi cố ý đã kiểm chứng. Đổi sang `global` vì phòng khám 1-3 bác sĩ, một điều dưỡng phục vụ mọi bác sĩ trong ca trực — cùng lý do `doctor.encounter.read=global` đã chốt ở trên. Đồng thời thêm `receptionist.encounter.read=global` (trước là `none`) để lễ tân xem được hàng đợi Tiếp nhận (chính là danh sách encounter `CHECKED_IN`/`IN_CONSULTATION`) — không phải dữ liệu lâm sàng nhạy cảm (chẩn đoán/ghi chú SOAP vẫn chưa cấp quyền nào ở đây, thuộc module Khám bệnh chưa xây).
+- **Tenant cũ (dev)**: 3 permission mới tự được `syncRolePermissionsForAllTenants()` (chạy mỗi lần API khởi động) thêm vào — không cần vá thủ công. Nhưng scope ĐÃ ĐỔI của nurse (2 dòng đã tồn tại) sẽ KHÔNG được sync tự động sửa (hàm này cố ý chỉ-thêm, không sửa/xoá dòng đã có, để không đè tuỳ biến ADM-07 tương lai) — đã vá thủ công 1 lần cho các tenant dev hiện có bằng `UPDATE role_permission`, ghi lại ở `docs/DECISIONS.md`.
 
 **`reference_catalog.*` (`docs/DECISIONS.md` #037)**: danh mục dùng chung Dân tộc/Quốc tịch — toàn hệ thống, không `tenant_id`, không cách ly theo tenant (chấp nhận có ý thức ở v1 on-premise một tenant/instance, xem ghi chú trong `data-model.md`). `PermissionGuard` áp dụng bình thường (không lệch pattern) nhưng **không** gắn `entityIdParam` cho `PATCH`/`DELETE` — break-glass không có ý nghĩa với dữ liệu không có chủ sở hữu/không nhạy cảm lâm sàng, `none` bị chặn hẳn.
 

@@ -6,3 +6,4 @@ export * from './appointment-errors';
 export * from './user-account-errors';
 export * from './reference-catalog-errors';
 export * from './clinic-errors';
+export * from './encounter-errors';

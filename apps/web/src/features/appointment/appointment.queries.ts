@@ -1,11 +1,10 @@
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { CancelAppointmentRequest, CheckinAppointmentRequest, CreateAppointmentRequest, RescheduleAppointmentRequest } from '@nexamed/shared';
+import type { CancelAppointmentRequest, CreateAppointmentRequest, RescheduleAppointmentRequest } from '@nexamed/shared';
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
 import {
   cancelAppointment,
-  checkinAppointment,
   createAppointment,
   getScheduleConfig,
   listAppointments,
@@ -103,15 +102,6 @@ export function useRescheduleAppointmentMutation() {
   const invalidate = useInvalidateAppointments();
   return useMutation({
     mutationFn: ({ id, body }: { id: string; body: RescheduleAppointmentRequest }) => rescheduleAppointment(id, body),
-    onSuccess: () => void invalidate(),
-  });
-}
-
-/** Check-in (docs/DECISIONS.md #032) — chuyển thẳng SCHEDULED → CONVERTED. */
-export function useCheckinAppointmentMutation() {
-  const invalidate = useInvalidateAppointments();
-  return useMutation({
-    mutationFn: ({ id, body }: { id: string; body: CheckinAppointmentRequest }) => checkinAppointment(id, body),
     onSuccess: () => void invalidate(),
   });
 }

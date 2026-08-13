@@ -65,6 +65,8 @@ model Tenant {
   userSessions      UserSession[]
   patients          Patient[]
   appointments      Appointment[]
+  encounters        Encounter[]
+  vitalSigns        VitalSign[]
 
   @@map("tenant")
 }
@@ -169,6 +171,7 @@ model UserAccount {
   userRoles  UserRole[]
   sessions   UserSession[]
   appointmentsAsDoctor Appointment[] @relation("AppointmentDoctor")
+  encountersAsDoctor   Encounter[]   @relation("EncounterDoctor")
 
   // Đích của composite FK (tenant_id, id) từ user_role — chống trỏ chéo tenant (C5 trong ERD.md).
   @@unique([tenantId, id])
@@ -260,6 +263,10 @@ model Permission {
 enum ReferenceCatalogCategory {
   ETHNICITY
   NATIONALITY
+  // Sprint 3, phần Tiếp nhận — Nguồn khách hàng / Loại khám, quản lý ở Cấu hình, tái dùng nguyên
+  // bảng này thay vì tạo bảng riêng (docs/DECISIONS.md).
+  PATIENT_SOURCE
+  EXAM_TYPE
 
   @@map("reference_catalog_category")
 }
@@ -281,6 +288,9 @@ model ReferenceCatalog {
   name      String
   sortOrder Int                       @default(0) @map("sort_order")
   isActive  Boolean                   @default(true) @map("is_active")
+  // Giá tham khảo (đồng) — CHỈ có ý nghĩa với category EXAM_TYPE, NULL với category khác. v1 chỉ
+  // lưu để hiển thị, không tính toán/xuất hoá đơn (viện phí ngoài phạm vi CLAUDE.md).
+  price     BigInt?
 
   @@unique([category, code])
   @@map("reference_catalog")
@@ -480,6 +490,7 @@ model Patient {
   mergedInto Patient?  @relation("PatientMerge", fields: [tenantId, mergedIntoId], references: [tenantId, id])
   mergedFrom Patient[] @relation("PatientMerge")
   appointments Appointment[]
+  encounters   Encounter[]
 
   // Đích của composite FK (tenant_id, id) từ appointment/encounter (S2-05, S3) sau này.
   @@unique([tenantId, id])
@@ -546,11 +557,129 @@ model Appointment {
   patient Patient?    @relation(fields: [tenantId, patientId], references: [tenantId, id])
   doctor  UserAccount @relation("AppointmentDoctor", fields: [tenantId, doctorId], references: [tenantId, id])
   room    Room?       @relation(fields: [tenantId, roomId], references: [tenantId, id])
+  // Prisma bắt buộc khai báo back-relation cho field `Encounter.appointment` — khai dạng LIST
+  // (không phải `Encounter?`) vì `appointmentId` không có `@unique` ở phía Prisma (constraint thật
+  // là partial unique index raw SQL trên `encounter(tenant_id, appointment_id)`, xem migration —
+  // cùng lý do `patient.nationalIdHash` không khai `@unique`). Prisma không biết đây thực ra là
+  // quan hệ một-một; DB tự ép đúng ngữ nghĩa đó. Không có nơi nào cần điều hướng qua field này —
+  // ReceptionRepository/EncounterRepository tự truy vấn theo `appointmentId`.
+  encounters Encounter[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, bookingCode])
   @@index([tenantId, phone])
   @@map("appointment")
+}
+
+enum EncounterStatus {
+  SCHEDULED
+  CHECKED_IN
+  IN_CONSULTATION
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+
+  @@map("encounter_status")
+}
+
+// Lượt khám (Sprint 3, REC-01→03) — xem .claude/docs/clinical-workflow.md mục "Tiếp nhận
+// (check-in)", docs/ERD.md mục 3.3. Bảng trung tâm: sinh hiệu/chẩn đoán/ghi chú/đơn thuốc đều trỏ
+// về encounter_id (chưa xây ở PR này — đó là module `encounter` giai đoạn Khám bệnh sau).
+//
+// v1 chỉ tạo dòng thẳng ở status=CHECKED_IN qua ReceptionService.checkIn() (đọc appointment đã
+// SCHEDULED, tạo encounter, chuyển appointment sang CONVERTED — cùng 1 transaction). Enum vẫn đủ
+// 6 giá trị theo state machine đã chốt (packages/core/src/encounter/encounter-state-machine.ts)
+// dù SCHEDULED/NO_SHOW hiện chưa có luồng nào ghi tới cho riêng bảng này.
+model Encounter {
+  id             String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId       String          @map("tenant_id") @db.Uuid
+  patientId      String          @map("patient_id") @db.Uuid
+  doctorId       String          @map("doctor_id") @db.Uuid
+  // Không @unique ở đây — constraint thật là partial unique index raw SQL (WHERE appointment_id
+  // IS NOT NULL AND deleted_at IS NULL, xem migration), Prisma không biểu diễn được unique có điều
+  // kiện WHERE (cùng lý do patient.nationalIdHash không khai @unique).
+  appointmentId  String?         @map("appointment_id") @db.Uuid
+  encounterNo    String          @map("encounter_no")
+  status         EncounterStatus
+  specialty      String          @default("general")
+  checkedInAt    DateTime        @map("checked_in_at") @db.Timestamptz(6)
+  startedAt      DateTime?       @map("started_at") @db.Timestamptz(6)
+  completedAt    DateTime?       @map("completed_at") @db.Timestamptz(6)
+  chiefComplaint String?         @map("chief_complaint")
+  // Bản chụp thẻ BHYT tại thời điểm check-in — v1 luôn { selfPay: true } (module insurance_card/
+  // S2-04 chưa làm, xem docs/DECISIONS.md #032/mới). Đúng tên cột theo docs/ERD.md.
+  insuranceSnapshot Json          @map("insurance_snapshot") @db.JsonB
+  // "Bỏ về" (CHECKED_IN→CANCELLED, bắt buộc lý do) — không soft-delete, cùng khuôn
+  // appointment.cancelReason. Bổ sung ngoài docs/ERD.md gốc, xem migration + docs/DECISIONS.md.
+  cancelReason      String?       @map("cancel_reason")
+  // "Tiếp nhận bệnh nhân" (tạo encounter trực tiếp, appointmentId=null) — mã danh mục
+  // PATIENT_SOURCE đã chọn, tuỳ chọn. Cùng convention patient.ethnicity: lưu code, không lưu tên.
+  patientSourceCode String?       @map("patient_source_code")
+  // SNAPSHOT loại khám (category EXAM_TYPE) tại thời điểm tạo — copy tên+giá từ reference_catalog
+  // lúc chọn trên web, không JOIN lại lúc đọc, cùng tinh thần insuranceSnapshot: đổi giá/tên danh
+  // mục sau này không ảnh hồ sơ cũ. NULL khi encounter tạo qua check-in từ lịch hẹn (không có
+  // loại khám ở luồng đó).
+  examTypeCode      String?       @map("exam_type_code")
+  examTypeName      String?       @map("exam_type_name")
+  examTypePrice     BigInt?       @map("exam_type_price")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  // Composite FK (tenant_id, patient_id/doctor_id/appointment_id) -> ...(tenant_id, id): chống trỏ
+  // chéo tenant (C5, docs/ERD.md mục 4), appointment_id nullable nên FK chỉ áp khi có giá trị.
+  patient     Patient      @relation(fields: [tenantId, patientId], references: [tenantId, id])
+  doctor      UserAccount  @relation("EncounterDoctor", fields: [tenantId, doctorId], references: [tenantId, id])
+  appointment Appointment? @relation(fields: [tenantId, appointmentId], references: [tenantId, id])
+  vitalSigns  VitalSign[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, encounterNo])
+  @@map("encounter")
+}
+
+// Sinh hiệu (Sprint 3, REC-02/03) — xem docs/ERD.md mục 3.4 (khối VITAL_SIGN), .claude/docs/
+// data-model.md. Số nguyên: nhiệt độ theo phần mười độ C (37.5°C → 375), cân nặng theo gram,
+// chiều cao theo mm — tránh số thực. Mọi cột đo NULLABLE (cho phép nhập từng phần, không bắt buộc
+// đủ mọi chỉ số trong một lần ghi). Không có cột `measured_by` riêng (chỉ có trong mô tả tóm tắt
+// lệch của data-model.md, không có trong ERD.md chi tiết — dùng `created_by` sẵn có, xem
+// docs/DECISIONS.md).
+model VitalSign {
+  id                String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId          String   @map("tenant_id") @db.Uuid
+  encounterId       String   @map("encounter_id") @db.Uuid
+  pulse             Int?     @db.SmallInt
+  temperatureDeciC  Int?     @map("temperature_deci_c") @db.SmallInt
+  bpSystolic        Int?     @map("bp_systolic") @db.SmallInt
+  bpDiastolic       Int?     @map("bp_diastolic") @db.SmallInt
+  respiratoryRate   Int?     @map("respiratory_rate") @db.SmallInt
+  spo2              Int?     @db.SmallInt
+  weightGram        Int?     @map("weight_gram")
+  heightMm          Int?     @map("height_mm")
+  measuredAt        DateTime @map("measured_at") @db.Timestamptz(6)
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  // Composite FK (tenant_id, encounter_id) -> encounter(tenant_id, id): chống trỏ chéo tenant.
+  encounter Encounter @relation(fields: [tenantId, encounterId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@map("vital_sign")
 }
 
 // Append-only — không updated_at, không deleted_at, không version (ngoại lệ đã ghi trong data-model.md).

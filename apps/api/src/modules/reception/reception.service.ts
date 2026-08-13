@@ -1,0 +1,425 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma, type Encounter, type VitalSign } from '@prisma/client';
+import {
+  AppointmentNotCancellableError,
+  ConcurrentModificationError,
+  EncounterAlreadyExistsError,
+  EncounterNotCheckedInError,
+  evaluateVitalSignWarnings,
+  formatDisplayCode,
+  getVietnamDateString,
+  vietnamDayRange,
+} from '@nexamed/core';
+import {
+  ENCOUNTER_NO_PREFIX,
+  calculateAgeYears,
+  type CheckInRequest,
+  type DataScope,
+  type EncounterSummary,
+  type ReceptionListItem,
+  type ReceptionListResponse,
+  type RecordVitalSignRequest,
+  type RegisterReceptionRequest,
+  type VitalSignResponse,
+  type VitalSignWarning,
+} from '@nexamed/shared';
+import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
+import { CodeSequenceRepository } from '../../infrastructure/persistence/code-sequence.repository';
+import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
+import type { RequestMeta } from '../../common/request-meta';
+import { AppointmentRepository } from '../appointment/appointment.repository';
+import { EncounterRepository } from '../encounter/encounter.repository';
+import { toEncounterSummary } from '../encounter/encounter.mapper';
+import { VitalSignRepository } from './vital-sign.repository';
+
+function isForeignKeyViolation(err: unknown): boolean {
+  return err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2003';
+}
+
+function isUniqueConstraintViolation(err: unknown): boolean {
+  return err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002';
+}
+
+const TEMPERATURE_DECI_PER_CELSIUS = 10;
+
+/** Chỉ số sinh hiệu tuỳ chọn nhập cùng lúc tiếp nhận — cùng shape ở cả `checkIn()`/`registerDirect()` (`intakeVitalSignFieldsSchema`, `packages/shared`). */
+interface IntakeVitalSignFields {
+  pulse?: number;
+  temperatureC?: number;
+  bpSystolic?: number;
+  bpDiastolic?: number;
+  respiratoryRate?: number;
+  spo2?: number;
+  weightGram?: number;
+  heightMm?: number;
+}
+
+function hasAnyVitalSign(dto: IntakeVitalSignFields): boolean {
+  return (
+    dto.pulse !== undefined ||
+    dto.temperatureC !== undefined ||
+    dto.bpSystolic !== undefined ||
+    dto.bpDiastolic !== undefined ||
+    dto.respiratoryRate !== undefined ||
+    dto.spo2 !== undefined ||
+    dto.weightGram !== undefined ||
+    dto.heightMm !== undefined
+  );
+}
+
+/**
+ * Điều phối use case Tiếp nhận (Sprint 3, REC-01→03) — check-in (từ lịch hẹn có sẵn), "Tiếp nhận
+ * bệnh nhân" (tạo `encounter` trực tiếp, không qua `appointment` — khách đến thẳng phòng khám),
+ * danh sách theo dõi trạng thái, sinh hiệu ban đầu. Đúng ranh giới `architecture.md`: module
+ * `reception` KHÔNG sở hữu bảng `encounter` (đó là `encounter` module) — dùng
+ * `AppointmentRepository`/`EncounterRepository` được export từ 2 module kia (xem
+ * docs/DECISIONS.md quyết định kiến trúc "chia sẻ Repository giữa module trong 1 transaction").
+ */
+@Injectable()
+export class ReceptionService {
+  constructor(
+    private readonly unitOfWork: UnitOfWorkService,
+    private readonly appointmentRepository: AppointmentRepository,
+    private readonly encounterRepository: EncounterRepository,
+    private readonly vitalSignRepository: VitalSignRepository,
+    private readonly codeSequenceRepository: CodeSequenceRepository,
+  ) {}
+
+  /**
+   * `dto.patientId` đã resolve xong ở web TRƯỚC khi gọi (chọn từ danh sách trùng SĐT, tìm kiếm,
+   * hoặc `POST /patients` tạo mới riêng — xem docs/DECISIONS.md). Atomic trong 1 transaction: tạo
+   * `encounter` + cập nhật `appointment.status→CONVERTED` + gắn `patientId` — lỗi ở bước nào cũng
+   * rollback toàn bộ (kể cả dòng `encounter` vừa tạo), không có trạng thái nửa vời.
+   */
+  async checkIn(tenantId: string, actorId: string, dataScope: DataScope, dto: CheckInRequest, meta: RequestMeta): Promise<EncounterSummary> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const appointment = await this.appointmentRepository.findById(tx, tenantId, dto.appointmentId);
+      // Cùng triết lý 404 (không 403) khi ngoài scope personal — .claude/docs/multi-tenancy.md.
+      if (!appointment || (dataScope === 'personal' && appointment.doctorId !== actorId)) {
+        throw new NotFoundException();
+      }
+      if (appointment.status !== 'SCHEDULED') {
+        throw new AppointmentNotCancellableError();
+      }
+
+      const created = await this.createEncounterAndConvert(tx, tenantId, actorId, {
+        appointmentId: appointment.id,
+        doctorId: appointment.doctorId,
+        patientId: dto.patientId,
+        appointmentVersion: dto.version,
+        chiefComplaint: dto.chiefComplaint ?? appointment.reason,
+        patientSourceCode: dto.patientSourceCode ?? null,
+        examTypeCode: dto.examTypeCode,
+        examTypeName: dto.examTypeName,
+        examTypePrice: dto.examTypePrice,
+        meta,
+      });
+      if (hasAnyVitalSign(dto)) {
+        await this.createIntakeVitalSign(tx, tenantId, actorId, created.id, dto, meta);
+      }
+      return toEncounterSummary(created);
+    });
+  }
+
+  /**
+   * "Tiếp nhận bệnh nhân" (`POST /reception/direct`) — khách đến thẳng phòng khám, KHÔNG qua đặt
+   * lịch trước, KHÔNG tạo/đụng `appointment`. Đơn giản hơn nhiều so với `checkIn()`: chỉ tạo
+   * thẳng `encounter` với `appointmentId=null`, không có bước cập nhật `appointment` nào để rollback
+   * kèm theo — 1 lệnh `create`, thất bại thì tự rollback nguyên transaction.
+   */
+  async registerDirect(tenantId: string, actorId: string, dto: RegisterReceptionRequest, meta: RequestMeta): Promise<EncounterSummary> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const seq = await this.codeSequenceRepository.next(tx, tenantId, ENCOUNTER_NO_PREFIX, actorId);
+      const encounterNo = formatDisplayCode(ENCOUNTER_NO_PREFIX, new Date(), seq);
+
+      let created: Encounter;
+      try {
+        created = await this.encounterRepository.create(tx, tenantId, actorId, {
+          encounterNo,
+          patientId: dto.patientId,
+          doctorId: dto.doctorId,
+          appointmentId: null,
+          checkedInAt: new Date(dto.checkedInAt),
+          chiefComplaint: dto.chiefComplaint ?? null,
+          // v1: chưa làm S2-04 (lưu thẻ BHYT) — luôn tự chi trả, xem docs/DECISIONS.md.
+          insuranceSnapshot: { selfPay: true },
+          patientSourceCode: dto.patientSourceCode ?? null,
+          examTypeCode: dto.examTypeCode,
+          examTypeName: dto.examTypeName,
+          examTypePrice: BigInt(dto.examTypePrice),
+        });
+      } catch (err) {
+        if (isForeignKeyViolation(err)) {
+          // patientId/doctorId không tồn tại/thuộc tenant khác — cùng triết lý 404 xuyên tenant.
+          throw new NotFoundException();
+        }
+        throw err;
+      }
+
+      await writeAuditLog(tx, tenantId, {
+        actorId,
+        action: 'encounter.registered_direct',
+        entityType: 'encounter',
+        entityId: created.id,
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
+
+      if (hasAnyVitalSign(dto)) {
+        await this.createIntakeVitalSign(tx, tenantId, actorId, created.id, dto, meta);
+      }
+
+      return toEncounterSummary(created);
+    });
+  }
+
+  /**
+   * Sinh hiệu nhập CÙNG LÚC tiếp nhận (cả 2 luồng `checkIn()`/`registerDirect()`) — tuỳ chọn,
+   * thiếu thì bác sĩ tự bổ sung sau ở form phiếu khám qua endpoint `recordVitalSigns()` riêng
+   * (`docs/DECISIONS.md` #044). KHÔNG tính `warnings` ở đây (REC-03 chỉ áp cho endpoint bổ sung
+   * sau — nhập lúc tiếp nhận không cần bước xem cảnh báo riêng, tránh làm phức tạp biểu mẫu).
+   */
+  private async createIntakeVitalSign(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    actorId: string,
+    encounterId: string,
+    dto: IntakeVitalSignFields,
+    meta: RequestMeta,
+  ): Promise<void> {
+    const created = await this.vitalSignRepository.create(tx, tenantId, actorId, {
+      encounterId,
+      pulse: dto.pulse ?? null,
+      temperatureDeciC: dto.temperatureC !== undefined ? Math.round(dto.temperatureC * TEMPERATURE_DECI_PER_CELSIUS) : null,
+      bpSystolic: dto.bpSystolic ?? null,
+      bpDiastolic: dto.bpDiastolic ?? null,
+      respiratoryRate: dto.respiratoryRate ?? null,
+      spo2: dto.spo2 ?? null,
+      weightGram: dto.weightGram ?? null,
+      heightMm: dto.heightMm ?? null,
+      measuredAt: new Date(),
+    });
+    await writeAuditLog(tx, tenantId, {
+      actorId,
+      action: 'vital_sign.created',
+      entityType: 'vital_sign',
+      entityId: created.id,
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+  }
+
+  /**
+   * Phần dùng chung giữa `checkIn()` (từ lịch hẹn có sẵn) và `walkIn()` (vừa tạo lịch xong) — tạo
+   * `encounter` rồi chuyển `appointment` sang `CONVERTED`, ghi 2 dòng audit. Cả hai caller đều đã
+   * mở transaction riêng và biết chắc `appointment` đang `SCHEDULED` (walkIn: vừa tạo, luôn đúng;
+   * checkIn: đã kiểm tra trước khi gọi).
+   */
+  private async createEncounterAndConvert(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    actorId: string,
+    params: {
+      appointmentId: string;
+      doctorId: string;
+      patientId: string;
+      appointmentVersion: number;
+      chiefComplaint: string | null;
+      patientSourceCode: string | null;
+      examTypeCode: string;
+      examTypeName: string;
+      examTypePrice: number;
+      meta: RequestMeta;
+    },
+  ): Promise<Encounter> {
+    const seq = await this.codeSequenceRepository.next(tx, tenantId, ENCOUNTER_NO_PREFIX, actorId);
+    const encounterNo = formatDisplayCode(ENCOUNTER_NO_PREFIX, new Date(), seq);
+
+    let created: Encounter;
+    try {
+      created = await this.encounterRepository.create(tx, tenantId, actorId, {
+        encounterNo,
+        patientId: params.patientId,
+        doctorId: params.doctorId,
+        appointmentId: params.appointmentId,
+        checkedInAt: new Date(),
+        chiefComplaint: params.chiefComplaint,
+        // v1: chưa làm S2-04 (lưu thẻ BHYT) — luôn tự chi trả, xem docs/DECISIONS.md.
+        insuranceSnapshot: { selfPay: true },
+        patientSourceCode: params.patientSourceCode,
+        examTypeCode: params.examTypeCode,
+        examTypeName: params.examTypeName,
+        examTypePrice: BigInt(params.examTypePrice),
+      });
+    } catch (err) {
+      if (isUniqueConstraintViolation(err)) {
+        throw new EncounterAlreadyExistsError();
+      }
+      if (isForeignKeyViolation(err)) {
+        // patientId không tồn tại/thuộc tenant khác — cùng triết lý 404 xuyên tenant.
+        throw new NotFoundException();
+      }
+      throw err;
+    }
+
+    const checkinCount = await this.appointmentRepository.checkin(
+      tx,
+      tenantId,
+      params.appointmentId,
+      params.patientId,
+      params.appointmentVersion,
+      actorId,
+    );
+    if (checkinCount === 0) {
+      // Ném lỗi ở đây rollback CẢ transaction (Prisma $transaction) — dòng encounter vừa tạo ở
+      // trên cũng bị huỷ theo, không để lại encounter mồ côi khi appointment version lệch.
+      throw new ConcurrentModificationError();
+    }
+
+    await writeAuditLog(tx, tenantId, {
+      actorId,
+      action: 'appointment.checked_in',
+      entityType: 'appointment',
+      entityId: params.appointmentId,
+      ip: params.meta.ip,
+      userAgent: params.meta.userAgent,
+    });
+    await writeAuditLog(tx, tenantId, {
+      actorId,
+      action: 'encounter.checked_in',
+      entityType: 'encounter',
+      entityId: created.id,
+      ip: params.meta.ip,
+      userAgent: params.meta.userAgent,
+    });
+
+    return created;
+  }
+
+  /**
+   * Danh sách Tiếp nhận — CHỈ encounter (đã có mặt), theo dõi trạng thái trong ngày (`date`, mặc
+   * định "hôm nay" giờ Việt Nam). KHÔNG gồm lịch hẹn `SCHEDULED` chưa check-in — xem
+   * `packages/shared/src/encounter.ts` (`receptionListItemSchema`). `doctorIdFilter` — trang
+   * "Hàng đợi khám" lọc theo 1 bác sĩ cụ thể; chỉ áp dụng khi scope `global` (scope `personal`
+   * luôn tự ép về chính actor, bỏ qua tham số này — bác sĩ không thể lọc xem người khác).
+   */
+  async listReceptions(
+    tenantId: string,
+    actorId: string,
+    dataScope: DataScope,
+    date?: string,
+    doctorIdFilter?: string,
+  ): Promise<ReceptionListResponse> {
+    const targetDate = date ?? getVietnamDateString();
+    const dayRange = vietnamDayRange(targetDate);
+    const doctorId = dataScope === 'personal' ? actorId : doctorIdFilter;
+
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const encounters = await this.encounterRepository.listForDay(tx, tenantId, {
+        dayStart: dayRange.startUtc,
+        dayEnd: dayRange.endUtc,
+        doctorId,
+      });
+
+      const items: ReceptionListItem[] = encounters.map((e) => ({
+        encounterId: e.id,
+        encounterNo: e.encounterNo,
+        appointmentId: e.appointmentId,
+        patientId: e.patientId,
+        fullName: e.patient.fullName,
+        phone: e.patient.phone,
+        doctorId: e.doctorId,
+        status: e.status,
+        checkedInAt: e.checkedInAt.toISOString(),
+        startedAt: e.startedAt?.toISOString() ?? null,
+        completedAt: e.completedAt?.toISOString() ?? null,
+        version: e.version,
+      }));
+
+      return { items };
+    });
+  }
+
+  /**
+   * REC-02/03 — luôn cho lưu (kể cả không chỉ số nào trong ngưỡng), `warnings` chỉ để hiển thị
+   * cảnh báo phía web, không bao giờ chặn. `temperatureC` (độ C thập phân, web-facing) quy đổi
+   * sang `temperature_deci_c` (DB) ở đây — xem `packages/shared/src/encounter.ts`.
+   */
+  async recordVitalSigns(
+    tenantId: string,
+    actorId: string,
+    dataScope: DataScope,
+    encounterId: string,
+    dto: RecordVitalSignRequest,
+    meta: RequestMeta,
+  ): Promise<VitalSignResponse> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const encounter = await this.encounterRepository.findByIdWithPatientDob(tx, tenantId, encounterId);
+      if (!encounter || (dataScope === 'personal' && encounter.doctorId !== actorId)) {
+        throw new NotFoundException();
+      }
+      if (encounter.status !== 'CHECKED_IN') {
+        throw new EncounterNotCheckedInError();
+      }
+
+      const temperatureDeciC = dto.temperatureC !== undefined ? Math.round(dto.temperatureC * TEMPERATURE_DECI_PER_CELSIUS) : null;
+      const measuredAt = new Date();
+
+      const created: VitalSign = await this.vitalSignRepository.create(tx, tenantId, actorId, {
+        encounterId,
+        pulse: dto.pulse ?? null,
+        temperatureDeciC,
+        bpSystolic: dto.bpSystolic ?? null,
+        bpDiastolic: dto.bpDiastolic ?? null,
+        respiratoryRate: dto.respiratoryRate ?? null,
+        spo2: dto.spo2 ?? null,
+        weightGram: dto.weightGram ?? null,
+        heightMm: dto.heightMm ?? null,
+        measuredAt,
+      });
+
+      await writeAuditLog(tx, tenantId, {
+        actorId,
+        action: 'vital_sign.created',
+        entityType: 'vital_sign',
+        entityId: created.id,
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
+
+      const ageYears = calculateAgeYears(encounter.patient.dob.toISOString().slice(0, 10), measuredAt);
+      const warnings = evaluateVitalSignWarnings(
+        {
+          pulse: dto.pulse,
+          temperatureC: dto.temperatureC,
+          bpSystolic: dto.bpSystolic,
+          bpDiastolic: dto.bpDiastolic,
+          respiratoryRate: dto.respiratoryRate,
+          spo2: dto.spo2,
+          weightGram: dto.weightGram,
+          heightMm: dto.heightMm,
+        },
+        ageYears,
+      );
+
+      return this.toVitalSignResponse(created, warnings);
+    });
+  }
+
+  private toVitalSignResponse(vitalSign: VitalSign, warnings: VitalSignWarning[]): VitalSignResponse {
+    return {
+      id: vitalSign.id,
+      encounterId: vitalSign.encounterId,
+      pulse: vitalSign.pulse,
+      temperatureC: vitalSign.temperatureDeciC !== null ? vitalSign.temperatureDeciC / TEMPERATURE_DECI_PER_CELSIUS : null,
+      bpSystolic: vitalSign.bpSystolic,
+      bpDiastolic: vitalSign.bpDiastolic,
+      respiratoryRate: vitalSign.respiratoryRate,
+      spo2: vitalSign.spo2,
+      weightGram: vitalSign.weightGram,
+      heightMm: vitalSign.heightMm,
+      measuredAt: vitalSign.measuredAt.toISOString(),
+      warnings,
+    };
+  }
+}

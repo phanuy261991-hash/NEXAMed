@@ -1,6 +1,6 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { DEFAULT_ROLE_PERMISSIONS, permissionKey } from '@nexamed/core';
-import { USER_ROLES, type UserRole } from '@nexamed/shared';
+import { USER_ROLES, type DataScope, type UserRole } from '@nexamed/shared';
 import type { UnitOfWorkService } from './unit-of-work.service';
 
 /**
@@ -37,17 +37,38 @@ export async function syncRolePermissionsForTenant(
     });
     const existingPermissionIds = new Set(existing.map((rp) => rp.permissionId));
 
+    const candidates: { key: string; permissionId: string; dataScope: DataScope }[] = [];
     for (const key of Object.keys(matrix)) {
       const dataScope = matrix[key];
       const permissionId = permissionIdByKey.get(key);
       // permission chưa seed vào DB (quên chạy `pnpm db:seed` sau khi thêm permission mới) —
       // bỏ qua thay vì throw, vì hàm này chạy nền lúc khởi động, không được chặn cả API đứng lên.
       if (!permissionId || !dataScope || existingPermissionIds.has(permissionId)) continue;
+      candidates.push({ key, permissionId, dataScope });
+    }
+    if (candidates.length === 0) continue;
 
-      await tx.rolePermission.create({
-        data: { tenantId, roleId: role.id, permissionId, dataScope, createdBy: actorId, updatedBy: actorId },
-      });
-      added.push(`${tenantId}/${role.name}/${key}`);
+    // `createMany({ skipDuplicates: true })` thay vì `create()` từng dòng: đọc-rồi-ghi
+    // (existingPermissionIds ở trên, insert ở đây) không atomic — nếu một tiến trình khác (API
+    // instance khác cùng khởi động, hoặc trong test, một spec khác đang seed cùng lúc trong DB
+    // test dùng chung) đã chèn đúng dòng này ở khoảng giữa, `create()` từng dòng sẽ ném P2002 VÀ
+    // (khác biệt quan trọng) làm ABORT CẢ TRANSACTION Postgres đang mở — mọi câu lệnh tiếp theo
+    // trong cùng transaction (kể cả try/catch ở tầng JS) đều lỗi 25P02 cho tới khi rollback, dù đã
+    // "bắt" được lỗi ném ra. `createMany` với `skipDuplicates` xử lý xung đột bằng `ON CONFLICT DO
+    // NOTHING` ở tầng SQL — không bao giờ ném lỗi, không bao giờ làm abort transaction.
+    await tx.rolePermission.createMany({
+      data: candidates.map((c) => ({
+        tenantId,
+        roleId: role.id,
+        permissionId: c.permissionId,
+        dataScope: c.dataScope,
+        createdBy: actorId,
+        updatedBy: actorId,
+      })),
+      skipDuplicates: true,
+    });
+    for (const c of candidates) {
+      added.push(`${tenantId}/${role.name}/${c.key}`);
     }
   }
 

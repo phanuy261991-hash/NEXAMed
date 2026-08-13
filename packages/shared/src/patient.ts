@@ -164,3 +164,23 @@ export const checkPatientDuplicateResponseSchema = z.object({
   items: z.array(patientSummarySchema),
 });
 export type CheckPatientDuplicateResponse = z.infer<typeof checkPatientDuplicateResponseSchema>;
+
+/**
+ * Tra trùng SĐT — KHÁC PAT-03 (không chặn/không phải "nghi trùng hồ sơ"): số điện thoại được
+ * phép trùng thật sự (ví dụ một phụ huynh dùng chung SĐT cho nhiều con), yêu cầu chủ dự án. Dùng
+ * ở 2 nơi: (1) form Thêm/Sửa hồ sơ — cảnh báo mềm liệt kê tên+mã đã dùng SĐT này, không chặn lưu;
+ * (2) trang Tiếp nhận — liệt kê để lễ tân CHỌN đúng khách hàng khi tra theo SĐT đã đặt lịch.
+ * Khớp CHÍNH XÁC số điện thoại (không phải `startsWith` như tìm kiếm PAT-02) — dùng index có sẵn
+ * `(tenant_id, phone)`. `excludePatientId`: bỏ qua chính hồ sơ đang sửa (tránh tự cảnh báo với
+ * chính mình khi không đổi SĐT).
+ */
+export const patientByPhoneQuerySchema = z.object({
+  phone: z.string().min(8).max(15),
+  excludePatientId: z.string().uuid().optional(),
+});
+export type PatientByPhoneQuery = z.infer<typeof patientByPhoneQuerySchema>;
+
+export const patientByPhoneResponseSchema = z.object({
+  items: z.array(patientSummarySchema),
+});
+export type PatientByPhoneResponse = z.infer<typeof patientByPhoneResponseSchema>;

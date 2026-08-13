@@ -332,6 +332,99 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/patients/by-phone": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tra trùng số điện thoại (cảnh báo mềm form Thêm/Sửa; chọn khách hàng ở trang Tiếp nhận) — khớp CHÍNH XÁC, SĐT được phép trùng */
+        get: {
+            parameters: {
+                query: {
+                    phone: string;
+                    excludePatientId?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công (mảng rỗng nếu chưa ai dùng SĐT này) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    patientCode: string;
+                                    fullName: string;
+                                    dob: string;
+                                    /** @enum {string} */
+                                    gender: "male" | "female" | "other";
+                                    phone: string;
+                                    hasNationalId: boolean;
+                                    nationalIdMasked: string | null;
+                                    address: {
+                                        street?: string;
+                                        ward?: string;
+                                        neighborhood?: string;
+                                        district?: string;
+                                        province?: string;
+                                    } | null;
+                                    version: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền patient.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/patients": {
         parameters: {
             query?: never;
@@ -1941,7 +2034,7 @@ export interface paths {
         };
         trace?: never;
     };
-    "/api/v1/appointments/{id}/checkin": {
+    "/api/v1/reception/check-in": {
         parameters: {
             query?: never;
             header?: never;
@@ -1950,20 +2043,35 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Check-in (docs/DECISIONS.md #032) — chuyển thẳng SCHEDULED → CONVERTED, kèm version hiện có */
+        /** Tiếp nhận — check-in (Sprint 3): tạo lượt khám (encounter) + chuyển lịch hẹn sang CONVERTED, atomic. patientId đã resolve xong ở web (tìm/tạo trước) */
         post: {
             parameters: {
                 query?: never;
                 header?: never;
-                path: {
-                    id: string;
-                };
+                path?: never;
                 cookie?: never;
             };
             requestBody?: {
                 content: {
                     "application/json": {
+                        /** Format: uuid */
+                        appointmentId: string;
+                        /** Format: uuid */
+                        patientId: string;
                         version: number;
+                        chiefComplaint?: string;
+                        patientSourceCode?: string;
+                        examTypeCode: string;
+                        examTypeName: string;
+                        examTypePrice: number;
+                        pulse?: number;
+                        temperatureC?: number;
+                        bpSystolic?: number;
+                        bpDiastolic?: number;
+                        respiratoryRate?: number;
+                        spo2?: number;
+                        weightGram?: number;
+                        heightMm?: number;
                     };
                 };
             };
@@ -1978,23 +2086,20 @@ export interface paths {
                             data: {
                                 /** Format: uuid */
                                 id: string;
-                                bookingCode: string;
+                                encounterNo: string;
                                 /** Format: uuid */
-                                patientId: string | null;
-                                fullName: string;
-                                phone: string;
-                                reason: string | null;
+                                patientId: string;
                                 /** Format: uuid */
                                 doctorId: string;
                                 /** Format: uuid */
-                                roomId: string | null;
-                                scheduledAt: string;
-                                durationMinutes: number;
+                                appointmentId: string | null;
                                 /** @enum {string} */
-                                status: "SCHEDULED" | "CANCELLED" | "NO_SHOW" | "CONVERTED";
-                                /** @enum {string} */
-                                source: "walk_in" | "phone" | "online";
-                                cancelReason: string | null;
+                                status: "SCHEDULED" | "CHECKED_IN" | "IN_CONSULTATION" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
+                                specialty: string;
+                                checkedInAt: string;
+                                startedAt: string | null;
+                                completedAt: string | null;
+                                chiefComplaint: string | null;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -2016,7 +2121,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Không có quyền appointment.update */
+                /** @description Không có quyền encounter.create */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -2031,7 +2136,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal của bác sĩ) */
+                /** @description Không tìm thấy lịch hẹn (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal) hoặc patientId không hợp lệ */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -2046,7 +2151,609 @@ export interface paths {
                         };
                     };
                 };
-                /** @description version không khớp (CONCURRENT_MODIFICATION), hoặc lịch không còn ở trạng thái SCHEDULED (APPOINTMENT_NOT_CANCELLABLE) */
+                /** @description version không khớp (CONCURRENT_MODIFICATION), lịch không còn SCHEDULED (APPOINTMENT_NOT_CANCELLABLE), hoặc đã check-in trước đó (ENCOUNTER_ALREADY_EXISTS) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reception/direct": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** "Tiếp nhận bệnh nhân" — tạo lượt khám (encounter) trực tiếp, KHÔNG qua lịch hẹn (khách đến thẳng phòng khám) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        patientId: string;
+                        /** Format: uuid */
+                        doctorId: string;
+                        checkedInAt: string;
+                        chiefComplaint?: string;
+                        patientSourceCode?: string;
+                        examTypeCode: string;
+                        examTypeName: string;
+                        examTypePrice: number;
+                        pulse?: number;
+                        temperatureC?: number;
+                        bpSystolic?: number;
+                        bpDiastolic?: number;
+                        respiratoryRate?: number;
+                        spo2?: number;
+                        weightGram?: number;
+                        heightMm?: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Tiếp nhận thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                encounterNo: string;
+                                /** Format: uuid */
+                                patientId: string;
+                                /** Format: uuid */
+                                doctorId: string;
+                                /** Format: uuid */
+                                appointmentId: string | null;
+                                /** @enum {string} */
+                                status: "SCHEDULED" | "CHECKED_IN" | "IN_CONSULTATION" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
+                                specialty: string;
+                                checkedInAt: string;
+                                startedAt: string | null;
+                                completedAt: string | null;
+                                chiefComplaint: string | null;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền encounter.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description patientId/doctorId không hợp lệ hoặc thuộc tenant khác */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reception/list": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** "Danh sách tiếp nhận" (mặc định) / "Hàng đợi khám" (kèm doctorId) — CHỈ encounter đã tiếp nhận trong ngày, KHÔNG gồm lịch hẹn chưa đến */
+        get: {
+            parameters: {
+                query?: {
+                    date?: string;
+                    doctorId?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    encounterId: string;
+                                    encounterNo: string;
+                                    /** Format: uuid */
+                                    appointmentId: string | null;
+                                    /** Format: uuid */
+                                    patientId: string;
+                                    fullName: string;
+                                    phone: string;
+                                    /** Format: uuid */
+                                    doctorId: string;
+                                    /** @enum {string} */
+                                    status: "SCHEDULED" | "CHECKED_IN" | "IN_CONSULTATION" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
+                                    checkedInAt: string;
+                                    startedAt: string | null;
+                                    completedAt: string | null;
+                                    version: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền encounter.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reception/encounters/{encounterId}/vital-signs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Nhập sinh hiệu (REC-02) — luôn cho lưu, warnings chỉ để cảnh báo ngoài ngưỡng theo tuổi (REC-03), không chặn */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    encounterId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        pulse?: number;
+                        temperatureC?: number;
+                        bpSystolic?: number;
+                        bpDiastolic?: number;
+                        respiratoryRate?: number;
+                        spo2?: number;
+                        weightGram?: number;
+                        heightMm?: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Lưu thành công, kèm warnings[] nếu có chỉ số ngoài ngưỡng */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                encounterId: string;
+                                pulse: number | null;
+                                temperatureC: number | null;
+                                bpSystolic: number | null;
+                                bpDiastolic: number | null;
+                                respiratoryRate: number | null;
+                                spo2: number | null;
+                                weightGram: number | null;
+                                heightMm: number | null;
+                                measuredAt: string;
+                                warnings: {
+                                    field: string;
+                                    /** @enum {string} */
+                                    kind: "out_of_range" | "implausible";
+                                    message: string;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền vital_sign.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy lượt khám (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Lượt khám không còn ở trạng thái CHECKED_IN (ENCOUNTER_NOT_CHECKED_IN) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/encounters/{id}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** "Bắt đầu khám" — CHECKED_IN → IN_CONSULTATION, chỉ bác sĩ phụ trách chính lượt khám (data_scope=personal) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                encounterNo: string;
+                                /** Format: uuid */
+                                patientId: string;
+                                /** Format: uuid */
+                                doctorId: string;
+                                /** Format: uuid */
+                                appointmentId: string | null;
+                                /** @enum {string} */
+                                status: "SCHEDULED" | "CHECKED_IN" | "IN_CONSULTATION" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
+                                specialty: string;
+                                checkedInAt: string;
+                                startedAt: string | null;
+                                completedAt: string | null;
+                                chiefComplaint: string | null;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền encounter.update */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Chuyển trạng thái không hợp lệ (ENCOUNTER_INVALID_TRANSITION) hoặc version không khớp (CONCURRENT_MODIFICATION) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/encounters/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** "Bỏ về" — CHECKED_IN → CANCELLED, bắt buộc lý do */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        cancelReason: string;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                encounterNo: string;
+                                /** Format: uuid */
+                                patientId: string;
+                                /** Format: uuid */
+                                doctorId: string;
+                                /** Format: uuid */
+                                appointmentId: string | null;
+                                /** @enum {string} */
+                                status: "SCHEDULED" | "CHECKED_IN" | "IN_CONSULTATION" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
+                                specialty: string;
+                                checkedInAt: string;
+                                startedAt: string | null;
+                                completedAt: string | null;
+                                chiefComplaint: string | null;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền encounter.cancel */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Chuyển trạng thái không hợp lệ (ENCOUNTER_INVALID_TRANSITION) hoặc version không khớp (CONCURRENT_MODIFICATION) */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -3481,7 +4188,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Danh mục dùng chung theo loại (Dân tộc/Quốc tịch) — includeInactive=true để xem cả mục đã ẩn (màn hình quản lý) */
+        /** Danh mục dùng chung theo loại (Dân tộc/Quốc tịch/Nguồn khách hàng/Loại khám) — includeInactive=true để xem cả mục đã ẩn (màn hình quản lý) */
         get: {
             parameters: {
                 query?: {
@@ -3489,7 +4196,7 @@ export interface paths {
                 };
                 header?: never;
                 path: {
-                    category: "ETHNICITY" | "NATIONALITY";
+                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE";
                 };
                 cookie?: never;
             };
@@ -3507,11 +4214,12 @@ export interface paths {
                                     /** Format: uuid */
                                     id: string;
                                     /** @enum {string} */
-                                    category: "ETHNICITY" | "NATIONALITY";
+                                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE";
                                     code: string;
                                     name: string;
                                     sortOrder: number;
                                     isActive: boolean;
+                                    price: number | null;
                                 }[];
                             };
                             meta: Record<string, never>;
@@ -3594,11 +4302,12 @@ export interface paths {
                 content: {
                     "application/json": {
                         /** @enum {string} */
-                        category: "ETHNICITY" | "NATIONALITY";
+                        category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE";
                         code: string;
                         name: string;
                         /** @default 0 */
                         sortOrder?: number;
+                        price?: number;
                     };
                 };
             };
@@ -3614,11 +4323,12 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
                                 isActive: boolean;
+                                price: number | null;
                             };
                             meta: Record<string, never>;
                         };
@@ -3710,11 +4420,12 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
                                 isActive: boolean;
+                                price: number | null;
                             };
                             meta: Record<string, never>;
                         };
@@ -3785,6 +4496,7 @@ export interface paths {
                         code?: string;
                         name?: string;
                         sortOrder?: number;
+                        price?: number;
                     };
                 };
             };
@@ -3800,11 +4512,12 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
                                 isActive: boolean;
+                                price: number | null;
                             };
                             meta: Record<string, never>;
                         };
@@ -3906,11 +4619,12 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
                                 isActive: boolean;
+                                price: number | null;
                             };
                             meta: Record<string, never>;
                         };
