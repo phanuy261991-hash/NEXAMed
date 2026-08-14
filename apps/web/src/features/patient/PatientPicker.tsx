@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { MagnifyingGlass, Plus, X } from '@phosphor-icons/react';
 import type { PatientSummary } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
+import { formatDobDisplay } from '../../shared/format/date';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
 import { Button } from '../../shared/ui/Button';
 import { useCreatePatientMutation, usePatientSearchQuery } from './patient.queries';
@@ -126,7 +127,7 @@ export function PatientPicker({
             >
               <div className="text-sm font-semibold text-slate-900">{p.fullName}</div>
               <div className="text-xs text-slate-500">
-                {p.patientCode} · {p.dob}
+                {p.patientCode} · {formatDobDisplay(p.dob)}
               </div>
             </button>
           ))}

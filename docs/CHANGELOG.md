@@ -2,6 +2,16 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-14 (1)
+
+Sidebar — thêm nhóm menu "Khám bệnh", chuyển "Hàng đợi khám" sang nhóm này:
+
+- **Bối cảnh**: chủ dự án yêu cầu tách "Hàng đợi khám" ra khỏi nhóm "Tiếp nhận và Đặt lịch" sang một nhóm sidebar riêng "Khám bệnh" (icon ống nghe), đặt ngay dưới "Tiếp nhận và Đặt lịch" — chuẩn bị chỗ cho các màn hình Khám bệnh thật (S3-05→07) khi ICD-10 hết chặn. Đã hỏi và chốt: giữ nguyên route `/reception/doctor-queue` và code ở `apps/web/src/features/reception/` (không đổi module/thư mục), chỉ đổi vị trí hiển thị trong sidebar — thuần UI.
+- **`Sidebar.tsx`**: nhóm "Tiếp nhận và Đặt lịch" nay còn 4 mục con (Danh sách bệnh nhân, Lịch hẹn, Danh sách tiếp nhận, Tiếp nhận bệnh nhân). Nhóm "Khám bệnh" mới (điều kiện hiện `DOCTOR_QUEUE_ROLES` — doctor/clinic_admin, không đổi) chỉ chứa "Hàng đợi khám", cùng khuôn accordion/thu gọn với 2 nhóm còn lại. Logic tự mở nhóm theo route (`RECEPTION_GROUP_PATHS`) phải loại trừ `EXAMINATION_GROUP_PATH` (`/reception/doctor-queue`) vì cùng tiền tố `/reception` — nếu không cả 2 nhóm sẽ cùng tự mở khi vào "Hàng đợi khám".
+- **Bug phát hiện lúc kiểm bằng trình duyệt**: `ReceptionDoctorQueuePage.tsx` vẫn khai `useBreadcrumb([{ label: 'Tiếp nhận và Đặt lịch' }, ...])` — breadcrumb lệch với vị trí sidebar mới. Sửa thành `{ label: 'Khám bệnh' }`.
+- **Đã xác minh thật qua Playwright** (dữ liệu dev thật, đăng nhập `dev.admin`/clinic_admin): thứ tự nhóm đúng Tổng quan → Tiếp nhận và Đặt lịch → Khám bệnh → Quản trị; nhóm "Tiếp nhận và Đặt lịch" không còn "Hàng đợi khám"; nhóm "Khám bệnh" đúng 1 mục "Hàng đợi khám"; vào thẳng `/reception/doctor-queue` (fresh load) chỉ nhóm "Khám bệnh" tự mở, "Tiếp nhận và Đặt lịch" đóng — xác nhận logic loại trừ đúng; breadcrumb đúng "Khám bệnh › Hàng đợi khám" sau khi sửa. `pnpm --filter @nexamed/web run typecheck` sạch; `pnpm -w lint` chỉ còn đúng 1 lỗi ESLint cấu hình plugin có sẵn từ trước (không liên quan, đã ghi nhận nhiều lần trong các entry trước). Không console error ngoài dự kiến (chỉ 401 refresh trước đăng nhập, hành vi đã biết).
+- Không migration/schema/API contract nào đổi — thuần điều hướng web.
+
 ## 2026-08-13 (30)
 
 "Danh sách tiếp nhận" về đúng nghĩa THUẦN theo dõi trạng thái — dồn Sinh hiệu/Bắt đầu khám ra khỏi trang, hợp nhất 2 biểu mẫu tiếp nhận thành 1 component dùng chung (docs/DECISIONS.md #044):

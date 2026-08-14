@@ -1,3 +1,4 @@
+import { formatDobDisplay } from '../../shared/format/date';
 import { usePatientByPhoneQuery } from './patient.queries';
 
 /**
@@ -15,7 +16,8 @@ export function PhoneDuplicateWarning({ phone, excludePatientId }: { phone: stri
 
   return (
     <p className="mt-1.5 text-xs text-amber-700">
-      Số điện thoại này đã dùng cho: {items.map((p) => `${p.fullName} (${p.patientCode})`).join(', ')}. Vẫn có thể lưu bình thường (ví dụ người thân
+      Số điện thoại này đã dùng cho: {items.map((p) => `${p.fullName} (${p.patientCode}, sinh ${formatDobDisplay(p.dob)})`).join(', ')}. Vẫn có thể
+      lưu bình thường (ví dụ người thân
       dùng chung số điện thoại).
     </p>
   );

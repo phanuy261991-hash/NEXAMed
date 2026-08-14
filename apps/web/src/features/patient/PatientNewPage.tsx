@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Warning } from '@phosphor-icons/react';
 import type { PatientSummary } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
+import { formatDobDisplay } from '../../shared/format/date';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
 import { checkPatientDuplicate } from './patient.api';
@@ -74,7 +75,7 @@ export function PatientNewPage() {
             {duplicates.map((p) => (
               <li key={p.id}>
                 <Link to={`/patients/${p.id}`} target="_blank" className="underline hover:text-amber-900">
-                  {p.patientCode} — {p.fullName} — {p.dob}
+                  {p.patientCode} — {p.fullName} — {formatDobDisplay(p.dob)}
                 </Link>
               </li>
             ))}

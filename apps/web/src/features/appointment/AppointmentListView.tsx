@@ -90,7 +90,7 @@ export function AppointmentListView({
         <div
           role="row"
           style={{ gridTemplateColumns: GRID_COLUMNS }}
-          className="grid flex-shrink-0 border-b border-slate-200 bg-slate-50 px-4 text-xs font-medium uppercase tracking-wide text-slate-500"
+          className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-bold uppercase tracking-wide text-slate-800"
         >
           <div role="columnheader" className="py-2.5">Mã đặt lịch</div>
           <div role="columnheader" className="py-2.5">Họ tên</div>
@@ -101,7 +101,7 @@ export function AppointmentListView({
           <div role="columnheader" className="py-2.5">Trạng thái</div>
         </div>
 
-        <div ref={scrollParentRef} className="flex-1 overflow-y-auto">
+        <div ref={scrollParentRef} className="scroll-hover flex-1 overflow-y-auto">
           <div style={{ height: rowVirtualizer.getTotalSize(), position: 'relative' }}>
             {virtualRows.map((virtualRow) => {
               const a = appointments[virtualRow.index];

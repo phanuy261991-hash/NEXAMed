@@ -1,20 +1,26 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { WarningCircle, X } from '@phosphor-icons/react';
 import type { AppointmentSource, AppointmentSummary, DoctorOption } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
+import { formatDobDisplay } from '../../shared/format/date';
+import { useAuthStore } from '../auth/auth.store';
+import { usePatientByPhoneQuery } from '../patient/patient.queries';
 import { Button } from '../../shared/ui/Button';
-import { Combobox } from '../../shared/ui/Combobox';
+import { TimeInput } from '../../shared/ui/TimeInput';
 import { APPOINTMENT_SPAM_CANCELLED_THRESHOLD } from './appointment-status';
-
-const DURATION_OPTIONS = [15, 30, 45, 60].map((m) => ({ value: String(m), label: `${m} phút` }));
-import { useAppointmentPhoneLookupQuery, useCreateAppointmentMutation } from './appointment.queries';
+import { useAppointmentPhoneLookupQuery, useAppointmentsByDateQuery, useCreateAppointmentMutation } from './appointment.queries';
 import { formatDateLabel, minutesToLabel, toMinutes, vnDateTimeToIso, vnTimeOfDayMinutes } from './schedule-grid.utils';
 
 const SOURCE_OPTIONS: { value: AppointmentSource; label: string }[] = [
   { value: 'phone', label: 'Điện thoại' },
   { value: 'online', label: 'Online' },
-  { value: 'walk_in', label: 'Walk-in' },
+  { value: 'walk_in', label: 'Tự đến' },
 ];
+
+/** Giá trị đã nhập BẮT BUỘC nổi bật — chốt 2026-08-14, .claude/docs/ui-guidelines.md mục 4.1c. */
+const inputClassName =
+  'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
+const readOnlyInputClassName = `${inputClassName} bg-slate-50 text-slate-800`;
 
 function findBusyUntilLabel(doctorId: string, time: string, durationMinutes: number, dayAppointments: AppointmentSummary[]): string | null {
   const start = toMinutes(time);
@@ -32,12 +38,17 @@ function findBusyUntilLabel(doctorId: string, time: string, durationMinutes: num
 }
 
 /**
- * Đặt lịch nhanh (docs/DECISIONS.md #032 — "lead capture", đổi từ S2-09) — ngày/giờ/bác sĩ điền
- * sẵn từ ô lưới đã chọn (hoặc mặc định khi mở từ nút "+ Đặt lịch"). Gợi ý bác sĩ trống/bận theo
- * giờ vừa chọn — đối chiếu với `dayAppointments` đã có sẵn trong bộ nhớ (từ
- * `useAppointmentsByDateQuery` của trang cha), KHÔNG gọi API mới. KHÔNG tạo/gắn hồ sơ `patient`
- * lúc đặt — chỉ ghi nhận Tên/SĐT/lý do khám trực tiếp, việc tạo hồ sơ chuyển sang lúc Tiếp nhận
- * (Sprint 3, chưa xây).
+ * Đặt lịch nhanh (docs/DECISIONS.md #032 — "lead capture") — trượt từ phải, chia 2 nhóm theo
+ * Boxed Section Form Pattern (.claude/docs/ui-guidelines.md mục 9b): Thông tin hành chính +
+ * Thông tin đặt lịch. Ngày hẹn giờ EDITABLE trong panel (không còn chỉ nhận từ prop cố định) —
+ * panel tự tải `dayAppointments` theo ngày đang chọn (cùng query key với trang cha nên không gọi
+ * API thừa khi trùng ngày đang xem).
+ *
+ * Tìm kiếm SĐT trong `patient` thật (không phải lịch sử đặt lịch cũ như bản trước) — khớp thì
+ * KHOÁ CỨNG 3 trường định danh (SĐT/Họ tên/Mã bệnh nhân, không khoá Nguồn đặt lịch) để tránh gõ
+ * sai — nhưng CHỈ để hiển thị, KHÔNG gửi `patientId` lên API (giữ đúng #032: appointment vẫn chỉ
+ * lưu fullName/phone dạng tự do, việc gắn `patient_id` thật vẫn diễn ra ở bước Tiếp nhận). Không
+ * tạo/gắn hồ sơ `patient` hay `encounter` nào ở bước này.
  */
 export function AppointmentQuickCreatePanel({
   open,
@@ -46,7 +57,6 @@ export function AppointmentQuickCreatePanel({
   initialDoctorId,
   initialTime,
   doctors,
-  dayAppointments,
   defaultDurationMinutes,
 }: {
   open: boolean;
@@ -55,52 +65,55 @@ export function AppointmentQuickCreatePanel({
   initialDoctorId: string | null;
   initialTime: string;
   doctors: DoctorOption[];
-  dayAppointments: AppointmentSummary[];
   defaultDurationMinutes: number;
 }) {
+  const [selectedDate, setSelectedDate] = useState(date);
   const [time, setTime] = useState(initialTime);
-  const [durationMinutes, setDurationMinutes] = useState(defaultDurationMinutes);
   const [doctorId, setDoctorId] = useState<string | null>(initialDoctorId);
-  const [source, setSource] = useState<AppointmentSource>('phone');
+  // Không đặt mặc định — bấm chọn Nguồn đặt lịch mới tô màu, tránh cảm giác "chưa bấm đã chọn"
+  // (phản hồi thật của chủ dự án lúc dùng thử) và ép lễ tân thật sự xác nhận nguồn thay vì để mặc
+  // định 'phone' âm thầm cho mọi lượt đặt.
+  const [source, setSource] = useState<AppointmentSource | null>(null);
   const [phone, setPhone] = useState('');
   const [fullName, setFullName] = useState('');
   const [reason, setReason] = useState('');
+  const [lockedPatient, setLockedPatient] = useState<{ id: string; patientCode: string } | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [confirmedBooking, setConfirmedBooking] = useState<AppointmentSummary | null>(null);
-  // Chỉ tự điền tên MỘT LẦN cho mỗi lần gõ SĐT mới — nếu lễ tân đã tự sửa tên (khác gợi ý) thì
-  // không ghi đè lại nữa dù query lookup chạy lại (StrictMode/refetch).
-  const lastAutoFilledPhone = useRef<string | null>(null);
 
+  const currentUser = useAuthStore((s) => s.user);
   const createMutation = useCreateAppointmentMutation();
-  const phoneLookup = useAppointmentPhoneLookupQuery(phone);
+  const dayQuery = useAppointmentsByDateQuery(selectedDate);
+  const dayAppointments = dayQuery.data?.items ?? [];
+  const phoneMatches = usePatientByPhoneQuery(lockedPatient ? '' : phone);
+  // Cảnh báo huỷ nhiều lần — vẫn tra theo lịch sử `appointment` (không phải `patient`), độc lập
+  // với việc khớp/khoá hồ sơ bệnh nhân ở trên.
+  const phoneCancelHistory = useAppointmentPhoneLookupQuery(phone);
 
   useEffect(() => {
     if (!open) return;
+    setSelectedDate(date);
     setTime(initialTime);
-    setDurationMinutes(defaultDurationMinutes);
     setDoctorId(initialDoctorId);
-    setSource('phone');
+    setSource(null);
     setPhone('');
     setFullName('');
     setReason('');
+    setLockedPatient(null);
     setSubmitError(null);
     setConfirmedBooking(null);
-    lastAutoFilledPhone.current = null;
-  }, [open, initialTime, initialDoctorId, defaultDurationMinutes]);
+  }, [open, date, initialTime, initialDoctorId]);
 
-  // Tự điền Họ tên khi SĐT đã từng đặt lịch — chỉ điền khi ô tên đang trống hoặc đang giữ đúng
-  // gợi ý của lần tra cứu trước (tránh ghi đè tên lễ tân vừa gõ tay).
-  useEffect(() => {
-    const suggested = phoneLookup.data?.suggestedFullName;
-    if (!suggested || lastAutoFilledPhone.current === phone) return;
-    setFullName((current) => (current.trim() === '' ? suggested : current));
-    lastAutoFilledPhone.current = phone;
-  }, [phoneLookup.data, phone]);
+  function pickPatient(p: { id: string; fullName: string; phone: string; patientCode: string }) {
+    setLockedPatient({ id: p.id, patientCode: p.patientCode });
+    setPhone(p.phone);
+    setFullName(p.fullName);
+  }
 
-  const showSpamWarning = (phoneLookup.data?.cancelledCount ?? 0) >= APPOINTMENT_SPAM_CANCELLED_THRESHOLD;
+  const showSpamWarning = (phoneCancelHistory.data?.cancelledCount ?? 0) >= APPOINTMENT_SPAM_CANCELLED_THRESHOLD;
 
   async function handleSubmit() {
-    if (!doctorId || fullName.trim() === '' || phone.trim() === '') return;
+    if (!doctorId || !source || fullName.trim() === '' || phone.trim() === '') return;
     setSubmitError(null);
     try {
       const created = await createMutation.mutateAsync({
@@ -108,8 +121,8 @@ export function AppointmentQuickCreatePanel({
         fullName: fullName.trim(),
         phone: phone.trim(),
         reason: reason.trim() === '' ? undefined : reason.trim(),
-        scheduledAt: vnDateTimeToIso(date, time),
-        durationMinutes,
+        scheduledAt: vnDateTimeToIso(selectedDate, time),
+        durationMinutes: defaultDurationMinutes,
         source,
       });
       setConfirmedBooking(created);
@@ -118,7 +131,7 @@ export function AppointmentQuickCreatePanel({
     }
   }
 
-  const canSubmit = Boolean(doctorId) && fullName.trim() !== '' && phone.trim().length >= 8;
+  const canSubmit = Boolean(doctorId) && Boolean(source) && fullName.trim() !== '' && phone.trim().length >= 8;
 
   return (
     <>
@@ -128,7 +141,9 @@ export function AppointmentQuickCreatePanel({
         aria-hidden="true"
       />
       <div
-        className={`fixed inset-y-0 right-0 z-50 flex w-[380px] flex-col bg-white shadow-2xl transition-transform ${open ? 'translate-x-0' : 'translate-x-full'}`}
+        className={`fixed inset-y-0 right-0 z-50 flex w-[480px] max-w-[50vw] flex-col bg-white shadow-2xl transition-transform ${
+          open ? 'translate-x-0' : 'translate-x-full'
+        }`}
       >
         <div className="flex flex-shrink-0 items-center justify-between border-b border-slate-200 px-4 py-3.5">
           <h2 className="text-[15px] font-bold text-slate-900">Đặt lịch nhanh</h2>
@@ -138,128 +153,206 @@ export function AppointmentQuickCreatePanel({
         </div>
 
         <div className="flex-1 overflow-y-auto p-4">
-          <div className="flex flex-col gap-4">
-            <div className="flex gap-2.5">
-              <div className="flex-1">
-                <label htmlFor="quick-create-time" className="mb-1.5 block text-xs font-semibold text-slate-600">
-                  Giờ hẹn
-                </label>
-                <input
-                  id="quick-create-time"
-                  type="time"
-                  value={time}
-                  step={900}
-                  onChange={(e) => setTime(e.target.value)}
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                />
-              </div>
-              <div className="flex-1">
-                <label htmlFor="quick-create-duration" className="mb-1.5 block text-xs font-semibold text-slate-600">
-                  Thời lượng
-                </label>
-                <Combobox
-                  id="quick-create-duration"
-                  value={String(durationMinutes)}
-                  onChange={(v) => setDurationMinutes(Number(v))}
-                  options={DURATION_OPTIONS}
-                />
-              </div>
-            </div>
+          <div className="flex flex-col gap-6">
+            <section className="relative rounded-lg border border-slate-200 p-4 pt-6">
+              <span className="absolute -top-3 left-4 rounded-md bg-blue-600 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white">
+                Thông tin hành chính
+              </span>
 
-            <div>
-              <span className="mb-1.5 block text-xs font-semibold text-slate-600">Bác sĩ — trống/bận theo giờ vừa chọn</span>
-              <div className="flex flex-col gap-1.5">
-                {doctors.map((d) => {
-                  const busyUntil = findBusyUntilLabel(d.id, time, durationMinutes, dayAppointments);
-                  const active = doctorId === d.id;
-                  return (
+              <div className="flex flex-col gap-3">
+                {lockedPatient ? (
+                  <div className="flex items-start justify-between rounded-md border border-blue-200 bg-blue-50 px-3 py-2.5">
+                    <div>
+                      <div className="text-sm font-semibold text-slate-900">{fullName}</div>
+                      <div className="text-xs text-slate-500">
+                        {lockedPatient.patientCode} · {phone}
+                      </div>
+                    </div>
                     <button
-                      key={d.id}
                       type="button"
-                      onClick={() => setDoctorId(d.id)}
-                      className={`flex items-center justify-between rounded-md border px-3 py-2 text-left ${
-                        active ? 'border-blue-600 bg-blue-50' : 'border-slate-300 hover:bg-slate-50'
-                      }`}
+                      onClick={() => setLockedPatient(null)}
+                      className="text-xs font-medium text-slate-400 underline hover:text-slate-600"
                     >
-                      <span className="text-sm font-semibold text-slate-900">{d.fullName}</span>
-                      {busyUntil ? (
-                        <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10.5px] font-bold text-amber-700">Bận tới {busyUntil}</span>
-                      ) : (
-                        <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10.5px] font-bold text-emerald-700">Trống</span>
-                      )}
+                      Đổi
                     </button>
-                  );
-                })}
+                  </div>
+                ) : (
+                  <>
+                    <div className="relative">
+                      <label htmlFor="quick-create-phone" className="mb-1.5 block text-xs font-semibold text-slate-600">
+                        Số điện thoại <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        id="quick-create-phone"
+                        type="tel"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder="Nhập số điện thoại khách hàng…"
+                        className={inputClassName}
+                      />
+                      {phoneMatches.isSuccess && phoneMatches.data.items.length > 0 && (
+                        <div className="absolute z-10 mt-1 w-full rounded-md border border-slate-200 bg-white p-1 shadow-lg">
+                          {phoneMatches.data.items.map((p) => (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onClick={() => pickPatient(p)}
+                              className="flex w-full flex-col rounded-md px-2.5 py-1.5 text-left hover:bg-slate-50"
+                            >
+                              <span className="text-sm font-semibold text-slate-900">{p.fullName}</span>
+                              <span className="text-xs text-slate-500">
+                                {p.patientCode} · {p.phone} · Sinh {formatDobDisplay(p.dob)}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <label htmlFor="quick-create-fullname" className="mb-1.5 block text-xs font-semibold text-slate-600">
+                        Họ tên <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        id="quick-create-fullname"
+                        type="text"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        placeholder="Họ tên khách hàng"
+                        className={inputClassName}
+                      />
+                    </div>
+                  </>
+                )}
+
+                {showSpamWarning && (
+                  <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-800">
+                    <WarningCircle size={16} weight="bold" className="mt-0.5 shrink-0 text-amber-500" aria-hidden="true" />
+                    <span>
+                      Số điện thoại này đã đặt và huỷ {phoneCancelHistory.data?.cancelledCount} lần trước đó — cân nhắc trước khi đặt lịch (vẫn có
+                      thể tiếp tục).
+                    </span>
+                  </div>
+                )}
+
+                <div>
+                  <span className="mb-1.5 block text-xs font-semibold text-slate-600">
+                    Nguồn đặt lịch <span className="text-rose-500">*</span>
+                  </span>
+                  <div className="flex gap-1.5">
+                    {SOURCE_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setSource(opt.value)}
+                        className={`flex-1 rounded-md border px-2 py-2 text-center text-xs font-semibold transition-colors ${
+                          source === opt.value
+                            ? 'border-brand-teal bg-brand-teal text-white'
+                            : 'border-slate-300 text-slate-600 hover:border-brand-teal hover:bg-brand-teal-tint'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
-            </div>
+            </section>
+
+            <section className="relative rounded-lg border border-slate-200 p-4 pt-6">
+              <span className="absolute -top-3 left-4 rounded-md bg-blue-600 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white">
+                Thông tin đặt lịch
+              </span>
+
+              <div className="flex flex-col gap-3">
+                <div>
+                  <label htmlFor="quick-create-reason" className="mb-1.5 block text-xs font-semibold text-slate-600">
+                    Lý do khám
+                  </label>
+                  <textarea
+                    id="quick-create-reason"
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    rows={2}
+                    placeholder="Không bắt buộc"
+                    className={inputClassName}
+                  />
+                </div>
+
+                <div className="flex gap-2.5">
+                  <div className="flex-1">
+                    <label htmlFor="quick-create-date" className="mb-1.5 block text-xs font-semibold text-slate-600">
+                      Ngày hẹn <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      id="quick-create-date"
+                      type="date"
+                      value={selectedDate}
+                      onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
+                      className={inputClassName}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label htmlFor="quick-create-time" className="mb-1.5 block text-xs font-semibold text-slate-600">
+                      Giờ hẹn <span className="text-rose-500">*</span>
+                    </label>
+                    <TimeInput id="quick-create-time" required value={time} onChange={setTime} className={inputClassName} />
+                  </div>
+                </div>
+
+                <div>
+                  <span className="mb-1.5 block text-xs font-semibold text-slate-600">
+                    Bác sĩ — trống/bận theo giờ vừa chọn
+                    {dayQuery.isFetching && <span className="ml-1.5 font-normal text-slate-400">(đang tải…)</span>}
+                  </span>
+                  <div className="flex flex-col gap-1.5">
+                    {doctors.map((d) => {
+                      const busyUntil = findBusyUntilLabel(d.id, time, defaultDurationMinutes, dayAppointments);
+                      const active = doctorId === d.id;
+                      return (
+                        <button
+                          key={d.id}
+                          type="button"
+                          onClick={() => setDoctorId(d.id)}
+                          className={`flex items-center justify-between rounded-md border px-3 py-2 text-left transition-colors ${
+                            active ? 'border-brand-teal bg-brand-teal' : 'border-slate-300 hover:border-blue-400 hover:bg-brand-teal-tint'
+                          }`}
+                        >
+                          <span className={`text-sm font-semibold ${active ? 'text-white' : 'text-slate-900'}`}>{d.fullName}</span>
+                          {busyUntil ? (
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[10.5px] font-bold ${
+                                active ? 'bg-white text-amber-700' : 'bg-amber-50 text-amber-700'
+                              }`}
+                            >
+                              Bận tới {busyUntil}
+                            </span>
+                          ) : (
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[10.5px] font-bold ${
+                                active ? 'bg-white text-emerald-700' : 'bg-emerald-50 text-emerald-700'
+                              }`}
+                            >
+                              Trống
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </section>
 
             <div>
-              <label htmlFor="quick-create-phone" className="mb-1.5 block text-xs font-semibold text-slate-600">
-                Số điện thoại <span className="text-rose-500">*</span>
-              </label>
+              <span className="mb-1.5 block text-xs font-semibold text-slate-600">Người tạo lịch</span>
               <input
-                id="quick-create-phone"
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="Nhập số điện thoại khách hàng…"
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              />
-            </div>
-
-            {showSpamWarning && (
-              <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-800">
-                <WarningCircle size={16} weight="bold" className="mt-0.5 shrink-0 text-amber-500" aria-hidden="true" />
-                <span>
-                  Số điện thoại này đã đặt và huỷ {phoneLookup.data?.cancelledCount} lần trước đó — cân nhắc trước khi đặt lịch (vẫn có thể tiếp tục).
-                </span>
-              </div>
-            )}
-
-            <div>
-              <label htmlFor="quick-create-fullname" className="mb-1.5 block text-xs font-semibold text-slate-600">
-                Họ tên <span className="text-rose-500">*</span>
-              </label>
-              <input
-                id="quick-create-fullname"
                 type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Họ tên khách hàng"
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                readOnly
+                disabled
+                value={currentUser?.fullName ?? ''}
+                className={readOnlyInputClassName}
               />
-            </div>
-
-            <div>
-              <label htmlFor="quick-create-reason" className="mb-1.5 block text-xs font-semibold text-slate-600">
-                Lý do khám
-              </label>
-              <textarea
-                id="quick-create-reason"
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                rows={2}
-                placeholder="Không bắt buộc"
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              />
-            </div>
-
-            <div>
-              <span className="mb-1.5 block text-xs font-semibold text-slate-600">Nguồn đặt lịch</span>
-              <div className="flex gap-1.5">
-                {SOURCE_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setSource(opt.value)}
-                    className={`flex-1 rounded-md border px-2 py-2 text-center text-xs font-semibold ${
-                      source === opt.value ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-300 text-slate-600 hover:bg-slate-50'
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
             </div>
 
             {submitError && (
@@ -283,7 +376,7 @@ export function AppointmentQuickCreatePanel({
       {confirmedBooking && (
         <BookingConfirmDialog
           appointment={confirmedBooking}
-          date={date}
+          date={selectedDate}
           onConfirm={() => {
             setConfirmedBooking(null);
             onClose();

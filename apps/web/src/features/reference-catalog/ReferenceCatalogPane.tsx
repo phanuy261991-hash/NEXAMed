@@ -19,7 +19,7 @@ import {
 const MANAGE_ROLES = ['clinic_admin'];
 
 const inputClassName =
-  'w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
+  'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 
 interface ModalState {
   mode: 'create' | 'edit';
@@ -107,7 +107,7 @@ export function ReferenceCatalogPane({
         <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
           <table className="w-full border-collapse text-sm">
             <thead>
-              <tr className="border-b-2 border-blue-600 bg-slate-100 text-left text-xs font-semibold uppercase tracking-wide text-slate-700">
+              <tr className="border-b-2 border-blue-600 bg-slate-100 text-left text-xs font-bold uppercase tracking-wide text-slate-800">
                 <th className="w-24 px-4 py-2.5">Mã</th>
                 <th className="px-4 py-2.5">Tên hiển thị</th>
                 {category === 'EXAM_TYPE' && <th className="w-32 px-4 py-2.5">Giá</th>}
@@ -118,7 +118,7 @@ export function ReferenceCatalogPane({
             <tbody>
               {items.map((item) => (
                 <tr key={item.id} className={`border-b border-slate-200 last:border-0 ${item.isActive ? '' : 'opacity-50'}`}>
-                  <td className="px-4 py-2 font-mono text-xs text-slate-500">{item.code}</td>
+                  <td className="px-4 py-2 font-mono text-sm font-bold text-slate-800">{item.code}</td>
                   <td className="px-4 py-2 text-slate-900">
                     {item.name}
                     {!item.isActive && <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">Đã ẩn</span>}

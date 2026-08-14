@@ -6,6 +6,7 @@ import { Button } from '../../shared/ui/Button';
 import { Combobox } from '../../shared/ui/Combobox';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
+import { TimeInput } from '../../shared/ui/TimeInput';
 import { useClinicSettingsQuery, useUpdateClinicSettingsMutation } from './clinic.queries';
 
 /** Khớp `clinic_config.update` — .claude/docs/security-audit.md (chỉ clinic_admin ở v1). */
@@ -132,17 +133,17 @@ export function ClinicHoursPane() {
                         </label>
                         {dayHours && (
                           <div className="flex flex-1 items-center gap-1.5">
-                            <input
-                              type="time"
+                            <TimeInput
+                              id={`hours-open-${day}`}
                               value={dayHours.open}
-                              onChange={(e) => updateDayTime(day, 'open', e.target.value)}
+                              onChange={(v) => updateDayTime(day, 'open', v)}
                               className="w-full min-w-0 rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-800 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                             />
                             <span className="flex-shrink-0 text-slate-400">–</span>
-                            <input
-                              type="time"
+                            <TimeInput
+                              id={`hours-close-${day}`}
                               value={dayHours.close}
-                              onChange={(e) => updateDayTime(day, 'close', e.target.value)}
+                              onChange={(v) => updateDayTime(day, 'close', v)}
                               className="w-full min-w-0 rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-800 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                             />
                           </div>

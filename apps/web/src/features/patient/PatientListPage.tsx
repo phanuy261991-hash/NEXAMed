@@ -147,7 +147,7 @@ export function PatientListPage() {
             <div
               role="row"
               style={{ gridTemplateColumns: GRID_COLUMNS }}
-              className="grid flex-shrink-0 gap-x-4 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-semibold uppercase tracking-wide text-slate-700"
+              className="grid flex-shrink-0 gap-x-4 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-bold uppercase tracking-wide text-slate-800"
             >
               <div role="columnheader" className="py-2.5">Mã bệnh nhân</div>
               <div role="columnheader" className="py-2.5">Họ tên</div>
@@ -158,7 +158,7 @@ export function PatientListPage() {
               <div role="columnheader" className="py-2.5">Địa chỉ</div>
             </div>
 
-            <div ref={scrollParentRef} className="flex-1 overflow-y-auto">
+            <div ref={scrollParentRef} className="scroll-hover flex-1 overflow-y-auto">
               <div style={{ height: rowVirtualizer.getTotalSize(), position: 'relative' }}>
                 {virtualRows.map((virtualRow) => {
                   const patient = patients[virtualRow.index];

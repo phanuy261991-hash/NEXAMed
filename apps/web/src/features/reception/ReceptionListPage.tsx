@@ -1,22 +1,31 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { CaretLeft, CaretRight, ClipboardText } from '@phosphor-icons/react';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
-import { useDoctorsQuery } from '../appointment/appointment.queries';
 import { addDays, formatDateLabel, getVietnamTodayDateString } from '../appointment/schedule-grid.utils';
 import { ENCOUNTER_STATUS_META } from './encounter-status';
 import { useReceptionListQuery } from './reception.queries';
 
-const GRID_COLUMNS = '100px 1.3fr 130px 1fr 130px';
+/** Độ rộng cố định theo px (không dùng `fr`) để bảng có chiều rộng nội tại lớn hơn khung nhìn —
+ * bắt buộc để `overflow-x-auto` phát huy tác dụng, cho phép cuộn ngang khi 8 cột không vừa màn
+ * hình hẹp. Theo đúng thứ tự cột chủ dự án yêu cầu — không còn cột "Bác sĩ" (ngoài danh sách đã
+ * chốt), 3 cột chưa có nguồn dữ liệu (Năm sinh/Địa chỉ/Người tiếp nhận) hiện `—`, khớp dữ liệu sau
+ * khi backend có trường tương ứng. */
+const GRID_COLUMNS = '140px 200px 100px 140px 240px 170px 130px 170px';
+const TABLE_MIN_WIDTH_PX = 1290;
 const ROW_HEIGHT_PX = 48;
 
-function formatTime(iso: string): string {
+function formatDateTime(iso: string): string {
   const d = new Date(iso);
   const vn = new Date(d.getTime() + 7 * 60 * 60_000);
-  return `${String(vn.getUTCHours()).padStart(2, '0')}:${String(vn.getUTCMinutes()).padStart(2, '0')}`;
+  const dd = String(vn.getUTCDate()).padStart(2, '0');
+  const mm = String(vn.getUTCMonth() + 1).padStart(2, '0');
+  const hh = String(vn.getUTCHours()).padStart(2, '0');
+  const min = String(vn.getUTCMinutes()).padStart(2, '0');
+  return `${dd}/${mm}/${vn.getUTCFullYear()} ${hh}:${min}`;
 }
 
 /**
@@ -34,10 +43,8 @@ export function ReceptionListPage() {
 
   const [date, setDate] = useState(getVietnamTodayDateString());
 
-  const doctorsQuery = useDoctorsQuery();
   const listQuery = useReceptionListQuery(date);
 
-  const doctorNameById = useMemo(() => new Map((doctorsQuery.data?.items ?? []).map((d) => [d.id, d.fullName])), [doctorsQuery.data]);
   const items = listQuery.data?.items ?? [];
 
   return (
@@ -81,7 +88,7 @@ export function ReceptionListPage() {
         </div>
       </div>
 
-      {(listQuery.isPending || doctorsQuery.isPending) && (
+      {listQuery.isPending && (
         <div className="min-h-0 flex-1 space-y-2 overflow-hidden rounded-lg bg-white p-4 shadow-sm">
           {Array.from({ length: 8 }).map((_, i) => (
             <Skeleton key={i} className="h-9 w-full" />
@@ -96,7 +103,7 @@ export function ReceptionListPage() {
         />
       )}
 
-      {listQuery.isSuccess && !doctorsQuery.isPending && items.length === 0 && (
+      {listQuery.isSuccess && items.length === 0 && (
         <EmptyState
           icon={ClipboardText}
           title="Chưa có ai được tiếp nhận trong ngày này"
@@ -104,46 +111,57 @@ export function ReceptionListPage() {
         />
       )}
 
-      {listQuery.isSuccess && !doctorsQuery.isPending && items.length > 0 && (
+      {listQuery.isSuccess && items.length > 0 && (
         <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-          <div role="table" aria-label="Danh sách tiếp nhận" className="flex h-full flex-col">
-            <div
-              role="row"
-              style={{ gridTemplateColumns: GRID_COLUMNS }}
-              className="grid flex-shrink-0 border-b border-slate-200 bg-slate-50 px-4 text-xs font-medium uppercase tracking-wide text-slate-500"
-            >
-              <div role="columnheader" className="py-2.5">Giờ tiếp nhận</div>
-              <div role="columnheader" className="py-2.5">Họ tên / SĐT</div>
-              <div role="columnheader" className="py-2.5">Bác sĩ</div>
-              <div role="columnheader" className="py-2.5">Mã lượt khám</div>
-              <div role="columnheader" className="py-2.5">Trạng thái</div>
-            </div>
+          {/* `overflow-x-auto` ở khung ngoài + `min-width` cố định ở khung trong (header lẫn thân
+              bảng cùng nằm trong) — cuộn ngang khi 8 cột không vừa màn hình hẹp, header luôn khớp
+              cột với thân bảng vì cuộn cùng một khối. */}
+          <div role="table" aria-label="Danh sách tiếp nhận" className="scroll-hover h-full overflow-x-auto">
+            <div className="flex h-full flex-col" style={{ minWidth: TABLE_MIN_WIDTH_PX }}>
+              <div
+                role="row"
+                style={{ gridTemplateColumns: GRID_COLUMNS }}
+                className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-bold uppercase tracking-wide text-slate-800"
+              >
+                <div role="columnheader" className="py-2.5">Mã lượt khám</div>
+                <div role="columnheader" className="py-2.5">Họ tên</div>
+                <div role="columnheader" className="py-2.5">Năm sinh</div>
+                <div role="columnheader" className="py-2.5">Số điện thoại</div>
+                <div role="columnheader" className="py-2.5">Địa chỉ</div>
+                <div role="columnheader" className="py-2.5">Ngày giờ tiếp nhận</div>
+                <div role="columnheader" className="py-2.5">Trạng thái</div>
+                <div role="columnheader" className="py-2.5">Người tiếp nhận</div>
+              </div>
 
-            <div className="flex-1 overflow-y-auto">
-              {items.map((item) => {
-                const meta = ENCOUNTER_STATUS_META[item.status];
-                return (
-                  <div
-                    key={item.encounterId}
-                    role="row"
-                    style={{ gridTemplateColumns: GRID_COLUMNS, minHeight: ROW_HEIGHT_PX }}
-                    className="grid items-center border-b border-slate-100 px-4 text-sm"
-                  >
-                    <div role="cell" className="tabular-nums text-slate-600">{formatTime(item.checkedInAt)}</div>
-                    <div role="cell" className="truncate">
-                      <div className="text-slate-900">{item.fullName}</div>
-                      <div className="text-xs text-slate-500">{item.phone}</div>
+              <div className="scroll-hover flex-1 overflow-y-auto overflow-x-hidden">
+                {items.map((item) => {
+                  const meta = ENCOUNTER_STATUS_META[item.status];
+                  return (
+                    <div
+                      key={item.encounterId}
+                      role="row"
+                      style={{ gridTemplateColumns: GRID_COLUMNS, minHeight: ROW_HEIGHT_PX }}
+                      className="grid items-center border-b border-slate-100 px-4 text-sm"
+                    >
+                      <div role="cell" className="truncate font-mono text-sm font-bold text-slate-800">{item.encounterNo}</div>
+                      <div role="cell" className="truncate text-slate-900">{item.fullName}</div>
+                      {/* Năm sinh — chưa có `dob` trong ReceptionListItem (packages/shared), hiện UI trước theo yêu cầu, khớp dữ liệu khi backend bổ sung. */}
+                      <div role="cell" className="text-slate-400">—</div>
+                      <div role="cell" className="text-slate-600">{item.phone}</div>
+                      {/* Địa chỉ — chưa có trong ReceptionListItem, tương tự Năm sinh. */}
+                      <div role="cell" className="truncate text-slate-400">—</div>
+                      <div role="cell" className="tabular-nums text-slate-600">{formatDateTime(item.checkedInAt)}</div>
+                      <div role="cell">
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${meta.bg} ${meta.text}`}>
+                          {meta.label}
+                        </span>
+                      </div>
+                      {/* Người tiếp nhận — chưa có trường lễ tân/người tạo trong ReceptionListItem, tương tự 2 cột trên. */}
+                      <div role="cell" className="text-slate-400">—</div>
                     </div>
-                    <div role="cell" className="truncate text-slate-600">{doctorNameById.get(item.doctorId) ?? '—'}</div>
-                    <div role="cell" className="font-mono text-xs text-slate-500">{item.encounterNo}</div>
-                    <div role="cell">
-                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${meta.bg} ${meta.text}`}>
-                        {meta.label}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>

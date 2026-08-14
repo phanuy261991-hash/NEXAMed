@@ -9,6 +9,7 @@ import {
   ListChecks,
   SidebarSimple,
   SlidersHorizontal,
+  Stethoscope,
   UserPlus,
   Users,
   type Icon,
@@ -27,7 +28,11 @@ const RECEPTION_ROLES = ['receptionist', 'nurse', 'doctor', 'clinic_admin'];
 /** "Hàng đợi khám" — khu vực RIÊNG cho bác sĩ (đã chốt lại với chủ dự án), không cần cho lễ tân/điều dưỡng. */
 const DOCTOR_QUEUE_ROLES = ['doctor', 'clinic_admin'];
 
-/** Đường dẫn thuộc nhóm "Tiếp nhận và Đặt lịch" — dùng để tự mở nhóm khi route đang active nằm trong đó. */
+/** Route của "Hàng đợi khám" — giữ nguyên dưới `features/reception/` (chưa có module `encounter`/
+ * `examination` thật ở web), chỉ đổi vị trí hiển thị sang nhóm "Khám bệnh" trong sidebar. */
+const EXAMINATION_GROUP_PATH = '/reception/doctor-queue';
+/** Đường dẫn thuộc nhóm "Tiếp nhận và Đặt lịch" — dùng để tự mở nhóm khi route đang active nằm trong
+ * đó. Loại trừ `EXAMINATION_GROUP_PATH` vì cùng tiền tố `/reception` nhưng nay thuộc nhóm khác. */
 const RECEPTION_GROUP_PATHS = ['/patients', '/appointments', '/reception'];
 /** Đường dẫn thuộc nhóm "Quản trị" — hiện chỉ có 1 mục con thật (Danh mục); thêm ADM-01/03 vào
  * đây khi có UI thật, không dựng placeholder trước. */
@@ -77,7 +82,11 @@ export function Sidebar() {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [receptionGroupOpen, setReceptionGroupOpen] = useState(
-    RECEPTION_GROUP_PATHS.some((path) => location.pathname.startsWith(path)),
+    RECEPTION_GROUP_PATHS.some((path) => location.pathname.startsWith(path)) &&
+      !location.pathname.startsWith(EXAMINATION_GROUP_PATH),
+  );
+  const [examinationGroupOpen, setExaminationGroupOpen] = useState(
+    location.pathname.startsWith(EXAMINATION_GROUP_PATH),
   );
   const [adminGroupOpen, setAdminGroupOpen] = useState(
     ADMIN_GROUP_PATHS.some((path) => location.pathname.startsWith(path)),
@@ -89,6 +98,7 @@ export function Sidebar() {
   const canSeeReception = user?.roles.some((role) => RECEPTION_ROLES.includes(role)) ?? false;
   const canSeeDoctorQueue = user?.roles.some((role) => DOCTOR_QUEUE_ROLES.includes(role)) ?? false;
   const receptionGroupExpanded = receptionGroupOpen && !collapsed;
+  const examinationGroupExpanded = examinationGroupOpen && !collapsed;
   const adminGroupExpanded = adminGroupOpen && !collapsed;
 
   return (
@@ -108,7 +118,7 @@ export function Sidebar() {
         <ul className="flex flex-col gap-0.5">
           <NavItem to="/" label="Tổng quan" icon={House} end collapsed={collapsed} />
 
-          {(canSeePatients || canSeeAppointments || canSeeReception || canSeeDoctorQueue) && (
+          {(canSeePatients || canSeeAppointments || canSeeReception) && (
             <li>
               <button
                 type="button"
@@ -147,7 +157,47 @@ export function Sidebar() {
                   {canSeeAppointments && <NavItem to="/appointments" label="Lịch hẹn" icon={CalendarBlank} collapsed={false} indent />}
                   {canSeeReception && <NavItem to="/reception" label="Danh sách tiếp nhận" icon={ClipboardText} end collapsed={false} indent />}
                   {canSeeReception && <NavItem to="/reception/new" label="Tiếp nhận bệnh nhân" icon={UserPlus} collapsed={false} indent />}
-                  {canSeeDoctorQueue && <NavItem to="/reception/doctor-queue" label="Hàng đợi khám" icon={ListChecks} collapsed={false} indent />}
+                </ul>
+              )}
+            </li>
+          )}
+
+          {canSeeDoctorQueue && (
+            <li>
+              <button
+                type="button"
+                title={collapsed ? 'Khám bệnh' : undefined}
+                onClick={() => {
+                  if (collapsed) {
+                    // Cùng quy tắc bắt buộc ở nhóm "Tiếp nhận và Đặt lịch" (.claude/docs/
+                    // ui-guidelines.md mục 8.1/8.3): bấm icon lúc thu gọn phải mở lại sidebar.
+                    setCollapsed(false);
+                    setExaminationGroupOpen(true);
+                  } else {
+                    setExaminationGroupOpen((v) => !v);
+                  }
+                }}
+                aria-expanded={examinationGroupExpanded}
+                className={`flex w-full items-center gap-3 rounded-md py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800/60 hover:text-white ${
+                  collapsed ? 'justify-center px-2' : 'px-3'
+                }`}
+              >
+                <Stethoscope size={collapsed ? 20 : 18} weight="regular" aria-hidden="true" className="flex-shrink-0" />
+                {!collapsed && (
+                  <>
+                    <span className="truncate text-left">Khám bệnh</span>
+                    <CaretRight
+                      size={13}
+                      weight="bold"
+                      aria-hidden="true"
+                      className={`ml-auto flex-shrink-0 transition-transform ${examinationGroupExpanded ? 'rotate-90' : ''}`}
+                    />
+                  </>
+                )}
+              </button>
+              {examinationGroupExpanded && (
+                <ul className="mt-0.5 flex flex-col gap-0.5 border-l border-slate-800 pl-3.5">
+                  <NavItem to={EXAMINATION_GROUP_PATH} label="Hàng đợi khám" icon={ListChecks} collapsed={false} indent />
                 </ul>
               )}
             </li>

@@ -19,7 +19,9 @@
 
 ### 2.1. Bảng màu theo ngữ cảnh (Semantic Colors)
 *Chỉ sử dụng các biến CSS/Tailwind này, tuyệt đối không dùng mã HEX cứng trong code component.*
-- **Brand (Thương hiệu):** `bg-blue-600` (Hover: `bg-blue-700`, Active: `bg-blue-800`).
+- **Brand (Thương hiệu):** `bg-blue-600` (Hover: `bg-blue-700`, Active: `bg-blue-800`) — dùng cho điều hướng/hành động chính (nút Lưu, sidebar active, link).
+- **Brand phụ — Lựa chọn (Selection accent, chốt 2026-08-14):** `bg-brand-teal` (`#099078`, Active/pressed: `bg-brand-teal-active`) — token định nghĩa ở `apps/web/src/app/index.css` (`@theme`), KHÔNG viết hex trực tiếp trong component. Dùng cho trạng thái ĐÃ CHỌN của thành phần lựa chọn 1-trong-nhiều dạng thẻ/chip (ví dụ "Nguồn đặt lịch", chọn Bác sĩ ở `AppointmentQuickCreatePanel.tsx`) — tách khỏi `blue-600` để tránh lạm dụng một màu xanh cho mọi trạng thái "đang chọn" trên cùng một form. **Không dùng cho điều hướng/nút hành động chính** — phạm vi đó vẫn là `blue-600`.
+  - **Hover (chưa chọn) kết hợp cả 2 màu thương hiệu**: viền `hover:border-blue-400` (màu chủ đạo, báo hiệu "bấm được") + nền `hover:bg-brand-teal-tint` (báo trước sắc thái sẽ có khi chọn) — không dùng thuần viền/nền teal cho hover (dễ lẫn với trạng thái đã chọn). Mẫu chuẩn cho thẻ/chip lựa chọn: unselected mặc định `border-slate-300`, hover `border-blue-400 bg-brand-teal-tint`, selected `border-brand-teal bg-brand-teal text-white`.
 - **Surface (Bề mặt lớp):** 
   - Nền app: `bg-slate-50`
   - Nền Card/Section: `bg-white`
@@ -35,6 +37,7 @@
 - `shadow-md`: Dành cho Card đang được hover hoặc Form nổi.
 - `shadow-lg`: Dành cho Dropdown, Popover (Z-index: 40).
 - `shadow-xl`: Dành cho Modal, Dialog, Toast Notifications (Z-index: 50).
+- **KHÔNG thêm `shadow-*` cho thành phần đã phân biệt rõ bằng màu nền đặc** (chốt 2026-08-14) — chủ dự án phản hồi thẻ/chip đã tô nền đặc (ví dụ trạng thái "đã chọn" ở mục 4.1c) mà còn thêm bóng đổ nhìn "rất AI tạo", không nét/không ổn. Quy tắc: đổ bóng chỉ dùng để phân TẦNG không gian (panel nổi trên nền, dropdown nổi trên trang, modal nổi trên overlay) — không dùng như hiệu ứng trang trí thêm cho chi tiết đã tự nổi bật bằng màu sắc/viền. Trước khi thêm `shadow-*` vào một trạng thái mới (hover/active/selected), tự hỏi: phần tử này có thực sự "nổi lên" khỏi một lớp khác không, hay chỉ đang đổi màu tại chỗ — nếu là vế sau thì không thêm bóng.
 
 ---
 
@@ -59,6 +62,18 @@ Claude PHẢI luôn code đủ 4 trạng thái này cho mọi màn hình/compone
 - **Focus Ring:** Khi input đang focus, BẮT BUỘC có viền sáng nổi bật (VD: `focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500`).
 - **Phản hồi tức thì:** Nút "Lưu/Xác nhận" phải chuyển sang trạng thái disabled và có icon loading nhỏ bên trong khi đang submit (gửi dữ liệu).
 
+### 4.1c. Giá trị đã nhập BẮT BUỘC nổi bật (chốt 2026-08-14)
+
+Chủ dự án phản hồi giá trị trong ô nhập quá mảnh/nhạt, khó chú ý — đối chiếu ảnh tham khảo đã gửi (nhãn nhỏ nhạt phía trên, giá trị đậm rõ phía dưới, khung viền rõ ràng).
+
+- Mọi ô nhập giá trị dữ liệu (input/textarea/Combobox) trong form nghiệp vụ: `text-[15px] font-semibold text-slate-900` — không còn `text-sm` thường (không đậm) như trước.
+- Ô readonly/disabled (mã tự sinh, năm sinh tính sẵn...): vẫn giữ nền `bg-slate-50` để phân biệt không sửa được, nhưng chữ đổi từ `text-slate-500` (nhạt) sang `text-slate-800` (đậm, vẫn đọc rõ) — **không dùng `text-slate-500` cho giá trị nữa**, chỉ dùng màu nhạt cho nhãn.
+- Nhãn (`label`) đổi nhỏ/nhạt hơn để tương phản với giá trị: `text-xs font-medium text-slate-500` (trước là `text-sm text-slate-700`).
+- Áp dụng đồng nhất cho MỌI nơi hiển thị dữ liệu dạng ô nhập — cả form Thêm mới lẫn form Chi tiết/Sửa (cùng component `disabled` prop), không phân biệt.
+- **Ngoại lệ có chủ đích — KHÔNG áp dụng** cho ô tìm kiếm (search box, ví dụ `PatientPicker`/danh sách bệnh nhân/`GeoPane`) — giữ nguyên `text-sm text-slate-900` thường, vì đây là ô gõ-để-lọc chứ không phải giá trị dữ liệu đã lưu.
+- `shared/ui/Combobox.tsx` áp dụng cùng token vì đây là component dùng chung cho MỌI dropdown (mục 4.1b) — sửa 1 chỗ, tự động đồng bộ toàn app.
+- **Chip/thẻ chọn 1-trong-nhiều KHÔNG được có giá trị mặc định tô sẵn màu "đã chọn"** khi người dùng chưa bấm gì (bug thật gặp ở "Nguồn đặt lịch" — state mặc định `'phone'` khiến ô đầu tiên tô màu ngay lúc mở form, chủ dự án phản hồi tưởng lỗi). State ban đầu phải là `null`/rỗng, chỉ tô màu sau khi người dùng bấm chọn thật; nếu trường bắt buộc thì chặn submit + dấu `*` đỏ, không tự gán giá trị mặc định.
+
 ### 4.1b. Combobox — chuẩn bắt buộc cho MỌI dropdown chọn 1 giá trị (chốt 2026-08-12, `docs/DECISIONS.md`)
 
 **BẮT BUỘC dùng `Combobox`** (`apps/web/src/shared/ui/Combobox.tsx`) cho mọi trường chọn 1 giá trị từ danh sách — **cấm dùng thẻ `<select>` HTML thuần** trong code mới, kể cả danh sách ngắn 3-4 mục (đồng nhất thị giác toàn app quan trọng hơn việc "danh sách ngắn không cần tìm kiếm"). Lý do chốt thành chuẩn: mũi tên mặc định của trình duyệt xấu, không đồng nhất giữa các trình duyệt/hệ điều hành, và `<select>` tự chọn hướng xổ lên/xuống theo khoảng trống còn lại trên màn hình — không kiểm soát được.
@@ -72,6 +87,14 @@ Claude PHẢI luôn code đủ 4 trạng thái này cho mọi màn hình/compone
 - Props: `id`, `value` (string), `options: {value, label}[]`, `onChange(value)`, `disabled?`, `required?`, `placeholder?`. Giá trị không phải string (ví dụ số) tự chuyển đổi ở nơi gọi (`String(n)` lúc hiển thị, `Number(v)` lúc `onChange`).
 
 Ví dụ đã áp dụng: Dân tộc/Quốc tịch/Giới tính (`PatientFormFields.tsx`), chọn bác sĩ + thời lượng khi đặt/sửa lịch hẹn (`AppointmentQuickCreatePanel.tsx`, `AppointmentDetailPanel.tsx`). Component mới phát sinh nhu cầu chọn 1 giá trị từ danh sách thì dùng lại `Combobox`, không viết `<select>` mới hay dựng component chọn khác.
+
+### 4.1d. TimeInput — chuẩn bắt buộc cho MỌI ô nhập giờ (chốt 2026-08-14)
+
+**BẮT BUỘC dùng `TimeInput`** (`apps/web/src/shared/ui/TimeInput.tsx`) cho mọi ô nhập giờ dạng `HH:mm` — **cấm dùng `<input type="time">`** trong code mới. Lý do chốt thành chuẩn: `<input type="time">` hiển thị theo locale hệ điều hành của từng máy trạm, có thể ra định dạng 12h kèm AM/PM ngoài ý muốn — không có cách ép 24h bằng CSS/JS thuần, trong khi PRD yêu cầu giờ hẹn/giờ làm việc luôn hiển thị 24h.
+
+Đặc tả `TimeInput`: ô nhập text có mặt nạ, gõ tuần tự 4 chữ số tự chèn dấu `:` sau 2 số đầu (ví dụ `0930` → `09:30`); rời khỏi ô (blur) mới chuẩn hoá/giới hạn giờ 0-23, phút 0-59, gõ dở hoặc sai định dạng thì quay về giá trị hợp lệ gần nhất đã có. Props: `id`, `value`/`onChange` (chuỗi `"HH:mm"`, giữ nguyên định dạng cũ của `<input type="time">` nên thay tại chỗ không cần đổi state/logic nơi gọi), `required?`, `disabled?`, `className?`.
+
+Ví dụ đã áp dụng: Giờ hẹn (`AppointmentQuickCreatePanel.tsx`), giờ dời lịch (`AppointmentDetailPanel.tsx`), giờ tiếp nhận (`ReceptionIntakeForm.tsx`), giờ mở/đóng cửa theo ngày (`ClinicHoursPane.tsx`).
 
 ### 4.2. Bảng dữ liệu y tế (Medical Data Tables)
 - **Cột:** Phải có tính năng cố định (sticky) cột "Tên bệnh nhân" ở bên trái và cột "Hành động" ở bên phải.
@@ -163,6 +186,19 @@ Hai lỗi dưới đây đã xảy ra thật khi làm màn hình bệnh nhân đ
 - **Không có nút "Thêm mới"** trên các màn hình danh sách thuần xem/tra cứu — việc tạo mới chuyển sang màn hình nghiệp vụ gốc (ví dụ bệnh nhân mới tạo tại luồng Đặt lịch hoặc Tiếp nhận, không tạo trực tiếp từ Danh sách bệnh nhân) rồi liên kết ngược lại danh sách khi cần.
 - **Mở chi tiết/sửa bằng double-click vào cột định danh** (ví dụ mã bệnh nhân), không phải click cả hàng — tránh mở nhầm khi người dùng chỉ muốn chọn/copy text trong hàng. Tương đương bàn phím (giữ đúng triết lý Keyboard-First mục 1): `Tab` focus vào hàng, `Enter` mở — vì double-click không có phím tương đương trực tiếp.
 - **Thao tác sửa chỉ hiện với vai trò có quyền cập nhật tương ứng** (tra theo ma trận mặc định ở `.claude/docs/security-audit.md`, ví dụ `patient.update`) — ẩn hẳn nút/khả năng sửa với vai trò không có quyền (không chỉ vô hiệu hoá `disabled`), theo cùng kiểu mảng vai trò tĩnh phía client đã dùng ở `Sidebar.tsx` (`ADMIN_ROLES`/`PATIENT_ROLES`) — không phát minh cơ chế phân quyền phía client mới.
+- **Tiêu đề cột (header) BẮT BUỘC nổi bật** (chốt 2026-08-14, phản hồi trực tiếp "quá mờ nhạt"): `border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800` — áp dụng đồng nhất cho MỌI bảng danh sách (kể cả bảng `<table>` gốc như `GeoPane`/`ReferenceCatalogPane` lẫn bảng dựng bằng CSS Grid). Không dùng biến thể nhạt hơn (`font-medium`/`text-slate-500`/viền `border-slate-200`) — đã xoá các bản dùng biến thể này (`ReceptionListPage`, `AppointmentListView`) để đồng nhất toàn app.
+- **Cột mã định danh (`font-mono`) BẮT BUỘC nổi bật, không chìm** (chốt 2026-08-14, cùng phản hồi trên áp cho `Mã lượt khám`): `font-mono text-sm font-bold text-slate-800` — **cấm** `text-xs text-slate-500` (quá nhỏ/nhạt, nhìn như đã vô hiệu hoá) dù đây chỉ là cột hiển thị thuần, không phải link. Áp dụng cho mọi cột mã (`encounterNo`, `code` ở `GeoPane`/`ReferenceCatalogPane`, và mã tương tự phát sinh sau này) — ngoại lệ: mã đã là link/có thể bấm (ví dụ `patientCode` ở `PatientListPage` mở hồ sơ khi double-click) giữ nguyên kiểu link đã có (`text-blue-600 underline`), không đổi theo quy tắc này.
+
+### 9c. Bảng nhiều cột cần cuộn ngang (chốt 2026-08-14)
+
+Áp dụng khi số cột đủ nhiều mà mỗi cột cần độ rộng tối thiểu để đọc được (không nên bóp hẹp bằng `fr`) — ví dụ "Danh sách tiếp nhận" (8 cột). Kỹ thuật:
+
+- Đổi `GRID_COLUMNS` từ tỷ lệ `fr` sang **px cố định từng cột** (vd `'140px 200px 100px 140px 240px 170px 130px 170px'`), cộng tổng lại đặt vào một hằng số `TABLE_MIN_WIDTH_PX` — đây là điều kiện bắt buộc để `overflow-x-auto` phát huy tác dụng (nội dung phải có chiều rộng thật lớn hơn khung nhìn, `fr` sẽ tự co lại vừa khung nên không bao giờ cuộn).
+- Cấu trúc 3 lớp: khung ngoài `overflow-x-auto` (cuộn ngang) → khung giữa `style={{ minWidth: TABLE_MIN_WIDTH_PX }}` chứa CẢ header lẫn thân bảng (để header luôn cuộn khớp cột theo thân bảng) → thân bảng `overflow-y-auto` (cuộn dọc, tách biệt).
+- **Lỗi thật đã xảy ra — 2 thanh cuộn ngang chồng nhau**: khung thân bảng đặt `overflow-y-auto` mà KHÔNG khai `overflow-x` — theo đặc tả CSS, trình duyệt tự suy ra `overflow-x: auto` cho trục còn lại, sinh thêm một thanh cuộn ngang RIÊNG của chính khung thân bảng, tách khỏi thanh cuộn của khung ngoài. **Bắt buộc thêm `overflow-x-hidden` vào khung có `overflow-y-auto`** mỗi khi nó nằm trong một khung cha đã tự lo `overflow-x-auto` — quy tắc chung: một trục cuộn chỉ nên có đúng MỘT khung chịu trách nhiệm, khung con không tự ý sinh thêm trục còn lại.
+- **Thanh cuộn ẨN mặc định, chỉ hiện khi rê chuột** (chốt 2026-08-14, phản hồi "thanh cuộn xám dày luôn hiện làm giao diện rối") — thêm class `scroll-hover` (định nghĩa ở `apps/web/src/app/index.css`) vào MỌI khung có `overflow-y-auto`/`overflow-x-auto`/`overflow-auto` trong danh sách, cả khung ngoài lẫn khung trong ở kỹ thuật cuộn ngang trên. Không viết CSS scrollbar tay ở từng nơi — luôn dùng lại class này.
+
+Ví dụ đã áp dụng: `ReceptionListPage.tsx` (cuộn ngang 8 cột), `PatientListPage.tsx`/`AppointmentListView.tsx`/`GeoPane.tsx` (chỉ cuộn dọc hoặc cả hai trục, vẫn dùng `scroll-hover`). Màn hình danh sách mới phát sinh sau này BẮT BUỘC thêm class `scroll-hover` vào khung cuộn ngay từ đầu, không đợi phản hồi mới sửa.
 
 ## 9b. Mẫu form nhiều trường theo khối (Boxed Section Form Pattern)
 

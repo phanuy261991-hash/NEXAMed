@@ -4,6 +4,7 @@ import type { AppointmentSummary, DoctorOption } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { Button } from '../../shared/ui/Button';
 import { Combobox } from '../../shared/ui/Combobox';
+import { TimeInput } from '../../shared/ui/TimeInput';
 import { useAuthStore } from '../auth/auth.store';
 import { ReceptionIntakeDialog } from '../reception/ReceptionIntakeDialog';
 import type { ReceptionIntakeCheckinContext } from '../reception/ReceptionIntakeForm';
@@ -153,7 +154,7 @@ export function AppointmentDetailPanel({
                     value={cancelReason}
                     onChange={(e) => setCancelReason(e.target.value)}
                     placeholder="Ví dụ: bệnh nhân xin đổi giờ khác"
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   />
                 </div>
               ) : (
@@ -185,13 +186,11 @@ export function AppointmentDetailPanel({
                   <label htmlFor="edit-time" className="mb-1.5 block text-xs font-semibold text-slate-600">
                     Giờ bắt đầu
                   </label>
-                  <input
+                  <TimeInput
                     id="edit-time"
-                    type="time"
-                    step={900}
                     value={editTime}
-                    onChange={(e) => setEditTime(e.target.value)}
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    onChange={setEditTime}
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   />
                 </div>
                 <div className="flex-1">

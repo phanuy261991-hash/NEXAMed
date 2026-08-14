@@ -28,7 +28,7 @@ function formatTime(iso: string): string {
  * tự biến mất khỏi hàng đợi (đã sang IN_CONSULTATION).
  */
 export function ReceptionDoctorQueuePage() {
-  useBreadcrumb([{ label: 'Tiếp nhận và Đặt lịch' }, { label: 'Hàng đợi khám' }]);
+  useBreadcrumb([{ label: 'Khám bệnh' }, { label: 'Hàng đợi khám' }]);
   const currentUser = useAuthStore((s) => s.user);
   const today = getVietnamTodayDateString();
   const [rowError, setRowError] = useState<string | null>(null);

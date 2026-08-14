@@ -1,1 +1,41 @@
 @import 'tailwindcss';
+
+/**
+ * Brand phụ — màu nhấn cho các thành phần LỰA CHỌN (chip/thẻ chọn 1-trong-nhiều: Nguồn đặt lịch,
+ * chọn Bác sĩ, và các trường hợp tương tự sau này) — tách khỏi `blue-600` (brand chính, dành cho
+ * điều hướng/hành động chính) để đỡ lạm dụng một màu xanh cho mọi trạng thái "đang chọn". Chốt
+ * 2026-08-14 theo yêu cầu chủ dự án (#099078). Xem .claude/docs/ui-guidelines.md mục 2.1.
+ */
+@theme {
+  --color-brand-teal: #099078;
+  --color-brand-teal-hover: #087a66;
+  --color-brand-teal-active: #065f50;
+  --color-brand-teal-tint: #e3f3f0;
+}
+
+/**
+ * Thanh cuộn ẨN mặc định, chỉ hiện khi rê chuột vào vùng cuộn (chốt 2026-08-14) — thanh cuộn xám
+ * dày luôn hiện làm giao diện rối, chủ dự án phản hồi trực tiếp. Dùng cho MỌI vùng cuộn trong danh
+ * sách (dọc lẫn ngang) thay vì để mặc định trình duyệt. Áp class `scroll-hover` vào phần tử có
+ * `overflow-y-auto`/`overflow-x-auto`/`overflow-auto`.
+ */
+.scroll-hover {
+  scrollbar-color: transparent transparent;
+}
+.scroll-hover:hover {
+  scrollbar-color: var(--color-slate-300) transparent;
+}
+.scroll-hover::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.scroll-hover::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 9999px;
+}
+.scroll-hover:hover::-webkit-scrollbar-thumb {
+  background-color: var(--color-slate-300);
+}
+.scroll-hover::-webkit-scrollbar-track {
+  background-color: transparent;
+}

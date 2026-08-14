@@ -3,6 +3,7 @@ import { ApiError } from '../../shared/api/client';
 import { formatVnd } from '../../shared/format/currency';
 import { Button } from '../../shared/ui/Button';
 import { Combobox, withLegacyValueOption } from '../../shared/ui/Combobox';
+import { TimeInput } from '../../shared/ui/TimeInput';
 import { useDoctorsQuery } from '../appointment/appointment.queries';
 import { getVietnamTodayDateString, minutesToLabel, vietnamNowMinutes, vnDateTimeToIso } from '../appointment/schedule-grid.utils';
 import { PatientPicker, type PickedPatient } from '../patient/PatientPicker';
@@ -10,7 +11,7 @@ import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog
 import { useCheckInMutation, useRegisterReceptionMutation } from './reception.queries';
 
 const inputClassName =
-  'w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
+  'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 const labelClassName = 'mb-1.5 block text-xs font-semibold text-slate-600';
 /** Boxed Section Form Pattern — .claude/docs/ui-guidelines.md mục 9b. */
 const sectionBoxClassName = 'relative rounded-lg border border-slate-200 p-5 pt-7';
@@ -188,7 +189,7 @@ export function ReceptionIntakeForm({
                 <label htmlFor="intake-time" className={labelClassName}>
                   Giờ tiếp nhận
                 </label>
-                <input id="intake-time" type="time" step={60} value={time} onChange={(e) => setTime(e.target.value)} className={inputClassName} />
+                <TimeInput id="intake-time" value={time} onChange={setTime} className={inputClassName} />
               </div>
             </div>
           )}

@@ -220,7 +220,6 @@ export function AppointmentSchedulePage() {
         initialDoctorId={quickCreate.doctorId}
         initialTime={quickCreate.time}
         doctors={doctors}
-        dayAppointments={dayAppointments}
         defaultDurationMinutes={defaultDuration}
       />
 

@@ -127,10 +127,10 @@ function GeoTable({ rows, emptyLabel }: { rows: { code: string; name: string }[]
     return <EmptyState icon={MagnifyingGlass} title={emptyLabel} description="Thử từ khoá khác hoặc bỏ bộ lọc tìm kiếm." />;
   }
   return (
-    <div className="flex-1 overflow-auto rounded-lg border border-slate-200 bg-white">
+    <div className="scroll-hover flex-1 overflow-auto rounded-lg border border-slate-200 bg-white">
       <table className="w-full border-collapse text-sm">
         <thead>
-          <tr className="border-b-2 border-blue-600 bg-slate-100 text-left text-xs font-semibold uppercase tracking-wide text-slate-700">
+          <tr className="border-b-2 border-blue-600 bg-slate-100 text-left text-xs font-bold uppercase tracking-wide text-slate-800">
             <th className="w-28 px-4 py-2.5">Mã</th>
             <th className="px-4 py-2.5">Tên</th>
           </tr>
@@ -138,7 +138,7 @@ function GeoTable({ rows, emptyLabel }: { rows: { code: string; name: string }[]
         <tbody>
           {rows.map((r) => (
             <tr key={r.code} className="border-b border-slate-200 last:border-0">
-              <td className="px-4 py-2 font-mono text-xs text-slate-500">{r.code}</td>
+              <td className="px-4 py-2 font-mono text-sm font-bold text-slate-800">{r.code}</td>
               <td className="px-4 py-2 text-slate-900">{r.name}</td>
             </tr>
           ))}
