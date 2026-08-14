@@ -143,7 +143,7 @@ export function ReceptionListPage() {
                       style={{ gridTemplateColumns: GRID_COLUMNS, minHeight: ROW_HEIGHT_PX }}
                       className="grid items-center border-b border-slate-100 px-4 text-sm"
                     >
-                      <div role="cell" className="truncate font-mono text-sm font-bold text-slate-800">{item.encounterNo}</div>
+                      <div role="cell" className="truncate font-semibold text-blue-700">{item.encounterNo}</div>
                       <div role="cell" className="truncate text-slate-900">{item.fullName}</div>
                       {/* Năm sinh — chưa có `dob` trong ReceptionListItem (packages/shared), hiện UI trước theo yêu cầu, khớp dữ liệu khi backend bổ sung. */}
                       <div role="cell" className="text-slate-400">—</div>
