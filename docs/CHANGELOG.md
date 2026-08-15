@@ -2,6 +2,16 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-15 (5)
+
+Trang 404 thương hiệu + redirect `/admin` → `/admin/catalog` (docs/DECISIONS.md #048):
+
+- **Bối cảnh**: chủ dự án báo lỗi thật — bấm gợi ý lịch sử trình duyệt dạng `http://localhost:5173/admin` (rút gọn từ `/admin/catalog` đã ghé trước) ra trang trắng mặc định xấu của `react-router` ("Unexpected Application Error! 404 Not Found"). `/admin` chưa từng là route thật, và router chưa có route bắt-mọi nào.
+- **`router.tsx`**: thêm `{ path: 'admin', element: <Navigate to="/admin/catalog" replace /> }` xử lý đúng ca cụ thể đã báo. Thêm `{ path: '*', element: <NotFoundPage /> }` là mục CUỐI trong `children` của route `/` (bắt mọi URL con không khớp khác).
+- **`apps/web/src/app/NotFoundPage.tsx` (mới)**: dùng đúng khuôn `DashboardPage`/`ComingSoonPage` (breadcrumb + `EmptyState` + nút "Về trang chủ") — render kèm sidebar/topbar như trang thường vì `RequireAuth` luôn chặn user chưa đăng nhập chuyển `/login` TRƯỚC khi tới được route `*` này, không cần route `*` riêng ở ngoài `AppShell`.
+- **Đã xác minh thật**: `pnpm -w typecheck/build` sạch toàn workspace. Playwright qua trình duyệt thật (tài khoản `dev.admin`): `/admin` → redirect đúng; `/admin/khong-ton-tai` và `/duong-dan-linh-tinh` (ngẫu nhiên) → đều hiện đúng trang 404 thương hiệu kèm sidebar/breadcrumb; chưa đăng nhập gọi đường dẫn linh tinh → về đúng `/login`. Không lỗi console ngoài dự kiến.
+- Cập nhật `docs/DECISIONS.md` (#048), `docs/CURRENT.md`.
+
 ## 2026-08-15 (4)
 
 Tiêu đề tab trình duyệt động — "menu cha - trang đang chọn" (docs/DECISIONS.md #047):

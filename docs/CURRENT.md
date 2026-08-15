@@ -135,6 +135,8 @@ Sprint 1 — Nền tảng đã xong toàn bộ 11 việc (S1-01 → S1-09). **Sp
 
 - **Tiêu đề tab trình duyệt động (`docs/DECISIONS.md` #047)** — tái dùng nguyên `BreadcrumbProvider` có sẵn (không thêm API riêng ở từng trang): tab hiện `"{menu cha} - {trang/tab đang chọn}"` (ví dụ `Tiếp nhận và Đặt lịch - Lịch hẹn`), về `"NEXAMed"` khi chưa đăng nhập/không có breadcrumb. Đã xác minh thật qua Playwright đọc `document.title` ở nhiều trang.
 
+- **Trang 404 thương hiệu + redirect `/admin` → `/admin/catalog` (`docs/DECISIONS.md` #048)** — chủ dự án báo lỗi thật: gợi ý lịch sử trình duyệt dạng `/admin` (rút gọn từ `/admin/catalog`) ra trang trắng mặc định xấu của `react-router`. Thêm route `{path:'admin', element:<Navigate to="/admin/catalog"/>}` xử lý đúng ca cụ thể; thêm `NotFoundPage.tsx` gắn ở `path:'*'` (mục cuối `children` của route `/`, trong `AppShell`) bắt mọi URL không khớp khác — render kèm sidebar/breadcrumb như trang thường, không đứng riêng. Đã xác minh thật qua Playwright cả 4 trường hợp (redirect, 404 trong `/admin/*`, 404 ngẫu nhiên, chưa đăng nhập vẫn về đúng `/login`).
+
 ## Đang chờ
 
 - ADM-07 (P1): UI cấu hình ma trận phân quyền.

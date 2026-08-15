@@ -1,5 +1,5 @@
 import { Flask, GraduationCap, Pill, Users } from '@phosphor-icons/react';
-import { createBrowserRouter, Outlet } from 'react-router-dom';
+import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import { AppointmentSchedulePage } from '../features/appointment/AppointmentSchedulePage';
 import { LoginPage } from '../features/auth/LoginPage';
 import { RequireAuth } from '../features/auth/RequireAuth';
@@ -14,6 +14,7 @@ import { ReceptionListPage } from '../features/reception/ReceptionListPage';
 import { ReceptionRegisterPage } from '../features/reception/ReceptionRegisterPage';
 import { AppShell } from '../shared/layout/AppShell';
 import { ComingSoonPage } from '../shared/ui/ComingSoonPage';
+import { NotFoundPage } from './NotFoundPage';
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -35,6 +36,9 @@ export const router = createBrowserRouter([
       { path: 'reception', element: <ReceptionListPage /> },
       { path: 'reception/new', element: <ReceptionRegisterPage /> },
       { path: 'reception/doctor-queue', element: <ReceptionDoctorQueuePage /> },
+      // Trình duyệt hay gợi ý gõ tắt "/admin" (rút gọn từ lịch sử "/admin/catalog") — chưa từng
+      // là route thật, trước đây báo lỗi 404 mặc định của react-router (docs/DECISIONS.md #048).
+      { path: 'admin', element: <Navigate to="/admin/catalog" replace /> },
       { path: 'admin/catalog', element: <CatalogAdminPage /> },
       {
         path: 'admin/catalog-organization',
@@ -77,6 +81,11 @@ export const router = createBrowserRouter([
         ),
       },
       { path: 'admin/system-config', element: <ClinicConfigPage /> },
+      // Bắt mọi đường dẫn con không khớp — thay trang trắng 404 mặc định của react-router bằng
+      // trang thương hiệu (docs/DECISIONS.md #048). Route `*` ở đây đã phủ hầu hết trường hợp
+      // thật (`RequireAuth` chặn lúc chưa đăng nhập, chuyển `/login` TRƯỚC khi Outlet render tới
+      // route này — không cần thêm `*` cấp gốc ngoài `AppShell`, sẽ không bao giờ khớp tới).
+      { path: '*', element: <NotFoundPage /> },
     ],
   },
 ]);
