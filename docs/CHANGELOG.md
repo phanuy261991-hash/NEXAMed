@@ -2,6 +2,18 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-15 (3)
+
+Trang "Danh mục hành chính" — tách "Danh mục dùng chung" thành pill riêng từng danh mục, sửa bug breadcrumb tĩnh, thêm 4 sub-menu "Sắp ra mắt" (docs/DECISIONS.md #045, #046):
+
+- **`ConfigScreenShell.tsx` thêm chế độ "pill phẳng"**: `ConfigScreenPill.items` đổi optional — khi pill không khai `items`, khung không render cột trái nữa, nội dung cột phải sát ngay thanh pill. `ClinicConfigPage` (1 pill × 2 mục) giữ nguyên chế độ cũ, không đổi hành vi.
+- **`CatalogAdminPage.tsx`**: đổi tên trang "Danh mục" → "Danh mục hành chính" (sidebar + breadcrumb + `pageLabel`, route giữ nguyên `/admin/catalog`). 6 danh mục (Dân tộc, Phường/Xã, Tỉnh/Thành, Quốc tịch, Nguồn khách hàng, Loại khám) trước gộp chung 1 pill "Danh mục dùng chung" nay mỗi cái là 1 pill riêng — bỏ hẳn pill bọc ngoài.
+- **Sửa bug thật phát hiện lúc chủ dự án dùng thử**: breadcrumb khai tĩnh một lần lúc mount, bấm đổi pill (ví dụ "Nguồn khách hàng") breadcrumb không cập nhật, vẫn đứng ở "Danh mục hành chính". Sửa cho cả `CatalogAdminPage` (theo `activePillKey`) lẫn `ClinicConfigPage` (theo `activeItemKey`, cùng lỗi tiềm ẩn, sửa luôn cho nhất quán).
+- **4 sub-menu "Sắp ra mắt" mới** trong nhóm Quản trị, giữa "Danh mục hành chính" và "Cấu hình hệ thống": Danh mục Tổ chức và Nhân sự, Danh mục Chuyên môn, Danh mục cận lâm sàng, Danh mục Dược và Vật tư. Ngoại lệ có chủ đích với quy tắc "không dựng menu cho tính năng chưa xây" — đã hỏi qua `AskUserQuestion` trước khi làm, chủ dự án chọn trang rỗng thật (`ComingSoonPage.tsx` mới, dùng chung) và xác nhận **không** mở rộng phạm vi v1 (Cận lâm sàng/Dược và Vật tư vẫn ngoài phạm vi theo `CLAUDE.md`). 4 route mới trong `router.tsx` (`admin/catalog-organization|clinical|paraclinical|pharmacy`), không gọi API nào.
+- Không migration/schema/API contract nào đổi.
+- **Đã xác minh thật**: `pnpm -w typecheck/build` sạch toàn workspace. Playwright qua trình duyệt thật (tài khoản `dev.admin`): sidebar đúng nhãn/thứ tự; 6 pill Danh mục hành chính đúng, không còn "Danh mục dùng chung"; không còn cột trái; chuyển pill đổi đúng nội dung; breadcrumb đổi đúng theo pill/mục ở cả 2 trang cấu hình; 4 trang "Sắp ra mắt" hiện đúng; không lỗi console ngoài dự kiến (401 pre-login đã biết).
+- Cập nhật `.claude/docs/ui-guidelines.md` (mục 10, điểm 8-9), `docs/DECISIONS.md` (#045, #046), `docs/CURRENT.md`.
+
 ## 2026-08-15 (2)
 
 Sidebar — sắp xếp lại thứ tự sub-menu nhóm "Tiếp nhận và Đặt lịch" + loại bỏ slashed zero từ toàn bộ dự án:

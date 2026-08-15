@@ -30,16 +30,23 @@ const FIRST_PILL = PILLS[0]!;
  * khi ít lựa chọn (đã hỏi và chốt, tránh 2 trang cấu hình trông khác nhau).
  */
 export function ClinicConfigPage() {
-  useBreadcrumb([{ label: 'Quản trị' }, { label: 'Cấu hình hệ thống' }]);
-
   const [activePillKey, setActivePillKey] = useState(FIRST_PILL.key);
-  const [activeItemKey, setActiveItemKey] = useState(FIRST_PILL.items[0]!.key);
+  const [activeItemKey, setActiveItemKey] = useState(FIRST_PILL.items![0]!.key);
+
+  const activeItemLabel =
+    PILLS.find((p) => p.key === activePillKey)?.items?.find((i) => i.key === activeItemKey)?.label ??
+    'Cấu hình hệ thống';
+
+  // Đoạn cuối breadcrumb phải đổi theo mục đang chọn ở cột trái — cùng lỗi đã sửa ở
+  // `CatalogAdminPage` (docs/DECISIONS.md #045): breadcrumb tĩnh không phản ánh đúng vị trí thật
+  // đang xem khi đổi mục (ví dụ đứng ở "Giờ làm việc & Slot" vẫn hiện "Cấu hình hệ thống").
+  useBreadcrumb([{ label: 'Quản trị' }, { label: 'Cấu hình hệ thống', to: '/admin/system-config' }, { label: activeItemLabel }]);
 
   function selectPill(pillKey: string) {
     const pill = PILLS.find((p) => p.key === pillKey);
     if (!pill) return;
     setActivePillKey(pillKey);
-    setActiveItemKey(pill.items[0]!.key);
+    setActiveItemKey(pill.items![0]!.key);
   }
 
   return (

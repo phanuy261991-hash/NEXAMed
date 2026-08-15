@@ -1,3 +1,4 @@
+import { Flask, GraduationCap, Pill, Users } from '@phosphor-icons/react';
 import { createBrowserRouter, Outlet } from 'react-router-dom';
 import { AppointmentSchedulePage } from '../features/appointment/AppointmentSchedulePage';
 import { LoginPage } from '../features/auth/LoginPage';
@@ -12,6 +13,7 @@ import { ReceptionDoctorQueuePage } from '../features/reception/ReceptionDoctorQ
 import { ReceptionListPage } from '../features/reception/ReceptionListPage';
 import { ReceptionRegisterPage } from '../features/reception/ReceptionRegisterPage';
 import { AppShell } from '../shared/layout/AppShell';
+import { ComingSoonPage } from '../shared/ui/ComingSoonPage';
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -34,6 +36,46 @@ export const router = createBrowserRouter([
       { path: 'reception/new', element: <ReceptionRegisterPage /> },
       { path: 'reception/doctor-queue', element: <ReceptionDoctorQueuePage /> },
       { path: 'admin/catalog', element: <CatalogAdminPage /> },
+      {
+        path: 'admin/catalog-organization',
+        element: (
+          <ComingSoonPage
+            pageTitle="Danh mục Tổ chức và Nhân sự"
+            icon={Users}
+            description="Khoa/phòng, chức danh, nhân sự phòng khám sẽ quản lý được ở đây khi module tương ứng ra đời."
+          />
+        ),
+      },
+      {
+        path: 'admin/catalog-clinical',
+        element: (
+          <ComingSoonPage
+            pageTitle="Danh mục Chuyên môn"
+            icon={GraduationCap}
+            description="Danh mục chuyên môn khám chữa bệnh sẽ quản lý được ở đây khi module tương ứng ra đời."
+          />
+        ),
+      },
+      {
+        path: 'admin/catalog-paraclinical',
+        element: (
+          <ComingSoonPage
+            pageTitle="Danh mục Cận lâm sàng"
+            icon={Flask}
+            description="Danh mục xét nghiệm, chẩn đoán hình ảnh sẽ quản lý được ở đây khi module tương ứng ra đời."
+          />
+        ),
+      },
+      {
+        path: 'admin/catalog-pharmacy',
+        element: (
+          <ComingSoonPage
+            pageTitle="Danh mục Dược và Vật tư"
+            icon={Pill}
+            description="Danh mục thuốc, vật tư y tế sẽ quản lý được ở đây khi module tương ứng ra đời."
+          />
+        ),
+      },
       { path: 'admin/system-config', element: <ClinicConfigPage /> },
     ],
   },

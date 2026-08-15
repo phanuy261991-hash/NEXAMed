@@ -3,10 +3,13 @@ import {
   CalendarBlank,
   CaretRight,
   ClipboardText,
+  Flask,
   FolderSimple,
   GearSix,
+  GraduationCap,
   House,
   ListChecks,
+  Pill,
   SidebarSimple,
   SlidersHorizontal,
   Stethoscope,
@@ -34,8 +37,10 @@ const EXAMINATION_GROUP_PATH = '/reception/doctor-queue';
 /** Đường dẫn thuộc nhóm "Tiếp nhận và Đặt lịch" — dùng để tự mở nhóm khi route đang active nằm trong
  * đó. Loại trừ `EXAMINATION_GROUP_PATH` vì cùng tiền tố `/reception` nhưng nay thuộc nhóm khác. */
 const RECEPTION_GROUP_PATHS = ['/patients', '/appointments', '/reception'];
-/** Đường dẫn thuộc nhóm "Quản trị" — hiện chỉ có 1 mục con thật (Danh mục); thêm ADM-01/03 vào
- * đây khi có UI thật, không dựng placeholder trước. */
+/** Đường dẫn thuộc nhóm "Quản trị" — có 2 mục con thật (Danh mục hành chính, Cấu hình hệ thống) và
+ * 4 mục "Sắp ra mắt" đặt chỗ theo yêu cầu chủ dự án (docs/DECISIONS.md #046, ComingSoonPage — vẫn
+ * KHÔNG viết logic/schema nghiệp vụ, không mở rộng phạm vi v1). Thêm ADM-01/03 vào đây khi có UI
+ * thật. */
 const ADMIN_GROUP_PATHS = ['/admin'];
 
 interface NavItemProps {
@@ -239,7 +244,11 @@ export function Sidebar() {
               </button>
               {adminGroupExpanded && (
                 <ul className="mt-0.5 flex flex-col gap-0.5 border-l border-slate-800 pl-3.5">
-                  <NavItem to="/admin/catalog" label="Danh mục" icon={FolderSimple} collapsed={false} indent />
+                  <NavItem to="/admin/catalog" label="Danh mục hành chính" icon={FolderSimple} collapsed={false} indent />
+                  <NavItem to="/admin/catalog-organization" label="Danh mục Tổ chức và Nhân sự" icon={Users} collapsed={false} indent />
+                  <NavItem to="/admin/catalog-clinical" label="Danh mục Chuyên môn" icon={GraduationCap} collapsed={false} indent />
+                  <NavItem to="/admin/catalog-paraclinical" label="Danh mục cận lâm sàng" icon={Flask} collapsed={false} indent />
+                  <NavItem to="/admin/catalog-pharmacy" label="Danh mục Dược và Vật tư" icon={Pill} collapsed={false} indent />
                   <NavItem to="/admin/system-config" label="Cấu hình hệ thống" icon={SlidersHorizontal} collapsed={false} indent />
                 </ul>
               )}
