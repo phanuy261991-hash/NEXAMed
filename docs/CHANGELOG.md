@@ -2,6 +2,15 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-15 (4)
+
+Tiêu đề tab trình duyệt động — "menu cha - trang đang chọn" (docs/DECISIONS.md #047):
+
+- **`breadcrumb.context.tsx`**: `BreadcrumbProvider` thêm `useEffect` đồng bộ `document.title` theo `items` hiện có — không thêm API/prop riêng ở từng trang. `computeDocumentTitle`: 0 đoạn → `"NEXAMed"`; 1 đoạn → `"{đoạn} - NEXAMed"`; ≥2 đoạn → `"{đoạn đầu} - {đoạn cuối}"`. Thêm `useEffect` cleanup trả tiêu đề về `"NEXAMed"` khi rời `AppShell` (đăng xuất về `/login`).
+- Không sửa trang nào khác — tự động đúng cho mọi trang đã gọi `useBreadcrumb` từ trước, kể cả trang có pill/tab (nhờ breadcrumb đã phản ánh đúng pill đang chọn từ #045).
+- **Đã xác minh thật**: `pnpm -w typecheck` sạch toàn workspace. Playwright đọc `document.title` thật qua nhiều trang (Tổng quan, Lịch hẹn, Danh sách bệnh nhân, Danh mục hành chính đổi pill, trang "Sắp ra mắt", về `/login`) — đúng cả 6 trường hợp, không lỗi console ngoài dự kiến.
+- Cập nhật `docs/DECISIONS.md` (#047), `docs/CURRENT.md`.
+
 ## 2026-08-15 (3)
 
 Trang "Danh mục hành chính" — tách "Danh mục dùng chung" thành pill riêng từng danh mục, sửa bug breadcrumb tĩnh, thêm 4 sub-menu "Sắp ra mắt" (docs/DECISIONS.md #045, #046):
