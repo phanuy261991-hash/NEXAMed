@@ -39,3 +39,12 @@
 .scroll-hover::-webkit-scrollbar-track {
   background-color: transparent;
 }
+
+/**
+ * Tắt slashed zero (kiểu chữ số 0 có gạch chéo) trên toàn bộ dự án — sử dụng
+ * font-variant-numeric để yêu cầu lining figures thay vì slashed zero (chốt 2026-08-15).
+ * Áp dụng cho mọi phần tử mặc định, có thể override nếu cần.
+ */
+html {
+  font-variant-numeric: lining-nums;
+}

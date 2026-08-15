@@ -403,7 +403,7 @@ function BookingConfirmDialog({ appointment, date, onConfirm }: { appointment: A
           <span className="font-semibold">
             {timeLabel} · {formatDateLabel(date)}
           </span>{' '}
-          với mã số là: <span className="font-mono font-semibold text-blue-700">{appointment.bookingCode}</span>
+          với mã số là: <span className="font-semibold text-blue-700 tracking-wide">{appointment.bookingCode}</span>
         </p>
         <Button type="button" className="w-full" onClick={onConfirm}>
           Xác nhận

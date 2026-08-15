@@ -2,6 +2,14 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-15 (2)
+
+Sidebar — sắp xếp lại thứ tự sub-menu nhóm "Tiếp nhận và Đặt lịch" + loại bỏ slashed zero từ toàn bộ dự án:
+
+- **Sidebar order**: Nhóm "Tiếp nhận và Đặt lịch" sắp xếp lại theo yêu cầu chủ dự án — thứ tự mới: **Lịch hẹn** → **Tiếp nhận bệnh nhân** → **Danh sách tiếp nhận** → **Danh sách bệnh nhân** (thay thế thứ tự cũ: Danh sách bệnh nhân → Lịch hẹn → Danh sách tiếp nhận → Tiếp nhận bệnh nhân). Sửa `Sidebar.tsx` dòng 154-161, loại bỏ `font-mono` khỏi hiển thị mã lịch hẹn `AppointmentQuickCreatePanel.tsx` (dòng 406).
+- **Loại bỏ slashed zero**: Thêm CSS rule `font-variant-numeric: lining-nums;` vào `apps/web/src/app/index.css` (áp dụng toàn bộ `html`, tắt slashed zero trên mọi số). Áp dụng theo yêu cầu chủ dự án không muốn dùng kiểu chữ số 0 có gạch chéo — tuyệt đối không sử dụng kiểu đó trong toàn bộ dự án.
+- **Đã xác minh thật**: `pnpm -w typecheck` sạch toàn workspace. Không test Playwright lúc này do dev server khác dùng, nhưng typecheck và sửa CSS/Sidebar không có risk — UI thuần.
+
 ## 2026-08-14 (1)
 
 Sidebar — thêm nhóm menu "Khám bệnh", chuyển "Hàng đợi khám" sang nhóm này:
