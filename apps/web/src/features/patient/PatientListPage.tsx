@@ -149,13 +149,13 @@ export function PatientListPage() {
               style={{ gridTemplateColumns: GRID_COLUMNS }}
               className="grid flex-shrink-0 gap-x-4 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-bold uppercase tracking-wide text-slate-800"
             >
-              <div role="columnheader" className="py-2.5">Mã bệnh nhân</div>
-              <div role="columnheader" className="py-2.5">Họ tên</div>
-              <div role="columnheader" className="py-2.5">CCCD</div>
-              <div role="columnheader" className="py-2.5">Giới tính</div>
-              <div role="columnheader" className="py-2.5">Năm sinh</div>
-              <div role="columnheader" className="py-2.5">Điện thoại</div>
-              <div role="columnheader" className="py-2.5">Địa chỉ</div>
+              <div role="columnheader" className="py-2.5 text-center">Mã bệnh nhân</div>
+              <div role="columnheader" className="py-2.5 text-center">Họ tên</div>
+              <div role="columnheader" className="py-2.5 text-center">CCCD</div>
+              <div role="columnheader" className="py-2.5 text-center">Giới tính</div>
+              <div role="columnheader" className="py-2.5 text-center">Năm sinh</div>
+              <div role="columnheader" className="py-2.5 text-center">Điện thoại</div>
+              <div role="columnheader" className="py-2.5 text-center">Địa chỉ</div>
             </div>
 
             <div ref={scrollParentRef} className="scroll-hover flex-1 overflow-y-auto">
@@ -192,16 +192,16 @@ export function PatientListPage() {
                       <div
                         role="cell"
                         onDoubleClick={() => openPatient(patient.id)}
-                        className="w-fit cursor-pointer font-medium text-blue-600 underline decoration-dotted underline-offset-2 hover:text-blue-700"
+                        className="cursor-pointer text-center font-medium text-blue-600 hover:text-blue-700"
                       >
                         {patient.patientCode}
                       </div>
-                      <div role="cell" className="truncate text-slate-900">{patient.fullName}</div>
-                      <div role="cell" className="text-slate-600">{patient.nationalIdMasked ?? '—'}</div>
-                      <div role="cell" className="text-slate-600">{GENDER_LABEL[patient.gender]}</div>
-                      <div role="cell" className="text-slate-600">{computeBirthYear(patient.dob)}</div>
-                      <div role="cell" className="text-slate-600">{patient.phone}</div>
-                      <div role="cell" className="truncate text-slate-600">
+                      <div role="cell" className="truncate font-medium text-slate-900">{patient.fullName}</div>
+                      <div role="cell" className="text-center font-medium text-slate-600">{patient.nationalIdMasked ?? '—'}</div>
+                      <div role="cell" className="text-center font-medium text-slate-600">{GENDER_LABEL[patient.gender]}</div>
+                      <div role="cell" className="text-center font-medium text-slate-600">{computeBirthYear(patient.dob)}</div>
+                      <div role="cell" className="text-center font-medium text-slate-600">{patient.phone}</div>
+                      <div role="cell" className="truncate font-medium text-slate-600">
                         {formatAddressLine(patient.address, provinceNameByCode, wardNameByCode) || '—'}
                       </div>
                     </div>

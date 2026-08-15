@@ -2,6 +2,39 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-15 (8)
+
+Căn lề dữ liệu bảng danh sách, màu nhấn phụ cho cột "Thời gian", dọn sạch `font-mono` — nguyên nhân gốc slashed zero (docs/DECISIONS.md #051):
+
+- **Căn lề** (5 bảng danh sách): tiêu đề cột LUÔN `text-center` (kể cả Họ tên/Địa chỉ). Dữ liệu: `text-center` mặc định, ngoại lệ `text-left` cho cột Tên người (Họ tên, Bác sĩ) và Địa chỉ. Áp dụng `PatientListPage.tsx`, `AppointmentListView.tsx`, `ReceptionListPage.tsx`, `ReferenceCatalogPane.tsx`, `GeoPane.tsx`.
+- **`AppointmentListView.tsx`**: dòng giờ ở cột "Thời gian" đổi `text-blue-600` → `text-brand-teal` (#099078) theo yêu cầu chủ dự án.
+- **Sửa dứt điểm slashed zero** — bản sửa lần đầu (2026-08-15 (2)) chẩn đoán chưa đủ: `font-variant-numeric: lining-nums` không tắt được số 0 gạch chéo của font monospace (đó là thiết kế glyph, không phải kiểu số lining/old-style). Quét `grep -r "font-mono" apps/web/src` phát hiện 3 chỗ còn sót (`AppointmentDetailPanel.tsx` — đúng nơi chủ dự án báo lại, `ReferenceCatalogPane.tsx`, `GeoPane.tsx`), đổi hết sang `font-semibold`/`font-bold` (font chữ thường của app). Xác nhận `grep` trả về rỗng sau khi sửa.
+- Không migration/schema/API nào đổi — thuần CSS.
+- **Đã xác minh thật**: `pnpm -w typecheck` sạch toàn workspace. Playwright qua trình duyệt thật (tài khoản `dev.admin`): 5 bảng đúng căn lề; cột "Thời gian" đúng màu teal; panel "Chi tiết lịch hẹn" hết slashed zero. Không lỗi console ngoài dự kiến.
+- Cập nhật `.claude/docs/ui-guidelines.md` (mục 9 nhóm 3 + cảnh báo `font-mono`, mục 9e, 9f mới), `docs/DECISIONS.md` (#051), `docs/CURRENT.md`.
+
+## 2026-08-15 (7)
+
+Tăng độ đậm chữ dữ liệu trong bảng danh sách + gộp cột "Thời gian" 2 dòng ở Lịch hẹn (docs/DECISIONS.md #050):
+
+- **Bối cảnh**: chủ dự án phản hồi chữ trong bảng danh sách "mờ nhạt, không có điểm nhấn", yêu cầu chỉnh "tầm 400". Đo thật bằng `getComputedStyle` qua Playwright: `font-weight` các ô dữ liệu ĐÃ LÀ `400` từ trước — áp literal "400" sẽ không có tác dụng gì. Quyết định nâng lên `font-medium` (500) để thực sự giải quyết cảm giác mờ nhạt.
+- **5 màn hình danh sách** (`PatientListPage.tsx`, `AppointmentListView.tsx`, `ReceptionListPage.tsx`, `ReferenceCatalogPane.tsx`, `GeoPane.tsx`): thêm `font-medium` vào ô dữ liệu chính/phụ, giữ nguyên màu. Không đổi placeholder `—`, badge trạng thái, cột mã định danh, cột metadata thứ yếu (`sortOrder`) — giữ phân cấp thị giác.
+- **`AppointmentListView.tsx`** (Lịch hẹn, chế độ Danh sách): bỏ cột "Thời lượng"; đổi "Ngày giờ" → "Thời gian", dời ra ngay sau "Mã đặt lịch", trước "Họ tên"; ô hiển thị 2 dòng — giờ bắt đầu-kết thúc `HH:mm - HH:mm` (tính từ `scheduledAt+durationMinutes`) đậm xanh, ngày `DD-MM-YYYY` nhỏ nhạt dưới, theo mẫu chủ dự án gửi. `GRID_COLUMNS` 7→6 cột, `ROW_HEIGHT_PX` 44→52px.
+- Không migration/schema/API nào đổi — thuần CSS + 1 phép tính hiển thị.
+- **Đã xác minh thật**: `pnpm -w typecheck` sạch toàn workspace, lint chỉ còn lỗi cấu hình có sẵn không liên quan. Playwright qua trình duyệt thật (tài khoản `dev.admin`): 4 màn hình danh sách chữ đậm hơn rõ rệt; cột "Thời gian" đúng vị trí/2 dòng/giờ kết thúc tính đúng; không còn cột "Thời lượng". Không lỗi console ngoài dự kiến.
+- Cập nhật `.claude/docs/ui-guidelines.md` (mục 9d, 9e mới), `docs/DECISIONS.md` (#050), `docs/CURRENT.md`.
+
+## 2026-08-15 (6)
+
+Cột mã định danh: bỏ gạch chân mã bấm được, đổi mã không bấm được sang màu đen (docs/DECISIONS.md #049):
+
+- **`PatientListPage.tsx`/`AppointmentListView.tsx`** (mã bấm được — `patientCode`/`bookingCode`): bỏ `underline decoration-dotted underline-offset-2`, chỉ còn `text-blue-600 hover:text-blue-700` + `cursor-pointer`.
+- **`ReceptionListPage.tsx`** (mã không bấm được — `encounterNo`): đổi `text-blue-700` → `text-slate-800` (đen, giữ `font-semibold`), tránh hiểu nhầm là link vì trước cùng tông xanh với mã bấm được.
+- `GeoPane`/`ReferenceCatalogPane` (mã danh mục ngắn) không đổi — đã đúng "không bấm được → màu đen" từ trước.
+- Không migration/schema/API nào đổi — thuần CSS.
+- **Đã xác minh thật**: `pnpm -w typecheck` sạch toàn workspace. Playwright qua trình duyệt thật (tài khoản `dev.admin`): cả 3 danh sách (bệnh nhân, lịch hẹn, tiếp nhận) hiển thị đúng màu/không gạch chân theo quy tắc mới. Không lỗi console ngoài dự kiến.
+- Cập nhật `.claude/docs/ui-guidelines.md` (mục 9, 3 nhóm mã định danh), `docs/DECISIONS.md` (#049), `docs/CURRENT.md`.
+
 ## 2026-08-15 (5)
 
 Trang 404 thương hiệu + redirect `/admin` → `/admin/catalog` (docs/DECISIONS.md #048):

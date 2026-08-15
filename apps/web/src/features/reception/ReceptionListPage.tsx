@@ -123,14 +123,14 @@ export function ReceptionListPage() {
                 style={{ gridTemplateColumns: GRID_COLUMNS }}
                 className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-bold uppercase tracking-wide text-slate-800"
               >
-                <div role="columnheader" className="py-2.5">Mã lượt khám</div>
-                <div role="columnheader" className="py-2.5">Họ tên</div>
-                <div role="columnheader" className="py-2.5">Năm sinh</div>
-                <div role="columnheader" className="py-2.5">Số điện thoại</div>
-                <div role="columnheader" className="py-2.5">Địa chỉ</div>
-                <div role="columnheader" className="py-2.5">Ngày giờ tiếp nhận</div>
-                <div role="columnheader" className="py-2.5">Trạng thái</div>
-                <div role="columnheader" className="py-2.5">Người tiếp nhận</div>
+                <div role="columnheader" className="py-2.5 text-center">Mã lượt khám</div>
+                <div role="columnheader" className="py-2.5 text-center">Họ tên</div>
+                <div role="columnheader" className="py-2.5 text-center">Năm sinh</div>
+                <div role="columnheader" className="py-2.5 text-center">Số điện thoại</div>
+                <div role="columnheader" className="py-2.5 text-center">Địa chỉ</div>
+                <div role="columnheader" className="py-2.5 text-center">Ngày giờ tiếp nhận</div>
+                <div role="columnheader" className="py-2.5 text-center">Trạng thái</div>
+                <div role="columnheader" className="py-2.5 text-center">Người tiếp nhận</div>
               </div>
 
               <div className="scroll-hover flex-1 overflow-y-auto overflow-x-hidden">
@@ -143,21 +143,21 @@ export function ReceptionListPage() {
                       style={{ gridTemplateColumns: GRID_COLUMNS, minHeight: ROW_HEIGHT_PX }}
                       className="grid items-center border-b border-slate-100 px-4 text-sm"
                     >
-                      <div role="cell" className="truncate font-semibold text-blue-700">{item.encounterNo}</div>
-                      <div role="cell" className="truncate text-slate-900">{item.fullName}</div>
+                      <div role="cell" className="truncate text-center font-semibold text-slate-800">{item.encounterNo}</div>
+                      <div role="cell" className="truncate font-medium text-slate-900">{item.fullName}</div>
                       {/* Năm sinh — chưa có `dob` trong ReceptionListItem (packages/shared), hiện UI trước theo yêu cầu, khớp dữ liệu khi backend bổ sung. */}
-                      <div role="cell" className="text-slate-400">—</div>
-                      <div role="cell" className="text-slate-600">{item.phone}</div>
+                      <div role="cell" className="text-center text-slate-400">—</div>
+                      <div role="cell" className="text-center font-medium text-slate-600">{item.phone}</div>
                       {/* Địa chỉ — chưa có trong ReceptionListItem, tương tự Năm sinh. */}
                       <div role="cell" className="truncate text-slate-400">—</div>
-                      <div role="cell" className="tabular-nums text-slate-600">{formatDateTime(item.checkedInAt)}</div>
-                      <div role="cell">
+                      <div role="cell" className="text-center font-medium tabular-nums text-slate-600">{formatDateTime(item.checkedInAt)}</div>
+                      <div role="cell" className="text-center">
                         <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${meta.bg} ${meta.text}`}>
                           {meta.label}
                         </span>
                       </div>
                       {/* Người tiếp nhận — chưa có trường lễ tân/người tạo trong ReceptionListItem, tương tự 2 cột trên. */}
-                      <div role="cell" className="text-slate-400">—</div>
+                      <div role="cell" className="text-center text-slate-400">—</div>
                     </div>
                   );
                 })}

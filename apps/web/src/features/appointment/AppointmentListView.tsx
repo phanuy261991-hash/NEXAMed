@@ -9,17 +9,32 @@ import { Skeleton } from '../../shared/ui/Skeleton';
 import { APPOINTMENT_SOURCE_LABEL, APPOINTMENT_STATUS_META } from './appointment-status';
 import { useAppointmentsListQuery } from './appointment.queries';
 
-const GRID_COLUMNS = '130px 1.4fr 1.1fr 150px 90px 110px 130px';
-const ROW_HEIGHT_PX = 44;
+const GRID_COLUMNS = '130px 140px 1.4fr 1.1fr 110px 130px';
+const ROW_HEIGHT_PX = 52;
 
-function formatDateTime(iso: string): string {
-  const d = new Date(iso);
-  const vn = new Date(d.getTime() + 7 * 60 * 60_000);
-  const dd = String(vn.getUTCDate()).padStart(2, '0');
-  const mm = String(vn.getUTCMonth() + 1).padStart(2, '0');
-  const hh = String(vn.getUTCHours()).padStart(2, '0');
-  const mi = String(vn.getUTCMinutes()).padStart(2, '0');
-  return `${dd}/${mm}/${vn.getUTCFullYear()} ${hh}:${mi}`;
+/** Quy đổi UTC+7 cố định — cùng kỹ thuật `vietnam-day-range.ts`/`format-display-code.ts`. */
+function toVietnamDate(iso: string): Date {
+  return new Date(new Date(iso).getTime() + 7 * 60 * 60_000);
+}
+
+function pad2(n: number): string {
+  return String(n).padStart(2, '0');
+}
+
+/**
+ * Cột "Thời gian" gộp giờ bắt đầu-kết thúc (thay cột "Thời lượng" đã bỏ, chốt 2026-08-15) — giờ
+ * kết thúc tính từ `scheduledAt + durationMinutes`, không phải trường riêng trên `appointment`.
+ */
+function formatTimeRange(scheduledAtIso: string, durationMinutes: number): string {
+  const start = toVietnamDate(scheduledAtIso);
+  const end = new Date(start.getTime() + durationMinutes * 60_000);
+  const fmt = (d: Date) => `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
+  return `${fmt(start)} - ${fmt(end)}`;
+}
+
+function formatDateLabel(scheduledAtIso: string): string {
+  const d = toVietnamDate(scheduledAtIso);
+  return `${pad2(d.getUTCDate())}-${pad2(d.getUTCMonth() + 1)}-${d.getUTCFullYear()}`;
 }
 
 /**
@@ -92,13 +107,12 @@ export function AppointmentListView({
           style={{ gridTemplateColumns: GRID_COLUMNS }}
           className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-bold uppercase tracking-wide text-slate-800"
         >
-          <div role="columnheader" className="py-2.5">Mã đặt lịch</div>
-          <div role="columnheader" className="py-2.5">Họ tên</div>
-          <div role="columnheader" className="py-2.5">Bác sĩ</div>
-          <div role="columnheader" className="py-2.5">Ngày giờ</div>
-          <div role="columnheader" className="py-2.5">Thời lượng</div>
-          <div role="columnheader" className="py-2.5">Nguồn</div>
-          <div role="columnheader" className="py-2.5">Trạng thái</div>
+          <div role="columnheader" className="py-2.5 text-center">Mã đặt lịch</div>
+          <div role="columnheader" className="py-2.5 text-center">Thời gian</div>
+          <div role="columnheader" className="py-2.5 text-center">Họ tên</div>
+          <div role="columnheader" className="py-2.5 text-center">Bác sĩ</div>
+          <div role="columnheader" className="py-2.5 text-center">Nguồn</div>
+          <div role="columnheader" className="py-2.5 text-center">Trạng thái</div>
         </div>
 
         <div ref={scrollParentRef} className="scroll-hover flex-1 overflow-y-auto">
@@ -136,16 +150,18 @@ export function AppointmentListView({
                   <div
                     role="cell"
                     onDoubleClick={() => onOpenAppointment(a)}
-                    className="w-fit cursor-pointer font-medium text-blue-600 underline decoration-dotted underline-offset-2 hover:text-blue-700"
+                    className="cursor-pointer text-center font-medium text-blue-600 hover:text-blue-700"
                   >
                     {a.bookingCode}
                   </div>
-                  <div role="cell" className="truncate text-slate-900">{a.fullName}</div>
-                  <div role="cell" className="truncate text-slate-600">{doctorNameById.get(a.doctorId) ?? '—'}</div>
-                  <div role="cell" className="tabular-nums text-slate-600">{formatDateTime(a.scheduledAt)}</div>
-                  <div role="cell" className="tabular-nums text-slate-600">{a.durationMinutes} phút</div>
-                  <div role="cell" className="text-slate-600">{APPOINTMENT_SOURCE_LABEL[a.source]}</div>
-                  <div role="cell">
+                  <div role="cell" className="text-center leading-tight">
+                    <div className="font-semibold text-brand-teal tabular-nums">{formatTimeRange(a.scheduledAt, a.durationMinutes)}</div>
+                    <div className="text-xs font-medium text-slate-500 tabular-nums">{formatDateLabel(a.scheduledAt)}</div>
+                  </div>
+                  <div role="cell" className="truncate font-medium text-slate-900">{a.fullName}</div>
+                  <div role="cell" className="truncate font-medium text-slate-600">{doctorNameById.get(a.doctorId) ?? '—'}</div>
+                  <div role="cell" className="text-center font-medium text-slate-600">{APPOINTMENT_SOURCE_LABEL[a.source]}</div>
+                  <div role="cell" className="text-center">
                     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${meta.bg} ${meta.text}`}>
                       {meta.label}
                     </span>

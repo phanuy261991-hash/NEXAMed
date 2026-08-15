@@ -107,28 +107,28 @@ export function ReferenceCatalogPane({
         <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
           <table className="w-full border-collapse text-sm">
             <thead>
-              <tr className="border-b-2 border-blue-600 bg-slate-100 text-left text-xs font-bold uppercase tracking-wide text-slate-800">
-                <th className="w-24 px-4 py-2.5">Mã</th>
-                <th className="px-4 py-2.5">Tên hiển thị</th>
-                {category === 'EXAM_TYPE' && <th className="w-32 px-4 py-2.5">Giá</th>}
-                <th className="w-24 px-4 py-2.5">Thứ tự</th>
-                {canManage && <th className="w-32 px-4 py-2.5 text-right">Thao tác</th>}
+              <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+                <th className="w-24 px-4 py-2.5 text-center">Mã</th>
+                <th className="px-4 py-2.5 text-left">Tên hiển thị</th>
+                {category === 'EXAM_TYPE' && <th className="w-32 px-4 py-2.5 text-center">Giá</th>}
+                <th className="w-24 px-4 py-2.5 text-center">Thứ tự</th>
+                {canManage && <th className="w-32 px-4 py-2.5 text-center">Thao tác</th>}
               </tr>
             </thead>
             <tbody>
               {items.map((item) => (
                 <tr key={item.id} className={`border-b border-slate-200 last:border-0 ${item.isActive ? '' : 'opacity-50'}`}>
-                  <td className="px-4 py-2 font-mono text-sm font-bold text-slate-800">{item.code}</td>
-                  <td className="px-4 py-2 text-slate-900">
+                  <td className="px-4 py-2 text-center text-sm font-bold text-slate-800">{item.code}</td>
+                  <td className="px-4 py-2 text-left font-medium text-slate-900">
                     {item.name}
                     {!item.isActive && <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">Đã ẩn</span>}
                   </td>
                   {category === 'EXAM_TYPE' && (
-                    <td className="px-4 py-2 text-slate-600">{item.price !== null ? formatVnd(item.price) : '—'}</td>
+                    <td className="px-4 py-2 text-center font-medium text-slate-600">{item.price !== null ? formatVnd(item.price) : '—'}</td>
                   )}
-                  <td className="px-4 py-2 text-slate-500">{item.sortOrder}</td>
+                  <td className="px-4 py-2 text-center text-slate-500">{item.sortOrder}</td>
                   {canManage && (
-                    <td className="px-4 py-2 text-right">
+                    <td className="px-4 py-2 text-center">
                       {item.isActive ? (
                         <>
                           <button

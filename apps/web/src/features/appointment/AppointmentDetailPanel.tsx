@@ -118,7 +118,7 @@ export function AppointmentDetailPanel({
           {mode === 'view' ? (
             <div className="flex flex-col gap-4">
               <div className="divide-y divide-slate-100 text-sm">
-                <Row label="Mã đặt lịch" value={<span className="font-mono">{appointment.bookingCode}</span>} />
+                <Row label="Mã đặt lịch" value={<span className="font-semibold">{appointment.bookingCode}</span>} />
                 <Row label="Họ tên" value={appointment.fullName} />
                 <Row label="Số điện thoại" value={appointment.phone} />
                 {appointment.reason && <Row label="Lý do khám" value={appointment.reason} />}
