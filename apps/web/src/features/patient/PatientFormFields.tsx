@@ -13,7 +13,8 @@ const ADULT_AGE_THRESHOLD = 18;
 export interface PatientFormValues {
   fullName: string;
   dob: string;
-  gender: PatientGender;
+  /** Rỗng khi chưa chọn — trường bắt buộc KHÔNG có giá trị mặc định tô sẵn (.claude/docs/ui-guidelines.md mục 4.1c). */
+  gender: PatientGender | '';
   phone: string;
   nationalId: string;
   nationalIdIssuedAt: string;
@@ -36,7 +37,7 @@ export interface PatientFormValues {
 export const EMPTY_PATIENT_FORM: PatientFormValues = {
   fullName: '',
   dob: '',
-  gender: 'female',
+  gender: '',
   phone: '',
   nationalId: '',
   nationalIdIssuedAt: '',
@@ -112,6 +113,8 @@ export function PatientFormFields({
   values,
   onChange,
   disabled = false,
+  identityLocked = false,
+  hidePhoneDuplicateHint = false,
   patientId,
   patientCode,
   photoUrl,
@@ -120,6 +123,19 @@ export function PatientFormFields({
   values: PatientFormValues;
   onChange: (values: PatientFormValues) => void;
   disabled?: boolean;
+  /**
+   * Khoá RIÊNG 4 field định danh (CCCD, Mã bệnh nhân — luôn readonly sẵn, Họ và tên, Ngày sinh) —
+   * dùng ở màn hình "Tiếp nhận bệnh nhân" (mockup đã duyệt) khi đã khớp đúng bệnh nhân cũ qua tra
+   * trùng SĐT/CCCD: 4 field này không cho sửa, các field còn lại (SĐT, địa chỉ...) vẫn sửa được
+   * bình thường. KHÁC `disabled` (khoá TOÀN BỘ form, dùng khi có nghi trùng PAT-03 chờ xác nhận).
+   */
+  identityLocked?: boolean;
+  /**
+   * Ẩn `PhoneDuplicateWarning` inline mặc định — dùng ở màn hình "Tiếp nhận bệnh nhân" vì đã có
+   * `PatientMatchDialog` (popup) làm cùng việc nổi bật hơn, tránh hiện trùng 2 lời cảnh báo cùng
+   * lúc (chủ dự án phản hồi). Nơi khác (Thêm/Sửa bệnh nhân) vẫn giữ cảnh báo mềm inline như cũ.
+   */
+  hidePhoneDuplicateHint?: boolean;
   patientId?: string;
   patientCode?: string;
   photoUrl?: string | null;
@@ -180,7 +196,7 @@ export function PatientFormFields({
               id="patientCode"
               readOnly
               disabled
-              value={patientCode ?? 'Sẽ cấp tự động sau khi lưu'}
+              value={patientCode ?? ''}
               className={readOnlyInputClassName}
             />
           </Field>
@@ -189,10 +205,10 @@ export function PatientFormFields({
             <input
               id="fullName"
               required
-              disabled={disabled}
+              disabled={disabled || identityLocked}
               value={values.fullName}
               onChange={(e) => set('fullName', e.target.value)}
-              className={inputClassName}
+              className={identityLocked ? readOnlyInputClassName : inputClassName}
             />
           </Field>
 
@@ -202,7 +218,7 @@ export function PatientFormFields({
               required
               disabled={disabled}
               value={values.gender}
-              onChange={(v) => set('gender', v as PatientGender)}
+              onChange={(v) => set('gender', v as PatientGender | '')}
               options={GENDER_OPTIONS}
             />
           </Field>
@@ -212,10 +228,10 @@ export function PatientFormFields({
               id="dob"
               type="date"
               required
-              disabled={disabled}
+              disabled={disabled || identityLocked}
               value={values.dob}
               onChange={(e) => set('dob', e.target.value)}
-              className={inputClassName}
+              className={identityLocked ? readOnlyInputClassName : inputClassName}
             />
           </Field>
 
@@ -237,17 +253,17 @@ export function PatientFormFields({
               onChange={(e) => set('phone', e.target.value)}
               className={inputClassName}
             />
-            {!disabled && <PhoneDuplicateWarning phone={values.phone} excludePatientId={patientId} />}
+            {!disabled && !hidePhoneDuplicateHint && <PhoneDuplicateWarning phone={values.phone} excludePatientId={patientId} />}
           </Field>
 
           <Field id="nationalId" label="CCCD/CMND" required={requireNationalId}>
             <input
               id="nationalId"
               required={requireNationalId}
-              disabled={disabled}
+              disabled={disabled || identityLocked}
               value={values.nationalId}
               onChange={(e) => set('nationalId', e.target.value)}
-              className={inputClassName}
+              className={identityLocked ? readOnlyInputClassName : inputClassName}
               placeholder={requireNationalId ? 'Bắt buộc — bệnh nhân từ 18 tuổi' : 'Để trống nếu chưa có giấy tờ'}
             />
           </Field>

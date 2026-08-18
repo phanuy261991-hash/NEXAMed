@@ -20,6 +20,7 @@ import {
   checkPatientDuplicateQuerySchema,
   createPatientRequestSchema,
   listPatientsQuerySchema,
+  patientByNationalIdQuerySchema,
   patientByPhoneQuerySchema,
   updatePatientRequestSchema,
 } from '@nexamed/shared';
@@ -84,6 +85,18 @@ export class PatientController {
     const dto = patientByPhoneQuerySchema.parse(query);
     const { tenantId } = req.user!;
     return this.patientService.findByPhone(tenantId, dto);
+  }
+
+  /**
+   * Tra trùng CCCD (màn hình "Tiếp nhận bệnh nhân", mockup đã duyệt) — khai TRƯỚC `@Get(':id')`,
+   * cùng lý do `check-duplicate`/`by-phone` ở trên. Tái dùng `patient.read`.
+   */
+  @Get('by-national-id')
+  @RequirePermission('patient', 'read')
+  async findByNationalId(@Query() query: unknown, @Req() req: Request) {
+    const dto = patientByNationalIdQuerySchema.parse(query);
+    const { tenantId } = req.user!;
+    return this.patientService.findByNationalId(tenantId, dto);
   }
 
   @Get(':id')

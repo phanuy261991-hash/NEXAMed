@@ -2,6 +2,18 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-18 (1)
+
+Thiết kế lại "Tiếp nhận bệnh nhân" — mockup Artifact duyệt qua nhiều vòng, hiện đủ field bệnh nhân thay `PatientPicker`, tra trùng SĐT/CCCD qua popup (`docs/DECISIONS.md` #052):
+
+- **Thông tin hành chính**: bỏ `PatientPicker`, hiện thẳng `PatientFormFields` — gõ SĐT/CCCD tự tra trùng, bật `PatientMatchDialog.tsx` (popup mới, thay banner phẳng cũ) để chọn đúng hồ sơ, khoá riêng 4 field định danh sau khi khớp (`identityLocked`), field còn lại vẫn sửa được và tự PATCH khi có thay đổi. Popup dùng chung cho cả PAT-03 (nghi trùng tên+ngày sinh), thêm khả năng bấm chọn thẳng hồ sơ nghi trùng thay vì chỉ "Huỷ"/"Vẫn tạo mới". `PhoneDuplicateWarning` inline ẩn riêng trong màn này (đã có popup, tránh trùng cảnh báo).
+- **Thông tin tiếp nhận**: thêm Loại tiếp nhận/Hình thức khám (bắt buộc), Ưu tiên khám + Lý do ưu tiên (bắt buộc kèm khi bật cờ) — 3 danh mục mới tái dùng `reference_catalog`. Ngày/Giờ tiếp nhận sửa được ở cả 2 chế độ (trực tiếp lẫn check-in).
+- **Chỉ định dịch vụ khám**: thêm Loại giá dịch vụ (danh mục phẳng, chỉ ghi chú — không phải bảng giá đa mức thật) + Đơn vị/Số lượng (snapshot trên `encounter`), bảng hiển thị Mã/Tên/SL/Đơn giá/Thành tiền/Trạng thái — chỉ lưu để hiển thị, KHÔNG tính viện phí. "Thanh toán sau" chỉ là cờ UI, không lưu DB.
+- Migration `20260818090000_reception_intake_redesign`: `reference_catalog.unit` + 4 category mới; `encounter` thêm 7 cột. Endpoint mới `GET /patients/by-national-id`.
+- **Bug fix đi kèm**: giới tính bệnh nhân không còn mặc định "Nữ" (đúng `ui-guidelines.md` 4.1c, áp dụng luôn Thêm/Sửa bệnh nhân); Mã bệnh nhân trống không còn hiện placeholder "Sẽ cấp tự động..." (chỉ làm mờ ô); BMI bỏ dòng chú thích công thức + đơn vị "kg/m²"; sửa nhãn sai "Ưu tiên khám" dán nhầm cho checkbox "Thanh toán sau"; khoảng cách giữa các khối form đồng nhất `gap-8`; trang `/reception/new` bỏ tiêu đề hiển thị (chỉ `sr-only`, đúng quy tắc breadcrumb-là-định-danh-trang); popup check-in nới `max-w-lg` → `max-w-4xl`.
+- **Đã xác minh thật**: `reception-http.spec.ts` thêm 2 test (27/27), `patient-http.spec.ts` thêm 4 test `by-national-id` — tổng 258/258 test `apps/api` pass. `pnpm -w typecheck/lint/build` sạch toàn workspace. Playwright qua trình duyệt thật (dữ liệu thật, không mock): tạo mới + tiếp nhận đủ field mới thành công; tra lại đúng SĐT/CCCD vừa tạo → popup hiện đúng, chọn đúng khoá 4 field; không lỗi console ngoài dự kiến.
+- Cập nhật `.claude/docs/data-model.md`, `docs/ERD.md` (v1.13), `docs/DECISIONS.md` (#052), `docs/CURRENT.md`, `docs/TASK.md`.
+
 ## 2026-08-15 (8)
 
 Căn lề dữ liệu bảng danh sách, màu nhấn phụ cho cột "Thời gian", dọn sạch `font-mono` — nguyên nhân gốc slashed zero (docs/DECISIONS.md #051):

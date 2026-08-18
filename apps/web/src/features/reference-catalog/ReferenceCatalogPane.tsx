@@ -111,6 +111,7 @@ export function ReferenceCatalogPane({
                 <th className="w-24 px-4 py-2.5 text-center">Mã</th>
                 <th className="px-4 py-2.5 text-left">Tên hiển thị</th>
                 {category === 'EXAM_TYPE' && <th className="w-32 px-4 py-2.5 text-center">Giá</th>}
+                {category === 'EXAM_TYPE' && <th className="w-24 px-4 py-2.5 text-center">Đơn vị</th>}
                 <th className="w-24 px-4 py-2.5 text-center">Thứ tự</th>
                 {canManage && <th className="w-32 px-4 py-2.5 text-center">Thao tác</th>}
               </tr>
@@ -126,6 +127,7 @@ export function ReferenceCatalogPane({
                   {category === 'EXAM_TYPE' && (
                     <td className="px-4 py-2 text-center font-medium text-slate-600">{item.price !== null ? formatVnd(item.price) : '—'}</td>
                   )}
+                  {category === 'EXAM_TYPE' && <td className="px-4 py-2 text-center font-medium text-slate-600">{item.unit ?? '—'}</td>}
                   <td className="px-4 py-2 text-center text-slate-500">{item.sortOrder}</td>
                   {canManage && (
                     <td className="px-4 py-2 text-center">
@@ -229,12 +231,13 @@ function ItemFormModal({
   item?: ReferenceCatalogItem;
   submitting: boolean;
   onCancel: () => void;
-  onSubmit: (dto: { code: string; name: string; sortOrder: number; price?: number }) => void;
+  onSubmit: (dto: { code: string; name: string; sortOrder: number; price?: number; unit?: string }) => void;
 }) {
   const [code, setCode] = useState(item?.code ?? '');
   const [name, setName] = useState(item?.name ?? '');
   const [sortOrder, setSortOrder] = useState(item?.sortOrder ?? 0);
   const [price, setPrice] = useState(item?.price !== null && item?.price !== undefined ? String(item.price) : '');
+  const [unit, setUnit] = useState(item?.unit ?? '');
   const isExamType = category === 'EXAM_TYPE';
 
   return (
@@ -274,6 +277,15 @@ function ItemFormModal({
           </div>
         )}
 
+        {isExamType && (
+          <div className="mb-3.5 flex flex-col gap-1.5">
+            <label htmlFor="rc-unit" className="text-xs font-semibold text-slate-600">
+              Đơn vị
+            </label>
+            <input id="rc-unit" placeholder="Ví dụ: Lượt, Buổi" value={unit} onChange={(e) => setUnit(e.target.value)} className={inputClassName} />
+          </div>
+        )}
+
         <div className="mb-4 flex flex-col gap-1.5">
           <label htmlFor="rc-sort-order" className="text-xs font-semibold text-slate-600">
             Thứ tự hiển thị
@@ -301,6 +313,7 @@ function ItemFormModal({
                 name: name.trim(),
                 sortOrder,
                 price: isExamType && price.trim() !== '' ? Number(price) : undefined,
+                unit: isExamType && unit.trim() !== '' ? unit.trim() : undefined,
               })
             }
           >

@@ -184,3 +184,22 @@ export const patientByPhoneResponseSchema = z.object({
   items: z.array(patientSummarySchema),
 });
 export type PatientByPhoneResponse = z.infer<typeof patientByPhoneResponseSchema>;
+
+/**
+ * Tra trùng CCCD — dùng ở màn hình "Tiếp nhận bệnh nhân" (mockup đã duyệt): gõ CCCD tự tra, khớp
+ * thì tự điền + khoá 4 field định danh (CCCD/Mã BN/Họ tên/Ngày sinh). KHÁC `by-phone`: CCCD chặn
+ * trùng cứng bằng DB constraint C3 (`.claude/docs/data-model.md`) nên tối đa 1 kết quả — vẫn trả
+ * `items` mảng (cùng hình dạng `patientByPhoneResponseSchema`) để nơi gọi dùng chung một kiểu xử
+ * lý. Băm ở tầng service bằng `hashForLookup` đã có (cùng cơ chế `national_id_hash` lúc tạo/sửa),
+ * không lộ CCCD người khác qua endpoint này.
+ */
+export const patientByNationalIdQuerySchema = z.object({
+  nationalId: z.string().min(9).max(12),
+  excludePatientId: z.string().uuid().optional(),
+});
+export type PatientByNationalIdQuery = z.infer<typeof patientByNationalIdQuerySchema>;
+
+export const patientByNationalIdResponseSchema = z.object({
+  items: z.array(patientSummarySchema),
+});
+export type PatientByNationalIdResponse = z.infer<typeof patientByNationalIdResponseSchema>;

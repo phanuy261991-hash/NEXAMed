@@ -425,6 +425,99 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/patients/by-national-id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tra trùng CCCD (màn hình "Tiếp nhận bệnh nhân") — khớp CHÍNH XÁC, CCCD là duy nhất trong tenant */
+        get: {
+            parameters: {
+                query: {
+                    nationalId: string;
+                    excludePatientId?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công (mảng rỗng nếu chưa ai dùng CCCD này) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    patientCode: string;
+                                    fullName: string;
+                                    dob: string;
+                                    /** @enum {string} */
+                                    gender: "male" | "female" | "other";
+                                    phone: string;
+                                    hasNationalId: boolean;
+                                    nationalIdMasked: string | null;
+                                    address: {
+                                        street?: string;
+                                        ward?: string;
+                                        neighborhood?: string;
+                                        district?: string;
+                                        province?: string;
+                                    } | null;
+                                    version: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền patient.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/patients": {
         parameters: {
             query?: never;
@@ -2072,6 +2165,15 @@ export interface paths {
                         spo2?: number;
                         weightGram?: number;
                         heightMm?: number;
+                        receptionTypeCode: string;
+                        examFormCode: string;
+                        /** @default false */
+                        isPriority?: boolean;
+                        priorityReasonCode?: string;
+                        priceTypeCode?: string;
+                        examTypeUnit?: string;
+                        /** @default 1 */
+                        serviceQuantity?: number;
                     };
                 };
             };
@@ -2212,6 +2314,15 @@ export interface paths {
                         spo2?: number;
                         weightGram?: number;
                         heightMm?: number;
+                        receptionTypeCode: string;
+                        examFormCode: string;
+                        /** @default false */
+                        isPriority?: boolean;
+                        priorityReasonCode?: string;
+                        priceTypeCode?: string;
+                        examTypeUnit?: string;
+                        /** @default 1 */
+                        serviceQuantity?: number;
                     };
                 };
             };
@@ -4196,7 +4307,7 @@ export interface paths {
                 };
                 header?: never;
                 path: {
-                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE";
+                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE";
                 };
                 cookie?: never;
             };
@@ -4214,12 +4325,13 @@ export interface paths {
                                     /** Format: uuid */
                                     id: string;
                                     /** @enum {string} */
-                                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE";
+                                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE";
                                     code: string;
                                     name: string;
                                     sortOrder: number;
                                     isActive: boolean;
                                     price: number | null;
+                                    unit: string | null;
                                 }[];
                             };
                             meta: Record<string, never>;
@@ -4302,12 +4414,13 @@ export interface paths {
                 content: {
                     "application/json": {
                         /** @enum {string} */
-                        category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE";
+                        category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE";
                         code: string;
                         name: string;
                         /** @default 0 */
                         sortOrder?: number;
                         price?: number;
+                        unit?: string;
                     };
                 };
             };
@@ -4323,12 +4436,13 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
                                 isActive: boolean;
                                 price: number | null;
+                                unit: string | null;
                             };
                             meta: Record<string, never>;
                         };
@@ -4420,12 +4534,13 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
                                 isActive: boolean;
                                 price: number | null;
+                                unit: string | null;
                             };
                             meta: Record<string, never>;
                         };
@@ -4497,6 +4612,7 @@ export interface paths {
                         name?: string;
                         sortOrder?: number;
                         price?: number;
+                        unit?: string;
                     };
                 };
             };
@@ -4512,12 +4628,13 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
                                 isActive: boolean;
                                 price: number | null;
+                                unit: string | null;
                             };
                             meta: Record<string, never>;
                         };
@@ -4619,12 +4736,13 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
                                 isActive: boolean;
                                 price: number | null;
+                                unit: string | null;
                             };
                             meta: Record<string, never>;
                         };

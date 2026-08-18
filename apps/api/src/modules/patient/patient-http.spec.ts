@@ -704,4 +704,64 @@ describe('HTTP e2e — /api/v1/patients', () => {
       expect(res.body.data.items).toEqual([]);
     });
   });
+
+  describe('GET /api/v1/patients/by-national-id — tra trùng CCCD (màn hình "Tiếp nhận bệnh nhân", mockup đã duyệt)', () => {
+    it('khớp đúng CCCD → 200, trả đúng 1 hồ sơ', async () => {
+      const nationalId = randomNationalId();
+      const created = await request(app.getHttpServer())
+        .post('/api/v1/patients')
+        .set(authed(receptionistToken))
+        .send({ ...validPayload, fullName: 'Tra theo CCCD', phone: '0988111222', nationalId });
+
+      const res = await request(app.getHttpServer())
+        .get('/api/v1/patients/by-national-id')
+        .query({ nationalId })
+        .set(authed(receptionistToken));
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.items).toHaveLength(1);
+      expect(res.body.data.items[0].id).toBe(created.body.data.id);
+      expect(res.body.data.items[0].fullName).toBe('Tra theo CCCD');
+    });
+
+    it('CCCD không tồn tại → 200, mảng rỗng', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/v1/patients/by-national-id')
+        .query({ nationalId: randomNationalId() })
+        .set(authed(receptionistToken));
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.items).toEqual([]);
+    });
+
+    it('excludePatientId — loại chính hồ sơ đang sửa khỏi kết quả', async () => {
+      const nationalId = randomNationalId();
+      const created = await request(app.getHttpServer())
+        .post('/api/v1/patients')
+        .set(authed(receptionistToken))
+        .send({ ...validPayload, fullName: 'Tự loại trừ CCCD', phone: '0988222333', nationalId });
+      const id = created.body.data.id as string;
+
+      const withExclude = await request(app.getHttpServer())
+        .get('/api/v1/patients/by-national-id')
+        .query({ nationalId, excludePatientId: id })
+        .set(authed(receptionistToken));
+      expect(withExclude.body.data.items).toEqual([]);
+    });
+
+    it('cách ly tenant — tenant B không thấy hồ sơ trùng CCCD của tenant A', async () => {
+      const nationalId = randomNationalId();
+      await request(app.getHttpServer())
+        .post('/api/v1/patients')
+        .set(authed(receptionistToken))
+        .send({ ...validPayload, fullName: 'Chỉ tenant A', phone: '0988333444', nationalId });
+
+      const res = await request(app.getHttpServer())
+        .get('/api/v1/patients/by-national-id')
+        .query({ nationalId })
+        .set(authed(tenantBAdminToken));
+
+      expect(res.body.data.items).toEqual([]);
+    });
+  });
 });

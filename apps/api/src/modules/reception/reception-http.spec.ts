@@ -98,6 +98,9 @@ describe('HTTP e2e — /api/v1/reception', () => {
       examTypeCode: 'KT',
       examTypeName: 'Khám thường',
       examTypePrice: 150_000,
+      // Thiết kế lại "Tiếp nhận bệnh nhân" (mockup đã duyệt) — bắt buộc kèm Loại tiếp nhận/Hình thức khám.
+      receptionTypeCode: 'RT_NEW',
+      examFormCode: 'EF_NORMAL',
       ...overrides,
     };
   }
@@ -314,6 +317,8 @@ describe('HTTP e2e — /api/v1/reception', () => {
         examTypeCode: 'KT',
         examTypeName: 'Khám thường',
         examTypePrice: 150_000,
+        receptionTypeCode: 'RT_NEW',
+        examFormCode: 'EF_NORMAL',
         ...overrides,
       };
     }
@@ -351,6 +356,46 @@ describe('HTTP e2e — /api/v1/reception', () => {
       expect(res.status).toBe(200);
       const encounter = await privileged.encounter.findUniqueOrThrow({ where: { id: res.body.data.id } });
       expect(encounter.patientSourceCode).toBeNull();
+    });
+
+    it('thiếu receptionTypeCode/examFormCode (thiết kế lại "Tiếp nhận bệnh nhân", mockup đã duyệt) → 400', async () => {
+      const patient = await createPatient(receptionistToken);
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/reception/direct')
+        .set(authed(receptionistToken))
+        .send(directPayload(patient.id, doctorAUserId, isoAt(8, 45, 28), { receptionTypeCode: undefined, examFormCode: undefined }));
+
+      expect(res.status).toBe(400);
+    });
+
+    it('isPriority=true nhưng thiếu priorityReasonCode → 400; kèm đủ → 200, lưu đúng Ưu tiên khám/Loại giá dịch vụ/Đơn vị/Số lượng', async () => {
+      const patient = await createPatient(receptionistToken);
+
+      const missingReason = await request(app.getHttpServer())
+        .post('/api/v1/reception/direct')
+        .set(authed(receptionistToken))
+        .send(directPayload(patient.id, doctorAUserId, isoAt(9, 15, 28), { isPriority: true }));
+      expect(missingReason.status).toBe(400);
+
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/reception/direct')
+        .set(authed(receptionistToken))
+        .send(
+          directPayload(patient.id, doctorAUserId, isoAt(9, 20, 28), {
+            isPriority: true,
+            priorityReasonCode: 'PR_ELDERLY',
+            priceTypeCode: 'PT_SERVICE',
+            examTypeUnit: 'Lượt',
+            serviceQuantity: 2,
+          }),
+        );
+      expect(res.status).toBe(200);
+      const encounter = await privileged.encounter.findUniqueOrThrow({ where: { id: res.body.data.id } });
+      expect(encounter.isPriority).toBe(true);
+      expect(encounter.priorityReasonCode).toBe('PR_ELDERLY');
+      expect(encounter.priceTypeCode).toBe('PT_SERVICE');
+      expect(encounter.examTypeUnit).toBe('Lượt');
+      expect(encounter.serviceQuantity).toBe(2);
     });
 
     it('patientId không tồn tại → 404', async () => {

@@ -39,6 +39,8 @@ import {
   loginResponseSchema,
   logoutResponseSchema,
   meResponseSchema,
+  patientByNationalIdQuerySchema,
+  patientByNationalIdResponseSchema,
   patientByPhoneQuerySchema,
   patientByPhoneResponseSchema,
   patientDetailSchema,
@@ -176,6 +178,20 @@ registry.registerPath({
 });
 
 const patientIdParams = z.object({ id: z.string().uuid() });
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/patients/by-national-id',
+  tags: ['patient'],
+  summary: 'Tra trùng CCCD (màn hình "Tiếp nhận bệnh nhân") — khớp CHÍNH XÁC, CCCD là duy nhất trong tenant',
+  security: [{ bearerAuth: [] }],
+  request: { query: patientByNationalIdQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công (mảng rỗng nếu chưa ai dùng CCCD này)', envelope(patientByNationalIdResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền patient.read'),
+  },
+});
 
 registry.registerPath({
   method: 'post',

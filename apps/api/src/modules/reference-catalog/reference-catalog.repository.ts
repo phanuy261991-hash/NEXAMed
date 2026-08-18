@@ -8,6 +8,8 @@ export interface CreateReferenceCatalogData {
   sortOrder: number;
   /** Giá tham khảo (đồng) — chỉ có ý nghĩa với category EXAM_TYPE, `undefined`/`null` với category khác. */
   price?: bigint | null;
+  /** Đơn vị (ví dụ "Lượt") — cùng bản chất `price`, chỉ có ý nghĩa với category EXAM_TYPE. */
+  unit?: string | null;
 }
 
 export interface UpdateReferenceCatalogData {
@@ -15,6 +17,7 @@ export interface UpdateReferenceCatalogData {
   name?: string;
   sortOrder?: number;
   price?: bigint | null;
+  unit?: string | null;
 }
 
 /**

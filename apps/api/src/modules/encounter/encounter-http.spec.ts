@@ -78,10 +78,13 @@ describe('HTTP e2e — /api/v1/encounters', () => {
         appointmentId: appointment.id,
         patientId: patient.id,
         version: appointment.version,
-        // checkInRequestSchema (docs/DECISIONS.md #044) giờ bắt buộc kèm loại khám.
+        // checkInRequestSchema (docs/DECISIONS.md #044) giờ bắt buộc kèm loại khám; thiết kế lại
+        // "Tiếp nhận bệnh nhân" (mockup đã duyệt) thêm bắt buộc Loại tiếp nhận/Hình thức khám.
         examTypeCode: 'KT',
         examTypeName: 'Khám thường',
         examTypePrice: 150_000,
+        receptionTypeCode: 'RT_NEW',
+        examFormCode: 'EF_NORMAL',
       });
     return checkInRes.body.data.id as string;
   }

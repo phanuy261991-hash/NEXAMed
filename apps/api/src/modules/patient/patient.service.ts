@@ -18,6 +18,8 @@ import type {
   ListPatientsQuery,
   ListPatientsResponse,
   PatientAddress,
+  PatientByNationalIdQuery,
+  PatientByNationalIdResponse,
   PatientByPhoneQuery,
   PatientByPhoneResponse,
   PatientDetail,
@@ -175,6 +177,23 @@ export class PatientService {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const rows = await this.patientRepository.findByPhone(tx, tenantId, {
         phone: query.phone,
+        excludePatientId: query.excludePatientId,
+      });
+      return { items: rows.map((p) => this.toSummary(p, encryptionKey)) };
+    });
+  }
+
+  /**
+   * Tra trùng CCCD (màn hình "Tiếp nhận bệnh nhân", mockup đã duyệt) — băm `nationalId` bằng
+   * `hashForLookup` (cùng key `ENCRYPTION_KEY`, cùng cơ chế C3) rồi khớp CHÍNH XÁC
+   * `nationalIdHash`, không giải mã/so sánh plaintext của người khác.
+   */
+  async findByNationalId(tenantId: string, query: PatientByNationalIdQuery): Promise<PatientByNationalIdResponse> {
+    const encryptionKey = this.configService.getOrThrow<string>('ENCRYPTION_KEY');
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const nationalIdHash = hashForLookup(query.nationalId, encryptionKey);
+      const rows = await this.patientRepository.findByNationalIdHash(tx, tenantId, {
+        nationalIdHash,
         excludePatientId: query.excludePatientId,
       });
       return { items: rows.map((p) => this.toSummary(p, encryptionKey)) };

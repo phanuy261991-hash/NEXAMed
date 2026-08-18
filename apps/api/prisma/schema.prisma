@@ -267,6 +267,12 @@ enum ReferenceCatalogCategory {
   // bảng này thay vì tạo bảng riêng (docs/DECISIONS.md).
   PATIENT_SOURCE
   EXAM_TYPE
+  // Thiết kế lại "Tiếp nhận bệnh nhân" (mockup đã duyệt) — Loại tiếp nhận / Hình thức khám / Lý do
+  // ưu tiên / Loại giá dịch vụ, cùng lý do tái dùng bảng này (docs/DECISIONS.md).
+  RECEPTION_TYPE
+  EXAM_FORM
+  PRIORITY_REASON
+  PRICE_TYPE
 
   @@map("reference_catalog_category")
 }
@@ -291,6 +297,8 @@ model ReferenceCatalog {
   // Giá tham khảo (đồng) — CHỈ có ý nghĩa với category EXAM_TYPE, NULL với category khác. v1 chỉ
   // lưu để hiển thị, không tính toán/xuất hoá đơn (viện phí ngoài phạm vi CLAUDE.md).
   price     BigInt?
+  // Đơn vị (ví dụ "Lượt", "Buổi") — cùng bản chất `price`, chỉ có ý nghĩa với category EXAM_TYPE.
+  unit      String?
 
   @@unique([category, code])
   @@map("reference_catalog")
@@ -622,6 +630,20 @@ model Encounter {
   examTypeCode      String?       @map("exam_type_code")
   examTypeName      String?       @map("exam_type_name")
   examTypePrice     BigInt?       @map("exam_type_price")
+  // Thiết kế lại "Tiếp nhận bệnh nhân" (mockup đã duyệt) — Loại tiếp nhận/Hình thức khám (mã danh
+  // mục RECEPTION_TYPE/EXAM_FORM), Ưu tiên khám + lý do (PRIORITY_REASON, bắt buộc kèm khi có ưu
+  // tiên — ràng buộc ở packages/shared, không phải DB). Tất cả nullable ở DB (áp dụng dần cho
+  // encounter mới, không phá dữ liệu cũ).
+  receptionTypeCode String?       @map("reception_type_code")
+  examFormCode      String?       @map("exam_form_code")
+  isPriority        Boolean       @default(false) @map("is_priority")
+  priorityReasonCode String?      @map("priority_reason_code")
+  // "Chỉ định dịch vụ khám" — Loại giá dịch vụ (PRICE_TYPE, tuỳ chọn, chỉ ghi chú) + Đơn vị/Số
+  // lượng SNAPSHOT tại thời điểm tạo (cùng tinh thần examTypeCode/Name/Price) — chỉ lưu để hiển
+  // thị, KHÔNG tính viện phí/xuất hoá đơn (ngoài phạm vi v1, CLAUDE.md).
+  priceTypeCode     String?       @map("price_type_code")
+  examTypeUnit      String?       @map("exam_type_unit")
+  serviceQuantity   Int           @default(1) @map("service_quantity")
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)

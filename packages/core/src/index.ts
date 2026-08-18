@@ -15,3 +15,4 @@ export * from './specialty/registry';
 export * from './storage/sniff-image-extension';
 export * from './encounter/encounter-state-machine';
 export * from './vital-sign/vital-sign-thresholds';
+export * from './vital-sign/bmi';

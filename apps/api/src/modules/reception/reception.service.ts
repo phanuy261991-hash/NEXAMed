@@ -112,6 +112,13 @@ export class ReceptionService {
         examTypeCode: dto.examTypeCode,
         examTypeName: dto.examTypeName,
         examTypePrice: dto.examTypePrice,
+        receptionTypeCode: dto.receptionTypeCode,
+        examFormCode: dto.examFormCode,
+        isPriority: dto.isPriority,
+        priorityReasonCode: dto.priorityReasonCode ?? null,
+        priceTypeCode: dto.priceTypeCode ?? null,
+        examTypeUnit: dto.examTypeUnit ?? null,
+        serviceQuantity: dto.serviceQuantity,
         meta,
       });
       if (hasAnyVitalSign(dto)) {
@@ -147,6 +154,13 @@ export class ReceptionService {
           examTypeCode: dto.examTypeCode,
           examTypeName: dto.examTypeName,
           examTypePrice: BigInt(dto.examTypePrice),
+          receptionTypeCode: dto.receptionTypeCode,
+          examFormCode: dto.examFormCode,
+          isPriority: dto.isPriority,
+          priorityReasonCode: dto.priorityReasonCode ?? null,
+          priceTypeCode: dto.priceTypeCode ?? null,
+          examTypeUnit: dto.examTypeUnit ?? null,
+          serviceQuantity: dto.serviceQuantity,
         });
       } catch (err) {
         if (isForeignKeyViolation(err)) {
@@ -229,6 +243,13 @@ export class ReceptionService {
       examTypeCode: string;
       examTypeName: string;
       examTypePrice: number;
+      receptionTypeCode: string;
+      examFormCode: string;
+      isPriority: boolean;
+      priorityReasonCode: string | null;
+      priceTypeCode: string | null;
+      examTypeUnit: string | null;
+      serviceQuantity: number;
       meta: RequestMeta;
     },
   ): Promise<Encounter> {

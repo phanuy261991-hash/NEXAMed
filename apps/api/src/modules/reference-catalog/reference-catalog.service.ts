@@ -57,6 +57,7 @@ export class ReferenceCatalogService {
           name: dto.name,
           sortOrder: dto.sortOrder,
           price: dto.price !== undefined ? BigInt(dto.price) : null,
+          unit: dto.unit ?? null,
         });
       } catch (err) {
         if (isDuplicateCodeViolation(err)) {
@@ -98,6 +99,7 @@ export class ReferenceCatalogService {
           name: dto.name,
           sortOrder: dto.sortOrder,
           price: dto.price !== undefined ? BigInt(dto.price) : undefined,
+          unit: dto.unit,
         });
       } catch (err) {
         if (isDuplicateCodeViolation(err)) {
@@ -170,6 +172,7 @@ export class ReferenceCatalogService {
       sortOrder: row.sortOrder,
       isActive: row.isActive,
       price: row.price !== null ? Number(row.price) : null,
+      unit: row.unit,
     };
   }
 }

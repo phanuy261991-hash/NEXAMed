@@ -13,8 +13,8 @@ export function ReceptionRegisterPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="mx-auto flex h-full max-w-2xl flex-col gap-4 overflow-y-auto p-4">
-      <h1 className="text-[17px] font-bold text-slate-900">Tiếp nhận bệnh nhân</h1>
+    <div className="flex h-full flex-col gap-4 overflow-y-auto p-6">
+      <h1 className="sr-only">Tiếp nhận bệnh nhân</h1>
       <ReceptionIntakeForm mode="direct" onSuccess={() => navigate('/reception')} onCancel={() => navigate('/reception')} />
     </div>
   );

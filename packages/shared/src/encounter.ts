@@ -31,6 +31,38 @@ const intakeVitalSignFieldsSchema = z.object({
 });
 
 /**
+ * Trường "Thông tin tiếp nhận"/"Chỉ định dịch vụ khám" mở rộng (thiết kế lại theo mockup đã duyệt)
+ * — dùng chung cho cả `checkInRequestSchema`/`registerReceptionRequestSchema`. `receptionTypeCode`
+ * (Loại tiếp nhận)/`examFormCode` (Hình thức khám) bắt buộc (category `RECEPTION_TYPE`/
+ * `EXAM_FORM`). `isPriority`/`priorityReasonCode` (Ưu tiên khám — category `PRIORITY_REASON`,
+ * bắt buộc CHỈ khi `isPriority=true`, ràng buộc ở `.superRefine()` bên dưới). `priceTypeCode`
+ * (Loại giá dịch vụ, category `PRICE_TYPE`)/`examTypeUnit` (Đơn vị, snapshot từ `reference_catalog.
+ * unit` của `EXAM_TYPE` đã chọn)/`serviceQuantity` (mặc định 1) — cùng tinh thần SNAPSHOT với
+ * `examTypeCode/Name/Price` đã có, CHỈ lưu để hiển thị trong bảng dịch vụ, KHÔNG tính viện phí/
+ * xuất hoá đơn (ngoài phạm vi v1, CLAUDE.md).
+ */
+const intakeExtendedFieldsSchema = z.object({
+  receptionTypeCode: z.string().min(1),
+  examFormCode: z.string().min(1),
+  isPriority: z.boolean().default(false),
+  priorityReasonCode: z.string().optional(),
+  priceTypeCode: z.string().optional(),
+  examTypeUnit: z.string().optional(),
+  serviceQuantity: z.number().int().positive().default(1),
+});
+
+/** Bắt buộc `priorityReasonCode` khi `isPriority=true` — dùng chung cho cả 2 request schema bên dưới. */
+function requirePriorityReasonWhenPriority(data: { isPriority: boolean; priorityReasonCode?: string }, ctx: z.RefinementCtx) {
+  if (data.isPriority && !data.priorityReasonCode) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['priorityReasonCode'],
+      message: 'Đã chọn "Ưu tiên khám" thì bắt buộc chọn lý do ưu tiên.',
+    });
+  }
+}
+
+/**
  * Check-in (`POST /reception/check-in`) — `patientId` đã resolve xong ở web TRƯỚC khi gọi (chọn
  * từ danh sách trùng SĐT, tìm kiếm, hoặc tạo mới qua `POST /patients` riêng — xem
  * docs/DECISIONS.md). `version` là version hiện tại của `appointment` (optimistic locking, cùng
@@ -50,7 +82,9 @@ export const checkInRequestSchema = z
     examTypeName: z.string().min(1),
     examTypePrice: z.number().int().nonnegative(),
   })
-  .merge(intakeVitalSignFieldsSchema);
+  .merge(intakeVitalSignFieldsSchema)
+  .merge(intakeExtendedFieldsSchema)
+  .superRefine(requirePriorityReasonWhenPriority);
 export type CheckInRequest = z.infer<typeof checkInRequestSchema>;
 
 /**
@@ -74,7 +108,9 @@ export const registerReceptionRequestSchema = z
     examTypeName: z.string().min(1),
     examTypePrice: z.number().int().nonnegative(),
   })
-  .merge(intakeVitalSignFieldsSchema);
+  .merge(intakeVitalSignFieldsSchema)
+  .merge(intakeExtendedFieldsSchema)
+  .superRefine(requirePriorityReasonWhenPriority);
 export type RegisterReceptionRequest = z.infer<typeof registerReceptionRequestSchema>;
 
 /** "Bắt đầu khám" — CHECKED_IN → IN_CONSULTATION. `version` là version của `encounter`. */

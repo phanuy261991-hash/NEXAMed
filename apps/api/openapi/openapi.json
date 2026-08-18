@@ -763,6 +763,216 @@
         }
       }
     },
+    "/api/v1/patients/by-national-id": {
+      "get": {
+        "tags": [
+          "patient"
+        ],
+        "summary": "Tra trùng CCCD (màn hình \"Tiếp nhận bệnh nhân\") — khớp CHÍNH XÁC, CCCD là duy nhất trong tenant",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 9,
+              "maxLength": 12
+            },
+            "required": true,
+            "name": "nationalId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "excludePatientId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công (mảng rỗng nếu chưa ai dùng CCCD này)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "patientCode": {
+                                "type": "string"
+                              },
+                              "fullName": {
+                                "type": "string"
+                              },
+                              "dob": {
+                                "type": "string"
+                              },
+                              "gender": {
+                                "type": "string",
+                                "enum": [
+                                  "male",
+                                  "female",
+                                  "other"
+                                ]
+                              },
+                              "phone": {
+                                "type": "string"
+                              },
+                              "hasNationalId": {
+                                "type": "boolean"
+                              },
+                              "nationalIdMasked": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "address": {
+                                "type": [
+                                  "object",
+                                  "null"
+                                ],
+                                "properties": {
+                                  "street": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "ward": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "neighborhood": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "district": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "province": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                }
+                              },
+                              "version": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "patientCode",
+                              "fullName",
+                              "dob",
+                              "gender",
+                              "phone",
+                              "hasNationalId",
+                              "nationalIdMasked",
+                              "address",
+                              "version"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền patient.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/patients": {
       "post": {
         "tags": [
@@ -4794,6 +5004,32 @@
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 2500
+                  },
+                  "receptionTypeCode": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "examFormCode": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "isPriority": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "priorityReasonCode": {
+                    "type": "string"
+                  },
+                  "priceTypeCode": {
+                    "type": "string"
+                  },
+                  "examTypeUnit": {
+                    "type": "string"
+                  },
+                  "serviceQuantity": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "default": 1
                   }
                 },
                 "required": [
@@ -4802,7 +5038,9 @@
                   "version",
                   "examTypeCode",
                   "examTypeName",
-                  "examTypePrice"
+                  "examTypePrice",
+                  "receptionTypeCode",
+                  "examFormCode"
                 ]
               }
             }
@@ -5120,6 +5358,32 @@
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 2500
+                  },
+                  "receptionTypeCode": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "examFormCode": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "isPriority": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "priorityReasonCode": {
+                    "type": "string"
+                  },
+                  "priceTypeCode": {
+                    "type": "string"
+                  },
+                  "examTypeUnit": {
+                    "type": "string"
+                  },
+                  "serviceQuantity": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "default": 1
                   }
                 },
                 "required": [
@@ -5128,7 +5392,9 @@
                   "checkedInAt",
                   "examTypeCode",
                   "examTypeName",
-                  "examTypePrice"
+                  "examTypePrice",
+                  "receptionTypeCode",
+                  "examFormCode"
                 ]
               }
             }
@@ -9745,7 +10011,11 @@
                 "ETHNICITY",
                 "NATIONALITY",
                 "PATIENT_SOURCE",
-                "EXAM_TYPE"
+                "EXAM_TYPE",
+                "RECEPTION_TYPE",
+                "EXAM_FORM",
+                "PRIORITY_REASON",
+                "PRICE_TYPE"
               ]
             },
             "required": true,
@@ -9791,7 +10061,11 @@
                                   "ETHNICITY",
                                   "NATIONALITY",
                                   "PATIENT_SOURCE",
-                                  "EXAM_TYPE"
+                                  "EXAM_TYPE",
+                                  "RECEPTION_TYPE",
+                                  "EXAM_FORM",
+                                  "PRIORITY_REASON",
+                                  "PRICE_TYPE"
                                 ]
                               },
                               "code": {
@@ -9812,6 +10086,12 @@
                                   "null"
                                 ],
                                 "minimum": 0
+                              },
+                              "unit": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               }
                             },
                             "required": [
@@ -9821,7 +10101,8 @@
                               "name",
                               "sortOrder",
                               "isActive",
-                              "price"
+                              "price",
+                              "unit"
                             ]
                           }
                         }
@@ -9962,7 +10243,11 @@
                       "ETHNICITY",
                       "NATIONALITY",
                       "PATIENT_SOURCE",
-                      "EXAM_TYPE"
+                      "EXAM_TYPE",
+                      "RECEPTION_TYPE",
+                      "EXAM_FORM",
+                      "PRIORITY_REASON",
+                      "PRICE_TYPE"
                     ]
                   },
                   "code": {
@@ -9980,6 +10265,10 @@
                   "price": {
                     "type": "integer",
                     "minimum": 0
+                  },
+                  "unit": {
+                    "type": "string",
+                    "minLength": 1
                   }
                 },
                 "required": [
@@ -10012,7 +10301,11 @@
                             "ETHNICITY",
                             "NATIONALITY",
                             "PATIENT_SOURCE",
-                            "EXAM_TYPE"
+                            "EXAM_TYPE",
+                            "RECEPTION_TYPE",
+                            "EXAM_FORM",
+                            "PRIORITY_REASON",
+                            "PRICE_TYPE"
                           ]
                         },
                         "code": {
@@ -10033,6 +10326,12 @@
                             "null"
                           ],
                           "minimum": 0
+                        },
+                        "unit": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         }
                       },
                       "required": [
@@ -10042,7 +10341,8 @@
                         "name",
                         "sortOrder",
                         "isActive",
-                        "price"
+                        "price",
+                        "unit"
                       ]
                     },
                     "meta": {
@@ -10196,6 +10496,10 @@
                   "price": {
                     "type": "integer",
                     "minimum": 0
+                  },
+                  "unit": {
+                    "type": "string",
+                    "minLength": 1
                   }
                 }
               }
@@ -10223,7 +10527,11 @@
                             "ETHNICITY",
                             "NATIONALITY",
                             "PATIENT_SOURCE",
-                            "EXAM_TYPE"
+                            "EXAM_TYPE",
+                            "RECEPTION_TYPE",
+                            "EXAM_FORM",
+                            "PRIORITY_REASON",
+                            "PRICE_TYPE"
                           ]
                         },
                         "code": {
@@ -10244,6 +10552,12 @@
                             "null"
                           ],
                           "minimum": 0
+                        },
+                        "unit": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         }
                       },
                       "required": [
@@ -10253,7 +10567,8 @@
                         "name",
                         "sortOrder",
                         "isActive",
-                        "price"
+                        "price",
+                        "unit"
                       ]
                     },
                     "meta": {
@@ -10437,7 +10752,11 @@
                             "ETHNICITY",
                             "NATIONALITY",
                             "PATIENT_SOURCE",
-                            "EXAM_TYPE"
+                            "EXAM_TYPE",
+                            "RECEPTION_TYPE",
+                            "EXAM_FORM",
+                            "PRIORITY_REASON",
+                            "PRICE_TYPE"
                           ]
                         },
                         "code": {
@@ -10458,6 +10777,12 @@
                             "null"
                           ],
                           "minimum": 0
+                        },
+                        "unit": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         }
                       },
                       "required": [
@@ -10467,7 +10792,8 @@
                         "name",
                         "sortOrder",
                         "isActive",
-                        "price"
+                        "price",
+                        "unit"
                       ]
                     },
                     "meta": {
@@ -10622,7 +10948,11 @@
                             "ETHNICITY",
                             "NATIONALITY",
                             "PATIENT_SOURCE",
-                            "EXAM_TYPE"
+                            "EXAM_TYPE",
+                            "RECEPTION_TYPE",
+                            "EXAM_FORM",
+                            "PRIORITY_REASON",
+                            "PRICE_TYPE"
                           ]
                         },
                         "code": {
@@ -10643,6 +10973,12 @@
                             "null"
                           ],
                           "minimum": 0
+                        },
+                        "unit": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         }
                       },
                       "required": [
@@ -10652,7 +10988,8 @@
                         "name",
                         "sortOrder",
                         "isActive",
-                        "price"
+                        "price",
+                        "unit"
                       ]
                     },
                     "meta": {

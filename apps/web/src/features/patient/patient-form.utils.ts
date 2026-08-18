@@ -1,4 +1,4 @@
-import type { CreatePatientRequest, PatientAddress, PatientDetail, UpdatePatientRequest } from '@nexamed/shared';
+import type { CreatePatientRequest, PatientAddress, PatientDetail, PatientGender, UpdatePatientRequest } from '@nexamed/shared';
 import { EMPTY_PATIENT_FORM, type PatientFormValues } from './PatientFormFields';
 
 /** Chuỗi rỗng → không gửi field (undefined) — khớp field optional của schema dùng chung. */
@@ -26,7 +26,9 @@ export function toCreatePatientRequest(values: PatientFormValues): CreatePatient
   return {
     fullName: values.fullName,
     dob: values.dob,
-    gender: values.gender,
+    // Bắt buộc chọn thật trước khi submit được (required trên Combobox chặn ở tầng UI) — ép kiểu ở
+    // đây vì `PatientFormValues.gender` cho phép rỗng lúc CHƯA chọn (ui-guidelines.md mục 4.1c).
+    gender: values.gender as PatientGender,
     phone: values.phone,
     nationalId: orUndefined(values.nationalId),
     nationalIdIssuedAt: orUndefined(values.nationalIdIssuedAt),

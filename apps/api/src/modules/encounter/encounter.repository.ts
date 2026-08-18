@@ -15,6 +15,14 @@ export interface CreateEncounterData {
   examTypeCode?: string | null;
   examTypeName?: string | null;
   examTypePrice?: bigint | null;
+  /** Thiết kế lại "Tiếp nhận bệnh nhân" (mockup đã duyệt) — xem `packages/shared/src/encounter.ts` (`intakeExtendedFieldsSchema`). */
+  receptionTypeCode?: string | null;
+  examFormCode?: string | null;
+  isPriority?: boolean;
+  priorityReasonCode?: string | null;
+  priceTypeCode?: string | null;
+  examTypeUnit?: string | null;
+  serviceQuantity?: number;
 }
 
 export interface EncounterWithPatientContact extends Encounter {
@@ -47,6 +55,13 @@ export class EncounterRepository {
         examTypeCode: data.examTypeCode ?? null,
         examTypeName: data.examTypeName ?? null,
         examTypePrice: data.examTypePrice ?? null,
+        receptionTypeCode: data.receptionTypeCode ?? null,
+        examFormCode: data.examFormCode ?? null,
+        isPriority: data.isPriority ?? false,
+        priorityReasonCode: data.priorityReasonCode ?? null,
+        priceTypeCode: data.priceTypeCode ?? null,
+        examTypeUnit: data.examTypeUnit ?? null,
+        serviceQuantity: data.serviceQuantity ?? 1,
         createdBy: actorId,
         updatedBy: actorId,
       },

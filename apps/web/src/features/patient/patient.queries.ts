@@ -3,7 +3,15 @@ import type { CreatePatientRequest, UpdatePatientRequest } from '@nexamed/shared
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
-import { createPatient, findPatientsByPhone, getPatient, listPatients, updatePatient, uploadPatientPhoto } from './patient.api';
+import {
+  createPatient,
+  findPatientsByNationalId,
+  findPatientsByPhone,
+  getPatient,
+  listPatients,
+  updatePatient,
+  uploadPatientPhoto,
+} from './patient.api';
 
 const PATIENT_LIST_LIMIT = 50;
 
@@ -61,11 +69,32 @@ export function usePatientByPhoneQuery(phone: string, excludePatientId?: string)
   });
 }
 
-export function usePatientQuery(id: string) {
+/**
+ * `enabled` mặc định `true` (giữ nguyên hành vi cũ ở `PatientDetailPage` — luôn có `id` thật). Màn
+ * hình "Tiếp nhận bệnh nhân" (mockup đã duyệt) cần gọi có điều kiện — chỉ fetch chi tiết đầy đủ
+ * SAU KHI đã chọn đúng 1 hồ sơ khớp trùng (qua SĐT/CCCD), tránh gọi với `id` rỗng.
+ */
+export function usePatientQuery(id: string, enabled = true) {
   const { tenantId } = useAppConfig();
   return useQuery({
     queryKey: queryKey(tenantId, 'patient', 'detail', id),
     queryFn: () => getPatient(id),
+    enabled: enabled && id !== '',
+  });
+}
+
+/**
+ * Tra trùng CCCD (Sprint 3 mở rộng, mockup đã duyệt) — cùng khuôn `usePatientByPhoneQuery`, debounce
+ * 300ms, chỉ gọi khi đủ độ dài hợp lệ (khớp `nationalId: z.string().min(9).max(12)`).
+ */
+export function usePatientByNationalIdQuery(nationalId: string, excludePatientId?: string) {
+  const { tenantId } = useAppConfig();
+  const debounced = useDebouncedValue(nationalId);
+  const enabled = debounced.length >= 9 && debounced.length <= 12;
+  return useQuery({
+    queryKey: queryKey(tenantId, 'patient', 'by-national-id', debounced, excludePatientId),
+    queryFn: () => findPatientsByNationalId(debounced, excludePatientId),
+    enabled,
   });
 }
 

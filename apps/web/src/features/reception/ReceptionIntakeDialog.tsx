@@ -20,7 +20,7 @@ export function ReceptionIntakeDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4 py-8">
-      <div className="flex max-h-full w-full max-w-lg flex-col overflow-hidden rounded-lg bg-white shadow-2xl">
+      <div className="flex max-h-full w-full max-w-4xl flex-col overflow-hidden rounded-lg bg-white shadow-2xl">
         <div className="flex flex-shrink-0 items-center justify-between border-b border-slate-200 px-5 py-3.5">
           <div>
             <h2 className="text-base font-bold text-slate-900">Tiếp nhận</h2>

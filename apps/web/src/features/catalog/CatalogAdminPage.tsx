@@ -18,6 +18,11 @@ const PILLS: ConfigScreenPill[] = [
   { key: 'nationality', label: 'Quốc tịch' },
   { key: 'patient-source', label: 'Nguồn khách hàng' },
   { key: 'exam-type', label: 'Loại khám' },
+  // Thiết kế lại "Tiếp nhận bệnh nhân" (mockup đã duyệt) — tái dùng reference_catalog, cùng lý do PATIENT_SOURCE/EXAM_TYPE ở trên.
+  { key: 'reception-type', label: 'Loại tiếp nhận' },
+  { key: 'exam-form', label: 'Hình thức khám' },
+  { key: 'priority-reason', label: 'Lý do ưu tiên' },
+  { key: 'price-type', label: 'Loại giá dịch vụ' },
 ];
 const FIRST_PILL = PILLS[0]!;
 
@@ -51,6 +56,10 @@ export function CatalogAdminPage() {
       {activePillKey === 'nationality' && <ReferenceCatalogPane category="NATIONALITY" categoryLabel="Quốc tịch" />}
       {activePillKey === 'patient-source' && <ReferenceCatalogPane category="PATIENT_SOURCE" categoryLabel="Nguồn khách hàng" />}
       {activePillKey === 'exam-type' && <ReferenceCatalogPane category="EXAM_TYPE" categoryLabel="Loại khám" />}
+      {activePillKey === 'reception-type' && <ReferenceCatalogPane category="RECEPTION_TYPE" categoryLabel="Loại tiếp nhận" />}
+      {activePillKey === 'exam-form' && <ReferenceCatalogPane category="EXAM_FORM" categoryLabel="Hình thức khám" />}
+      {activePillKey === 'priority-reason' && <ReferenceCatalogPane category="PRIORITY_REASON" categoryLabel="Lý do ưu tiên" />}
+      {activePillKey === 'price-type' && <ReferenceCatalogPane category="PRICE_TYPE" categoryLabel="Loại giá dịch vụ" />}
       {activePillKey === 'province' && <GeoPane mode="province" />}
       {activePillKey === 'ward' && <GeoPane mode="ward" />}
     </ConfigScreenShell>

@@ -123,6 +123,29 @@ export class PatientRepository {
   }
 
   /**
+   * Tra trùng CCCD (màn hình "Tiếp nhận bệnh nhân", mockup đã duyệt) — khớp CHÍNH XÁC
+   * `nationalIdHash` (đã băm ở service qua `hashForLookup`, cùng cơ chế C3 chặn trùng lúc tạo/sửa
+   * — .claude/docs/data-model.md). Về nghiệp vụ tối đa 1 kết quả (CCCD là duy nhất trong tenant)
+   * nhưng vẫn trả mảng, cùng hình dạng `findByPhone()` để nơi gọi dùng chung một kiểu xử lý.
+   */
+  findByNationalIdHash(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    params: { nationalIdHash: string; excludePatientId?: string },
+  ): Promise<Patient[]> {
+    return tx.patient.findMany({
+      where: {
+        tenantId,
+        deletedAt: null,
+        nationalIdHash: params.nationalIdHash,
+        ...(params.excludePatientId ? { id: { not: params.excludePatientId } } : {}),
+      },
+      orderBy: { id: 'asc' },
+      take: 10,
+    });
+  }
+
+  /**
    * `updateMany` + kiểm `count` (không phải `update`) vì cần điều kiện `version = ?` trong cùng
    * `WHERE` cho optimistic locking (.claude/docs/data-model.md) — `update()` của Prisma chỉ nhận
    * unique field làm điều kiện, không ghép thêm được `version`.

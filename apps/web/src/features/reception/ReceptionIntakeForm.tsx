@@ -1,12 +1,24 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import type { PatientDetail, PatientSummary } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { formatVnd } from '../../shared/format/currency';
+import { computeBmi } from '../../shared/format/bmi';
 import { Button } from '../../shared/ui/Button';
 import { Combobox, withLegacyValueOption } from '../../shared/ui/Combobox';
 import { TimeInput } from '../../shared/ui/TimeInput';
 import { useDoctorsQuery } from '../appointment/appointment.queries';
 import { getVietnamTodayDateString, minutesToLabel, vietnamNowMinutes, vnDateTimeToIso } from '../appointment/schedule-grid.utils';
-import { PatientPicker, type PickedPatient } from '../patient/PatientPicker';
+import { checkPatientDuplicate } from '../patient/patient.api';
+import {
+  useCreatePatientMutation,
+  usePatientByNationalIdQuery,
+  usePatientByPhoneQuery,
+  usePatientQuery,
+  useUpdatePatientMutation,
+} from '../patient/patient.queries';
+import { toCreatePatientRequest, toUpdatePatientRequest } from '../patient/patient-form.utils';
+import { EMPTY_PATIENT_FORM, PatientFormFields, type PatientFormValues } from '../patient/PatientFormFields';
+import { PatientMatchDialog } from '../patient/PatientMatchDialog';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { useCheckInMutation, useRegisterReceptionMutation } from './reception.queries';
 
@@ -17,6 +29,8 @@ const labelClassName = 'mb-1.5 block text-xs font-semibold text-slate-600';
 const sectionBoxClassName = 'relative rounded-lg border border-slate-200 p-5 pt-7';
 const sectionBadgeClassName =
   'absolute -top-3 left-4 rounded-md bg-blue-600 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white';
+const sectionBadgeTealClassName =
+  'absolute -top-3 left-4 rounded-md bg-brand-teal px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white';
 
 interface VitalValues {
   pulse: string;
@@ -68,12 +82,17 @@ export interface ReceptionIntakeCheckinContext {
 }
 
 /**
- * Biểu mẫu tiếp nhận DÙNG CHUNG cho cả 2 luồng (`docs/DECISIONS.md` #044) — bệnh nhân, lý do, nguồn
- * khách, loại khám, bác sĩ, sinh hiệu (tuỳ chọn, thiếu thì bác sĩ tự bổ sung ở form phiếu khám
- * sau). `mode='direct'`: trang "Tiếp nhận bệnh nhân" (`/reception/new`), tạo `encounter` trực
- * tiếp, đủ trường ngày giờ/bác sĩ tự chọn. `mode='checkin'`: popup trên panel chi tiết Lịch hẹn,
- * bác sĩ/giờ tiếp nhận đã cố định theo lịch hẹn (không cho sửa ở đây — sửa lịch hẹn thì dùng "Sửa
- * lịch hẹn" riêng), chỉ cần chọn/tạo bệnh nhân + xác nhận loại khám/nguồn khách/sinh hiệu.
+ * Biểu mẫu tiếp nhận DÙNG CHUNG cho cả 2 luồng (`docs/DECISIONS.md` #044, thiết kế lại theo mockup
+ * đã duyệt — xem cuộc trò chuyện thiết kế lại "Tiếp nhận bệnh nhân"). Khác bản trước: KHÔNG còn
+ * dùng `PatientPicker` (card tóm tắt) — hiện đủ field bệnh nhân ngay từ đầu, gõ SĐT/CCCD tự tra
+ * trùng; khớp CCCD (duy nhất trong tenant) thì tự khoá luôn, khớp SĐT (được phép trùng) thì hiện
+ * danh sách để chọn đúng người. Sau khi khớp: khoá CCCD/Mã bệnh nhân/Họ tên/Ngày sinh
+ * (`PatientFormFields identityLocked`), các field còn lại vẫn sửa được — sửa xong thì PATCH cập
+ * nhật hồ sơ gốc lúc lưu (chỉ gọi khi thật sự có thay đổi).
+ *
+ * `mode='direct'`: trang "Tiếp nhận bệnh nhân" (`/reception/new`), đủ trường ngày giờ/bác sĩ tự
+ * chọn. `mode='checkin'`: popup trên panel chi tiết Lịch hẹn — bác sĩ cố định theo lịch hẹn (không
+ * cho sửa), NHƯNG ngày/giờ tiếp nhận vẫn sửa được ở cả 2 chế độ (yêu cầu chủ dự án khi duyệt mockup).
  */
 export function ReceptionIntakeForm({
   mode,
@@ -86,27 +105,101 @@ export function ReceptionIntakeForm({
   onSuccess: (encounterNo: string) => void;
   onCancel: () => void;
 }) {
-  const [patient, setPatient] = useState<PickedPatient | null>(null);
+  const [formValues, setFormValues] = useState<PatientFormValues>({
+    ...EMPTY_PATIENT_FORM,
+    fullName: checkin?.fullName ?? '',
+    phone: checkin?.phone ?? '',
+  });
+  const [matchedPatient, setMatchedPatient] = useState<PatientDetail | null>(null);
+  const [matchedOriginalValues, setMatchedOriginalValues] = useState<PatientFormValues | null>(null);
+  const [pendingMatchId, setPendingMatchId] = useState<string | null>(null);
+  const [duplicates, setDuplicates] = useState<PatientSummary[] | null>(null);
+  /** Đóng popup "trùng SĐT"/"trùng CCCD" thì không tự bật lại cho tới khi giá trị field đó đổi khác. */
+  const [phoneMatchDismissed, setPhoneMatchDismissed] = useState(false);
+  const [nationalIdMatchDismissed, setNationalIdMatchDismissed] = useState(false);
+
   const [date, setDate] = useState(getVietnamTodayDateString());
   const [time, setTime] = useState(minutesToLabel(vietnamNowMinutes()));
   const [reason, setReason] = useState(checkin?.reason ?? '');
   const [patientSourceCode, setPatientSourceCode] = useState('');
+  const [receptionTypeCode, setReceptionTypeCode] = useState('');
+  const [examFormCode, setExamFormCode] = useState('');
+  const [isPriority, setIsPriority] = useState(false);
+  const [priorityReasonCode, setPriorityReasonCode] = useState('');
   const [examTypeCode, setExamTypeCode] = useState('');
+  const [priceTypeCode, setPriceTypeCode] = useState('');
+  const [serviceQuantity, setServiceQuantity] = useState(1);
+  const [payLater, setPayLater] = useState(true);
   const [doctorId, setDoctorId] = useState(checkin?.doctorId ?? '');
   const [vitals, setVitals] = useState<VitalValues>(EMPTY_VITALS);
   const [error, setError] = useState<string | null>(null);
 
   const doctorsQuery = useDoctorsQuery();
   const patientSourceQuery = useReferenceCatalogQuery('PATIENT_SOURCE');
+  const receptionTypeQuery = useReferenceCatalogQuery('RECEPTION_TYPE');
+  const examFormQuery = useReferenceCatalogQuery('EXAM_FORM');
+  const priorityReasonQuery = useReferenceCatalogQuery('PRIORITY_REASON');
+  const priceTypeQuery = useReferenceCatalogQuery('PRICE_TYPE');
   const examTypeQuery = useReferenceCatalogQuery('EXAM_TYPE');
   const registerMutation = useRegisterReceptionMutation();
   const checkInMutation = useCheckInMutation();
-  const submitting = registerMutation.isPending || checkInMutation.isPending;
+  const createPatientMutation = useCreatePatientMutation();
+  const updatePatientMutation = useUpdatePatientMutation(matchedPatient?.id ?? '');
+  const submitting =
+    registerMutation.isPending || checkInMutation.isPending || createPatientMutation.isPending || updatePatientMutation.isPending;
+
+  // Tra trùng SĐT/CCCD ngay trên field (thay PatientPicker) — không tra khi đã khớp xong.
+  const phoneMatchQuery = usePatientByPhoneQuery(matchedPatient ? '' : formValues.phone);
+  const nationalIdMatchQuery = usePatientByNationalIdQuery(matchedPatient ? '' : formValues.nationalId);
+  const patientDetailQuery = usePatientQuery(pendingMatchId ?? '', pendingMatchId !== null);
+
+  // Chi tiết đầy đủ (đủ field ethnicity/nationality/người thân...) cho hồ sơ vừa khớp — load xong thì khoá form.
+  useEffect(() => {
+    if (patientDetailQuery.data && pendingMatchId === patientDetailQuery.data.id) {
+      const values = patientDetailToFormValuesLocal(patientDetailQuery.data);
+      setMatchedPatient(patientDetailQuery.data);
+      setMatchedOriginalValues(values);
+      setFormValues(values);
+      setPendingMatchId(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [patientDetailQuery.data]);
+
+  useEffect(() => {
+    setPhoneMatchDismissed(false);
+  }, [formValues.phone]);
+
+  useEffect(() => {
+    setNationalIdMatchDismissed(false);
+  }, [formValues.nationalId]);
+
+  function unmatch() {
+    setMatchedPatient(null);
+    setMatchedOriginalValues(null);
+    setPendingMatchId(null);
+    setFormValues(EMPTY_PATIENT_FORM);
+  }
 
   const doctorOptions = (doctorsQuery.data?.items ?? []).map((d) => ({ value: d.id, label: d.fullName }));
   const patientSourceOptions = withLegacyValueOption(
     (patientSourceQuery.data?.items ?? []).map((i) => ({ value: i.code, label: i.name })),
     patientSourceCode,
+  );
+  const receptionTypeOptions = withLegacyValueOption(
+    (receptionTypeQuery.data?.items ?? []).map((i) => ({ value: i.code, label: i.name })),
+    receptionTypeCode,
+  );
+  const examFormOptions = withLegacyValueOption(
+    (examFormQuery.data?.items ?? []).map((i) => ({ value: i.code, label: i.name })),
+    examFormCode,
+  );
+  const priorityReasonOptions = withLegacyValueOption(
+    (priorityReasonQuery.data?.items ?? []).map((i) => ({ value: i.code, label: i.name })),
+    priorityReasonCode,
+  );
+  const priceTypeOptions = withLegacyValueOption(
+    (priceTypeQuery.data?.items ?? []).map((i) => ({ value: i.code, label: i.name })),
+    priceTypeCode,
   );
   const examTypeItems = examTypeQuery.data?.items ?? [];
   const examTypeOptions = withLegacyValueOption(
@@ -114,8 +207,24 @@ export function ReceptionIntakeForm({
     examTypeCode,
   );
   const selectedExamType = examTypeItems.find((i) => i.code === examTypeCode) ?? null;
+  const serviceAmount = selectedExamType?.price !== null && selectedExamType?.price !== undefined ? selectedExamType.price * serviceQuantity : null;
 
-  const canSubmit = patient !== null && examTypeCode !== '' && (mode === 'checkin' || doctorId !== '');
+  const weightGram = toNumber(vitals.weightKg) !== undefined ? Math.round(Number(vitals.weightKg) * 1000) : undefined;
+  const heightMm = toNumber(vitals.heightCm) !== undefined ? Math.round(Number(vitals.heightCm) * 10) : undefined;
+  const bmi = computeBmi(weightGram, heightMm);
+
+  const phoneMatches = matchedPatient ? [] : (phoneMatchQuery.data?.items ?? []);
+  const nationalIdMatches = matchedPatient ? [] : (nationalIdMatchQuery.data?.items ?? []);
+
+  const administrativeComplete =
+    formValues.fullName.trim() !== '' && formValues.dob !== '' && formValues.phone.trim() !== '' && formValues.gender !== '';
+  const canSubmit =
+    administrativeComplete &&
+    receptionTypeCode !== '' &&
+    examFormCode !== '' &&
+    examTypeCode !== '' &&
+    (!isPriority || priorityReasonCode !== '') &&
+    (mode === 'checkin' || doctorId !== '');
 
   function buildVitalsPayload() {
     return {
@@ -125,40 +234,68 @@ export function ReceptionIntakeForm({
       bpDiastolic: toNumber(vitals.bpDiastolic),
       respiratoryRate: toNumber(vitals.respiratoryRate),
       spo2: toNumber(vitals.spo2),
-      weightGram: toNumber(vitals.weightKg) !== undefined ? Math.round(Number(vitals.weightKg) * 1000) : undefined,
-      heightMm: toNumber(vitals.heightCm) !== undefined ? Math.round(Number(vitals.heightCm) * 10) : undefined,
+      weightGram,
+      heightMm,
     };
   }
 
-  async function handleSubmit() {
-    if (!patient || !selectedExamType) return;
+  /** Trả về `patientId` để dùng tiếp cho check-in/tiếp nhận, hoặc `null` nếu bị chặn (nghi trùng chờ xác nhận). */
+  async function resolvePatientId(confirmDuplicate: boolean): Promise<string | null> {
+    if (matchedPatient && matchedOriginalValues) {
+      const changed = JSON.stringify(formValues) !== JSON.stringify(matchedOriginalValues);
+      if (!changed) return matchedPatient.id;
+      const updated = await updatePatientMutation.mutateAsync(toUpdatePatientRequest(formValues, matchedPatient.version));
+      return updated.id;
+    }
+
+    if (!confirmDuplicate) {
+      const dup = await checkPatientDuplicate(formValues.fullName, formValues.dob);
+      if (dup.items.length > 0) {
+        setDuplicates(dup.items);
+        return null;
+      }
+    }
+    const created = await createPatientMutation.mutateAsync(toCreatePatientRequest(formValues));
+    return created.id;
+  }
+
+  async function submit(confirmDuplicate: boolean) {
+    if (!selectedExamType) return;
     setError(null);
-    const examTypeFields = {
-      patientSourceCode: patientSourceCode === '' ? undefined : patientSourceCode,
-      examTypeCode: selectedExamType.code,
-      examTypeName: selectedExamType.name,
-      examTypePrice: selectedExamType.price ?? 0,
-    };
     try {
+      const patientId = await resolvePatientId(confirmDuplicate);
+      if (patientId === null) return; // chặn bởi nghi trùng (PAT-03), chờ người dùng quyết định
+
+      const sharedFields = {
+        patientId,
+        chiefComplaint: reason.trim() === '' ? undefined : reason.trim(),
+        patientSourceCode: patientSourceCode === '' ? undefined : patientSourceCode,
+        examTypeCode: selectedExamType.code,
+        examTypeName: selectedExamType.name,
+        examTypePrice: selectedExamType.price ?? 0,
+        examTypeUnit: selectedExamType.unit ?? undefined,
+        receptionTypeCode,
+        examFormCode,
+        isPriority,
+        priorityReasonCode: isPriority && priorityReasonCode !== '' ? priorityReasonCode : undefined,
+        priceTypeCode: priceTypeCode === '' ? undefined : priceTypeCode,
+        serviceQuantity,
+        ...buildVitalsPayload(),
+      };
+
       if (mode === 'direct') {
         if (doctorId === '') return;
         const created = await registerMutation.mutateAsync({
-          patientId: patient.id,
+          ...sharedFields,
           doctorId,
           checkedInAt: vnDateTimeToIso(date, time),
-          chiefComplaint: reason.trim() === '' ? undefined : reason.trim(),
-          ...examTypeFields,
-          ...buildVitalsPayload(),
         });
         onSuccess(created.encounterNo);
       } else if (checkin) {
         const created = await checkInMutation.mutateAsync({
+          ...sharedFields,
           appointmentId: checkin.appointmentId,
-          patientId: patient.id,
           version: checkin.appointmentVersion,
-          chiefComplaint: reason.trim() === '' ? undefined : reason.trim(),
-          ...examTypeFields,
-          ...buildVitalsPayload(),
         });
         onSuccess(created.encounterNo);
       }
@@ -168,47 +305,149 @@ export function ReceptionIntakeForm({
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className={sectionBoxClassName}>
-        <span className={sectionBadgeClassName}>Bệnh nhân</span>
-        <PatientPicker value={patient} onChange={setPatient} initialQuery={checkin?.phone} />
-      </div>
+    <div className="flex flex-col gap-8">
+      {duplicates && duplicates.length > 0 && (
+        <PatientMatchDialog
+          variant="warning"
+          title="Có thể trùng với hồ sơ đã có"
+          description="Tên và ngày sinh vừa nhập khớp với (các) hồ sơ dưới đây — chọn đúng người nếu là cùng một bệnh nhân, hoặc vẫn tạo hồ sơ mới nếu chỉ trùng tên."
+          candidates={duplicates}
+          onPick={(p) => {
+            setDuplicates(null);
+            setPendingMatchId(p.id);
+          }}
+          onCreateNew={() => void submit(true)}
+          creating={submitting}
+          onClose={() => setDuplicates(null)}
+        />
+      )}
+
+      {!matchedPatient && nationalIdMatches.length > 0 && !nationalIdMatchDismissed ? (
+        <PatientMatchDialog
+          variant="info"
+          title="Tìm thấy hồ sơ trùng CCCD/CMND"
+          description="Số CCCD/CMND này đã dùng cho hồ sơ dưới đây (mỗi CCCD chỉ thuộc một bệnh nhân) — bấm Chọn để dùng hồ sơ cũ, hoặc đóng để tiếp tục nhập hồ sơ mới."
+          candidates={nationalIdMatches}
+          onPick={(p) => setPendingMatchId(p.id)}
+          onClose={() => setNationalIdMatchDismissed(true)}
+        />
+      ) : (
+        !matchedPatient &&
+        phoneMatches.length > 0 &&
+        !phoneMatchDismissed && (
+          <PatientMatchDialog
+            variant="info"
+            title="Tìm thấy hồ sơ trùng số điện thoại"
+            description="Số điện thoại này đã dùng cho (các) hồ sơ dưới đây — chọn đúng khách hàng nếu là cùng người, hoặc đóng để tiếp tục nhập hồ sơ mới (số điện thoại được phép dùng chung, ví dụ người thân)."
+            candidates={phoneMatches}
+            onPick={(p) => setPendingMatchId(p.id)}
+            onClose={() => setPhoneMatchDismissed(true)}
+          />
+        )
+      )}
+
+      {matchedPatient && (
+        <div className="flex items-center gap-3 rounded-lg border border-brand-teal bg-brand-teal-tint px-4 py-2.5 text-sm">
+          <span className="h-2 w-2 flex-none rounded-full bg-brand-teal" aria-hidden="true" />
+          <span className="text-slate-700">
+            Đã khớp hồ sơ cũ — <strong className="font-semibold text-slate-900">{matchedPatient.fullName}</strong>, mã{' '}
+            <strong className="font-semibold text-brand-teal">{matchedPatient.patientCode}</strong>. CCCD/Mã bệnh nhân/Họ tên/Ngày sinh
+            đã khoá theo hồ sơ gốc.
+          </span>
+          <button type="button" onClick={unmatch} className="ml-auto text-xs font-semibold text-blue-600 underline hover:text-blue-700">
+            Không phải người này?
+          </button>
+        </div>
+      )}
+
+      <PatientFormFields
+        values={formValues}
+        onChange={setFormValues}
+        identityLocked={matchedPatient !== null}
+        disabled={duplicates !== null}
+        hidePhoneDuplicateHint
+        patientId={matchedPatient?.id}
+        patientCode={matchedPatient?.patientCode}
+        photoUrl={matchedPatient?.photoUrl}
+        version={matchedPatient?.version}
+      />
 
       <div className={sectionBoxClassName}>
         <span className={sectionBadgeClassName}>Thông tin tiếp nhận</span>
-        <div className="flex flex-col gap-4">
-          {mode === 'direct' && (
-            <div className="flex gap-3">
-              <div className="flex-1">
-                <label htmlFor="intake-date" className={labelClassName}>
-                  Ngày tiếp nhận
-                </label>
-                <input id="intake-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputClassName} />
-              </div>
-              <div className="flex-1">
-                <label htmlFor="intake-time" className={labelClassName}>
-                  Giờ tiếp nhận
-                </label>
-                <TimeInput id="intake-time" value={time} onChange={setTime} className={inputClassName} />
-              </div>
-            </div>
-          )}
-
-          <div>
-            <label htmlFor="intake-reason" className={labelClassName}>
-              Lý do tiếp nhận
+        <div className="flex flex-wrap items-start gap-3">
+          <div className="w-28 flex-none">
+            <label htmlFor="intake-date" className={labelClassName}>
+              Ngày tiếp nhận
             </label>
-            <textarea
-              id="intake-reason"
-              rows={2}
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="Không bắt buộc"
-              className={inputClassName}
+            <input id="intake-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputClassName} />
+          </div>
+          <div className="w-24 flex-none">
+            <label htmlFor="intake-time" className={labelClassName}>
+              Giờ tiếp nhận
+            </label>
+            <TimeInput id="intake-time" value={time} onChange={setTime} className={inputClassName} />
+          </div>
+          <div className="min-w-[160px] flex-1">
+            <label htmlFor="intake-reception-type" className={labelClassName}>
+              Loại tiếp nhận <span className="text-rose-500">*</span>
+            </label>
+            <Combobox id="intake-reception-type" value={receptionTypeCode} onChange={setReceptionTypeCode} options={receptionTypeOptions} required />
+          </div>
+          <div className="min-w-[160px] flex-1">
+            <label htmlFor="intake-exam-form" className={labelClassName}>
+              Hình thức khám <span className="text-rose-500">*</span>
+            </label>
+            <Combobox id="intake-exam-form" value={examFormCode} onChange={setExamFormCode} options={examFormOptions} required />
+          </div>
+          <div className="w-40 flex-none">
+            <label htmlFor="intake-priority" className={labelClassName}>
+              Ưu tiên khám
+            </label>
+            <label htmlFor="intake-priority" className="flex h-[38px] cursor-pointer items-center gap-2 rounded-md border border-slate-300 px-3 text-[14px] font-semibold text-slate-800">
+              <input
+                id="intake-priority"
+                type="checkbox"
+                checked={isPriority}
+                onChange={(e) => {
+                  setIsPriority(e.target.checked);
+                  if (!e.target.checked) setPriorityReasonCode('');
+                }}
+                className="h-4 w-4 accent-blue-600"
+              />
+              Có ưu tiên
+            </label>
+          </div>
+          <div className="min-w-[160px] flex-1">
+            <label htmlFor="intake-priority-reason" className={labelClassName}>
+              Lý do ưu tiên {isPriority && <span className="text-rose-500">*</span>}
+            </label>
+            <Combobox
+              id="intake-priority-reason"
+              value={priorityReasonCode}
+              onChange={setPriorityReasonCode}
+              options={priorityReasonOptions}
+              disabled={!isPriority}
+              placeholder={isPriority ? 'Gõ để tìm...' : 'Chọn "Ưu tiên khám" trước'}
+              required={isPriority}
             />
           </div>
+        </div>
 
-          <div>
+        <div className="mt-4 flex flex-wrap items-start gap-3">
+          {mode === 'direct' ? (
+            <div className="min-w-[220px] flex-1">
+              <label htmlFor="intake-doctor" className={labelClassName}>
+                Bác sĩ khám <span className="text-rose-500">*</span>
+              </label>
+              <Combobox id="intake-doctor" value={doctorId} onChange={setDoctorId} options={doctorOptions} required />
+            </div>
+          ) : (
+            <div className="min-w-[220px] flex-1">
+              <span className={labelClassName}>Bác sĩ khám</span>
+              <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">{checkin?.doctorName}</div>
+            </div>
+          )}
+          <div className="min-w-[220px] flex-1">
             <label htmlFor="intake-source" className={labelClassName}>
               Nguồn khách
             </label>
@@ -220,26 +459,22 @@ export function ReceptionIntakeForm({
               placeholder="Không bắt buộc — gõ để tìm..."
             />
           </div>
+        </div>
 
-          <div>
-            <label htmlFor="intake-exam-type" className={labelClassName}>
-              Loại khám <span className="text-rose-500">*</span>
-            </label>
-            <Combobox id="intake-exam-type" value={examTypeCode} onChange={setExamTypeCode} options={examTypeOptions} required />
-          </div>
-
-          {mode === 'direct' ? (
-            <div>
-              <label htmlFor="intake-doctor" className={labelClassName}>
-                Bác sĩ khám <span className="text-rose-500">*</span>
-              </label>
-              <Combobox id="intake-doctor" value={doctorId} onChange={setDoctorId} options={doctorOptions} required />
-            </div>
-          ) : (
-            <div>
-              <span className={labelClassName}>Bác sĩ khám</span>
-              <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">{checkin?.doctorName}</div>
-            </div>
+        <div className="mt-4">
+          <label htmlFor="intake-reason" className={labelClassName}>
+            Lý do tiếp nhận
+          </label>
+          <textarea
+            id="intake-reason"
+            rows={2}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Không bắt buộc"
+            className={inputClassName}
+          />
+          {mode === 'checkin' && checkin?.reason && (
+            <p className="mt-1 text-xs text-slate-400">Đã tự điền từ lý do khám ghi lúc đặt lịch — vẫn sửa được.</p>
           )}
         </div>
       </div>
@@ -289,6 +524,100 @@ export function ReceptionIntakeForm({
             onChange={(v) => setVitals((p) => ({ ...p, heightCm: v }))}
           />
         </div>
+
+        <div className="mt-4 flex items-center justify-between gap-4 rounded-lg border border-blue-100 bg-blue-50 px-5 py-3.5">
+          <p className="text-[12.5px] font-bold uppercase tracking-wide text-blue-700">Chỉ số khối cơ thể (BMI)</p>
+          <div className="flex-none text-[28px] font-extrabold leading-none text-blue-700">{bmi !== null ? bmi.toFixed(1) : '—'}</div>
+        </div>
+      </div>
+
+      <div className={sectionBoxClassName}>
+        <span className={sectionBadgeTealClassName}>Chỉ định dịch vụ khám — chỉ lưu để hiển thị, chưa tính viện phí</span>
+        <div className="flex flex-wrap items-start gap-3">
+          <div className="min-w-[200px] flex-1">
+            <label htmlFor="intake-exam-type" className={labelClassName}>
+              Loại khám <span className="text-rose-500">*</span>
+            </label>
+            <Combobox id="intake-exam-type" value={examTypeCode} onChange={setExamTypeCode} options={examTypeOptions} required />
+          </div>
+          <div className="min-w-[180px] flex-1">
+            <label htmlFor="intake-price-type" className={labelClassName}>
+              Loại giá dịch vụ
+            </label>
+            <Combobox
+              id="intake-price-type"
+              value={priceTypeCode}
+              onChange={setPriceTypeCode}
+              options={priceTypeOptions}
+              placeholder="Không bắt buộc — gõ để tìm..."
+            />
+          </div>
+          <div className="w-28 flex-none">
+            <span className={labelClassName}>Đơn vị</span>
+            <div className="flex h-[38px] items-center rounded-md border border-slate-200 bg-slate-50 px-3 text-[15px] font-semibold text-slate-800">
+              {selectedExamType?.unit ?? '—'}
+            </div>
+          </div>
+          <div className="w-24 flex-none">
+            <label htmlFor="intake-quantity" className={labelClassName}>
+              Số lượng
+            </label>
+            <input
+              id="intake-quantity"
+              type="number"
+              min={1}
+              value={serviceQuantity}
+              onChange={(e) => setServiceQuantity(Math.max(1, Number(e.target.value) || 1))}
+              className={inputClassName}
+            />
+          </div>
+          <div className="w-40 flex-none">
+            <span className={labelClassName}>Thanh toán</span>
+            <label htmlFor="intake-pay-later" className="flex h-[38px] cursor-pointer items-center gap-2 rounded-md border border-slate-300 px-3 text-[14px] font-semibold text-slate-800">
+              <input id="intake-pay-later" type="checkbox" checked={payLater} onChange={(e) => setPayLater(e.target.checked)} className="h-4 w-4 accent-blue-600" />
+              Thanh toán sau
+            </label>
+          </div>
+        </div>
+
+        <div className="mt-4 overflow-hidden rounded-lg border border-slate-200">
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr className="border-b-2 border-blue-600 bg-slate-100 text-center text-xs font-bold uppercase tracking-wide text-slate-800">
+                <th className="px-3 py-2.5">Mã dịch vụ</th>
+                <th className="px-3 py-2.5 text-left">Tên dịch vụ</th>
+                <th className="px-3 py-2.5">Số lượng</th>
+                <th className="px-3 py-2.5">Đơn giá</th>
+                <th className="px-3 py-2.5">Thành tiền</th>
+                <th className="px-3 py-2.5">Trạng thái</th>
+              </tr>
+            </thead>
+            {selectedExamType ? (
+              <tbody>
+                <tr>
+                  <td className="px-3 py-3 text-center font-semibold text-slate-800">{selectedExamType.code}</td>
+                  <td className="px-3 py-3 text-left font-semibold text-slate-900">{selectedExamType.name}</td>
+                  <td className="px-3 py-3 text-center font-medium text-slate-700">{serviceQuantity}</td>
+                  <td className="px-3 py-3 text-center font-medium text-slate-700">
+                    {selectedExamType.price !== null ? formatVnd(selectedExamType.price) : '—'}
+                  </td>
+                  <td className="px-3 py-3 text-center font-bold text-slate-800">{serviceAmount !== null ? formatVnd(serviceAmount) : '—'}</td>
+                  <td className="px-3 py-3 text-center">
+                    <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700">Chờ thực hiện</span>
+                  </td>
+                </tr>
+              </tbody>
+            ) : (
+              <tbody>
+                <tr>
+                  <td colSpan={6} className="px-3 py-6 text-center text-sm font-medium text-slate-500">
+                    Chưa có dịch vụ chỉ định — chọn &quot;Loại khám&quot; ở trên để thêm.
+                  </td>
+                </tr>
+              </tbody>
+            )}
+          </table>
+        </div>
       </div>
 
       {error && (
@@ -301,10 +630,42 @@ export function ReceptionIntakeForm({
         <Button type="button" variant="secondary" onClick={onCancel}>
           Huỷ
         </Button>
-        <Button type="button" disabled={!canSubmit} loading={submitting} onClick={() => void handleSubmit()}>
+        <Button type="button" disabled={!canSubmit || duplicates !== null} loading={submitting} onClick={() => void submit(false)}>
           {mode === 'direct' ? 'Lưu tiếp nhận' : 'Xác nhận tiếp nhận'}
         </Button>
       </div>
     </div>
   );
+}
+
+/**
+ * Cùng logic `patientDetailToFormValues` (`patient-form.utils.ts`) — viết lại tại chỗ (không
+ * import) vì file gốc build ra CommonJS qua `@nexamed/shared`/barrel export, còn hàm này chỉ đọc
+ * field của `PatientDetail` (không phải logic nghiệp vụ cần đồng bộ 2 nơi) — an toàn trùng, tránh
+ * vấn đề Rollup không dò được named export qua `__exportStar` đã gặp nhiều lần (`docs/DECISIONS.md` #032).
+ */
+function patientDetailToFormValuesLocal(detail: PatientDetail): PatientFormValues {
+  return {
+    ...EMPTY_PATIENT_FORM,
+    fullName: detail.fullName,
+    dob: detail.dob,
+    gender: detail.gender,
+    phone: detail.phone,
+    nationalId: detail.nationalId ?? '',
+    nationalIdIssuedAt: detail.nationalIdIssuedAt ?? '',
+    nationalIdIssuedPlace: detail.nationalIdIssuedPlace ?? '',
+    ethnicity: detail.ethnicity ?? '',
+    nationality: detail.nationality ?? '',
+    occupation: detail.occupation ?? '',
+    insuranceNumber: detail.insuranceNumber ?? '',
+    street: detail.address?.street ?? '',
+    ward: detail.address?.ward ?? '',
+    neighborhood: detail.address?.neighborhood ?? '',
+    province: detail.address?.province ?? '',
+    allergyNote: detail.allergyNote ?? '',
+    relativeFullName: detail.relativeFullName ?? '',
+    relativeRelationship: detail.relativeRelationship ?? '',
+    relativePhone: detail.relativePhone ?? '',
+    relativeAddress: detail.relativeAddress ?? '',
+  };
 }

@@ -2,6 +2,7 @@ import type {
   CheckPatientDuplicateResponse,
   CreatePatientRequest,
   ListPatientsResponse,
+  PatientByNationalIdResponse,
   PatientByPhoneResponse,
   PatientDetail,
   UpdatePatientRequest,
@@ -43,6 +44,13 @@ export async function findPatientsByPhone(phone: string, excludePatientId?: stri
   return unwrap(
     await getApiClient().GET('/api/v1/patients/by-phone', { params: { query: { phone, excludePatientId } } }),
   ) as PatientByPhoneResponse;
+}
+
+/** Tra trùng CCCD (màn hình "Tiếp nhận bệnh nhân", mockup đã duyệt) — cùng khuôn `findPatientsByPhone`. */
+export async function findPatientsByNationalId(nationalId: string, excludePatientId?: string): Promise<PatientByNationalIdResponse> {
+  return unwrap(
+    await getApiClient().GET('/api/v1/patients/by-national-id', { params: { query: { nationalId, excludePatientId } } }),
+  ) as PatientByNationalIdResponse;
 }
 
 /** Upload/thay ảnh đại diện (docs/DECISIONS.md #034) — multipart, xem shared/api/client.ts#uploadFile. */
