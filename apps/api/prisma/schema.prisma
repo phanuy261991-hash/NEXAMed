@@ -423,6 +423,52 @@ model Ward {
   @@map("ward")
 }
 
+enum Icd10GenderRestriction {
+  male
+  female
+
+  @@map("icd10_gender_restriction")
+}
+
+enum Icd10UsageRestriction {
+  limited_primary
+  not_primary
+
+  @@map("icd10_usage_restriction")
+}
+
+// Danh mục ICD-10 — TOÀN HỆ THỐNG (cùng bản chất province/ward/permission), không tenant_id,
+// không đủ 8 cột bắt buộc, không version. Read-only lúc chạy (khác reference_catalog — không có
+// endpoint create/update/delete): danh mục Bộ Y tế, seed từ file chính thức chủ dự án cung cấp
+// (docs/data/icd10-chuong-1.md). Chỉ seed Chương I trước (S3-01, mở khoá một phần) — các chương
+// khác bổ sung dần sau qua cùng cơ chế seed idempotent (skipDuplicates), không migration lại.
+// `searchKey` tái dùng nguyên hàm `nexamed_unaccent_lower()` đã có từ patient (S2-02) — không định
+// nghĩa lại. `code === groupCode` đánh dấu dòng "Nhóm bệnh" (3 ký tự); các dòng khác là mã chi
+// tiết 4-5 ký tự thuộc nhóm đó.
+model Icd10Catalog {
+  code      String  @id
+  nameVi    String  @map("name_vi")
+  nameEn    String? @map("name_en")
+  // Generated column ở DB (GENERATED ALWAYS AS ... STORED) — không truyền lúc create/update.
+  searchKey String? @map("search_key")
+
+  chapterCode String @map("chapter_code")
+  chapterName String @map("chapter_name")
+  blockCode   String @map("block_code")
+  blockName   String @map("block_name")
+  groupCode   String @map("group_code")
+  groupName   String @map("group_name")
+
+  isBillable        Boolean                  @default(true) @map("is_billable")
+  genderRestriction Icd10GenderRestriction?  @map("gender_restriction")
+  usageRestriction  Icd10UsageRestriction?   @map("usage_restriction")
+  whoNote           String?                  @map("who_note")
+
+  @@index([chapterCode])
+  @@index([groupCode])
+  @@map("icd10_catalog")
+}
+
 enum DataScope {
   none
   personal

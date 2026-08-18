@@ -5852,6 +5852,381 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/icd10/chapters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Danh mục Chương ICD-10 (S3-01, mở khoá một phần — hiện chỉ có Chương I) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    chapterCode: string;
+                                    chapterName: string;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền patient.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/icd10/groups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Danh mục Nhóm bệnh ICD-10 thuộc 1 Chương (cascade cột 2, kèm Khối làm tiêu đề phụ) */
+        get: {
+            parameters: {
+                query: {
+                    chapterCode: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    groupCode: string;
+                                    groupName: string;
+                                    blockCode: string;
+                                    blockName: string;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu chapterCode */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền patient.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/icd10/codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Bảng mã ICD-10 chi tiết thuộc 1 Nhóm (cascade cột 3, gồm cả dòng cấp Nhóm) */
+        get: {
+            parameters: {
+                query: {
+                    groupCode: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    code: string;
+                                    nameVi: string;
+                                    nameEn: string | null;
+                                    chapterCode: string;
+                                    chapterName: string;
+                                    blockCode: string;
+                                    blockName: string;
+                                    groupCode: string;
+                                    groupName: string;
+                                    isBillable: boolean;
+                                    /** @enum {string|null} */
+                                    genderRestriction: "male" | "female" | null;
+                                    /** @enum {string|null} */
+                                    usageRestriction: "limited_primary" | "not_primary" | null;
+                                    whoNote: string | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu groupCode */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền patient.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/icd10": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tìm ICD-10 theo mã (prefix) hoặc tên tiếng Việt không dấu — bỏ qua cascade, tối đa 30 kết quả */
+        get: {
+            parameters: {
+                query: {
+                    q: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    code: string;
+                                    nameVi: string;
+                                    nameEn: string | null;
+                                    chapterCode: string;
+                                    chapterName: string;
+                                    blockCode: string;
+                                    blockName: string;
+                                    groupCode: string;
+                                    groupName: string;
+                                    isBillable: boolean;
+                                    /** @enum {string|null} */
+                                    genderRestriction: "male" | "female" | null;
+                                    /** @enum {string|null} */
+                                    usageRestriction: "limited_primary" | "not_primary" | null;
+                                    whoNote: string | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu q */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền patient.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {

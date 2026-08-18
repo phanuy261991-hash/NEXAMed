@@ -35,6 +35,11 @@ import {
   listExamStationsQuerySchema,
   listExamStationsResponseSchema,
   listFloorsResponseSchema,
+  listIcd10ChaptersResponseSchema,
+  listIcd10CodesQuerySchema,
+  listIcd10CodesResponseSchema,
+  listIcd10GroupsQuerySchema,
+  listIcd10GroupsResponseSchema,
   listPatientsQuerySchema,
   listPatientsResponseSchema,
   listProvincesResponseSchema,
@@ -65,6 +70,8 @@ import {
   resetUserPasswordRequestSchema,
   roomSessionSchema,
   roomSummarySchema,
+  searchIcd10QuerySchema,
+  searchIcd10ResponseSchema,
   setRoomSessionRequestSchema,
   startConsultationRequestSchema,
   updateClinicProfileRequestSchema,
@@ -1033,6 +1040,64 @@ registry.registerPath({
   request: { query: listWardsQueryParams },
   responses: {
     200: jsonResponse('Thành công', envelope(listWardsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền patient.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/icd10/chapters',
+  tags: ['icd10'],
+  summary: 'Danh mục Chương ICD-10 (S3-01, mở khoá một phần — hiện chỉ có Chương I)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(listIcd10ChaptersResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền patient.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/icd10/groups',
+  tags: ['icd10'],
+  summary: 'Danh mục Nhóm bệnh ICD-10 thuộc 1 Chương (cascade cột 2, kèm Khối làm tiêu đề phụ)',
+  security: [{ bearerAuth: [] }],
+  request: { query: listIcd10GroupsQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listIcd10GroupsResponseSchema)),
+    400: errorResponse('Thiếu chapterCode'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền patient.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/icd10/codes',
+  tags: ['icd10'],
+  summary: 'Bảng mã ICD-10 chi tiết thuộc 1 Nhóm (cascade cột 3, gồm cả dòng cấp Nhóm)',
+  security: [{ bearerAuth: [] }],
+  request: { query: listIcd10CodesQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listIcd10CodesResponseSchema)),
+    400: errorResponse('Thiếu groupCode'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền patient.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/icd10',
+  tags: ['icd10'],
+  summary: 'Tìm ICD-10 theo mã (prefix) hoặc tên tiếng Việt không dấu — bỏ qua cascade, tối đa 30 kết quả',
+  security: [{ bearerAuth: [] }],
+  request: { query: searchIcd10QuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(searchIcd10ResponseSchema)),
+    400: errorResponse('Thiếu q'),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền patient.read'),
   },

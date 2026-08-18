@@ -10,6 +10,7 @@ import { AppointmentModule } from './modules/appointment/appointment.module';
 import { ClinicModule } from './modules/clinic/clinic.module';
 import { ReferenceCatalogModule } from './modules/reference-catalog/reference-catalog.module';
 import { GeoModule } from './modules/geo/geo.module';
+import { Icd10Module } from './modules/icd10/icd10.module';
 import { EncounterModule } from './modules/encounter/encounter.module';
 import { ReceptionModule } from './modules/reception/reception.module';
 import { TenantContextMiddleware } from './common/tenant-context.middleware';
@@ -27,6 +28,7 @@ import { TenantContextMiddleware } from './common/tenant-context.middleware';
     ClinicModule,
     ReferenceCatalogModule,
     GeoModule,
+    Icd10Module,
     EncounterModule,
     ReceptionModule,
   ],

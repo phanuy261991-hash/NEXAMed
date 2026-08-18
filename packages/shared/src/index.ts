@@ -9,5 +9,6 @@ export * from './user-account';
 export * from './clinic';
 export * from './reference-catalog';
 export * from './geo';
+export * from './icd10';
 export * from './currency';
 export * from './timezone';

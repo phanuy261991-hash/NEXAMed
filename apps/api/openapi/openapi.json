@@ -13201,6 +13201,760 @@
           }
         }
       }
+    },
+    "/api/v1/icd10/chapters": {
+      "get": {
+        "tags": [
+          "icd10"
+        ],
+        "summary": "Danh mục Chương ICD-10 (S3-01, mở khoá một phần — hiện chỉ có Chương I)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "chapterCode": {
+                                "type": "string"
+                              },
+                              "chapterName": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "chapterCode",
+                              "chapterName"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền patient.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/icd10/groups": {
+      "get": {
+        "tags": [
+          "icd10"
+        ],
+        "summary": "Danh mục Nhóm bệnh ICD-10 thuộc 1 Chương (cascade cột 2, kèm Khối làm tiêu đề phụ)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "chapterCode",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "groupCode": {
+                                "type": "string"
+                              },
+                              "groupName": {
+                                "type": "string"
+                              },
+                              "blockCode": {
+                                "type": "string"
+                              },
+                              "blockName": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "groupCode",
+                              "groupName",
+                              "blockCode",
+                              "blockName"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Thiếu chapterCode",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền patient.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/icd10/codes": {
+      "get": {
+        "tags": [
+          "icd10"
+        ],
+        "summary": "Bảng mã ICD-10 chi tiết thuộc 1 Nhóm (cascade cột 3, gồm cả dòng cấp Nhóm)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "groupCode",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "code": {
+                                "type": "string"
+                              },
+                              "nameVi": {
+                                "type": "string"
+                              },
+                              "nameEn": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "chapterCode": {
+                                "type": "string"
+                              },
+                              "chapterName": {
+                                "type": "string"
+                              },
+                              "blockCode": {
+                                "type": "string"
+                              },
+                              "blockName": {
+                                "type": "string"
+                              },
+                              "groupCode": {
+                                "type": "string"
+                              },
+                              "groupName": {
+                                "type": "string"
+                              },
+                              "isBillable": {
+                                "type": "boolean"
+                              },
+                              "genderRestriction": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "male",
+                                  "female"
+                                ]
+                              },
+                              "usageRestriction": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "limited_primary",
+                                  "not_primary"
+                                ]
+                              },
+                              "whoNote": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "code",
+                              "nameVi",
+                              "nameEn",
+                              "chapterCode",
+                              "chapterName",
+                              "blockCode",
+                              "blockName",
+                              "groupCode",
+                              "groupName",
+                              "isBillable",
+                              "genderRestriction",
+                              "usageRestriction",
+                              "whoNote"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Thiếu groupCode",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền patient.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/icd10": {
+      "get": {
+        "tags": [
+          "icd10"
+        ],
+        "summary": "Tìm ICD-10 theo mã (prefix) hoặc tên tiếng Việt không dấu — bỏ qua cascade, tối đa 30 kết quả",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "q",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "code": {
+                                "type": "string"
+                              },
+                              "nameVi": {
+                                "type": "string"
+                              },
+                              "nameEn": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "chapterCode": {
+                                "type": "string"
+                              },
+                              "chapterName": {
+                                "type": "string"
+                              },
+                              "blockCode": {
+                                "type": "string"
+                              },
+                              "blockName": {
+                                "type": "string"
+                              },
+                              "groupCode": {
+                                "type": "string"
+                              },
+                              "groupName": {
+                                "type": "string"
+                              },
+                              "isBillable": {
+                                "type": "boolean"
+                              },
+                              "genderRestriction": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "male",
+                                  "female"
+                                ]
+                              },
+                              "usageRestriction": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "limited_primary",
+                                  "not_primary"
+                                ]
+                              },
+                              "whoNote": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "code",
+                              "nameVi",
+                              "nameEn",
+                              "chapterCode",
+                              "chapterName",
+                              "blockCode",
+                              "blockName",
+                              "groupCode",
+                              "groupName",
+                              "isBillable",
+                              "genderRestriction",
+                              "usageRestriction",
+                              "whoNote"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Thiếu q",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền patient.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "webhooks": {}

@@ -1,9 +1,10 @@
-import { Flask, GraduationCap, Pill, Users } from '@phosphor-icons/react';
+import { Flask, Pill, Users } from '@phosphor-icons/react';
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import { AppointmentSchedulePage } from '../features/appointment/AppointmentSchedulePage';
 import { LoginPage } from '../features/auth/LoginPage';
 import { RequireAuth } from '../features/auth/RequireAuth';
 import { CatalogAdminPage } from '../features/catalog/CatalogAdminPage';
+import { CatalogClinicalPage } from '../features/catalog-clinical/CatalogClinicalPage';
 import { ClinicConfigPage } from '../features/clinic/ClinicConfigPage';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { PatientDetailPage } from '../features/patient/PatientDetailPage';
@@ -50,16 +51,8 @@ export const router = createBrowserRouter([
           />
         ),
       },
-      {
-        path: 'admin/catalog-clinical',
-        element: (
-          <ComingSoonPage
-            pageTitle="Danh mục Chuyên môn"
-            icon={GraduationCap}
-            description="Danh mục chuyên môn khám chữa bệnh sẽ quản lý được ở đây khi module tương ứng ra đời."
-          />
-        ),
-      },
+      // S3-01 (mở khoá một phần) — trang tra cứu ICD-10 thật, thay ComingSoonPage cũ.
+      { path: 'admin/catalog-clinical', element: <CatalogClinicalPage /> },
       {
         path: 'admin/catalog-paraclinical',
         element: (

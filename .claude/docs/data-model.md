@@ -87,6 +87,18 @@ Quyền: `reference_catalog.read` (`global`) cho mọi vai trò lâm sàng (`rec
 
 Seed dữ liệu thật (không phải placeholder) tại `packages/core/src/reference-catalog/data.ts` — 54 dân tộc + 30 quốc tịch, nguồn từ file chủ dự án cung cấp, không tự thêm/bớt/sửa chính tả.
 
+### icd10_catalog (`docs/DECISIONS.md` #056)
+
+Danh mục ICD-10 toàn hệ thống (S3-01, mở khoá một phần — hiện seed ĐỦ Chương I-XXII, 15.844 mã, qua cơ chế seed idempotent). Cùng bản chất `province`/`ward`: không `tenant_id`, không đủ 8 cột bắt buộc, không `version`. Read-only lúc chạy (khác `reference_catalog`) — danh mục Bộ Y tế, không ai cần sửa qua UI; vì vậy REVOKE `INSERT`/`UPDATE` khỏi `nexamed_app`, chỉ seed script (role đặc quyền) ghi được. `chapter_code` là số La Mã ("I".."XXII") — thứ tự hiển thị đúng phải sắp lại ở tầng ứng dụng qua `romanToInt()` (`packages/core/src/icd10/roman-numeral.ts`), sắp trực tiếp theo thứ tự chuỗi ở DB sẽ sai ("IX" đứng trước "V").
+
+`code` (PK, ví dụ `A00`, `A00.0`) — dòng có `code === group_code` là dòng cấp Nhóm (3 ký tự), các dòng khác là mã chi tiết (4-5 ký tự) thuộc nhóm đó. `name_vi`/`name_en`, `search_key` (generated column, tái dùng nguyên hàm `nexamed_unaccent_lower()` đã tạo từ `patient` S2-02 — không định nghĩa lại). `chapter_code`/`chapter_name`, `block_code`/`block_name`, `group_code`/`group_name` — 3 cấp phân loại của WHO (thay field `chapter` đơn lẻ ở bản thiết kế trước v1.17 của `docs/ERD.md`). `is_billable` (suy từ ghi chú "Dùng mã 4–5 ký tự chi tiết hơn" trong dữ liệu nguồn — `false` cho dòng cấp Nhóm). `gender_restriction` (`male`/`female`/null), `usage_restriction` (`limited_primary`/`not_primary`/null) — chỉ hiển thị cảnh báo mềm ở trang tra cứu, KHÔNG có logic chặn (thuộc bộ chọn chẩn đoán ở màn khám, S3-06/07, chưa xây). `who_note` — nội dung cột "Hướng dẫn WHO 2019" của dữ liệu nguồn, nullable.
+
+Ký hiệu chéo `†` (dagger, mã nguyên nhân) và `*` (asterisk, mã biểu hiện) — hệ thống dagger/asterisk của WHO — trong file nguồn đã bị tách khỏi `code` (và `group_code` khi dòng Nhóm chính nó bị đánh dấu, ví dụ `F00*` ở Chương V) lúc parse — không phải một phần của mã ICD-10 thật, giữ lại sẽ làm PK sai định dạng chuẩn. Không mất thông tin: các mã `*`/`†` liên quan vẫn hiện nguyên trong `name_vi`/`name_en`.
+
+Quyền: dùng lại `patient.read` (không thêm permission mới) — cùng lý do đã chốt cho `province`/`ward`, tránh vấn đề "chưa có cơ chế backfill `role_permission` cho tenant cũ".
+
+Seed dữ liệu thật tại `packages/core/src/icd10/data.ts` — sinh bằng script dùng-một-lần đọc TOÀN BỘ file khớp mẫu `docs/data/icd10-chuong-*.md` (file gốc chủ dự án cung cấp, copy byte-for-byte, không tự gõ tay), không phải placeholder. Thêm chương mới chỉ cần thêm file đúng tên rồi chạy lại script.
+
 ### province / ward (`docs/DECISIONS.md` #038)
 
 Danh mục hành chính Tỉnh/Phường-Xã toàn hệ thống (theo sáp nhập hành chính 2025, mã Bộ Nội vụ) — dùng để điền `patient.address_json.province`/`.ward`. Cùng bản chất `icd10_catalog`: không `tenant_id`, không đủ 8 cột bắt buộc, không `version`/`is_active`. **Khác `reference_catalog`**: read-only lúc chạy (không có endpoint create/update/delete) — dữ liệu hành chính chính thức, không ai cần sửa qua UI; vì vậy REVOKE `INSERT`/`UPDATE` khỏi `nexamed_app` (giống `permission`), chỉ seed script (role đặc quyền) ghi được.

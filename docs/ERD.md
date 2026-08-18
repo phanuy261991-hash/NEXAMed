@@ -1,6 +1,6 @@
 # ERD: NEXAMed v1
 
-**Version**: v1.16 — 19/08/2026 (xem mục 9 để biết lịch sử thay đổi)
+**Version**: v1.17 — 19/08/2026 (xem mục 9 để biết lịch sử thay đổi)
 **Phạm vi**: chỉ các bảng thuộc v1 (Đặt lịch, Tiếp nhận, Khám bệnh, Kê đơn). Bảng của v2+ (viện phí, kho thuốc, BHYT) **không** tạo ở giai đoạn này.
 **Căn cứ**: `docs/product/prd.md` v1.0, `docs/product/plan.md` v1.0, `.claude/docs/data-model.md`
 
@@ -356,8 +356,16 @@ erDiagram
         text name_vi
         text name_en
         text search_key
-        text chapter
+        text chapter_code
+        text chapter_name
+        text block_code
+        text block_name
+        text group_code
+        text group_name
         boolean is_billable
+        text gender_restriction
+        text usage_restriction
+        text who_note
     }
 
     ROOM {
@@ -478,7 +486,7 @@ Bản ghi từ CẢ HAI luồng cùng xuất hiện trong "Danh sách tiếp nh�
 
 | Bảng | Phạm vi | Ghi chú |
 |---|---|---|
-| `icd10_catalog` | Toàn hệ thống | Không có `tenant_id`, read-only lúc chạy, seed từ danh mục Bộ Y tế. `search_key` là tên tiếng Việt đã bỏ dấu và viết thường, phục vụ tìm kiếm không dấu |
+| `icd10_catalog` | Toàn hệ thống | Không có `tenant_id`, read-only lúc chạy, seed từ danh mục Bộ Y tế — v1.17 seed ĐỦ Chương I-XXII (15.844 mã, S3-01 mở khoá một phần, `docs/DECISIONS.md` #056). `search_key` là tên tiếng Việt đã bỏ dấu và viết thường (tái dùng `nexamed_unaccent_lower()` của `patient`), phục vụ tìm kiếm không dấu. `chapter_code`/`chapter_name`, `block_code`/`block_name`, `group_code`/`group_name` tách từ 3 cấp phân loại của WHO (thay field `chapter` đơn lẻ ở bản thiết kế trước v1.17). `chapter_code` là số La Mã ("I".."XXII") — thứ tự hiển thị đúng phải sắp ở tầng ứng dụng qua `romanToInt()` (`packages/core`), không sắp được theo thứ tự chuỗi ở DB. `gender_restriction`/`usage_restriction` chỉ hiển thị cảnh báo mềm ở trang tra cứu — chưa có logic chặn (thuộc S3-06/07, chưa xây) |
 | `reference_catalog` | Toàn hệ thống | Dân tộc/Quốc tịch (`docs/DECISIONS.md` #037, đảo ngược #034) + Nguồn khách hàng/Loại khám (Sprint 3, v1.11) + Loại tiếp nhận/Hình thức khám/Lý do ưu tiên/Loại giá dịch vụ (v1.13, `docs/DECISIONS.md` #052) — tái dùng nguyên bảng này thay vì tạo bảng riêng. Không `tenant_id`, **quản lý được qua API** bởi `clinic_admin` (khác `icd10_catalog`/`permission` — read-only lúc chạy) — "xoá" là `is_active=false` (soft), role DB không có quyền `DELETE`. Cột `price`/`unit` (bigint/text, nullable) chỉ có ý nghĩa với category `EXAM_TYPE` — lưu để hiển thị, chưa tính viện phí |
 | `province` / `ward` | Toàn hệ thống | Tỉnh/Phường-Xã theo sáp nhập hành chính 2025, mã Bộ Nội vụ (`docs/DECISIONS.md` #038, đảo ngược tiếp phần Tỉnh/Xã của #034). Không `tenant_id`, **read-only lúc chạy** (giống `icd10_catalog`, khác `reference_catalog` — không có endpoint quản lý qua API). `ward.code` (8 chữ số) duy nhất toàn quốc, dùng thẳng làm PK |
 | `drug` | Theo tenant | v1 phòng khám tự nhập danh mục thuốc của mình (theo PRD mục 8). Khi có danh mục thuốc quốc gia dùng chung, thêm bảng `drug_catalog` toàn hệ thống và cho `drug.catalog_code` tham chiếu tới |
@@ -594,3 +602,4 @@ Khi thêm, các bảng này vẫn phải đủ 8 cột bắt buộc và tuân th
 | v1.14 | 18/08/2026 | Tách "Sửa lịch" (`PATCH /appointments/:id`, tại chỗ, trong ngày) khỏi "Dời lịch" (`POST /appointments/:id/reschedule`, thay hẳn `PATCH .../reschedule` cũ S2-09 — tạo `appointment` MỚI cho ngày khác, lịch cũ chuyển `status='RESCHEDULED'`) — 2 thao tác tồn tại song song theo yêu cầu chủ dự án. Thêm giá trị enum `RESCHEDULED` và cột `appointment.rescheduled_from_id` (self-FK, không unique — cùng khuôn `patient.merged_into_id`). Xem `docs/DECISIONS.md` #053. |
 | v1.15 | 19/08/2026 | Thêm bảng `doctor_room_session` ("phòng làm việc hôm nay" — mô hình định tuyến theo phòng tham khảo từ chủ dự án, thiết kế để chạy được ở cả quy mô 1-3 bác sĩ lẫn nhiều phòng). Thêm C12. Chỉ điều phối/hiển thị UI (`GET /appointments/doctors` thêm `currentRoomName`) — KHÔNG đổi `data_scope`/cách lọc hàng đợi khám (vẫn `doctor_id`). Tự động ẩn mọi UI liên quan khi tenant có ≤1 phòng active. Xem `docs/DECISIONS.md` #054. |
 | v1.16 | 19/08/2026 | "Tầng phòng" — mở rộng `room` thành cấp bậc: thêm bảng `floor` (Tầng, tùy chọn — `room.floor_id` nullable, C13) và bảng `exam_station` (Bàn khám/Ghế, cấp con bắt buộc thuộc 1 `room`). Cả hai THUẦN mô tả/tổ chức không gian — đơn vị điều phối thật (`doctor_room_session`, `appointment.room_id`) vẫn dừng ở cấp `room`, không đổi. Quản lý qua UI tích hợp chung 1 màn hình (không tách pill/mục riêng từng cấp). Xem `docs/DECISIONS.md` #055. |
+| v1.17 | 19/08/2026 | Module `icd10_catalog` hiện thực (S3-01, mở khoá một phần — seed ĐỦ Chương I-XXII, 15.844 mã) — schema mở rộng đầy đủ thay field `chapter` đơn lẻ: thêm `chapter_code`/`chapter_name`/`block_code`/`block_name`/`group_code`/`group_name`/`gender_restriction`/`usage_restriction`/`who_note`. Cùng khuôn `province`/`ward` (không `tenant_id`/`id`/`version`, REVOKE INSERT/UPDATE khỏi `nexamed_app`). Ký hiệu chéo `†` (dagger)/`*` (asterisk) — hệ thống WHO — tách khỏi `code` lúc parse dữ liệu — không phải một phần mã ICD-10 thật. Xem `docs/DECISIONS.md` #056. |

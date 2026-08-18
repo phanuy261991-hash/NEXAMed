@@ -32,6 +32,8 @@ const EXEMPTIONS = {
   // `code` (giống icd10_catalog), không có cột `id` riêng.
   Province: [...APPEND_ONLY_EXEMPT, 'tenant_id', 'id'],
   Ward: [...APPEND_ONLY_EXEMPT, 'tenant_id', 'id'],
+  // Danh mục ICD-10 toàn hệ thống, read-only (S3-01) — cùng bản chất Province/Ward, PK là `code`.
+  Icd10Catalog: [...APPEND_ONLY_EXEMPT, 'tenant_id', 'id'],
 };
 
 const schema = readFileSync(SCHEMA_PATH, 'utf8');
