@@ -4,6 +4,7 @@ import {
   appointmentPhoneLookupQuerySchema,
   cancelAppointmentRequestSchema,
   createAppointmentRequestSchema,
+  editAppointmentRequestSchema,
   listAppointmentsQuerySchema,
   rescheduleAppointmentRequestSchema,
 } from '@nexamed/shared';
@@ -84,11 +85,24 @@ export class AppointmentController {
     return this.appointmentService.cancelAppointment(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 
-  @Patch(':id/reschedule')
+  @Post(':id/reschedule')
   @RequirePermission('appointment', 'update', { entityIdParam: 'id' })
+  @HttpCode(200)
   async reschedule(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = rescheduleAppointmentRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
     return this.appointmentService.rescheduleAppointment(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+  }
+
+  /**
+   * "Sửa lịch" TRONG NGÀY (khôi phục 2026-08-18) — tồn tại song song với `POST :id/reschedule`
+   * ("Dời lịch", tạo lịch mới cho ngày khác). Sửa tại chỗ, cùng `id`.
+   */
+  @Patch(':id')
+  @RequirePermission('appointment', 'update', { entityIdParam: 'id' })
+  async edit(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
+    const dto = editAppointmentRequestSchema.parse(body);
+    const { userId, tenantId } = req.user!;
+    return this.appointmentService.editAppointment(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 }

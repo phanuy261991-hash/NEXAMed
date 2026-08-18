@@ -616,42 +616,44 @@ describe('HTTP e2e — /api/v1/appointments', () => {
     });
   });
 
-  describe('PATCH /api/v1/appointments/:id/reschedule — đổi/dời lịch (S2-09)', () => {
-    it('receptionist đổi giờ hợp lệ → 200, scheduledAt/durationMinutes/version cập nhật đúng', async () => {
+  describe('PATCH /api/v1/appointments/:id — sửa lịch TRONG NGÀY (khôi phục 2026-08-18, song song với "Dời lịch")', () => {
+    it('receptionist sửa giờ/thời lượng hợp lệ → 200, CÙNG id, scheduledAt/durationMinutes/version cập nhật đúng, status vẫn SCHEDULED', async () => {
       const created = await request(app.getHttpServer())
         .post('/api/v1/appointments')
         .set(authed(receptionistToken))
-        .send(bookingPayload(doctorAUserId, isoAt(8, 0, 23)));
+        .send(bookingPayload(doctorAUserId, isoAt(8, 0, 24)));
       const id = created.body.data.id as string;
 
-      const newTime = isoAt(9, 0, 23);
+      const newTime = isoAt(9, 0, 24);
       const res = await request(app.getHttpServer())
-        .patch(`/api/v1/appointments/${id}/reschedule`)
+        .patch(`/api/v1/appointments/${id}`)
         .set(authed(receptionistToken))
         .send({ doctorId: doctorAUserId, scheduledAt: newTime, durationMinutes: 30, version: 1 });
 
       expect(res.status).toBe(200);
+      expect(res.body.data.id).toBe(id);
       expect(res.body.data.scheduledAt).toBe(newTime);
       expect(res.body.data.durationMinutes).toBe(30);
       expect(res.body.data.version).toBe(2);
       expect(res.body.data.status).toBe('SCHEDULED');
+      expect(res.body.data.rescheduledFromId).toBeNull();
     });
 
     it('đổi sang khung giờ đã có lịch khác của CÙNG bác sĩ → 409 APPOINTMENT_SLOT_CONFLICT (exclusion constraint C2 áp lại như lúc tạo)', async () => {
-      const occupied = isoAt(10, 0, 23);
+      const occupied = isoAt(10, 0, 24);
       await request(app.getHttpServer())
         .post('/api/v1/appointments')
         .set(authed(receptionistToken))
         .send(bookingPayload(doctorAUserId, occupied));
 
-      const toMove = await request(app.getHttpServer())
+      const toEdit = await request(app.getHttpServer())
         .post('/api/v1/appointments')
         .set(authed(receptionistToken))
-        .send(bookingPayload(doctorAUserId, isoAt(10, 30, 23)));
-      const id = toMove.body.data.id as string;
+        .send(bookingPayload(doctorAUserId, isoAt(10, 30, 24)));
+      const id = toEdit.body.data.id as string;
 
       const res = await request(app.getHttpServer())
-        .patch(`/api/v1/appointments/${id}/reschedule`)
+        .patch(`/api/v1/appointments/${id}`)
         .set(authed(receptionistToken))
         .send({ doctorId: doctorAUserId, scheduledAt: occupied, durationMinutes: 15, version: 1 });
 
@@ -663,7 +665,7 @@ describe('HTTP e2e — /api/v1/appointments', () => {
       const created = await request(app.getHttpServer())
         .post('/api/v1/appointments')
         .set(authed(receptionistToken))
-        .send(bookingPayload(doctorAUserId, isoAt(11, 0, 23)));
+        .send(bookingPayload(doctorAUserId, isoAt(11, 0, 24)));
       const id = created.body.data.id as string;
 
       await request(app.getHttpServer())
@@ -672,9 +674,9 @@ describe('HTTP e2e — /api/v1/appointments', () => {
         .send({ cancelReason: 'Đổi ý', version: 1 });
 
       const res = await request(app.getHttpServer())
-        .patch(`/api/v1/appointments/${id}/reschedule`)
+        .patch(`/api/v1/appointments/${id}`)
         .set(authed(receptionistToken))
-        .send({ doctorId: doctorAUserId, scheduledAt: isoAt(11, 30, 23), durationMinutes: 15, version: 2 });
+        .send({ doctorId: doctorAUserId, scheduledAt: isoAt(11, 30, 24), durationMinutes: 15, version: 2 });
 
       expect(res.status).toBe(409);
       expect(res.body.error.code).toBe('APPOINTMENT_NOT_CANCELLABLE');
@@ -684,45 +686,45 @@ describe('HTTP e2e — /api/v1/appointments', () => {
       const created = await request(app.getHttpServer())
         .post('/api/v1/appointments')
         .set(authed(receptionistToken))
-        .send(bookingPayload(doctorAUserId, isoAt(12, 0, 23)));
+        .send(bookingPayload(doctorAUserId, isoAt(12, 0, 24)));
       const id = created.body.data.id as string;
 
       const res = await request(app.getHttpServer())
-        .patch(`/api/v1/appointments/${id}/reschedule`)
+        .patch(`/api/v1/appointments/${id}`)
         .set(authed(receptionistToken))
-        .send({ doctorId: doctorAUserId, scheduledAt: isoAt(12, 30, 23), durationMinutes: 15, version: 999 });
+        .send({ doctorId: doctorAUserId, scheduledAt: isoAt(12, 30, 24), durationMinutes: 15, version: 999 });
 
       expect(res.status).toBe(409);
       expect(res.body.error.code).toBe('CONCURRENT_MODIFICATION');
     });
 
-    it('bác sĩ (scope personal) đổi lịch của mình sang cho bác sĩ khác → 403 PERMISSION_DENIED', async () => {
+    it('bác sĩ (scope personal) sửa lịch của mình sang cho bác sĩ khác → 403 PERMISSION_DENIED', async () => {
       const created = await request(app.getHttpServer())
         .post('/api/v1/appointments')
         .set(authed(doctorAToken))
-        .send(bookingPayload(doctorAUserId, isoAt(13, 0, 23)));
+        .send(bookingPayload(doctorAUserId, isoAt(13, 0, 24)));
       const id = created.body.data.id as string;
 
       const res = await request(app.getHttpServer())
-        .patch(`/api/v1/appointments/${id}/reschedule`)
+        .patch(`/api/v1/appointments/${id}`)
         .set(authed(doctorAToken))
-        .send({ doctorId: doctorBUserId, scheduledAt: isoAt(13, 30, 23), durationMinutes: 15, version: 1 });
+        .send({ doctorId: doctorBUserId, scheduledAt: isoAt(13, 30, 24), durationMinutes: 15, version: 1 });
 
       expect(res.status).toBe(403);
       expect(res.body.error.code).toBe('PERMISSION_DENIED');
     });
 
-    it('tenant B không đổi được lịch hẹn của tenant A → 404', async () => {
+    it('tenant B không sửa được lịch hẹn của tenant A → 404', async () => {
       const created = await request(app.getHttpServer())
         .post('/api/v1/appointments')
         .set(authed(receptionistToken))
-        .send(bookingPayload(doctorAUserId, isoAt(14, 0, 23)));
+        .send(bookingPayload(doctorAUserId, isoAt(14, 0, 24)));
       const id = created.body.data.id as string;
 
       const res = await request(app.getHttpServer())
-        .patch(`/api/v1/appointments/${id}/reschedule`)
+        .patch(`/api/v1/appointments/${id}`)
         .set(authed(tenantBReceptionistToken))
-        .send({ doctorId: doctorAUserId, scheduledAt: isoAt(14, 30, 23), durationMinutes: 15, version: 1 });
+        .send({ doctorId: doctorAUserId, scheduledAt: isoAt(14, 30, 24), durationMinutes: 15, version: 1 });
 
       expect(res.status).toBe(404);
     });
@@ -731,13 +733,179 @@ describe('HTTP e2e — /api/v1/appointments', () => {
       const created = await request(app.getHttpServer())
         .post('/api/v1/appointments')
         .set(authed(receptionistToken))
-        .send(bookingPayload(doctorAUserId, isoAt(15, 0, 23)));
+        .send(bookingPayload(doctorAUserId, isoAt(15, 0, 24)));
       const id = created.body.data.id as string;
 
       const res = await request(app.getHttpServer())
-        .patch(`/api/v1/appointments/${id}/reschedule`)
+        .patch(`/api/v1/appointments/${id}`)
         .set(authed(receptionistToken))
-        .send({ scheduledAt: isoAt(15, 30, 23), durationMinutes: 15, version: 1 });
+        .send({ scheduledAt: isoAt(15, 30, 24), durationMinutes: 15, version: 1 });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
+    });
+  });
+
+  describe('POST /api/v1/appointments/:id/reschedule — dời lịch (thay mô hình "sửa tại chỗ" S2-09, 2026-08-18)', () => {
+    it('receptionist dời lịch hợp lệ → 200, trả về LỊCH MỚI (id khác, kế thừa fullName/phone/reason/durationMinutes/source), lịch cũ chuyển RESCHEDULED', async () => {
+      const created = await request(app.getHttpServer())
+        .post('/api/v1/appointments')
+        .set(authed(receptionistToken))
+        .send(bookingPayload(doctorAUserId, isoAt(8, 0, 23), { reason: 'Đau đầu' }));
+      const oldId = created.body.data.id as string;
+
+      const newTime = isoAt(9, 0, 23);
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/appointments/${oldId}/reschedule`)
+        .set(authed(receptionistToken))
+        .send({ doctorId: doctorAUserId, scheduledAt: newTime, version: 1 });
+
+      expect(res.status).toBe(200);
+      const newAppointment = res.body.data;
+      expect(newAppointment.id).not.toBe(oldId);
+      expect(newAppointment.scheduledAt).toBe(newTime);
+      expect(newAppointment.status).toBe('SCHEDULED');
+      expect(newAppointment.version).toBe(1);
+      expect(newAppointment.rescheduledFromId).toBe(oldId);
+      expect(newAppointment.bookingCode).not.toBe(created.body.data.bookingCode);
+      // Kế thừa từ lịch cũ (không hỏi lại) — cùng khuôn `fullName`/`phone`/`reason`/`durationMinutes`/`source`.
+      expect(newAppointment.fullName).toBe(DEFAULT_FULL_NAME);
+      expect(newAppointment.phone).toBe(DEFAULT_PHONE);
+      expect(newAppointment.reason).toBe('Đau đầu');
+      expect(newAppointment.durationMinutes).toBe(created.body.data.durationMinutes);
+      expect(newAppointment.source).toBe('phone');
+
+      const oldFetched = await request(app.getHttpServer()).get(`/api/v1/appointments/${oldId}`).set(authed(receptionistToken));
+      expect(oldFetched.body.data.status).toBe('RESCHEDULED');
+      expect(oldFetched.body.data.version).toBe(2);
+    });
+
+    it('lịch cũ dời xong thì khung giờ gốc hết bị exclusion constraint chặn — đặt lại được ngay', async () => {
+      const originalTime = isoAt(9, 30, 23);
+      const created = await request(app.getHttpServer())
+        .post('/api/v1/appointments')
+        .set(authed(receptionistToken))
+        .send(bookingPayload(doctorAUserId, originalTime));
+      const oldId = created.body.data.id as string;
+
+      await request(app.getHttpServer())
+        .post(`/api/v1/appointments/${oldId}/reschedule`)
+        .set(authed(receptionistToken))
+        .send({ doctorId: doctorAUserId, scheduledAt: isoAt(10, 0, 23), version: 1 });
+
+      const rebooked = await request(app.getHttpServer())
+        .post('/api/v1/appointments')
+        .set(authed(receptionistToken))
+        .send(bookingPayload(doctorAUserId, originalTime));
+
+      expect(rebooked.status).toBe(200);
+    });
+
+    it('lịch MỚI trùng khung giờ khác của CÙNG bác sĩ → 409 APPOINTMENT_SLOT_CONFLICT, lịch cũ KHÔNG bị đổi trạng thái (rollback cả transaction)', async () => {
+      const occupied = isoAt(10, 30, 23);
+      await request(app.getHttpServer())
+        .post('/api/v1/appointments')
+        .set(authed(receptionistToken))
+        .send(bookingPayload(doctorAUserId, occupied));
+
+      const toMove = await request(app.getHttpServer())
+        .post('/api/v1/appointments')
+        .set(authed(receptionistToken))
+        .send(bookingPayload(doctorAUserId, isoAt(11, 0, 23)));
+      const oldId = toMove.body.data.id as string;
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/appointments/${oldId}/reschedule`)
+        .set(authed(receptionistToken))
+        .send({ doctorId: doctorAUserId, scheduledAt: occupied, version: 1 });
+
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('APPOINTMENT_SLOT_CONFLICT');
+
+      const oldFetched = await request(app.getHttpServer()).get(`/api/v1/appointments/${oldId}`).set(authed(receptionistToken));
+      expect(oldFetched.body.data.status).toBe('SCHEDULED');
+      expect(oldFetched.body.data.version).toBe(1);
+    });
+
+    it('lịch đã CANCELLED → 409 APPOINTMENT_NOT_CANCELLABLE, không dời được qua đường này nữa', async () => {
+      const created = await request(app.getHttpServer())
+        .post('/api/v1/appointments')
+        .set(authed(receptionistToken))
+        .send(bookingPayload(doctorAUserId, isoAt(11, 30, 23)));
+      const id = created.body.data.id as string;
+
+      await request(app.getHttpServer())
+        .post(`/api/v1/appointments/${id}/cancel`)
+        .set(authed(receptionistToken))
+        .send({ cancelReason: 'Đổi ý', version: 1 });
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/appointments/${id}/reschedule`)
+        .set(authed(receptionistToken))
+        .send({ doctorId: doctorAUserId, scheduledAt: isoAt(12, 0, 23), version: 2 });
+
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('APPOINTMENT_NOT_CANCELLABLE');
+    });
+
+    it('version cũ → 409 CONCURRENT_MODIFICATION', async () => {
+      const created = await request(app.getHttpServer())
+        .post('/api/v1/appointments')
+        .set(authed(receptionistToken))
+        .send(bookingPayload(doctorAUserId, isoAt(12, 30, 23)));
+      const id = created.body.data.id as string;
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/appointments/${id}/reschedule`)
+        .set(authed(receptionistToken))
+        .send({ doctorId: doctorAUserId, scheduledAt: isoAt(13, 0, 23), version: 999 });
+
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('CONCURRENT_MODIFICATION');
+    });
+
+    it('bác sĩ (scope personal) dời lịch của mình sang cho bác sĩ khác → 403 PERMISSION_DENIED', async () => {
+      const created = await request(app.getHttpServer())
+        .post('/api/v1/appointments')
+        .set(authed(doctorAToken))
+        .send(bookingPayload(doctorAUserId, isoAt(13, 30, 23)));
+      const id = created.body.data.id as string;
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/appointments/${id}/reschedule`)
+        .set(authed(doctorAToken))
+        .send({ doctorId: doctorBUserId, scheduledAt: isoAt(14, 0, 23), version: 1 });
+
+      expect(res.status).toBe(403);
+      expect(res.body.error.code).toBe('PERMISSION_DENIED');
+    });
+
+    it('tenant B không dời được lịch hẹn của tenant A → 404', async () => {
+      const created = await request(app.getHttpServer())
+        .post('/api/v1/appointments')
+        .set(authed(receptionistToken))
+        .send(bookingPayload(doctorAUserId, isoAt(14, 30, 23)));
+      const id = created.body.data.id as string;
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/appointments/${id}/reschedule`)
+        .set(authed(tenantBReceptionistToken))
+        .send({ doctorId: doctorAUserId, scheduledAt: isoAt(15, 0, 23), version: 1 });
+
+      expect(res.status).toBe(404);
+    });
+
+    it('thiếu trường bắt buộc (doctorId) → 400 VALIDATION_ERROR', async () => {
+      const created = await request(app.getHttpServer())
+        .post('/api/v1/appointments')
+        .set(authed(receptionistToken))
+        .send(bookingPayload(doctorAUserId, isoAt(15, 30, 23)));
+      const id = created.body.data.id as string;
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/appointments/${id}/reschedule`)
+        .set(authed(receptionistToken))
+        .send({ scheduledAt: isoAt(16, 0, 23), version: 1 });
 
       expect(res.status).toBe(400);
       expect(res.body.error.code).toBe('VALIDATION_ERROR');

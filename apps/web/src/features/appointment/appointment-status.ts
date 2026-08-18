@@ -6,6 +6,9 @@ export const APPOINTMENT_STATUS_META: Record<AppointmentStatus, { label: string;
   CONVERTED: { label: 'Đã chuyển khám', text: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-500', accent: 'bg-emerald-500' },
   NO_SHOW: { label: 'Không đến', text: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-500', accent: 'bg-amber-500' },
   CANCELLED: { label: 'Đã huỷ', text: 'text-slate-500', bg: 'bg-slate-100', border: 'border-slate-300', accent: 'bg-slate-300' },
+  // Lịch cũ sau khi dời sang lịch mới (2026-08-18) — cùng tông "vô hiệu" với CANCELLED (mục 2.1
+  // ui-guidelines.md), chỉ khác nhãn để phân biệt lý do kết thúc.
+  RESCHEDULED: { label: 'Đã dời lịch', text: 'text-slate-500', bg: 'bg-slate-100', border: 'border-slate-300', accent: 'bg-slate-300' },
 };
 
 export const APPOINTMENT_SOURCE_LABEL: Record<AppointmentSource, string> = {

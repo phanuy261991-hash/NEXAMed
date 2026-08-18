@@ -1317,10 +1317,12 @@ export interface paths {
                                     scheduledAt: string;
                                     durationMinutes: number;
                                     /** @enum {string} */
-                                    status: "SCHEDULED" | "CANCELLED" | "NO_SHOW" | "CONVERTED";
+                                    status: "SCHEDULED" | "CANCELLED" | "NO_SHOW" | "CONVERTED" | "RESCHEDULED";
                                     /** @enum {string} */
                                     source: "walk_in" | "phone" | "online";
                                     cancelReason: string | null;
+                                    /** Format: uuid */
+                                    rescheduledFromId: string | null;
                                     version: number;
                                 }[];
                                 nextCursor: string | null;
@@ -1413,10 +1415,12 @@ export interface paths {
                                 scheduledAt: string;
                                 durationMinutes: number;
                                 /** @enum {string} */
-                                status: "SCHEDULED" | "CANCELLED" | "NO_SHOW" | "CONVERTED";
+                                status: "SCHEDULED" | "CANCELLED" | "NO_SHOW" | "CONVERTED" | "RESCHEDULED";
                                 /** @enum {string} */
                                 source: "walk_in" | "phone" | "online";
                                 cancelReason: string | null;
+                                /** Format: uuid */
+                                rescheduledFromId: string | null;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -1783,10 +1787,12 @@ export interface paths {
                                 scheduledAt: string;
                                 durationMinutes: number;
                                 /** @enum {string} */
-                                status: "SCHEDULED" | "CANCELLED" | "NO_SHOW" | "CONVERTED";
+                                status: "SCHEDULED" | "CANCELLED" | "NO_SHOW" | "CONVERTED" | "RESCHEDULED";
                                 /** @enum {string} */
                                 source: "walk_in" | "phone" | "online";
                                 cancelReason: string | null;
+                                /** Format: uuid */
+                                rescheduledFromId: string | null;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -1845,7 +1851,143 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /** Sửa lịch hẹn TRONG NGÀY (2026-08-18) — đổi giờ/bác sĩ/phòng/thời lượng tại chỗ, cùng id, không đổi ngày (khác POST :id/reschedule) */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        doctorId: string;
+                        /** Format: uuid */
+                        roomId?: string;
+                        /** Format: date-time */
+                        scheduledAt: string;
+                        durationMinutes: number;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Sửa lịch thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                bookingCode: string;
+                                /** Format: uuid */
+                                patientId: string | null;
+                                fullName: string;
+                                phone: string;
+                                reason: string | null;
+                                /** Format: uuid */
+                                doctorId: string;
+                                /** Format: uuid */
+                                roomId: string | null;
+                                scheduledAt: string;
+                                durationMinutes: number;
+                                /** @enum {string} */
+                                status: "SCHEDULED" | "CANCELLED" | "NO_SHOW" | "CONVERTED" | "RESCHEDULED";
+                                /** @enum {string} */
+                                source: "walk_in" | "phone" | "online";
+                                cancelReason: string | null;
+                                /** Format: uuid */
+                                rescheduledFromId: string | null;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền appointment.update, hoặc bác sĩ (scope personal) cố sửa lịch cho bác sĩ khác */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal của bác sĩ) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION), lịch không còn SCHEDULED (APPOINTMENT_NOT_CANCELLABLE), hoặc trùng khung giờ khác của cùng bác sĩ (APPOINTMENT_SLOT_CONFLICT) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Bác sĩ/phòng không tồn tại hoặc thuộc tenant khác */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
         trace?: never;
     };
     "/api/v1/appointments/{id}/cancel": {
@@ -1899,10 +2041,12 @@ export interface paths {
                                 scheduledAt: string;
                                 durationMinutes: number;
                                 /** @enum {string} */
-                                status: "SCHEDULED" | "CANCELLED" | "NO_SHOW" | "CONVERTED";
+                                status: "SCHEDULED" | "CANCELLED" | "NO_SHOW" | "CONVERTED" | "RESCHEDULED";
                                 /** @enum {string} */
                                 source: "walk_in" | "phone" | "online";
                                 cancelReason: string | null;
+                                /** Format: uuid */
+                                rescheduledFromId: string | null;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -1986,12 +2130,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** Đổi/dời lịch hẹn (S2-09) — đổi giờ/bác sĩ/phòng, kèm version hiện có (optimistic locking) */
-        patch: {
+        /** Dời lịch hẹn (2026-08-18) — lịch cũ chuyển RESCHEDULED, tạo lịch MỚI cho ngày/giờ/bác sĩ đã chọn (kế thừa phòng/thời lượng/nguồn từ lịch cũ), trả về lịch MỚI */
+        post: {
             parameters: {
                 query?: never;
                 header?: never;
@@ -2005,17 +2145,14 @@ export interface paths {
                     "application/json": {
                         /** Format: uuid */
                         doctorId: string;
-                        /** Format: uuid */
-                        roomId?: string;
                         /** Format: date-time */
                         scheduledAt: string;
-                        durationMinutes: number;
                         version: number;
                     };
                 };
             };
             responses: {
-                /** @description Đổi lịch thành công */
+                /** @description Dời lịch thành công — trả về lịch hẹn mới đã tạo */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -2038,10 +2175,12 @@ export interface paths {
                                 scheduledAt: string;
                                 durationMinutes: number;
                                 /** @enum {string} */
-                                status: "SCHEDULED" | "CANCELLED" | "NO_SHOW" | "CONVERTED";
+                                status: "SCHEDULED" | "CANCELLED" | "NO_SHOW" | "CONVERTED" | "RESCHEDULED";
                                 /** @enum {string} */
                                 source: "walk_in" | "phone" | "online";
                                 cancelReason: string | null;
+                                /** Format: uuid */
+                                rescheduledFromId: string | null;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -2063,7 +2202,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Không có quyền appointment.update, hoặc bác sĩ (scope personal) cố đổi lịch cho bác sĩ khác */
+                /** @description Không có quyền appointment.update, hoặc bác sĩ (scope personal) cố dời lịch cho bác sĩ khác */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -2093,7 +2232,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description version không khớp (CONCURRENT_MODIFICATION), lịch không còn SCHEDULED (APPOINTMENT_NOT_CANCELLABLE), hoặc trùng khung giờ khác của cùng bác sĩ (APPOINTMENT_SLOT_CONFLICT) */
+                /** @description version không khớp (CONCURRENT_MODIFICATION), lịch không còn SCHEDULED (APPOINTMENT_NOT_CANCELLABLE), hoặc lịch mới trùng khung giờ khác của cùng bác sĩ (APPOINTMENT_SLOT_CONFLICT) */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -2108,7 +2247,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Bác sĩ/phòng không tồn tại hoặc thuộc tenant khác */
+                /** @description Bác sĩ không tồn tại hoặc thuộc tenant khác */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -2125,6 +2264,10 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/reception/check-in": {

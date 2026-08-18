@@ -22,6 +22,7 @@ Quy tắc:
 - Chống trùng lịch bác sĩ kiểm ở DB bằng exclusion constraint (xem `data-model.md`), service bắt lỗi constraint và trả `APPOINTMENT_SLOT_CONFLICT`. Không dựa vào kiểm tra read-then-write ở tầng service — có race condition.
 - Walk-in tạo `appointment` với `source = walk-in` và check-in ngay trong cùng transaction.
 - Huỷ lịch bắt buộc có `cancel_reason`. Lịch đã `CHECKED_IN` không huỷ được, chỉ chuyển `CANCELLED` qua luồng bỏ về.
+- **Sửa lịch** (`PATCH /appointments/:id`, trong ngày, tại chỗ) và **Dời lịch** (`POST /appointments/:id/reschedule`, sang ngày khác — lịch cũ chuyển `RESCHEDULED`, tạo lịch mới) là 2 thao tác tách biệt, tồn tại song song (`docs/DECISIONS.md` #053). Xem chi tiết ở `data-model.md` mục `appointment`.
 
 **Đặt lịch "lead capture" (`docs/DECISIONS.md` #032, thay thế mô tả cũ "đặt lịch cho một `patient` đã có")**:
 - Đặt lịch **không** tạo hoặc gắn hồ sơ `patient` — chỉ ghi nhận trực tiếp Họ tên/SĐT/lý do khám lên chính `appointment` (`full_name`/`phone`/`reason`). Việc tạo/khớp hồ sơ `patient` chuyển hẳn sang lúc Tiếp nhận (check-in tại quầy, module `encounter` — Sprint 3, chưa xây).

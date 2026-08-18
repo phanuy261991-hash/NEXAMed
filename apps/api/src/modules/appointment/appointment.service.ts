@@ -20,6 +20,7 @@ import {
   type ClinicSettings,
   type CreateAppointmentRequest,
   type DataScope,
+  type EditAppointmentRequest,
   type ListAppointmentsQuery,
   type ListAppointmentsResponse,
   type ListDoctorsResponse,
@@ -240,17 +241,18 @@ export class AppointmentService {
   }
 
   /**
-   * Đổi/dời lịch hẹn (S2-09, chốt sau khi chủ dự án xem mockup — docs/DECISIONS.md). Cùng khuôn
+   * Sửa lịch hẹn TRONG NGÀY (khôi phục 2026-08-18, tồn tại song song với `rescheduleAppointment()`
+   * bên dưới — chủ dự án yêu cầu 2 thao tác tách biệt: "Sửa lịch" đổi giờ/bác sĩ/phòng/thời lượng
+   * TẠI CHỖ, cùng id, không đổi ngày; "Dời lịch" tạo lịch mới cho ngày khác). Cùng khuôn
    * `cancelAppointment()`: 404 khi ngoài tenant/scope, 409 khi không còn `SCHEDULED` hoặc version
-   * lệch. Bắt lỗi exclusion/FK giống hệt `createAppointment()` (đổi giờ mới trùng lịch khác của
-   * cùng bác sĩ vẫn phải báo `APPOINTMENT_SLOT_CONFLICT`, không có đường tắt bỏ qua constraint).
+   * lệch, bắt lỗi exclusion/FK giống `createAppointment()`.
    */
-  async rescheduleAppointment(
+  async editAppointment(
     tenantId: string,
     actorId: string,
     dataScope: DataScope,
     id: string,
-    dto: RescheduleAppointmentRequest,
+    dto: EditAppointmentRequest,
     meta: RequestMeta,
   ): Promise<AppointmentSummary> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
@@ -261,18 +263,16 @@ export class AppointmentService {
       if (existing.status !== 'SCHEDULED') {
         throw new AppointmentNotCancellableError();
       }
-      // scope `personal`: không được đổi lịch của mình sang cho bác sĩ khác — cùng điều kiện
-      // `createAppointment()` (không đặt/không chuyển hộ bác sĩ khác).
       if (dataScope === 'personal' && dto.doctorId !== actorId) {
         throw new ForbiddenException({
           code: 'PERMISSION_DENIED',
-          message: 'Chỉ có thể đổi lịch hẹn cho chính mình.',
+          message: 'Chỉ có thể sửa lịch hẹn cho chính mình.',
         });
       }
 
       let count: number;
       try {
-        count = await this.appointmentRepository.reschedule(
+        count = await this.appointmentRepository.updateDetails(
           tx,
           tenantId,
           id,
@@ -300,7 +300,7 @@ export class AppointmentService {
 
       await writeAuditLog(tx, tenantId, {
         actorId,
-        action: 'appointment.rescheduled',
+        action: 'appointment.updated',
         entityType: 'appointment',
         entityId: id,
         beforeJson: { scheduledAt: existing.scheduledAt.toISOString(), doctorId: existing.doctorId },
@@ -314,6 +314,88 @@ export class AppointmentService {
         throw new NotFoundException();
       }
       return this.toSummary(updated);
+    });
+  }
+
+  /**
+   * Dời lịch hẹn (thay thế mô hình S2-09 "sửa tại chỗ" — yêu cầu chủ dự án 2026-08-18): lịch cũ
+   * đánh dấu `RESCHEDULED` (giữ nguyên làm lịch sử, không sửa/xoá), tạo MỘT lịch hẹn mới cho
+   * ngày/giờ đã chọn — kế thừa `fullName`/`phone`/`reason`/`roomId`/`durationMinutes`/`source` từ
+   * lịch cũ (client chỉ gửi `doctorId`+`scheduledAt` mới). Cùng khuôn `cancelAppointment()`: 404
+   * khi ngoài tenant/scope, 409 khi không còn `SCHEDULED` hoặc version lệch. Bắt lỗi exclusion/FK
+   * giống hệt `createAppointment()` (lịch mới trùng giờ bác sĩ khác vẫn báo
+   * `APPOINTMENT_SLOT_CONFLICT`, không có đường tắt bỏ qua constraint) — cả hai bước (đánh dấu +
+   * tạo mới) chạy trong CÙNG transaction, lỗi ở bước tạo mới sẽ rollback luôn bước đánh dấu.
+   */
+  async rescheduleAppointment(
+    tenantId: string,
+    actorId: string,
+    dataScope: DataScope,
+    id: string,
+    dto: RescheduleAppointmentRequest,
+    meta: RequestMeta,
+  ): Promise<AppointmentSummary> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const existing = await this.appointmentRepository.findById(tx, tenantId, id);
+      if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId)) {
+        throw new NotFoundException();
+      }
+      if (existing.status !== 'SCHEDULED') {
+        throw new AppointmentNotCancellableError();
+      }
+      // scope `personal`: không được dời lịch của mình sang cho bác sĩ khác — cùng điều kiện
+      // `createAppointment()` (không đặt/không chuyển hộ bác sĩ khác).
+      if (dataScope === 'personal' && dto.doctorId !== actorId) {
+        throw new ForbiddenException({
+          code: 'PERMISSION_DENIED',
+          message: 'Chỉ có thể dời lịch hẹn cho chính mình.',
+        });
+      }
+
+      const supersededCount = await this.appointmentRepository.markRescheduled(tx, tenantId, id, dto.version, actorId);
+      if (supersededCount === 0) {
+        throw new ConcurrentModificationError();
+      }
+
+      const seq = await this.codeSequenceRepository.next(tx, tenantId, APPOINTMENT_BOOKING_CODE_PREFIX, actorId);
+      const bookingCode = formatDisplayCode(APPOINTMENT_BOOKING_CODE_PREFIX, new Date(), seq);
+
+      let created: Appointment;
+      try {
+        created = await this.appointmentRepository.create(tx, tenantId, actorId, {
+          bookingCode,
+          fullName: existing.fullName,
+          phone: existing.phone,
+          reason: existing.reason,
+          doctorId: dto.doctorId,
+          roomId: existing.roomId,
+          scheduledAt: new Date(dto.scheduledAt),
+          durationMinutes: existing.durationMinutes,
+          source: existing.source,
+          rescheduledFromId: existing.id,
+        });
+      } catch (err) {
+        if (isExclusionViolation(err)) {
+          throw new AppointmentSlotConflictError();
+        }
+        if (isForeignKeyViolation(err)) {
+          throw new AppointmentInvalidReferenceError();
+        }
+        throw err;
+      }
+
+      await writeAuditLog(tx, tenantId, {
+        actorId,
+        action: 'appointment.rescheduled',
+        entityType: 'appointment',
+        entityId: existing.id,
+        beforeJson: { status: 'SCHEDULED', scheduledAt: existing.scheduledAt.toISOString(), doctorId: existing.doctorId },
+        afterJson: { status: 'RESCHEDULED', newAppointmentId: created.id, scheduledAt: dto.scheduledAt, doctorId: dto.doctorId },
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
+
+      return this.toSummary(created);
     });
   }
 
@@ -332,6 +414,7 @@ export class AppointmentService {
       status: appointment.status,
       source: appointment.source,
       cancelReason: appointment.cancelReason,
+      rescheduledFromId: appointment.rescheduledFromId,
       version: appointment.version,
     };
   }

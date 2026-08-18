@@ -2,6 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { Appointment } from '@prisma/client';
 
+export interface EditAppointmentData {
+  doctorId: string;
+  roomId: string | null;
+  scheduledAt: Date;
+  durationMinutes: number;
+}
+
 export interface CreateAppointmentData {
   bookingCode: string;
   fullName: string;
@@ -12,13 +19,8 @@ export interface CreateAppointmentData {
   scheduledAt: Date;
   durationMinutes: number;
   source: Prisma.AppointmentCreateInput['source'];
-}
-
-export interface RescheduleAppointmentData {
-  doctorId: string;
-  roomId: string | null;
-  scheduledAt: Date;
-  durationMinutes: number;
+  /** Chỉ có giá trị khi lịch này sinh ra từ một lần dời lịch — xem `reschedule()` bên dưới. */
+  rescheduledFromId?: string;
 }
 
 /** Chỗ DUY NHẤT gọi Prisma cho bảng `appointment` — theo .claude/docs/coding-standards.md. */
@@ -40,6 +42,7 @@ export class AppointmentRepository {
         scheduledAt: data.scheduledAt,
         durationMinutes: data.durationMinutes,
         source: data.source,
+        rescheduledFromId: data.rescheduledFromId,
         createdBy: actorId,
         updatedBy: actorId,
       },
@@ -130,17 +133,17 @@ export class AppointmentRepository {
   }
 
   /**
-   * Đổi/dời lịch (S2-09) — cùng khuôn `cancel()`: `updateMany` ghép `version`/`status='SCHEDULED'`
-   * vào `WHERE` cho atomic. Đổi `scheduledAt`/`durationMinutes`/`doctorId`/`roomId` khi status vẫn
-   * `SCHEDULED` nên exclusion constraint C2 (docs/ERD.md mục 4) tự áp lại đúng như lúc tạo mới —
-   * không cần logic chống trùng riêng ở tầng ứng dụng.
+   * Sửa lịch hẹn TRONG NGÀY (khôi phục 2026-08-18, tồn tại song song với `markRescheduled()`) —
+   * cùng khuôn `cancel()`: `updateMany` ghép `version`/`status='SCHEDULED'` vào `WHERE` cho atomic.
+   * Đổi `scheduledAt`/`durationMinutes`/`doctorId`/`roomId` TẠI CHỖ (không tạo bản ghi mới, không
+   * đổi `status`) khi vẫn `SCHEDULED` nên exclusion constraint C2 tự áp lại đúng như lúc tạo mới.
    */
-  async reschedule(
+  async updateDetails(
     tx: Prisma.TransactionClient,
     tenantId: string,
     id: string,
     expectedVersion: number,
-    data: RescheduleAppointmentData,
+    data: EditAppointmentData,
     actorId: string,
   ): Promise<number> {
     const result = await tx.appointment.updateMany({
@@ -158,9 +161,31 @@ export class AppointmentRepository {
   }
 
   /**
+   * Dời lịch (thay thế mô hình S2-09 "sửa tại chỗ" — yêu cầu chủ dự án 2026-08-18): bước ĐẦU của
+   * luồng dời lịch, chỉ đánh dấu lịch cũ `RESCHEDULED` (không sửa giờ/bác sĩ tại chỗ nữa). Cùng
+   * khuôn `cancel()`: `updateMany` ghép `version`/`status='SCHEDULED'` vào `WHERE` cho atomic —
+   * chặn race hai request cùng dời một lịch. `AppointmentService.rescheduleAppointment()` gọi tiếp
+   * `create()` (ở trên) ngay sau đó, trong CÙNG transaction, để tạo lịch mới với
+   * `rescheduledFromId` trỏ về `id` này.
+   */
+  async markRescheduled(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    id: string,
+    expectedVersion: number,
+    actorId: string,
+  ): Promise<number> {
+    const result = await tx.appointment.updateMany({
+      where: { tenantId, id, version: expectedVersion, deletedAt: null, status: 'SCHEDULED' },
+      data: { status: 'RESCHEDULED', updatedBy: actorId, version: { increment: 1 } },
+    });
+    return result.count;
+  }
+
+  /**
    * Check-in (Sprint 3, Tiếp nhận) — chuyển `SCHEDULED → CONVERTED` VÀ gắn `patientId` (hồ sơ đã
    * resolve xong ở web trước khi gọi — tìm/tạo `patient`, xem `ReceptionService.checkIn()`), cùng
-   * khuôn `cancel()`/`reschedule()`. Gọi từ `ReceptionModule` (không phải `AppointmentModule`) qua
+   * khuôn `cancel()`/`markRescheduled()`. Gọi từ `ReceptionModule` (không phải `AppointmentModule`) qua
    * `AppointmentRepository` export — xem docs/DECISIONS.md (quyết định kiến trúc chia sẻ
    * Repository giữa 2 module trong cùng 1 transaction check-in).
    */

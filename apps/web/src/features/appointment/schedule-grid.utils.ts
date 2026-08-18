@@ -1,4 +1,4 @@
-import type { BusinessHours } from '@nexamed/shared';
+import type { AppointmentSummary, BusinessHours } from '@nexamed/shared';
 
 /** Fallback khi tenant chưa cấu hình `clinic-settings` (businessHours null) — .claude/docs/ui-guidelines.md chưa định nghĩa giờ mặc định, chọn khung phổ biến cho phòng khám tư nhân. */
 export const DEFAULT_OPEN_TIME = '07:00';
@@ -74,6 +74,41 @@ export function getVietnamTodayDateString(): string {
 export function vietnamNowMinutes(): number {
   const now = new Date();
   return (now.getUTCHours() * 60 + now.getUTCMinutes() + 7 * 60) % (24 * 60);
+}
+
+/** ISO UTC → `YYYY-MM-DD` theo giờ Việt Nam — cùng kỹ thuật `getVietnamTodayDateString()`, chỉ
+ * khác nguồn (một mốc giờ bất kỳ thay vì "bây giờ"). Dùng để tính ngày mặc định của một lịch hẹn
+ * đã có (ví dụ mở panel Dời lịch), không lệ thuộc vào ngày đang xem trên lưới. */
+export function isoToVietnamDateString(iso: string): string {
+  const vn = new Date(new Date(iso).getTime() + 7 * 60 * 60_000);
+  return `${vn.getUTCFullYear()}-${String(vn.getUTCMonth() + 1).padStart(2, '0')}-${String(vn.getUTCDate()).padStart(2, '0')}`;
+}
+
+/**
+ * Giờ bận cuối cùng của một bác sĩ nếu khung `time`+`durationMinutes` chồng lịch — dùng cho danh
+ * sách "Bác sĩ trống/bận" (Đặt lịch nhanh lẫn Dời lịch, trùng lặp lần 2 nên trích xuất theo
+ * CLAUDE.md). Bỏ qua lịch `CANCELLED`/`RESCHEDULED` — không còn thật sự chiếm khung giờ đó.
+ * `excludeAppointmentId`: bỏ qua chính lịch đang dời (nếu có) để không tự báo bận với chính mình.
+ */
+export function findDoctorBusyUntilLabel(
+  doctorId: string,
+  time: string,
+  durationMinutes: number,
+  dayAppointments: AppointmentSummary[],
+  excludeAppointmentId?: string,
+): string | null {
+  const start = toMinutes(time);
+  const end = start + durationMinutes;
+  let busyUntil: number | null = null;
+  for (const a of dayAppointments) {
+    if (a.doctorId !== doctorId || a.status === 'CANCELLED' || a.status === 'RESCHEDULED' || a.id === excludeAppointmentId) continue;
+    const aStart = vnTimeOfDayMinutes(a.scheduledAt);
+    const aEnd = aStart + a.durationMinutes;
+    if (start < aEnd && end > aStart) {
+      busyUntil = busyUntil === null ? aEnd : Math.max(busyUntil, aEnd);
+    }
+  }
+  return busyUntil === null ? null : minutesToLabel(busyUntil);
 }
 
 /** Thêm/bớt N ngày vào một ngày `YYYY-MM-DD`, trả về `YYYY-MM-DD` — dùng cho nút chuyển ngày trước/sau. */

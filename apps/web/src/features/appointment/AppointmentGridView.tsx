@@ -199,7 +199,7 @@ export function AppointmentGridView({
                     onClick={() => onCardClick(a)}
                     className={`absolute left-0.5 right-0.5 overflow-hidden rounded-md border-l-[3px] px-1.5 py-1 text-left shadow-sm hover:shadow-md ${
                       late ? 'border-amber-500 bg-amber-50' : `${meta.border} ${meta.bg}`
-                    } ${a.status === 'CANCELLED' ? 'opacity-60 line-through' : ''}`}
+                    } ${a.status === 'CANCELLED' || a.status === 'RESCHEDULED' ? 'opacity-60 line-through' : ''}`}
                     style={{ top: start * ROW_HEIGHT_PX + 2, height: (a.durationMinutes / GRID_STEP_MINUTES) * ROW_HEIGHT_PX - 4 }}
                   >
                     <div className={`flex items-center gap-1 text-[10.5px] font-bold tabular-nums ${late ? 'text-amber-700' : meta.text}`}>

@@ -18,6 +18,7 @@ const LEGEND = [
   { label: 'Đã chuyển khám', className: 'bg-emerald-500' },
   { label: 'Không đến', className: 'bg-amber-500' },
   { label: 'Đã huỷ', className: 'bg-slate-300' },
+  { label: 'Đã dời lịch', className: 'bg-slate-300' },
 ];
 
 /**
@@ -223,13 +224,7 @@ export function AppointmentSchedulePage() {
         defaultDurationMinutes={defaultDuration}
       />
 
-      <AppointmentDetailPanel
-        appointment={detailAppointment}
-        onClose={() => setDetailAppointment(null)}
-        date={date}
-        doctors={doctors}
-        defaultDurationMinutes={defaultDuration}
-      />
+      <AppointmentDetailPanel appointment={detailAppointment} onClose={() => setDetailAppointment(null)} doctors={doctors} />
 
       {doctors.length === 0 && !loadingBase && !baseError && (
         <p className="flex flex-shrink-0 items-center gap-1.5 px-1 text-xs text-slate-400">

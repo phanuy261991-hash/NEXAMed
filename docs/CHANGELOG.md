@@ -2,6 +2,19 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-18 (2)
+
+Panel "Chi tiết lịch hẹn" — tách "Sửa lịch" (tại chỗ, trong ngày) khỏi "Dời lịch" (tạo lịch mới, đổi ngày), 2 thao tác tồn tại song song; "Tiếp nhận" điều hướng trang thay popup; popup "Tiếp nhận thành công" + nút "Nhập lại" (`docs/DECISIONS.md` #053):
+
+- **"Dời lịch"** (`POST /appointments/:id/reschedule`, thay hẳn `PATCH .../reschedule` cũ S2-09): chọn ngày mới + giờ + bác sĩ (danh sách trống/bận theo ngày đã chọn) → lịch CŨ chuyển `status='RESCHEDULED'` (giá trị enum mới), lịch MỚI được TẠO RIÊNG (kế thừa fullName/phone/reason/roomId/durationMinutes/source), cột mới `appointment.rescheduled_from_id` trên lịch mới trỏ về lịch cũ. Cả 2 bước cùng 1 transaction.
+- **"Sửa lịch"** (khôi phục, endpoint mới `PATCH /appointments/:id`): đổi giờ/bác sĩ/thời lượng TẠI CHỖ, cùng id, không đổi status, không có ô chọn ngày (chỉ trong ngày hiện có).
+- `DoctorAvailabilityList.tsx` (mới) — danh sách bác sĩ trống/bận dùng chung cho Đặt lịch nhanh lẫn Dời lịch/Sửa lịch (trùng lặp lần 2, tách theo CLAUDE.md).
+- **"Tiếp nhận"** đổi từ mở popup (`ReceptionIntakeDialog.tsx`, đã xoá) sang điều hướng `/reception/new` kèm `location.state.checkin` — đảo ngược #043/#044.
+- `ReceptionIntakeForm.tsx`: "Lưu tiếp nhận" (`mode='direct'`) hiện popup "THÀNH CÔNG / Tiếp nhận thành công" thay vì điều hướng ngay, nút "Tiếp nhận mới" xoá form và ở lại trang. Footer đổi "Huỷ" → "Quay lại", thêm nút "Nhập lại" (`resetForm()` — giữ nguyên fullName/phone/doctorId khi `mode='checkin'`, tránh xoá mất danh tính khách đang check-in).
+- Migration `20260818150000_appointment_reschedule_status`: thêm `RESCHEDULED` vào enum `appointment_status`, cột `appointment.rescheduled_from_id`.
+- **Đã xác minh thật**: `appointment-http.spec.ts` viết lại 2 describe (`PATCH :id` 7 test + `POST :id/reschedule` 8 test, 56/56 pass) — tổng 259 test `apps/api` không regress. `pnpm -w typecheck/lint/build` sạch toàn workspace. Playwright qua trình duyệt thật (dữ liệu thật, không mock): Dời lịch → lịch mới đúng giờ/mã, lịch cũ hiện "Đã dời lịch"; Sửa lịch → lưu tại chỗ đúng cùng mã, không có ô ngày; Tiếp nhận → điều hướng đúng kèm prefill Họ tên/SĐT; popup "THÀNH CÔNG" đúng mẫu tham khảo chủ dự án gửi.
+- Cập nhật `.claude/docs/data-model.md`, `.claude/docs/clinical-workflow.md`, `docs/ERD.md` (v1.14), `docs/DECISIONS.md` (#053), `docs/CURRENT.md`.
+
 ## 2026-08-18 (1)
 
 Thiết kế lại "Tiếp nhận bệnh nhân" — mockup Artifact duyệt qua nhiều vòng, hiện đủ field bệnh nhân thay `PatientPicker`, tra trùng SĐT/CCCD qua popup (`docs/DECISIONS.md` #052):

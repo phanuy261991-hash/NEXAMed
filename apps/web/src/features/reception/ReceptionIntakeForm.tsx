@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { CheckCircle, UserPlus } from '@phosphor-icons/react';
 import type { PatientDetail, PatientSummary } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { formatVnd } from '../../shared/format/currency';
@@ -133,6 +134,9 @@ export function ReceptionIntakeForm({
   const [doctorId, setDoctorId] = useState(checkin?.doctorId ?? '');
   const [vitals, setVitals] = useState<VitalValues>(EMPTY_VITALS);
   const [error, setError] = useState<string | null>(null);
+  /** Popup "Tiếp nhận thành công" (mode='direct') — thay điều hướng ngay lập tức, cho phép tiếp
+   * nhận liên tiếp nhiều bệnh nhân không rời trang (yêu cầu chủ dự án, mẫu tham khảo đã gửi). */
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
 
   const doctorsQuery = useDoctorsQuery();
   const patientSourceQuery = useReferenceCatalogQuery('PATIENT_SOURCE');
@@ -178,6 +182,35 @@ export function ReceptionIntakeForm({
     setMatchedOriginalValues(null);
     setPendingMatchId(null);
     setFormValues(EMPTY_PATIENT_FORM);
+  }
+
+  /** "Nhập lại" — xoá hết những gì đã nhập, đưa form về đúng trạng thái ban đầu lúc mount (khớp
+   * initializer của từng state ở trên: `checkin` prefill vẫn giữ cho mode='checkin', trắng hoàn
+   * toàn cho mode='direct'). Dùng lại sau popup "Tiếp nhận thành công" để tiếp nhận NGAY bệnh nhân
+   * kế tiếp không rời trang, và cho nút "Nhập lại" bấm trực tiếp giữa chừng (yêu cầu chủ dự án). */
+  function resetForm() {
+    setMatchedPatient(null);
+    setMatchedOriginalValues(null);
+    setPendingMatchId(null);
+    setDuplicates(null);
+    setPhoneMatchDismissed(false);
+    setNationalIdMatchDismissed(false);
+    setFormValues({ ...EMPTY_PATIENT_FORM, fullName: checkin?.fullName ?? '', phone: checkin?.phone ?? '' });
+    setDate(getVietnamTodayDateString());
+    setTime(minutesToLabel(vietnamNowMinutes()));
+    setReason(checkin?.reason ?? '');
+    setPatientSourceCode('');
+    setReceptionTypeCode('');
+    setExamFormCode('');
+    setIsPriority(false);
+    setPriorityReasonCode('');
+    setExamTypeCode('');
+    setPriceTypeCode('');
+    setServiceQuantity(1);
+    setPayLater(true);
+    setDoctorId(checkin?.doctorId ?? '');
+    setVitals(EMPTY_VITALS);
+    setError(null);
   }
 
   const doctorOptions = (doctorsQuery.data?.items ?? []).map((d) => ({ value: d.id, label: d.fullName }));
@@ -285,12 +318,14 @@ export function ReceptionIntakeForm({
 
       if (mode === 'direct') {
         if (doctorId === '') return;
-        const created = await registerMutation.mutateAsync({
+        await registerMutation.mutateAsync({
           ...sharedFields,
           doctorId,
           checkedInAt: vnDateTimeToIso(date, time),
         });
-        onSuccess(created.encounterNo);
+        // Hiện popup xác nhận ngay tại trang (không điều hướng) — lễ tân tiếp nhận liên tiếp nhiều
+        // bệnh nhân, "Tiếp nhận mới" xoá trắng form thay vì rời trang mỗi lần (yêu cầu chủ dự án).
+        setShowSuccessDialog(true);
       } else if (checkin) {
         const created = await checkInMutation.mutateAsync({
           ...sharedFields,
@@ -628,12 +663,36 @@ export function ReceptionIntakeForm({
 
       <div className="flex justify-end gap-2.5">
         <Button type="button" variant="secondary" onClick={onCancel}>
-          Huỷ
+          Quay lại
+        </Button>
+        <Button type="button" variant="secondary" onClick={resetForm}>
+          Nhập lại
         </Button>
         <Button type="button" disabled={!canSubmit || duplicates !== null} loading={submitting} onClick={() => void submit(false)}>
           {mode === 'direct' ? 'Lưu tiếp nhận' : 'Xác nhận tiếp nhận'}
         </Button>
       </div>
+
+      {showSuccessDialog && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/50 px-4">
+          <div className="w-full max-w-sm rounded-lg bg-white p-8 text-center shadow-2xl">
+            <CheckCircle size={56} weight="fill" className="mx-auto mb-4 text-emerald-500" aria-hidden="true" />
+            <h3 className="mb-1 text-lg font-bold uppercase tracking-wide text-emerald-600">Thành công</h3>
+            <p className="mb-6 text-sm text-slate-700">Tiếp nhận thành công</p>
+            <Button
+              type="button"
+              className="w-full"
+              onClick={() => {
+                setShowSuccessDialog(false);
+                resetForm();
+              }}
+            >
+              <UserPlus size={18} weight="bold" aria-hidden="true" />
+              Tiếp nhận mới
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,11 +1,12 @@
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { CancelAppointmentRequest, CreateAppointmentRequest, RescheduleAppointmentRequest } from '@nexamed/shared';
+import type { CancelAppointmentRequest, CreateAppointmentRequest, EditAppointmentRequest, RescheduleAppointmentRequest } from '@nexamed/shared';
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
 import {
   cancelAppointment,
   createAppointment,
+  editAppointment,
   getScheduleConfig,
   listAppointments,
   listDoctors,
@@ -102,6 +103,15 @@ export function useRescheduleAppointmentMutation() {
   const invalidate = useInvalidateAppointments();
   return useMutation({
     mutationFn: ({ id, body }: { id: string; body: RescheduleAppointmentRequest }) => rescheduleAppointment(id, body),
+    onSuccess: () => void invalidate(),
+  });
+}
+
+/** "Sửa lịch" trong ngày (khôi phục 2026-08-18) — tồn tại song song với `useRescheduleAppointmentMutation` ("Dời lịch"). */
+export function useEditAppointmentMutation() {
+  const invalidate = useInvalidateAppointments();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: EditAppointmentRequest }) => editAppointment(id, body),
     onSuccess: () => void invalidate(),
   });
 }

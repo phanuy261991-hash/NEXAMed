@@ -4,7 +4,7 @@ import { z } from 'zod';
  * Lịch hẹn (S2-05, APP-01/02/03) — xem .claude/docs/clinical-workflow.md mục "Đặt lịch",
  * docs/ERD.md mục 3.3/4 (C2: exclusion constraint chống trùng giờ bác sĩ ở tầng DB).
  */
-export const APPOINTMENT_STATUSES = ['SCHEDULED', 'CANCELLED', 'NO_SHOW', 'CONVERTED'] as const;
+export const APPOINTMENT_STATUSES = ['SCHEDULED', 'CANCELLED', 'NO_SHOW', 'CONVERTED', 'RESCHEDULED'] as const;
 export const appointmentStatusSchema = z.enum(APPOINTMENT_STATUSES);
 export type AppointmentStatus = z.infer<typeof appointmentStatusSchema>;
 
@@ -57,6 +57,9 @@ export const appointmentSummarySchema = z.object({
   status: appointmentStatusSchema,
   source: appointmentSourceSchema,
   cancelReason: z.string().nullable(),
+  /** Chỉ có giá trị khi lịch này SINH RA từ một lần dời lịch (2026-08-18) — trỏ về lịch cũ đã
+   * chuyển `RESCHEDULED`, cùng hướng trỏ `prescription.supersedesId`. */
+  rescheduledFromId: z.string().uuid().nullable(),
   version: z.number().int(),
 });
 export type AppointmentSummary = z.infer<typeof appointmentSummarySchema>;
@@ -95,19 +98,37 @@ export const cancelAppointmentRequestSchema = z.object({
 export type CancelAppointmentRequest = z.infer<typeof cancelAppointmentRequestSchema>;
 
 /**
- * Đổi/dời lịch hẹn (S2-09, sau khi xem mockup chủ dự án chốt thêm — xem docs/DECISIONS.md).
- * Cho sửa lại cả 3 (giờ/bác sĩ/phòng), không chỉ riêng giờ — cùng bộ trường với
- * `createAppointmentRequestSchema` (trừ `patientId`/`source`, không đổi khi dời lịch) + `version`
- * bắt buộc (optimistic locking, cùng quy ước `cancelAppointmentRequestSchema`).
+ * Dời lịch hẹn (thay thế mô hình S2-09 "sửa tại chỗ" theo yêu cầu chủ dự án 2026-08-18) — KHÔNG
+ * còn sửa `appointment` hiện có. Lịch cũ chuyển `status='RESCHEDULED'` (giữ nguyên mọi trường
+ * khác làm lịch sử), một `appointment` MỚI được tạo cho ngày/giờ đã chọn — kế thừa
+ * `fullName`/`phone`/`reason`/`roomId`/`durationMinutes`/`source` từ lịch cũ, chỉ nhận
+ * `doctorId`/`scheduledAt` mới từ client (đúng 2 trường "Dời đến ngày"+"Giờ" và lựa chọn bác sĩ
+ * trong yêu cầu gốc — không hỏi lại phòng/thời lượng). `version` là của LỊCH CŨ, dùng optimistic
+ * locking cho bước đánh dấu RESCHEDULED (cùng quy ước `cancelAppointmentRequestSchema`).
  */
 export const rescheduleAppointmentRequestSchema = z.object({
+  doctorId: z.string().uuid(),
+  scheduledAt: z.string().datetime(),
+  version: z.number().int().positive(),
+});
+export type RescheduleAppointmentRequest = z.infer<typeof rescheduleAppointmentRequestSchema>;
+
+/**
+ * Sửa lịch hẹn TRONG NGÀY (khôi phục lại 2026-08-18 theo yêu cầu chủ dự án — tồn tại song song với
+ * "Dời lịch" ở trên): sửa tại chỗ (cùng `id`, không tạo bản ghi mới) — đổi giờ/bác sĩ/phòng/thời
+ * lượng của CHÍNH lịch hẹn này. Khác "Dời lịch" (tạo lịch mới cho ngày khác, đánh dấu lịch cũ
+ * RESCHEDULED): endpoint này không nhận ngày mới — `scheduledAt` do client gửi lên phải cùng NGÀY
+ * (giờ Việt Nam) với lịch hẹn hiện có, ép ở tầng UI (không hiện ô chọn ngày trong "Sửa lịch") chứ
+ * không validate lại ở schema này (cùng mức độ tin cậy nội bộ như ngưỡng cảnh báo spam #032).
+ */
+export const editAppointmentRequestSchema = z.object({
   doctorId: z.string().uuid(),
   roomId: z.string().uuid().optional(),
   scheduledAt: z.string().datetime(),
   durationMinutes: z.number().int().min(5).max(240),
   version: z.number().int().positive(),
 });
-export type RescheduleAppointmentRequest = z.infer<typeof rescheduleAppointmentRequestSchema>;
+export type EditAppointmentRequest = z.infer<typeof editAppointmentRequestSchema>;
 
 /**
  * Danh sách bác sĩ cho màn hình Lịch hẹn (S2-09, `GET /appointments/doctors`) — chiếu tối thiểu

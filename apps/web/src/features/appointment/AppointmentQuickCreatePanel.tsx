@@ -9,7 +9,8 @@ import { Button } from '../../shared/ui/Button';
 import { TimeInput } from '../../shared/ui/TimeInput';
 import { APPOINTMENT_SPAM_CANCELLED_THRESHOLD } from './appointment-status';
 import { useAppointmentPhoneLookupQuery, useAppointmentsByDateQuery, useCreateAppointmentMutation } from './appointment.queries';
-import { formatDateLabel, minutesToLabel, toMinutes, vnDateTimeToIso, vnTimeOfDayMinutes } from './schedule-grid.utils';
+import { DoctorAvailabilityList } from './DoctorAvailabilityList';
+import { formatDateLabel, minutesToLabel, vnDateTimeToIso, vnTimeOfDayMinutes } from './schedule-grid.utils';
 
 const SOURCE_OPTIONS: { value: AppointmentSource; label: string }[] = [
   { value: 'phone', label: 'Điện thoại' },
@@ -21,21 +22,6 @@ const SOURCE_OPTIONS: { value: AppointmentSource; label: string }[] = [
 const inputClassName =
   'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 const readOnlyInputClassName = `${inputClassName} bg-slate-50 text-slate-800`;
-
-function findBusyUntilLabel(doctorId: string, time: string, durationMinutes: number, dayAppointments: AppointmentSummary[]): string | null {
-  const start = toMinutes(time);
-  const end = start + durationMinutes;
-  let busyUntil: number | null = null;
-  for (const a of dayAppointments) {
-    if (a.doctorId !== doctorId || a.status === 'CANCELLED') continue;
-    const aStart = vnTimeOfDayMinutes(a.scheduledAt);
-    const aEnd = aStart + a.durationMinutes;
-    if (start < aEnd && end > aStart) {
-      busyUntil = busyUntil === null ? aEnd : Math.max(busyUntil, aEnd);
-    }
-  }
-  return busyUntil === null ? null : minutesToLabel(busyUntil);
-}
 
 /**
  * Đặt lịch nhanh (docs/DECISIONS.md #032 — "lead capture") — trượt từ phải, chia 2 nhóm theo
@@ -305,41 +291,14 @@ export function AppointmentQuickCreatePanel({
                     Bác sĩ — trống/bận theo giờ vừa chọn
                     {dayQuery.isFetching && <span className="ml-1.5 font-normal text-slate-400">(đang tải…)</span>}
                   </span>
-                  <div className="flex flex-col gap-1.5">
-                    {doctors.map((d) => {
-                      const busyUntil = findBusyUntilLabel(d.id, time, defaultDurationMinutes, dayAppointments);
-                      const active = doctorId === d.id;
-                      return (
-                        <button
-                          key={d.id}
-                          type="button"
-                          onClick={() => setDoctorId(d.id)}
-                          className={`flex items-center justify-between rounded-md border px-3 py-2 text-left transition-colors ${
-                            active ? 'border-brand-teal bg-brand-teal' : 'border-slate-300 hover:border-blue-400 hover:bg-brand-teal-tint'
-                          }`}
-                        >
-                          <span className={`text-sm font-semibold ${active ? 'text-white' : 'text-slate-900'}`}>{d.fullName}</span>
-                          {busyUntil ? (
-                            <span
-                              className={`rounded-full px-2 py-0.5 text-[10.5px] font-bold ${
-                                active ? 'bg-white text-amber-700' : 'bg-amber-50 text-amber-700'
-                              }`}
-                            >
-                              Bận tới {busyUntil}
-                            </span>
-                          ) : (
-                            <span
-                              className={`rounded-full px-2 py-0.5 text-[10.5px] font-bold ${
-                                active ? 'bg-white text-emerald-700' : 'bg-emerald-50 text-emerald-700'
-                              }`}
-                            >
-                              Trống
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <DoctorAvailabilityList
+                    doctors={doctors}
+                    selectedDoctorId={doctorId}
+                    onSelect={setDoctorId}
+                    time={time}
+                    durationMinutes={defaultDurationMinutes}
+                    dayAppointments={dayAppointments}
+                  />
                 </div>
               </div>
             </section>

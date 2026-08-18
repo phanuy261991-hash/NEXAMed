@@ -4,6 +4,7 @@ import type {
   CancelAppointmentRequest,
   ClinicSettings,
   CreateAppointmentRequest,
+  EditAppointmentRequest,
   ListAppointmentsResponse,
   ListDoctorsResponse,
   RescheduleAppointmentRequest,
@@ -33,8 +34,13 @@ export async function cancelAppointment(id: string, body: CancelAppointmentReque
 
 export async function rescheduleAppointment(id: string, body: RescheduleAppointmentRequest): Promise<AppointmentSummary> {
   return unwrap(
-    await getApiClient().PATCH('/api/v1/appointments/{id}/reschedule', { params: { path: { id } }, body }),
+    await getApiClient().POST('/api/v1/appointments/{id}/reschedule', { params: { path: { id } }, body }),
   ) as AppointmentSummary;
+}
+
+/** "Sửa lịch" trong ngày (khôi phục 2026-08-18) — sửa tại chỗ, cùng id, khác `rescheduleAppointment` (tạo lịch mới cho ngày khác). */
+export async function editAppointment(id: string, body: EditAppointmentRequest): Promise<AppointmentSummary> {
+  return unwrap(await getApiClient().PATCH('/api/v1/appointments/{id}', { params: { path: { id } }, body })) as AppointmentSummary;
 }
 
 /** S2-09 — chiếu tối thiểu, gắn quyền `appointment.read` (xem docs/DECISIONS.md). */

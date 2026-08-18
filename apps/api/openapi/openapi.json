@@ -3138,7 +3138,8 @@
                             "SCHEDULED",
                             "CANCELLED",
                             "NO_SHOW",
-                            "CONVERTED"
+                            "CONVERTED",
+                            "RESCHEDULED"
                           ]
                         },
                         "source": {
@@ -3154,6 +3155,13 @@
                             "string",
                             "null"
                           ]
+                        },
+                        "rescheduledFromId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
                         },
                         "version": {
                           "type": "integer"
@@ -3173,6 +3181,7 @@
                         "status",
                         "source",
                         "cancelReason",
+                        "rescheduledFromId",
                         "version"
                       ]
                     },
@@ -3430,7 +3439,8 @@
                                   "SCHEDULED",
                                   "CANCELLED",
                                   "NO_SHOW",
-                                  "CONVERTED"
+                                  "CONVERTED",
+                                  "RESCHEDULED"
                                 ]
                               },
                               "source": {
@@ -3446,6 +3456,13 @@
                                   "string",
                                   "null"
                                 ]
+                              },
+                              "rescheduledFromId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
                               },
                               "version": {
                                 "type": "integer"
@@ -3465,6 +3482,7 @@
                               "status",
                               "source",
                               "cancelReason",
+                              "rescheduledFromId",
                               "version"
                             ]
                           }
@@ -4160,7 +4178,8 @@
                             "SCHEDULED",
                             "CANCELLED",
                             "NO_SHOW",
-                            "CONVERTED"
+                            "CONVERTED",
+                            "RESCHEDULED"
                           ]
                         },
                         "source": {
@@ -4176,6 +4195,13 @@
                             "string",
                             "null"
                           ]
+                        },
+                        "rescheduledFromId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
                         },
                         "version": {
                           "type": "integer"
@@ -4195,6 +4221,7 @@
                         "status",
                         "source",
                         "cancelReason",
+                        "rescheduledFromId",
                         "version"
                       ]
                     },
@@ -4275,6 +4302,342 @@
           },
           "404": {
             "description": "Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal của bác sĩ)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "appointment"
+        ],
+        "summary": "Sửa lịch hẹn TRONG NGÀY (2026-08-18) — đổi giờ/bác sĩ/phòng/thời lượng tại chỗ, cùng id, không đổi ngày (khác POST :id/reschedule)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "doctorId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "roomId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "scheduledAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "durationMinutes": {
+                    "type": "integer",
+                    "minimum": 5,
+                    "maximum": 240
+                  },
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "doctorId",
+                  "scheduledAt",
+                  "durationMinutes",
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sửa lịch thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "bookingCode": {
+                          "type": "string"
+                        },
+                        "patientId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "fullName": {
+                          "type": "string"
+                        },
+                        "phone": {
+                          "type": "string"
+                        },
+                        "reason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "doctorId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "roomId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "scheduledAt": {
+                          "type": "string"
+                        },
+                        "durationMinutes": {
+                          "type": "integer"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "SCHEDULED",
+                            "CANCELLED",
+                            "NO_SHOW",
+                            "CONVERTED",
+                            "RESCHEDULED"
+                          ]
+                        },
+                        "source": {
+                          "type": "string",
+                          "enum": [
+                            "walk_in",
+                            "phone",
+                            "online"
+                          ]
+                        },
+                        "cancelReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rescheduledFromId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "bookingCode",
+                        "patientId",
+                        "fullName",
+                        "phone",
+                        "reason",
+                        "doctorId",
+                        "roomId",
+                        "scheduledAt",
+                        "durationMinutes",
+                        "status",
+                        "source",
+                        "cancelReason",
+                        "rescheduledFromId",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền appointment.update, hoặc bác sĩ (scope personal) cố sửa lịch cho bác sĩ khác",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal của bác sĩ)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp (CONCURRENT_MODIFICATION), lịch không còn SCHEDULED (APPOINTMENT_NOT_CANCELLABLE), hoặc trùng khung giờ khác của cùng bác sĩ (APPOINTMENT_SLOT_CONFLICT)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Bác sĩ/phòng không tồn tại hoặc thuộc tenant khác",
             "content": {
               "application/json": {
                 "schema": {
@@ -4412,7 +4775,8 @@
                             "SCHEDULED",
                             "CANCELLED",
                             "NO_SHOW",
-                            "CONVERTED"
+                            "CONVERTED",
+                            "RESCHEDULED"
                           ]
                         },
                         "source": {
@@ -4428,6 +4792,13 @@
                             "string",
                             "null"
                           ]
+                        },
+                        "rescheduledFromId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
                         },
                         "version": {
                           "type": "integer"
@@ -4447,6 +4818,7 @@
                         "status",
                         "source",
                         "cancelReason",
+                        "rescheduledFromId",
                         "version"
                       ]
                     },
@@ -4591,11 +4963,11 @@
       }
     },
     "/api/v1/appointments/{id}/reschedule": {
-      "patch": {
+      "post": {
         "tags": [
           "appointment"
         ],
-        "summary": "Đổi/dời lịch hẹn (S2-09) — đổi giờ/bác sĩ/phòng, kèm version hiện có (optimistic locking)",
+        "summary": "Dời lịch hẹn (2026-08-18) — lịch cũ chuyển RESCHEDULED, tạo lịch MỚI cho ngày/giờ/bác sĩ đã chọn (kế thừa phòng/thời lượng/nguồn từ lịch cũ), trả về lịch MỚI",
         "security": [
           {
             "bearerAuth": []
@@ -4622,18 +4994,9 @@
                     "type": "string",
                     "format": "uuid"
                   },
-                  "roomId": {
-                    "type": "string",
-                    "format": "uuid"
-                  },
                   "scheduledAt": {
                     "type": "string",
                     "format": "date-time"
-                  },
-                  "durationMinutes": {
-                    "type": "integer",
-                    "minimum": 5,
-                    "maximum": 240
                   },
                   "version": {
                     "type": "integer",
@@ -4643,7 +5006,6 @@
                 "required": [
                   "doctorId",
                   "scheduledAt",
-                  "durationMinutes",
                   "version"
                 ]
               }
@@ -4652,7 +5014,7 @@
         },
         "responses": {
           "200": {
-            "description": "Đổi lịch thành công",
+            "description": "Dời lịch thành công — trả về lịch hẹn mới đã tạo",
             "content": {
               "application/json": {
                 "schema": {
@@ -4710,7 +5072,8 @@
                             "SCHEDULED",
                             "CANCELLED",
                             "NO_SHOW",
-                            "CONVERTED"
+                            "CONVERTED",
+                            "RESCHEDULED"
                           ]
                         },
                         "source": {
@@ -4726,6 +5089,13 @@
                             "string",
                             "null"
                           ]
+                        },
+                        "rescheduledFromId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
                         },
                         "version": {
                           "type": "integer"
@@ -4745,6 +5115,7 @@
                         "status",
                         "source",
                         "cancelReason",
+                        "rescheduledFromId",
                         "version"
                       ]
                     },
@@ -4793,7 +5164,7 @@
             }
           },
           "403": {
-            "description": "Không có quyền appointment.update, hoặc bác sĩ (scope personal) cố đổi lịch cho bác sĩ khác",
+            "description": "Không có quyền appointment.update, hoặc bác sĩ (scope personal) cố dời lịch cho bác sĩ khác",
             "content": {
               "application/json": {
                 "schema": {
@@ -4855,7 +5226,7 @@
             }
           },
           "409": {
-            "description": "version không khớp (CONCURRENT_MODIFICATION), lịch không còn SCHEDULED (APPOINTMENT_NOT_CANCELLABLE), hoặc trùng khung giờ khác của cùng bác sĩ (APPOINTMENT_SLOT_CONFLICT)",
+            "description": "version không khớp (CONCURRENT_MODIFICATION), lịch không còn SCHEDULED (APPOINTMENT_NOT_CANCELLABLE), hoặc lịch mới trùng khung giờ khác của cùng bác sĩ (APPOINTMENT_SLOT_CONFLICT)",
             "content": {
               "application/json": {
                 "schema": {
@@ -4886,7 +5257,7 @@
             }
           },
           "422": {
-            "description": "Bác sĩ/phòng không tồn tại hoặc thuộc tenant khác",
+            "description": "Bác sĩ không tồn tại hoặc thuộc tenant khác",
             "content": {
               "application/json": {
                 "schema": {

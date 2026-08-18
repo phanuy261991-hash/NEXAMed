@@ -23,6 +23,7 @@ import {
   createPatientRequestSchema,
   createRoomRequestSchema,
   createUserAccountRequestSchema,
+  editAppointmentRequestSchema,
   encounterSummarySchema,
   listAppointmentsQuerySchema,
   listAppointmentsResponseSchema,
@@ -406,19 +407,40 @@ registry.registerPath({
 });
 
 registry.registerPath({
-  method: 'patch',
+  method: 'post',
   path: '/api/v1/appointments/{id}/reschedule',
   tags: ['appointment'],
-  summary: 'Đổi/dời lịch hẹn (S2-09) — đổi giờ/bác sĩ/phòng, kèm version hiện có (optimistic locking)',
+  summary:
+    'Dời lịch hẹn (2026-08-18) — lịch cũ chuyển RESCHEDULED, tạo lịch MỚI cho ngày/giờ/bác sĩ đã chọn (kế thừa phòng/thời lượng/nguồn từ lịch cũ), trả về lịch MỚI',
   security: [{ bearerAuth: [] }],
   request: {
     params: appointmentIdParams,
     body: { content: { 'application/json': { schema: rescheduleAppointmentRequestSchema } } },
   },
   responses: {
-    200: jsonResponse('Đổi lịch thành công', envelope(appointmentSummarySchema)),
+    200: jsonResponse('Dời lịch thành công — trả về lịch hẹn mới đã tạo', envelope(appointmentSummarySchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
-    403: errorResponse('Không có quyền appointment.update, hoặc bác sĩ (scope personal) cố đổi lịch cho bác sĩ khác'),
+    403: errorResponse('Không có quyền appointment.update, hoặc bác sĩ (scope personal) cố dời lịch cho bác sĩ khác'),
+    404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal của bác sĩ)'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION), lịch không còn SCHEDULED (APPOINTMENT_NOT_CANCELLABLE), hoặc lịch mới trùng khung giờ khác của cùng bác sĩ (APPOINTMENT_SLOT_CONFLICT)'),
+    422: errorResponse('Bác sĩ không tồn tại hoặc thuộc tenant khác'),
+  },
+});
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/appointments/{id}',
+  tags: ['appointment'],
+  summary: 'Sửa lịch hẹn TRONG NGÀY (2026-08-18) — đổi giờ/bác sĩ/phòng/thời lượng tại chỗ, cùng id, không đổi ngày (khác POST :id/reschedule)',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: appointmentIdParams,
+    body: { content: { 'application/json': { schema: editAppointmentRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Sửa lịch thành công', envelope(appointmentSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền appointment.update, hoặc bác sĩ (scope personal) cố sửa lịch cho bác sĩ khác'),
     404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal của bác sĩ)'),
     409: errorResponse('version không khớp (CONCURRENT_MODIFICATION), lịch không còn SCHEDULED (APPOINTMENT_NOT_CANCELLABLE), hoặc trùng khung giờ khác của cùng bác sĩ (APPOINTMENT_SLOT_CONFLICT)'),
     422: errorResponse('Bác sĩ/phòng không tồn tại hoặc thuộc tenant khác'),

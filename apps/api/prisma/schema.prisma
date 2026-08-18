@@ -511,6 +511,10 @@ enum AppointmentStatus {
   CANCELLED
   NO_SHOW
   CONVERTED
+  // Dời lịch (yêu cầu chủ dự án 2026-08-18) — lịch cũ chuyển sang trạng thái này, KHÔNG sửa tại
+  // chỗ như bản PATCH reschedule cũ (S2-09). Một lịch mới được tạo riêng cho ngày/giờ mới, trỏ về
+  // lịch này qua `rescheduledFromId` (xem dưới) — cùng khuôn `prescription.supersedesId`.
+  RESCHEDULED
 
   @@map("appointment_status")
 }
@@ -549,6 +553,11 @@ model Appointment {
   status          AppointmentStatus @default(SCHEDULED)
   source          AppointmentSource
   cancelReason    String?           @map("cancel_reason")
+  // Dời lịch (2026-08-18): lịch MỚI trỏ về lịch CŨ đã bị đánh dấu RESCHEDULED — cùng hướng trỏ
+  // với `prescription.supersedesId`/`patient.mergedIntoId` (bản mới/đích trỏ về bản cũ/nguồn,
+  // không phải ngược lại). Không có unique constraint (kể cả partial) — cùng lựa chọn đã có ở
+  // `patient.mergedIntoId`, chấp nhận rủi ro lý thuyết vì service là nơi duy nhất ghi cột này.
+  rescheduledFromId String? @map("rescheduled_from_id") @db.Uuid
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -565,6 +574,11 @@ model Appointment {
   patient Patient?    @relation(fields: [tenantId, patientId], references: [tenantId, id])
   doctor  UserAccount @relation("AppointmentDoctor", fields: [tenantId, doctorId], references: [tenantId, id])
   room    Room?       @relation(fields: [tenantId, roomId], references: [tenantId, id])
+  // Composite FK (tenant_id, rescheduled_from_id) -> appointment(tenant_id, id) — cùng khuôn
+  // Patient.mergedInto/mergedFrom (self-relation, phía "nhiều" khai List vì Prisma không biết đây
+  // thực ra là 1-1 khi không có unique constraint).
+  rescheduledFrom Appointment?  @relation("AppointmentReschedule", fields: [tenantId, rescheduledFromId], references: [tenantId, id])
+  rescheduledTo   Appointment[] @relation("AppointmentReschedule")
   // Prisma bắt buộc khai báo back-relation cho field `Encounter.appointment` — khai dạng LIST
   // (không phải `Encounter?`) vì `appointmentId` không có `@unique` ở phía Prisma (constraint thật
   // là partial unique index raw SQL trên `encounter(tenant_id, appointment_id)`, xem migration —
