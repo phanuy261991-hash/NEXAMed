@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { userRoleSchema } from './roles';
 
 /**
  * Request/response đăng nhập — dùng chung controller (validate) và web (S1-09).
@@ -18,12 +17,17 @@ export type LoginRequest = z.infer<typeof loginRequestSchema>;
  * Danh tính + vai trò của user đang đăng nhập — dùng chung cho `loginResponseSchema.user` và
  * `GET /auth/me` (S1-08, docs/DECISIONS.md #022) để web quyết định ẩn/hiện menu theo vai trò mà
  * không cần đoán/hardcode. `roles` có thể rỗng (user chưa được gán vai trò nào).
+ *
+ * `roles` là TÊN vai trò dạng chuỗi tự do (không còn giới hạn `userRoleSchema` 5 giá trị) — kể từ
+ * ADM-07 (`role.ts`), `clinic_admin` tạo được vai trò tuỳ biến ngoài 5 vai trò hệ thống, tên vai
+ * trò đó có thể xuất hiện ở đây. Sidebar.tsx chỉ so khớp chuỗi (`ADMIN_ROLES.includes(role)`...),
+ * không phụ thuộc kiểu enum nên nới kiểu không đổi hành vi runtime.
  */
 export const currentUserSchema = z.object({
   id: z.string().uuid(),
   username: z.string(),
   fullName: z.string(),
-  roles: z.array(userRoleSchema),
+  roles: z.array(z.string()),
 });
 
 export type CurrentUser = z.infer<typeof currentUserSchema>;

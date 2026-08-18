@@ -4,6 +4,7 @@ export * from './general-errors';
 export * from './patient-errors';
 export * from './appointment-errors';
 export * from './user-account-errors';
+export * from './role-errors';
 export * from './reference-catalog-errors';
 export * from './clinic-errors';
 export * from './encounter-errors';

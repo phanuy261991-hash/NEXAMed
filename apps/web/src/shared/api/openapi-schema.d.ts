@@ -47,7 +47,7 @@ export interface paths {
                                     id: string;
                                     username: string;
                                     fullName: string;
-                                    roles: ("receptionist" | "nurse" | "doctor" | "clinic_admin" | "system_admin")[];
+                                    roles: string[];
                                 };
                             };
                             meta: Record<string, never>;
@@ -234,7 +234,7 @@ export interface paths {
                                 id: string;
                                 username: string;
                                 fullName: string;
-                                roles: ("receptionist" | "nurse" | "doctor" | "clinic_admin" | "system_admin")[];
+                                roles: string[];
                             };
                             meta: Record<string, never>;
                         };
@@ -3127,7 +3127,7 @@ export interface paths {
                         licenseNo?: string;
                         /** Format: uuid */
                         departmentId?: string;
-                        roleNames: ("receptionist" | "nurse" | "doctor" | "clinic_admin" | "system_admin")[];
+                        roleIds: string[];
                     };
                 };
             };
@@ -3187,6 +3187,21 @@ export interface paths {
                 };
                 /** @description Trùng tên đăng nhập (USER_ACCOUNT_DUPLICATE_USERNAME) */
                 409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description roleIds có giá trị không thuộc tenant này hoặc đã bị ẩn (ROLE_INVALID_REFERENCE) */
+                422: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3320,7 +3335,7 @@ export interface paths {
                         /** Format: uuid */
                         departmentId?: string | null;
                         isActive?: boolean;
-                        roleNames?: ("receptionist" | "nurse" | "doctor" | "clinic_admin" | "system_admin")[];
+                        roleIds?: string[];
                         version: number;
                     };
                 };
@@ -3396,6 +3411,21 @@ export interface paths {
                 };
                 /** @description version không khớp (CONCURRENT_MODIFICATION) */
                 409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description roleIds có giá trị không thuộc tenant này hoặc đã bị ẩn (ROLE_INVALID_REFERENCE) */
+                422: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3526,6 +3556,617 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Danh sách vai trò (ADM-07) — 5 vai trò mặc định + vai trò tuỳ biến của tenant */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    isSystemDefault: boolean;
+                                    version: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền role_permission.manage */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Tạo vai trò tuỳ biến (ADM-07) — bắt đầu với mọi quyền ở mức "Không" */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        name: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Tạo thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                isSystemDefault: boolean;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền role_permission.manage */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Trùng tên vai trò trong tenant (ROLE_DUPLICATE_NAME) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/roles/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Đổi tên vai trò tuỳ biến — vai trò mặc định hệ thống không đổi tên được */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        name: string;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Sửa thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                isSystemDefault: boolean;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền role_permission.manage */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại hoặc thuộc tenant khác) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION) hoặc trùng tên (ROLE_DUPLICATE_NAME) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Vai trò mặc định hệ thống, không đổi tên được (ROLE_IMMUTABLE) */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/roles/{id}/hide": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ẩn vai trò tuỳ biến (soft-delete) — chặn nếu còn tài khoản đang gán, hoặc vai trò mặc định hệ thống */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Đã ẩn */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                success: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền role_permission.manage */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại hoặc thuộc tenant khác) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION) hoặc còn tài khoản đang gán (ROLE_IN_USE) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Vai trò mặc định hệ thống, không ẩn được (ROLE_IMMUTABLE) */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/roles/{id}/permissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ma trận phân quyền đầy đủ của một vai trò — luôn đủ toàn bộ danh mục permission, "none" cho quyền chưa cấp */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                role: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    isSystemDefault: boolean;
+                                    version: number;
+                                };
+                                permissions: {
+                                    /** Format: uuid */
+                                    permissionId: string;
+                                    module: string;
+                                    action: string;
+                                    description: string;
+                                    /** @enum {string} */
+                                    dataScope: "none" | "personal" | "department" | "global";
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền role_permission.manage */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại hoặc thuộc tenant khác) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        /** Ghi đè ma trận phân quyền của một vai trò — entries thiếu coi như giữ nguyên, dataScope="none" xoá quyền đã cấp */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        entries: {
+                            /** Format: uuid */
+                            permissionId: string;
+                            /** @enum {string} */
+                            dataScope: "none" | "personal" | "department" | "global";
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Cập nhật thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                role: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    isSystemDefault: boolean;
+                                    version: number;
+                                };
+                                permissions: {
+                                    /** Format: uuid */
+                                    permissionId: string;
+                                    module: string;
+                                    action: string;
+                                    description: string;
+                                    /** @enum {string} */
+                                    dataScope: "none" | "personal" | "department" | "global";
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền role_permission.manage */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại hoặc thuộc tenant khác) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;

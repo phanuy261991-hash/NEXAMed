@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { Prisma, type UserAccount } from '@prisma/client';
-import { ConcurrentModificationError, UserAccountDuplicateUsernameError } from '@nexamed/core';
+import { ConcurrentModificationError, RoleInvalidReferenceError, UserAccountDuplicateUsernameError } from '@nexamed/core';
 import type {
   CreateUserAccountRequest,
   ListUserAccountsQuery,
@@ -16,6 +16,7 @@ import type { RequestMeta } from '../../common/request-meta';
 import { SessionRepository } from './session.repository';
 import { UserAccountAuthRepository } from './user-account-auth.repository';
 import { UserAccountRepository, type UpdateUserAccountData } from './user-account.repository';
+import { RoleRepository } from './role.repository';
 
 function isUsernameConflict(err: unknown): boolean {
   return err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002';
@@ -34,6 +35,7 @@ export class UserAccountService {
     private readonly userAccountRepository: UserAccountRepository,
     private readonly userAccountAuthRepository: UserAccountAuthRepository,
     private readonly sessionRepository: SessionRepository,
+    private readonly roleRepository: RoleRepository,
   ) {}
 
   async createUserAccount(
@@ -45,12 +47,12 @@ export class UserAccountService {
     const passwordHash = await argon2.hash(dto.password, { type: argon2.argon2id });
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const roleIds = await this.userAccountRepository.findRoleIdsByNames(tx, tenantId, dto.roleNames);
-      if (roleIds.length !== dto.roleNames.length) {
-        // Không thể xảy ra qua flow bình thường: 5 vai trò hệ thống luôn được seed lúc tạo
-        // tenant (seedDefaultRolesForTenant) và Zod đã chặn tên vai trò lạ — chỉ rơi vào đây nếu
-        // dữ liệu seed bị thiếu, một lỗi hạ tầng chứ không phải lỗi input người dùng.
-        throw new Error('Thiếu vai trò hệ thống trong tenant — kiểm tra lại seed dữ liệu.');
+      const roleIds = await this.roleRepository.findValidIds(tx, tenantId, dto.roleIds);
+      if (roleIds.length !== dto.roleIds.length) {
+        // roleId gửi lên không thuộc tenant này hoặc đã bị ẩn — lỗi input của client (client tự
+        // ý gửi id lạ, hoặc vai trò vừa bị clinic_admin khác ẩn giữa lúc điền form), không phải
+        // sự cố hạ tầng như khi roleNames còn là enum cố định trước ADM-07.
+        throw new RoleInvalidReferenceError();
       }
 
       let created: UserAccount;
@@ -70,18 +72,19 @@ export class UserAccountService {
       }
 
       await this.userAccountRepository.createUserRoles(tx, tenantId, actorId, created.id, roleIds);
+      const roleNames = await this.userAccountAuthRepository.findRoleNamesForUser(tx, tenantId, created.id);
 
       await writeAuditLog(tx, tenantId, {
         actorId,
         action: 'user_account.created',
         entityType: 'user_account',
         entityId: created.id,
-        afterJson: { username: created.username, roleNames: dto.roleNames },
+        afterJson: { username: created.username, roleNames },
         ip: meta.ip,
         userAgent: meta.userAgent,
       });
 
-      return this.toSummary(created, dto.roleNames);
+      return this.toSummary(created, roleNames);
     });
   }
 
@@ -156,20 +159,21 @@ export class UserAccountService {
         });
       }
 
-      if (dto.roleNames !== undefined) {
-        const roleIds = await this.userAccountRepository.findRoleIdsByNames(tx, tenantId, dto.roleNames);
-        if (roleIds.length !== dto.roleNames.length) {
-          throw new Error('Thiếu vai trò hệ thống trong tenant — kiểm tra lại seed dữ liệu.');
+      if (dto.roleIds !== undefined) {
+        const roleIds = await this.roleRepository.findValidIds(tx, tenantId, dto.roleIds);
+        if (roleIds.length !== dto.roleIds.length) {
+          throw new RoleInvalidReferenceError();
         }
         await this.userAccountRepository.softDeleteAllUserRoles(tx, tenantId, actorId, id);
         await this.userAccountRepository.createUserRoles(tx, tenantId, actorId, id, roleIds);
+        const roleNames = await this.userAccountAuthRepository.findRoleNamesForUser(tx, tenantId, id);
 
         await writeAuditLog(tx, tenantId, {
           actorId,
           action: 'user_account.role_changed',
           entityType: 'user_account',
           entityId: id,
-          afterJson: { roleNames: dto.roleNames },
+          afterJson: { roleNames },
           ip: meta.ip,
           userAgent: meta.userAgent,
         });
@@ -180,7 +184,7 @@ export class UserAccountService {
       // rộng hơn (mất quyền truy cập hoàn toàn, không chỉ đổi phạm vi).
       if (dto.isActive === false) {
         await this.sessionRepository.revokeAllForUser(tx, tenantId, id, 'account_disabled', actorId);
-      } else if (dto.roleNames !== undefined) {
+      } else if (dto.roleIds !== undefined) {
         await this.sessionRepository.revokeAllForUser(tx, tenantId, id, 'role_changed', actorId);
       }
 

@@ -72,12 +72,6 @@ export class UserAccountRepository {
     return result.count;
   }
 
-  /** Tra `role.id` theo tên trong đúng tenant — v1 chỉ có 5 vai trò hệ thống (xem `createUserAccountRequestSchema`). */
-  async findRoleIdsByNames(tx: Prisma.TransactionClient, tenantId: string, roleNames: readonly string[]): Promise<string[]> {
-    const rows = await tx.role.findMany({ where: { tenantId, name: { in: [...roleNames] } }, select: { id: true } });
-    return rows.map((r) => r.id);
-  }
-
   createUserRoles(tx: Prisma.TransactionClient, tenantId: string, actorId: string, userId: string, roleIds: readonly string[]): Promise<Prisma.BatchPayload> {
     return tx.userRole.createMany({
       data: roleIds.map((roleId) => ({ tenantId, userId, roleId, createdBy: actorId, updatedBy: actorId })),

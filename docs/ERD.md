@@ -1,6 +1,6 @@
 # ERD: NEXAMed v1
 
-**Version**: v1.17 — 19/08/2026 (xem mục 9 để biết lịch sử thay đổi)
+**Version**: v1.18 — 20/08/2026 (xem mục 9 để biết lịch sử thay đổi)
 **Phạm vi**: chỉ các bảng thuộc v1 (Đặt lịch, Tiếp nhận, Khám bệnh, Kê đơn). Bảng của v2+ (viện phí, kho thuốc, BHYT) **không** tạo ở giai đoạn này.
 **Căn cứ**: `docs/product/prd.md` v1.0, `docs/product/plan.md` v1.0, `.claude/docs/data-model.md`
 
@@ -512,6 +512,7 @@ Những ràng buộc này đặt ở DB, không chỉ ở tầng ứng dụng.
 | C11 | `UNIQUE (tenant_id, appointment_id) WHERE appointment_id IS NOT NULL AND deleted_at IS NULL` | `encounter` | Mỗi lịch hẹn sinh tối đa một lượt khám, kể cả khi hai request check-in gần như đồng thời (đúng khuôn C2/C3) |
 | C12 | `UNIQUE (tenant_id, work_date, doctor_id) WHERE deleted_at IS NULL` | `doctor_room_session` | Mỗi bác sĩ chỉ có 1 phòng làm việc hiệu lực/ngày lịch VN; cũng là arbiter cho `INSERT ... ON CONFLICT DO UPDATE` khi đổi phòng giữa ngày |
 | C13 | Composite FK `(tenant_id, floor_id)` nullable | `room.floor_id` | "Tầng" tùy chọn — phòng không gán tầng vẫn hợp lệ, khác mọi composite FK bắt buộc khác |
+| C14 | `UNIQUE (tenant_id, name) WHERE deleted_at IS NULL` | `role` | ADM-07 — tạo lại đúng tên vai trò tuỳ biến đã từng bị ẩn (soft-delete) không vi phạm unique, cùng khuôn `user_role`/C3 |
 
 ---
 
@@ -603,3 +604,4 @@ Khi thêm, các bảng này vẫn phải đủ 8 cột bắt buộc và tuân th
 | v1.15 | 19/08/2026 | Thêm bảng `doctor_room_session` ("phòng làm việc hôm nay" — mô hình định tuyến theo phòng tham khảo từ chủ dự án, thiết kế để chạy được ở cả quy mô 1-3 bác sĩ lẫn nhiều phòng). Thêm C12. Chỉ điều phối/hiển thị UI (`GET /appointments/doctors` thêm `currentRoomName`) — KHÔNG đổi `data_scope`/cách lọc hàng đợi khám (vẫn `doctor_id`). Tự động ẩn mọi UI liên quan khi tenant có ≤1 phòng active. Xem `docs/DECISIONS.md` #054. |
 | v1.16 | 19/08/2026 | "Tầng phòng" — mở rộng `room` thành cấp bậc: thêm bảng `floor` (Tầng, tùy chọn — `room.floor_id` nullable, C13) và bảng `exam_station` (Bàn khám/Ghế, cấp con bắt buộc thuộc 1 `room`). Cả hai THUẦN mô tả/tổ chức không gian — đơn vị điều phối thật (`doctor_room_session`, `appointment.room_id`) vẫn dừng ở cấp `room`, không đổi. Quản lý qua UI tích hợp chung 1 màn hình (không tách pill/mục riêng từng cấp). Xem `docs/DECISIONS.md` #055. |
 | v1.17 | 19/08/2026 | Module `icd10_catalog` hiện thực (S3-01, mở khoá một phần — seed ĐỦ Chương I-XXII, 15.844 mã) — schema mở rộng đầy đủ thay field `chapter` đơn lẻ: thêm `chapter_code`/`chapter_name`/`block_code`/`block_name`/`group_code`/`group_name`/`gender_restriction`/`usage_restriction`/`who_note`. Cùng khuôn `province`/`ward` (không `tenant_id`/`id`/`version`, REVOKE INSERT/UPDATE khỏi `nexamed_app`). Ký hiệu chéo `†` (dagger)/`*` (asterisk) — hệ thống WHO — tách khỏi `code` lúc parse dữ liệu — không phải một phần mã ICD-10 thật. Xem `docs/DECISIONS.md` #056. |
+| v1.18 | 20/08/2026 | ADM-07 (vai trò tuỳ biến + ma trận phân quyền) hiện thực — `role.name` UNIQUE(tenant_id, name) đổi từ thường sang PARTIAL (`WHERE deleted_at IS NULL`, migration `20260820090000_role_management`, thêm C14) để tạo lại đúng tên vai trò đã ẩn không vi phạm. Không thêm bảng/cột mới. Ripple đi kèm (không đổi ERD): `user_account` tạo/gán vai trò qua `roleIds` (id thật) thay vì `roleNames` cố định trong enum 5 vai trò — xem `docs/DECISIONS.md` #057. |

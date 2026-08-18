@@ -1,13 +1,12 @@
 import { z } from 'zod';
-import { userRoleSchema } from './roles';
 
 /**
  * Quản lý tài khoản + gán vai trò (S2-07, ADM-01) — module `iam` sở hữu (xem
  * .claude/docs/architecture.md mục Domain module: "iam | Tài khoản, vai trò, phiên đăng nhập,
- * audit log"). `roleNames` dùng tên 5 vai trò hệ thống (`USER_ROLES`) thay vì `roleId` thô — v1
- * mỗi tenant chỉ có đúng 5 vai trò mặc định (seed lúc tạo tenant), vai trò tuỳ biến là ADM-07
- * (P1, chưa hiện thực). Khi ADM-07 xong, endpoint này cần đổi để nhận `roleId` tuỳ ý thay vì tên
- * cố định.
+ * audit log"). `roleIds` nhận `role.id` bất kỳ trong tenant (5 vai trò hệ thống lẫn vai trò tuỳ
+ * biến tạo qua ADM-07, `role.ts`) — trước ADM-07 trường này là `roleNames` giới hạn 5 tên cố
+ * định (`USER_ROLES`), đã đổi cùng lúc ADM-07 hiện thực vì vai trò tuỳ biến không có tên cố định
+ * để enum hoá.
  */
 export const createUserAccountRequestSchema = z.object({
   username: z.string().min(3).max(50),
@@ -15,7 +14,7 @@ export const createUserAccountRequestSchema = z.object({
   fullName: z.string().min(1),
   licenseNo: z.string().optional(),
   departmentId: z.string().uuid().optional(),
-  roleNames: z.array(userRoleSchema).min(1),
+  roleIds: z.array(z.string().uuid()).min(1),
 });
 export type CreateUserAccountRequest = z.infer<typeof createUserAccountRequestSchema>;
 
@@ -30,7 +29,7 @@ export const updateUserAccountRequestSchema = z.object({
   licenseNo: z.string().nullable().optional(),
   departmentId: z.string().uuid().nullable().optional(),
   isActive: z.boolean().optional(),
-  roleNames: z.array(userRoleSchema).min(1).optional(),
+  roleIds: z.array(z.string().uuid()).min(1).optional(),
   version: z.number().int().positive(),
 });
 export type UpdateUserAccountRequest = z.infer<typeof updateUserAccountRequestSchema>;

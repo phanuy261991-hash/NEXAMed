@@ -23,6 +23,7 @@ import {
   createExamStationRequestSchema,
   createFloorRequestSchema,
   createPatientRequestSchema,
+  createRoleRequestSchema,
   createRoomRequestSchema,
   createUserAccountRequestSchema,
   editAppointmentRequestSchema,
@@ -44,6 +45,7 @@ import {
   listPatientsResponseSchema,
   listProvincesResponseSchema,
   listReferenceCatalogResponseSchema,
+  listRolesResponseSchema,
   listRoomOptionsResponseSchema,
   listRoomsResponseSchema,
   listWardsResponseSchema,
@@ -66,8 +68,11 @@ import {
   referenceCatalogItemSchema,
   registerReceptionRequestSchema,
   refreshResponseSchema,
+  renameRoleRequestSchema,
   rescheduleAppointmentRequestSchema,
   resetUserPasswordRequestSchema,
+  hideRoleRequestSchema,
+  roleWithMatrixResponseSchema,
   roomSessionSchema,
   roomSummarySchema,
   searchIcd10QuerySchema,
@@ -80,6 +85,7 @@ import {
   updateFloorRequestSchema,
   updatePatientRequestSchema,
   updateReferenceCatalogRequestSchema,
+  updateRolePermissionsRequestSchema,
   updateRoomRequestSchema,
   updateUserAccountRequestSchema,
   userAccountSummarySchema,
@@ -586,6 +592,7 @@ registry.registerPath({
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền user_account.manage'),
     409: errorResponse('Trùng tên đăng nhập (USER_ACCOUNT_DUPLICATE_USERNAME)'),
+    422: errorResponse('roleIds có giá trị không thuộc tenant này hoặc đã bị ẩn (ROLE_INVALID_REFERENCE)'),
   },
 });
 
@@ -634,6 +641,7 @@ registry.registerPath({
     403: errorResponse('Không có quyền user_account.manage'),
     404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
     409: errorResponse('version không khớp (CONCURRENT_MODIFICATION)'),
+    422: errorResponse('roleIds có giá trị không thuộc tenant này hoặc đã bị ẩn (ROLE_INVALID_REFERENCE)'),
   },
 });
 
@@ -653,6 +661,100 @@ registry.registerPath({
     403: errorResponse('Không có quyền user_account.manage'),
     404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
     409: errorResponse('version không khớp (CONCURRENT_MODIFICATION)'),
+  },
+});
+
+const roleIdParams = z.object({ id: z.string().uuid() });
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/roles',
+  tags: ['role'],
+  summary: 'Danh sách vai trò (ADM-07) — 5 vai trò mặc định + vai trò tuỳ biến của tenant',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(listRolesResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền role_permission.manage'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/roles',
+  tags: ['role'],
+  summary: 'Tạo vai trò tuỳ biến (ADM-07) — bắt đầu với mọi quyền ở mức "Không"',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createRoleRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Tạo thành công', envelope(listRolesResponseSchema.shape.items.element)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền role_permission.manage'),
+    409: errorResponse('Trùng tên vai trò trong tenant (ROLE_DUPLICATE_NAME)'),
+  },
+});
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/roles/{id}',
+  tags: ['role'],
+  summary: 'Đổi tên vai trò tuỳ biến — vai trò mặc định hệ thống không đổi tên được',
+  security: [{ bearerAuth: [] }],
+  request: { params: roleIdParams, body: { content: { 'application/json': { schema: renameRoleRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Sửa thành công', envelope(listRolesResponseSchema.shape.items.element)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền role_permission.manage'),
+    404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION) hoặc trùng tên (ROLE_DUPLICATE_NAME)'),
+    422: errorResponse('Vai trò mặc định hệ thống, không đổi tên được (ROLE_IMMUTABLE)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/roles/{id}/hide',
+  tags: ['role'],
+  summary: 'Ẩn vai trò tuỳ biến (soft-delete) — chặn nếu còn tài khoản đang gán, hoặc vai trò mặc định hệ thống',
+  security: [{ bearerAuth: [] }],
+  request: { params: roleIdParams, body: { content: { 'application/json': { schema: hideRoleRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Đã ẩn', envelope(z.object({ success: z.boolean() }))),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền role_permission.manage'),
+    404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION) hoặc còn tài khoản đang gán (ROLE_IN_USE)'),
+    422: errorResponse('Vai trò mặc định hệ thống, không ẩn được (ROLE_IMMUTABLE)'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/roles/{id}/permissions',
+  tags: ['role'],
+  summary: 'Ma trận phân quyền đầy đủ của một vai trò — luôn đủ toàn bộ danh mục permission, "none" cho quyền chưa cấp',
+  security: [{ bearerAuth: [] }],
+  request: { params: roleIdParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(roleWithMatrixResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền role_permission.manage'),
+    404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
+  },
+});
+
+registry.registerPath({
+  method: 'put',
+  path: '/api/v1/roles/{id}/permissions',
+  tags: ['role'],
+  summary: 'Ghi đè ma trận phân quyền của một vai trò — entries thiếu coi như giữ nguyên, dataScope="none" xoá quyền đã cấp',
+  security: [{ bearerAuth: [] }],
+  request: { params: roleIdParams, body: { content: { 'application/json': { schema: updateRolePermissionsRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Cập nhật thành công', envelope(roleWithMatrixResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền role_permission.manage'),
+    404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
   },
 });
 

@@ -2,6 +2,18 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-20 (1)
+
+ADM-07 (Vai trò tuỳ biến + ma trận phân quyền) — mockup Artifact 2 vòng trước khi code, ripple sang `user_account` (`roleIds` thay `roleNames`) — `docs/DECISIONS.md` #057:
+
+- **Bối cảnh**: ADM-07 (P1) treo từ Sprint 1. Chủ dự án yêu cầu làm trước trong lúc chờ mở khoá phần "Khám bệnh". Hỏi chốt phạm vi qua AskUserQuestion (CRUD đầy đủ vai trò tuỳ biến, chấp nhận giới hạn Sidebar chưa theo permission thật, gộp vào "Danh mục Tổ chức và Nhân sự") trước khi dựng mockup. Mockup đầu tiên (2 phương án bố cục) rồi chủ dự án gửi ảnh tham khảo HIS khác (bảng CRUD Xem/Thêm/Sửa/Xoá/Đặc quyền mở rộng) — dựng lại mockup thứ 2 ánh xạ đúng danh mục quyền thật của NEXAMed, được duyệt.
+- **Backend**: `apps/api/src/modules/iam/role.controller|service|repository.ts`, `role-permission.repository.ts` (mới) — 6 endpoint `/api/v1/roles*` (list/create/rename/hide/xem+sửa ma trận), dùng chung quyền `role_permission.manage` (không permission mới). Vai trò mặc định (`is_system_default=true`) chỉ sửa ma trận, không đổi tên/ẩn (`RoleImmutableError`). Ẩn vai trò tuỳ biến còn tài khoản gán → `RoleInUseError` (409). `role.name` UNIQUE đổi từ thường sang PARTIAL (`WHERE deleted_at IS NULL`, migration `20260820090000_role_management`) để tạo lại đúng tên đã ẩn không lỗi.
+- **Ripple bắt buộc sang `user_account`**: `createUserAccountRequestSchema`/`updateUserAccountRequestSchema` đổi `roleNames: UserRole[]` (enum 5 tên cố định) → `roleIds: string[]` (uuid thật) — không đổi thì vai trò tuỳ biến tạo ra không gán được cho ai. `currentUserSchema.roles` (`/auth/login`, `/auth/me`) nới từ enum sang `z.array(z.string())` để không crash khi user mang vai trò tuỳ biến.
+- **Frontend**: `apps/web/src/features/role/` (mới) — trang "Vai trò & Phân quyền" (`/admin/catalog-organization`, thay `ComingSoonPage`, pill trong `ConfigScreenShell`). Cột trái danh sách vai trò, cột phải bảng ma trận CRUD (`RoleMatrixTable.tsx`) nhóm theo 6 khu vực tính năng (`permission-grouping.ts`), tên 5 vai trò hệ thống dịch tiếng Việt chỉ ở tầng hiển thị (`role-labels.ts`).
+- **3 vấn đề UI thật phát hiện sau khi chủ dự án dùng thử bản chạy thật (khác mockup tĩnh)**: (1) bảng HTML mặc định tự nới cột theo nội dung, cột "Đặc quyền mở rộng" tràn khung nhìn không dấu hiệu cuộn — khoá `table-fixed` + `<colgroup>` độ rộng tường minh; (2) bỏ nhầm luôn cả phần gộp nhiều tính năng dưới 1 tiêu đề chung khi dọn hàng tiêu đề trùng lặp — thêm lại có điều kiện (chỉ hiện khi nhóm ≥2 module); (3) tên vai trò hiện nguyên tiếng Anh kỹ thuật — dịch sang tiếng Việt.
+- **Đã xác minh thật**: `role-http.spec.ts` (18/18), `user-account-http.spec.ts` cập nhật toàn bộ payload `roleNames`→`roleIds` (18/18) — tổng 315 test `apps/api` + 73 `packages/core` pass, không regress. `pnpm -w lint/typecheck/build` sạch toàn workspace. Playwright qua Chrome thật (`executablePath`): toàn bộ luồng tạo/đổi tên/ẩn vai trò, sửa/lưu ma trận — không lỗi console.
+- Cập nhật `.claude/docs/data-model.md`, `docs/ERD.md` (v1.18, thêm C14), `docs/DECISIONS.md` (#057), `docs/CURRENT.md`.
+
 ## 2026-08-19 (2)
 
 Module `icd10_catalog` (S3-01, mở khoá một phần) — schema mở rộng đầy đủ, trang tra cứu 3 cột cascade, seed ĐỦ Chương I-XXII (15.844 mã) — `docs/DECISIONS.md` #056:

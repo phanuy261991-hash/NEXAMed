@@ -56,6 +56,12 @@ describe('HTTP e2e — /api/v1/users', () => {
     return { Authorization: `Bearer ${token}` };
   }
 
+  /** ADM-07 — `createUserAccountRequestSchema`/`updateUserAccountRequestSchema` nhận `roleIds` (id thật), không còn `roleNames` cố định. */
+  async function roleId(tenantId: string, roleName: string): Promise<string> {
+    const role = await privileged.role.findFirstOrThrow({ where: { tenantId, name: roleName } });
+    return role.id;
+  }
+
   /**
    * Đăng nhập thành công cũng tăng `version` của `user_account` (reset `failedLoginCount`, xem
    * `UserAccountAuthRepository.recordSuccessfulLogin` — mọi UPDATE đều tăng version theo
@@ -114,7 +120,7 @@ describe('HTTP e2e — /api/v1/users', () => {
     const res = await request(app.getHttpServer())
       .post('/api/v1/users')
       .set(authed(receptionistToken))
-      .send({ username: `x-${randomUUID()}`, password: staffPassword, fullName: 'X', roleNames: ['nurse'] });
+      .send({ username: `x-${randomUUID()}`, password: staffPassword, fullName: 'X', roleIds: [await roleId(fixture.tenantA.id, 'nurse')] });
 
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('PERMISSION_DENIED');
@@ -124,10 +130,20 @@ describe('HTTP e2e — /api/v1/users', () => {
     const res = await request(app.getHttpServer())
       .post('/api/v1/users')
       .set(authed(clinicAdminToken))
-      .send({ username: `x-${randomUUID()}`, fullName: 'X', roleNames: ['nurse'] });
+      .send({ username: `x-${randomUUID()}`, fullName: 'X', roleIds: [await roleId(fixture.tenantA.id, 'nurse')] });
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('roleId không tồn tại trong tenant → 422 ROLE_INVALID_REFERENCE', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/users')
+      .set(authed(clinicAdminToken))
+      .send({ username: `x-${randomUUID()}`, password: staffPassword, fullName: 'X', roleIds: [randomUUID()] });
+
+    expect(res.status).toBe(422);
+    expect(res.body.error.code).toBe('ROLE_INVALID_REFERENCE');
   });
 
   describe('vòng đời một tài khoản', () => {
@@ -138,7 +154,7 @@ describe('HTTP e2e — /api/v1/users', () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/users')
         .set(authed(clinicAdminToken))
-        .send({ username, password: staffPassword, fullName: 'Nhân viên E2E', roleNames: ['nurse'] });
+        .send({ username, password: staffPassword, fullName: 'Nhân viên E2E', roleIds: [await roleId(fixture.tenantA.id, 'nurse')] });
 
       expect(res.status).toBe(200);
       expect(res.body.data.username).toBe(username);
@@ -156,7 +172,7 @@ describe('HTTP e2e — /api/v1/users', () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/users')
         .set(authed(clinicAdminToken))
-        .send({ username, password: staffPassword, fullName: 'Trùng tên', roleNames: ['nurse'] });
+        .send({ username, password: staffPassword, fullName: 'Trùng tên', roleIds: [await roleId(fixture.tenantA.id, 'nurse')] });
 
       expect(res.status).toBe(409);
       expect(res.body.error.code).toBe('USER_ACCOUNT_DUPLICATE_USERNAME');
@@ -228,7 +244,7 @@ describe('HTTP e2e — /api/v1/users', () => {
       expect(res.body.error.code).toBe('CONCURRENT_MODIFICATION');
     });
 
-    it('đổi vai trò (PATCH roleNames) → 200, cập nhật đúng, THU HỒI phiên đang mở (refresh cũ bị từ chối)', async () => {
+    it('đổi vai trò (PATCH roleIds) → 200, cập nhật đúng, THU HỒI phiên đang mở (refresh cũ bị từ chối)', async () => {
       const login = await request(app.getHttpServer())
         .post('/api/v1/auth/login')
         .send({ tenantId: fixture.tenantA.id, username, password: staffPassword });
@@ -238,7 +254,10 @@ describe('HTTP e2e — /api/v1/users', () => {
       const res = await request(app.getHttpServer())
         .patch(`/api/v1/users/${userId}`)
         .set(authed(clinicAdminToken))
-        .send({ roleNames: ['nurse', 'receptionist'], version: await currentVersion(clinicAdminToken, userId) });
+        .send({
+          roleIds: [await roleId(fixture.tenantA.id, 'nurse'), await roleId(fixture.tenantA.id, 'receptionist')],
+          version: await currentVersion(clinicAdminToken, userId),
+        });
 
       expect(res.status).toBe(200);
       expect(res.body.data.roleNames.sort()).toEqual(['nurse', 'receptionist']);
@@ -251,7 +270,7 @@ describe('HTTP e2e — /api/v1/users', () => {
       const res = await request(app.getHttpServer())
         .patch(`/api/v1/users/${userId}`)
         .set(authed(clinicAdminToken))
-        .send({ roleNames: ['nurse'], version: await currentVersion(clinicAdminToken, userId) });
+        .send({ roleIds: [await roleId(fixture.tenantA.id, 'nurse')], version: await currentVersion(clinicAdminToken, userId) });
 
       expect(res.status).toBe(200);
       expect(res.body.data.roleNames).toEqual(['nurse']);

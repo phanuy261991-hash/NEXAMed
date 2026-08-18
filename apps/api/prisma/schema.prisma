@@ -333,7 +333,12 @@ model Role {
 
   // Đích của composite FK (tenant_id, id) từ user_role/role_permission.
   @@unique([tenantId, id])
-  @@unique([tenantId, name])
+  // UNIQUE(tenant_id, name) đổi từ thường sang PARTIAL (WHERE deleted_at IS NULL) ở ADM-07 (tạo
+  // vai trò tuỳ biến, migration `20260820090000_role_management`) — unique thường (khai báo cũ
+  // `@@unique([tenantId, name])`, từ migration `20260808015619_rbac_data_scope`) sẽ chặn tạo lại
+  // đúng tên vai trò đã từng bị ẩn (soft-delete) trước đó. Không khai báo được `@@unique` có
+  // `WHERE` bằng Prisma schema (giống C3 `patient.national_id_hash`, `user_role`) — viết raw SQL
+  // trong migration, không khai báo ở đây.
   @@map("role")
 }
 

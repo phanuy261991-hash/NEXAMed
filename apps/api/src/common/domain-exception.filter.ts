@@ -32,6 +32,11 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   ENCOUNTER_INVALID_TRANSITION: HttpStatus.CONFLICT,
   ENCOUNTER_ALREADY_EXISTS: HttpStatus.CONFLICT,
   ENCOUNTER_NOT_CHECKED_IN: HttpStatus.CONFLICT,
+  // ADM-07 — trùng tên/còn tài khoản gán là xung đột với trạng thái hiện có (409). ROLE_IMMUTABLE
+  // và ROLE_INVALID_REFERENCE không có trong bảng này nên rơi về mặc định 422 (vi phạm quy tắc
+  // nghiệp vụ, không phải xung đột trạng thái đồng thời).
+  ROLE_DUPLICATE_NAME: HttpStatus.CONFLICT,
+  ROLE_IN_USE: HttpStatus.CONFLICT,
 };
 
 /**

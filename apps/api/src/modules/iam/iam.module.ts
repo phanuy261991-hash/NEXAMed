@@ -13,6 +13,10 @@ import { BreakGlassRepository } from './break-glass.repository';
 import { UserAccountController } from './user-account.controller';
 import { UserAccountService } from './user-account.service';
 import { UserAccountRepository } from './user-account.repository';
+import { RoleController } from './role.controller';
+import { RoleService } from './role.service';
+import { RoleRepository } from './role.repository';
+import { RolePermissionRepository } from './role-permission.repository';
 import { NoopNotificationAdapter } from '../../infrastructure/notification/noop.adapter';
 import { DoctorDirectoryAdapter } from '../../infrastructure/directory/doctor-directory.adapter';
 
@@ -37,7 +41,7 @@ import { DoctorDirectoryAdapter } from '../../infrastructure/directory/doctor-di
 @Global()
 @Module({
   imports: [JwtModule.register({}), ThrottlerModule.forRoot([{ name: 'login', ttl: 60_000, limit: 10 }])],
-  controllers: [AuthController, BreakGlassController, UserAccountController],
+  controllers: [AuthController, BreakGlassController, UserAccountController, RoleController],
   providers: [
     AuthService,
     TokenService,
@@ -47,6 +51,9 @@ import { DoctorDirectoryAdapter } from '../../infrastructure/directory/doctor-di
     BreakGlassRepository,
     UserAccountService,
     UserAccountRepository,
+    RoleService,
+    RoleRepository,
+    RolePermissionRepository,
     { provide: NOTIFICATION_PORT, useClass: NoopNotificationAdapter },
     { provide: DOCTOR_DIRECTORY_PORT, useClass: DoctorDirectoryAdapter },
   ],

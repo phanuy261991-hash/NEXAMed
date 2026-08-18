@@ -1,4 +1,4 @@
-import { Flask, Pill, Users } from '@phosphor-icons/react';
+import { Flask, Pill } from '@phosphor-icons/react';
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import { AppointmentSchedulePage } from '../features/appointment/AppointmentSchedulePage';
 import { LoginPage } from '../features/auth/LoginPage';
@@ -13,6 +13,7 @@ import { PatientNewPage } from '../features/patient/PatientNewPage';
 import { ReceptionDoctorQueuePage } from '../features/reception/ReceptionDoctorQueuePage';
 import { ReceptionListPage } from '../features/reception/ReceptionListPage';
 import { ReceptionRegisterPage } from '../features/reception/ReceptionRegisterPage';
+import { RolePermissionPage } from '../features/role/RolePermissionPage';
 import { AppShell } from '../shared/layout/AppShell';
 import { ComingSoonPage } from '../shared/ui/ComingSoonPage';
 import { NotFoundPage } from './NotFoundPage';
@@ -41,16 +42,9 @@ export const router = createBrowserRouter([
       // là route thật, trước đây báo lỗi 404 mặc định của react-router (docs/DECISIONS.md #048).
       { path: 'admin', element: <Navigate to="/admin/catalog" replace /> },
       { path: 'admin/catalog', element: <CatalogAdminPage /> },
-      {
-        path: 'admin/catalog-organization',
-        element: (
-          <ComingSoonPage
-            pageTitle="Danh mục Tổ chức và Nhân sự"
-            icon={Users}
-            description="Khoa/phòng, chức danh, nhân sự phòng khám sẽ quản lý được ở đây khi module tương ứng ra đời."
-          />
-        ),
-      },
+      // ADM-07 (Vai trò & Phân quyền) — trang thật thay ComingSoonPage cũ. Phòng ban/Tài khoản
+      // (ADM-01) chưa có UI web, sẽ thêm pill khi module đó ra đời.
+      { path: 'admin/catalog-organization', element: <RolePermissionPage /> },
       // S3-01 (mở khoá một phần) — trang tra cứu ICD-10 thật, thay ComingSoonPage cũ.
       { path: 'admin/catalog-clinical', element: <CatalogClinicalPage /> },
       {
