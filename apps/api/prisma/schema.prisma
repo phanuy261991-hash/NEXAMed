@@ -54,7 +54,9 @@ model Tenant {
   updatedBy     String    @map("updated_by") @db.Uuid
 
   tenantSettings    TenantSetting[]
+  floors            Floor[]
   rooms             Room[]
+  examStations      ExamStation[]
   departments       Department[]
   userAccounts      UserAccount[]
   roles             Role[]
@@ -62,6 +64,7 @@ model Tenant {
   codeSequences     CodeSequence[]
   auditLogs         AuditLog[]
   breakGlassSessions BreakGlassSession[]
+  doctorRoomSessions DoctorRoomSession[]
   userSessions      UserSession[]
   patients          Patient[]
   appointments      Appointment[]
@@ -92,9 +95,37 @@ model TenantSetting {
   @@map("tenant_setting")
 }
 
+// "Tầng" (docs/DECISIONS.md #055) — thuần phân loại/tổ chức không gian, TÙY CHỌN (`room.floorId`
+// nullable). Phòng khám 1 tầng không tạo dòng nào ở đây, web tự ẩn mọi UI liên quan (cùng nguyên
+// tắc "tự ẩn khi ≤1" đã áp dụng cho `room` ở #054) — không có cột "mặc định", suy ra từ số dòng.
+model Floor {
+  id        String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId  String  @map("tenant_id") @db.Uuid
+  name      String
+  sortOrder Int     @default(0) @map("sort_order")
+  isActive  Boolean @default(true) @map("is_active")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  rooms  Room[]
+
+  // Đích của composite FK (tenant_id, id) từ room.
+  @@unique([tenantId, id])
+  @@map("floor")
+}
+
 model Room {
   id       String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
   tenantId String  @map("tenant_id") @db.Uuid
+  floorId  String? @map("floor_id") @db.Uuid
   name     String
   isActive Boolean @default(true) @map("is_active")
 
@@ -107,12 +138,71 @@ model Room {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant       Tenant        @relation(fields: [tenantId], references: [id])
-  appointments Appointment[]
+  tenant             Tenant              @relation(fields: [tenantId], references: [id])
+  // floor_id nullable — FK chỉ áp khi có giá trị (Postgres MATCH SIMPLE, cùng mẫu
+  // user_account.department ở trên).
+  floor              Floor?              @relation(fields: [tenantId, floorId], references: [tenantId, id])
+  appointments       Appointment[]
+  doctorRoomSessions DoctorRoomSession[]
+  examStations       ExamStation[]
 
-  // Đích của composite FK (tenant_id, id) từ appointment (S2-05).
+  // Đích của composite FK (tenant_id, id) từ appointment (S2-05), doctor_room_session, exam_station.
   @@unique([tenantId, id])
   @@map("room")
+}
+
+// "Bàn khám / Ghế" (docs/DECISIONS.md #055) — cấp con của `room`, THUẦN MÔ TẢ/tổ chức (ví dụ
+// phòng khám nha nhiều ghế trong 1 phòng). KHÔNG phải đơn vị điều phối — "phòng làm việc hôm nay"
+// của bác sĩ (`doctor_room_session`) và `appointment.room_id` vẫn dừng ở cấp `room`, không xuống
+// tới đây (đã hỏi và chốt qua AskUserQuestion trước khi thiết kế).
+model ExamStation {
+  id        String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId  String  @map("tenant_id") @db.Uuid
+  roomId    String  @map("room_id") @db.Uuid
+  name      String
+  sortOrder Int     @default(0) @map("sort_order")
+  isActive  Boolean @default(true) @map("is_active")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  room   Room   @relation(fields: [tenantId, roomId], references: [tenantId, id])
+
+  @@map("exam_station")
+}
+
+// "Phòng làm việc hôm nay" của bác sĩ — thuần vận hành/định tuyến UI (KHÔNG phải dữ liệu lâm
+// sàng, không dùng để lọc data_scope của encounter/hàng đợi khám, xem docs/DECISIONS.md).
+// 1 dòng/bác sĩ/ngày lịch Việt Nam (workDate) — partial unique viết ở migration (cùng lý do
+// user_role/patient.national_id_hash không khai `@@unique` được trong Prisma: điều kiện WHERE).
+model DoctorRoomSession {
+  id       String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId String   @map("tenant_id") @db.Uuid
+  doctorId String   @map("doctor_id") @db.Uuid
+  roomId   String   @map("room_id") @db.Uuid
+  workDate DateTime @map("work_date") @db.Date
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant Tenant      @relation(fields: [tenantId], references: [id])
+  doctor UserAccount @relation(fields: [tenantId, doctorId], references: [tenantId, id])
+  room   Room        @relation(fields: [tenantId, roomId], references: [tenantId, id])
+
+  @@map("doctor_room_session")
 }
 
 // Khoa/phòng trong 1 tenant — phục vụ Data Scope `department` (security-audit.md).
@@ -172,6 +262,7 @@ model UserAccount {
   sessions   UserSession[]
   appointmentsAsDoctor Appointment[] @relation("AppointmentDoctor")
   encountersAsDoctor   Encounter[]   @relation("EncounterDoctor")
+  roomSessionsAsDoctor DoctorRoomSession[]
 
   // Đích của composite FK (tenant_id, id) từ user_role — chống trỏ chéo tenant (C5 trong ERD.md).
   @@unique([tenantId, id])

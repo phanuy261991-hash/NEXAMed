@@ -1,14 +1,17 @@
 import { useState } from 'react';
-import { Buildings, Clock } from '@phosphor-icons/react';
+import { Buildings, Clock, MapPinLine } from '@phosphor-icons/react';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { ConfigScreenShell, type ConfigScreenPill } from '../../shared/ui/ConfigScreenShell';
 import { ClinicHoursPane } from './ClinicHoursPane';
 import { ClinicInfoPane } from './ClinicInfoPane';
+import { RoomPane } from './RoomPane';
 
 /**
- * 1 pill, 2 mục — "Thông tin phòng khám" (2026-08-13, mặc định mở đầu tiên) đặt TRƯỚC "Giờ làm
- * việc & Slot" theo yêu cầu chủ dự án. Không dựng thêm pill/mục "Sắp có"
- * (.claude/docs/ui-guidelines.md mục 10), thêm khi có module thật đứng sau.
+ * 1 pill, 3 mục — "Thông tin phòng khám" (2026-08-13, mặc định mở đầu tiên) đặt TRƯỚC "Giờ làm
+ * việc & Slot" theo yêu cầu chủ dự án. "Phòng khám" (docs/DECISIONS.md #054) — CRUD `room` chưa
+ * từng có UI web trước đây (chỉ backend từ S2-07), thêm ở đây để bật được luồng "phòng làm việc
+ * hôm nay". Không dựng thêm pill/mục "Sắp có" (.claude/docs/ui-guidelines.md mục 10), thêm khi có
+ * module thật đứng sau.
  */
 const PILLS: ConfigScreenPill[] = [
   {
@@ -17,6 +20,7 @@ const PILLS: ConfigScreenPill[] = [
     items: [
       { key: 'info', label: 'Thông tin phòng khám', icon: Buildings },
       { key: 'hours', label: 'Giờ làm việc & Slot', icon: Clock },
+      { key: 'rooms', label: 'Tầng phòng', icon: MapPinLine },
     ],
   },
 ];
@@ -60,6 +64,7 @@ export function ClinicConfigPage() {
     >
       {activeItemKey === 'info' && <ClinicInfoPane />}
       {activeItemKey === 'hours' && <ClinicHoursPane />}
+      {activeItemKey === 'rooms' && <RoomPane />}
     </ConfigScreenShell>
   );
 }

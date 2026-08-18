@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { RoomSessionGate } from '../../features/clinic/RoomSessionGate';
 import { BreadcrumbProvider } from './breadcrumb.context';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
@@ -29,6 +30,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <main className="flex-1 overflow-y-auto">{children}</main>
         </div>
       </div>
+      <RoomSessionGate />
     </BreadcrumbProvider>
   );
 }

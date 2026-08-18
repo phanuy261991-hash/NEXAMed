@@ -12,6 +12,8 @@ Sprint 1 — Nền tảng đã xong toàn bộ 11 việc (S1-01 → S1-09). **Sp
 
 **Danh mục hành chính `province`/`ward` (Tỉnh/Phường-Xã, sáp nhập hành chính 2025) — đã xong**. Chủ dự án gửi file dữ liệu chính thức (Bộ Nội vụ), hỏi chốt thiết kế 2 bảng (không gộp phẳng) và phạm vi (read-only, tích hợp luôn vào `patient.address_json`) trước khi code. Chi tiết đầy đủ ở `docs/DECISIONS.md` #038 và mục "Đã có" bên dưới.
 
+**"Phòng làm việc hôm nay" (#054) + "Tầng phòng" (#055) — đã xong.** Chủ dự án gửi tài liệu tham khảo mô hình định tuyến theo phòng (HIS); dùng EnterPlanMode + AskUserQuestion chốt 3 điểm trước khi code (bác sĩ tự chọn phòng lúc đăng nhập; hàng đợi khám GIỮ NGUYÊN lọc theo `doctor_id`, không đổi RBAC; tự ẩn hoàn toàn ở quy mô 1-3 bác sĩ). Bảng mới `doctor_room_session`. Ngay sau đó chủ dự án yêu cầu thêm quản lý Tầng/Bàn khám-Ghế, tích hợp chung 1 màn hình Quản trị (không tách pill riêng) — bảng mới `floor` (tùy chọn)/`exam_station` (bắt buộc thuộc 1 phòng), cả hai THUẦN mô tả, không đổi đơn vị điều phối (vẫn ở cấp `room`). Mục sidebar mới "Tầng phòng" trong "Cấu hình hệ thống". Chi tiết đầy đủ ở `docs/DECISIONS.md` #054/#055.
+
 ## Đã có
 
 - `CLAUDE.md` — quy tắc và ràng buộc dự án (đã bổ sung quy định viết code hướng tái sử dụng).
@@ -152,7 +154,7 @@ Sprint 1 — Nền tảng đã xong toàn bộ 11 việc (S1-01 → S1-09). **Sp
 - ADM-07 (P1): UI cấu hình ma trận phân quyền.
 - Đổi contract bất kỳ endpoint nào phải chạy lại `pnpm --filter @nexamed/api run openapi:generate` rồi `pnpm --filter @nexamed/web run api:codegen` — không sửa tay `openapi.json`/`openapi-schema.d.ts`.
 - S2-04 (BHYT) lùi lại sau Sprint 3 theo quyết định đã chốt, không chặn.
-- "Ca làm việc riêng từng bác sĩ" (lưới chỉ hiện bác sĩ có ca hôm đó) — nhu cầu thật chủ dự án nêu lúc duyệt S2-09, đã hỏi và chốt **chưa làm** (cần bảng mới ngoài ERD đã chốt + UI Quản trị cấu hình chưa tồn tại). Xem `docs/DECISIONS.md` #030 mục 5 nếu quay lại làm sau.
+- "Ca làm việc riêng từng bác sĩ" (lưới lịch hẹn chỉ hiện bác sĩ có ca hôm đó, cấu hình lịch phân ca trước) — vẫn **chưa làm** (`docs/DECISIONS.md` #030 mục 5). Khác — đã làm hướng liên quan gần: "phòng làm việc hôm nay" (#054, bác sĩ TỰ chọn phòng lúc đăng nhập, không cấu hình lịch trước) + "Tầng phòng" (#055, Tầng/Phòng/Bàn khám). Không thay thế #030 — nếu quay lại làm lưới lịch hẹn lọc theo ca, đọc cả 3 quyết định để tránh chồng chéo.
 - Đa chuyên khoa (nhi/sản/nha): chưa xây gói thật nào — chỉ mới có khung tối thiểu (`docs/DECISIONS.md` #033). Khi làm S3-06 (màn hình khám), component nhận cấu hình trường qua props, không hard-code riêng một chuyên khoa. Chọn gói đầu tiên khi có khách hàng thật trả tiền, không dựng khung trước — xem `docs/product/multi-specialty-analysis.md` mục 9.
 
 ## Lưu ý môi trường

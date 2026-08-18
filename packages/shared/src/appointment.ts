@@ -134,10 +134,13 @@ export type EditAppointmentRequest = z.infer<typeof editAppointmentRequestSchema
  * Danh sách bác sĩ cho màn hình Lịch hẹn (S2-09, `GET /appointments/doctors`) — chiếu tối thiểu
  * (chỉ id + tên hiển thị), gắn quyền `appointment.read` thay vì `user_account.read` (xem
  * docs/DECISIONS.md — lễ tân có `appointment.read` nhưng không có `user_account.read`).
+ * `currentRoomName` (docs/DECISIONS.md #054) — phòng bác sĩ đã chọn hôm nay, `null`/vắng mặt khi
+ * chưa chọn hoặc tenant chưa dùng mô hình nhiều phòng; chỉ để hiển thị, không ảnh hưởng chọn bác sĩ.
  */
 export const doctorOptionSchema = z.object({
   id: z.string().uuid(),
   fullName: z.string(),
+  currentRoomName: z.string().nullable().optional(),
 });
 export type DoctorOption = z.infer<typeof doctorOptionSchema>;
 

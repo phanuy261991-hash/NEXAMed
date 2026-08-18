@@ -23,6 +23,14 @@ export interface WeeklyBusinessHours {
  */
 export interface ClinicConfigReaderPort {
   getScheduleConfig(tenantId: string): Promise<{ businessHours: WeeklyBusinessHours | null; slotDurationMinutes: number }>;
+
+  /**
+   * "Phòng làm việc hôm nay" của từng bác sĩ (docs/DECISIONS.md #054) — key = doctorId. Chỉ để
+   * hiển thị cạnh tên bác sĩ ở danh sách chọn (`GET /appointments/doctors`), KHÔNG dùng để lọc
+   * quyền/hàng đợi khám (vẫn theo doctor_id như trước). Bác sĩ chưa chọn phòng hôm nay, hoặc
+   * tenant chưa có ≥2 phòng active, thì không có key tương ứng trong kết quả.
+   */
+  getTodayDoctorRoomAssignments(tenantId: string): Promise<Record<string, { roomId: string; roomName: string }>>;
 }
 
 export const CLINIC_CONFIG_READER_PORT = Symbol('CLINIC_CONFIG_READER_PORT');

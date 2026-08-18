@@ -213,7 +213,12 @@ export function ReceptionIntakeForm({
     setError(null);
   }
 
-  const doctorOptions = (doctorsQuery.data?.items ?? []).map((d) => ({ value: d.id, label: d.fullName }));
+  // "Phòng làm việc hôm nay" (docs/DECISIONS.md #054) — tự ẩn khi bác sĩ chưa chọn phòng hoặc
+  // tenant chưa dùng mô hình nhiều phòng (currentRoomName rỗng/null), cùng quy tắc DoctorAvailabilityList.tsx.
+  const doctorOptions = (doctorsQuery.data?.items ?? []).map((d) => ({
+    value: d.id,
+    label: d.currentRoomName ? `${d.fullName} · ${d.currentRoomName}` : d.fullName,
+  }));
   const patientSourceOptions = withLegacyValueOption(
     (patientSourceQuery.data?.items ?? []).map((i) => ({ value: i.code, label: i.name })),
     patientSourceCode,

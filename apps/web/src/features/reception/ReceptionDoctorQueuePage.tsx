@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ClipboardText, Play } from '@phosphor-icons/react';
+import { ClipboardText, MapPinLine, Play } from '@phosphor-icons/react';
 import type { ReceptionListItem } from '@nexamed/shared';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
@@ -9,6 +9,8 @@ import { Skeleton } from '../../shared/ui/Skeleton';
 import { ApiError } from '../../shared/api/client';
 import { useAuthStore } from '../auth/auth.store';
 import { getVietnamTodayDateString } from '../appointment/schedule-grid.utils';
+import { RoomSessionDialog } from '../clinic/RoomSessionDialog';
+import { useMyRoomSessionQuery, useRoomOptionsQuery } from '../clinic/clinic.queries';
 import { useReceptionListQuery, useStartConsultationMutation } from './reception.queries';
 
 function formatTime(iso: string): string {
@@ -37,6 +39,13 @@ export function ReceptionDoctorQueuePage() {
   const startConsultationMutation = useStartConsultationMutation();
   const items = (listQuery.data?.items ?? []).filter((i) => i.status === 'CHECKED_IN');
 
+  // "Đang ở phòng nào" (docs/DECISIONS.md #054) — 0-1 phòng active thì tự ẩn hoàn toàn, cùng logic
+  // RoomSessionGate.tsx (không lặp query khi tenant chưa dùng mô hình nhiều phòng).
+  const roomOptionsQuery = useRoomOptionsQuery();
+  const multiRoomActive = (roomOptionsQuery.data?.items.length ?? 0) > 1;
+  const mySessionQuery = useMyRoomSessionQuery(multiRoomActive);
+  const [changingRoom, setChangingRoom] = useState(false);
+
   async function handleStartConsultation(item: ReceptionListItem) {
     setRowError(null);
     try {
@@ -48,7 +57,27 @@ export function ReceptionDoctorQueuePage() {
 
   return (
     <div className="flex h-full flex-col gap-3 p-4">
-      <h1 className="text-[17px] font-bold text-slate-900">Hàng đợi khám hôm nay</h1>
+      <div className="flex items-center gap-2">
+        <h1 className="text-[17px] font-bold text-slate-900">Hàng đợi khám hôm nay</h1>
+        {multiRoomActive && mySessionQuery.data && (
+          <span className="flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+            <MapPinLine size={13} weight="bold" aria-hidden="true" />
+            Đang ở: {mySessionQuery.data.roomName}
+            <button type="button" onClick={() => setChangingRoom(true)} className="font-semibold text-blue-600 hover:text-blue-700">
+              Đổi phòng
+            </button>
+          </span>
+        )}
+      </div>
+
+      {changingRoom && (
+        <RoomSessionDialog
+          options={roomOptionsQuery.data?.items ?? []}
+          currentRoomId={mySessionQuery.data?.roomId}
+          dismissible
+          onClose={() => setChangingRoom(false)}
+        />
+      )}
 
       {rowError && <ErrorBanner message={rowError} />}
 

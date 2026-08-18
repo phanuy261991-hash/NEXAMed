@@ -10,13 +10,45 @@ import { timezoneSchema } from './timezone';
  * phòng lẫn giờ làm/slot — PRD ADM-02 gộp chung "giờ làm việc, độ dài slot, phòng, mẫu in" làm
  * một yêu cầu, không có lý do tách quyền riêng cho "phòng" ở v1 (1-3 bác sĩ, 1 địa điểm).
  */
+/**
+ * "Tầng" (docs/DECISIONS.md #055) — cấp cha TÙY CHỌN của `room`. Cùng lý do không phân trang ở
+ * `listRoomsResponseSchema` dưới — số tầng của một phòng khám luôn rất nhỏ.
+ */
+export const createFloorRequestSchema = z.object({
+  name: z.string().min(1),
+});
+export type CreateFloorRequest = z.infer<typeof createFloorRequestSchema>;
+
+export const updateFloorRequestSchema = z.object({
+  name: z.string().min(1).optional(),
+  isActive: z.boolean().optional(),
+  version: z.number().int().positive(),
+});
+export type UpdateFloorRequest = z.infer<typeof updateFloorRequestSchema>;
+
+export const floorSummarySchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  isActive: z.boolean(),
+  version: z.number().int(),
+});
+export type FloorSummary = z.infer<typeof floorSummarySchema>;
+
+export const listFloorsResponseSchema = z.object({
+  items: z.array(floorSummarySchema),
+});
+export type ListFloorsResponse = z.infer<typeof listFloorsResponseSchema>;
+
+/** `floorId: null` = không thuộc tầng nào (hợp lệ — đa số phòng khám 1 tầng không dùng cấp này). */
 export const createRoomRequestSchema = z.object({
   name: z.string().min(1),
+  floorId: z.string().uuid().nullable().optional(),
 });
 export type CreateRoomRequest = z.infer<typeof createRoomRequestSchema>;
 
 export const updateRoomRequestSchema = z.object({
   name: z.string().min(1).optional(),
+  floorId: z.string().uuid().nullable().optional(),
   isActive: z.boolean().optional(),
   version: z.number().int().positive(),
 });
@@ -25,6 +57,9 @@ export type UpdateRoomRequest = z.infer<typeof updateRoomRequestSchema>;
 export const roomSummarySchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
+  floorId: z.string().uuid().nullable(),
+  floorName: z.string().nullable(),
+  examStationCount: z.number().int(),
   isActive: z.boolean(),
   version: z.number().int(),
 });
@@ -38,6 +73,42 @@ export const listRoomsResponseSchema = z.object({
   items: z.array(roomSummarySchema),
 });
 export type ListRoomsResponse = z.infer<typeof listRoomsResponseSchema>;
+
+/**
+ * "Bàn khám / Ghế" (docs/DECISIONS.md #055) — cấp con BẮT BUỘC thuộc 1 `room`, thuần mô tả
+ * (không phải đơn vị điều phối — xem `RoomOption`/`RoomSession` ở dưới, vẫn dừng ở cấp `room`).
+ */
+export const createExamStationRequestSchema = z.object({
+  roomId: z.string().uuid(),
+  name: z.string().min(1),
+});
+export type CreateExamStationRequest = z.infer<typeof createExamStationRequestSchema>;
+
+export const updateExamStationRequestSchema = z.object({
+  name: z.string().min(1).optional(),
+  isActive: z.boolean().optional(),
+  version: z.number().int().positive(),
+});
+export type UpdateExamStationRequest = z.infer<typeof updateExamStationRequestSchema>;
+
+export const examStationSummarySchema = z.object({
+  id: z.string().uuid(),
+  roomId: z.string().uuid(),
+  name: z.string(),
+  isActive: z.boolean(),
+  version: z.number().int(),
+});
+export type ExamStationSummary = z.infer<typeof examStationSummarySchema>;
+
+export const listExamStationsResponseSchema = z.object({
+  items: z.array(examStationSummarySchema),
+});
+export type ListExamStationsResponse = z.infer<typeof listExamStationsResponseSchema>;
+
+export const listExamStationsQuerySchema = z.object({
+  roomId: z.string().uuid(),
+});
+export type ListExamStationsQuery = z.infer<typeof listExamStationsQuerySchema>;
 
 const HHMM_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 const timeOfDaySchema = z.string().regex(HHMM_PATTERN, 'Định dạng giờ phải là HH:mm (24 giờ)');
@@ -109,3 +180,34 @@ export const updateClinicProfileRequestSchema = z.object({
   version: z.number().int().positive(),
 });
 export type UpdateClinicProfileRequest = z.infer<typeof updateClinicProfileRequestSchema>;
+
+/**
+ * "Phòng làm việc hôm nay" của bác sĩ (docs/DECISIONS.md #054) — mô hình định tuyến theo phòng
+ * tham khảo từ chủ dự án, chỉ điều phối/hiển thị UI, KHÔNG đổi `data_scope`/cách lọc hàng đợi
+ * khám (vẫn theo `doctor_id`). Chiếu tối thiểu `{id, name}` (khác `roomSummarySchema` đầy đủ) vì
+ * endpoint tự-phục vụ (`JwtAuthGuard` thuần, không `@RequirePermission` — mọi user đã đăng nhập
+ * đều đọc được, không lộ `isActive`/`version` không cần thiết).
+ */
+export const roomOptionSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+});
+export type RoomOption = z.infer<typeof roomOptionSchema>;
+
+export const listRoomOptionsResponseSchema = z.object({
+  items: z.array(roomOptionSchema),
+});
+export type ListRoomOptionsResponse = z.infer<typeof listRoomOptionsResponseSchema>;
+
+export const setRoomSessionRequestSchema = z.object({
+  roomId: z.string().uuid(),
+});
+export type SetRoomSessionRequest = z.infer<typeof setRoomSessionRequestSchema>;
+
+/** `null` khi bác sĩ chưa chọn phòng cho ngày hôm nay (giờ Việt Nam). */
+export const roomSessionSchema = z.object({
+  roomId: z.string().uuid(),
+  roomName: z.string(),
+  workDate: z.string(),
+});
+export type RoomSession = z.infer<typeof roomSessionSchema>;

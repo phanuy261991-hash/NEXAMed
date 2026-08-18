@@ -32,9 +32,33 @@ Mọi `UPDATE` kèm điều kiện `WHERE version = ?` và tăng `version` lên 
 Tenant và cấu hình. `tenant_setting (tenant_id, key, value_json)` giữ giờ làm việc, độ dài slot, ngưỡng `NO_SHOW`, `break_glass_duration_minutes` (mặc định 120).
 
 `tenant` — ngoài `name`/`address`/`taxCode`/`licenseNo` có sẵn, thêm (2026-08-13, trang "Thông tin phòng khám"): `phone text NULL`, `email text NULL`, `currency text NOT NULL DEFAULT 'VND'`, `timezone text NOT NULL DEFAULT 'Asia/Ho_Chi_Minh'`, `logo_key text NULL` (logo chính 220×110, khoá lưu trên `StoragePort`, cùng mẫu `patient.photo_key`), `print_logo_key text NULL` (logo dùng cho mẫu in 110×110, chuẩn bị cho PRE-04/S4-04). **`currency`/`timezone` chỉ lưu giá trị hiển thị** — chưa nối vào logic tính tiền (viện phí là v2+, hiện chưa có nơi nào hiển thị/tính tiền trong hệ thống) hay logic ngày giờ hệ thống (vẫn hard-code UTC+7 ở `packages/core/src/date/vietnam-day-range.ts` và các nơi khác — xem `docs/DECISIONS.md` #041). Không permission mới — dùng lại `clinic_config.read`/`clinic_config.update`.
+`room` có thêm (2026-08-19, `docs/DECISIONS.md` #055) `floor_id uuid NULL` (composite FK → `floor`, xem mục "floor / exam_station" dưới) — "Tầng" tùy chọn, không bắt buộc gán.
+
 `department`: `name` — khoa/phòng trong tenant, phục vụ Data Scope `department` (xem `security-audit.md`). v1 phần lớn phòng khám không dùng nhưng bảng luôn tồn tại.
 `user_account` có thêm `department_id uuid NULL` (FK `(tenant_id, id)` tới `department`).
 `user_account` có thêm (S1-04) `failed_login_count int NOT NULL DEFAULT 0`, `last_failed_login_at timestamptz NULL`, `locked_until timestamptz NULL` — khoá tài khoản tạm sau 5 lần đăng nhập sai trong 15 phút, xem `security-audit.md` mục Xác thực và `packages/core/src/iam/lockout.ts` (nguồn sự thật của ngưỡng/logic).
+
+### doctor_room_session (`docs/DECISIONS.md` #054)
+
+"Phòng làm việc hôm nay" của bác sĩ — mô hình định tuyến theo phòng vật lý (tham khảo chủ dự án gửi), tách bác sĩ khỏi phòng cố định. Đủ 8 cột bắt buộc, cộng `doctor_id` (composite FK `(tenant_id, id)` → `user_account`), `room_id` (composite FK → `room`), `work_date date NOT NULL` (ngày lịch Việt Nam, tính 1 lần lúc ghi qua `getVietnamDateString()` — **không phải** `timestamptz`, khác mọi cột thời điểm khác trong hệ thống vì đây là khái niệm "ngày lịch", không phải một mốc thời gian).
+
+Partial unique `(tenant_id, work_date, doctor_id) WHERE deleted_at IS NULL` — 1 phòng/bác sĩ/ngày hiệu lực, cùng arbiter cho `INSERT ... ON CONFLICT DO UPDATE` (không khai `@@unique` trong Prisma được vì điều kiện `WHERE`, cùng lý do `user_role`/`patient.national_id_hash`). **Không phải dữ liệu lâm sàng** — đổi phòng giữa ngày là UPDATE tại chỗ (tăng `version`), không tạo bản ghi mới giữ lịch sử như `appointment`/`prescription`.
+
+**Chỉ điều phối/hiển thị UI — KHÔNG dùng để lọc `data_scope`/hàng đợi khám.** `doctor.encounter.* = personal` vẫn lọc theo `encounter.doctor_id` trực tiếp như trước (`docs/DECISIONS.md` #042), không đọc bảng này. Bảng này chỉ phục vụ: (1) `GET /appointments/doctors` (đã có từ S2-09) mở rộng thêm `currentRoomName` để lễ tân thấy bác sĩ đang ở phòng nào lúc chọn; (2) badge "Đang ở: {phòng}" ở "Hàng đợi khám".
+
+Endpoint tự-phục vụ, không permission mới: `GET /rooms/options` (danh sách phòng active, chiếu tối thiểu), `GET/PUT /rooms/my-session` (đọc/ghi đúng phiên của actor — `req.user.userId`, không nhận `doctorId` từ client) — chỉ `JwtAuthGuard`, không `@RequirePermission` (route thiếu decorator được `PermissionGuard` cho qua, cùng nguyên tắc `GET /auth/me`).
+
+**Tự động ẩn ở quy mô 1-3 bác sĩ**: 0-1 phòng active thì `GET /rooms/options` trả ≤1 phần tử, web không hiện bất kỳ UI nào liên quan phòng (không popup chọn phòng lúc đăng nhập, không badge, không nhãn phòng cạnh tên bác sĩ) — không cần cấu hình bật/tắt riêng, tự suy ra từ dữ liệu. Bảng `room` (S2-07) trước đây chưa từng có UI web quản lý — thêm pane "Phòng khám" tối thiểu trong `/admin/system-config` để bật được tính năng này (tận dụng nguyên `RoomController` có sẵn, không đổi backend `room`).
+
+### floor / exam_station (`docs/DECISIONS.md` #055)
+
+Mở rộng `room` thành cấp bậc không gian vật lý — "Tầng phòng" trong Quản trị (tích hợp chung 1 màn hình, không tách pill/mục riêng từng cấp). **Cả hai bảng THUẦN mô tả/tổ chức, không có hành vi nghiệp vụ nào phụ thuộc** — đơn vị điều phối thật của `doctor_room_session` (#054) và `appointment.room_id` (S2-05) vẫn dừng ở cấp `room`, không xuống tới `floor`/`exam_station`.
+
+`floor` (Tầng, **tùy chọn**): đủ 8 cột bắt buộc + `name`, `sort_order`, `is_active`. `room.floor_id` (composite FK `(tenant_id, floor_id)` → `floor`, **nullable** — C13) — phòng không gán tầng vẫn hợp lệ, cùng mẫu `user_account.department_id`. Tenant chưa tạo tầng nào (đa số phòng khám 1-3 bác sĩ) thì web tự ẩn hoàn toàn UI liên quan tầng, trừ đúng 1 nút "+" luôn hiện (lối vào duy nhất để tạo tầng đầu tiên — không giấu sau bất kỳ thao tác nào khác, tránh bẫy không lối ra).
+
+`exam_station` (Bàn khám/Ghế, cấp con **bắt buộc** thuộc 1 `room`): đủ 8 cột bắt buộc + `room_id` (composite FK, NOT NULL), `name`, `sort_order`, `is_active`. `RoomSummary.examStationCount` (đếm qua `GROUP BY`, không load toàn bộ danh sách) hiện badge số đếm ở danh sách Phòng — quản lý chi tiết qua modal riêng scoped theo `roomId` (`GET /exam-stations?roomId=`).
+
+Quyền: dùng lại `clinic_config.read`/`.update` như `room` — không thêm permission mới (cùng lý do PRD ADM-02 gộp chung "phòng" vào một yêu cầu cấu hình).
 
 ### user_session (S1-04 — xem `security-audit.md` mục Xác thực, `docs/DECISIONS.md` #019)
 

@@ -20,18 +20,26 @@ import {
   clinicProfileSchema,
   clinicSettingsSchema,
   createAppointmentRequestSchema,
+  createExamStationRequestSchema,
+  createFloorRequestSchema,
   createPatientRequestSchema,
   createRoomRequestSchema,
   createUserAccountRequestSchema,
   editAppointmentRequestSchema,
   encounterSummarySchema,
+  examStationSummarySchema,
+  floorSummarySchema,
   listAppointmentsQuerySchema,
   listAppointmentsResponseSchema,
   listDoctorsResponseSchema,
+  listExamStationsQuerySchema,
+  listExamStationsResponseSchema,
+  listFloorsResponseSchema,
   listPatientsQuerySchema,
   listPatientsResponseSchema,
   listProvincesResponseSchema,
   listReferenceCatalogResponseSchema,
+  listRoomOptionsResponseSchema,
   listRoomsResponseSchema,
   listWardsResponseSchema,
   listUserAccountsQuerySchema,
@@ -55,10 +63,14 @@ import {
   refreshResponseSchema,
   rescheduleAppointmentRequestSchema,
   resetUserPasswordRequestSchema,
+  roomSessionSchema,
   roomSummarySchema,
+  setRoomSessionRequestSchema,
   startConsultationRequestSchema,
   updateClinicProfileRequestSchema,
   updateClinicSettingsRequestSchema,
+  updateExamStationRequestSchema,
+  updateFloorRequestSchema,
   updatePatientRequestSchema,
   updateReferenceCatalogRequestSchema,
   updateRoomRequestSchema,
@@ -682,6 +694,137 @@ registry.registerPath({
     403: errorResponse('Không có quyền clinic_config.update'),
     404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
     409: errorResponse('version không khớp (CONCURRENT_MODIFICATION)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/floors',
+  tags: ['clinic'],
+  summary: 'Tạo tầng (docs/DECISIONS.md #055) — cấp cha tùy chọn của phòng',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createFloorRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Tạo thành công', envelope(floorSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinic_config.update'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/floors',
+  tags: ['clinic'],
+  summary: 'Danh sách tầng (không phân trang — quy mô nhỏ)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(listFloorsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinic_config.read'),
+  },
+});
+
+const floorIdParams = z.object({ id: z.string().uuid() });
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/floors/{id}',
+  tags: ['clinic'],
+  summary: 'Sửa/khoá tầng — bắt buộc kèm version hiện có',
+  security: [{ bearerAuth: [] }],
+  request: { params: floorIdParams, body: { content: { 'application/json': { schema: updateFloorRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Sửa thành công', envelope(floorSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinic_config.update'),
+    404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/exam-stations',
+  tags: ['clinic'],
+  summary: 'Tạo bàn khám/ghế (docs/DECISIONS.md #055) — cấp con bắt buộc thuộc 1 phòng',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createExamStationRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Tạo thành công', envelope(examStationSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinic_config.update'),
+    404: errorResponse('roomId không tồn tại hoặc thuộc tenant khác'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/exam-stations',
+  tags: ['clinic'],
+  summary: 'Danh sách bàn khám/ghế theo 1 phòng (query roomId bắt buộc)',
+  security: [{ bearerAuth: [] }],
+  request: { query: listExamStationsQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listExamStationsResponseSchema)),
+    400: errorResponse('Thiếu query roomId'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinic_config.read'),
+  },
+});
+
+const examStationIdParams = z.object({ id: z.string().uuid() });
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/exam-stations/{id}',
+  tags: ['clinic'],
+  summary: 'Sửa/khoá bàn khám/ghế — bắt buộc kèm version hiện có',
+  security: [{ bearerAuth: [] }],
+  request: { params: examStationIdParams, body: { content: { 'application/json': { schema: updateExamStationRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Sửa thành công', envelope(examStationSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinic_config.update'),
+    404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION)'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/rooms/options',
+  tags: ['clinic'],
+  summary: 'Danh sách phòng đang active, chiếu tối thiểu — tự-phục vụ, không cần clinic_config.* (#054)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(listRoomOptionsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/rooms/my-session',
+  tags: ['clinic'],
+  summary: 'Phòng làm việc hôm nay của chính actor — null nếu chưa chọn (#054)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(roomSessionSchema.nullable())),
+    401: errorResponse('Thiếu hoặc sai access token'),
+  },
+});
+
+registry.registerPath({
+  method: 'put',
+  path: '/api/v1/rooms/my-session',
+  tags: ['clinic'],
+  summary: 'Chọn/đổi phòng làm việc hôm nay của chính actor (#054)',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: setRoomSessionRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(roomSessionSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    404: errorResponse('roomId không tồn tại, không active, hoặc thuộc tenant khác'),
   },
 });
 

@@ -69,10 +69,20 @@ export class AppointmentService {
     @Inject(CLINIC_CONFIG_READER_PORT) private readonly clinicConfigReader: ClinicConfigReaderPort,
   ) {}
 
-  /** `GET /appointments/doctors` (S2-09) — chiếu tối thiểu, gắn quyền `appointment.read` (xem docs/DECISIONS.md). */
+  /**
+   * `GET /appointments/doctors` (S2-09) — chiếu tối thiểu, gắn quyền `appointment.read` (xem
+   * docs/DECISIONS.md). Mở rộng (#054): kèm `currentRoomName` nếu bác sĩ đã chọn phòng làm việc
+   * hôm nay — chỉ hiển thị, không ảnh hưởng việc chọn bác sĩ. Tenant chưa dùng mô hình nhiều
+   * phòng thì `getTodayDoctorRoomAssignments` trả object rỗng, mọi `currentRoomName` là `null`.
+   */
   async listDoctors(tenantId: string): Promise<ListDoctorsResponse> {
-    const items = await this.doctorDirectory.listActiveDoctors(tenantId);
-    return { items };
+    const [doctors, roomAssignments] = await Promise.all([
+      this.doctorDirectory.listActiveDoctors(tenantId),
+      this.clinicConfigReader.getTodayDoctorRoomAssignments(tenantId),
+    ]);
+    return {
+      items: doctors.map((d) => ({ ...d, currentRoomName: roomAssignments[d.id]?.roomName ?? null })),
+    };
   }
 
   /** `GET /appointments/schedule-config` (S2-09) — cùng dữ liệu `GET /clinic-settings` nhưng gắn quyền `appointment.read`. */

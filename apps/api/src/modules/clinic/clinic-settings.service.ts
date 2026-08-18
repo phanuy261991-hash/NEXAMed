@@ -5,18 +5,21 @@ import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
 import type { RequestMeta } from '../../common/request-meta';
 import { ClinicSettingsRepository } from './clinic-settings.repository';
+import { DoctorRoomSessionRepository } from './doctor-room-session.repository';
 
 /**
  * Cấu hình phòng khám (S2-07, ADM-02 — trừ mẫu in) — module `clinic`. Cũng hiện thực
  * `ClinicConfigReaderPort` (S2-09, `getScheduleConfig` gọi thẳng `getSettings` đã có — cùng shape,
- * chỉ đổi tên phương thức cho khớp interface port) để `AppointmentModule` đọc giờ làm việc/độ dài
- * slot mà không tự import thẳng module `clinic` (.claude/docs/coding-standards.md).
+ * chỉ đổi tên phương thức cho khớp interface port; `getTodayDoctorRoomAssignments`, #054, cùng lý
+ * do — bridge duy nhất để `AppointmentModule` đọc dữ liệu thuộc `clinic` mà không tự import thẳng
+ * module này, .claude/docs/coding-standards.md).
  */
 @Injectable()
 export class ClinicSettingsService implements ClinicConfigReaderPort {
   constructor(
     private readonly unitOfWork: UnitOfWorkService,
     private readonly clinicSettingsRepository: ClinicSettingsRepository,
+    private readonly doctorRoomSessionRepository: DoctorRoomSessionRepository,
   ) {}
 
   async getSettings(tenantId: string): Promise<ClinicSettings> {
@@ -32,6 +35,11 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
   /** `ClinicConfigReaderPort` — xem comment ở khai báo class. */
   getScheduleConfig(tenantId: string): ReturnType<ClinicConfigReaderPort['getScheduleConfig']> {
     return this.getSettings(tenantId);
+  }
+
+  /** `ClinicConfigReaderPort` (#054) — xem comment ở khai báo class. */
+  getTodayDoctorRoomAssignments(tenantId: string): ReturnType<ClinicConfigReaderPort['getTodayDoctorRoomAssignments']> {
+    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.doctorRoomSessionRepository.listActiveForTenantToday(tx, tenantId));
   }
 
   async updateSettings(

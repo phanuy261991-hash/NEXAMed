@@ -9,6 +9,15 @@ import { ClinicSettingsRepository } from './clinic-settings.repository';
 import { ClinicProfileController } from './clinic-profile.controller';
 import { ClinicProfileService } from './clinic-profile.service';
 import { ClinicProfileRepository } from './clinic-profile.repository';
+import { DoctorRoomSessionController } from './doctor-room-session.controller';
+import { DoctorRoomSessionService } from './doctor-room-session.service';
+import { DoctorRoomSessionRepository } from './doctor-room-session.repository';
+import { FloorController } from './floor.controller';
+import { FloorService } from './floor.service';
+import { FloorRepository } from './floor.repository';
+import { ExamStationController } from './exam-station.controller';
+import { ExamStationService } from './exam-station.service';
+import { ExamStationRepository } from './exam-station.repository';
 
 /**
  * S2-07, ADM-02 (trừ mẫu in) — cấu hình phòng khám, phòng (.claude/docs/architecture.md).
@@ -17,9 +26,22 @@ import { ClinicProfileRepository } from './clinic-profile.repository';
  * `ClinicSettingsRepository` (.claude/docs/coding-standards.md mục "Ranh giới module").
  * `ClinicProfileController/Service/Repository` (2026-08-13) — trang "Thông tin phòng khám", dùng
  * lại `clinic_config.read`/`.update`, không thêm permission mới.
+ * `DoctorRoomSessionController/Service/Repository` (#054) — "phòng làm việc hôm nay" của bác sĩ,
+ * tự-phục vụ (không permission mới); `ClinicSettingsService` inject thêm
+ * `DoctorRoomSessionRepository` để hiện thực `getTodayDoctorRoomAssignments` của port.
+ * `FloorController`/`ExamStationController` (#055) — "Tầng"/"Bàn khám-Ghế", cấp cha/con tùy chọn
+ * của `room`, cùng `clinic_config.*`. `RoomService` inject thêm `ExamStationRepository` để trả
+ * `examStationCount` trong `RoomSummary`.
  */
 @Module({
-  controllers: [RoomController, ClinicSettingsController, ClinicProfileController],
+  controllers: [
+    RoomController,
+    ClinicSettingsController,
+    ClinicProfileController,
+    DoctorRoomSessionController,
+    FloorController,
+    ExamStationController,
+  ],
   providers: [
     RoomService,
     RoomRepository,
@@ -27,6 +49,12 @@ import { ClinicProfileRepository } from './clinic-profile.repository';
     ClinicSettingsRepository,
     ClinicProfileService,
     ClinicProfileRepository,
+    DoctorRoomSessionService,
+    DoctorRoomSessionRepository,
+    FloorService,
+    FloorRepository,
+    ExamStationService,
+    ExamStationRepository,
     { provide: CLINIC_CONFIG_READER_PORT, useExisting: ClinicSettingsService },
   ],
   exports: [CLINIC_CONFIG_READER_PORT],

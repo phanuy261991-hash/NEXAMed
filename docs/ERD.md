@@ -1,6 +1,6 @@
 # ERD: NEXAMed v1
 
-**Version**: v1.14 — 18/08/2026 (xem mục 9 để biết lịch sử thay đổi)
+**Version**: v1.16 — 19/08/2026 (xem mục 9 để biết lịch sử thay đổi)
 **Phạm vi**: chỉ các bảng thuộc v1 (Đặt lịch, Tiếp nhận, Khám bệnh, Kê đơn). Bảng của v2+ (viện phí, kho thuốc, BHYT) **không** tạo ở giai đoạn này.
 **Căn cứ**: `docs/product/prd.md` v1.0, `docs/product/plan.md` v1.0, `.claude/docs/data-model.md`
 
@@ -40,6 +40,32 @@ erDiagram
     USER_ACCOUNT ||--o{ BREAK_GLASS_SESSION : "pha kinh"
     USER_ACCOUNT ||--o{ USER_SESSION : "dang nhap"
     USER_SESSION ||--o| USER_SESSION : "replaced_by"
+    USER_ACCOUNT ||--o{ DOCTOR_ROOM_SESSION : "chon phong hom nay"
+    ROOM ||--o{ DOCTOR_ROOM_SESSION : "duoc chon"
+    DOCTOR_ROOM_SESSION {
+        uuid id PK
+        uuid tenant_id FK
+        uuid doctor_id FK
+        uuid room_id FK
+        date work_date
+    }
+    FLOOR ||--o{ ROOM : "co (tuy chon)"
+    ROOM ||--o{ EXAM_STATION : "co ban kham/ghe"
+    FLOOR {
+        uuid id PK
+        uuid tenant_id FK
+        text name
+        int sort_order
+        boolean is_active
+    }
+    EXAM_STATION {
+        uuid id PK
+        uuid tenant_id FK
+        uuid room_id FK
+        text name
+        int sort_order
+        boolean is_active
+    }
 
     PATIENT ||--o{ INSURANCE_CARD : "co the"
     PATIENT |o--o{ APPOINTMENT : "gan sau khi tiep nhan"
@@ -337,6 +363,7 @@ erDiagram
     ROOM {
         uuid id PK
         uuid tenant_id FK
+        uuid floor_id FK
         text name
         boolean is_active
     }
@@ -475,6 +502,8 @@ Những ràng buộc này đặt ở DB, không chỉ ở tầng ứng dụng.
 | C9 | Không cấp quyền `DELETE` cho app user trên mọi bảng nghiệp vụ | Toàn bộ | Ép soft delete ở tầng quyền, không chỉ ở code |
 | C10 | `CHECK (type IN ('PRIMARY','SECONDARY'))` và unique partial một `PRIMARY` mỗi encounter | `diagnosis` | Bắt buộc đúng một chẩn đoán chính |
 | C11 | `UNIQUE (tenant_id, appointment_id) WHERE appointment_id IS NOT NULL AND deleted_at IS NULL` | `encounter` | Mỗi lịch hẹn sinh tối đa một lượt khám, kể cả khi hai request check-in gần như đồng thời (đúng khuôn C2/C3) |
+| C12 | `UNIQUE (tenant_id, work_date, doctor_id) WHERE deleted_at IS NULL` | `doctor_room_session` | Mỗi bác sĩ chỉ có 1 phòng làm việc hiệu lực/ngày lịch VN; cũng là arbiter cho `INSERT ... ON CONFLICT DO UPDATE` khi đổi phòng giữa ngày |
+| C13 | Composite FK `(tenant_id, floor_id)` nullable | `room.floor_id` | "Tầng" tùy chọn — phòng không gán tầng vẫn hợp lệ, khác mọi composite FK bắt buộc khác |
 
 ---
 
@@ -563,3 +592,5 @@ Khi thêm, các bảng này vẫn phải đủ 8 cột bắt buộc và tuân th
 | v1.13 | 18/08/2026 | Thiết kế lại "Tiếp nhận bệnh nhân" (mockup đã duyệt, `docs/DECISIONS.md` #052) — thêm `reference_catalog.unit` + 4 category mới (`RECEPTION_TYPE`/`EXAM_FORM`/`PRIORITY_REASON`/`PRICE_TYPE`); `encounter` thêm 7 cột: `reception_type_code`/`exam_form_code`/`is_priority`/`priority_reason_code`/`price_type_code`/`exam_type_unit`/`service_quantity` — tất cả nullable/default an toàn, chỉ lưu để hiển thị (Chỉ định dịch vụ khám), KHÔNG tính viện phí. Endpoint mới `GET /patients/by-national-id` (tra trùng CCCD, cùng khuôn `by-phone`). |
 | v1.12 | 13/08/2026 | "Danh sách tiếp nhận" về đúng nghĩa THUẦN theo dõi trạng thái (không cột nào đổi, chỉ hành vi/UI web) — dồn "Bắt đầu khám" sang "Hàng đợi khám", bỏ hẳn giao diện "Sinh hiệu" độc lập (chuyển sang nhập cùng lúc tiếp nhận, cả 2 luồng check-in/tiếp nhận-trực-tiếp giờ đều lưu được `patient_source_code`/`exam_type_*`/kèm `vital_sign` tuỳ chọn — trước đó chỉ luồng trực tiếp có). `checkInRequestSchema` mở rộng khớp `registerReceptionRequestSchema` (`packages/shared` tách `intakeVitalSignFieldsSchema` dùng chung). `POST /reception/encounters/:id/vital-signs` (REC-02/03) giữ nguyên làm hạ tầng bổ sung sau. Xem `docs/DECISIONS.md` #044. |
 | v1.14 | 18/08/2026 | Tách "Sửa lịch" (`PATCH /appointments/:id`, tại chỗ, trong ngày) khỏi "Dời lịch" (`POST /appointments/:id/reschedule`, thay hẳn `PATCH .../reschedule` cũ S2-09 — tạo `appointment` MỚI cho ngày khác, lịch cũ chuyển `status='RESCHEDULED'`) — 2 thao tác tồn tại song song theo yêu cầu chủ dự án. Thêm giá trị enum `RESCHEDULED` và cột `appointment.rescheduled_from_id` (self-FK, không unique — cùng khuôn `patient.merged_into_id`). Xem `docs/DECISIONS.md` #053. |
+| v1.15 | 19/08/2026 | Thêm bảng `doctor_room_session` ("phòng làm việc hôm nay" — mô hình định tuyến theo phòng tham khảo từ chủ dự án, thiết kế để chạy được ở cả quy mô 1-3 bác sĩ lẫn nhiều phòng). Thêm C12. Chỉ điều phối/hiển thị UI (`GET /appointments/doctors` thêm `currentRoomName`) — KHÔNG đổi `data_scope`/cách lọc hàng đợi khám (vẫn `doctor_id`). Tự động ẩn mọi UI liên quan khi tenant có ≤1 phòng active. Xem `docs/DECISIONS.md` #054. |
+| v1.16 | 19/08/2026 | "Tầng phòng" — mở rộng `room` thành cấp bậc: thêm bảng `floor` (Tầng, tùy chọn — `room.floor_id` nullable, C13) và bảng `exam_station` (Bàn khám/Ghế, cấp con bắt buộc thuộc 1 `room`). Cả hai THUẦN mô tả/tổ chức không gian — đơn vị điều phối thật (`doctor_room_session`, `appointment.room_id`) vẫn dừng ở cấp `room`, không đổi. Quản lý qua UI tích hợp chung 1 màn hình (không tách pill/mục riêng từng cấp). Xem `docs/DECISIONS.md` #055. |

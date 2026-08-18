@@ -1,4 +1,24 @@
-import type { ClinicProfile, ClinicSettings, UpdateClinicProfileRequest, UpdateClinicSettingsRequest } from '@nexamed/shared';
+import type {
+  ClinicProfile,
+  ClinicSettings,
+  CreateExamStationRequest,
+  CreateFloorRequest,
+  CreateRoomRequest,
+  ExamStationSummary,
+  FloorSummary,
+  ListExamStationsResponse,
+  ListFloorsResponse,
+  ListRoomOptionsResponse,
+  ListRoomsResponse,
+  RoomSession,
+  RoomSummary,
+  SetRoomSessionRequest,
+  UpdateClinicProfileRequest,
+  UpdateClinicSettingsRequest,
+  UpdateExamStationRequest,
+  UpdateFloorRequest,
+  UpdateRoomRequest,
+} from '@nexamed/shared';
 import { getApiClient, unwrap, uploadFile } from '../../shared/api/client';
 
 export async function getClinicSettings(): Promise<ClinicSettings> {
@@ -31,4 +51,56 @@ export async function uploadClinicPrintLogo(file: File, version: number): Promis
   formData.append('file', file);
   formData.append('version', String(version));
   return uploadFile<ClinicProfile>('/api/v1/clinic-profile/print-logo', formData);
+}
+
+/** Pane "Phòng khám" (Quản trị, docs/DECISIONS.md #054) — CRUD đầy đủ, `clinic_config.*` (RoomController có sẵn từ S2-07). */
+export async function listRooms(): Promise<ListRoomsResponse> {
+  return unwrap(await getApiClient().GET('/api/v1/rooms')) as ListRoomsResponse;
+}
+
+export async function createRoom(body: CreateRoomRequest): Promise<RoomSummary> {
+  return unwrap(await getApiClient().POST('/api/v1/rooms', { body })) as RoomSummary;
+}
+
+export async function updateRoom(id: string, body: UpdateRoomRequest): Promise<RoomSummary> {
+  return unwrap(await getApiClient().PATCH('/api/v1/rooms/{id}', { params: { path: { id } }, body })) as RoomSummary;
+}
+
+/** "Phòng làm việc hôm nay" (docs/DECISIONS.md #054) — tự-phục vụ, không cần `clinic_config.*`. */
+export async function getRoomOptions(): Promise<ListRoomOptionsResponse> {
+  return unwrap(await getApiClient().GET('/api/v1/rooms/options')) as ListRoomOptionsResponse;
+}
+
+export async function getMyRoomSession(): Promise<RoomSession | null> {
+  return unwrap(await getApiClient().GET('/api/v1/rooms/my-session')) as RoomSession | null;
+}
+
+export async function setMyRoomSession(body: SetRoomSessionRequest): Promise<RoomSession> {
+  return unwrap(await getApiClient().PUT('/api/v1/rooms/my-session', { body })) as RoomSession;
+}
+
+/** "Tầng" (docs/DECISIONS.md #055) — cấp cha tùy chọn của `room`. */
+export async function listFloors(): Promise<ListFloorsResponse> {
+  return unwrap(await getApiClient().GET('/api/v1/floors')) as ListFloorsResponse;
+}
+
+export async function createFloor(body: CreateFloorRequest): Promise<FloorSummary> {
+  return unwrap(await getApiClient().POST('/api/v1/floors', { body })) as FloorSummary;
+}
+
+export async function updateFloor(id: string, body: UpdateFloorRequest): Promise<FloorSummary> {
+  return unwrap(await getApiClient().PATCH('/api/v1/floors/{id}', { params: { path: { id } }, body })) as FloorSummary;
+}
+
+/** "Bàn khám / Ghế" (docs/DECISIONS.md #055) — cấp con bắt buộc thuộc 1 `room`. */
+export async function listExamStations(roomId: string): Promise<ListExamStationsResponse> {
+  return unwrap(await getApiClient().GET('/api/v1/exam-stations', { params: { query: { roomId } } })) as ListExamStationsResponse;
+}
+
+export async function createExamStation(body: CreateExamStationRequest): Promise<ExamStationSummary> {
+  return unwrap(await getApiClient().POST('/api/v1/exam-stations', { body })) as ExamStationSummary;
+}
+
+export async function updateExamStation(id: string, body: UpdateExamStationRequest): Promise<ExamStationSummary> {
+  return unwrap(await getApiClient().PATCH('/api/v1/exam-stations/{id}', { params: { path: { id } }, body })) as ExamStationSummary;
 }

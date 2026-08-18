@@ -54,10 +54,16 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       await prisma.rolePermission.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.userRole.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.role.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // doctor_room_session (#054) tham chiếu cả user_account lẫn room (FK RESTRICT) — xoá trước cả hai.
+      await prisma.doctorRoomSession.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.userAccount.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // exam_station (#055) tham chiếu room (FK RESTRICT) — xoá trước room.
+      await prisma.examStation.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // room/tenant_setting (S2-07) — xoá trước tenant, appointment đã xoá ở trên nên room không
       // còn bị FK RESTRICT nào tham chiếu tới.
       await prisma.room.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // floor (#055) tham chiếu bởi room.floor_id (FK RESTRICT) — xoá sau room.
+      await prisma.floor.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.tenantSetting.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.tenant.deleteMany({ where: { id: { in: tenantIds } } });
     },

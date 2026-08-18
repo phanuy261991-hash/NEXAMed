@@ -2,6 +2,16 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-19 (1)
+
+"Phòng làm việc hôm nay" (định tuyến theo phòng, tham khảo tài liệu chủ dự án gửi) + "Tầng phòng" (Tầng/Phòng/Bàn khám-Ghế, tích hợp chung 1 màn hình Quản trị) — `docs/DECISIONS.md` #054, #055:
+
+- **Bảng mới `doctor_room_session`**: bác sĩ tự chọn phòng lúc đăng nhập mỗi ngày (popup `RoomSessionDialog.tsx`, gate bởi `RoomSessionGate.tsx` trong `AppShell.tsx`). Endpoint tự-phục vụ `GET /rooms/options`, `GET/PUT /rooms/my-session` (chỉ `JwtAuthGuard`, không permission mới — cùng nguyên tắc `/auth/me`). **Không đổi `data_scope`/cách lọc "Hàng đợi khám"** (vẫn `doctor_id` như #042) — chỉ điều phối/hiển thị: `GET /appointments/doctors` thêm `currentRoomName`, badge "Đang ở: {phòng}" ở Hàng đợi khám, nhãn phòng cạnh tên bác sĩ ở `DoctorAvailabilityList.tsx` (Đặt lịch/Dời lịch) và dropdown bác sĩ ở `ReceptionIntakeForm.tsx` (Tiếp nhận bệnh nhân).
+- **Bảng mới `floor` (Tầng, tùy chọn — `room.floor_id` nullable) và `exam_station` (Bàn khám/Ghế, bắt buộc thuộc 1 phòng)** — thuần mô tả, đơn vị điều phối thật vẫn ở cấp `room`, không đổi. `RoomController` (S2-07) lần đầu có UI web quản lý — pane "Tầng phòng" mới (`RoomPane.tsx`, `/admin/system-config`) bố cục master-detail (thẻ "Tầng" lọc bảng "Phòng", theo ảnh tham khảo chủ dự án gửi) + `ExamStationDialog.tsx` (modal quản lý bàn khám/ghế theo phòng).
+- **Tự động ẩn hoàn toàn ở quy mô 1-3 bác sĩ**: 0-1 phòng active thì không có UI phòng nào xuất hiện. Riêng thẻ "Tầng" (Quản trị) LUÔN hiện với nút "+" nổi bật (nền xanh đặc) dù 0 tầng — phát hiện lúc tự kiểm bằng Playwright: nếu ẩn hết thì không có cách nào tạo tầng đầu tiên. Thêm ô tìm kiếm tầng theo tên phía trên danh sách (giữ nguyên "Tất cả").
+- **Đã xác minh thật**: `doctor-room-session-http.spec.ts` (8/8), `floor-exam-station-http.spec.ts` (11/11) — tổng 285 test `apps/api` pass, không regress. `pnpm -w lint/typecheck/build` sạch toàn workspace. Playwright qua trình duyệt thật (dữ liệu thật, không mock): toàn bộ luồng 0→2 phòng/2 tầng/2 bàn khám, dialog chọn phòng, badge, nhãn phòng ở cả 2 nơi chọn bác sĩ.
+- Cập nhật `.claude/docs/data-model.md`, `docs/ERD.md` (v1.16), `docs/DECISIONS.md` (#054, #055), `docs/CURRENT.md`.
+
 ## 2026-08-18 (2)
 
 Panel "Chi tiết lịch hẹn" — tách "Sửa lịch" (tại chỗ, trong ngày) khỏi "Dời lịch" (tạo lịch mới, đổi ngày), 2 thao tác tồn tại song song; "Tiếp nhận" điều hướng trang thay popup; popup "Tiếp nhận thành công" + nút "Nhập lại" (`docs/DECISIONS.md` #053):

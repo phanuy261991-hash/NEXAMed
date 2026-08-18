@@ -38,7 +38,13 @@ export function DoctorAvailabilityList({
               active ? 'border-brand-teal bg-brand-teal' : 'border-slate-300 hover:border-blue-400 hover:bg-brand-teal-tint'
             }`}
           >
-            <span className={`text-sm font-semibold ${active ? 'text-white' : 'text-slate-900'}`}>{d.fullName}</span>
+            <span className={`text-sm font-semibold ${active ? 'text-white' : 'text-slate-900'}`}>
+              {d.fullName}
+              {/* "Phòng làm việc hôm nay" (docs/DECISIONS.md #054) — tự ẩn khi bác sĩ chưa chọn phòng hoặc tenant chưa dùng mô hình nhiều phòng. */}
+              {d.currentRoomName && (
+                <span className={`ml-1.5 font-normal ${active ? 'text-white/80' : 'text-slate-500'}`}>· {d.currentRoomName}</span>
+              )}
+            </span>
             {busyUntil ? (
               <span
                 className={`rounded-full px-2 py-0.5 text-[10.5px] font-bold ${active ? 'bg-white text-amber-700' : 'bg-amber-50 text-amber-700'}`}
