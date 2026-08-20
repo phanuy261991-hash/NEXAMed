@@ -192,7 +192,7 @@ export function AppointmentDetailPanel({
 
               {editable ? (
                 <div>
-                  <label htmlFor="cancel-reason" className="mb-1.5 block text-xs font-semibold text-slate-600">
+                  <label htmlFor="cancel-reason" className="mb-1.5 block text-sm font-semibold text-slate-800">
                     Lý do huỷ (bắt buộc nếu huỷ lịch)
                   </label>
                   <textarea
@@ -216,12 +216,12 @@ export function AppointmentDetailPanel({
           {mode === 'edit' && (
             <div className="flex flex-col gap-4">
               <div>
-                <span className="mb-1.5 block text-xs font-semibold text-slate-600">Khách hàng</span>
+                <span className="mb-1.5 block text-sm font-semibold text-slate-800">Khách hàng</span>
                 <div className="text-sm font-semibold text-slate-900">{appointment.fullName} (không đổi khi sửa lịch)</div>
               </div>
               <div className="flex gap-2.5">
                 <div className="flex-1">
-                  <label htmlFor="edit-time" className="mb-1.5 block text-xs font-semibold text-slate-600">
+                  <label htmlFor="edit-time" className="mb-1.5 block text-sm font-semibold text-slate-800">
                     Giờ bắt đầu
                   </label>
                   <TimeInput
@@ -232,14 +232,14 @@ export function AppointmentDetailPanel({
                   />
                 </div>
                 <div className="flex-1">
-                  <label htmlFor="edit-duration" className="mb-1.5 block text-xs font-semibold text-slate-600">
+                  <label htmlFor="edit-duration" className="mb-1.5 block text-sm font-semibold text-slate-800">
                     Thời lượng
                   </label>
                   <Combobox id="edit-duration" value={String(editDuration)} onChange={(v) => setEditDuration(Number(v))} options={DURATION_OPTIONS} />
                 </div>
               </div>
               <div>
-                <span className="mb-1.5 block text-xs font-semibold text-slate-600">
+                <span className="mb-1.5 block text-sm font-semibold text-slate-800">
                   Bác sĩ — trống/bận trong ngày {formatDateLabel(appointmentDate)}
                   {editDayQuery.isFetching && <span className="ml-1.5 font-normal text-slate-400">(đang tải…)</span>}
                 </span>
@@ -259,12 +259,12 @@ export function AppointmentDetailPanel({
           {mode === 'reschedule' && (
             <div className="flex flex-col gap-4">
               <div>
-                <span className="mb-1.5 block text-xs font-semibold text-slate-600">Khách hàng</span>
+                <span className="mb-1.5 block text-sm font-semibold text-slate-800">Khách hàng</span>
                 <div className="text-sm font-semibold text-slate-900">{appointment.fullName} (không đổi khi dời lịch)</div>
               </div>
               <div className="flex gap-2.5">
                 <div className="flex-1">
-                  <label htmlFor="reschedule-date" className="mb-1.5 block text-xs font-semibold text-slate-600">
+                  <label htmlFor="reschedule-date" className="mb-1.5 block text-sm font-semibold text-slate-800">
                     Dời đến ngày
                   </label>
                   <input
@@ -276,7 +276,7 @@ export function AppointmentDetailPanel({
                   />
                 </div>
                 <div className="flex-1">
-                  <label htmlFor="reschedule-time" className="mb-1.5 block text-xs font-semibold text-slate-600">
+                  <label htmlFor="reschedule-time" className="mb-1.5 block text-sm font-semibold text-slate-800">
                     Giờ
                   </label>
                   <TimeInput
@@ -288,7 +288,7 @@ export function AppointmentDetailPanel({
                 </div>
               </div>
               <div>
-                <span className="mb-1.5 block text-xs font-semibold text-slate-600">
+                <span className="mb-1.5 block text-sm font-semibold text-slate-800">
                   Bác sĩ — trống/bận trong ngày đã chọn
                   {rescheduleDayQuery.isFetching && <span className="ml-1.5 font-normal text-slate-400">(đang tải…)</span>}
                 </span>

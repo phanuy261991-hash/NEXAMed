@@ -2,6 +2,36 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-20 (7)
+
+Màn hình khám: dải sinh hiệu có đường kẻ phân cách + chấm trạng thái, panel trái hẹp lại; nhãn trường toàn app to/đậm hơn — chuỗi phản hồi trực tiếp trên bản chạy thật (`docs/DECISIONS.md` #062):
+
+- Dải sinh hiệu (`VitalChip`, `EncounterConsultationPage.tsx`): đường kẻ dọc phân cách rõ giữa 6 chỉ số (theo ảnh tham khảo), khôi phục chấm trạng thái (emerald/amber/rose) đã bỏ nhầm ở #060, nền đậm hơn (`bg-slate-100`).
+- Panel "Tiền sử & lịch sử khám" hẹp lại `360px`→`280px`; 2 đường viền header (panel trái + thanh tab) sửa lệch bằng chiều cao cố định `h-11`.
+- "Ghi chú dị ứng" đổi tên hiển thị thành "Tiền sử dị ứng" ở form Thêm/Sửa bệnh nhân + Tiếp nhận bệnh nhân (dùng chung `PatientFormFields.tsx`).
+- **Nhãn trường (`label`) toàn app**: đảo ngược quy tắc "nhạt/nhỏ để tương phản" (chốt 2026-08-14) — đổi `text-xs font-medium text-slate-500` sang `text-sm font-semibold text-slate-800` cho MỌI nhãn trường, không còn ngoại lệ giảm cỡ chữ cho biến thể "dense" (chỉ ô nhập giảm cỡ, nhãn giữ nguyên `text-sm`). Tiêu đề phụ chia nhóm trong khung (khác nhãn trường) cũng đổi `text-slate-400`/`text-slate-500` → `text-slate-700`. Áp dụng cho toàn bộ form nghiệp vụ hiện có: `PatientFormFields.tsx`, `ReceptionIntakeForm.tsx`, `VitalSignsDialog.tsx`, `Textarea.tsx`, `RoomPane.tsx`, `RolePermissionPane.tsx`, `ReferenceCatalogPane.tsx`, `AppointmentQuickCreatePanel.tsx`, `AppointmentDetailPanel.tsx`, `ClinicInfoPane.tsx`, `LoginPage.tsx`, `EncounterConsultationPage.tsx`. Quy tắc mới đã ghi vào `.claude/docs/ui-guidelines.md` mục 4.1c — bắt buộc cho form phát sinh sau này.
+- **Đã xác minh thật**: `pnpm -w typecheck/lint/build` sạch toàn workspace (lint chỉ còn 3 lỗi cấu hình có sẵn). Không đổi backend/schema — chạy lại 338 test `apps/api` để chắc chắn không ảnh hưởng gì ngoài ý muốn, pass toàn bộ trừ 1 flake môi trường không liên quan (`appointment-http.spec.ts` walk-in test, `new Date()` thật va chạm fixture cố định đúng ngày chạy test — không phải regression). Playwright qua Chrome thật (dữ liệu tạo qua API rồi xoá sau khi kiểm xong).
+- Cập nhật `.claude/docs/ui-guidelines.md`, `docs/DECISIONS.md` (#062).
+
+## 2026-08-20 (6)
+
+Danh mục "Nghề nghiệp" — chủ dự án yêu cầu trực tiếp, đúng khuôn `PATIENT_SOURCE`/`EXAM_TYPE` (`docs/DECISIONS.md` #061):
+
+- Thêm category `OCCUPATION` vào enum `reference_catalog_category` (migration `20260820160000_reference_catalog_occupation`, chỉ `ALTER TYPE ... ADD VALUE`) — backend `apps/api/src/modules/reference-catalog/` đã hoàn toàn generic từ #037, không cần sửa gì. Không seed cứng (khác Dân tộc/Quốc tịch — không có nguồn dữ liệu chính thức) — `clinic_admin` tự thêm/sửa/ẩn qua UI.
+- Pill "Nghề nghiệp" mới trong trang "Danh mục hành chính" (`CatalogAdminPage.tsx`, giữa "Quốc tịch" và "Nguồn khách hàng").
+- `patient.occupation` (cột có sẵn từ #034, không đổi kiểu) chuyển từ input text tự do sang `Combobox` load từ danh mục này trong `PatientFormFields.tsx` — đúng pattern `ethnicity`/`nationality` (`withLegacyValueOption` giữ nguyên giá trị cũ). Sửa đúng 1 chỗ vì `ReceptionIntakeForm.tsx` dùng chung component này — cả 2 nơi (Thêm/Sửa bệnh nhân, Tiếp nhận bệnh nhân) cùng có field mới.
+- **Đã xác minh thật**: `pnpm -w typecheck/lint/build` sạch toàn workspace (lint chỉ còn 3 lỗi cấu hình có sẵn từ trước), 338 test `apps/api` không regress (không có test mới — thay đổi hoàn toàn generic). Playwright qua Chrome thật (dev server thật): thêm pill "Nghề nghiệp" → CRUD 2 mục → hiện đúng trong bảng; Combobox ở cả 2 form load đúng danh mục, chọn được, hiển thị đúng label sau khi chọn; không lỗi console ngoài dự kiến.
+- Cập nhật `docs/ERD.md` (v1.21), `.claude/docs/data-model.md`, `docs/DECISIONS.md` (#061), `docs/CURRENT.md`, `docs/TASK.md`.
+
+## 2026-08-20 (5)
+
+S3-09 (test + đo hiệu năng màn hình khám) — Sprint 3 hoàn tất toàn bộ:
+
+- Bổ sung 3 test cách ly/scope còn thiếu ở `encounter-http.spec.ts` theo `.claude/docs/multi-tenancy.md` ("mỗi endpoint chạm dữ liệu phải có test cách ly tenant") — rà soát 4 endpoint S3-05 phát hiện `PUT .../clinical-note` thiếu cả "bác sĩ khác (scope personal) → 404" lẫn "tenant B → 404" (`consultation`/`diagnoses`/`complete` đã có sẵn); `complete` thiếu riêng test scope personal. Không tìm thấy bug thật — code đã lọc đúng `tenantId`/`doctorId` từ S3-05, chỉ thiếu xác nhận (cùng kết luận như S2-10).
+- `apps/api/scripts/perf-consultation.ts` (mới, thủ công không chạy CI, cùng khuôn `perf-patient-search.ts` S2-02) — seed 1 bệnh nhân có 20 lượt khám cũ (COMPLETED, kèm chẩn đoán + 8 mục ghi chú lâm sàng) + 1 lượt khám đang `IN_CONSULTATION`, đo đúng 4 truy vấn tuần tự mà `EncounterService.getConsultationDetail()` thực hiện (gọi thẳng 3 repository liên quan, qua role app `DATABASE_URL` + `SET LOCAL app.current_tenant_id`, không qua role đặc quyền).
+- **Đã xác minh thật**: 338/338 test `apps/api` pass (30/30 `encounter-http.spec.ts`, thêm 3 — 1 lần chạy đầu deadlock ở `afterAll` cleanup khi chạy song song nhiều file test, cùng loại flake tiền-nhiệm đã ghi nhận ở `geo-http.spec.ts`, xác nhận qua chạy lại pass 100%). `pnpm -w typecheck/build` sạch toàn workspace (lint chỉ còn 3 lỗi cấu hình ESLint plugin có sẵn từ trước, không liên quan). Chạy thật `pnpm --filter @nexamed/api run perf:consultation` trên dev DB: tổng 4 truy vấn 33ms — ĐẠT xa ngưỡng "dưới 2 giây" (PRD mục 5, gate cuối Sprint 3 ở `docs/product/plan.md` mục 6).
+- Cập nhật `docs/TASK.md` (đánh dấu S3-09 xong), `docs/CURRENT.md`.
+
 ## 2026-08-20 (4)
 
 Chủ dự án dùng thử màn hình khám (2026-08-20 (3)) và yêu cầu một loạt điều chỉnh trực tiếp — lớn nhất là đổi `clinical_note.section` từ 4 mục SOAP sang 8 mục nhóm "Tiền sử"/"Thăm khám" (`docs/DECISIONS.md` #060, thay thế quyết định nội dung tab 1 ở #059):

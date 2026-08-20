@@ -2,17 +2,18 @@ import { z } from 'zod';
 
 /**
  * Danh mục dùng chung toàn hệ thống (Dân tộc, Quốc tịch — đảo ngược docs/DECISIONS.md #034 phần
- * `ethnicity`/`nationality`; `occupation` vẫn text tự do, không đổi). `PATIENT_SOURCE` (Nguồn
- * khách hàng) và `EXAM_TYPE` (Loại khám) — Sprint 3 phần Tiếp nhận, tái dùng nguyên module này
- * thay vì tạo bảng riêng (cùng hình dạng: danh sách tên có sắp xếp, quản lý qua Cấu hình).
- * `RECEPTION_TYPE`/`EXAM_FORM`/`PRIORITY_REASON`/`PRICE_TYPE` — thiết kế lại "Tiếp nhận bệnh nhân"
- * (mockup đã duyệt): Loại tiếp nhận, Hình thức khám, Lý do ưu tiên, Loại giá dịch vụ — cùng lý do
- * tái dùng bảng này thay vì 4 bảng riêng, quản lý qua UI (thêm/sửa/ẩn) như `PATIENT_SOURCE`/
- * `EXAM_TYPE`. `PRICE_TYPE` là danh mục PHẲNG độc lập (không có bảng giá đa mức theo từng
- * `EXAM_TYPE` — việc đó là "Price Book" thật, thuộc module Viện phí v2, ngoài phạm vi v1) — chọn
- * chỉ để ghi chú, không đổi `price` đang hiển thị. Quản lý được qua API bởi `clinic_admin`
- * (`reference_catalog.manage`), mọi vai trò lâm sàng đọc được (`reference_catalog.read`). Xem
- * `.claude/docs/data-model.md` mục `reference_catalog`.
+ * `ethnicity`/`nationality`). `PATIENT_SOURCE` (Nguồn khách hàng) và `EXAM_TYPE` (Loại khám) —
+ * Sprint 3 phần Tiếp nhận, tái dùng nguyên module này thay vì tạo bảng riêng (cùng hình dạng:
+ * danh sách tên có sắp xếp, quản lý qua Cấu hình). `RECEPTION_TYPE`/`EXAM_FORM`/`PRIORITY_REASON`/
+ * `PRICE_TYPE` — thiết kế lại "Tiếp nhận bệnh nhân" (mockup đã duyệt): Loại tiếp nhận, Hình thức
+ * khám, Lý do ưu tiên, Loại giá dịch vụ — cùng lý do tái dùng bảng này thay vì 4 bảng riêng, quản
+ * lý qua UI (thêm/sửa/ẩn) như `PATIENT_SOURCE`/`EXAM_TYPE`. `PRICE_TYPE` là danh mục PHẲNG độc lập
+ * (không có bảng giá đa mức theo từng `EXAM_TYPE` — việc đó là "Price Book" thật, thuộc module
+ * Viện phí v2, ngoài phạm vi v1) — chọn chỉ để ghi chú, không đổi `price` đang hiển thị.
+ * `OCCUPATION` (Nghề nghiệp) — đảo ngược tiếp phần `occupation` của #034 (không có nguồn dữ liệu
+ * chính thức như Dân tộc/Quốc tịch, không seed cứng — quản lý qua UI như `PATIENT_SOURCE`).
+ * Quản lý được qua API bởi `clinic_admin` (`reference_catalog.manage`), mọi vai trò lâm sàng đọc
+ * được (`reference_catalog.read`). Xem `.claude/docs/data-model.md` mục `reference_catalog`.
  */
 export const referenceCatalogCategorySchema = z.enum([
   'ETHNICITY',
@@ -23,6 +24,7 @@ export const referenceCatalogCategorySchema = z.enum([
   'EXAM_FORM',
   'PRIORITY_REASON',
   'PRICE_TYPE',
+  'OCCUPATION',
 ]);
 export type ReferenceCatalogCategory = z.infer<typeof referenceCatalogCategorySchema>;
 

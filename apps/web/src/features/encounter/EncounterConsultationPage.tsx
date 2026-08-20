@@ -343,7 +343,7 @@ export function EncounterConsultationPage() {
 
         <div className="flex flex-shrink-0 items-center gap-2">
           {vitalSigns ? (
-            <div className="flex items-center gap-5 rounded-lg bg-slate-50 px-4 py-2">
+            <div className="flex items-stretch divide-x divide-slate-300 rounded-lg border border-slate-200 bg-slate-100">
               <VitalChip label="Mạch" value={vitalSigns.pulse} unit="l/p" tier={warningFields.has('pulse') ? 'danger' : 'normal'} />
               <VitalChip
                 label="Huyết áp"
@@ -391,12 +391,12 @@ export function EncounterConsultationPage() {
       )}
 
       {/* Không gian làm việc chính — chia đôi */}
-      <div className="grid min-h-0 flex-1 grid-cols-[360px_1fr] bg-slate-50">
+      <div className="grid min-h-0 flex-1 grid-cols-[280px_1fr] bg-slate-50">
         {/* Panel trái — tiền sử */}
         <aside className="flex min-h-0 flex-col border-r border-slate-200 bg-white">
-          <div className="flex items-center gap-1.5 border-b border-slate-200 px-3.5 py-2.5">
+          <div className="flex h-11 flex-shrink-0 items-center gap-1.5 border-b border-slate-200 px-3.5">
             <ClockCounterClockwise size={14} weight="bold" className="text-slate-400" aria-hidden="true" />
-            <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Tiền sử &amp; lịch sử khám</span>
+            <span className="text-xs font-bold uppercase tracking-wide text-slate-700">Tiền sử &amp; lịch sử khám</span>
           </div>
           <div className="scroll-hover flex-1 overflow-y-auto p-3">
             {history.length === 0 && <p className="px-1 py-2 text-xs text-slate-400">Chưa có lượt khám nào trước đây.</p>}
@@ -421,13 +421,13 @@ export function EncounterConsultationPage() {
 
         {/* Panel phải — khu vực làm việc */}
         <main className="flex min-h-0 flex-col">
-          <div className="flex flex-shrink-0 gap-1 border-b border-slate-200 bg-white px-4">
+          <div className="flex h-11 flex-shrink-0 gap-1 border-b border-slate-200 bg-white px-4">
             {TABS.map((tab) => (
               <button
                 key={tab.id}
                 type="button"
                 onClick={() => scrollToTab(tab.id)}
-                className="flex items-center gap-1.5 border-b-2 border-transparent px-3 py-3 text-sm font-semibold text-slate-500 hover:text-blue-700"
+                className="flex h-full items-center gap-1.5 border-b-2 border-transparent px-3 text-sm font-semibold text-slate-500 hover:text-blue-700"
               >
                 <tab.icon size={15} weight="bold" aria-hidden="true" />
                 {tab.label}
@@ -449,7 +449,7 @@ export function EncounterConsultationPage() {
                   Thông tin khám lâm sàng
                 </span>
 
-                <h3 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-400">Tiền sử</h3>
+                <h3 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-700">Tiền sử</h3>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                   <Textarea
                     id="clinical-personal-history"
@@ -468,7 +468,7 @@ export function EncounterConsultationPage() {
                     onChange={(e) => setField('familyHistory', e.target.value)}
                   />
                   <div>
-                    <label htmlFor="clinical-allergy" className="mb-1 block text-[11px] font-medium text-rose-600">
+                    <label htmlFor="clinical-allergy" className="mb-1 block text-sm font-semibold text-rose-600">
                       Tiền sử dị ứng
                     </label>
                     <textarea
@@ -482,7 +482,7 @@ export function EncounterConsultationPage() {
                   </div>
                 </div>
 
-                <h3 className="mb-2 mt-4 border-t border-dashed border-slate-200 pt-3 text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                <h3 className="mb-2 mt-4 border-t border-dashed border-slate-200 pt-3 text-[11px] font-bold uppercase tracking-wide text-slate-700">
                   Thăm khám
                 </h3>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -530,7 +530,7 @@ export function EncounterConsultationPage() {
                   />
                 </div>
 
-                <h3 className="mb-2 mt-4 border-t border-dashed border-slate-200 pt-3 text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                <h3 className="mb-2 mt-4 border-t border-dashed border-slate-200 pt-3 text-[11px] font-bold uppercase tracking-wide text-slate-700">
                   Chẩn đoán bệnh (ICD-10) <span className="text-rose-500">*</span>
                 </h3>
                 <Icd10DiagnosisPicker excludeCodes={diagnoses.map((d) => d.icd10Code)} onSelect={handleAddDiagnosis} />
@@ -619,7 +619,7 @@ export function EncounterConsultationPage() {
 }
 
 function SectionLabel({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <div className={`mb-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-400 ${className}`}>{children}</div>;
+  return <div className={`mb-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-700 ${className}`}>{children}</div>;
 }
 
 /**
@@ -651,6 +651,14 @@ const TIER_TEXT_CLASS: Record<VitalTier, string> = {
   danger: 'text-rose-600',
 };
 
+/** Chấm trạng thái cạnh nhãn — khôi phục theo yêu cầu chủ dự án (đã bỏ nhầm lúc gộp bố cục 1 dòng
+ * ở #060, chỉ nên bỏ dòng phân loại thứ 3 gây lệch hàng, không phải bỏ luôn tín hiệu màu chấm). */
+const TIER_DOT_CLASS: Record<VitalTier, string> = {
+  normal: 'bg-emerald-500',
+  caution: 'bg-amber-500',
+  danger: 'bg-rose-600',
+};
+
 /**
  * Phân loại BMI (chuẩn WHO khu vực Châu Á - Thái Bình Dương, chốt 2026-08-20 theo yêu cầu chủ dự
  * án): <18.5 Thiếu cân, 18.5–22.9 Bình thường, 23–24.9 Thừa cân, 25–29.9 Béo phì độ I, ≥30 Béo phì
@@ -668,8 +676,11 @@ function classifyBmi(bmi: number): { label: string; tier: VitalTier } {
 /**
  * Nhãn + giá trị (kèm đơn vị/phân loại BMI) trên CÙNG một dòng — theo mẫu tham khảo chủ dự án gửi
  * (gọn hơn bản 3 dòng trước, mọi ô tự nhiên cùng chiều cao nên không còn lệch hàng). Giá trị bất
- * thường đổi màu (đúng "Tín hiệu Y tế" mục 2.1 ui-guidelines.md) — chấp nhận không kèm icon/chấm
- * riêng vì đã đổi cả màu lẫn độ đậm chữ, đủ phân biệt so với chỉ đổi màu đơn thuần.
+ * thường đổi màu (đúng "Tín hiệu Y tế" mục 2.1 ui-guidelines.md), kèm chấm trạng thái cạnh nhãn
+ * (`TIER_DOT_CLASS`) — không chỉ dựa màu chữ (quy tắc "Color Only" trong bộ UX checklist).
+ * Container cha (nơi gọi component này) dùng `divide-x` để vẽ đường kẻ dọc phân cách RÕ giữa từng
+ * ô — chủ dự án gửi ảnh tham khảo yêu cầu tách bạch rõ ràng hơn bản cũ (chỉ có khoảng cách `gap`,
+ * không có đường kẻ). `px-3 py-2` ở đây tạo khoảng đệm đều hai bên mỗi ô cho đường kẻ có chỗ thở.
  */
 function VitalChip({
   label,
@@ -687,8 +698,11 @@ function VitalChip({
   const hasValue = value != null;
   const effectiveTier = hasValue ? tier : 'normal';
   return (
-    <div className="flex flex-col items-center gap-0.5 text-center">
-      <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{label}</span>
+    <div className="flex flex-col items-center justify-center gap-0.5 px-3 py-2 text-center">
+      <span className="flex items-center gap-1">
+        <span className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${TIER_DOT_CLASS[effectiveTier]}`} aria-hidden="true" />
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{label}</span>
+      </span>
       <span className={`whitespace-nowrap text-sm font-bold ${TIER_TEXT_CLASS[effectiveTier]}`}>
         {value ?? '—'}
         {hasValue && unit && <span className="ml-1 text-xs font-normal text-slate-500">{unit}</span>}

@@ -16,6 +16,7 @@ const PILLS: ConfigScreenPill[] = [
   { key: 'ward', label: 'Phường/Xã' },
   { key: 'province', label: 'Tỉnh/Thành' },
   { key: 'nationality', label: 'Quốc tịch' },
+  { key: 'occupation', label: 'Nghề nghiệp' },
   { key: 'patient-source', label: 'Nguồn khách hàng' },
   { key: 'exam-type', label: 'Loại khám' },
   // Thiết kế lại "Tiếp nhận bệnh nhân" (mockup đã duyệt) — tái dùng reference_catalog, cùng lý do PATIENT_SOURCE/EXAM_TYPE ở trên.
@@ -54,6 +55,7 @@ export function CatalogAdminPage() {
     >
       {activePillKey === 'ethnicity' && <ReferenceCatalogPane category="ETHNICITY" categoryLabel="Dân tộc" />}
       {activePillKey === 'nationality' && <ReferenceCatalogPane category="NATIONALITY" categoryLabel="Quốc tịch" />}
+      {activePillKey === 'occupation' && <ReferenceCatalogPane category="OCCUPATION" categoryLabel="Nghề nghiệp" />}
       {activePillKey === 'patient-source' && <ReferenceCatalogPane category="PATIENT_SOURCE" categoryLabel="Nguồn khách hàng" />}
       {activePillKey === 'exam-type' && <ReferenceCatalogPane category="EXAM_TYPE" categoryLabel="Loại khám" />}
       {activePillKey === 'reception-type' && <ReferenceCatalogPane category="RECEPTION_TYPE" categoryLabel="Loại tiếp nhận" />}

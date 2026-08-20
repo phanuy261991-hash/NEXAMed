@@ -483,6 +483,28 @@ describe('HTTP e2e — /api/v1/encounters', () => {
       expect(res.status).toBe(409);
       expect(res.body.error.code).toBe('ENCOUNTER_NOT_IN_CONSULTATION');
     });
+
+    it('bác sĩ khác (scope personal) → 404', async () => {
+      const encounterId = await startedEncounter(16);
+
+      const res = await request(app.getHttpServer())
+        .put(`/api/v1/encounters/${encounterId}/clinical-note`)
+        .set(authed(doctorBToken))
+        .send(clinicalNotePayload());
+
+      expect(res.status).toBe(404);
+    });
+
+    it('tenant B → 404', async () => {
+      const encounterId = await startedEncounter(17);
+
+      const res = await request(app.getHttpServer())
+        .put(`/api/v1/encounters/${encounterId}/clinical-note`)
+        .set(authed(tenantBDoctorToken))
+        .send(clinicalNotePayload());
+
+      expect(res.status).toBe(404);
+    });
   });
 
   describe('POST /api/v1/encounters/:id/complete — "Hoàn tất khám"', () => {
@@ -538,6 +560,21 @@ describe('HTTP e2e — /api/v1/encounters', () => {
 
       expect(res.status).toBe(409);
       expect(res.body.error.code).toBe('CONCURRENT_MODIFICATION');
+    });
+
+    it('bác sĩ khác (scope personal) → 404', async () => {
+      const encounterId = await startedEncounter(9, doctorAUserId, doctorAToken);
+      await request(app.getHttpServer())
+        .put(`/api/v1/encounters/${encounterId}/diagnoses`)
+        .set(authed(doctorAToken))
+        .send({ diagnoses: [{ icd10Code: 'A00.0', type: 'PRIMARY' as const }] });
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/encounters/${encounterId}/complete`)
+        .set(authed(doctorBToken))
+        .send({ version: 2 });
+
+      expect(res.status).toBe(404);
     });
 
     it('tenant B → 404', async () => {

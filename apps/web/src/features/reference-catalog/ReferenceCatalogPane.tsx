@@ -247,14 +247,14 @@ function ItemFormModal({
         <p className="mb-4 mt-0.5 text-xs text-slate-500">Danh mục: {categoryLabel}</p>
 
         <div className="mb-3.5 flex flex-col gap-1.5">
-          <label htmlFor="rc-code" className="text-xs font-semibold text-slate-600">
+          <label htmlFor="rc-code" className="text-sm font-semibold text-slate-800">
             Mã
           </label>
           <input id="rc-code" value={code} onChange={(e) => setCode(e.target.value)} className={inputClassName} />
         </div>
 
         <div className="mb-3.5 flex flex-col gap-1.5">
-          <label htmlFor="rc-name" className="text-xs font-semibold text-slate-600">
+          <label htmlFor="rc-name" className="text-sm font-semibold text-slate-800">
             Tên hiển thị
           </label>
           <input id="rc-name" value={name} onChange={(e) => setName(e.target.value)} className={inputClassName} />
@@ -262,7 +262,7 @@ function ItemFormModal({
 
         {isExamType && (
           <div className="mb-3.5 flex flex-col gap-1.5">
-            <label htmlFor="rc-price" className="text-xs font-semibold text-slate-600">
+            <label htmlFor="rc-price" className="text-sm font-semibold text-slate-800">
               Giá (đồng)
             </label>
             <input
@@ -279,7 +279,7 @@ function ItemFormModal({
 
         {isExamType && (
           <div className="mb-3.5 flex flex-col gap-1.5">
-            <label htmlFor="rc-unit" className="text-xs font-semibold text-slate-600">
+            <label htmlFor="rc-unit" className="text-sm font-semibold text-slate-800">
               Đơn vị
             </label>
             <input id="rc-unit" placeholder="Ví dụ: Lượt, Buổi" value={unit} onChange={(e) => setUnit(e.target.value)} className={inputClassName} />
@@ -287,7 +287,7 @@ function ItemFormModal({
         )}
 
         <div className="mb-4 flex flex-col gap-1.5">
-          <label htmlFor="rc-sort-order" className="text-xs font-semibold text-slate-600">
+          <label htmlFor="rc-sort-order" className="text-sm font-semibold text-slate-800">
             Thứ tự hiển thị
           </label>
           <input

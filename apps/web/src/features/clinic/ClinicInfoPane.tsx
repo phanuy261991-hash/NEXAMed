@@ -94,7 +94,7 @@ function LogoUploadBox({ label, hint, imageUrl, version, aspectClassName, disabl
 
   return (
     <div>
-      <span className="mb-1 block text-sm font-medium text-slate-700">{label}</span>
+      <span className="mb-1 block text-sm font-semibold text-slate-800">{label}</span>
       <div className={`flex items-center justify-center overflow-hidden rounded-lg border border-slate-300 bg-slate-50 ${aspectClassName}`}>
         {imageUrl ? (
           <img src={resolveApiUrl(imageUrl)} alt={label} className="h-full w-full object-contain" />
@@ -253,7 +253,7 @@ export function ClinicInfoPane() {
 
               <div className="grid flex-1 grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">Tên phòng khám</label>
+                  <label className="mb-1 block text-sm font-semibold text-slate-800">Tên phòng khám</label>
                   {editing ? (
                     <input
                       type="text"
@@ -268,7 +268,7 @@ export function ClinicInfoPane() {
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">Điện thoại</label>
+                  <label className="mb-1 block text-sm font-semibold text-slate-800">Điện thoại</label>
                   {editing ? (
                     <input
                       type="tel"
@@ -282,7 +282,7 @@ export function ClinicInfoPane() {
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">Email</label>
+                  <label className="mb-1 block text-sm font-semibold text-slate-800">Email</label>
                   {editing ? (
                     <input
                       type="email"
@@ -296,7 +296,7 @@ export function ClinicInfoPane() {
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">Mã số thuế</label>
+                  <label className="mb-1 block text-sm font-semibold text-slate-800">Mã số thuế</label>
                   {editing ? (
                     <input
                       type="text"
@@ -310,7 +310,7 @@ export function ClinicInfoPane() {
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label className="mb-1 block text-sm font-medium text-slate-700">Địa chỉ</label>
+                  <label className="mb-1 block text-sm font-semibold text-slate-800">Địa chỉ</label>
                   {editing ? (
                     <input
                       type="text"
@@ -330,7 +330,7 @@ export function ClinicInfoPane() {
             <span className={SECTION_BADGE_CLASS}>Hiển thị</span>
             <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Đơn vị tiền tệ</label>
+                <label className="mb-1 block text-sm font-semibold text-slate-800">Đơn vị tiền tệ</label>
                 {editing ? (
                   <Combobox id="clinic-currency" value={currency} onChange={(v) => setCurrency(v as CurrencyCode)} options={CURRENCY_OPTIONS} />
                 ) : (
@@ -341,7 +341,7 @@ export function ClinicInfoPane() {
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Múi giờ hiển thị</label>
+                <label className="mb-1 block text-sm font-semibold text-slate-800">Múi giờ hiển thị</label>
                 {editing ? (
                   <Combobox id="clinic-timezone" value={timezone} onChange={(v) => setTimezone(v as Timezone)} options={TIMEZONE_OPTIONS} />
                 ) : (

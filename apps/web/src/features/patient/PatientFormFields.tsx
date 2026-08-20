@@ -68,7 +68,7 @@ const GENDER_OPTIONS: ComboboxOption[] = [
 const inputClassName =
   'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 const readOnlyInputClassName = `${inputClassName} bg-slate-50 text-slate-800`;
-const labelClassName = 'mb-1 block text-xs font-medium text-slate-500';
+const labelClassName = 'mb-1 block text-sm font-semibold text-slate-800';
 /** Khung viền quanh mỗi nhóm trường + badge tiêu đề nổi trên viền — bố cục tham khảo theo ảnh chủ dự án gửi. */
 const sectionBoxClassName = 'relative rounded-lg border border-slate-200 p-6 pt-8';
 const sectionBadgeClassName =
@@ -147,6 +147,7 @@ export function PatientFormFields({
 
   const ethnicityQuery = useReferenceCatalogQuery('ETHNICITY');
   const nationalityQuery = useReferenceCatalogQuery('NATIONALITY');
+  const occupationQuery = useReferenceCatalogQuery('OCCUPATION');
   const ethnicityOptions = withLegacyValueOption(
     (ethnicityQuery.data?.items ?? []).map((i) => ({ value: i.code, label: i.name })),
     values.ethnicity,
@@ -154,6 +155,10 @@ export function PatientFormFields({
   const nationalityOptions = withLegacyValueOption(
     (nationalityQuery.data?.items ?? []).map((i) => ({ value: i.code, label: i.name })),
     values.nationality,
+  );
+  const occupationOptions = withLegacyValueOption(
+    (occupationQuery.data?.items ?? []).map((i) => ({ value: i.code, label: i.name })),
+    values.occupation,
   );
 
   // Cascading Tỉnh → Phường/Xã (docs/DECISIONS.md #038). Đổi Tỉnh thì Phường/Xã cũ (nếu có) hết
@@ -310,12 +315,12 @@ export function PatientFormFields({
           </Field>
 
           <Field id="occupation" label="Nghề nghiệp">
-            <input
+            <Combobox
               id="occupation"
               disabled={disabled}
               value={values.occupation}
-              onChange={(e) => set('occupation', e.target.value)}
-              className={inputClassName}
+              onChange={(v) => set('occupation', v)}
+              options={occupationOptions}
             />
           </Field>
 
@@ -370,7 +375,7 @@ export function PatientFormFields({
             />
           </Field>
 
-          <Field id="allergyNote" label="Ghi chú dị ứng" className="col-span-2 sm:col-span-3 lg:col-span-4">
+          <Field id="allergyNote" label="Tiền sử dị ứng" className="col-span-2 sm:col-span-3 lg:col-span-4">
             <textarea
               id="allergyNote"
               rows={2}

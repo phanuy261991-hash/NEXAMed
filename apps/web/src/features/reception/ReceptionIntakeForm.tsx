@@ -25,7 +25,7 @@ import { useCheckInMutation, useRegisterReceptionMutation } from './reception.qu
 
 const inputClassName =
   'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
-const labelClassName = 'mb-1.5 block text-xs font-semibold text-slate-600';
+const labelClassName = 'mb-1.5 block text-sm font-semibold text-slate-800';
 /** Boxed Section Form Pattern — .claude/docs/ui-guidelines.md mục 9b. */
 const sectionBoxClassName = 'relative rounded-lg border border-slate-200 p-5 pt-7';
 const sectionBadgeClassName =

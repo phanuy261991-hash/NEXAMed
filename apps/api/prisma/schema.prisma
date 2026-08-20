@@ -371,6 +371,10 @@ enum ReferenceCatalogCategory {
   EXAM_FORM
   PRIORITY_REASON
   PRICE_TYPE
+  // Nghề nghiệp — đảo ngược tiếp phần `occupation` của docs/DECISIONS.md #034 (trước đây cố ý để
+  // text tự do, không danh mục hoá). Không có nguồn dữ liệu chính thức (khác Dân tộc/Quốc tịch) —
+  // không seed cứng, quản lý qua UI (thêm/sửa/ẩn) như PATIENT_SOURCE/EXAM_TYPE.
+  OCCUPATION
 
   @@map("reference_catalog_category")
 }
@@ -383,8 +387,8 @@ enum ReferenceCatalogCategory {
 // DELETE đã bị revoke toàn cục cho nexamed_app (migration *_tenant_context) — "xoá" thật ra là
 // isActive=false (soft), không phải SQL DELETE. `code` là mã chính thức (dân tộc: "1".."54" theo
 // Tổng cục Thống kê; quốc tịch: ISO 3166-1 alpha-3) — đây là giá trị lưu trên
-// patient.ethnicity/patient.nationality (docs/DECISIONS.md, đảo ngược #034 phần ethnicity/
-// nationality — occupation vẫn text tự do, không đổi).
+// patient.ethnicity/patient.nationality/patient.occupation (docs/DECISIONS.md, đảo ngược #034
+// phần ethnicity/nationality; occupation đảo ngược tiếp sau đó — xem entry OCCUPATION).
 model ReferenceCatalog {
   id        String                    @id @default(dbgenerated("uuidv7()")) @db.Uuid
   category  ReferenceCatalogCategory
@@ -605,12 +609,15 @@ model Patient {
   globalPatientRef   String?   @map("global_patient_ref") @db.Uuid
   identityVerifiedAt DateTime? @map("identity_verified_at") @db.Timestamptz(6)
   // Mở rộng hồ sơ hành chính (docs/DECISIONS.md #034) — tất cả nullable, không backfill, không
-  // ràng buộc DB mới. `nationality`/`ethnicity`/`occupation` là text tự do (không có danh mục
-  // DB — thiếu nguồn dữ liệu chính thức, cùng lý do đã tạm hoãn ICD-10 ở S3-01).
-  // `insuranceNumber` độc lập với module `insurance_card` (S2-04, chưa làm) — chỉ lưu/hiển thị.
+  // ràng buộc DB mới. `insuranceNumber` độc lập với module `insurance_card` (S2-04, chưa làm) —
+  // chỉ lưu/hiển thị.
   photoKey                String?   @map("photo_key")
   nationalIdIssuedAt      DateTime? @map("national_id_issued_at") @db.Date
   nationalIdIssuedPlace   String?   @map("national_id_issued_place")
+  // `ethnicity`/`nationality`/`occupation` lưu CODE tham chiếu `reference_catalog` (category
+  // ETHNICITY/NATIONALITY/OCCUPATION) — không FK cứng (cùng lý do reference_catalog không có
+  // tenant_id, xem comment model ReferenceCatalog). Vẫn String? thuần để không chặn hồ sơ cũ có
+  // giá trị text tự do trước khi danh mục hoá (web tự chèn "legacy value" vào Combobox).
   ethnicity               String?
   nationality             String?
   occupation              String?

@@ -141,7 +141,7 @@ function VitalInput({
 }) {
   return (
     <div>
-      <label htmlFor={id} className="mb-1 block text-xs font-medium text-slate-500">
+      <label htmlFor={id} className="mb-1 block text-sm font-semibold text-slate-800">
         {label}
       </label>
       <input

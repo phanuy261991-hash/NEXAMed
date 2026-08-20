@@ -39,7 +39,7 @@ export function LoginPage() {
       <form onSubmit={handleSubmit} className="w-full max-w-sm rounded-lg bg-white p-8 shadow-md" noValidate>
         <h1 className="mb-6 text-xl font-semibold text-slate-900">Đăng nhập NEXAMed</h1>
 
-        <label className="mb-1 block text-sm font-medium text-slate-700" htmlFor="username">
+        <label className="mb-1 block text-sm font-semibold text-slate-800" htmlFor="username">
           Tên đăng nhập <span className="text-rose-500">*</span>
         </label>
         <input
@@ -52,7 +52,7 @@ export function LoginPage() {
           className={inputClassName}
         />
 
-        <label className="mb-1 block text-sm font-medium text-slate-700" htmlFor="password">
+        <label className="mb-1 block text-sm font-semibold text-slate-800" htmlFor="password">
           Mật khẩu <span className="text-rose-500">*</span>
         </label>
         <input

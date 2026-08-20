@@ -16,7 +16,7 @@ interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
 export function Textarea({ id, label, required, dense = false, className = '', ...rest }: TextareaProps) {
   return (
     <div>
-      <label htmlFor={id} className={`mb-1 block font-medium text-slate-500 ${dense ? 'text-[11px]' : 'text-xs'}`}>
+      <label htmlFor={id} className="mb-1 block text-sm font-semibold text-slate-800">
         {label}
         {required && <span className="text-rose-500"> *</span>}
       </label>

@@ -329,7 +329,7 @@ function RoleNameDialog({
       <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
         <h3 className="text-[15px] font-semibold text-slate-900">{title}</h3>
         <div className="mt-4 flex flex-col gap-1.5">
-          <label htmlFor="role-name" className="text-xs font-semibold text-slate-600">
+          <label htmlFor="role-name" className="text-sm font-semibold text-slate-800">
             Tên vai trò
           </label>
           <input

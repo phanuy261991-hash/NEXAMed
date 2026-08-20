@@ -14,7 +14,8 @@
     "db:seed": "tsx prisma/seed/index.ts",
     "db:seed:dev-tenant": "tsx scripts/seed-dev-tenant.ts",
     "openapi:generate": "tsx scripts/generate-openapi.ts",
-    "perf:patient-search": "tsx scripts/perf-patient-search.ts"
+    "perf:patient-search": "tsx scripts/perf-patient-search.ts",
+    "perf:consultation": "tsx scripts/perf-consultation.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed/index.ts"

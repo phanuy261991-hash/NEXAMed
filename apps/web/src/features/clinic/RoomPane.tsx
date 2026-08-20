@@ -310,7 +310,7 @@ function FloorFormModal({
         <h2 className="text-[15px] font-semibold text-slate-900">{mode === 'create' ? 'Thêm tầng' : 'Sửa tầng'}</h2>
 
         <div className="mb-3.5 mt-4 flex flex-col gap-1.5">
-          <label htmlFor="floor-name" className="text-xs font-semibold text-slate-600">
+          <label htmlFor="floor-name" className="text-sm font-semibold text-slate-800">
             Tên tầng
           </label>
           <input id="floor-name" placeholder="Ví dụ: Tầng 1" value={name} onChange={(e) => setName(e.target.value)} className={inputClassName} />
@@ -363,7 +363,7 @@ function RoomFormModal({
         <h2 className="text-[15px] font-semibold text-slate-900">{mode === 'create' ? 'Thêm phòng khám' : 'Sửa phòng khám'}</h2>
 
         <div className="mb-3.5 mt-4 flex flex-col gap-1.5">
-          <label htmlFor="room-name" className="text-xs font-semibold text-slate-600">
+          <label htmlFor="room-name" className="text-sm font-semibold text-slate-800">
             Tên phòng
           </label>
           <input
@@ -377,7 +377,7 @@ function RoomFormModal({
 
         {floors.length > 0 && (
           <div className="mb-3.5 flex flex-col gap-1.5">
-            <label htmlFor="room-floor" className="text-xs font-semibold text-slate-600">
+            <label htmlFor="room-floor" className="text-sm font-semibold text-slate-800">
               Tầng
             </label>
             <Combobox id="room-floor" value={floorId} onChange={setFloorId} options={floorOptions} />

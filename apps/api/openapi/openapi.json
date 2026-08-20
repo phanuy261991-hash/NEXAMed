@@ -14817,7 +14817,8 @@
                 "RECEPTION_TYPE",
                 "EXAM_FORM",
                 "PRIORITY_REASON",
-                "PRICE_TYPE"
+                "PRICE_TYPE",
+                "OCCUPATION"
               ]
             },
             "required": true,
@@ -14867,7 +14868,8 @@
                                   "RECEPTION_TYPE",
                                   "EXAM_FORM",
                                   "PRIORITY_REASON",
-                                  "PRICE_TYPE"
+                                  "PRICE_TYPE",
+                                  "OCCUPATION"
                                 ]
                               },
                               "code": {
@@ -15049,7 +15051,8 @@
                       "RECEPTION_TYPE",
                       "EXAM_FORM",
                       "PRIORITY_REASON",
-                      "PRICE_TYPE"
+                      "PRICE_TYPE",
+                      "OCCUPATION"
                     ]
                   },
                   "code": {
@@ -15107,7 +15110,8 @@
                             "RECEPTION_TYPE",
                             "EXAM_FORM",
                             "PRIORITY_REASON",
-                            "PRICE_TYPE"
+                            "PRICE_TYPE",
+                            "OCCUPATION"
                           ]
                         },
                         "code": {
@@ -15333,7 +15337,8 @@
                             "RECEPTION_TYPE",
                             "EXAM_FORM",
                             "PRIORITY_REASON",
-                            "PRICE_TYPE"
+                            "PRICE_TYPE",
+                            "OCCUPATION"
                           ]
                         },
                         "code": {
@@ -15558,7 +15563,8 @@
                             "RECEPTION_TYPE",
                             "EXAM_FORM",
                             "PRIORITY_REASON",
-                            "PRICE_TYPE"
+                            "PRICE_TYPE",
+                            "OCCUPATION"
                           ]
                         },
                         "code": {
@@ -15754,7 +15760,8 @@
                             "RECEPTION_TYPE",
                             "EXAM_FORM",
                             "PRIORITY_REASON",
-                            "PRICE_TYPE"
+                            "PRICE_TYPE",
+                            "OCCUPATION"
                           ]
                         },
                         "code": {

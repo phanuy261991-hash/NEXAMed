@@ -165,7 +165,7 @@ export function AppointmentQuickCreatePanel({
                 ) : (
                   <>
                     <div className="relative">
-                      <label htmlFor="quick-create-phone" className="mb-1.5 block text-xs font-semibold text-slate-600">
+                      <label htmlFor="quick-create-phone" className="mb-1.5 block text-sm font-semibold text-slate-800">
                         Số điện thoại <span className="text-rose-500">*</span>
                       </label>
                       <input
@@ -196,7 +196,7 @@ export function AppointmentQuickCreatePanel({
                     </div>
 
                     <div>
-                      <label htmlFor="quick-create-fullname" className="mb-1.5 block text-xs font-semibold text-slate-600">
+                      <label htmlFor="quick-create-fullname" className="mb-1.5 block text-sm font-semibold text-slate-800">
                         Họ tên <span className="text-rose-500">*</span>
                       </label>
                       <input
@@ -222,7 +222,7 @@ export function AppointmentQuickCreatePanel({
                 )}
 
                 <div>
-                  <span className="mb-1.5 block text-xs font-semibold text-slate-600">
+                  <span className="mb-1.5 block text-sm font-semibold text-slate-800">
                     Nguồn đặt lịch <span className="text-rose-500">*</span>
                   </span>
                   <div className="flex gap-1.5">
@@ -252,7 +252,7 @@ export function AppointmentQuickCreatePanel({
 
               <div className="flex flex-col gap-3">
                 <div>
-                  <label htmlFor="quick-create-reason" className="mb-1.5 block text-xs font-semibold text-slate-600">
+                  <label htmlFor="quick-create-reason" className="mb-1.5 block text-sm font-semibold text-slate-800">
                     Lý do khám
                   </label>
                   <textarea
@@ -267,7 +267,7 @@ export function AppointmentQuickCreatePanel({
 
                 <div className="flex gap-2.5">
                   <div className="flex-1">
-                    <label htmlFor="quick-create-date" className="mb-1.5 block text-xs font-semibold text-slate-600">
+                    <label htmlFor="quick-create-date" className="mb-1.5 block text-sm font-semibold text-slate-800">
                       Ngày hẹn <span className="text-rose-500">*</span>
                     </label>
                     <input
@@ -279,7 +279,7 @@ export function AppointmentQuickCreatePanel({
                     />
                   </div>
                   <div className="flex-1">
-                    <label htmlFor="quick-create-time" className="mb-1.5 block text-xs font-semibold text-slate-600">
+                    <label htmlFor="quick-create-time" className="mb-1.5 block text-sm font-semibold text-slate-800">
                       Giờ hẹn <span className="text-rose-500">*</span>
                     </label>
                     <TimeInput id="quick-create-time" required value={time} onChange={setTime} className={inputClassName} />
@@ -287,7 +287,7 @@ export function AppointmentQuickCreatePanel({
                 </div>
 
                 <div>
-                  <span className="mb-1.5 block text-xs font-semibold text-slate-600">
+                  <span className="mb-1.5 block text-sm font-semibold text-slate-800">
                     Bác sĩ — trống/bận theo giờ vừa chọn
                     {dayQuery.isFetching && <span className="ml-1.5 font-normal text-slate-400">(đang tải…)</span>}
                   </span>
@@ -304,7 +304,7 @@ export function AppointmentQuickCreatePanel({
             </section>
 
             <div>
-              <span className="mb-1.5 block text-xs font-semibold text-slate-600">Người tạo lịch</span>
+              <span className="mb-1.5 block text-sm font-semibold text-slate-800">Người tạo lịch</span>
               <input
                 type="text"
                 readOnly
