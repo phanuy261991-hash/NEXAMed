@@ -47,6 +47,19 @@ export class UserAccountAuthRepository {
     });
   }
 
+  /** Tự đổi mật khẩu (mở rộng ADM-01, `AuthService.changePassword`) — luôn xoá cờ `mustChangePassword`. */
+  updatePasswordAndClearMustChange(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    userId: string,
+    passwordHash: string,
+  ): Promise<UserAccount> {
+    return tx.userAccount.update({
+      where: { tenantId_id: { tenantId, id: userId } },
+      data: { passwordHash, mustChangePassword: false, updatedBy: userId, version: { increment: 1 } },
+    });
+  }
+
   /**
    * Tên các vai trò đã gán cho user — dùng cho `loginResponseSchema.user.roles` và `GET /auth/me`
    * (S1-08, docs/DECISIONS.md #022) để web ẩn/hiện menu theo vai trò. Không phải guard phân quyền

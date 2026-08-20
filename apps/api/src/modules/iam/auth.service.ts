@@ -9,7 +9,7 @@ import {
   isAccountLocked,
   recordFailedLogin,
 } from '@nexamed/core';
-import type { LoginRequest } from '@nexamed/shared';
+import type { ChangePasswordRequest, LoginRequest } from '@nexamed/shared';
 import type { Prisma, UserSession } from '@prisma/client';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { SessionRepository } from './session.repository';
@@ -27,6 +27,7 @@ export interface CurrentUserResult {
   username: string;
   fullName: string;
   roles: string[];
+  mustChangePassword: boolean;
 }
 
 export interface LoginResult {
@@ -131,7 +132,7 @@ export class AuthService {
         result: {
           accessToken: accessToken.token,
           expiresIn: accessToken.expiresIn,
-          user: { id: user.id, username: user.username, fullName: user.fullName, roles },
+          user: { id: user.id, username: user.username, fullName: user.fullName, roles, mustChangePassword: user.mustChangePassword },
           refreshToken: issued.rawRefreshToken,
           refreshExpiresIn: issued.expiresIn,
         },
@@ -287,8 +288,57 @@ export class AuthService {
         throw new AccountDisabledError();
       }
       const roles = await this.userAccountAuthRepository.findRoleNamesForUser(tx, tenantId, userId);
-      return { id: user.id, username: user.username, fullName: user.fullName, roles };
+      return { id: user.id, username: user.username, fullName: user.fullName, roles, mustChangePassword: user.mustChangePassword };
     });
+  }
+
+  /**
+   * Tự đổi mật khẩu (mở rộng ADM-01) — dùng cho luồng bắt buộc lần đầu (`mustChangePassword`) lẫn
+   * đổi mật khẩu tự nguyện sau này. Xác thực lại `currentPassword` (cùng cách break-glass #014
+   * làm — không tin phiên đã đăng nhập là đủ cho thao tác nhạy cảm). Thu hồi toàn bộ phiên khác
+   * đúng khuôn `resetPassword` (`user-account.service.ts`) — phiên hiện tại (access token 15
+   * phút) vẫn dùng được tới khi hết hạn tự nhiên, không đăng xuất ngay giữa chừng thao tác.
+   */
+  async changePassword(tenantId: string, userId: string, dto: ChangePasswordRequest, meta: RequestMeta): Promise<void> {
+    const outcome = await this.unitOfWork.runInTenantScope<'success' | 'invalid_credentials' | 'account_disabled'>(
+      tenantId,
+      async (tx) => {
+        const user = await this.userAccountAuthRepository.findById(tx, tenantId, userId);
+        if (!user || !user.isActive) {
+          return 'account_disabled';
+        }
+
+        const passwordOk = await argon2.verify(user.passwordHash, dto.currentPassword);
+        if (!passwordOk) {
+          return 'invalid_credentials';
+        }
+
+        const newPasswordHash = await argon2.hash(dto.newPassword, { type: argon2.argon2id });
+        await this.userAccountAuthRepository.updatePasswordAndClearMustChange(tx, tenantId, userId, newPasswordHash);
+
+        await this.sessionRepository.revokeAllForUser(tx, tenantId, userId, 'password_changed', userId);
+
+        await writeAuditLog(tx, tenantId, {
+          actorId: userId,
+          action: 'auth.password_changed',
+          entityType: 'user_account',
+          entityId: userId,
+          ip: meta.ip,
+          userAgent: meta.userAgent,
+        });
+
+        return 'success';
+      },
+    );
+
+    switch (outcome) {
+      case 'success':
+        return;
+      case 'account_disabled':
+        throw new AccountDisabledError();
+      case 'invalid_credentials':
+        throw new InvalidCredentialsError();
+    }
   }
 
   private async recordFailedAttempt(

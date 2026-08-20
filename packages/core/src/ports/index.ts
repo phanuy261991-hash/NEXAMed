@@ -6,3 +6,4 @@ export * from './insurance.port';
 export * from './patient-identity.port';
 export * from './doctor-directory.port';
 export * from './clinic-config-reader.port';
+export * from './reference-catalog-reader.port';

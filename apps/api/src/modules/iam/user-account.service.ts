@@ -1,7 +1,15 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { Prisma, type UserAccount } from '@prisma/client';
-import { ConcurrentModificationError, RoleInvalidReferenceError, UserAccountDuplicateUsernameError } from '@nexamed/core';
+import {
+  ConcurrentModificationError,
+  formatDisplayCode,
+  REFERENCE_CATALOG_READER_PORT,
+  resolveAccountActiveState,
+  RoleInvalidReferenceError,
+  UserAccountDuplicateUsernameError,
+  type ReferenceCatalogReaderPort,
+} from '@nexamed/core';
 import type {
   CreateUserAccountRequest,
   ListUserAccountsQuery,
@@ -11,6 +19,7 @@ import type {
   UserAccountSummary,
 } from '@nexamed/shared';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
+import { CodeSequenceRepository } from '../../infrastructure/persistence/code-sequence.repository';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
 import type { RequestMeta } from '../../common/request-meta';
 import { SessionRepository } from './session.repository';
@@ -22,11 +31,18 @@ function isUsernameConflict(err: unknown): boolean {
   return err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002';
 }
 
+const EMPLOYEE_CODE_PREFIX = 'NV';
+const EMPLOYMENT_STATUS_CATEGORY = 'EMPLOYMENT_STATUS';
+
 /**
  * CRUD tài khoản + gán vai trò (S2-07, ADM-01) — xem .claude/docs/coding-standards.md mục
  * "Tầng trong API". Đổi vai trò/vô hiệu hoá tài khoản thu hồi toàn bộ phiên đang mở
  * (.claude/docs/security-audit.md mục Xác thực; `SessionRepository.revokeAllForUser()` viết sẵn
  * từ S1-04 chờ đúng nơi gọi này, xem docs/DECISIONS.md #019).
+ *
+ * Mở rộng ADM-01 (hồ sơ nhân sự): `employeeCode` sinh qua `CodeSequenceRepository` đúng khuôn
+ * `PATIENT_CODE_PREFIX` (`patient.service.ts`). Trạng thái làm việc tự-vô-hiệu-hoá tài khoản (ví
+ * dụ "Nghỉ việc") đọc qua `ReferenceCatalogReaderPort` — xem `resolveAccountActiveState`.
  */
 @Injectable()
 export class UserAccountService {
@@ -36,7 +52,20 @@ export class UserAccountService {
     private readonly userAccountAuthRepository: UserAccountAuthRepository,
     private readonly sessionRepository: SessionRepository,
     private readonly roleRepository: RoleRepository,
+    private readonly codeSequenceRepository: CodeSequenceRepository,
+    @Inject(REFERENCE_CATALOG_READER_PORT) private readonly referenceCatalogReader: ReferenceCatalogReaderPort,
   ) {}
+
+  /** `null` khi `employmentStatusCode` không truyền — không tra cứu, coi như không có trạng thái. */
+  private async resolveEmploymentStatus(
+    tenantId: string,
+    employmentStatusCode: string | null | undefined,
+  ): Promise<{ deactivatesAccount: boolean } | null> {
+    if (!employmentStatusCode) {
+      return null;
+    }
+    return this.referenceCatalogReader.findActiveByCode(tenantId, EMPLOYMENT_STATUS_CATEGORY, employmentStatusCode);
+  }
 
   async createUserAccount(
     tenantId: string,
@@ -45,6 +74,18 @@ export class UserAccountService {
     meta: RequestMeta,
   ): Promise<UserAccountSummary> {
     const passwordHash = await argon2.hash(dto.password, { type: argon2.argon2id });
+
+    // Tra Trạng thái làm việc TRƯỚC khi mở transaction ghi — `ReferenceCatalogReaderPort` tự mở
+    // transaction riêng của chính nó (đúng khuôn DoctorDirectoryPort/ClinicConfigReaderPort, luôn
+    // gọi ĐỘC LẬP bên ngoài mọi transaction khác). Gọi port này TỪ BÊN TRONG
+    // `unitOfWork.runInTenantScope` sẽ mở một transaction Prisma thứ hai lồng bên trong transaction
+    // đang chạy — Prisma không hỗ trợ nested transaction thật, gây tranh chấp connection pool/
+    // deadlock (phát hiện thật lúc chạy test HTTP e2e, không phải suy đoán).
+    const employmentStatus = await this.resolveEmploymentStatus(tenantId, dto.employmentStatusCode);
+    // Tạo mới không có trường `isActive` (luôn mặc định true) — `resolveAccountActiveState`
+    // không ném lỗi ở nhánh này (explicit=undefined), chỉ lặng lẽ tạo tài khoản vô hiệu nếu
+    // Trạng thái làm việc chọn sẵn thuộc nhóm tự-vô-hiệu-hoá (nhập liệu lịch sử).
+    const isActive = resolveAccountActiveState(employmentStatus, undefined, true);
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const roleIds = await this.roleRepository.findValidIds(tx, tenantId, dto.roleIds);
@@ -55,6 +96,9 @@ export class UserAccountService {
         throw new RoleInvalidReferenceError();
       }
 
+      const seq = await this.codeSequenceRepository.next(tx, tenantId, EMPLOYEE_CODE_PREFIX, actorId);
+      const employeeCode = formatDisplayCode(EMPLOYEE_CODE_PREFIX, new Date(), seq);
+
       let created: UserAccount;
       try {
         created = await this.userAccountRepository.create(tx, tenantId, actorId, {
@@ -63,6 +107,17 @@ export class UserAccountService {
           fullName: dto.fullName,
           licenseNo: dto.licenseNo ?? null,
           departmentId: dto.departmentId ?? null,
+          employeeCode,
+          phone: dto.phone ?? null,
+          personalEmail: dto.personalEmail ?? null,
+          companyEmail: dto.companyEmail ?? null,
+          academicTitleCode: dto.academicTitleCode ?? null,
+          positionCode: dto.positionCode ?? null,
+          employmentStatusCode: dto.employmentStatusCode ?? null,
+          employmentTypeCode: dto.employmentTypeCode ?? null,
+          canSignMedicalRecord: dto.canSignMedicalRecord ?? false,
+          mustChangePassword: dto.mustChangePassword ?? false,
+          isActive,
         });
       } catch (err) {
         if (isUsernameConflict(err)) {
@@ -127,18 +182,42 @@ export class UserAccountService {
     dto: UpdateUserAccountRequest,
     meta: RequestMeta,
   ): Promise<UserAccountSummary> {
+    // Đọc tài khoản hiện có + tra Trạng thái làm việc (nếu cần) TRƯỚC khi mở transaction ghi —
+    // cùng lý do đã ghi ở `createUserAccount`: `ReferenceCatalogReaderPort` tự mở transaction
+    // riêng, gọi nó từ bên trong transaction ghi sẽ gây nested transaction (deadlock/tranh chấp
+    // connection pool, phát hiện thật lúc chạy test). Không phá optimistic locking: chỉ đọc
+    // trước để TÍNH patch, còn `updateIfVersionMatches` (bên dưới, trong transaction ghi) vẫn
+    // khoá đúng `WHERE version = ?` — dữ liệu đổi giữa lúc đọc và lúc ghi sẽ tự trả
+    // CONCURRENT_MODIFICATION như bình thường, không có khoảng hở đúng-sai.
+    const existing = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.userAccountRepository.findById(tx, tenantId, id));
+    if (!existing) {
+      throw new NotFoundException();
+    }
+
+    const patch: UpdateUserAccountData = {};
+    if (dto.fullName !== undefined) patch.fullName = dto.fullName;
+    if (dto.licenseNo !== undefined) patch.licenseNo = dto.licenseNo;
+    if (dto.departmentId !== undefined) patch.departmentId = dto.departmentId;
+    if (dto.phone !== undefined) patch.phone = dto.phone;
+    if (dto.personalEmail !== undefined) patch.personalEmail = dto.personalEmail;
+    if (dto.companyEmail !== undefined) patch.companyEmail = dto.companyEmail;
+    if (dto.academicTitleCode !== undefined) patch.academicTitleCode = dto.academicTitleCode;
+    if (dto.positionCode !== undefined) patch.positionCode = dto.positionCode;
+    if (dto.employmentTypeCode !== undefined) patch.employmentTypeCode = dto.employmentTypeCode;
+    if (dto.canSignMedicalRecord !== undefined) patch.canSignMedicalRecord = dto.canSignMedicalRecord;
+
+    // Chỉ tính lại isActive khi client thật sự đổi employmentStatusCode HOẶC gửi isActive tường
+    // minh — tránh mọi lần sửa hồ sơ (ví dụ chỉ đổi SĐT) đều ghi đè isActive vào patch/audit dù
+    // không đổi gì. `resolveAccountActiveState` ném lỗi nếu client cố ép isActive:true trong
+    // khi Trạng thái làm việc (mới hoặc giữ nguyên) vẫn tự-vô-hiệu-hoá.
+    if (dto.employmentStatusCode !== undefined || dto.isActive !== undefined) {
+      patch.employmentStatusCode = dto.employmentStatusCode;
+      const effectiveStatusCode = dto.employmentStatusCode !== undefined ? dto.employmentStatusCode : existing.employmentStatusCode;
+      const employmentStatus = await this.resolveEmploymentStatus(tenantId, effectiveStatusCode);
+      patch.isActive = resolveAccountActiveState(employmentStatus, dto.isActive, existing.isActive);
+    }
+
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.userAccountRepository.findById(tx, tenantId, id);
-      if (!existing) {
-        throw new NotFoundException();
-      }
-
-      const patch: UpdateUserAccountData = {};
-      if (dto.fullName !== undefined) patch.fullName = dto.fullName;
-      if (dto.licenseNo !== undefined) patch.licenseNo = dto.licenseNo;
-      if (dto.departmentId !== undefined) patch.departmentId = dto.departmentId;
-      if (dto.isActive !== undefined) patch.isActive = dto.isActive;
-
       const count = await this.userAccountRepository.updateIfVersionMatches(tx, tenantId, id, dto.version, actorId, patch);
       if (count === 0) {
         throw new ConcurrentModificationError();
@@ -181,8 +260,11 @@ export class UserAccountService {
 
       // .claude/docs/security-audit.md: "Đổi vai trò hoặc chuyển tenant thu hồi toàn bộ phiên
       // đang mở." `account_disabled` ưu tiên hơn nếu cả hai cùng xảy ra trong một request — lý do
-      // rộng hơn (mất quyền truy cập hoàn toàn, không chỉ đổi phạm vi).
-      if (dto.isActive === false) {
+      // rộng hơn (mất quyền truy cập hoàn toàn, không chỉ đổi phạm vi). Dùng `patch.isActive`
+      // (giá trị CUỐI CÙNG đã tính qua `resolveAccountActiveState`) — không phải `dto.isActive`
+      // thô, vì Trạng thái làm việc "Nghỉ việc" có thể tự ép `false` dù client không gửi
+      // `isActive` (mở rộng ADM-01).
+      if (patch.isActive === false) {
         await this.sessionRepository.revokeAllForUser(tx, tenantId, id, 'account_disabled', actorId);
       } else if (dto.roleIds !== undefined) {
         await this.sessionRepository.revokeAllForUser(tx, tenantId, id, 'role_changed', actorId);
@@ -215,6 +297,7 @@ export class UserAccountService {
 
       const count = await this.userAccountRepository.updateIfVersionMatches(tx, tenantId, id, dto.version, actorId, {
         passwordHash,
+        ...(dto.mustChangePassword !== undefined ? { mustChangePassword: dto.mustChangePassword } : {}),
       });
       if (count === 0) {
         throw new ConcurrentModificationError();
@@ -245,9 +328,19 @@ export class UserAccountService {
   private toSummary(user: UserAccount, roleNames: readonly string[]): UserAccountSummary {
     return {
       id: user.id,
+      employeeCode: user.employeeCode,
       username: user.username,
       fullName: user.fullName,
+      phone: user.phone,
+      personalEmail: user.personalEmail,
+      companyEmail: user.companyEmail,
       licenseNo: user.licenseNo,
+      academicTitleCode: user.academicTitleCode,
+      positionCode: user.positionCode,
+      employmentStatusCode: user.employmentStatusCode,
+      employmentTypeCode: user.employmentTypeCode,
+      canSignMedicalRecord: user.canSignMedicalRecord,
+      mustChangePassword: user.mustChangePassword,
       departmentId: user.departmentId,
       isActive: user.isActive,
       roleNames: [...roleNames],

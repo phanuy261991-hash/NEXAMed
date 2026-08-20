@@ -39,6 +39,8 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   // nghiệp vụ, không phải xung đột trạng thái đồng thời).
   ROLE_DUPLICATE_NAME: HttpStatus.CONFLICT,
   ROLE_IN_USE: HttpStatus.CONFLICT,
+  // Mở rộng ADM-01 — xung đột giữa Trạng thái làm việc tự-vô-hiệu-hoá và isActive:true yêu cầu.
+  ACCOUNT_CANNOT_REACTIVATE_WHILE_RESIGNED: HttpStatus.CONFLICT,
 };
 
 /**

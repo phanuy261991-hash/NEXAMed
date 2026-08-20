@@ -48,6 +48,7 @@ export interface paths {
                                     username: string;
                                     fullName: string;
                                     roles: string[];
+                                    mustChangePassword: boolean;
                                 };
                             };
                             meta: Record<string, never>;
@@ -235,6 +236,7 @@ export interface paths {
                                 username: string;
                                 fullName: string;
                                 roles: string[];
+                                mustChangePassword: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -259,6 +261,69 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/change-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Tự đổi mật khẩu (mở rộng ADM-01) — dùng cho luồng bắt buộc đổi lần đầu (mustChangePassword) lẫn đổi tự nguyện, xác thực lại currentPassword */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        currentPassword: string;
+                        newPassword: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Đổi mật khẩu thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                success: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu access token, sai currentPassword, hoặc tài khoản đã bị vô hiệu hoá */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -3715,9 +3780,19 @@ export interface paths {
                                 items: {
                                     /** Format: uuid */
                                     id: string;
+                                    employeeCode: string | null;
                                     username: string;
                                     fullName: string;
+                                    phone: string | null;
+                                    personalEmail: string | null;
+                                    companyEmail: string | null;
                                     licenseNo: string | null;
+                                    academicTitleCode: string | null;
+                                    positionCode: string | null;
+                                    employmentStatusCode: string | null;
+                                    employmentTypeCode: string | null;
+                                    canSignMedicalRecord: boolean;
+                                    mustChangePassword: boolean;
                                     /** Format: uuid */
                                     departmentId: string | null;
                                     isActive: boolean;
@@ -3777,7 +3852,20 @@ export interface paths {
                         username: string;
                         password: string;
                         fullName: string;
+                        phone?: string;
+                        /** Format: email */
+                        personalEmail?: string;
+                        /** Format: email */
+                        companyEmail?: string;
                         licenseNo?: string;
+                        academicTitleCode?: string;
+                        positionCode?: string;
+                        employmentStatusCode?: string;
+                        employmentTypeCode?: string;
+                        /** @default false */
+                        canSignMedicalRecord?: boolean;
+                        /** @default false */
+                        mustChangePassword?: boolean;
                         /** Format: uuid */
                         departmentId?: string;
                         roleIds: string[];
@@ -3795,9 +3883,19 @@ export interface paths {
                             data: {
                                 /** Format: uuid */
                                 id: string;
+                                employeeCode: string | null;
                                 username: string;
                                 fullName: string;
+                                phone: string | null;
+                                personalEmail: string | null;
+                                companyEmail: string | null;
                                 licenseNo: string | null;
+                                academicTitleCode: string | null;
+                                positionCode: string | null;
+                                employmentStatusCode: string | null;
+                                employmentTypeCode: string | null;
+                                canSignMedicalRecord: boolean;
+                                mustChangePassword: boolean;
                                 /** Format: uuid */
                                 departmentId: string | null;
                                 isActive: boolean;
@@ -3905,9 +4003,19 @@ export interface paths {
                             data: {
                                 /** Format: uuid */
                                 id: string;
+                                employeeCode: string | null;
                                 username: string;
                                 fullName: string;
+                                phone: string | null;
+                                personalEmail: string | null;
+                                companyEmail: string | null;
                                 licenseNo: string | null;
+                                academicTitleCode: string | null;
+                                positionCode: string | null;
+                                employmentStatusCode: string | null;
+                                employmentTypeCode: string | null;
+                                canSignMedicalRecord: boolean;
+                                mustChangePassword: boolean;
                                 /** Format: uuid */
                                 departmentId: string | null;
                                 isActive: boolean;
@@ -3984,7 +4092,17 @@ export interface paths {
                 content: {
                     "application/json": {
                         fullName?: string;
+                        phone?: string | null;
+                        /** Format: email */
+                        personalEmail?: string | null;
+                        /** Format: email */
+                        companyEmail?: string | null;
                         licenseNo?: string | null;
+                        academicTitleCode?: string | null;
+                        positionCode?: string | null;
+                        employmentStatusCode?: string | null;
+                        employmentTypeCode?: string | null;
+                        canSignMedicalRecord?: boolean;
                         /** Format: uuid */
                         departmentId?: string | null;
                         isActive?: boolean;
@@ -4004,9 +4122,19 @@ export interface paths {
                             data: {
                                 /** Format: uuid */
                                 id: string;
+                                employeeCode: string | null;
                                 username: string;
                                 fullName: string;
+                                phone: string | null;
+                                personalEmail: string | null;
+                                companyEmail: string | null;
                                 licenseNo: string | null;
+                                academicTitleCode: string | null;
+                                positionCode: string | null;
+                                employmentStatusCode: string | null;
+                                employmentTypeCode: string | null;
+                                canSignMedicalRecord: boolean;
+                                mustChangePassword: boolean;
                                 /** Format: uuid */
                                 departmentId: string | null;
                                 isActive: boolean;
@@ -4119,6 +4247,7 @@ export interface paths {
                 content: {
                     "application/json": {
                         newPassword: string;
+                        mustChangePassword?: boolean;
                         version: number;
                     };
                 };
@@ -4134,9 +4263,19 @@ export interface paths {
                             data: {
                                 /** Format: uuid */
                                 id: string;
+                                employeeCode: string | null;
                                 username: string;
                                 fullName: string;
+                                phone: string | null;
+                                personalEmail: string | null;
+                                companyEmail: string | null;
                                 licenseNo: string | null;
+                                academicTitleCode: string | null;
+                                positionCode: string | null;
+                                employmentStatusCode: string | null;
+                                employmentTypeCode: string | null;
+                                canSignMedicalRecord: boolean;
+                                mustChangePassword: boolean;
                                 /** Format: uuid */
                                 departmentId: string | null;
                                 isActive: boolean;
@@ -4213,6 +4352,536 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/departments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Danh sách Khoa/Phòng (không phân trang — quy mô nhỏ) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    code: string | null;
+                                    name: string;
+                                    /** Format: uuid */
+                                    departmentTypeId: string | null;
+                                    departmentTypeName: string | null;
+                                    isActive: boolean;
+                                    version: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền user_account.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Tạo Khoa/Phòng (mở rộng ADM-01, phục vụ trường "Khoa/Phòng" trên form tài khoản) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        name: string;
+                        /** Format: uuid */
+                        departmentTypeId?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Tạo thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                code: string | null;
+                                name: string;
+                                /** Format: uuid */
+                                departmentTypeId: string | null;
+                                departmentTypeName: string | null;
+                                isActive: boolean;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền user_account.manage */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/departments/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Sửa tên/trạng thái Khoa/Phòng — bắt buộc kèm version hiện có */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        name?: string;
+                        /** Format: uuid */
+                        departmentTypeId?: string | null;
+                        isActive?: boolean;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Sửa thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                code: string | null;
+                                name: string;
+                                /** Format: uuid */
+                                departmentTypeId: string | null;
+                                departmentTypeName: string | null;
+                                isActive: boolean;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền user_account.manage */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại hoặc thuộc tenant khác) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/department-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Danh sách Loại Khoa/Phòng (không phân trang — quy mô nhỏ) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    isActive: boolean;
+                                    version: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền user_account.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Tạo Loại Khoa/Phòng (mở rộng ADM-01) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        name: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Tạo thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                isActive: boolean;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền user_account.manage */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/department-types/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Sửa tên/trạng thái Loại Khoa/Phòng — bắt buộc kèm version hiện có */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        name?: string;
+                        isActive?: boolean;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Sửa thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                isActive: boolean;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền user_account.manage */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại hoặc thuộc tenant khác) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
         trace?: never;
     };
     "/api/v1/roles": {
@@ -6499,7 +7168,7 @@ export interface paths {
                 };
                 header?: never;
                 path: {
-                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION";
+                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE";
                 };
                 cookie?: never;
             };
@@ -6517,13 +7186,14 @@ export interface paths {
                                     /** Format: uuid */
                                     id: string;
                                     /** @enum {string} */
-                                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION";
+                                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE";
                                     code: string;
                                     name: string;
                                     sortOrder: number;
                                     isActive: boolean;
                                     price: number | null;
                                     unit: string | null;
+                                    deactivatesAccount: boolean;
                                 }[];
                             };
                             meta: Record<string, never>;
@@ -6606,13 +7276,14 @@ export interface paths {
                 content: {
                     "application/json": {
                         /** @enum {string} */
-                        category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION";
-                        code: string;
+                        category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE";
+                        code?: string;
                         name: string;
                         /** @default 0 */
                         sortOrder?: number;
                         price?: number;
                         unit?: string;
+                        deactivatesAccount?: boolean;
                     };
                 };
             };
@@ -6628,13 +7299,14 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
                                 isActive: boolean;
                                 price: number | null;
                                 unit: string | null;
+                                deactivatesAccount: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -6726,13 +7398,14 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
                                 isActive: boolean;
                                 price: number | null;
                                 unit: string | null;
+                                deactivatesAccount: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -6805,6 +7478,7 @@ export interface paths {
                         sortOrder?: number;
                         price?: number;
                         unit?: string;
+                        deactivatesAccount?: boolean;
                     };
                 };
             };
@@ -6820,13 +7494,14 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
                                 isActive: boolean;
                                 price: number | null;
                                 unit: string | null;
+                                deactivatesAccount: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -6928,13 +7603,14 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
                                 isActive: boolean;
                                 price: number | null;
                                 unit: string | null;
+                                deactivatesAccount: boolean;
                             };
                             meta: Record<string, never>;
                         };

@@ -28,6 +28,12 @@ export const currentUserSchema = z.object({
   username: z.string(),
   fullName: z.string(),
   roles: z.array(z.string()),
+  /**
+   * Bắt buộc đổi mật khẩu ở lần đăng nhập kế tiếp (mở rộng ADM-01) — web đọc cờ này để chặn điều
+   * hướng tới mọi trang khác ngoài `/change-password` cho tới khi đổi xong, xem
+   * `changePasswordRequestSchema` dưới.
+   */
+  mustChangePassword: z.boolean(),
 });
 
 export type CurrentUser = z.infer<typeof currentUserSchema>;
@@ -59,6 +65,22 @@ export const logoutResponseSchema = z.object({
 });
 
 export type LogoutResponse = z.infer<typeof logoutResponseSchema>;
+
+/**
+ * Tự đổi mật khẩu (mở rộng ADM-01) — dùng cho cả luồng bắt buộc lần đầu (`mustChangePassword`)
+ * lẫn đổi mật khẩu tự nguyện thông thường sau này. `currentPassword` bắt buộc xác thực lại
+ * (cùng cách break-glass #014 làm — không tin phiên đã đăng nhập là đủ cho thao tác nhạy cảm).
+ */
+export const changePasswordRequestSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: z.string().min(8),
+});
+export type ChangePasswordRequest = z.infer<typeof changePasswordRequestSchema>;
+
+export const changePasswordResponseSchema = z.object({
+  success: z.boolean(),
+});
+export type ChangePasswordResponse = z.infer<typeof changePasswordResponseSchema>;
 
 /**
  * Payload JWT dùng chung cho việc verify ở cả access và refresh token — `typ` phân biệt hai

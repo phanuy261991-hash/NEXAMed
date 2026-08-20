@@ -57,6 +57,7 @@ model Tenant {
   floors            Floor[]
   rooms             Room[]
   examStations      ExamStation[]
+  departmentTypes   DepartmentType[]
   departments       Department[]
   userAccounts      UserAccount[]
   roles             Role[]
@@ -209,10 +210,13 @@ model DoctorRoomSession {
 
 // Khoa/phòng trong 1 tenant — phục vụ Data Scope `department` (security-audit.md).
 // v1 phần lớn phòng khám không dùng (1-3 bác sĩ, không chia khoa) nhưng bảng luôn tồn tại.
-model Department {
-  id       String @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId String @map("tenant_id") @db.Uuid
+// "Loại Khoa/Phòng" (mở rộng ADM-01, yêu cầu chủ dự án 2026-08-20) — cấp cha TÙY CHỌN của
+// `department`, THUẦN phân loại/tổ chức, đúng khuôn `Floor` (cấp cha tùy chọn của `Room`).
+model DepartmentType {
+  id       String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId String  @map("tenant_id") @db.Uuid
   name     String
+  isActive Boolean @default(true) @map("is_active")
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -223,7 +227,39 @@ model Department {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  tenant      Tenant       @relation(fields: [tenantId], references: [id])
+  departments Department[]
+
+  // Đích của composite FK (tenant_id, id) từ department.
+  @@unique([tenantId, id])
+  @@map("department_type")
+}
+
+model Department {
+  id               String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String  @map("tenant_id") @db.Uuid
+  departmentTypeId String? @map("department_type_id") @db.Uuid
+  // Mã hiển thị tự sinh qua CodeSequenceRepository (prefix "KP"), đúng khuôn patient_code/
+  // employee_code — KHÔNG nhập tay. Nullable: phòng ban tạo trước tính năng này không backfill.
+  code     String?
+  name     String
+  // Mở rộng ADM-01 (2026-08-20) — danh mục Khoa/Phòng quản lý được qua UI (Thêm/Sửa/Ẩn), cùng
+  // khuôn Room (isActive, không phải soft-delete deletedAt — giữ nguyên lịch sử gán trên
+  // user_account.department_id, chỉ ẩn khỏi Combobox chọn mới).
+  isActive Boolean @default(true) @map("is_active")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant       Tenant          @relation(fields: [tenantId], references: [id])
+  // department_type_id nullable — FK chỉ áp khi có giá trị (Postgres MATCH SIMPLE, cùng mẫu room.floor).
+  departmentType DepartmentType? @relation(fields: [tenantId, departmentTypeId], references: [tenantId, id])
   userAccounts UserAccount[]
 
   // Đích của composite FK (tenant_id, id) từ user_account.
@@ -240,6 +276,27 @@ model UserAccount {
   fullName     String  @map("full_name")
   licenseNo    String? @map("license_no")
   isActive     Boolean @default(true) @map("is_active")
+
+  // Hồ sơ nhân sự (mở rộng ADM-01) — tất cả nullable, tài khoản cũ trước tính năng này để trống,
+  // không backfill (chưa có tenant production). employeeCode sinh tự động qua code_sequence
+  // (prefix "NV") CHỈ cho tài khoản tạo mới, không unique cứng ở DB (tài khoản cũ đều NULL, có
+  // thể trùng NULL — Postgres không tính NULL trùng NULL trong UNIQUE thường).
+  employeeCode          String?  @map("employee_code")
+  phone                 String?
+  personalEmail         String?  @map("personal_email")
+  companyEmail          String?  @map("company_email")
+  // 4 cột dưới lưu `code` của reference_catalog (category tương ứng) — không FK cứng, cùng khuôn
+  // patient.ethnicity/occupation (xem comment model ReferenceCatalog).
+  academicTitleCode     String?  @map("academic_title_code")
+  positionCode          String?  @map("position_code")
+  employmentStatusCode  String?  @map("employment_status_code")
+  employmentTypeCode    String?  @map("employment_type_code")
+  // Được ký HSBA — CHỈ lưu metadata ở v1, chưa gắn logic chặn nào (chữ ký số/chữ ký logic thật là
+  // Sprint 5, ENC-04 — đúng tinh thần CLAUDE.md "chữ ký số chưa triển khai ở v1").
+  canSignMedicalRecord  Boolean  @default(false) @map("can_sign_medical_record")
+  // Bắt tài khoản đổi mật khẩu ở lần đăng nhập kế tiếp — enforce thật qua `POST /auth/change-
+  // password` + chặn điều hướng ở web (`RequireAuth`), xem auth.service.ts.
+  mustChangePassword    Boolean  @default(false) @map("must_change_password")
 
   // Khoá tài khoản tạm sau 5 lần đăng nhập sai trong 15 phút — xem
   // .claude/docs/security-audit.md mục Xác thực, packages/core/src/iam/lockout.ts.
@@ -375,6 +432,15 @@ enum ReferenceCatalogCategory {
   // text tự do, không danh mục hoá). Không có nguồn dữ liệu chính thức (khác Dân tộc/Quốc tịch) —
   // không seed cứng, quản lý qua UI (thêm/sửa/ẩn) như PATIENT_SOURCE/EXAM_TYPE.
   OCCUPATION
+  // Danh mục quản lý tài khoản nhân sự (mở rộng ADM-01) — Học vị/học hàm và Chức danh không có
+  // nguồn dữ liệu chính thức, không seed cứng (cùng lý do OCCUPATION). Trạng thái làm việc và
+  // Hình thức làm việc CÓ seed 3/4 giá trị mặc định (packages/core/src/reference-catalog/data.ts)
+  // vì chủ dự án đã cho sẵn giá trị chuẩn, nhưng vẫn quản lý được qua UI (clinic_admin thêm được
+  // trạng thái/hình thức khác nếu cần).
+  ACADEMIC_TITLE
+  STAFF_POSITION
+  EMPLOYMENT_STATUS
+  EMPLOYMENT_TYPE
 
   @@map("reference_catalog_category")
 }
@@ -401,6 +467,11 @@ model ReferenceCatalog {
   price     BigInt?
   // Đơn vị (ví dụ "Lượt", "Buổi") — cùng bản chất `price`, chỉ có ý nghĩa với category EXAM_TYPE.
   unit      String?
+  // Tự động vô hiệu hoá tài khoản khi được chọn làm Trạng thái làm việc của một nhân viên — CHỈ
+  // có ý nghĩa với category EMPLOYMENT_STATUS (giống price/unit chỉ có ý nghĩa với EXAM_TYPE).
+  // Tách thành cột riêng thay vì so khớp `code` cố định ("NGHI_VIEC"...) vì `code` sửa được qua
+  // UI (ReferenceCatalogPane) — so khớp chuỗi sẽ hỏng ngầm khi admin đổi mã.
+  deactivatesAccount Boolean @default(false) @map("deactivates_account")
 
   @@unique([category, code])
   @@map("reference_catalog")

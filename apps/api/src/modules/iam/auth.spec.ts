@@ -218,7 +218,13 @@ describe('AuthService — login/refresh/logout', () => {
 
   it('getCurrentUser: trả đúng danh tính + vai trò', async () => {
     const result = await authService.getCurrentUser(tenantAId, userAId);
-    expect(result).toEqual({ id: userAId, username: usernameA, fullName: 'Bác sĩ A', roles: ['doctor'] });
+    expect(result).toEqual({
+      id: userAId,
+      username: usernameA,
+      fullName: 'Bác sĩ A',
+      roles: ['doctor'],
+      mustChangePassword: false,
+    });
   });
 
   it('getCurrentUser: tài khoản is_active=false → AccountDisabledError', async () => {

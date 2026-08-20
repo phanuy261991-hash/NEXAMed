@@ -2,7 +2,7 @@ import { Body, Controller, Get, HttpCode, Post, Req, Res, UseGuards } from '@nes
 import { ConfigService } from '@nestjs/config';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
-import { loginRequestSchema } from '@nexamed/shared';
+import { changePasswordRequestSchema, loginRequestSchema } from '@nexamed/shared';
 import { RefreshTokenInvalidError } from '@nexamed/core';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { AuthService, type RequestMeta } from './auth.service';
@@ -60,6 +60,22 @@ export class AuthController {
     // req.user luôn có giá trị ở đây — JwtAuthGuard đã throw UnauthorizedException trước đó nếu thiếu.
     const { userId, tenantId } = req.user!;
     return this.authService.getCurrentUser(tenantId, userId);
+  }
+
+  /**
+   * Tự đổi mật khẩu (mở rộng ADM-01) — chỉ `JwtAuthGuard`, KHÔNG `PermissionGuard`: tự đổi mật
+   * khẩu của chính mình không phải thao tác quản trị, mọi vai trò đều tự phục vụ được (cùng
+   * nguyên tắc `/auth/me`, khác `POST /users/:id/reset-password` — thao tác admin đổi hộ người
+   * khác, bắt buộc `user_account.manage`).
+   */
+  @Post('change-password')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(200)
+  async changePassword(@Body() body: unknown, @Req() req: Request) {
+    const dto = changePasswordRequestSchema.parse(body);
+    const { userId, tenantId } = req.user!;
+    await this.authService.changePassword(tenantId, userId, dto, this.requestMeta(req));
+    return { success: true };
   }
 
   private readRefreshCookie(req: Request): string | undefined {

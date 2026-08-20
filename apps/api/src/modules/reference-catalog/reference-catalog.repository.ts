@@ -10,6 +10,8 @@ export interface CreateReferenceCatalogData {
   price?: bigint | null;
   /** Đơn vị (ví dụ "Lượt") — cùng bản chất `price`, chỉ có ý nghĩa với category EXAM_TYPE. */
   unit?: string | null;
+  /** Chỉ có ý nghĩa với category EMPLOYMENT_STATUS — mở rộng ADM-01, xem schema.prisma. */
+  deactivatesAccount?: boolean;
 }
 
 export interface UpdateReferenceCatalogData {
@@ -18,6 +20,7 @@ export interface UpdateReferenceCatalogData {
   sortOrder?: number;
   price?: bigint | null;
   unit?: string | null;
+  deactivatesAccount?: boolean;
 }
 
 /**
@@ -33,6 +36,15 @@ export class ReferenceCatalogRepository {
 
   findById(tx: Prisma.TransactionClient, id: string): Promise<ReferenceCatalog | null> {
     return tx.referenceCatalog.findUnique({ where: { id } });
+  }
+
+  /** Dùng bởi `ReferenceCatalogReaderAdapter` (mở rộng ADM-01) — tra 1 mục theo (category, code). */
+  findByCategoryAndCode(
+    tx: Prisma.TransactionClient,
+    category: ReferenceCatalogCategory,
+    code: string,
+  ): Promise<ReferenceCatalog | null> {
+    return tx.referenceCatalog.findUnique({ where: { category_code: { category, code } } });
   }
 
   listByCategory(

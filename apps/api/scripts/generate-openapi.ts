@@ -14,6 +14,8 @@ import {
   breakGlassResponseSchema,
   cancelAppointmentRequestSchema,
   cancelEncounterRequestSchema,
+  changePasswordRequestSchema,
+  changePasswordResponseSchema,
   checkInRequestSchema,
   checkPatientDuplicateQuerySchema,
   checkPatientDuplicateResponseSchema,
@@ -63,7 +65,15 @@ import {
   patientByPhoneQuerySchema,
   patientByPhoneResponseSchema,
   patientDetailSchema,
+  createDepartmentRequestSchema,
+  createDepartmentTypeRequestSchema,
   createReferenceCatalogRequestSchema,
+  departmentSummarySchema,
+  departmentTypeSummarySchema,
+  listDepartmentsResponseSchema,
+  listDepartmentTypesResponseSchema,
+  updateDepartmentRequestSchema,
+  updateDepartmentTypeRequestSchema,
   receptionListQuerySchema,
   receptionListResponseSchema,
   recordVitalSignRequestSchema,
@@ -179,6 +189,19 @@ registry.registerPath({
   responses: {
     200: jsonResponse('Thành công', envelope(meResponseSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/auth/change-password',
+  tags: ['auth'],
+  summary: 'Tự đổi mật khẩu (mở rộng ADM-01) — dùng cho luồng bắt buộc đổi lần đầu (mustChangePassword) lẫn đổi tự nguyện, xác thực lại currentPassword',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: changePasswordRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Đổi mật khẩu thành công', envelope(changePasswordResponseSchema)),
+    401: errorResponse('Thiếu access token, sai currentPassword, hoặc tài khoản đã bị vô hiệu hoá'),
   },
 });
 
@@ -738,6 +761,102 @@ registry.registerPath({
   },
   responses: {
     200: jsonResponse('Thành công', envelope(userAccountSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền user_account.manage'),
+    404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/departments',
+  tags: ['department'],
+  summary: 'Tạo Khoa/Phòng (mở rộng ADM-01, phục vụ trường "Khoa/Phòng" trên form tài khoản)',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createDepartmentRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Tạo thành công', envelope(departmentSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền user_account.manage'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/departments',
+  tags: ['department'],
+  summary: 'Danh sách Khoa/Phòng (không phân trang — quy mô nhỏ)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(listDepartmentsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền user_account.read'),
+  },
+});
+
+const departmentIdParams = z.object({ id: z.string().uuid() });
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/departments/{id}',
+  tags: ['department'],
+  summary: 'Sửa tên/trạng thái Khoa/Phòng — bắt buộc kèm version hiện có',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: departmentIdParams,
+    body: { content: { 'application/json': { schema: updateDepartmentRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Sửa thành công', envelope(departmentSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền user_account.manage'),
+    404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/department-types',
+  tags: ['department'],
+  summary: 'Tạo Loại Khoa/Phòng (mở rộng ADM-01)',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createDepartmentTypeRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Tạo thành công', envelope(departmentTypeSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền user_account.manage'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/department-types',
+  tags: ['department'],
+  summary: 'Danh sách Loại Khoa/Phòng (không phân trang — quy mô nhỏ)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(listDepartmentTypesResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền user_account.read'),
+  },
+});
+
+const departmentTypeIdParams = z.object({ id: z.string().uuid() });
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/department-types/{id}',
+  tags: ['department'],
+  summary: 'Sửa tên/trạng thái Loại Khoa/Phòng — bắt buộc kèm version hiện có',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: departmentTypeIdParams,
+    body: { content: { 'application/json': { schema: updateDepartmentTypeRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Sửa thành công', envelope(departmentTypeSummarySchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền user_account.manage'),
     404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),

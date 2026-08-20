@@ -1,6 +1,7 @@
 import { Flask, Pill } from '@phosphor-icons/react';
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import { AppointmentSchedulePage } from '../features/appointment/AppointmentSchedulePage';
+import { ChangePasswordPage } from '../features/auth/ChangePasswordPage';
 import { LoginPage } from '../features/auth/LoginPage';
 import { RequireAuth } from '../features/auth/RequireAuth';
 import { CatalogAdminPage } from '../features/catalog/CatalogAdminPage';
@@ -21,6 +22,16 @@ import { NotFoundPage } from './NotFoundPage';
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
+  // Mở rộng ADM-01 — bắt buộc đổi mật khẩu lần đầu. Đứng NGOÀI AppShell (không sidebar), nhưng
+  // vẫn bọc RequireAuth (cần đăng nhập để gọi POST /auth/change-password).
+  {
+    path: '/change-password',
+    element: (
+      <RequireAuth>
+        <ChangePasswordPage />
+      </RequireAuth>
+    ),
+  },
   {
     path: '/',
     element: (
@@ -46,8 +57,7 @@ export const router = createBrowserRouter([
       // là route thật, trước đây báo lỗi 404 mặc định của react-router (docs/DECISIONS.md #048).
       { path: 'admin', element: <Navigate to="/admin/catalog" replace /> },
       { path: 'admin/catalog', element: <CatalogAdminPage /> },
-      // ADM-07 (Vai trò & Phân quyền) — trang thật thay ComingSoonPage cũ. Phòng ban/Tài khoản
-      // (ADM-01) chưa có UI web, sẽ thêm pill khi module đó ra đời.
+      // ADM-07 (Vai trò & Phân quyền) + mở rộng ADM-01 (Quản lý tài khoản, danh mục nhân sự).
       { path: 'admin/catalog-organization', element: <RolePermissionPage /> },
       // S3-01 (mở khoá một phần) — trang tra cứu ICD-10 thật, thay ComingSoonPage cũ.
       { path: 'admin/catalog-clinical', element: <CatalogClinicalPage /> },

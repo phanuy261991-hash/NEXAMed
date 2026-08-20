@@ -17,6 +17,8 @@ export interface ReferenceCatalogSeedItem {
   code: string;
   name: string;
   sortOrder: number;
+  /** Chỉ có ý nghĩa với EMPLOYMENT_STATUS_ITEMS — xem comment cột `deactivatesAccount` ở schema.prisma. */
+  deactivatesAccount?: boolean;
 }
 
 export const ETHNICITY_ITEMS: readonly ReferenceCatalogSeedItem[] = [
@@ -107,4 +109,22 @@ export const NATIONALITY_ITEMS: readonly ReferenceCatalogSeedItem[] = [
   { code: 'KHM', name: 'Campuchia', sortOrder: 28 },
   { code: 'MMR', name: 'Myanmar', sortOrder: 29 },
   { code: 'ZAF', name: 'Nam Phi', sortOrder: 30 },
+];
+
+/**
+ * Danh mục quản lý tài khoản nhân sự (mở rộng ADM-01) — giá trị mặc định chủ dự án cho sẵn.
+ * Khác ETHNICITY/NATIONALITY (nguồn dữ liệu chính thức bên ngoài), 2 danh sách này chỉ là điểm
+ * khởi đầu hợp lý — clinic_admin thêm/sửa/ẩn được qua UI như mọi category khác.
+ */
+export const EMPLOYMENT_STATUS_ITEMS: readonly ReferenceCatalogSeedItem[] = [
+  { code: 'ACTIVE', name: 'Đang làm', sortOrder: 1, deactivatesAccount: false },
+  { code: 'ON_LEAVE', name: 'Tạm nghỉ', sortOrder: 2, deactivatesAccount: false },
+  { code: 'RESIGNED', name: 'Nghỉ việc', sortOrder: 3, deactivatesAccount: true },
+];
+
+export const EMPLOYMENT_TYPE_ITEMS: readonly ReferenceCatalogSeedItem[] = [
+  { code: 'FULL_TIME', name: 'Chính thức', sortOrder: 1 },
+  { code: 'COLLABORATOR', name: 'Cộng tác viên', sortOrder: 2 },
+  { code: 'INTERN', name: 'Thực tập', sortOrder: 3 },
+  { code: 'PROBATION', name: 'Thử việc', sortOrder: 4 },
 ];

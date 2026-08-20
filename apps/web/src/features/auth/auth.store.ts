@@ -14,6 +14,8 @@ interface AuthState {
   user: CurrentUser | null;
   status: AuthStatus;
   setSession: (accessToken: string, user: CurrentUser) => void;
+  /** Cập nhật một phần `user` tại chỗ — dùng sau khi đổi mật khẩu (xoá cờ `mustChangePassword`), không cần re-login/refetch `/auth/me`. */
+  updateUser: (patch: Partial<CurrentUser>) => void;
   clear: () => void;
 }
 
@@ -22,5 +24,6 @@ export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   status: 'idle',
   setSession: (accessToken, user) => set({ accessToken, user, status: 'authenticated' }),
+  updateUser: (patch) => set((state) => (state.user ? { user: { ...state.user, ...patch } } : {})),
   clear: () => set({ accessToken: null, user: null, status: 'unauthenticated' }),
 }));

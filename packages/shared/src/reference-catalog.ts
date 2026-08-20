@@ -25,6 +25,13 @@ export const referenceCatalogCategorySchema = z.enum([
   'PRIORITY_REASON',
   'PRICE_TYPE',
   'OCCUPATION',
+  // Danh mục quản lý tài khoản nhân sự (mở rộng ADM-01) — Học vị/học hàm, Chức danh (không seed
+  // cứng, giống OCCUPATION), Trạng thái làm việc/Hình thức làm việc (seed giá trị mặc định, xem
+  // packages/core/src/reference-catalog/data.ts).
+  'ACADEMIC_TITLE',
+  'STAFF_POSITION',
+  'EMPLOYMENT_STATUS',
+  'EMPLOYMENT_TYPE',
 ]);
 export type ReferenceCatalogCategory = z.infer<typeof referenceCatalogCategorySchema>;
 
@@ -43,6 +50,8 @@ export const referenceCatalogItemSchema = z.object({
   isActive: z.boolean(),
   price: z.number().int().nonnegative().nullable(),
   unit: z.string().nullable(),
+  /** Chỉ có ý nghĩa với category EMPLOYMENT_STATUS — xem docs/DECISIONS.md (mở rộng ADM-01). */
+  deactivatesAccount: z.boolean(),
 });
 export type ReferenceCatalogItem = z.infer<typeof referenceCatalogItemSchema>;
 
@@ -53,11 +62,18 @@ export type ListReferenceCatalogResponse = z.infer<typeof listReferenceCatalogRe
 
 export const createReferenceCatalogRequestSchema = z.object({
   category: referenceCatalogCategorySchema,
-  code: z.string().min(1),
+  /**
+   * Tuỳ chọn — bỏ trống thì server tự sinh mã ngắn ngẫu nhiên (không nhập tay), dùng cho 4
+   * category nhân sự (ACADEMIC_TITLE/STAFF_POSITION/EMPLOYMENT_STATUS/EMPLOYMENT_TYPE, mở rộng
+   * ADM-01, yêu cầu chủ dự án 2026-08-20) — web chỉ ẩn ô "Mã" cho 4 category này, backend không
+   * hardcode danh sách category, chỉ tự sinh khi thiếu `code` bất kể category nào.
+   */
+  code: z.string().min(1).optional(),
   name: z.string().min(1),
   sortOrder: z.number().int().default(0),
   price: z.number().int().nonnegative().optional(),
   unit: z.string().min(1).optional(),
+  deactivatesAccount: z.boolean().optional(),
 });
 export type CreateReferenceCatalogRequest = z.infer<typeof createReferenceCatalogRequestSchema>;
 
@@ -67,5 +83,6 @@ export const updateReferenceCatalogRequestSchema = z.object({
   sortOrder: z.number().int().optional(),
   price: z.number().int().nonnegative().optional(),
   unit: z.string().min(1).optional(),
+  deactivatesAccount: z.boolean().optional(),
 });
 export type UpdateReferenceCatalogRequest = z.infer<typeof updateReferenceCatalogRequestSchema>;

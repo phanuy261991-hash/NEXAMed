@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, type ReferenceCatalog } from '@prisma/client';
-import { ReferenceCatalogDuplicateCodeError } from '@nexamed/core';
+import { generateReferenceCatalogCode, ReferenceCatalogDuplicateCodeError } from '@nexamed/core';
 import type {
   CreateReferenceCatalogRequest,
   ListReferenceCatalogResponse,
@@ -16,6 +16,9 @@ import { ReferenceCatalogRepository } from './reference-catalog.repository';
 function isDuplicateCodeViolation(err: unknown): boolean {
   return err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002';
 }
+
+/** Random UUID nên xác suất trùng cực nhỏ — vài lần thử là đủ, không cần vòng lặp lớn. */
+const AUTO_CODE_MAX_ATTEMPTS = 5;
 
 /**
  * Danh mục dùng chung toàn hệ thống (Dân tộc, Quốc tịch — docs/DECISIONS.md, đảo ngược #034
@@ -49,21 +52,37 @@ export class ReferenceCatalogService {
     meta: RequestMeta,
   ): Promise<ReferenceCatalogItem> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      let created: ReferenceCatalog;
-      try {
-        created = await this.referenceCatalogRepository.create(tx, {
-          category: dto.category,
-          code: dto.code,
-          name: dto.name,
-          sortOrder: dto.sortOrder,
-          price: dto.price !== undefined ? BigInt(dto.price) : null,
-          unit: dto.unit ?? null,
-        });
-      } catch (err) {
-        if (isDuplicateCodeViolation(err)) {
-          throw new ReferenceCatalogDuplicateCodeError();
+      // Không nhập tay mã (mở rộng ADM-01, yêu cầu chủ dự án 2026-08-20) — web chỉ ẩn ô "Mã" cho
+      // 4 category nhân sự, backend không hardcode danh sách category, chỉ tự sinh khi thiếu
+      // `code`. Random UUID nên chỉ retry khi CHÍNH mã tự sinh bị trùng (không lặp lại khi lỗi
+      // đến từ mã client tự nhập — trường hợp đó phải báo lỗi ngay, không âm thầm đổi mã khác).
+      const isAutoCode = dto.code === undefined;
+      let created: ReferenceCatalog | undefined;
+      for (let attempt = 1; attempt <= (isAutoCode ? AUTO_CODE_MAX_ATTEMPTS : 1); attempt++) {
+        const code = dto.code ?? generateReferenceCatalogCode(dto.category);
+        try {
+          created = await this.referenceCatalogRepository.create(tx, {
+            category: dto.category,
+            code,
+            name: dto.name,
+            sortOrder: dto.sortOrder,
+            price: dto.price !== undefined ? BigInt(dto.price) : null,
+            unit: dto.unit ?? null,
+            deactivatesAccount: dto.deactivatesAccount ?? false,
+          });
+          break;
+        } catch (err) {
+          if (!isDuplicateCodeViolation(err)) {
+            throw err;
+          }
+          if (!isAutoCode || attempt === AUTO_CODE_MAX_ATTEMPTS) {
+            throw new ReferenceCatalogDuplicateCodeError();
+          }
+          // isAutoCode && chưa hết lượt thử — vòng lặp tự sinh mã khác rồi thử lại.
         }
-        throw err;
+      }
+      if (!created) {
+        throw new ReferenceCatalogDuplicateCodeError();
       }
 
       await writeAuditLog(tx, tenantId, {
@@ -100,6 +119,7 @@ export class ReferenceCatalogService {
           sortOrder: dto.sortOrder,
           price: dto.price !== undefined ? BigInt(dto.price) : undefined,
           unit: dto.unit,
+          deactivatesAccount: dto.deactivatesAccount,
         });
       } catch (err) {
         if (isDuplicateCodeViolation(err)) {
@@ -173,6 +193,7 @@ export class ReferenceCatalogService {
       isActive: row.isActive,
       price: row.price !== null ? Number(row.price) : null,
       unit: row.unit,
+      deactivatesAccount: row.deactivatesAccount,
     };
   }
 }

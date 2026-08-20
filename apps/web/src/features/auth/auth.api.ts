@@ -1,4 +1,4 @@
-import type { LoginResponse, MeResponse, RefreshResponse } from '@nexamed/shared';
+import type { ChangePasswordRequest, ChangePasswordResponse, LoginResponse, MeResponse, RefreshResponse } from '@nexamed/shared';
 import { getApiClient, setAccessToken, unwrap } from '../../shared/api/client';
 
 export async function login(tenantId: string, username: string, password: string): Promise<LoginResponse> {
@@ -25,4 +25,9 @@ export async function logout(): Promise<{ success: boolean }> {
 
 export async function getMe(): Promise<MeResponse> {
   return unwrap(await getApiClient().GET('/api/v1/auth/me', {})) as MeResponse;
+}
+
+/** Mở rộng ADM-01 — dùng cho cả luồng bắt buộc lần đầu (`mustChangePassword`) lẫn đổi tự nguyện. */
+export async function changePassword(body: ChangePasswordRequest): Promise<ChangePasswordResponse> {
+  return unwrap(await getApiClient().POST('/api/v1/auth/change-password', { body })) as ChangePasswordResponse;
 }

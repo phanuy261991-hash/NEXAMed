@@ -7,12 +7,32 @@ export interface CreateUserAccountData {
   fullName: string;
   licenseNo: string | null;
   departmentId: string | null;
+  employeeCode: string | null;
+  phone: string | null;
+  personalEmail: string | null;
+  companyEmail: string | null;
+  academicTitleCode: string | null;
+  positionCode: string | null;
+  employmentStatusCode: string | null;
+  employmentTypeCode: string | null;
+  canSignMedicalRecord: boolean;
+  mustChangePassword: boolean;
+  isActive: boolean;
 }
 
 export interface UpdateUserAccountData {
   fullName?: string;
   licenseNo?: string | null;
   departmentId?: string | null;
+  phone?: string | null;
+  personalEmail?: string | null;
+  companyEmail?: string | null;
+  academicTitleCode?: string | null;
+  positionCode?: string | null;
+  employmentStatusCode?: string | null;
+  employmentTypeCode?: string | null;
+  canSignMedicalRecord?: boolean;
+  mustChangePassword?: boolean;
   isActive?: boolean;
   passwordHash?: string;
 }
@@ -33,6 +53,17 @@ export class UserAccountRepository {
         fullName: data.fullName,
         licenseNo: data.licenseNo,
         departmentId: data.departmentId,
+        employeeCode: data.employeeCode,
+        phone: data.phone,
+        personalEmail: data.personalEmail,
+        companyEmail: data.companyEmail,
+        academicTitleCode: data.academicTitleCode,
+        positionCode: data.positionCode,
+        employmentStatusCode: data.employmentStatusCode,
+        employmentTypeCode: data.employmentTypeCode,
+        canSignMedicalRecord: data.canSignMedicalRecord,
+        mustChangePassword: data.mustChangePassword,
+        isActive: data.isActive,
         createdBy: actorId,
         updatedBy: actorId,
       },

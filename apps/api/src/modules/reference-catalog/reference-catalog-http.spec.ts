@@ -216,6 +216,31 @@ describe('HTTP e2e — /api/v1/reference-catalog', () => {
     expect(del.status).toBe(403);
   });
 
+  it('deactivatesAccount (mở rộng ADM-01, chỉ EMPLOYMENT_STATUS) — tạo/sửa lưu đúng, mặc định false với category khác', async () => {
+    const statusCode = `TEST-${randomUUID().slice(0, 8)}`;
+    const created = await request(app.getHttpServer())
+      .post('/api/v1/reference-catalog')
+      .set(authed(clinicAdminToken))
+      .send({ category: 'EMPLOYMENT_STATUS', code: statusCode, name: 'Nghỉ việc test', sortOrder: 990, deactivatesAccount: true });
+    expect(created.status).toBe(200);
+    expect(created.body.data.deactivatesAccount).toBe(true);
+
+    const id = created.body.data.id as string;
+    const patched = await request(app.getHttpServer())
+      .patch(`/api/v1/reference-catalog/${id}`)
+      .set(authed(clinicAdminToken))
+      .send({ deactivatesAccount: false });
+    expect(patched.status).toBe(200);
+    expect(patched.body.data.deactivatesAccount).toBe(false);
+
+    const ethnicityCode = `TEST-${randomUUID().slice(0, 8)}`;
+    const otherCategory = await request(app.getHttpServer())
+      .post('/api/v1/reference-catalog')
+      .set(authed(clinicAdminToken))
+      .send({ category: 'ETHNICITY', code: ethnicityCode, name: 'Không liên quan', sortOrder: 989 });
+    expect(otherCategory.body.data.deactivatesAccount).toBe(false);
+  });
+
   it('không có chủ đích cách ly tenant — tenant B thấy và sửa được đúng dữ liệu tenant A vừa tạo (danh mục toàn hệ thống, giống permission)', async () => {
     const code = `TEST-${randomUUID().slice(0, 8)}`;
     const created = await request(app.getHttpServer())

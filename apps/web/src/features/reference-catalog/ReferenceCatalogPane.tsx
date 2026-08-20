@@ -18,6 +18,17 @@ import {
 /** Khớp `reference_catalog.manage` (chỉ clinic_admin) — .claude/docs/security-audit.md. */
 const MANAGE_ROLES = ['clinic_admin'];
 
+/**
+ * 4 danh mục nhân sự (mở rộng ADM-01, yêu cầu chủ dự án 2026-08-20) — ẩn hẳn khái niệm "Mã" khỏi
+ * UI (cả cột bảng lẫn ô nhập trong modal), server tự sinh khi tạo mới (`code` không gửi lên).
+ */
+const AUTO_CODE_CATEGORIES: ReferenceCatalogCategory[] = [
+  'ACADEMIC_TITLE',
+  'STAFF_POSITION',
+  'EMPLOYMENT_STATUS',
+  'EMPLOYMENT_TYPE',
+];
+
 const inputClassName =
   'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 
@@ -41,6 +52,7 @@ export function ReferenceCatalogPane({
 }) {
   const user = useAuthStore((s) => s.user);
   const canManage = user?.roles.some((role) => MANAGE_ROLES.includes(role)) ?? false;
+  const hideCode = AUTO_CODE_CATEGORIES.includes(category);
 
   const [search, setSearch] = useState('');
   const [includeInactive, setIncludeInactive] = useState(false);
@@ -108,7 +120,7 @@ export function ReferenceCatalogPane({
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
-                <th className="w-24 px-4 py-2.5 text-center">Mã</th>
+                {!hideCode && <th className="w-24 px-4 py-2.5 text-center">Mã</th>}
                 <th className="px-4 py-2.5 text-left">Tên hiển thị</th>
                 {category === 'EXAM_TYPE' && <th className="w-32 px-4 py-2.5 text-center">Giá</th>}
                 {category === 'EXAM_TYPE' && <th className="w-24 px-4 py-2.5 text-center">Đơn vị</th>}
@@ -119,7 +131,7 @@ export function ReferenceCatalogPane({
             <tbody>
               {items.map((item) => (
                 <tr key={item.id} className={`border-b border-slate-200 last:border-0 ${item.isActive ? '' : 'opacity-50'}`}>
-                  <td className="px-4 py-2 text-center text-sm font-bold text-slate-800">{item.code}</td>
+                  {!hideCode && <td className="px-4 py-2 text-center text-sm font-bold text-slate-800">{item.code}</td>}
                   <td className="px-4 py-2 text-left font-medium text-slate-900">
                     {item.name}
                     {!item.isActive && <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">Đã ẩn</span>}
@@ -173,6 +185,7 @@ export function ReferenceCatalogPane({
         <ItemFormModal
           category={category}
           categoryLabel={categoryLabel}
+          hideCode={hideCode}
           mode={modal.mode}
           item={modal.item}
           submitting={createMutation.isPending || updateMutation.isPending}
@@ -219,6 +232,7 @@ export function ReferenceCatalogPane({
 function ItemFormModal({
   category,
   categoryLabel,
+  hideCode,
   mode,
   item,
   submitting,
@@ -227,18 +241,23 @@ function ItemFormModal({
 }: {
   category: ReferenceCatalogCategory;
   categoryLabel: string;
+  /** Ẩn hẳn ô "Mã" — server tự sinh (mở rộng ADM-01, 2026-08-20), xem `AUTO_CODE_CATEGORIES`. */
+  hideCode: boolean;
   mode: 'create' | 'edit';
   item?: ReferenceCatalogItem;
   submitting: boolean;
   onCancel: () => void;
-  onSubmit: (dto: { code: string; name: string; sortOrder: number; price?: number; unit?: string }) => void;
+  onSubmit: (dto: { code?: string; name: string; sortOrder: number; price?: number; unit?: string; deactivatesAccount?: boolean }) => void;
 }) {
   const [code, setCode] = useState(item?.code ?? '');
   const [name, setName] = useState(item?.name ?? '');
   const [sortOrder, setSortOrder] = useState(item?.sortOrder ?? 0);
   const [price, setPrice] = useState(item?.price !== null && item?.price !== undefined ? String(item.price) : '');
   const [unit, setUnit] = useState(item?.unit ?? '');
+  const [deactivatesAccount, setDeactivatesAccount] = useState(item?.deactivatesAccount ?? false);
   const isExamType = category === 'EXAM_TYPE';
+  // Mở rộng ADM-01 — chỉ EMPLOYMENT_STATUS có ý nghĩa với deactivatesAccount, cùng khuôn isExamType.
+  const isEmploymentStatus = category === 'EMPLOYMENT_STATUS';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
@@ -246,12 +265,14 @@ function ItemFormModal({
         <h2 className="text-[15px] font-semibold text-slate-900">{mode === 'create' ? 'Thêm mục mới' : 'Sửa mục'}</h2>
         <p className="mb-4 mt-0.5 text-xs text-slate-500">Danh mục: {categoryLabel}</p>
 
-        <div className="mb-3.5 flex flex-col gap-1.5">
-          <label htmlFor="rc-code" className="text-sm font-semibold text-slate-800">
-            Mã
-          </label>
-          <input id="rc-code" value={code} onChange={(e) => setCode(e.target.value)} className={inputClassName} />
-        </div>
+        {!hideCode && (
+          <div className="mb-3.5 flex flex-col gap-1.5">
+            <label htmlFor="rc-code" className="text-sm font-semibold text-slate-800">
+              Mã
+            </label>
+            <input id="rc-code" value={code} onChange={(e) => setCode(e.target.value)} className={inputClassName} />
+          </div>
+        )}
 
         <div className="mb-3.5 flex flex-col gap-1.5">
           <label htmlFor="rc-name" className="text-sm font-semibold text-slate-800">
@@ -299,6 +320,23 @@ function ItemFormModal({
           />
         </div>
 
+        {isEmploymentStatus && (
+          <label className="mb-4 flex items-start gap-2 text-sm font-semibold text-slate-800">
+            <input
+              type="checkbox"
+              checked={deactivatesAccount}
+              onChange={(e) => setDeactivatesAccount(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              Tự động vô hiệu hoá tài khoản khi chọn trạng thái này
+              <span className="mt-0.5 block text-xs font-normal text-slate-500">
+                Ví dụ &quot;Nghỉ việc&quot; — tài khoản gán trạng thái này sẽ tự chuyển sang &quot;Vô hiệu hoá&quot;, không đăng nhập được nữa.
+              </span>
+            </span>
+          </label>
+        )}
+
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onCancel}>
             Huỷ
@@ -306,14 +344,15 @@ function ItemFormModal({
           <Button
             type="button"
             loading={submitting}
-            disabled={code.trim() === '' || name.trim() === '' || (isExamType && price.trim() === '')}
+            disabled={(!hideCode && code.trim() === '') || name.trim() === '' || (isExamType && price.trim() === '')}
             onClick={() =>
               onSubmit({
-                code: code.trim(),
+                code: hideCode ? undefined : code.trim(),
                 name: name.trim(),
                 sortOrder,
                 price: isExamType && price.trim() !== '' ? Number(price) : undefined,
                 unit: isExamType && unit.trim() !== '' ? unit.trim() : undefined,
+                deactivatesAccount: isEmploymentStatus ? deactivatesAccount : undefined,
               })
             }
           >
