@@ -225,3 +225,150 @@ export const receptionListQuerySchema = z.object({
   doctorId: z.string().uuid().optional(),
 });
 export type ReceptionListQuery = z.infer<typeof receptionListQuerySchema>;
+
+/**
+ * Khám bệnh (S3-05→07) — xem .claude/docs/clinical-workflow.md mục "Khám bệnh". Ký hồ sơ (ENC-04)
+ * và luồng đính chính là việc của Sprint 5 — mọi ghi chú/chẩn đoán ở đây đều là bản nháp
+ * (`signedAt=null`), chưa có ràng buộc bất biến.
+ */
+export const DIAGNOSIS_TYPES = ['PRIMARY', 'SECONDARY'] as const;
+export const diagnosisTypeSchema = z.enum(DIAGNOSIS_TYPES);
+export type DiagnosisType = z.infer<typeof diagnosisTypeSchema>;
+
+export const diagnosisItemSchema = z.object({
+  id: z.string().uuid(),
+  icd10Code: z.string(),
+  /** Tên hiển thị — join từ `icd10_catalog` ở tầng service, không lưu denormalized. */
+  icd10Name: z.string(),
+  type: diagnosisTypeSchema,
+  note: z.string().nullable(),
+  version: z.number().int(),
+});
+export type DiagnosisItem = z.infer<typeof diagnosisItemSchema>;
+
+/**
+ * `PUT /encounters/:id/diagnoses` — thay thế TOÀN BỘ danh sách chẩn đoán của lượt khám (đơn giản
+ * hơn diff từng dòng, khối lượng nhỏ vài dòng/encounter). Bắt buộc đúng 1 phần tử `type='PRIMARY'`
+ * (.claude/docs/clinical-workflow.md: "bắt buộc có ít nhất một `diagnosis` với `type=primary`" —
+ * ở đây ràng buộc chặt hơn thành ĐÚNG MỘT, khớp C10/docs/ERD.md "unique partial một PRIMARY mỗi
+ * encounter"). Validate sớm ở Zod — DB constraint (unique partial index) là lớp phòng thủ thứ hai.
+ */
+export const saveDiagnosesRequestSchema = z
+  .object({
+    diagnoses: z
+      .array(
+        z.object({
+          icd10Code: z.string().min(1),
+          type: diagnosisTypeSchema,
+          note: z.string().optional(),
+        }),
+      )
+      .min(1, 'Phải có ít nhất một chẩn đoán.'),
+  })
+  .refine((data) => data.diagnoses.filter((d) => d.type === 'PRIMARY').length === 1, {
+    message: 'Phải có đúng một chẩn đoán chính (PRIMARY).',
+    path: ['diagnoses'],
+  });
+export type SaveDiagnosesRequest = z.infer<typeof saveDiagnosesRequestSchema>;
+
+export const saveDiagnosesResponseSchema = z.object({ items: z.array(diagnosisItemSchema) });
+export type SaveDiagnosesResponse = z.infer<typeof saveDiagnosesResponseSchema>;
+
+/**
+ * Đổi từ 4 mục SOAP (S/O/A/P) sang 8 mục nhóm "Tiền sử"/"Thăm khám" — yêu cầu chủ dự án 2026-08-20
+ * (xem docs/DECISIONS.md). `PLAN` để sẵn cho tab "Kế hoạch điều trị & hẹn tái khám" (chưa xây web).
+ * "Tiền sử dị ứng" KHÔNG có ở đây — trùng `patient.allergyNote` đã có sẵn, đọc/ghi thẳng qua
+ * `PATCH /patients/:id`, không tạo section riêng (tránh 2 nguồn sự thật cho cùng một dữ liệu).
+ */
+export const CLINICAL_NOTE_SECTIONS = [
+  'PERSONAL_HISTORY',
+  'FAMILY_HISTORY',
+  'REASON_FOR_VISIT',
+  'ILLNESS_PROGRESS',
+  'PRELIMINARY_DIAGNOSIS',
+  'GENERAL_EXAM',
+  'REGIONAL_EXAM',
+  'PLAN',
+] as const;
+export const clinicalNoteSectionSchema = z.enum(CLINICAL_NOTE_SECTIONS);
+export type ClinicalNoteSection = z.infer<typeof clinicalNoteSectionSchema>;
+
+/** `version` vắng mặt = section đó chưa có dòng nào (tạo mới); có `version` = update, kiểm optimistic lock. */
+const clinicalNoteSectionInputSchema = z.object({
+  content: z.string(),
+  version: z.number().int().optional(),
+});
+/** "Lý do khám" và "Chẩn đoán sơ bộ" bắt buộc có nội dung (yêu cầu chủ dự án) — các mục còn lại tuỳ chọn. */
+const requiredClinicalNoteSectionInputSchema = z.object({
+  content: z.string().min(1, 'Không được để trống.'),
+  version: z.number().int().optional(),
+});
+
+/** `PUT /encounters/:id/clinical-note` — lưu 8 mục trong một request (khớp form 1 lần bấm Lưu, không autosave). */
+export const saveClinicalNoteRequestSchema = z.object({
+  personalHistory: clinicalNoteSectionInputSchema,
+  familyHistory: clinicalNoteSectionInputSchema,
+  reasonForVisit: requiredClinicalNoteSectionInputSchema,
+  illnessProgress: clinicalNoteSectionInputSchema,
+  preliminaryDiagnosis: requiredClinicalNoteSectionInputSchema,
+  generalExam: clinicalNoteSectionInputSchema,
+  regionalExam: clinicalNoteSectionInputSchema,
+  plan: clinicalNoteSectionInputSchema,
+});
+export type SaveClinicalNoteRequest = z.infer<typeof saveClinicalNoteRequestSchema>;
+
+const clinicalNoteSectionValueSchema = z.object({ content: z.string(), version: z.number().int() }).nullable();
+
+export const clinicalNoteResponseSchema = z.object({
+  personalHistory: clinicalNoteSectionValueSchema,
+  familyHistory: clinicalNoteSectionValueSchema,
+  reasonForVisit: clinicalNoteSectionValueSchema,
+  illnessProgress: clinicalNoteSectionValueSchema,
+  preliminaryDiagnosis: clinicalNoteSectionValueSchema,
+  generalExam: clinicalNoteSectionValueSchema,
+  regionalExam: clinicalNoteSectionValueSchema,
+  plan: clinicalNoteSectionValueSchema,
+});
+export type ClinicalNoteResponse = z.infer<typeof clinicalNoteResponseSchema>;
+
+/** Một dòng tiền sử tóm tắt (ENC-01) — danh sách các lần khám TRƯỚC (không gồm lượt khám hiện tại). */
+export const encounterHistoryItemSchema = z.object({
+  encounterId: z.string().uuid(),
+  checkedInAt: z.string(),
+  chiefComplaint: z.string().nullable(),
+  primaryDiagnosisName: z.string().nullable(),
+});
+export type EncounterHistoryItem = z.infer<typeof encounterHistoryItemSchema>;
+
+/** Bệnh nhân — chỉ các trường màn khám cần, không phải toàn bộ `patientDetailSchema`. */
+export const consultationPatientSchema = z.object({
+  id: z.string().uuid(),
+  patientCode: z.string(),
+  fullName: z.string(),
+  dob: z.string(),
+  gender: z.string(),
+  phone: z.string(),
+  allergyNote: z.string().nullable(),
+  /** Optimistic lock cho `PATCH /patients/:id` khi bác sĩ cập nhật "Tiền sử dị ứng" ngay màn khám. */
+  version: z.number().int(),
+});
+export type ConsultationPatient = z.infer<typeof consultationPatientSchema>;
+
+/**
+ * `GET /encounters/:id/consultation` (S3-05) — gộp mọi dữ liệu màn hình khám cần trong MỘT
+ * request: tiền sử + dị ứng + sinh hiệu (.claude/docs/data-model.md yêu cầu S3-05 "gộp tiền sử, dị
+ * ứng, sinh hiệu trong một request, tối ưu index").
+ */
+export const consultationDetailResponseSchema = z.object({
+  encounter: encounterSummarySchema,
+  patient: consultationPatientSchema,
+  vitalSigns: vitalSignResponseSchema.nullable(),
+  history: z.array(encounterHistoryItemSchema),
+  diagnoses: z.array(diagnosisItemSchema),
+  clinicalNote: clinicalNoteResponseSchema,
+});
+export type ConsultationDetailResponse = z.infer<typeof consultationDetailResponseSchema>;
+
+/** "Hoàn tất khám" — IN_CONSULTATION → COMPLETED. `version` là version của `encounter`. */
+export const completeConsultationRequestSchema = z.object({ version: z.number().int() });
+export type CompleteConsultationRequest = z.infer<typeof completeConsultationRequestSchema>;

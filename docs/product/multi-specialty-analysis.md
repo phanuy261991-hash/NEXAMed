@@ -1,6 +1,6 @@
 # Phân tích khả thi — Đa chuyên khoa trên cùng một source (nhi/sản/nha)
 
-**Trạng thái**: Tài liệu phân tích, **chưa chốt triển khai**. Định hướng kiến trúc rút ra từ phân tích này đã chốt ở `docs/DECISIONS.md` #033 — đọc mục đó trước nếu chỉ cần kết luận nhanh. File này là phần lập luận đầy đủ, dùng để tham khảo khi thật sự bắt đầu làm gói chuyên khoa đầu tiên.
+**Trạng thái**: Định hướng kiến trúc **"Specialty Pack" đã chốt** (`docs/DECISIONS.md` #033, #058) — đọc 2 mục đó trước nếu chỉ cần kết luận nhanh. **Chưa triển khai** — chờ khách hàng thật trả tiền cho một chuyên khoa cụ thể (xem mục 6, 9). File này là phần lập luận đầy đủ, dùng để tham khảo khi thật sự bắt đầu làm gói chuyên khoa đầu tiên.
 
 **Không áp dụng ngay ở v1.** Không thêm bảng/cột/migration nào theo tài liệu này cho tới khi có quyết định bắt đầu (xem mục 6 điều kiện tiên quyết).
 
@@ -23,6 +23,8 @@ Yêu cầu ban đầu gộp chung nhiều loại biến thiên khác bản chấ
 | 1. Biến thiên dữ liệu nhập | Nhi thêm cân nặng/chiều cao/tiền sử sinh; Sản thêm PARA, ngày kinh cuối | Dynamic form / JSON schema | Rẻ |
 | 2. Biến thiên quy trình nghiệp vụ | Sản theo dõi suốt thai kỳ; Nha theo lộ trình niềng răng/implant nhiều tháng | Mô hình dữ liệu mới (aggregate root mới) | **Đắt** |
 | 3. Biến thiên biểu mẫu in | Bệnh án sản khoa ≠ bệnh án nhi khoa | Template engine | Rẻ |
+
+**Tầng 1 trải dài qua cả Tiếp nhận lẫn Khám bệnh, không riêng màn hình khám.** Phần lớn ví dụ ở tầng 1 (cân nặng/chiều cao trẻ, tiền sử sinh, PARA, ngày kinh cuối) là dữ liệu thường thu thập ngay lúc tiếp nhận/đầu buổi khám, không chỉ lúc bác sĩ khám. Xem lại ghi chú ở mục 8 điểm 1.
 
 Tầng 2 không giải được bằng "dynamic form" — nó chiếm phần lớn chi phí thật của bài toán này. Cụ thể:
 
@@ -206,6 +208,7 @@ Lý do làm cụ thể trước, trừu tượng sau: `CLAUDE.md` đã ghi "trù
 ## 8. Việc nên làm ngay (chi phí gần bằng 0, không phải code specialty)
 
 1. Giữ đúng kỷ luật viết component đã có trong `CLAUDE.md` khi làm màn hình khám ở Sprint 3 (S3-06): nhận danh sách trường/cấu hình qua props, không hard-code riêng cho một chuyên khoa. Đây là điểm retrofit đắt nhất nếu bỏ lỡ.
+   **Áp dụng cho cả Tiếp nhận, không chỉ Khám bệnh** — tầng 1 (biến thiên dữ liệu nhập) trải dài qua cả hai màn hình, xem mục 1. Ghi chú lại vì thực tế: `ReceptionIntakeForm.tsx` (S3-03/04, hoàn thiện qua `docs/DECISIONS.md` #042→#053) đã được xây xong **trước khi** có nhu cầu thật về chuyên khoa cụ thể, dưới dạng một form chung duy nhất, KHÔNG nhận cấu hình trường qua props theo chuyên khoa — đúng như nguyên tắc "làm cụ thể trước, trừu tượng sau" ở mục 6/9 (không dựng khung specialty khi chưa có khách hàng thật). Khi bắt đầu gói chuyên khoa đầu tiên (mục 6, 9), việc parameterize hoá theo chuyên khoa phải làm ĐỒNG THỜI cho cả `ReceptionIntakeForm.tsx` lẫn màn hình khám — không chỉ retrofit riêng màn hình khám.
 2. Khi thiết kế `encounter` ở Sprint 3, không giả định encounter luôn đứng một mình (không cần thêm bảng/cột gì, chỉ là một giả định cần tránh trong lúc thiết kế).
 3. Xác minh sớm câu hỏi pháp lý về mẫu bệnh án theo chuyên khoa — xếp cùng nhóm T1/Q1/Q2 đang treo ở `docs/product/plan.md`.
 4. Không thêm cột `specialty`/`form_data` vào schema hiện tại trước khi có gói thật cần dùng — vi phạm nguyên tắc "không để sẵn chỗ cho module ngoài v1" nếu làm sớm.

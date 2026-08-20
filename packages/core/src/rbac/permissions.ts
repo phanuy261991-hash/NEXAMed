@@ -91,6 +91,11 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
   },
   doctor: {
     'patient.read': 'global',
+    // Đổi từ chỉ đọc sang có sửa (global, cùng mức receptionist/clinic_admin — hệ thống chưa có
+    // quyền theo từng trường riêng) — bác sĩ cập nhật "Tiền sử dị ứng" ngay trong màn khám cần ghi
+    // thẳng lại `patient.allergyNote`, không chỉ lưu riêng cho lượt khám (yêu cầu chủ dự án
+    // 2026-08-20, xem docs/DECISIONS.md).
+    'patient.update': 'global',
     'appointment.read': 'personal',
     'appointment.create': 'personal',
     'appointment.update': 'personal',

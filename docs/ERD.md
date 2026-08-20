@@ -1,6 +1,6 @@
 # ERD: NEXAMed v1
 
-**Version**: v1.18 — 20/08/2026 (xem mục 9 để biết lịch sử thay đổi)
+**Version**: v1.20 — 20/08/2026 (xem mục 9 để biết lịch sử thay đổi)
 **Phạm vi**: chỉ các bảng thuộc v1 (Đặt lịch, Tiếp nhận, Khám bệnh, Kê đơn). Bảng của v2+ (viện phí, kho thuốc, BHYT) **không** tạo ở giai đoạn này.
 **Căn cứ**: `docs/product/prd.md` v1.0, `docs/product/plan.md` v1.0, `.claude/docs/data-model.md`
 
@@ -476,7 +476,7 @@ Bản ghi từ CẢ HAI luồng cùng xuất hiện trong "Danh sách tiếp nh�
 |---|---|---|
 | `vital_sign` | Sinh hiệu | Lưu số nguyên: nhiệt độ theo phần mười độ C (`temperature_deci_c`, 37.5°C → `375`), cân nặng theo gram, chiều cao theo mm |
 | `diagnosis` | Chẩn đoán | `type`: `PRIMARY` hoặc `SECONDARY`; bắt buộc có đúng một `PRIMARY` khi hoàn tất lượt khám |
-| `clinical_note` | Ghi chú SOAP | `section`: `SUBJECTIVE`, `OBJECTIVE`, `ASSESSMENT`, `PLAN` |
+| `clinical_note` | Ghi chú khám (nhóm Tiền sử/Thăm khám) | `section` (8 giá trị, đổi 2026-08-20 — không còn 4 mục SOAP): `PERSONAL_HISTORY`, `FAMILY_HISTORY`, `REASON_FOR_VISIT`, `ILLNESS_PROGRESS`, `PRELIMINARY_DIAGNOSIS`, `GENERAL_EXAM`, `REGIONAL_EXAM`, `PLAN` |
 | `prescription` | Đơn thuốc | Ký logic ở v1; `signature_payload` để sẵn cho chữ ký số, luôn `NULL` |
 | `prescription_item` | Dòng thuốc | v1 không có cột giá, không trừ kho |
 
@@ -605,3 +605,5 @@ Khi thêm, các bảng này vẫn phải đủ 8 cột bắt buộc và tuân th
 | v1.16 | 19/08/2026 | "Tầng phòng" — mở rộng `room` thành cấp bậc: thêm bảng `floor` (Tầng, tùy chọn — `room.floor_id` nullable, C13) và bảng `exam_station` (Bàn khám/Ghế, cấp con bắt buộc thuộc 1 `room`). Cả hai THUẦN mô tả/tổ chức không gian — đơn vị điều phối thật (`doctor_room_session`, `appointment.room_id`) vẫn dừng ở cấp `room`, không đổi. Quản lý qua UI tích hợp chung 1 màn hình (không tách pill/mục riêng từng cấp). Xem `docs/DECISIONS.md` #055. |
 | v1.17 | 19/08/2026 | Module `icd10_catalog` hiện thực (S3-01, mở khoá một phần — seed ĐỦ Chương I-XXII, 15.844 mã) — schema mở rộng đầy đủ thay field `chapter` đơn lẻ: thêm `chapter_code`/`chapter_name`/`block_code`/`block_name`/`group_code`/`group_name`/`gender_restriction`/`usage_restriction`/`who_note`. Cùng khuôn `province`/`ward` (không `tenant_id`/`id`/`version`, REVOKE INSERT/UPDATE khỏi `nexamed_app`). Ký hiệu chéo `†` (dagger)/`*` (asterisk) — hệ thống WHO — tách khỏi `code` lúc parse dữ liệu — không phải một phần mã ICD-10 thật. Xem `docs/DECISIONS.md` #056. |
 | v1.18 | 20/08/2026 | ADM-07 (vai trò tuỳ biến + ma trận phân quyền) hiện thực — `role.name` UNIQUE(tenant_id, name) đổi từ thường sang PARTIAL (`WHERE deleted_at IS NULL`, migration `20260820090000_role_management`, thêm C14) để tạo lại đúng tên vai trò đã ẩn không vi phạm. Không thêm bảng/cột mới. Ripple đi kèm (không đổi ERD): `user_account` tạo/gán vai trò qua `roleIds` (id thật) thay vì `roleNames` cố định trong enum 5 vai trò — xem `docs/DECISIONS.md` #057. |
+| v1.19 | 20/08/2026 | `diagnosis`/`clinical_note` (S3-05→07, phần backend) từ đặc tả thiết kế chuyển thành đã hiện thực — migration `20260820120000_clinical_diagnosis_note`. Đúng khuôn đã đặc tả từ trước (mục 3.4, C10) — không đổi cột/kiểu dữ liệu nào so với thiết kế gốc. `signed_at`/`signed_by`/`supersedes_id`/`amendment_reason` trên `clinical_note` để sẵn theo `SignableEntity`, luôn NULL (ký hồ sơ/đính chính là Sprint 5, S5-02/03, chưa viết logic). 4 endpoint mới trên `apps/api/src/modules/encounter/` (`GET .../consultation`, `PUT .../diagnoses`, `PUT .../clinical-note`, `POST .../complete`) — không thêm permission mới. Phần web (S3-06/07) tạm dừng theo yêu cầu chủ dự án, tiếp tục ở phiên sau — xem `docs/DECISIONS.md` #059. |
+| v1.20 | 20/08/2026 | S3-06/07 (web) hoàn thành + `clinical_note.section` đổi từ 4 mục SOAP sang 8 mục nhóm Tiền sử/Thăm khám (yêu cầu chủ dự án, migration `20260820150000_clinical_note_sections_v2` — xoá sạch dữ liệu demo/dev cũ trước khi đổi enum, không có tenant production). Thêm `doctor.patient.update = global` vào ma trận RBAC (bác sĩ cập nhật "Tiền sử dị ứng" ghi thẳng `patient.allergy_note`). `reception.recordVitalSigns()` nới điều kiện trạng thái từ chỉ `CHECKED_IN` sang cả `CHECKED_IN`/`IN_CONSULTATION` (bác sĩ bổ sung/đo lại sinh hiệu ngay trong màn khám) — không đổi bảng `vital_sign`. Ngưỡng cảnh báo nhiệt độ (`packages/core`) đổi trần 39.0°C→38.5°C. Xem `docs/DECISIONS.md` (entry sau #059). |

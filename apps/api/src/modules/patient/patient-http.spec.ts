@@ -621,10 +621,21 @@ describe('HTTP e2e — /api/v1/patients', () => {
       expect(res.status).toBe(400);
     });
 
-    it('thiếu quyền patient.update (doctor) → 403', async () => {
+    it('doctor có patient.update=global (2026-08-20, cập nhật "Tiền sử dị ứng" ngay màn khám) → 200, tải ảnh được luôn qua endpoint chung', async () => {
       const res = await request(app.getHttpServer())
         .post(`/api/v1/patients/${photoPatientId}/photo`)
         .set(authed(doctorToken))
+        .field('version', String(currentVersion))
+        .attach('file', jpegBytes, 'avatar.jpg');
+
+      expect(res.status).toBe(200);
+      currentVersion = res.body.data.version;
+    });
+
+    it('thiếu quyền patient.update (system_admin, không có patient.* nào) → 403', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/patients/${photoPatientId}/photo`)
+        .set(authed(systemAdminToken))
         .field('version', String(currentVersion))
         .attach('file', jpegBytes, 'avatar.jpg');
 

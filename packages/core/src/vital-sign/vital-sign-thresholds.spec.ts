@@ -36,9 +36,9 @@ describe('evaluateVitalSignWarnings', () => {
     expect(evaluateVitalSignWarnings({ respiratoryRate: 31 }, 5)[0]).toMatchObject({ field: 'respiratoryRate', kind: 'out_of_range' });
   });
 
-  it('nhiệt độ dùng chung 1 ngưỡng mọi tuổi (36.0-39.0°C)', () => {
-    expect(evaluateVitalSignWarnings({ temperatureC: 39.0 }, 5)).toEqual([]);
-    expect(evaluateVitalSignWarnings({ temperatureC: 39.5 }, 30)[0]).toMatchObject({ field: 'temperatureC', kind: 'out_of_range' });
+  it('nhiệt độ dùng chung 1 ngưỡng mọi tuổi (36.0-38.5°C, chốt 2026-08-20)', () => {
+    expect(evaluateVitalSignWarnings({ temperatureC: 38.5 }, 5)).toEqual([]);
+    expect(evaluateVitalSignWarnings({ temperatureC: 38.6 }, 30)[0]).toMatchObject({ field: 'temperatureC', kind: 'out_of_range' });
     expect(evaluateVitalSignWarnings({ temperatureC: 35.5 }, 30)[0]).toMatchObject({ field: 'temperatureC', kind: 'out_of_range' });
   });
 

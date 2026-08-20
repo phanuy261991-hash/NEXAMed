@@ -572,9 +572,25 @@ describe('HTTP e2e — /api/v1/reception', () => {
       expect(res.body.error.code).toBe('VALIDATION_ERROR');
     });
 
-    it('encounter không còn CHECKED_IN (đã bắt đầu khám) → 409 ENCOUNTER_NOT_CHECKED_IN', async () => {
+    it('đã bắt đầu khám (IN_CONSULTATION) — vẫn cho nhập, bác sĩ bổ sung/đo lại ngay trong màn khám (2026-08-20)', async () => {
       const encounterId = await checkInFreshEncounter(16);
       await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/start`).set(authed(doctorAToken)).send({ version: 1 });
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/reception/encounters/${encounterId}/vital-signs`)
+        .set(authed(nurseToken))
+        .send({ pulse: 75 });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.pulse).toBe(75);
+    });
+
+    it('encounter đã "bỏ về" (CANCELLED) → 409 ENCOUNTER_NOT_CHECKED_IN', async () => {
+      const encounterId = await checkInFreshEncounter(18);
+      await request(app.getHttpServer())
+        .post(`/api/v1/encounters/${encounterId}/cancel`)
+        .set(authed(doctorAToken))
+        .send({ cancelReason: 'Bệnh nhân bỏ về', version: 1 });
 
       const res = await request(app.getHttpServer())
         .post(`/api/v1/reception/encounters/${encounterId}/vital-signs`)

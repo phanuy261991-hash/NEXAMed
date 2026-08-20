@@ -32,11 +32,40 @@ export class EncounterAlreadyExistsError extends DomainError {
   }
 }
 
-/** Nhập sinh hiệu (REC-02) khi lượt khám không còn ở trạng thái `CHECKED_IN`. */
+/**
+ * Nhập sinh hiệu (REC-02/03) khi lượt khám không còn ở `CHECKED_IN`/`IN_CONSULTATION` — cho phép cả
+ * hai trạng thái (không chỉ lúc tiếp nhận) để bác sĩ bổ sung/đo lại ngay trong màn khám (S3-06/07,
+ * yêu cầu chủ dự án 2026-08-20).
+ */
 export class EncounterNotCheckedInError extends DomainError {
   readonly code = 'ENCOUNTER_NOT_CHECKED_IN';
 
   constructor() {
-    super('Chỉ nhập được sinh hiệu khi lượt khám đang ở trạng thái đã tiếp nhận.');
+    super('Chỉ nhập được sinh hiệu khi lượt khám đang ở trạng thái đã tiếp nhận hoặc đang khám.');
+  }
+}
+
+/** Lưu SOAP/chẩn đoán hoặc hoàn tất khám khi lượt khám không còn ở `IN_CONSULTATION` (đã hoàn tất/huỷ). */
+export class EncounterNotInConsultationError extends DomainError {
+  readonly code = 'ENCOUNTER_NOT_IN_CONSULTATION';
+
+  constructor() {
+    super('Chỉ ghi được khi lượt khám đang ở trạng thái đang khám.');
+  }
+}
+
+/**
+ * Khám bệnh (S3-05→07) — vi phạm bất biến nghiệp vụ "đúng một chẩn đoán chính" khi lưu danh sách
+ * chẩn đoán hoặc lúc hoàn tất khám (.claude/docs/clinical-workflow.md mục "Khám bệnh"). Zod
+ * (`saveDiagnosesRequestSchema`) đã chặn phần lớn ở tầng input cho `PUT .../diagnoses`; lỗi này còn
+ * cần cho `completeConsultation()` (không có input nào để Zod kiểm — đọc thẳng từ DB) và làm lớp
+ * phòng thủ thứ hai nếu service tự tính sai. Không phải xung đột trạng thái đồng thời (không map
+ * trong `DOMAIN_ERROR_STATUS` → rơi về mặc định 422, đúng ý nghĩa).
+ */
+export class DiagnosisPrimaryRequiredError extends DomainError {
+  readonly code = 'DIAGNOSIS_PRIMARY_REQUIRED';
+
+  constructor() {
+    super('Phải có đúng một chẩn đoán chính trước khi hoàn tất lượt khám.');
   }
 }

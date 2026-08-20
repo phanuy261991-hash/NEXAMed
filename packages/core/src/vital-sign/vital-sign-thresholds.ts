@@ -59,8 +59,12 @@ const RESPIRATORY_RATE_RANGE_BY_BAND: Record<VitalSignAgeBand, Range> = {
   adolescent_adult: { min: 12, max: 20 },
 };
 
-/** Nhiệt độ/SpO2 dùng chung 1 ngưỡng mọi lứa tuổi — đơn giản hoá có chủ đích (docs/DECISIONS.md). */
-const TEMPERATURE_RANGE_C: Range = { min: 36.0, max: 39.0 };
+/**
+ * Nhiệt độ/SpO2 dùng chung 1 ngưỡng mọi lứa tuổi — đơn giản hoá có chủ đích (docs/DECISIONS.md).
+ * Trần trên 38.5°C khớp định nghĩa "sốt cao" lâm sàng thường dùng (chốt 2026-08-20, chủ dự án yêu
+ * cầu màn khám cảnh báo đỏ đúng ngưỡng này — trước đó tạm để 39.0°C).
+ */
+const TEMPERATURE_RANGE_C: Range = { min: 36.0, max: 38.5 };
 const SPO2_MIN_PERCENT = 95;
 
 type BloodPressureAgeBand = 'under_13' | 'from_13';

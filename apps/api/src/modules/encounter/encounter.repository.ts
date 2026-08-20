@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import type { Encounter } from '@prisma/client';
+import type { Encounter, VitalSign } from '@prisma/client';
 
 export interface CreateEncounterData {
   encounterNo: string;
@@ -31,6 +31,34 @@ export interface EncounterWithPatientContact extends Encounter {
 
 export interface EncounterWithPatientDob extends Encounter {
   patient: { dob: Date };
+}
+
+export interface ConsultationPatientFields {
+  id: string;
+  patientCode: string;
+  fullName: string;
+  dob: Date;
+  gender: string;
+  phone: string;
+  allergyNote: string | null;
+  /** Cần cho bác sĩ cập nhật lại `patient.allergyNote` ngay trong màn khám (optimistic lock). */
+  version: number;
+}
+
+export interface EncounterWithConsultationPatient extends Encounter {
+  patient: ConsultationPatientFields;
+  // Sinh hiệu mới nhất của lượt khám này (`take:1`, `orderBy: measuredAt desc`) — đọc qua quan hệ
+  // `Encounter.vitalSigns` thay vì gọi thẳng `tx.vitalSign...` (bảng đó do `VitalSignRepository`/
+  // module `reception` sở hữu ghi — đọc qua include của aggregate root không phá ranh giới đó,
+  // tránh import vòng `EncounterModule` ↔ `ReceptionModule`).
+  vitalSigns: VitalSign[];
+}
+
+export interface EncounterHistoryRow {
+  id: string;
+  checkedInAt: Date;
+  chiefComplaint: string | null;
+  diagnoses: { icd10: { nameVi: string } }[];
 }
 
 /** Chỗ DUY NHẤT gọi Prisma cho bảng `encounter` — theo .claude/docs/coding-standards.md. Export
@@ -108,6 +136,45 @@ export class EncounterRepository {
     }) as Promise<EncounterWithPatientContact[]>;
   }
 
+  /** Encounter kèm đủ trường bệnh nhân màn khám cần (S3-05) — join `patient`, cùng khuôn `findByIdWithPatientDob`. */
+  findByIdWithConsultationContext(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<EncounterWithConsultationPatient | null> {
+    return tx.encounter.findFirst({
+      where: { tenantId, id, deletedAt: null },
+      include: {
+        patient: { select: { id: true, patientCode: true, fullName: true, dob: true, gender: true, phone: true, allergyNote: true, version: true } },
+        vitalSigns: { where: { deletedAt: null }, orderBy: { measuredAt: 'desc' }, take: 1 },
+      },
+    }) as Promise<EncounterWithConsultationPatient | null>;
+  }
+
+  /**
+   * Tiền sử các lần khám TRƯỚC (ENC-01, không gồm `excludeEncounterId` — chính lượt khám hiện tại),
+   * kèm tên chẩn đoán chính (nếu có) qua include lọc `diagnoses` — dùng index
+   * `encounter_tenant_id_patient_id_checked_in_at_idx` (đã có từ S3-03, `docs/ERD.md` mục 5).
+   */
+  listHistoryForPatient(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    patientId: string,
+    excludeEncounterId: string,
+    limit: number,
+  ): Promise<EncounterHistoryRow[]> {
+    return tx.encounter.findMany({
+      where: { tenantId, patientId, id: { not: excludeEncounterId }, deletedAt: null },
+      select: {
+        id: true,
+        checkedInAt: true,
+        chiefComplaint: true,
+        diagnoses: {
+          where: { type: 'PRIMARY', deletedAt: null },
+          select: { icd10: { select: { nameVi: true } } },
+        },
+      },
+      orderBy: { checkedInAt: 'desc' },
+      take: limit,
+    });
+  }
+
   /**
    * "Bắt đầu khám" — `CHECKED_IN → IN_CONSULTATION`, set `started_at`. `updateMany` + kiểm
    * `count` (không phải `update`) — cần ghép `version`/`status` vào `WHERE` cho atomic, cùng
@@ -117,6 +184,15 @@ export class EncounterRepository {
     const result = await tx.encounter.updateMany({
       where: { tenantId, id, version: expectedVersion, deletedAt: null, status: 'CHECKED_IN' },
       data: { status: 'IN_CONSULTATION', startedAt: new Date(), updatedBy: actorId, version: { increment: 1 } },
+    });
+    return result.count;
+  }
+
+  /** "Hoàn tất khám" — `IN_CONSULTATION → COMPLETED`, set `completed_at` (S3-05→07). */
+  async complete(tx: Prisma.TransactionClient, tenantId: string, id: string, expectedVersion: number, actorId: string): Promise<number> {
+    const result = await tx.encounter.updateMany({
+      where: { tenantId, id, version: expectedVersion, deletedAt: null, status: 'IN_CONSULTATION' },
+      data: { status: 'COMPLETED', completedAt: new Date(), updatedBy: actorId, version: { increment: 1 } },
     });
     return result.count;
   }

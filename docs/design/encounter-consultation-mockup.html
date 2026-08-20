@@ -1,0 +1,1213 @@
+<title>Giao Diện Khám Bệnh Bác Sĩ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+    /* Ghi chú: tái hiện đúng nguyên bản HTML/CSS/JS bác sĩ gửi — không đổi màu, spacing, bố cục,
+       nội dung. CHỈ MỘT thay đổi bắt buộc về kỹ thuật: icon Font Awesome (tải từ cdnjs.cloudflare.com)
+       đổi thành SVG nhúng thẳng, vì trang Artifact chặn mọi domain ngoài Google Fonts — không tự ý
+       đổi phong cách icon, chỉ là cách duy nhất để icon hiển thị được trong khung xem trước này. Văn
+       bản tiếng Việt trong file gốc bị lỗi mã hoá lúc dán qua khung chat (mojibake) — đã phục hồi lại
+       đúng chữ có dấu, không đổi nội dung.
+    */
+    :root {
+        --primary: #0284c7;
+        --primary-hover: #0369a1;
+        --primary-light: #e0f2fe;
+        --secondary: #0d9488;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --danger-light: #fef2f2;
+        --dark: #0f172a;
+        --gray-700: #334155;
+        --gray-500: #64748b;
+        --gray-300: #cbd5e1;
+        --gray-100: #f1f5f9;
+        --gray-50: #f8fafc;
+        --white: #ffffff;
+        --border: #e2e8f0;
+        --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    }
+
+    * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+    }
+
+    body {
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        background-color: var(--gray-100);
+        color: var(--dark);
+        font-size: 13px;
+        line-height: 1.4;
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .ico { display: inline-block; vertical-align: -2px; }
+    .ico svg { display: block; width: 1em; height: 1em; }
+
+    /* Top Header Navbar */
+    .navbar {
+        background-color: var(--white);
+        border-bottom: 1px solid var(--border);
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 16px;
+        flex-shrink: 0;
+    }
+
+    .navbar-brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 700;
+        font-size: 15px;
+        color: var(--primary);
+    }
+
+    .navbar-brand .ico { font-size: 20px; }
+
+    .doctor-info {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        font-size: 12px;
+    }
+
+    .doctor-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background-color: var(--primary-light);
+        color: var(--primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+    }
+
+    /* Patient Header / Vital Signs Bar (FIXED) */
+    .patient-banner {
+        background-color: var(--white);
+        border-bottom: 1px solid var(--border);
+        padding: 10px 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-shrink: 0;
+        box-shadow: var(--shadow-sm);
+        z-index: 10;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .patient-main-info {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .patient-name {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--dark);
+    }
+
+    .patient-tag {
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .tag-bhyt {
+        background-color: #dcfce7;
+        color: #15803d;
+    }
+
+    .patient-meta {
+        display: flex;
+        gap: 12px;
+        color: var(--gray-500);
+        font-size: 12px;
+    }
+
+    .patient-meta strong {
+        color: var(--dark);
+    }
+
+    .allergy-badge {
+        background-color: var(--danger-light);
+        color: var(--danger);
+        border: 1px solid #fca5a5;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-weight: 600;
+        font-size: 11px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.75; }
+        100% { opacity: 1; }
+    }
+
+    /* Vital Signs Widget */
+    .vitals-strip {
+        display: flex;
+        gap: 12px;
+        background-color: var(--gray-50);
+        padding: 6px 12px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+    }
+
+    .vital-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 0 8px;
+        border-right: 1px solid var(--border);
+    }
+
+    .vital-item:last-child {
+        border-right: none;
+    }
+
+    .vital-label {
+        font-size: 10px;
+        color: var(--gray-500);
+        text-transform: uppercase;
+    }
+
+    .vital-value {
+        font-weight: 700;
+        font-size: 13px;
+        color: var(--dark);
+    }
+
+    .vital-value.warning {
+        color: var(--danger);
+    }
+
+    /* Main Workspace Grid (Split Screen) */
+    .workspace {
+        display: grid;
+        grid-template-columns: 360px 1fr;
+        flex: 1;
+        min-height: 0;
+        background-color: var(--gray-100);
+    }
+
+    /* Left Panel - Patient History & Context */
+    .left-panel {
+        background-color: var(--white);
+        border-right: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+    }
+
+    .panel-header {
+        padding: 10px 14px;
+        background-color: var(--gray-50);
+        border-bottom: 1px solid var(--border);
+        font-weight: 600;
+        font-size: 12px;
+        color: var(--gray-700);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .panel-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 12px;
+    }
+
+    /* History Card */
+    .history-card {
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 10px;
+        margin-bottom: 12px;
+        background-color: var(--white);
+        transition: all 0.2s;
+    }
+
+    .history-card:hover {
+        border-color: var(--primary);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .history-card.active {
+        border-color: var(--primary);
+        background-color: #f0f9ff;
+    }
+
+    .history-date {
+        font-weight: 600;
+        color: var(--primary);
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 4px;
+    }
+
+    .history-dx {
+        font-weight: 600;
+        color: var(--dark);
+        margin-bottom: 6px;
+    }
+
+    .history-details {
+        font-size: 11px;
+        color: var(--gray-500);
+        line-height: 1.5;
+    }
+
+    .copy-actions {
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px dashed var(--border);
+        display: flex;
+        gap: 6px;
+    }
+
+    /* Buttons */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        border: 1px solid transparent;
+        transition: all 0.15s ease;
+        white-space: nowrap;
+    }
+
+    .btn-sm {
+        padding: 3px 8px;
+        font-size: 11px;
+    }
+
+    .btn-primary {
+        background-color: var(--primary);
+        color: var(--white);
+    }
+
+    .btn-primary:hover {
+        background-color: var(--primary-hover);
+    }
+
+    .btn-outline {
+        border-color: var(--gray-300);
+        background-color: var(--white);
+        color: var(--gray-700);
+    }
+
+    .btn-outline:hover {
+        background-color: var(--gray-50);
+        border-color: var(--gray-500);
+    }
+
+    .btn-accent {
+        background-color: #f0fdf4;
+        color: #166534;
+        border-color: #bbf7d0;
+    }
+
+    .btn-accent:hover {
+        background-color: #dcfce7;
+    }
+
+    /* Right Panel - Active Examination Workspace */
+    .right-panel {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        background-color: var(--gray-50);
+    }
+
+    /* Section Tabs */
+    .workspace-tabs {
+        background-color: var(--white);
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        padding: 0 16px;
+        gap: 4px;
+        flex-shrink: 0;
+    }
+
+    .tab-item {
+        padding: 12px 16px;
+        font-weight: 600;
+        color: var(--gray-500);
+        border-bottom: 2px solid transparent;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s;
+    }
+
+    .tab-item.active {
+        color: var(--primary);
+        border-bottom-color: var(--primary);
+        background-color: var(--gray-50);
+    }
+
+    .tab-badge {
+        background-color: var(--gray-300);
+        color: var(--gray-700);
+        padding: 1px 6px;
+        border-radius: 10px;
+        font-size: 10px;
+    }
+
+    .tab-item.active .tab-badge {
+        background-color: var(--primary-light);
+        color: var(--primary);
+    }
+
+    /* Main Examination Canvas */
+    .workspace-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .card {
+        background-color: var(--white);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 14px;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .card-title {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--dark);
+        margin-bottom: 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .card-title-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    /* Form Controls */
+    .form-group {
+        margin-bottom: 12px;
+    }
+
+    .form-label {
+        display: block;
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--gray-700);
+        margin-bottom: 4px;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 7px 10px;
+        border: 1px solid var(--gray-300);
+        border-radius: 4px;
+        font-size: 12px;
+        font-family: inherit;
+        color: var(--dark);
+        transition: border-color 0.15s;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.15);
+    }
+
+    textarea.form-control {
+        resize: vertical;
+        min-height: 60px;
+    }
+
+    /* ICD Search & Tag List */
+    .icd-search-box {
+        position: relative;
+    }
+
+    .icd-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: var(--white);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        box-shadow: var(--shadow-lg);
+        z-index: 20;
+        max-height: 180px;
+        overflow-y: auto;
+        display: none;
+    }
+
+    .icd-item {
+        padding: 8px 12px;
+        cursor: pointer;
+        border-bottom: 1px solid var(--gray-100);
+    }
+
+    .icd-item:hover {
+        background-color: var(--primary-light);
+    }
+
+    .selected-icd-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-top: 8px;
+    }
+
+    .icd-chip {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background-color: var(--gray-50);
+        border: 1px solid var(--gray-300);
+        padding: 6px 10px;
+        border-radius: 4px;
+        font-size: 12px;
+    }
+
+    .icd-chip.primary-dx {
+        border-left: 4px solid var(--primary);
+        background-color: #f0f9ff;
+    }
+
+    .icd-chip .remove-btn {
+        color: var(--gray-500);
+        cursor: pointer;
+    }
+
+    .icd-chip .remove-btn:hover {
+        color: var(--danger);
+    }
+
+    /* Prescription Table */
+    .med-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+        margin-top: 8px;
+    }
+
+    .med-table th {
+        background-color: var(--gray-50);
+        border-bottom: 2px solid var(--border);
+        padding: 8px;
+        text-align: left;
+        font-size: 11px;
+        color: var(--gray-700);
+    }
+
+    .med-table td {
+        border-bottom: 1px solid var(--border);
+        padding: 8px;
+        vertical-align: middle;
+    }
+
+    .drug-name-col {
+        font-weight: 600;
+        color: var(--dark);
+    }
+
+    .drug-sub {
+        font-size: 10px;
+        color: var(--gray-500);
+        font-weight: normal;
+    }
+
+    .interaction-alert {
+        background-color: #fffbeb;
+        border: 1px solid #fde68a;
+        color: #b45309;
+        padding: 8px 12px;
+        border-radius: 4px;
+        font-size: 11px;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    /* Order Sets (Bộ chỉ định nhanh CLS) */
+    .order-sets {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+    }
+
+    .order-set-btn {
+        background-color: var(--gray-100);
+        border: 1px solid var(--gray-300);
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 11px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .order-set-btn:hover {
+        background-color: var(--primary-light);
+        border-color: var(--primary);
+        color: var(--primary);
+    }
+
+    /* Bottom Fixed Action Bar */
+    .action-bar {
+        background-color: var(--white);
+        border-top: 1px solid var(--border);
+        padding: 10px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-shrink: 0;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .status-indicator {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 11px;
+        color: var(--gray-500);
+    }
+
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: var(--success);
+    }
+
+    .main-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    /* Modal styling for Clone/Copy confirmation */
+    .modal-overlay {
+        position: fixed;
+        top:0; left:0; right:0; bottom:0;
+        background-color: rgba(15, 23, 42, 0.5);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 100;
+    }
+
+    .modal-card {
+        background-color: var(--white);
+        border-radius: 8px;
+        width: 520px;
+        max-width: 90vw;
+        box-shadow: var(--shadow-lg);
+        overflow: hidden;
+    }
+
+    .modal-header {
+        padding: 12px 16px;
+        background-color: var(--gray-50);
+        border-bottom: 1px solid var(--border);
+        font-weight: 700;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-body {
+        padding: 16px;
+        max-height: 350px;
+        overflow-y: auto;
+    }
+
+    .modal-footer {
+        padding: 12px 16px;
+        border-top: 1px solid var(--border);
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        background-color: var(--gray-50);
+    }
+
+    .copy-item-check {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--gray-100);
+    }
+</style>
+
+<!-- 1. NAVBAR HEADER -->
+<header class="navbar">
+    <div class="navbar-brand">
+        <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1M9 13h1M9 17h1M14 9h1M14 13h1M14 17h1"/></svg></span>
+        <span>MedUX Clinic ERP - Phân Hệ Bác Sĩ</span>
+    </div>
+    <div class="doctor-info">
+        <span style="color: var(--gray-500);"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-6.1-7-11a7 7 0 0 1 14 0c0 4.9-7 11-7 11Z"/><circle cx="12" cy="10" r="2.5"/></svg></span> Phòng Khám Nội 02</span>
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <div class="doctor-avatar">BS</div>
+            <div>
+                <div style="font-weight: 600;">BS. CKI Nguyễn Văn Mạnh</div>
+                <div style="font-size: 10px; color: var(--gray-500);">Nội Khoa Tổng Quát</div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- 2. PATIENT HEADER BANNER & VITALS (FIXED TOP) -->
+<section class="patient-banner">
+    <div class="patient-main-info">
+        <div>
+            <span class="patient-name">NGUYỄN VĂN AN</span>
+            <span class="patient-tag tag-bhyt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2 4 5v6c0 5 3.4 9 8 11 4.6-2 8-6 8-11V5l-8-3Z"/></svg></span> BHYT (80%)</span>
+        </div>
+        <div class="patient-meta">
+            <span>Mã BN: <strong>26081901</strong></span> |
+            <span>Tuổi: <strong>58T (1968)</strong></span> |
+            <span>Giới: <strong>Nam</strong></span> |
+            <span>Nhóm máu: <strong style="color:var(--danger)">O+</strong></span>
+        </div>
+        <!-- Dị ứng nổi bật -->
+        <div class="allergy-badge" title="Cảnh báo dị ứng tuyệt đối!">
+            <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/></svg></span> DỊ ỨNG: PENICILLIN (Sốc bảo vệ)
+        </div>
+    </div>
+
+    <!-- Vitals Bar -->
+    <div class="vitals-strip">
+        <div class="vital-item">
+            <span class="vital-label">Mạch</span>
+            <span class="vital-value">78 <small>L/p</small></span>
+        </div>
+        <div class="vital-item">
+            <span class="vital-label">Huyết Áp</span>
+            <span class="vital-value warning">145/90 <small>mmHg</small></span>
+        </div>
+        <div class="vital-item">
+            <span class="vital-label">Nhiệt Độ</span>
+            <span class="vital-value">36.8 <small>°C</small></span>
+        </div>
+        <div class="vital-item">
+            <span class="vital-label">SpO2</span>
+            <span class="vital-value">98 <small>%</small></span>
+        </div>
+        <div class="vital-item">
+            <span class="vital-label">Cân nặng</span>
+            <span class="vital-value">68 <small>kg</small></span>
+        </div>
+        <div class="vital-item">
+            <span class="vital-label">BMI</span>
+            <span class="vital-value">24.2 <small>Thừa cân</small></span>
+        </div>
+    </div>
+</section>
+
+<!-- 3. MAIN WORKSPACE (SPLIT SCREEN) -->
+<div class="workspace">
+
+    <!-- LEFT PANEL: HISTORY & CONTEXT -->
+    <aside class="left-panel">
+        <div class="panel-header">
+            <span><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3M4 4l2 2M20 4l-2 2"/></svg></span> TIỀN SỬ & LỊCH SỬ KHÁM</span>
+            <span class="btn btn-sm btn-outline"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16l-6 8v6l-4-2v-4L4 5Z"/></svg></span> Lọc</span>
+        </div>
+        <div class="panel-content">
+
+            <!-- Quick Notice Box -->
+            <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; padding: 8px 10px; border-radius: 6px; margin-bottom: 12px; font-size: 11px; color: #166534;">
+                <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v5h1"/></svg></span> <strong>Bệnh nhân tái khám định kỳ (Tiểu đường & Tăng HA).</strong>
+            </div>
+
+            <div style="font-weight: 700; font-size: 11px; color: var(--gray-500); margin-bottom: 6px; text-transform: uppercase;">
+                Lần khám gần nhất
+            </div>
+
+            <!-- Last Visit Card -->
+            <div class="history-card active">
+                <div class="history-date">
+                    <span><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M9 15l2 2 4-4"/></svg></span> 15/07/2026 (1 tháng trước)</span>
+                    <span style="font-size:10px; color: var(--gray-500);">BS. Phạm Hoàng</span>
+                </div>
+                <div class="history-dx">E11.9 - ĐTĐ Týp 2 | I10 - Tăng Huyết Áp Vô Căn</div>
+                <div class="history-details">
+                    • <strong>Lý do:</strong> Tái khám lấy thuốc theo hẹn.<br>
+                    • <strong>Đơn cũ:</strong> Amlodipine 5mg (30v), Metformin 850mg (60v), Gliclazide MR 60mg (30v).<br>
+                    • <strong>Xét nghiệm:</strong> HbA1c: 7.1%, Glucose máu: 7.8 mmol/L.
+                </div>
+                <div class="copy-actions">
+                    <button class="btn btn-sm btn-accent" onclick="openCopyModal()">
+                        <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></span> Sao Chép Đơn Cũ
+                    </button>
+                    <button class="btn btn-sm btn-outline" onclick="copyDiagnosis('E11.9 - ĐTĐ Týp 2, I10 - Tăng huyết áp vô căn')">
+                        <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="12" height="16" rx="1"/><path d="M9 2h6v4H9z"/></svg></span> Chẩn Đoán Cũ
+                    </button>
+                </div>
+            </div>
+
+            <!-- Older Visits -->
+            <div style="font-weight: 700; font-size: 11px; color: var(--gray-500); margin: 12px 0 6px 0; text-transform: uppercase;">
+                Lịch sử cũ hơn
+            </div>
+
+            <div class="history-card">
+                <div class="history-date">
+                    <span>12/04/2026</span>
+                    <span style="font-size:10px; color: var(--gray-500);">Phòng Khám Nội</span>
+                </div>
+                <div class="history-dx">J00 - Viêm mũi họng cấp</div>
+                <div class="history-details">
+                    Sốt nhẹ, ho đờm trong, họng đỏ nhẹ. Đã điều trị 7 ngày đáp ứng tốt.
+                </div>
+            </div>
+
+            <div class="history-card">
+                <div class="history-date">
+                    <span>10/01/2026</span>
+                    <span style="font-size:10px; color: var(--gray-500);">Khoa X-Quang</span>
+                </div>
+                <div class="history-dx">Kết Quả CĐHA</div>
+                <div class="history-details">
+                    • X-Quang Phổi: Hình ảnh bình thường.<br>
+                    • Siêu âm bụng: Gan nhiễm mỡ độ 1.
+                </div>
+            </div>
+
+        </div>
+    </aside>
+
+    <!-- RIGHT PANEL: WORKSPACE -->
+    <main class="right-panel">
+
+        <!-- Workspace Tabs -->
+        <div class="workspace-tabs">
+            <div class="tab-item active" onclick="switchTab('tab-kham', event)">
+                <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3v6a4 4 0 0 0 8 0V3M10 21a5 5 0 0 0 5-5v-2M18 3v3a2 2 0 1 1-4 0V3"/></svg></span> 1. Khám & Chẩn đoán
+            </div>
+            <div class="tab-item" onclick="switchTab('tab-cls', event)">
+                <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2h6M10 2v6.5L4.5 18a1.8 1.8 0 0 0 1.6 2.8h11.8a1.8 1.8 0 0 0 1.6-2.8L14 8.5V2"/></svg></span> 2. Chỉ định CLS <span class="tab-badge">2</span>
+            </div>
+            <div class="tab-item" onclick="switchTab('tab-donthuoc', event)">
+                <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="8" height="8" rx="4"/><rect x="13" y="13" width="8" height="8" rx="4"/><path d="M8.5 8.5 3 3M15.5 15.5 21 21"/></svg></span> 3. Kê Đơn Thuốc <span class="tab-badge" id="rx-count">3</span>
+            </div>
+            <div class="tab-item" onclick="switchTab('tab-hen', event)">
+                <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M12 14v4M10 16h4"/></svg></span> 4. Lời Dặn & Hẹn Tái Khám
+            </div>
+        </div>
+
+        <!-- Workspace Content Canvas -->
+        <div class="workspace-content">
+
+            <!-- SECTION 1: KHÁM LÂM SÀNG & CHẨN ĐOÁN -->
+            <div class="card" id="section-kham">
+                <div class="card-title">
+                    <span><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/><path d="M17 8h3M18.5 6.5v3"/></svg></span> THÔNG TIN KHÁM LÂM SÀNG</span>
+                    <div class="card-title-actions">
+                        <select class="form-control" style="width: auto; padding: 3px 8px; font-size: 11px;" onchange="applyTemplate(this.value)">
+                            <option value="">-- Mẫu khám nhanh (Templates) --</option>
+                            <option value="maint">Mẫu tái khám Tăng HA & ĐTĐ Mạn Tính</option>
+                            <option value="resp">Mẫu khám Viêm Hấp Trên</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div class="form-group">
+                        <label class="form-label">Lý do vào viện / Khám bệnh</label>
+                        <input type="text" class="form-control" id="ly-do" value="Tái khám ĐTĐ týp 2 & Tăng huyết áp theo hẹn, không sốt, không đau ngực">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Tiền sử bệnh lý (Hệ thống tự động điền)</label>
+                        <input type="text" class="form-control" value="ĐTĐ Týp 2 (5 năm), Tăng HA (3 năm). Dị ứng Penicillin." readonly style="background-color: var(--gray-100);">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Diễn biến bệnh & Khám lâm sàng</label>
+                    <textarea class="form-control" id="kham-lam-sang" rows="3">Bệnh nhân tỉnh táo, tiếp xúc tốt. Không phù, không xuất huyết dưới da. Tim đều T1, T2 rõ, không âm thổi bệnh lý. Phổi thông khí đều 2 bên, không ran. Bụng mềm, gan lách không to. Huyết áp phòng khám 145/90 mmHg.</textarea>
+                </div>
+
+                <!-- Chẩn đoán ICD-10 -->
+                <div style="margin-top: 16px; border-top: 1px dashed var(--border); padding-top: 12px;">
+                    <label class="form-label" style="font-size:12px; font-weight:700;">Chẩn Đoán Bệnh (ICD-10 / ICD-11)</label>
+
+                    <div class="icd-search-box">
+                        <input type="text" class="form-control" placeholder="Gõ mã ICD hoặc tên bệnh (VD: E11, Tăng huyết áp...)..." id="icd-input" onkeyup="searchICD(this.value)">
+                        <div class="icd-results" id="icd-dropdown">
+                            <div class="icd-item" onclick="addICD('E11.9', 'Bệnh đái tháo đường typ 2 không có biến chứng')">
+                                <strong>E11.9</strong> - Bệnh đái tháo đường typ 2 không có biến chứng
+                            </div>
+                            <div class="icd-item" onclick="addICD('I10', 'Bệnh tăng huyết áp vô căn (nguyên phát)')">
+                                <strong>I10</strong> - Bệnh tăng huyết áp vô căn (nguyên phát)
+                            </div>
+                            <div class="icd-item" onclick="addICD('E78.5', 'Tăng lipid máu, không xác định')">
+                                <strong>E78.5</strong> - Tăng lipid máu, không xác định
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Danh sách chẩn đoán đã chọn -->
+                    <div class="selected-icd-list" id="icd-list">
+                        <div class="icd-chip primary-dx">
+                            <div>
+                                <span class="patient-tag" style="background:#e0f2fe; color:#0369a1; margin-right:6px;">Bệnh chính</span>
+                                <strong>E11.9</strong> - Bệnh đái tháo đường typ 2 không có biến chứng
+                            </div>
+                            <span class="remove-btn" onclick="this.parentElement.remove()">
+                                <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6 6 18"/></svg></span>
+                            </span>
+                        </div>
+                        <div class="icd-chip">
+                            <div>
+                                <span class="patient-tag" style="background:#f1f5f9; color:#475569; margin-right:6px;">Bệnh kèm theo</span>
+                                <strong>I10</strong> - Bệnh tăng huyết áp vô căn (nguyên phát)
+                            </div>
+                            <span class="remove-btn" onclick="this.parentElement.remove()">
+                                <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6 6 18"/></svg></span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- SECTION 2: CHỈ ĐỊNH CẬN LÂM SÀNG -->
+            <div class="card" id="section-cls">
+                <div class="card-title">
+                    <span><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2h6M10 2v6.5L4.5 18a1.8 1.8 0 0 0 1.6 2.8h11.8a1.8 1.8 0 0 0 1.6-2.8L14 8.5V2"/></svg></span> CHỈ ĐỊNH CẬN LÂM SÀNG (XÉT NGHIỆM / CĐHA)</span>
+                    <button class="btn btn-sm btn-outline"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg></span> Thêm xét nghiệm</button>
+                </div>
+
+                <div style="font-size: 11px; color: var(--gray-500); margin-bottom: 6px;">Bộ chỉ định nhanh (Order sets):</div>
+                <div class="order-sets">
+                    <span class="order-set-btn" onclick="addCLS('Gói xét nghiệm ĐTĐ định kỳ')"><span class="ico"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8Z"/></svg></span> Gói ĐTĐ Định Kỳ (Glucose + HbA1c + Bilan Lipid)</span>
+                    <span class="order-set-btn" onclick="addCLS('Gói Tiêu Hóa')"><span class="ico"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8Z"/></svg></span> Gói Chức Năng Gan Tụy</span>
+                    <span class="order-set-btn" onclick="addCLS('X-Quang Ngực Thẳng')"><span class="ico"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8Z"/></svg></span> X-Quang Ngực Thẳng</span>
+                </div>
+
+                <table class="med-table">
+                    <thead>
+                        <tr>
+                            <th>Mã DV</th>
+                            <th>Tên Dịch Vụ Kỹ Thuật</th>
+                            <th>Số Lượng</th>
+                            <th>Nơi Thực Hiện</th>
+                            <th>Trạng Thái</th>
+                            <th style="width: 40px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="cls-table-body">
+                        <tr>
+                            <td>XN-0021</td>
+                            <td><strong>Đo độ HbA1c trong máu</strong></td>
+                            <td>1</td>
+                            <td>Phòng Xét Nghiệm Máu (P.102)</td>
+                            <td><span class="patient-tag" style="background-color: #fef3c7; color: #92400e;">Đã gửi chỉ định</span></td>
+                            <td><span class="ico" style="color:var(--gray-500); cursor:pointer;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m2 0-1 13a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 7"/></svg></span></td>
+                        </tr>
+                        <tr>
+                            <td>XN-0005</td>
+                            <td><strong>Định lượng Glucose máu</strong></td>
+                            <td>1</td>
+                            <td>Phòng Xét Nghiệm Máu (P.102)</td>
+                            <td><span class="patient-tag" style="background-color: #fef3c7; color: #92400e;">Đã gửi chỉ định</span></td>
+                            <td><span class="ico" style="color:var(--gray-500); cursor:pointer;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m2 0-1 13a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 7"/></svg></span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- SECTION 3: KÊ ĐƠN THUỐC -->
+            <div class="card" id="section-donthuoc">
+                <div class="card-title">
+                    <span><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="3"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></span> ĐƠN THUỐC ĐIỀU TRỊ</span>
+                    <div style="display:flex; gap:8px;">
+                        <button class="btn btn-sm btn-accent" onclick="openCopyModal()"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/></svg></span> Lấy Đơn Lần Trước</button>
+                        <button class="btn btn-sm btn-primary" onclick="focusDrugSearch()"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg></span> Thêm Thuốc</button>
+                    </div>
+                </div>
+
+                <!-- Smart Interaction Warning Bar -->
+                <div class="interaction-alert">
+                    <span class="ico" style="font-size:16px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 4 5v6c0 5 3.4 9 8 11 4.6-2 8-6 8-11V5l-8-3Z"/><path d="m9.5 12 2 2 3.5-4"/></svg></span>
+                    <div>
+                        <strong>Kiểm tra An Toàn Y Khoa:</strong> Không phát hiện chống chỉ định dị ứng Penicillin đối với các thuốc đã chọn. Liều dùng Metformin phù hợp với chỉ số BMI bệnh nhân.
+                    </div>
+                </div>
+
+                <!-- Search Drug -->
+                <div class="form-group" style="position: relative;">
+                    <input type="text" id="drug-search" class="form-control" placeholder="Gõ tên thuốc, hoạt chất hoặc mã biệt dược (VD: Metformin, Amlodipine...)...">
+                </div>
+
+                <table class="med-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 30px;">#</th>
+                            <th>Tên Thuốc / Hoạt Chất</th>
+                            <th style="width: 120px;">Đường Dùng / Hướng Dẫn</th>
+                            <th style="width: 90px;">Số Lượng</th>
+                            <th style="width: 80px;">Đơn Vị</th>
+                            <th style="width: 180px;">Liều Dùng / Ngày</th>
+                            <th style="width: 40px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="rx-table-body">
+                        <tr>
+                            <td>1</td>
+                            <td>
+                                <div class="drug-name-col">Amlodipine 5mg</div>
+                                <div class="drug-sub">Hoạt chất: Amlodipine besylate | Tồn kho: 1,240 viên</div>
+                            </td>
+                            <td>Uống sau ăn</td>
+                            <td><input type="number" class="form-control" value="30" style="padding: 2px 6px;"></td>
+                            <td>Viên</td>
+                            <td>
+                                <select class="form-control" style="padding: 2px 6px;">
+                                    <option selected>Sáng 1v - Tối 0v</option>
+                                    <option>Sáng 1v - Tối 1v</option>
+                                    <option>Tùy chỉnh...</option>
+                                </select>
+                            </td>
+                            <td><span class="ico" style="color:var(--gray-500); cursor:pointer;" onclick="this.closest('tr').remove(); updateRxCount();"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m2 0-1 13a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 7"/></svg></span></td>
+                        </tr>
+                        <tr>
+                            <td>2</td>
+                            <td>
+                                <div class="drug-name-col">Metformin STADA 850mg</div>
+                                <div class="drug-sub">Hoạt chất: Metformin hydrochloride | Tồn kho: 850 viên</div>
+                            </td>
+                            <td>Uống trong/sau ăn</td>
+                            <td><input type="number" class="form-control" value="60" style="padding: 2px 6px;"></td>
+                            <td>Viên</td>
+                            <td>
+                                <select class="form-control" style="padding: 2px 6px;">
+                                    <option selected>Sáng 1v - Tối 1v</option>
+                                    <option>Sáng 1v - Trưa 1v - Tối 1v</option>
+                                </select>
+                            </td>
+                            <td><span class="ico" style="color:var(--gray-500); cursor:pointer;" onclick="this.closest('tr').remove(); updateRxCount();"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m2 0-1 13a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 7"/></svg></span></td>
+                        </tr>
+                        <tr>
+                            <td>3</td>
+                            <td>
+                                <div class="drug-name-col">Diamicron MR 60mg</div>
+                                <div class="drug-sub">Hoạt chất: Gliclazide | Tồn kho: 420 viên</div>
+                            </td>
+                            <td>Uống trước bữa ăn sáng</td>
+                            <td><input type="number" class="form-control" value="30" style="padding: 2px 6px;"></td>
+                            <td>Viên</td>
+                            <td>
+                                <select class="form-control" style="padding: 2px 6px;">
+                                    <option selected>Sáng 1v (Trước ăn)</option>
+                                    <option>Sáng 2v (Trước ăn)</option>
+                                </select>
+                            </td>
+                            <td><span class="ico" style="color:var(--gray-500); cursor:pointer;" onclick="this.closest('tr').remove(); updateRxCount();"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m2 0-1 13a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 7"/></svg></span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- SECTION 4: LỜI DẶN & TÁI KHÁM -->
+            <div class="card" id="section-hen">
+                <div class="card-title">
+                    <span><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M9 15l2 2 4-4"/></svg></span> LỜI DẶN BÁC SĨ & HẸN TÁI KHÁM</span>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 12px;">
+                    <div class="form-group">
+                        <label class="form-label">Lời dặn chế độ ăn uống & Sinh hoạt</label>
+                        <textarea class="form-control" rows="2">Ăn nhạt, hạn chế tinh bột chế biến sẵn và đồ ngọt. Tập thể dục nhẹ nhàng 30 phút/ngày. Đo huyết áp và đường huyết tại nhà trước ăn sáng.</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Hẹn tái khám sau</label>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="number" class="form-control" value="30">
+                            <select class="form-control" style="width: 100px;">
+                                <option>Ngày</option>
+                                <option>Tuần</option>
+                                <option>Tháng</option>
+                            </select>
+                        </div>
+                        <div style="font-size: 10px; color: var(--gray-500); margin-top: 4px;">
+                            Ngày hẹn dự kiến: <strong>18/09/2026</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+</div>
+
+<!-- 4. BOTTOM ACTION BAR (FIXED BOTTOM) -->
+<footer class="action-bar">
+    <div class="status-indicator">
+        <span class="status-dot"></span>
+        <span>Tự động lưu nháp lúc 12:32:10 | Máy chủ sẵn sàng</span>
+    </div>
+    <div class="main-actions">
+        <button class="btn btn-outline"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6 6 18"/></svg></span> Hủy Bỏ</button>
+        <button class="btn btn-outline"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg></span> Lưu Nháp</button>
+        <button class="btn btn-outline" style="color: var(--secondary); border-color: var(--secondary);">
+            <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V3h12v6M6 18H4a1 1 0 0 1-1-1v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a1 1 0 0 1-1 1h-2M6 14h12v7H6z"/></svg></span> In Chỉ Định CLS
+        </button>
+        <button class="btn btn-primary" style="padding: 8px 18px; font-weight: 600;" onclick="finishExam()">
+            <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m2.5 12 4 4L14 8M12.5 12l4 4L23 8"/></svg></span> HOÀN TẤT KHÁM & IN ĐƠN THUỐC
+        </button>
+    </div>
+</footer>
+
+<!-- MODAL SAO CHÉP ĐƠN THUỐC CŨ -->
+<div class="modal-overlay" id="copyModal">
+    <div class="modal-card">
+        <div class="modal-header">
+            <span><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></span> Sao Chép Đơn Thuốc Ngày 15/07/2026</span>
+            <span class="ico" style="cursor:pointer;" onclick="closeCopyModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6 6 18"/></svg></span>
+        </div>
+        <div class="modal-body">
+            <p style="font-size:11px; color: var(--gray-500); margin-bottom: 10px;">
+                Chọn các thuốc bạn muốn sao chép sang lần khám hôm nay (Số lượng sẽ tự động nhân theo 30 ngày):
+            </p>
+
+            <div class="copy-item-check">
+                <input type="checkbox" checked id="c1">
+                <label for="c1" style="font-weight:600;">Amlodipine 5mg</label>
+                <span style="font-size:11px; color:var(--gray-500); margin-left:auto;">Sáng 1v (30 viên)</span>
+            </div>
+            <div class="copy-item-check">
+                <input type="checkbox" checked id="c2">
+                <label for="c2" style="font-weight:600;">Metformin STADA 850mg</label>
+                <span style="font-size:11px; color:var(--gray-500); margin-left:auto;">Sáng 1v - Tối 1v (60 viên)</span>
+            </div>
+            <div class="copy-item-check">
+                <input type="checkbox" checked id="c3">
+                <label for="c3" style="font-weight:600;">Diamicron MR 60mg</label>
+                <span style="font-size:11px; color:var(--gray-500); margin-left:auto;">Sáng 1v (30 viên)</span>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeCopyModal()">Hủy</button>
+            <button class="btn btn-primary" onclick="confirmCopy()">Đồng Ý Copy Vào Đơn</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function switchTab(tabId, evt) {
+        document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('active'));
+        if (evt && evt.currentTarget) evt.currentTarget.classList.add('active');
+
+        const map = {
+            'tab-kham': 'section-kham',
+            'tab-cls': 'section-cls',
+            'tab-donthuoc': 'section-donthuoc',
+            'tab-hen': 'section-hen'
+        };
+        document.getElementById(map[tabId]).scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function searchICD(val) {
+        const dropdown = document.getElementById('icd-dropdown');
+        dropdown.style.display = val.length >= 2 ? 'block' : 'none';
+    }
+
+    function addICD(code, name) {
+        const list = document.getElementById('icd-list');
+        const newChip = document.createElement('div');
+        newChip.className = 'icd-chip';
+        newChip.innerHTML = `
+            <div>
+                <span class="patient-tag" style="background:#f1f5f9; color:#475569; margin-right:6px;">Bệnh kèm theo</span>
+                <strong>${code}</strong> - ${name}
+            </div>
+            <span class="remove-btn" onclick="this.parentElement.remove()"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6 6 18"/></svg></span></span>
+        `;
+        list.appendChild(newChip);
+        document.getElementById('icd-dropdown').style.display = 'none';
+        document.getElementById('icd-input').value = '';
+    }
+
+    function openCopyModal() {
+        document.getElementById('copyModal').style.display = 'flex';
+    }
+
+    function closeCopyModal() {
+        document.getElementById('copyModal').style.display = 'none';
+    }
+
+    function confirmCopy() {
+        closeCopyModal();
+        alert('Đã sao chép đơn thuốc thành công và tự động tính liều cho 30 ngày!');
+    }
+
+    function copyDiagnosis(dxText) {
+        alert('Đã chép chẩn đoán cũ: ' + dxText);
+    }
+
+    function applyTemplate(val) {
+        if (val === 'maint') {
+            document.getElementById('ly-do').value = 'Tái khám định kỳ ĐTĐ týp 2 & Tăng huyết áp';
+            document.getElementById('kham-lam-sang').value = 'Bệnh nhân không sốt, không khó thở, không đau ngực. Tim đều, phổi trong, huyết áp 135/85 mmHg. Đường huyết đói nhà tự đo trung bình 7.2 mmol/L.';
+        }
+    }
+
+    function focusDrugSearch() {
+        document.getElementById('drug-search').focus();
+    }
+
+    function updateRxCount() {
+        const count = document.querySelectorAll('#rx-table-body tr').length;
+        document.getElementById('rx-count').innerText = count;
+    }
+
+    function finishExam() {
+        alert('Đã hoàn tất ca khám! Đơn thuốc và chỉ định đã được gửi ra nhà thuốc & phòng xét nghiệm.');
+    }
+
+    function addCLS(name) {
+        alert('Đã thêm bộ chỉ định: ' + name);
+    }
+</script>

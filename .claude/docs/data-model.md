@@ -165,12 +165,22 @@ Cân nặng/chiều cao lưu số nguyên (gram, mm) để tránh số thực; n
 
 **Ngưỡng cảnh báo ngoài giới hạn sinh lý (REC-03)** — `packages/core/src/vital-sign/vital-sign-thresholds.ts` (`evaluateVitalSignWarnings()`), theo 3 nhóm tuổi (< 1 tuổi / 1–12 tuổi / ≥13 tuổi) cho mạch + nhịp thở, ngưỡng chung cho nhiệt độ/SpO2, 2 nhóm cho huyết áp (dưới/từ 13 tuổi) — hằng số cố định trong code, **không** đọc từ `tenant_setting` (khác ngưỡng no-show). Luôn chỉ cảnh báo, không bao giờ chặn lưu — xem `docs/DECISIONS.md`.
 
-### diagnosis
-`encounter_id`, `icd10_code`, `type` (primary / secondary), `note`.
-`icd10_code` FK tới `icd10_catalog` (danh mục toàn hệ thống, không có `tenant_id`, read-only runtime).
+### diagnosis (đã hiện thực — Sprint 3, S3-05→07)
+`encounter_id`, `icd10_code`, `type` (`PRIMARY`/`SECONDARY`), `note?`.
+`icd10_code` FK thường (không composite) tới `icd10_catalog.code` — danh mục toàn hệ thống, không có `tenant_id`, read-only runtime.
 
-### clinical_note
-`encounter_id`, `section` (subjective / objective / assessment / plan), `content`, `signed_at`.
+**Đúng một `PRIMARY` mỗi encounter (C10, `docs/ERD.md` mục 4)** — ép bằng unique partial index `(tenant_id, encounter_id) WHERE type='PRIMARY' AND deleted_at IS NULL` (raw SQL trong migration, không khai `@unique` ở Prisma — cùng lý do `patient.nationalIdHash`), kèm validate ở Zod (`saveDiagnosesRequestSchema.refine()`) trước khi chạm DB. `PUT /encounters/:id/diagnoses` thay thế TOÀN BỘ danh sách mỗi lần lưu (xoá mềm dòng cũ + tạo lại) — đơn giản hơn diff từng dòng vì khối lượng nhỏ (vài dòng/encounter). Bắt buộc `encounter.status='IN_CONSULTATION'` mới ghi được (`ENCOUNTER_NOT_IN_CONSULTATION`, 409 nếu không).
+
+### clinical_note (đã hiện thực — Sprint 3, S3-05→07; đổi section 2026-08-20)
+`encounter_id`, `section` (8 giá trị — xem dưới), `content`, `signed_at?`, `signed_by?`, `supersedes_id?`, `amendment_reason?`.
+
+**`section` KHÔNG còn là 4 mục SOAP (S/O/A/P)** — đổi theo yêu cầu chủ dự án 2026-08-20 sang 8 giá trị nhóm theo 2 khối hiển thị web ("Tiền sử"/"Thăm khám"): `PERSONAL_HISTORY`/`FAMILY_HISTORY` (Tiền sử bản thân/gia đình), `REASON_FOR_VISIT` (Lý do khám, bắt buộc)/`ILLNESS_PROGRESS` (Quá trình bệnh lý)/`PRELIMINARY_DIAGNOSIS` (Chẩn đoán sơ bộ — hiển thị web là "Chuẩn đoán", bắt buộc)/`GENERAL_EXAM` (Khám toàn thân)/`REGIONAL_EXAM` (Khám bộ phận), và `PLAN` (Kế hoạch điều trị & lời dặn — để sẵn cho tab riêng chưa xây, không đổi tên). Migration `20260820150000_clinical_note_sections_v2` (`DELETE FROM clinical_note` rồi đổi enum — chỉ có dữ liệu demo/dev, không có tenant production). **"Tiền sử dị ứng" KHÔNG có section riêng** — đọc/ghi thẳng `patient.allergy_note` qua `PATCH /patients/:id` (một nguồn sự thật, không nhân đôi dữ liệu).
+
+**Đúng một dòng hiệu lực mỗi `(encounter_id, section)`** — unique partial index `(tenant_id, encounter_id, section) WHERE deleted_at IS NULL`, cơ sở cho `PUT /encounters/:id/clinical-note` upsert tìm-hoặc-tạo (thiếu `version` trong payload = tạo mới, có `version` = update kèm optimistic lock). Lưu cả 8 mục trong MỘT request (khớp form bấm "Lưu nháp" một lần, không autosave — ENC-06 lưu nháp offline là P1/Sprint 6).
+
+**`signed_at`/`signed_by`/`supersedes_id`/`amendment_reason` để sẵn theo `SignableEntity` (`packages/core/src/entity/base-entity.ts`), LUÔN NULL ở v1 hiện tại** — mọi ghi chú SOAP/chẩn đoán ở S3-05→07 đều là bản nháp, chưa có logic ký (ENC-04) hay đính chính (amendment). Cả hai là việc của Sprint 5 (S5-02/03) — khi làm, chỉ cần thêm service gọi `SignaturePort` (đã có adapter no-op, chưa từng dùng) và enforce bất biến qua trigger C8, không đổi schema.
+
+**"Hoàn tất khám" (`POST /encounters/:id/complete`, `IN_CONSULTATION→COMPLETED`) chỉ yêu cầu đúng 1 `diagnosis.type='PRIMARY'`** — KHÔNG phụ thuộc đơn thuốc tồn tại (module `prescription`, Sprint 4, chưa xây) dù PRD mô tả luồng "happy path" là Kê đơn rồi mới Hoàn tất; đây là quyết định đã hỏi và chốt với chủ dự án (`docs/DECISIONS.md` #059) — tái dùng permission `encounter.update` (không thêm permission mới, coi đây là một dạng chuyển trạng thái khác của "bắt đầu khám").
 
 ### prescription / prescription_item
 `prescription`: `encounter_id`, `signed_at`, `signed_by`, `signature_payload` (null ở v1), `printed_at`.

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ClipboardText, MapPinLine, Play } from '@phosphor-icons/react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowRight, ClipboardText, MapPinLine, Play } from '@phosphor-icons/react';
 import type { ReceptionListItem } from '@nexamed/shared';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
@@ -22,22 +23,24 @@ function formatTime(iso: string): string {
 /**
  * "Hàng đợi khám" — khu vực/trang RIÊNG cho bác sĩ (khác "Danh sách tiếp nhận" của lễ tân, đã
  * chốt lại với chủ dự án — xem docs/DECISIONS.md), chỉ hiển thị bệnh nhân đang chờ (`CHECKED_IN`)
- * của CHÍNH bác sĩ đang đăng nhập trong ngày hôm nay. `encounter.read` của bác sĩ là scope
- * `global` (cần để tra cứu bệnh nhân khác khi cần) nên phải LỌC TƯỜNG MINH theo `doctorId` ở đây,
- * không dựa vào permission scope. "Bắt đầu khám" (CHECKED_IN→IN_CONSULTATION) chuyển hẳn về đây
- * từ "Danh sách tiếp nhận" — đúng đối tượng thao tác (`docs/DECISIONS.md` #044). Chưa mở màn hình
- * khám bệnh thật (chặn bởi ICD-10, ngoài phạm vi hiện tại) — bấm xong chỉ chuyển trạng thái, dòng
- * tự biến mất khỏi hàng đợi (đã sang IN_CONSULTATION).
+ * hoặc đang khám dở (`IN_CONSULTATION`) của CHÍNH bác sĩ đang đăng nhập trong ngày hôm nay.
+ * `encounter.read` của bác sĩ là scope `global` (cần để tra cứu bệnh nhân khác khi cần) nên phải
+ * LỌC TƯỜNG MINH theo `doctorId` ở đây, không dựa vào permission scope. "Bắt đầu khám"
+ * (CHECKED_IN→IN_CONSULTATION) chuyển hẳn về đây từ "Danh sách tiếp nhận" — đúng đối tượng thao
+ * tác (`docs/DECISIONS.md` #044). Sau khi chuyển trạng thái, điều hướng thẳng vào màn hình khám
+ * (`/encounters/:id`, S3-06/07) — dòng `IN_CONSULTATION` vẫn hiện ở đây với nút "Tiếp tục khám" để
+ * bác sĩ quay lại nếu lỡ rời màn hình/F5 giữa chừng.
  */
 export function ReceptionDoctorQueuePage() {
   useBreadcrumb([{ label: 'Khám bệnh' }, { label: 'Hàng đợi khám' }]);
   const currentUser = useAuthStore((s) => s.user);
   const today = getVietnamTodayDateString();
+  const navigate = useNavigate();
   const [rowError, setRowError] = useState<string | null>(null);
 
   const listQuery = useReceptionListQuery(today, currentUser?.id);
   const startConsultationMutation = useStartConsultationMutation();
-  const items = (listQuery.data?.items ?? []).filter((i) => i.status === 'CHECKED_IN');
+  const items = (listQuery.data?.items ?? []).filter((i) => i.status === 'CHECKED_IN' || i.status === 'IN_CONSULTATION');
 
   // "Đang ở phòng nào" (docs/DECISIONS.md #054) — 0-1 phòng active thì tự ẩn hoàn toàn, cùng logic
   // RoomSessionGate.tsx (không lặp query khi tenant chưa dùng mô hình nhiều phòng).
@@ -50,6 +53,7 @@ export function ReceptionDoctorQueuePage() {
     setRowError(null);
     try {
       await startConsultationMutation.mutateAsync({ id: item.encounterId, body: { version: item.version } });
+      navigate(`/encounters/${item.encounterId}`);
     } catch (err) {
       setRowError(err instanceof ApiError ? err.message : 'Có lỗi xảy ra, vui lòng thử lại.');
     }
@@ -107,16 +111,28 @@ export function ReceptionDoctorQueuePage() {
               key={item.encounterId}
               className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm"
             >
-              <div>
-                <div className="text-sm font-semibold text-slate-900">{item.fullName}</div>
-                <div className="text-xs text-slate-500">
-                  {item.phone} · Tiếp nhận lúc {formatTime(item.checkedInAt)} · {item.encounterNo}
+              <div className="flex items-center gap-2">
+                {item.status === 'IN_CONSULTATION' && (
+                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">Đang khám</span>
+                )}
+                <div>
+                  <div className="text-sm font-semibold text-slate-900">{item.fullName}</div>
+                  <div className="text-xs text-slate-500">
+                    {item.phone} · Tiếp nhận lúc {formatTime(item.checkedInAt)} · {item.encounterNo}
+                  </div>
                 </div>
               </div>
-              <Button type="button" loading={startConsultationMutation.isPending} onClick={() => void handleStartConsultation(item)}>
-                <Play size={13} weight="bold" aria-hidden="true" />
-                Bắt đầu khám
-              </Button>
+              {item.status === 'IN_CONSULTATION' ? (
+                <Button type="button" variant="secondary" onClick={() => navigate(`/encounters/${item.encounterId}`)}>
+                  <ArrowRight size={13} weight="bold" aria-hidden="true" />
+                  Tiếp tục khám
+                </Button>
+              ) : (
+                <Button type="button" loading={startConsultationMutation.isPending} onClick={() => void handleStartConsultation(item)}>
+                  <Play size={13} weight="bold" aria-hidden="true" />
+                  Bắt đầu khám
+                </Button>
+              )}
             </div>
           ))}
         </div>

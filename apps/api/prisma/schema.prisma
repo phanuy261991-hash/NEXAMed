@@ -70,6 +70,8 @@ model Tenant {
   appointments      Appointment[]
   encounters        Encounter[]
   vitalSigns        VitalSign[]
+  diagnoses         Diagnosis[]
+  clinicalNotes     ClinicalNote[]
 
   @@map("tenant")
 }
@@ -469,6 +471,8 @@ model Icd10Catalog {
   usageRestriction  Icd10UsageRestriction?   @map("usage_restriction")
   whoNote           String?                  @map("who_note")
 
+  diagnoses Diagnosis[]
+
   @@index([chapterCode])
   @@index([groupCode])
   @@map("icd10_catalog")
@@ -746,6 +750,35 @@ enum EncounterStatus {
   @@map("encounter_status")
 }
 
+// S3-05→07 (Khám bệnh) — .claude/docs/clinical-workflow.md mục "Khám bệnh": "Bắt buộc có ít nhất
+// một `diagnosis` với `type = primary`". Đúng một PRIMARY/encounter ép bằng unique partial index
+// raw SQL (C10, docs/ERD.md) — không biểu diễn được ở Prisma, xem comment trong model Diagnosis.
+enum DiagnosisType {
+  PRIMARY
+  SECONDARY
+
+  @@map("diagnosis_type")
+}
+
+// Thay thế 4 mục SOAP (S/O/A/P) bằng 8 mục theo nhóm "Tiền sử"/"Thăm khám" — yêu cầu chủ dự án
+// 2026-08-20, xem docs/DECISIONS.md (entry sau #059). PERSONAL_HISTORY/FAMILY_HISTORY thuộc nhóm
+// "Tiền sử" (hiển thị dạng khung/box riêng ở web, KHÔNG gồm dị ứng — dị ứng đọc/ghi thẳng
+// patient.allergyNote, không qua bảng này). REASON_FOR_VISIT/ILLNESS_PROGRESS/
+// PRELIMINARY_DIAGNOSIS/GENERAL_EXAM/REGIONAL_EXAM thuộc nhóm "Thăm khám". PLAN để sẵn cho tab
+// "Kế hoạch điều trị & hẹn tái khám" (chưa xây, xem EncounterConsultationPage.tsx TABS).
+enum ClinicalNoteSection {
+  PERSONAL_HISTORY
+  FAMILY_HISTORY
+  REASON_FOR_VISIT
+  ILLNESS_PROGRESS
+  PRELIMINARY_DIAGNOSIS
+  GENERAL_EXAM
+  REGIONAL_EXAM
+  PLAN
+
+  @@map("clinical_note_section")
+}
+
 // Lượt khám (Sprint 3, REC-01→03) — xem .claude/docs/clinical-workflow.md mục "Tiếp nhận
 // (check-in)", docs/ERD.md mục 3.3. Bảng trung tâm: sinh hiệu/chẩn đoán/ghi chú/đơn thuốc đều trỏ
 // về encounter_id (chưa xây ở PR này — đó là module `encounter` giai đoạn Khám bệnh sau).
@@ -817,6 +850,8 @@ model Encounter {
   doctor      UserAccount  @relation("EncounterDoctor", fields: [tenantId, doctorId], references: [tenantId, id])
   appointment Appointment? @relation(fields: [tenantId, appointmentId], references: [tenantId, id])
   vitalSigns  VitalSign[]
+  diagnoses     Diagnosis[]
+  clinicalNotes ClinicalNote[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, encounterNo])
@@ -858,6 +893,71 @@ model VitalSign {
 
   @@unique([tenantId, id])
   @@map("vital_sign")
+}
+
+// Chẩn đoán (S3-05→07) — docs/ERD.md mục 3.4 (khối DIAGNOSIS). Đúng một PRIMARY/encounter (C10) —
+// unique partial index raw SQL trong migration (WHERE type='PRIMARY' AND deleted_at IS NULL),
+// không khai @unique ở đây (Prisma không biểu diễn được unique có điều kiện WHERE, cùng lý do
+// patient.nationalIdHash/encounter.appointmentId).
+model Diagnosis {
+  id          String        @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId    String        @map("tenant_id") @db.Uuid
+  encounterId String        @map("encounter_id") @db.Uuid
+  // FK thường (không composite) tới icd10_catalog.code — danh mục toàn hệ thống, không có tenant_id.
+  icd10Code   String        @map("icd10_code")
+  type        DiagnosisType
+  note        String?
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant    Tenant      @relation(fields: [tenantId], references: [id])
+  // Composite FK (tenant_id, encounter_id) -> encounter(tenant_id, id): chống trỏ chéo tenant.
+  encounter Encounter   @relation(fields: [tenantId, encounterId], references: [tenantId, id])
+  icd10     Icd10Catalog @relation(fields: [icd10Code], references: [code])
+
+  @@unique([tenantId, id])
+  @@map("diagnosis")
+}
+
+// Ghi chú khám (S3-05→07, đổi từ 4 mục SOAP sang 8 mục nhóm Tiền sử/Thăm khám — xem enum
+// ClinicalNoteSection) — docs/ERD.md mục 3.4 (khối CLINICAL_NOTE), .claude/docs/
+// clinical-workflow.md mục "Amendment hồ sơ". MỘT DÒNG/section/encounter (unique partial WHERE
+// deleted_at IS NULL trong migration — cơ sở cho upsert tìm-hoặc-tạo). `signedAt`/`signedBy`/
+// `supersedesId`/`amendmentReason` để sẵn theo `SignableEntity` (packages/core) — LUÔN NULL ở vòng
+// này, ký hồ sơ (ENC-04) và luồng đính chính là việc của Sprint 5 (S5-02/03), chưa viết logic.
+model ClinicalNote {
+  id              String              @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId        String              @map("tenant_id") @db.Uuid
+  encounterId     String              @map("encounter_id") @db.Uuid
+  section         ClinicalNoteSection
+  content         String
+  signedAt        DateTime?           @map("signed_at") @db.Timestamptz(6)
+  signedBy        String?             @map("signed_by") @db.Uuid
+  supersedesId    String?             @map("supersedes_id") @db.Uuid
+  amendmentReason String?             @map("amendment_reason")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  // Composite FK (tenant_id, encounter_id) -> encounter(tenant_id, id): chống trỏ chéo tenant.
+  encounter Encounter @relation(fields: [tenantId, encounterId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@map("clinical_note")
 }
 
 // Append-only — không updated_at, không deleted_at, không version (ngoại lệ đã ghi trong data-model.md).

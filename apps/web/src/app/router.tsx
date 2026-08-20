@@ -7,6 +7,7 @@ import { CatalogAdminPage } from '../features/catalog/CatalogAdminPage';
 import { CatalogClinicalPage } from '../features/catalog-clinical/CatalogClinicalPage';
 import { ClinicConfigPage } from '../features/clinic/ClinicConfigPage';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
+import { EncounterConsultationPage } from '../features/encounter/EncounterConsultationPage';
 import { PatientDetailPage } from '../features/patient/PatientDetailPage';
 import { PatientListPage } from '../features/patient/PatientListPage';
 import { PatientNewPage } from '../features/patient/PatientNewPage';
@@ -38,6 +39,9 @@ export const router = createBrowserRouter([
       { path: 'reception', element: <ReceptionListPage /> },
       { path: 'reception/new', element: <ReceptionRegisterPage /> },
       { path: 'reception/doctor-queue', element: <ReceptionDoctorQueuePage /> },
+      // Màn hình khám bệnh (S3-06/07) — vào từ "Hàng đợi khám", không có mục sidebar riêng (cùng
+      // cách patient/appointment detail không có mục sidebar riêng).
+      { path: 'encounters/:id', element: <EncounterConsultationPage /> },
       // Trình duyệt hay gợi ý gõ tắt "/admin" (rút gọn từ lịch sử "/admin/catalog") — chưa từng
       // là route thật, trước đây báo lỗi 404 mặc định của react-router (docs/DECISIONS.md #048).
       { path: 'admin', element: <Navigate to="/admin/catalog" replace /> },

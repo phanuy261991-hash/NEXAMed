@@ -3031,6 +3031,659 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/encounters/{id}/consultation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Màn hình khám (S3-05) — gộp tiền sử + dị ứng + sinh hiệu + chẩn đoán + ghi chú SOAP trong một request */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                encounter: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    encounterNo: string;
+                                    /** Format: uuid */
+                                    patientId: string;
+                                    /** Format: uuid */
+                                    doctorId: string;
+                                    /** Format: uuid */
+                                    appointmentId: string | null;
+                                    /** @enum {string} */
+                                    status: "SCHEDULED" | "CHECKED_IN" | "IN_CONSULTATION" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
+                                    specialty: string;
+                                    checkedInAt: string;
+                                    startedAt: string | null;
+                                    completedAt: string | null;
+                                    chiefComplaint: string | null;
+                                    version: number;
+                                };
+                                patient: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    patientCode: string;
+                                    fullName: string;
+                                    dob: string;
+                                    gender: string;
+                                    phone: string;
+                                    allergyNote: string | null;
+                                    version: number;
+                                };
+                                vitalSigns: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    encounterId: string;
+                                    pulse: number | null;
+                                    temperatureC: number | null;
+                                    bpSystolic: number | null;
+                                    bpDiastolic: number | null;
+                                    respiratoryRate: number | null;
+                                    spo2: number | null;
+                                    weightGram: number | null;
+                                    heightMm: number | null;
+                                    measuredAt: string;
+                                    warnings: {
+                                        field: string;
+                                        /** @enum {string} */
+                                        kind: "out_of_range" | "implausible";
+                                        message: string;
+                                    }[];
+                                } | null;
+                                history: {
+                                    /** Format: uuid */
+                                    encounterId: string;
+                                    checkedInAt: string;
+                                    chiefComplaint: string | null;
+                                    primaryDiagnosisName: string | null;
+                                }[];
+                                diagnoses: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    icd10Code: string;
+                                    icd10Name: string;
+                                    /** @enum {string} */
+                                    type: "PRIMARY" | "SECONDARY";
+                                    note: string | null;
+                                    version: number;
+                                }[];
+                                clinicalNote: {
+                                    personalHistory: {
+                                        content: string;
+                                        version: number;
+                                    } | null;
+                                    familyHistory: {
+                                        content: string;
+                                        version: number;
+                                    } | null;
+                                    reasonForVisit: {
+                                        content: string;
+                                        version: number;
+                                    } | null;
+                                    illnessProgress: {
+                                        content: string;
+                                        version: number;
+                                    } | null;
+                                    preliminaryDiagnosis: {
+                                        content: string;
+                                        version: number;
+                                    } | null;
+                                    generalExam: {
+                                        content: string;
+                                        version: number;
+                                    } | null;
+                                    regionalExam: {
+                                        content: string;
+                                        version: number;
+                                    } | null;
+                                    plan: {
+                                        content: string;
+                                        version: number;
+                                    } | null;
+                                };
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền encounter.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/encounters/{id}/diagnoses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Thay thế toàn bộ danh sách chẩn đoán của lượt khám — bắt buộc đúng 1 chẩn đoán chính (PRIMARY) */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        diagnoses: {
+                            icd10Code: string;
+                            /** @enum {string} */
+                            type: "PRIMARY" | "SECONDARY";
+                            note?: string;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    icd10Code: string;
+                                    icd10Name: string;
+                                    /** @enum {string} */
+                                    type: "PRIMARY" | "SECONDARY";
+                                    note: string | null;
+                                    version: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Dữ liệu gửi lên không hợp lệ (ví dụ không đúng một PRIMARY) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền diagnosis.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Lượt khám không ở trạng thái đang khám (ENCOUNTER_NOT_IN_CONSULTATION) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không đúng một chẩn đoán chính (DIAGNOSIS_PRIMARY_REQUIRED) */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/encounters/{id}/clinical-note": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Lưu cả 4 mục ghi chú SOAP trong một request — bản nháp, chưa ký (ENC-04/Sprint 5) */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        personalHistory: {
+                            content: string;
+                            version?: number;
+                        };
+                        familyHistory: {
+                            content: string;
+                            version?: number;
+                        };
+                        reasonForVisit: {
+                            content: string;
+                            version?: number;
+                        };
+                        illnessProgress: {
+                            content: string;
+                            version?: number;
+                        };
+                        preliminaryDiagnosis: {
+                            content: string;
+                            version?: number;
+                        };
+                        generalExam: {
+                            content: string;
+                            version?: number;
+                        };
+                        regionalExam: {
+                            content: string;
+                            version?: number;
+                        };
+                        plan: {
+                            content: string;
+                            version?: number;
+                        };
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                personalHistory: {
+                                    content: string;
+                                    version: number;
+                                } | null;
+                                familyHistory: {
+                                    content: string;
+                                    version: number;
+                                } | null;
+                                reasonForVisit: {
+                                    content: string;
+                                    version: number;
+                                } | null;
+                                illnessProgress: {
+                                    content: string;
+                                    version: number;
+                                } | null;
+                                preliminaryDiagnosis: {
+                                    content: string;
+                                    version: number;
+                                } | null;
+                                generalExam: {
+                                    content: string;
+                                    version: number;
+                                } | null;
+                                regionalExam: {
+                                    content: string;
+                                    version: number;
+                                } | null;
+                                plan: {
+                                    content: string;
+                                    version: number;
+                                } | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền clinical_note.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Lượt khám không ở trạng thái đang khám, hoặc version một mục SOAP không khớp (CONCURRENT_MODIFICATION) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/encounters/{id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** "Hoàn tất khám" — IN_CONSULTATION → COMPLETED, chỉ yêu cầu đúng một chẩn đoán chính */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                encounterNo: string;
+                                /** Format: uuid */
+                                patientId: string;
+                                /** Format: uuid */
+                                doctorId: string;
+                                /** Format: uuid */
+                                appointmentId: string | null;
+                                /** @enum {string} */
+                                status: "SCHEDULED" | "CHECKED_IN" | "IN_CONSULTATION" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
+                                specialty: string;
+                                checkedInAt: string;
+                                startedAt: string | null;
+                                completedAt: string | null;
+                                chiefComplaint: string | null;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền encounter.update */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Chuyển trạng thái không hợp lệ (ENCOUNTER_INVALID_TRANSITION) hoặc version không khớp (CONCURRENT_MODIFICATION) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không đúng một chẩn đoán chính (DIAGNOSIS_PRIMARY_REQUIRED) */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users": {
         parameters: {
             query?: never;

@@ -19,6 +19,9 @@ import {
   checkPatientDuplicateResponseSchema,
   clinicProfileSchema,
   clinicSettingsSchema,
+  clinicalNoteResponseSchema,
+  completeConsultationRequestSchema,
+  consultationDetailResponseSchema,
   createAppointmentRequestSchema,
   createExamStationRequestSchema,
   createFloorRequestSchema,
@@ -75,6 +78,9 @@ import {
   roleWithMatrixResponseSchema,
   roomSessionSchema,
   roomSummarySchema,
+  saveClinicalNoteRequestSchema,
+  saveDiagnosesRequestSchema,
+  saveDiagnosesResponseSchema,
   searchIcd10QuerySchema,
   searchIcd10ResponseSchema,
   setRoomSessionRequestSchema,
@@ -575,6 +581,81 @@ registry.registerPath({
     403: errorResponse('Không có quyền encounter.cancel'),
     404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal)'),
     409: errorResponse('Chuyển trạng thái không hợp lệ (ENCOUNTER_INVALID_TRANSITION) hoặc version không khớp (CONCURRENT_MODIFICATION)'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/encounters/{id}/consultation',
+  tags: ['encounter'],
+  summary: 'Màn hình khám (S3-05) — gộp tiền sử + dị ứng + sinh hiệu + chẩn đoán + ghi chú SOAP trong một request',
+  security: [{ bearerAuth: [] }],
+  request: { params: encounterActionIdParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(consultationDetailResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền encounter.read'),
+    404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal)'),
+  },
+});
+
+registry.registerPath({
+  method: 'put',
+  path: '/api/v1/encounters/{id}/diagnoses',
+  tags: ['encounter'],
+  summary: 'Thay thế toàn bộ danh sách chẩn đoán của lượt khám — bắt buộc đúng 1 chẩn đoán chính (PRIMARY)',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: encounterActionIdParams,
+    body: { content: { 'application/json': { schema: saveDiagnosesRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Thành công', envelope(saveDiagnosesResponseSchema)),
+    400: errorResponse('Dữ liệu gửi lên không hợp lệ (ví dụ không đúng một PRIMARY)'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền diagnosis.create'),
+    404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal)'),
+    409: errorResponse('Lượt khám không ở trạng thái đang khám (ENCOUNTER_NOT_IN_CONSULTATION)'),
+    422: errorResponse('Không đúng một chẩn đoán chính (DIAGNOSIS_PRIMARY_REQUIRED)'),
+  },
+});
+
+registry.registerPath({
+  method: 'put',
+  path: '/api/v1/encounters/{id}/clinical-note',
+  tags: ['encounter'],
+  summary: 'Lưu cả 4 mục ghi chú SOAP trong một request — bản nháp, chưa ký (ENC-04/Sprint 5)',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: encounterActionIdParams,
+    body: { content: { 'application/json': { schema: saveClinicalNoteRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Thành công', envelope(clinicalNoteResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinical_note.create'),
+    404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal)'),
+    409: errorResponse('Lượt khám không ở trạng thái đang khám, hoặc version một mục SOAP không khớp (CONCURRENT_MODIFICATION)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/encounters/{id}/complete',
+  tags: ['encounter'],
+  summary: '"Hoàn tất khám" — IN_CONSULTATION → COMPLETED, chỉ yêu cầu đúng một chẩn đoán chính',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: encounterActionIdParams,
+    body: { content: { 'application/json': { schema: completeConsultationRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Thành công', envelope(encounterSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền encounter.update'),
+    404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal)'),
+    409: errorResponse('Chuyển trạng thái không hợp lệ (ENCOUNTER_INVALID_TRANSITION) hoặc version không khớp (CONCURRENT_MODIFICATION)'),
+    422: errorResponse('Không đúng một chẩn đoán chính (DIAGNOSIS_PRIMARY_REQUIRED)'),
   },
 });
 

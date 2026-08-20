@@ -19,6 +19,7 @@ import {
 } from '@phosphor-icons/react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../features/auth/auth.store';
+import { useSidebar } from './sidebar.context';
 
 /** Vai trò được thấy mục Quản trị — theo lựa chọn đã chốt ở S1-08 (kết hợp luồng nghiệp vụ + vai trò). */
 const ADMIN_ROLES = ['clinic_admin', 'system_admin'];
@@ -85,7 +86,7 @@ function NavItem({ to, label, icon: IconComponent, end, collapsed, indent }: Nav
 export function Sidebar() {
   const user = useAuthStore((s) => s.user);
   const location = useLocation();
-  const [collapsed, setCollapsed] = useState(false);
+  const { collapsed, setCollapsed } = useSidebar();
   const [receptionGroupOpen, setReceptionGroupOpen] = useState(
     RECEPTION_GROUP_PATHS.some((path) => location.pathname.startsWith(path)) &&
       !location.pathname.startsWith(EXAMINATION_GROUP_PATH),

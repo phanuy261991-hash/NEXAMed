@@ -379,7 +379,7 @@ export class ReceptionService {
       if (!encounter || (dataScope === 'personal' && encounter.doctorId !== actorId)) {
         throw new NotFoundException();
       }
-      if (encounter.status !== 'CHECKED_IN') {
+      if (encounter.status !== 'CHECKED_IN' && encounter.status !== 'IN_CONSULTATION') {
         throw new EncounterNotCheckedInError();
       }
 

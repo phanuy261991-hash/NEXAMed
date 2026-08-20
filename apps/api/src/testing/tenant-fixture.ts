@@ -39,9 +39,13 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       // Thứ tự xoá theo FK: bảng con trước bảng cha. deleteMany trên bảng không có dòng nào
       // khớp là no-op an toàn — không cần biết trước caller có seed role/session hay không.
       await prisma.auditLog.deleteMany({ where: { tenantId: { in: tenantIds } } });
-      // vital_sign tham chiếu encounter; encounter tham chiếu patient/user_account/appointment
-      // (FK RESTRICT, Sprint 3) — phải xoá cả hai trước appointment/patient/user_account.
+      // vital_sign/diagnosis/clinical_note tham chiếu encounter; encounter tham chiếu
+      // patient/user_account/appointment (FK RESTRICT, Sprint 3) — phải xoá cả ba trước
+      // appointment/patient/user_account. diagnosis còn tham chiếu icd10_catalog (FK RESTRICT,
+      // S3-05→07) nhưng icd10_catalog không thuộc phạm vi tenant nên không cần xoá ở đây.
       await prisma.vitalSign.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await prisma.diagnosis.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await prisma.clinicalNote.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.encounter.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // appointment tham chiếu patient/user_account (FK RESTRICT, S2-05) — phải xoá trước cả hai.
       await prisma.appointment.deleteMany({ where: { tenantId: { in: tenantIds } } });
