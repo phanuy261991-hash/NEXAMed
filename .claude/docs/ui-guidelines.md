@@ -106,6 +106,21 @@ Ví dụ đã áp dụng: Giờ hẹn (`AppointmentQuickCreatePanel.tsx`), giờ
 ### 4.3. Phản hồi người dùng (Feedback & Toast)
 - Thành công: Toast trượt từ góc phải dưới màn hình, màu xanh lá, tự động tắt sau 3 giây.
 - Lỗi nghiêm trọng (Xóa nhầm bệnh án): Modal Confirm bắt buộc người dùng gõ lại chữ "XAC NHAN" để xóa. Không dùng Toast cho lỗi nghiêm trọng.
+- **Lỗi thông thường** (validate, thiếu trường bắt buộc...): hiển thị **inline tại chỗ phát sinh**, không dùng Toast (khác "Thành công" ở trên) — nhưng phải **nổi bật rõ ràng**: khung nền/viền màu đỏ (`border-rose-300 bg-rose-50`) + icon cảnh báo + chữ đậm màu đỏ (`font-semibold text-rose-700`), không phải chỉ 1 dòng chữ đỏ nhỏ dễ bị bỏ qua (chốt 2026-08-21, phản hồi thật khi dùng thử màn khám).
+
+### 4.4. Bấm Enter để xác nhận (bắt buộc cho mọi form Thêm/Sửa)
+
+**Chốt 2026-08-21** — phản hồi thật: form "Thêm mới"/"Sửa" ở các trang danh mục trước đó chỉ bấm được bằng chuột (nút "Lưu" là `type="button"` + `onClick`, không nằm trong `<form>`), bấm Enter trong ô nhập không có tác dụng gì — trải nghiệm kém. Từ nay **bắt buộc** cho mọi form Thêm/Sửa (modal hay trang):
+
+- Bọc toàn bộ nội dung form (các ô nhập + nút hành động) trong `<form onSubmit={handleSubmit}>` — không dùng `<div>` + `onClick` trên nút "Lưu"/"Tạo". Nút hành động chính đổi `type="submit"` (bỏ `onClick` gọi submit thủ công); nút "Huỷ"/"Đóng" giữ `type="button"`.
+- `handleSubmit(e)` gọi `e.preventDefault()` trước, kiểm điều kiện hợp lệ (đúng logic đang gán cho `disabled` của nút) rồi mới gọi hàm submit thật — **không** dựa vào mỗi `disabled` (an toàn hơn, rõ ràng hơn khi đọc code).
+- Nút submit vẫn giữ `disabled={isInvalid}` như cũ — trình duyệt tự chặn Enter submit khi nút submit đang disabled, không cần code thêm.
+- Đây là cách chuẩn HTML (submit-on-Enter tự nhiên của trình duyệt cho `<input>` một dòng trong `<form>`), **không** tự viết `onKeyDown` bắt phím Enter thủ công trên từng ô — trừ trường hợp bên dưới.
+- **Ngoại lệ cần xử lý tay**: nếu form chứa 1 ô tìm kiếm/lọc lồng bên trong (ví dụ `PatientPicker`, `Icd10DiagnosisPicker`) mà Enter ở đó KHÔNG có nghĩa là submit cả form (chỉ để lọc danh sách, chọn kết quả là bấm chuột) — phải tự `onKeyDown` chặn Enter nổi bọt lên `<form>` cha (`e.preventDefault()`, không làm gì thêm) ở đúng ô đó. `Combobox`/`MultiSelectCombobox` (`shared/ui/`) đã tự làm việc này, dùng lại được ngay không cần sửa gì thêm.
+- **Không áp dụng** cho popup xác nhận hành động **nguy hiểm/không thể hoàn tác** (xoá, ẩn vai trò...) — giữ nguyên bắt buộc bấm chuột, đúng tinh thần mục 4.3 "không tự thực thi ngay" cho hành động nguy hiểm. Enter-to-submit chỉ áp dụng cho form **nhập liệu Thêm/Sửa**, không áp dụng cho modal Confirm.
+- Popup thông báo THÀNH CÔNG có đúng 1 nút hành động (ví dụ "Tiếp nhận mới", "Về Hàng đợi khám") — cũng nên cho Enter bấm được nút đó, vì đây không phải form nhập liệu (không có `<form>` để submit tự nhiên) nên dùng `useEffect` nghe `keydown` ở `window` khi popup đang mở, gọi đúng hành động của nút đó (xem `EncounterConsultationPage.tsx` popup "Hoàn tất khám thành công" làm ví dụ).
+
+Đã áp dụng: `ReferenceCatalogPane.tsx`, `RoomPane.tsx` (Tầng + Phòng), `DepartmentPane.tsx` (Loại Khoa/Phòng + Khoa/Phòng), `ExamStationDialog.tsx`, `UserAccountFormDialog.tsx`, `RolePermissionPane.tsx` (`RoleNameDialog`), `VitalSignsDialog.tsx`. **Chưa áp dụng** (form lớn, nhiều ô tìm kiếm/picker lồng nhau, cần audit riêng trước khi bọc `<form>` để tránh Enter submit nhầm giữa chừng): `ReceptionIntakeForm.tsx`, `AppointmentQuickCreatePanel.tsx`, `AppointmentDetailPanel.tsx`, `UserAccountPane.tsx` — áp dụng dần khi có dịp sửa các màn này, không phải làm gấp.
 
 ---
 

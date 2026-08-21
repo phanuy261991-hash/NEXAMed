@@ -436,6 +436,7 @@ describe('HTTP e2e — /api/v1/encounters', () => {
       expect(res.body.data.history).toHaveLength(1);
       expect(res.body.data.history[0].encounterId).toBe(firstEncounterId);
       expect(res.body.data.history[0].primaryDiagnosisName).not.toBeNull();
+      expect(res.body.data.history[0].doctorName).toBe('User doctor');
     });
 
     it('bác sĩ khác cùng tenant xem được (encounter.read=global cho vai trò doctor, đúng ENC-01 "xem toàn bộ tiền sử") → 200', async () => {

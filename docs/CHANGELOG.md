@@ -2,6 +2,16 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-21 (4)
+
+Popup xác nhận "Hoàn tất khám", chuẩn Enter-to-submit bắt buộc toàn app, panel tiền sử thêm tên bác sĩ — xem `docs/DECISIONS.md` #067:
+
+- **Popup "Hoàn tất khám thành công"** — cùng khuôn "Tiếp nhận thành công", Enter cũng xác nhận được (nghe `keydown` ở `window`, popup không phải `<form>`).
+- **Chuẩn "Enter để lưu" — bắt buộc cho mọi form Thêm/Sửa từ nay** (`.claude/docs/ui-guidelines.md` mục 4.4, mới) — phát hiện lỗ hổng toàn app: form "Thêm mới" ở trang danh mục chỉ bấm được bằng chuột. Đã sửa 8 modal/form: `ReferenceCatalogPane.tsx`, `RoomPane.tsx` (Tầng + Phòng), `DepartmentPane.tsx` (Loại Khoa/Phòng + Khoa/Phòng), `ExamStationDialog.tsx`, `UserAccountFormDialog.tsx`, `RolePermissionPane.tsx`, `VitalSignsDialog.tsx` — bọc `<form onSubmit>`, nút chính `type="submit"`. `PatientPicker.tsx` thêm chặn Enter nổi bọt (ô tìm bệnh nhân không phải submit). Ngoại lệ: modal Confirm xoá/nguy hiểm KHÔNG áp dụng. Chưa áp dụng (cần audit riêng): `ReceptionIntakeForm.tsx`, `AppointmentQuickCreatePanel.tsx`, `AppointmentDetailPanel.tsx`, `UserAccountPane.tsx`.
+- **Panel "Tiền sử & lịch sử khám"** thêm tên bác sĩ (`EncounterHistoryItem.doctorName` — đổi contract, đã sinh lại OpenAPI + web type), thẻ "Lần khám gần nhất"/"Lịch sử cũ hơn" làm nổi bật/đồng nhất hơn theo ảnh mẫu chủ dự án gửi — vẫn chỉ hiện **chẩn đoán chính** (đã hỏi, không mở rộng toàn bộ chẩn đoán). "Đơn cũ"/"Xét nghiệm" trong ảnh mẫu chưa làm được (module Kê đơn Sprint 4 + Cận lâm sàng ngoài phạm vi v1 chưa có dữ liệu).
+- **Đã xác minh thật**: `encounter-http.spec.ts` thêm assertion `doctorName` (374/374 tổng `apps/api`, không regression). `pnpm -w typecheck/lint/build` sạch toàn workspace. Playwright qua Chrome thật: Enter lưu ở danh mục "Nghề nghiệp" thành công, Enter xác nhận popup hoàn tất khám, panel tiền sử hiện đúng "BS. {tên}" cả 2 loại thẻ không vỡ dòng.
+- Cập nhật `docs/CURRENT.md`, `docs/DECISIONS.md` (#067), `.claude/docs/ui-guidelines.md` (mục 4.4 mới).
+
 ## 2026-08-21 (3)
 
 Màn hình khám — sửa 3 lỗi vận hành thật chủ dự án báo cáo, xem `docs/DECISIONS.md` #066:

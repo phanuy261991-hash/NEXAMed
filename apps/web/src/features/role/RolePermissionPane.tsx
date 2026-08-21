@@ -323,10 +323,19 @@ function RoleNameDialog({
   onSubmit: (name: string) => void;
 }) {
   const [name, setName] = useState(initialName);
+  const isInvalid = name.trim() === '';
+
+  // Bọc `<form>` để Enter trong ô nhập tự submit — bắt buộc cho mọi form Thêm/Sửa (`.claude/docs/
+  // ui-guidelines.md` mục 4.4).
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (isInvalid) return;
+    onSubmit(name.trim());
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
-      <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
+      <form className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl" onSubmit={handleSubmit}>
         <h3 className="text-[15px] font-semibold text-slate-900">{title}</h3>
         <div className="mt-4 flex flex-col gap-1.5">
           <label htmlFor="role-name" className="text-sm font-semibold text-slate-800">
@@ -346,11 +355,11 @@ function RoleNameDialog({
           <Button type="button" variant="secondary" onClick={onCancel}>
             Huỷ
           </Button>
-          <Button type="button" loading={submitting} disabled={name.trim() === ''} onClick={() => onSubmit(name.trim())}>
+          <Button type="submit" loading={submitting} disabled={isInvalid}>
             {submitLabel}
           </Button>
         </div>
-      </div>
+      </form>
     </div>
   );
 }

@@ -111,6 +111,12 @@ export function PatientPicker({
           type="search"
           value={q}
           onChange={(e) => setQ(e.target.value)}
+          // Chặn Enter tự submit form cha (nếu picker này nằm trong 1 form Thêm/Sửa lớn hơn, ví dụ
+          // `ReceptionIntakeForm.tsx`) — ô này chỉ để LỌC danh sách, chọn bệnh nhân là bấm vào kết
+          // quả, không phải Enter (`.claude/docs/ui-guidelines.md` mục 4.4).
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') e.preventDefault();
+          }}
           placeholder="Tìm theo tên, SĐT hoặc mã bệnh nhân…"
           className="w-full rounded-md border border-slate-300 py-2 pl-8 pr-3 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
         />

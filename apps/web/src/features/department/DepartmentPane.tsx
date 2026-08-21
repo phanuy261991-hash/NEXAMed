@@ -281,10 +281,19 @@ function DepartmentTypeFormModal({
 }) {
   const [name, setName] = useState(type?.name ?? '');
   const [isActive, setIsActive] = useState(type?.isActive ?? true);
+  const isInvalid = name.trim() === '';
+
+  // Bọc `<form>` để Enter trong ô nhập tự submit — bắt buộc cho mọi form Thêm/Sửa (`.claude/docs/
+  // ui-guidelines.md` mục 4.4).
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (isInvalid) return;
+    onSubmit({ name: name.trim(), isActive });
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
-      <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
+      <form className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl" onSubmit={handleSubmit}>
         <h2 className="text-[15px] font-semibold text-slate-900">{mode === 'create' ? 'Thêm Loại Khoa/Phòng' : 'Sửa Loại Khoa/Phòng'}</h2>
 
         <div className="mb-3.5 mt-4 flex flex-col gap-1.5">
@@ -311,11 +320,11 @@ function DepartmentTypeFormModal({
           <Button type="button" variant="secondary" onClick={onCancel}>
             Huỷ
           </Button>
-          <Button type="button" loading={submitting} disabled={name.trim() === ''} onClick={() => onSubmit({ name: name.trim(), isActive })}>
+          <Button type="submit" loading={submitting} disabled={isInvalid}>
             Lưu
           </Button>
         </div>
-      </div>
+      </form>
     </div>
   );
 }
@@ -340,10 +349,17 @@ function DepartmentFormModal({
   const [isActive, setIsActive] = useState(department?.isActive ?? true);
 
   const typeOptions = [{ value: NO_TYPE_VALUE, label: 'Không phân loại' }, ...types.filter((t) => t.isActive).map((t) => ({ value: t.id, label: t.name }))];
+  const isInvalid = name.trim() === '';
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (isInvalid) return;
+    onSubmit({ name: name.trim(), departmentTypeId: departmentTypeId === NO_TYPE_VALUE ? undefined : departmentTypeId, isActive });
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
-      <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
+      <form className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl" onSubmit={handleSubmit}>
         <h2 className="text-[15px] font-semibold text-slate-900">{mode === 'create' ? 'Thêm Khoa/Phòng' : 'Sửa Khoa/Phòng'}</h2>
 
         <div className="mb-3.5 mt-4 flex flex-col gap-1.5">
@@ -373,22 +389,11 @@ function DepartmentFormModal({
           <Button type="button" variant="secondary" onClick={onCancel}>
             Huỷ
           </Button>
-          <Button
-            type="button"
-            loading={submitting}
-            disabled={name.trim() === ''}
-            onClick={() =>
-              onSubmit({
-                name: name.trim(),
-                departmentTypeId: departmentTypeId === NO_TYPE_VALUE ? undefined : departmentTypeId,
-                isActive,
-              })
-            }
-          >
+          <Button type="submit" loading={submitting} disabled={isInvalid}>
             Lưu
           </Button>
         </div>
-      </div>
+      </form>
     </div>
   );
 }

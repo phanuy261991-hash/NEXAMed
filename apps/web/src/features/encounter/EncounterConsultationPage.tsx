@@ -136,6 +136,23 @@ export function EncounterConsultationPage() {
   // Xin vượt quyền tạm thời (break-glass) khi thao tác lưu bị chặn 403 — `retry` gọi lại đúng thao
   // tác vừa bị chặn sau khi xin thành công, xem `BreakGlassDialog`.
   const [breakGlassPrompt, setBreakGlassPrompt] = useState<{ entityType: string; retry: () => void } | null>(null);
+  /** Popup "Hoàn tất khám thành công" — cùng khuôn popup "Tiếp nhận thành công" (`ReceptionIntakeForm.tsx`), theo yêu cầu chủ dự án. */
+  const [showCompleteSuccessDialog, setShowCompleteSuccessDialog] = useState(false);
+
+  // Cho phép bấm Enter để xác nhận popup "Hoàn tất khám thành công" (yêu cầu chủ dự án) — nghe
+  // phím ở `window` thay vì chỉ `autoFocus` nút, vì Enter cần hoạt động dù focus đang ở đâu (ví dụ
+  // vẫn còn ở ô nhập cuối cùng lúc popup vừa hiện).
+  useEffect(() => {
+    if (!showCompleteSuccessDialog) return;
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        navigate('/reception/doctor-queue');
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showCompleteSuccessDialog, navigate]);
 
   const saveDiagnosesMutation = useSaveDiagnosesMutation(encounterId);
   const saveClinicalNoteMutation = useSaveClinicalNoteMutation(encounterId);
@@ -479,7 +496,7 @@ export function EncounterConsultationPage() {
     }
     try {
       await completeMutation.mutateAsync({ version: query.data!.encounter.version });
-      navigate('/reception/doctor-queue');
+      setShowCompleteSuccessDialog(true);
     } catch (err) {
       setFormError(err instanceof ApiError ? err.message : 'Không hoàn tất được lượt khám, vui lòng thử lại.');
     }
@@ -945,6 +962,19 @@ export function EncounterConsultationPage() {
           onClose={() => setBreakGlassPrompt(null)}
         />
       )}
+
+      {showCompleteSuccessDialog && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/50 px-4">
+          <div className="w-full max-w-sm rounded-lg bg-white p-8 text-center shadow-2xl">
+            <CheckCircle size={56} weight="fill" className="mx-auto mb-4 text-emerald-500" aria-hidden="true" />
+            <h3 className="mb-1 text-lg font-bold uppercase tracking-wide text-emerald-600">Thành công</h3>
+            <p className="mb-6 text-sm text-slate-700">Hoàn tất khám thành công</p>
+            <Button type="button" autoFocus className="w-full" onClick={() => navigate('/reception/doctor-queue')}>
+              Về Hàng đợi khám
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -954,22 +984,35 @@ function SectionLabel({ children, className = '' }: { children: React.ReactNode;
 }
 
 /**
- * Thẻ tóm tắt 1 lần khám trước — lần gần nhất nổi bật (viền/nền xanh, đúng mockup đã duyệt
- * `docs/design/encounter-consultation-mockup.html`), các lần cũ hơn phẳng hơn. CHỈ hiển thị 3
- * trường đã chốt phạm vi (`docs/DECISIONS.md` #059 — "panel tiền sử chỉ cần danh sách tóm tắt: ngày
- * khám, lý do khám, chẩn đoán chính"): không có tên bác sĩ/đơn thuốc cũ/kết quả xét nghiệm — những
- * trường đó không có trong `EncounterHistoryItem`, xem chi tiết ghi chú từng lần khám cũ để dành sau.
+ * Thẻ tóm tắt 1 lần khám trước — lần gần nhất nổi bật (viền/nền xanh đậm hơn, chữ to hơn), các lần
+ * cũ hơn gọn/phẳng — theo mẫu tham khảo chủ dự án gửi (2026-08-21), làm nổi bật các trường thông
+ * tin để dễ đọc hơn bản trước. Chỉ hiện CHẨN ĐOÁN CHÍNH (không phải toàn bộ chẩn đoán — đã hỏi và
+ * chốt giữ nguyên phạm vi `docs/DECISIONS.md` #059, chỉ mở rộng thêm tên bác sĩ). Đơn thuốc cũ/kết
+ * quả cận lâm sàng CHƯA hiện được — module Kê đơn (Sprint 4) và Cận lâm sàng (ngoài phạm vi v1)
+ * chưa xây, không có dữ liệu.
  */
 function HistoryCard({ item, highlighted = false }: { item: EncounterHistoryItem; highlighted?: boolean }) {
   return (
-    <div className={`rounded-lg border p-3 ${highlighted ? 'border-blue-200 bg-blue-50' : 'border-slate-200 bg-white'}`}>
-      <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-blue-700">
-        <CalendarBlank size={12} weight="bold" aria-hidden="true" />
-        {formatHistoryDate(item.checkedInAt)}
-        <span className="font-normal text-slate-400">({formatRelativeTime(item.checkedInAt)})</span>
+    <div className={`rounded-lg border p-3 ${highlighted ? 'border-blue-300 bg-blue-50/70 shadow-sm' : 'border-slate-200 bg-white'}`}>
+      {/* Panel chỉ rộng 280px — ngày + tên bác sĩ KHÔNG đủ chỗ chung 1 hàng (vỡ dòng xấu khi tên
+          bác sĩ dài), xuống 2 dòng riêng thay vì `justify-between` trên cùng 1 hàng. */}
+      <div className="mb-1.5">
+        <span className={`flex items-center gap-1.5 font-bold ${highlighted ? 'text-[13px] text-blue-700' : 'text-xs text-blue-600'}`}>
+          <CalendarBlank size={highlighted ? 13 : 12} weight="bold" aria-hidden="true" />
+          {formatHistoryDate(item.checkedInAt)}
+          {highlighted && <span className="text-[11px] font-medium text-slate-400">({formatRelativeTime(item.checkedInAt)})</span>}
+        </span>
+        {item.doctorName && <div className="mt-0.5 truncate text-[11px] font-semibold text-slate-500">BS. {item.doctorName}</div>}
       </div>
-      {item.primaryDiagnosisName && <div className="mb-1 text-sm font-bold text-slate-900">{item.primaryDiagnosisName}</div>}
-      {item.chiefComplaint && <div className="text-xs leading-relaxed text-slate-500">Lý do: {item.chiefComplaint}</div>}
+      {item.primaryDiagnosisName && (
+        <div className={`mb-1 font-bold text-slate-900 ${highlighted ? 'text-[13.5px]' : 'text-[12.5px]'}`}>{item.primaryDiagnosisName}</div>
+      )}
+      {item.chiefComplaint && (
+        <p className={`leading-relaxed text-slate-600 ${highlighted ? 'text-[12.5px]' : 'truncate text-[11.5px]'}`}>
+          <span className="font-semibold text-slate-700">Lý do: </span>
+          {item.chiefComplaint}
+        </p>
+      )}
     </div>
   );
 }

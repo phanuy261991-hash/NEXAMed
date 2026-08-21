@@ -173,7 +173,7 @@ export class EncounterService {
    * kiểm `personal` phòng khi vai trò tuỳ biến gán scope hẹp hơn, cùng triết lý mọi method khác.
    */
   async getConsultationDetail(tenantId: string, actorId: string, dataScope: DataScope, id: string): Promise<ConsultationDetailResponse> {
-    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+    const { history: historyWithDoctorId, ...rest } = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const encounter = await this.encounterRepository.findByIdWithConsultationContext(tx, tenantId, id);
       if (!encounter || (dataScope === 'personal' && encounter.doctorId !== actorId)) {
         throw new NotFoundException();
@@ -186,6 +186,7 @@ export class EncounterService {
       const history = historyRows.map((row) => ({
         encounterId: row.id,
         checkedInAt: row.checkedInAt.toISOString(),
+        doctorId: row.doctorId,
         chiefComplaint: row.chiefComplaint,
         primaryDiagnosisName: row.diagnoses[0]?.icd10.nameVi ?? null,
       }));
@@ -213,6 +214,15 @@ export class EncounterService {
         clinicalNote: this.toClinicalNoteResponse(noteRows),
       };
     });
+
+    // Tên bác sĩ từng lượt khám cũ (panel tiền sử, yêu cầu chủ dự án) — `DoctorDirectoryPort` tự mở
+    // transaction RIÊNG (cùng nguyên tắc `startConsultation()`), nên phải gọi NGOÀI transaction
+    // chính ở trên để tránh `$transaction` lồng nhau.
+    const doctorIds = [...new Set(historyWithDoctorId.map((h) => h.doctorId).filter((v): v is string => v !== null))];
+    const doctorNames = doctorIds.length > 0 ? await this.doctorDirectory.getUserFullNames(tenantId, doctorIds) : new Map<string, string>();
+    const history = historyWithDoctorId.map(({ doctorId, ...h }) => ({ ...h, doctorName: doctorId ? (doctorNames.get(doctorId) ?? null) : null }));
+
+    return { ...rest, history };
   }
 
   /**

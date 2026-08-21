@@ -303,10 +303,19 @@ function FloorFormModal({
 }) {
   const [name, setName] = useState(floor?.name ?? '');
   const [isActive, setIsActive] = useState(floor?.isActive ?? true);
+  const isInvalid = name.trim() === '';
+
+  // Bọc `<form>` để Enter trong ô nhập tự submit — bắt buộc cho mọi form Thêm/Sửa (`.claude/docs/
+  // ui-guidelines.md` mục 4.4).
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (isInvalid) return;
+    onSubmit({ name: name.trim(), isActive });
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
-      <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
+      <form className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl" onSubmit={handleSubmit}>
         <h2 className="text-[15px] font-semibold text-slate-900">{mode === 'create' ? 'Thêm tầng' : 'Sửa tầng'}</h2>
 
         <div className="mb-3.5 mt-4 flex flex-col gap-1.5">
@@ -327,11 +336,11 @@ function FloorFormModal({
           <Button type="button" variant="secondary" onClick={onCancel}>
             Huỷ
           </Button>
-          <Button type="button" loading={submitting} disabled={name.trim() === ''} onClick={() => onSubmit({ name: name.trim(), isActive })}>
+          <Button type="submit" loading={submitting} disabled={isInvalid}>
             Lưu
           </Button>
         </div>
-      </div>
+      </form>
     </div>
   );
 }
@@ -356,10 +365,17 @@ function RoomFormModal({
   const [isActive, setIsActive] = useState(room?.isActive ?? true);
 
   const floorOptions = [{ value: NO_FLOOR_VALUE, label: 'Không thuộc tầng nào' }, ...floors.map((f) => ({ value: f.id, label: f.name }))];
+  const isInvalid = name.trim() === '';
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (isInvalid) return;
+    onSubmit({ name: name.trim(), floorId: floorId === NO_FLOOR_VALUE ? null : floorId, isActive });
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
-      <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
+      <form className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl" onSubmit={handleSubmit}>
         <h2 className="text-[15px] font-semibold text-slate-900">{mode === 'create' ? 'Thêm phòng khám' : 'Sửa phòng khám'}</h2>
 
         <div className="mb-3.5 mt-4 flex flex-col gap-1.5">
@@ -395,16 +411,11 @@ function RoomFormModal({
           <Button type="button" variant="secondary" onClick={onCancel}>
             Huỷ
           </Button>
-          <Button
-            type="button"
-            loading={submitting}
-            disabled={name.trim() === ''}
-            onClick={() => onSubmit({ name: name.trim(), floorId: floorId === NO_FLOOR_VALUE ? null : floorId, isActive })}
-          >
+          <Button type="submit" loading={submitting} disabled={isInvalid}>
             Lưu
           </Button>
         </div>
-      </div>
+      </form>
     </div>
   );
 }

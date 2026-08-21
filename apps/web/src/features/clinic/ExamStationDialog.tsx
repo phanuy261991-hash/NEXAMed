@@ -156,37 +156,47 @@ function ExamStationRow({
 }) {
   const [name, setName] = useState(initialName);
   const [isActive, setIsActive] = useState(initialActive ?? true);
+  const isInvalid = name.trim() === '';
+
+  // Bọc `<form>` để Enter trong ô nhập tự submit — bắt buộc cho mọi form Thêm/Sửa (`.claude/docs/
+  // ui-guidelines.md` mục 4.4).
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (isInvalid) return;
+    onSubmit({ name: name.trim(), isActive });
+  }
 
   return (
-    <li className="flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50/40 px-2.5 py-2">
-      <input
-        autoFocus
-        placeholder="Tên bàn khám/ghế"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        className={`${inputClassName} py-1.5 text-sm`}
-      />
-      {showActiveToggle && (
-        <label className="flex flex-shrink-0 items-center gap-1 text-[11px] text-slate-500">
-          <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
-          Hoạt động
-        </label>
-      )}
-      <button
-        type="button"
-        onClick={onCancel}
-        className="flex-shrink-0 rounded-md px-2.5 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-100"
-      >
-        Huỷ
-      </button>
-      <button
-        type="button"
-        disabled={submitting || name.trim() === ''}
-        onClick={() => onSubmit({ name: name.trim(), isActive })}
-        className="flex-shrink-0 rounded-md bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        Lưu
-      </button>
+    <li>
+      <form className="flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50/40 px-2.5 py-2" onSubmit={handleSubmit}>
+        <input
+          autoFocus
+          placeholder="Tên bàn khám/ghế"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className={`${inputClassName} py-1.5 text-sm`}
+        />
+        {showActiveToggle && (
+          <label className="flex flex-shrink-0 items-center gap-1 text-[11px] text-slate-500">
+            <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
+            Hoạt động
+          </label>
+        )}
+        <button
+          type="button"
+          onClick={onCancel}
+          className="flex-shrink-0 rounded-md px-2.5 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-100"
+        >
+          Huỷ
+        </button>
+        <button
+          type="submit"
+          disabled={submitting || isInvalid}
+          className="flex-shrink-0 rounded-md bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          Lưu
+        </button>
+      </form>
     </li>
   );
 }

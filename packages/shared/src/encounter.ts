@@ -382,6 +382,8 @@ export type ClinicalNoteResponse = z.infer<typeof clinicalNoteResponseSchema>;
 export const encounterHistoryItemSchema = z.object({
   encounterId: z.string().uuid(),
   checkedInAt: z.string(),
+  /** Tên bác sĩ đã khám lần đó — `null` nếu lượt khám cũ chưa từng gán bác sĩ (hàng đợi ảo, #064). */
+  doctorName: z.string().nullable(),
   chiefComplaint: z.string().nullable(),
   primaryDiagnosisName: z.string().nullable(),
 });

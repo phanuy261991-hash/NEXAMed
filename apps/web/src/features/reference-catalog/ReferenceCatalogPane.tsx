@@ -259,10 +259,27 @@ function ItemFormModal({
   const isExamType = category === 'EXAM_TYPE';
   // Mở rộng ADM-01 — chỉ EMPLOYMENT_STATUS có ý nghĩa với deactivatesAccount, cùng khuôn isExamType.
   const isEmploymentStatus = category === 'EMPLOYMENT_STATUS';
+  const isInvalid = (!hideCode && code.trim() === '') || name.trim() === '' || (isExamType && price.trim() === '');
+
+  // Bọc `<form>` để Enter trong ô nhập tự submit (chuẩn HTML, không cần tự bắt phím) — mọi form
+  // Thêm/Sửa trong app PHẢI theo mẫu này (`.claude/docs/ui-guidelines.md` mục 4.4, bắt buộc từ
+  // 2026-08-21, phản hồi thật: trước đây chỉ bấm chuột được, không bấm Enter được).
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (isInvalid) return;
+    onSubmit({
+      code: hideCode ? undefined : code.trim(),
+      name: name.trim(),
+      sortOrder,
+      price: isExamType && price.trim() !== '' ? Number(price) : undefined,
+      unit: isExamType && unit.trim() !== '' ? unit.trim() : undefined,
+      deactivatesAccount: isEmploymentStatus ? deactivatesAccount : undefined,
+    });
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
-      <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
+      <form className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl" onSubmit={handleSubmit}>
         <h2 className="text-[15px] font-semibold text-slate-900">{mode === 'create' ? 'Thêm mục mới' : 'Sửa mục'}</h2>
         <p className="mb-4 mt-0.5 text-xs text-slate-500">Danh mục: {categoryLabel}</p>
 
@@ -342,25 +359,11 @@ function ItemFormModal({
           <Button type="button" variant="secondary" onClick={onCancel}>
             Huỷ
           </Button>
-          <Button
-            type="button"
-            loading={submitting}
-            disabled={(!hideCode && code.trim() === '') || name.trim() === '' || (isExamType && price.trim() === '')}
-            onClick={() =>
-              onSubmit({
-                code: hideCode ? undefined : code.trim(),
-                name: name.trim(),
-                sortOrder,
-                price: isExamType && price.trim() !== '' ? Number(price) : undefined,
-                unit: isExamType && unit.trim() !== '' ? unit.trim() : undefined,
-                deactivatesAccount: isEmploymentStatus ? deactivatesAccount : undefined,
-              })
-            }
-          >
+          <Button type="submit" loading={submitting} disabled={isInvalid}>
             Lưu
           </Button>
         </div>
-      </div>
+      </form>
     </div>
   );
 }

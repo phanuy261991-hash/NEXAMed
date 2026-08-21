@@ -60,6 +60,7 @@ export interface EncounterWithConsultationPatient extends Encounter {
 export interface EncounterHistoryRow {
   id: string;
   checkedInAt: Date;
+  doctorId: string | null;
   chiefComplaint: string | null;
   diagnoses: { icd10: { nameVi: string } }[];
 }
@@ -174,6 +175,7 @@ export class EncounterRepository {
       select: {
         id: true,
         checkedInAt: true,
+        doctorId: true,
         chiefComplaint: true,
         diagnoses: {
           where: { type: 'PRIMARY', deletedAt: null },

@@ -160,9 +160,35 @@ export function UserAccountFormDialog({
     values.roleIds.length > 0 &&
     (mode === 'edit' || (values.username.trim().length >= 3 && values.password.length >= 8));
 
+  // Bọc `<form>` để Enter trong ô nhập tự submit — bắt buộc cho mọi form Thêm/Sửa (`.claude/docs/
+  // ui-guidelines.md` mục 4.4). `Combobox`/`PasswordInput` đã tự `preventDefault()` trên Enter
+  // (chọn giá trị/không có tác dụng phụ) nên không đụng submit ngoài ý muốn; riêng ô "Tên khoa/phòng
+  // mới" (thêm nhanh, chưa phải submit cuối) cần chặn tay — xem `handleAddDepartmentKeyDown`.
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!canSubmit) return;
+    onSubmit(values);
+  }
+
+  function handleAddDepartmentKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    if (newDepartmentName.trim() === '' || createDepartmentMutation.isPending) return;
+    createDepartmentMutation.mutate(
+      { name: newDepartmentName.trim() },
+      {
+        onSuccess: (created) => {
+          set('departmentId', created.id);
+          setNewDepartmentName('');
+          setAddingDepartment(false);
+        },
+      },
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
-      <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-lg bg-white p-6 shadow-xl scroll-hover">
+      <form className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-lg bg-white p-6 shadow-xl scroll-hover" onSubmit={handleSubmit}>
         <h2 className="text-[15px] font-bold text-slate-900">{mode === 'create' ? 'Thêm tài khoản' : 'Sửa tài khoản'}</h2>
 
         <div className="mt-6 space-y-6">
@@ -211,6 +237,7 @@ export function UserAccountFormDialog({
                       autoFocus
                       value={newDepartmentName}
                       onChange={(e) => setNewDepartmentName(e.target.value)}
+                      onKeyDown={handleAddDepartmentKeyDown}
                       placeholder="Tên khoa/phòng mới"
                       className={inputClassName}
                     />
@@ -353,11 +380,11 @@ export function UserAccountFormDialog({
           <Button type="button" variant="secondary" onClick={onCancel}>
             Huỷ
           </Button>
-          <Button type="button" loading={submitting} disabled={!canSubmit} onClick={() => onSubmit(values)}>
+          <Button type="submit" loading={submitting} disabled={!canSubmit}>
             {mode === 'create' ? 'Tạo tài khoản' : 'Lưu thay đổi'}
           </Button>
         </div>
-      </div>
+      </form>
     </div>
   );
 }

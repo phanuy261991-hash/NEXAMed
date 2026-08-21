@@ -87,7 +87,13 @@ export function VitalSignsDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 p-4" role="dialog" aria-modal="true" aria-labelledby="vital-signs-title">
-      <div className="w-full max-w-lg overflow-hidden rounded-xl bg-white shadow-2xl">
+      <form
+        className="w-full max-w-lg overflow-hidden rounded-xl bg-white shadow-2xl"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void handleSubmit();
+        }}
+      >
         <div className="px-6 pb-5 pt-6">
           <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-blue-100 ring-8 ring-blue-100/60">
             <Heartbeat size={22} weight="fill" className="text-blue-600" />
@@ -117,11 +123,11 @@ export function VitalSignsDialog({
           <Button type="button" variant="secondary" onClick={onClose}>
             Huỷ
           </Button>
-          <Button type="button" loading={mutation.isPending} onClick={() => void handleSubmit()}>
+          <Button type="submit" loading={mutation.isPending}>
             Lưu sinh hiệu
           </Button>
         </div>
-      </div>
+      </form>
     </div>
   );
 }
