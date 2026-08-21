@@ -240,6 +240,17 @@ Chủ dự án phản hồi chữ trong bảng danh sách "rất mờ nhạt, kh
 
 Ví dụ đã áp dụng cuộn ngang: `ReceptionListPage.tsx` (cuộn ngang 8 cột), `PatientListPage.tsx`/`AppointmentListView.tsx`/`GeoPane.tsx` (chỉ cuộn dọc hoặc cả hai trục, vẫn dùng `scroll-hover`). Màn hình danh sách mới phát sinh sau này BẮT BUỘC thêm class `scroll-hover` vào khung cuộn ngay từ đầu, không đợi phản hồi mới sửa.
 
+### 9g. Tiêu đề cột PHẢI cố định khi cuộn (chốt 2026-08-21)
+
+Rà soát toàn app phát hiện nhiều bảng danh sách để tiêu đề cột (`thead`) cuộn trôi mất theo thân bảng — chỉ `AllergenPane.tsx` và `AppointmentGridView.tsx` làm đúng, các bảng còn lại thiếu. **Bắt buộc áp dụng cho MỌI bảng danh sách có thể dài hơn khung nhìn** (kể cả danh mục nhỏ hôm nay — quy mô dữ liệu chỉ tăng theo thời gian, không giảm), theo đúng 2 dạng bảng đã có trong app:
+
+- **Bảng dựng bằng `<table>` thật** (`GeoPane.tsx`, `ReferenceCatalogPane.tsx`, `RoomPane.tsx`, `DepartmentPane.tsx`, `Icd10Pane.tsx`, `UserAccountPane.tsx`, `RoleMatrixTable.tsx`...): 2 điều kiện bắt buộc đi cùng nhau, thiếu một là hỏng cả hai —
+  1. **Khung bảng phải có chiều cao giới hạn + tự cuộn nội bộ** (đúng "Khung bảng cố định chiều cao" đã chốt ở mục 9, không phải chỉ dành riêng cho `PatientListPage`): bọc 2 lớp `<div className="min-h-0 flex-1 overflow-hidden rounded-lg border ...">` (khung ngoài, chiếm hết phần còn lại) → `<div className="scroll-hover h-full overflow-y-auto">` (khung trong, cuộn thật) → `<table>`. **Mọi flex container cha trên đường tới khung này cũng phải có `min-h-0`** (không chỉ `flex-1`) — thiếu `min-h-0` ở bất kỳ tầng nào, bảng sẽ tự giãn theo nội dung và kéo cả trang cuộn theo thay vì cuộn nội bộ (lỗi thật gặp ở `RoomPane.tsx`/`DepartmentPane.tsx`/`Icd10Pane.tsx` — cột danh sách bên phải thiếu `min-h-0` dù bảng bên trong đã đúng `flex-1`).
+  2. **`<thead className="sticky top-0 z-10">`** — dính lại đúng vị trí trong khung cuộn ở bước 1. `z-10` bắt buộc (không chỉ `sticky top-0`) để header luôn nổi trên thân bảng lúc cuộn qua, không bị hàng dữ liệu đè lên.
+  - Mẫu tham khảo đầy đủ, đã kiểm chứng qua Playwright: `AllergenPane.tsx` (bảng "Dị nguyên").
+- **Bảng dựng bằng CSS Grid** (virtualization, ví dụ `PatientListPage.tsx`/`AppointmentListView.tsx`/`ReceptionListPage.tsx`): không dùng `sticky` — hàng tiêu đề đã là một `<div role="row">` TÁCH RIÊNG khỏi khung cuộn (`flex-shrink-0`, đứng trước khung `overflow-y-auto` chứa thân bảng), nên tự nhiên đứng yên. Giữ đúng cấu trúc này khi thêm bảng Grid mới, không chuyển sang `sticky` (không cần thiết, hai kỹ thuật phục vụ hai cách dựng bảng khác nhau).
+- Lưới điều phối theo cột (ví dụ `AppointmentGridView.tsx` — cột bác sĩ) áp dụng `sticky top-0 z-10` cho từng ô tiêu đề cột, cùng nguyên lý như `<thead>`.
+
 ## 9b. Mẫu form nhiều trường theo khối (Boxed Section Form Pattern)
 
 Áp dụng cho form có nhiều nhóm trường trở lên và số trường lớn (ví dụ form hồ sơ bệnh nhân, `PatientFormFields.tsx`, docs/DECISIONS.md #034) — thay cho cách chia khối bằng `<h2>` + `border-t` đơn giản đã dùng ở bản đầu.

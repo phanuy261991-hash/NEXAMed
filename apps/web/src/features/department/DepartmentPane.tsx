@@ -142,8 +142,8 @@ export function DepartmentPane() {
           )}
         </div>
 
-        <div className="flex min-w-0 flex-1 flex-col">
-          <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <div className="mb-3 flex flex-shrink-0 items-center justify-between gap-3">
             <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Khoa/Phòng</span>
             {canManage && (
               <Button type="button" onClick={() => setModal({ mode: 'create' })}>
@@ -165,50 +165,55 @@ export function DepartmentPane() {
             <EmptyState icon={Buildings} title="Chưa có Khoa/Phòng nào" description="Thêm mới nếu cần phân nhóm nhân sự theo khoa/phòng." />
           )}
 
+          {/* Danh sách có thể dài — bọc riêng vùng cuộn dọc (min-h-0 + overflow-y-auto), tiêu đề
+              cột dính (sticky) để vẫn thấy khi cuộn sâu — cùng mẫu `AllergenPane.tsx`
+              (.claude/docs/ui-guidelines.md mục 9g). */}
           {query.isSuccess && items.length > 0 && (
-            <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-              <table className="w-full border-collapse text-sm">
-                <thead>
-                  <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
-                    <th className="w-28 px-4 py-2.5 text-center">Mã</th>
-                    <th className="px-4 py-2.5 text-left">Tên Khoa/Phòng</th>
-                    {hasTypes && <th className="w-40 px-4 py-2.5 text-center">Phân loại</th>}
-                    <th className="w-36 px-4 py-2.5 text-center">Trạng thái</th>
-                    {canManage && <th className="w-20 px-4 py-2.5 text-center">Sửa</th>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((department) => (
-                    <tr key={department.id} className={`border-b border-slate-200 last:border-0 ${department.isActive ? '' : 'opacity-50'}`}>
-                      {/* Mã không bấm được → đen, không xanh (.claude/docs/ui-guidelines.md mục 9 nhóm 2) — tự sinh, không sửa qua UI này. */}
-                      <td className="px-4 py-2 text-center font-semibold text-slate-800">{department.code ?? '—'}</td>
-                      <td className="px-4 py-2 text-left font-medium text-slate-900">{department.name}</td>
-                      {hasTypes && <td className="px-4 py-2 text-center font-medium text-slate-600">{department.departmentTypeName ?? '—'}</td>}
-                      <td className="px-4 py-2 text-center">
-                        <span
-                          className={`whitespace-nowrap rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
-                            department.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
-                          }`}
-                        >
-                          {department.isActive ? 'Đang hoạt động' : 'Ngưng dùng'}
-                        </span>
-                      </td>
-                      {canManage && (
-                        <td className="px-4 py-2 text-center">
-                          <button
-                            type="button"
-                            title="Sửa"
-                            onClick={() => setModal({ mode: 'edit', department })}
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                          >
-                            <PencilSimple size={15} weight="regular" aria-hidden="true" />
-                          </button>
-                        </td>
-                      )}
+            <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white">
+              <div className="scroll-hover h-full overflow-y-auto">
+                <table className="w-full border-collapse text-sm">
+                  <thead className="sticky top-0 z-10">
+                    <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+                      <th className="w-28 px-4 py-2.5 text-center">Mã</th>
+                      <th className="px-4 py-2.5 text-left">Tên Khoa/Phòng</th>
+                      {hasTypes && <th className="w-40 px-4 py-2.5 text-center">Phân loại</th>}
+                      <th className="w-36 px-4 py-2.5 text-center">Trạng thái</th>
+                      {canManage && <th className="w-20 px-4 py-2.5 text-center">Sửa</th>}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {items.map((department) => (
+                      <tr key={department.id} className={`border-b border-slate-200 last:border-0 ${department.isActive ? '' : 'opacity-50'}`}>
+                        {/* Mã không bấm được → đen, không xanh (.claude/docs/ui-guidelines.md mục 9 nhóm 2) — tự sinh, không sửa qua UI này. */}
+                        <td className="px-4 py-2 text-center font-semibold text-slate-800">{department.code ?? '—'}</td>
+                        <td className="px-4 py-2 text-left font-medium text-slate-900">{department.name}</td>
+                        {hasTypes && <td className="px-4 py-2 text-center font-medium text-slate-600">{department.departmentTypeName ?? '—'}</td>}
+                        <td className="px-4 py-2 text-center">
+                          <span
+                            className={`whitespace-nowrap rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                              department.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                            }`}
+                          >
+                            {department.isActive ? 'Đang hoạt động' : 'Ngưng dùng'}
+                          </span>
+                        </td>
+                        {canManage && (
+                          <td className="px-4 py-2 text-center">
+                            <button
+                              type="button"
+                              title="Sửa"
+                              onClick={() => setModal({ mode: 'edit', department })}
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                            >
+                              <PencilSimple size={15} weight="regular" aria-hidden="true" />
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>

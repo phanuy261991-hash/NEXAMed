@@ -116,69 +116,75 @@ export function ReferenceCatalogPane({
         <EmptyState icon={MagnifyingGlass} title="Không tìm thấy mục nào" description="Thử từ khoá khác hoặc bỏ bộ lọc tìm kiếm." />
       )}
 
+      {/* Danh sách có thể dài (đơn vị/loại khám/hồ sơ nhân sự...) — bọc riêng vùng cuộn dọc
+          (min-h-0 + overflow-y-auto) thay vì để bảng tự giãn theo nội dung rồi kéo cả trang cuộn
+          theo (tiêu đề cột sẽ trôi mất). Tiêu đề cột dính (sticky) để vẫn thấy khi cuộn sâu — cùng
+          mẫu đã dùng ở `AllergenPane.tsx` (.claude/docs/ui-guidelines.md mục 9g). */}
       {query.isSuccess && items.length > 0 && (
-        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
-                <th className="w-24 px-4 py-2.5 text-center">Mã</th>
-                <th className="px-4 py-2.5 text-left">Tên hiển thị</th>
-                {category === 'EXAM_TYPE' && <th className="w-32 px-4 py-2.5 text-center">Giá</th>}
-                {category === 'EXAM_TYPE' && <th className="w-24 px-4 py-2.5 text-center">Đơn vị</th>}
-                <th className="w-24 px-4 py-2.5 text-center">Thứ tự</th>
-                {canManage && <th className="w-32 px-4 py-2.5 text-center">Thao tác</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item) => (
-                <tr key={item.id} className={`border-b border-slate-200 last:border-0 ${item.isActive ? '' : 'opacity-50'}`}>
-                  <td className="px-4 py-2 text-center text-sm font-bold text-slate-800">{item.code}</td>
-                  <td className="px-4 py-2 text-left font-medium text-slate-900">
-                    {item.name}
-                    {!item.isActive && <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">Đã ẩn</span>}
-                  </td>
-                  {category === 'EXAM_TYPE' && (
-                    <td className="px-4 py-2 text-center font-medium text-slate-600">{item.price !== null ? formatVnd(item.price) : '—'}</td>
-                  )}
-                  {category === 'EXAM_TYPE' && <td className="px-4 py-2 text-center font-medium text-slate-600">{item.unit ?? '—'}</td>}
-                  <td className="px-4 py-2 text-center text-slate-500">{item.sortOrder}</td>
-                  {canManage && (
-                    <td className="px-4 py-2 text-center">
-                      {item.isActive ? (
-                        <>
-                          <button
-                            type="button"
-                            title="Sửa"
-                            onClick={() => setModal({ mode: 'edit', item })}
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                          >
-                            <PencilSimple size={15} weight="regular" aria-hidden="true" />
-                          </button>
-                          <button
-                            type="button"
-                            title="Xoá"
-                            onClick={() => setDeactivateTarget(item)}
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-rose-50 hover:text-rose-600"
-                          >
-                            <Trash size={15} weight="regular" aria-hidden="true" />
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          type="button"
-                          title="Khôi phục"
-                          onClick={() => reactivateMutation.mutate(item.id)}
-                          className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-blue-50 hover:text-blue-600"
-                        >
-                          <ArrowCounterClockwise size={15} weight="regular" aria-hidden="true" />
-                        </button>
-                      )}
-                    </td>
-                  )}
+        <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white">
+          <div className="scroll-hover h-full overflow-y-auto">
+            <table className="w-full border-collapse text-sm">
+              <thead className="sticky top-0 z-10">
+                <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+                  <th className="w-24 px-4 py-2.5 text-center">Mã</th>
+                  <th className="px-4 py-2.5 text-left">Tên hiển thị</th>
+                  {category === 'EXAM_TYPE' && <th className="w-32 px-4 py-2.5 text-center">Giá</th>}
+                  {category === 'EXAM_TYPE' && <th className="w-24 px-4 py-2.5 text-center">Đơn vị</th>}
+                  <th className="w-24 px-4 py-2.5 text-center">Thứ tự</th>
+                  {canManage && <th className="w-32 px-4 py-2.5 text-center">Thao tác</th>}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {items.map((item) => (
+                  <tr key={item.id} className={`border-b border-slate-200 last:border-0 ${item.isActive ? '' : 'opacity-50'}`}>
+                    <td className="px-4 py-2 text-center text-sm font-bold text-slate-800">{item.code}</td>
+                    <td className="px-4 py-2 text-left font-medium text-slate-900">
+                      {item.name}
+                      {!item.isActive && <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">Đã ẩn</span>}
+                    </td>
+                    {category === 'EXAM_TYPE' && (
+                      <td className="px-4 py-2 text-center font-medium text-slate-600">{item.price !== null ? formatVnd(item.price) : '—'}</td>
+                    )}
+                    {category === 'EXAM_TYPE' && <td className="px-4 py-2 text-center font-medium text-slate-600">{item.unit ?? '—'}</td>}
+                    <td className="px-4 py-2 text-center text-slate-500">{item.sortOrder}</td>
+                    {canManage && (
+                      <td className="px-4 py-2 text-center">
+                        {item.isActive ? (
+                          <>
+                            <button
+                              type="button"
+                              title="Sửa"
+                              onClick={() => setModal({ mode: 'edit', item })}
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                            >
+                              <PencilSimple size={15} weight="regular" aria-hidden="true" />
+                            </button>
+                            <button
+                              type="button"
+                              title="Xoá"
+                              onClick={() => setDeactivateTarget(item)}
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                            >
+                              <Trash size={15} weight="regular" aria-hidden="true" />
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            title="Khôi phục"
+                            onClick={() => reactivateMutation.mutate(item.id)}
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-blue-50 hover:text-blue-600"
+                          >
+                            <ArrowCounterClockwise size={15} weight="regular" aria-hidden="true" />
+                          </button>
+                        )}
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

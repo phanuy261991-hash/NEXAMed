@@ -2,6 +2,16 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-21 (6)
+
+Rà soát toàn app: tiêu đề cột không cố định khi cuộn — sửa 7 bảng, ghi quy tắc bắt buộc vào `.claude/docs/ui-guidelines.md` mục 9g:
+
+- Phát hiện chỉ `AllergenPane.tsx`/`AppointmentGridView.tsx` làm đúng (tiêu đề dính khi cuộn); 7 bảng còn lại thiếu: `GeoPane.tsx`, `Icd10Pane.tsx`, `RoleMatrixTable.tsx` (thiếu `sticky` trên `thead`), `UserAccountPane.tsx` (có `sticky` nhưng thiếu `z-10`), `ReferenceCatalogPane.tsx`/`RoomPane.tsx`/`DepartmentPane.tsx` (không có vùng cuộn nội bộ giới hạn chiều cao — bảng tự giãn kéo cả trang cuộn theo, tiêu đề trôi mất cùng).
+- Sửa theo đúng mẫu đã có ở `AllergenPane.tsx`: bọc `min-h-0 flex-1 overflow-hidden` (khung ngoài) → `overflow-y-auto` (khung trong, cuộn thật) → `<thead className="sticky top-0 z-10">`. `RoomPane.tsx`/`DepartmentPane.tsx`/`Icd10Pane.tsx` thêm `min-h-0` còn thiếu ở cột danh sách bên phải (nguyên nhân gốc khiến vùng cuộn không giới hạn được chiều cao).
+- Bảng dựng bằng CSS Grid (`PatientListPage.tsx`/`AppointmentListView.tsx`/`ReceptionListPage.tsx`) đã đúng sẵn từ trước (tiêu đề là hàng tách riêng ngoài khung cuộn) — không đổi.
+- **Đã xác minh thật**: Playwright qua Chrome thật (`dev.admin`) — kiểm `getComputedStyle` xác nhận cả 7 bảng đều `position: sticky; top: 0; z-index: 10`; cuộn sâu bảng Phường/Xã (TP.HCM, ~500 dòng) và ICD-10 (tìm "viêm", hàng trăm dòng) bằng ảnh chụp — tiêu đề cột đứng yên đúng khi thân bảng cuộn qua. `pnpm -w typecheck` sạch toàn workspace, không đổi backend/schema.
+- Cập nhật `.claude/docs/ui-guidelines.md` mục 9g (mới) — quy tắc bắt buộc cho mọi bảng danh sách phát sinh sau này, không phải nhắc lại.
+
 ## 2026-08-21 (5)
 
 "Tiền sử bản thân"/"Tiền sử gia đình" chuyển sang thuộc bệnh nhân thay vì gắn theo lượt khám — lỗ hổng chủ dự án phát hiện, xem `docs/DECISIONS.md` #068:

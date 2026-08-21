@@ -126,7 +126,7 @@ export function RoleMatrixTable({
           <col className="w-12" />
           <col className="w-64" />
         </colgroup>
-        <thead>
+        <thead className="sticky top-0 z-10">
           <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
             <th className="px-4 py-2.5 text-left">Tính năng</th>
             <th className="px-2 py-2.5 text-center">Xem</th>

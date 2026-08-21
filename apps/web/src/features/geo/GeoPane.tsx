@@ -129,7 +129,7 @@ function GeoTable({ rows, emptyLabel }: { rows: { code: string; name: string }[]
   return (
     <div className="scroll-hover flex-1 overflow-auto rounded-lg border border-slate-200 bg-white">
       <table className="w-full border-collapse text-sm">
-        <thead>
+        <thead className="sticky top-0 z-10">
           <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
             <th className="w-28 px-4 py-2.5 text-center">Mã</th>
             <th className="px-4 py-2.5 text-left">Tên</th>
