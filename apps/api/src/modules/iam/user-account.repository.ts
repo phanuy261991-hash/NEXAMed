@@ -138,6 +138,19 @@ export class UserAccountRepository {
   }
 
   /**
+   * Tên hiển thị theo id, phục vụ `DoctorDirectoryPort.getUserFullNames` — không lọc `isActive`/
+   * `deletedAt` (khác `findDepartmentId`) vì mục đích chỉ để hiển thị tên đã từng thao tác (ví dụ
+   * "Người tiếp nhận"), kể cả tài khoản sau này bị vô hiệu hoá/xoá thì tên cũ vẫn nên hiện đúng.
+   */
+  async findFullNamesByIds(tx: Prisma.TransactionClient, tenantId: string, userIds: readonly string[]): Promise<{ id: string; fullName: string }[]> {
+    if (userIds.length === 0) return [];
+    return tx.userAccount.findMany({
+      where: { tenantId, id: { in: [...userIds] } },
+      select: { id: true, fullName: true },
+    });
+  }
+
+  /**
    * Gỡ toàn bộ gán vai trò hiện có (soft-delete — .claude/docs/data-model.md cấm xoá cứng,
    * quyền DB `nexamed_app` cũng không có `DELETE`). UNIQUE(tenant_id, user_id, role_id) đã đổi
    * thành PARTIAL (`WHERE deleted_at IS NULL`, migration `*_user_role_partial_unique_s2_07`) nên

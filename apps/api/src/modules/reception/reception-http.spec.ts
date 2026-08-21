@@ -589,6 +589,39 @@ describe('HTTP e2e — /api/v1/reception', () => {
       expect(encounterItem).toMatchObject({ status: 'CHECKED_IN' });
     });
 
+    it('trả đúng "Người tiếp nhận" (encounter.createdBy resolve tên) cho cả 2 luồng check-in và tiếp nhận trực tiếp', async () => {
+      // Không dùng isoAt(..., targetDay) cho checkedInAt ở đây — GET /reception/list không truyền
+      // `date` sẽ mặc định lọc "hôm nay" (giờ hệ thống thật), cùng lý do check-in() luôn tự đặt
+      // checked_in_at = new Date() (ghi chú ở test đầu tiên của describe này).
+      const targetDay = 25;
+      const patient1 = await createPatient(receptionistToken, { phone: '0933444558' });
+      const appt = await createAppointment(receptionistToken, doctorAUserId, isoAt(11, 0, targetDay));
+      const checkedIn = await request(app.getHttpServer())
+        .post('/api/v1/reception/check-in')
+        .set(authed(receptionistToken))
+        .send(checkInPayload(appt.id, patient1.id, appt.version, doctorAUserId));
+
+      const patient2 = await createPatient(receptionistToken, { phone: '0933444559' });
+      const directRes = await request(app.getHttpServer())
+        .post('/api/v1/reception/direct')
+        .set(authed(receptionistToken))
+        .send({
+          patientId: patient2.id,
+          doctorId: doctorAUserId,
+          checkedInAt: new Date().toISOString(),
+          examTypeCode: 'KT',
+          examTypeName: 'Khám thường',
+          examTypePrice: 150_000,
+          receptionTypeCode: 'RT_NEW',
+          examFormCode: 'EF_NORMAL',
+        });
+
+      const res = await request(app.getHttpServer()).get('/api/v1/reception/list').set(authed(receptionistToken));
+      const items = res.body.data.items as Array<{ encounterId: string; receivedByName: string | null }>;
+      expect(items.find((i) => i.encounterId === checkedIn.body.data.id)?.receivedByName).toBe('User receptionist');
+      expect(items.find((i) => i.encounterId === (directRes.body.data as { id: string }).id)?.receivedByName).toBe('User receptionist');
+    });
+
     it('bác sĩ có encounter.read=global (không đổi, giữ nguyên PRD ENC-01) — không truyền doctorId thì thấy CỦA CẢ 2 bác sĩ', async () => {
       const targetDay = 26;
       const patient = await createPatient(receptionistToken);

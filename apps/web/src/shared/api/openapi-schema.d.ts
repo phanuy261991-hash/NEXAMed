@@ -2677,6 +2677,7 @@ export interface paths {
                                     departmentId: string;
                                     isPriority: boolean;
                                     chiefComplaint: string | null;
+                                    receivedByName: string | null;
                                     /** @enum {string} */
                                     status: "SCHEDULED" | "CHECKED_IN" | "IN_CONSULTATION" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
                                     checkedInAt: string;

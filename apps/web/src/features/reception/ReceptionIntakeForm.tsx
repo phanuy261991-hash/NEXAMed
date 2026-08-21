@@ -9,6 +9,7 @@ import { Combobox, withLegacyValueOption } from '../../shared/ui/Combobox';
 import { TimeInput } from '../../shared/ui/TimeInput';
 import { useDoctorsQuery } from '../appointment/appointment.queries';
 import { getVietnamTodayDateString, minutesToLabel, vietnamNowMinutes, vnDateTimeToIso } from '../appointment/schedule-grid.utils';
+import { useRoomOptionsQuery } from '../clinic/clinic.queries';
 import { useDepartmentOptionsQuery } from '../department/department.queries';
 import { checkPatientDuplicate } from '../patient/patient.api';
 import {
@@ -22,7 +23,7 @@ import { toCreatePatientRequest, toUpdatePatientRequest } from '../patient/patie
 import { EMPTY_PATIENT_FORM, PatientFormFields, type PatientFormValues } from '../patient/PatientFormFields';
 import { PatientMatchDialog } from '../patient/PatientMatchDialog';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
-import { useCheckInMutation, useRegisterReceptionMutation } from './reception.queries';
+import { useCheckInMutation, useReceptionListQuery, useRegisterReceptionMutation } from './reception.queries';
 
 const inputClassName =
   'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
@@ -137,6 +138,10 @@ export function ReceptionIntakeForm({
   const [routingMode, setRoutingMode] = useState<'doctor' | 'department'>('doctor');
   const [doctorId, setDoctorId] = useState(checkin?.doctorId ?? '');
   const [departmentId, setDepartmentId] = useState('');
+  /** Bộ lọc Khoa trong tab "Bác sĩ" (yêu cầu chủ dự án 2026-08-21, tách tab để không bể giao diện
+   * khi nhiều Khoa/bác sĩ) — chỉ có ý nghĩa khi có ≥2 Khoa (dropdown mới hiện), 1 Khoa thì danh
+   * sách bác sĩ coi như đã lọc sẵn theo đúng Khoa đó (không cần dropdown thừa). */
+  const [doctorFilterDepartmentId, setDoctorFilterDepartmentId] = useState('');
   const [vitals, setVitals] = useState<VitalValues>(EMPTY_VITALS);
   const [error, setError] = useState<string | null>(null);
   /** Popup "Tiếp nhận thành công" (mode='direct') — thay điều hướng ngay lập tức, cho phép tiếp
@@ -145,6 +150,12 @@ export function ReceptionIntakeForm({
 
   const doctorsQuery = useDoctorsQuery();
   const departmentsQuery = useDepartmentOptionsQuery();
+  const roomOptionsQuery = useRoomOptionsQuery();
+  // "Đang chờ: N" theo bác sĩ/Khoa cho danh sách thẻ điều phối (mockup
+  // docs/design/doctor-queue-virtual-queue-mockup.html) — tái dùng nguyên `GET /reception/list`
+  // của "Hàng đợi khám" thay vì thêm endpoint đếm riêng, lễ tân đã có `encounter.read=global` nên
+  // không cần lọc theo actor.
+  const todayQueueQuery = useReceptionListQuery(getVietnamTodayDateString());
   const patientSourceQuery = useReferenceCatalogQuery('PATIENT_SOURCE');
   const receptionTypeQuery = useReferenceCatalogQuery('RECEPTION_TYPE');
   const examFormQuery = useReferenceCatalogQuery('EXAM_FORM');
@@ -217,21 +228,62 @@ export function ReceptionIntakeForm({
     setRoutingMode('doctor');
     setDoctorId(checkin?.doctorId ?? '');
     setDepartmentId('');
+    setDoctorFilterDepartmentId('');
     setVitals(EMPTY_VITALS);
     setError(null);
   }
 
-  // "Phòng làm việc hôm nay" (docs/DECISIONS.md #054) — tự ẩn khi bác sĩ chưa chọn phòng hoặc
-  // tenant chưa dùng mô hình nhiều phòng (currentRoomName rỗng/null), cùng quy tắc DoctorAvailabilityList.tsx.
-  const doctorOptions = (doctorsQuery.data?.items ?? []).map((d) => ({
-    value: d.id,
-    label: d.currentRoomName ? `${d.fullName} · ${d.currentRoomName}` : d.fullName,
+  // Khu vực "Chuyển vào hàng đợi" (đúng mockup docs/design/doctor-queue-virtual-queue-mockup.html,
+  // yêu cầu chủ dự án 2026-08-21 — thay hẳn toggle+Combobox trước đó) — danh sách thẻ bác sĩ kèm
+  // số "Đang chờ" thời gian thực (đếm từ `todayQueueQuery`, status CHECKED_IN), cùng thẻ "Khoa X
+  // (chung)" viền nét đứt cho hàng chờ chung. "Phòng làm việc hôm nay" (#054) hiện làm phụ đề mỗi
+  // thẻ bác sĩ khi có (`currentRoomName`), cùng quy tắc `DoctorAvailabilityList.tsx`.
+  const todayItems = todayQueueQuery.data?.items ?? [];
+  const waitingCountByDoctor = new Map<string, number>();
+  const waitingCountByDepartmentPool = new Map<string, number>();
+  for (const it of todayItems) {
+    if (it.status !== 'CHECKED_IN') continue;
+    if (it.doctorId) {
+      waitingCountByDoctor.set(it.doctorId, (waitingCountByDoctor.get(it.doctorId) ?? 0) + 1);
+    } else {
+      waitingCountByDepartmentPool.set(it.departmentId, (waitingCountByDepartmentPool.get(it.departmentId) ?? 0) + 1);
+    }
+  }
+
+  const doctorCards = (doctorsQuery.data?.items ?? []).map((d) => ({
+    id: d.id,
+    fullName: d.fullName,
+    departmentId: d.departmentId,
+    departmentName: d.departmentId ? (departmentsQuery.data?.items.find((dep) => dep.id === d.departmentId)?.name ?? null) : null,
+    roomName: d.currentRoomName ?? null,
+    waitingCount: waitingCountByDoctor.get(d.id) ?? 0,
   }));
-  // Điều phối theo Khoa ("Hàng đợi ảo", #064) — toggle CHỈ hiện khi tenant có từ 2 Khoa trở lên
-  // (tự ẩn ở quy mô 1-3 bác sĩ/1 Khoa mặc định, đúng khuôn #054/#055: không có gì để chọn thì
-  // không hiện lựa chọn).
-  const departmentOptions = (departmentsQuery.data?.items ?? []).map((d) => ({ value: d.id, label: d.name }));
-  const departmentRoutingAvailable = departmentOptions.length > 1;
+  // Điều phối theo Khoa ("Hàng đợi ảo", #064) — hiện thẻ "(chung)" cho MỌI Khoa active, kể cả Khoa
+  // chưa có bác sĩ nào gán vào (lễ tân vẫn cần đẩy bệnh nhân vào hàng chờ của Khoa mới tạo trước
+  // khi có bác sĩ, hoặc bác sĩ sẽ gán vào sau) — sửa lại đúng hành vi gốc, bản trước lọc theo
+  // `doctorCount > 0` khiến Khoa mới tạo (chưa gán bác sĩ) không bao giờ hiện được, phát hiện thật
+  // khi chủ dự án tạo "Khoa Tai Mũi Họng" mà chỉ thấy đúng Khoa mặc định. Tự ẩn hoàn toàn khu vực
+  // này khi tenant chỉ có 1 Khoa, đúng khuôn #054/#055: không có gì để chọn thì không hiện lựa chọn.
+  // "N bác sĩ đang trực" (yêu cầu chủ dự án 2026-08-21, làm rõ căn cứ đếm sau khi bị hỏi lại) —
+  // KHÔNG phải "đang đăng nhập" (không có cơ chế theo dõi phiên thời gian thực cho việc này, sẽ
+  // phải đụng sang `user_session` của module `iam`, không đáng công cho một con số hiển thị) mà là
+  // đã CHỌN PHÒNG LÀM VIỆC HÔM NAY (`doctor_room_session`, chọn phòng bắt buộc phải đang đăng nhập
+  // mới làm được nên đã bao hàm "có online lúc đó") — CHỈ có ý nghĩa khi tenant ≥2 phòng active
+  // (đúng 1 phòng thì không ai từng tạo `doctor_room_session`, #054). Fallback về "thuộc Khoa" khi
+  // ≤1 phòng để vẫn hữu ích ở quy mô 1-3 bác sĩ (thị trường chính, PRD).
+  const multiRoomActive = (roomOptionsQuery.data?.items.length ?? 0) > 1;
+  const departmentPoolCards = (departmentsQuery.data?.items ?? []).map((dep) => ({
+    id: dep.id,
+    name: dep.name,
+    doctorCount: doctorCards.filter((d) => d.departmentId === dep.id && (!multiRoomActive || d.roomName !== null)).length,
+    waitingCount: waitingCountByDepartmentPool.get(dep.id) ?? 0,
+  }));
+  const departmentRoutingAvailable = departmentPoolCards.length > 1;
+  // Bộ lọc Khoa trong tab "Bác sĩ" — chỉ hiện dropdown khi có ≥2 Khoa (departmentRoutingAvailable);
+  // 1 Khoa thì danh sách bác sĩ coi như đã đúng phạm vi Khoa đó, không lọc gì thêm.
+  const filteredDoctorCards = departmentRoutingAvailable
+    ? doctorCards.filter((d) => doctorFilterDepartmentId === '' || d.departmentId === doctorFilterDepartmentId)
+    : doctorCards;
   const patientSourceOptions = withLegacyValueOption(
     (patientSourceQuery.data?.items ?? []).map((i) => ({ value: i.code, label: i.name })),
     patientSourceCode,
@@ -489,51 +541,6 @@ export function ReceptionIntakeForm({
               required={isPriority}
             />
           </div>
-        </div>
-
-        <div className="mt-4 flex flex-wrap items-start gap-3">
-          <div className="min-w-[280px] flex-1">
-            <span className={labelClassName}>
-              Điều phối <span className="text-rose-500">*</span>
-            </span>
-            {departmentRoutingAvailable && (
-              <div className="mb-1.5 flex w-fit overflow-hidden rounded-md border border-slate-300">
-                <button
-                  type="button"
-                  onClick={() => setRoutingMode('doctor')}
-                  className={`px-3 py-1.5 text-[12.5px] font-semibold ${
-                    routingMode === 'doctor' ? 'bg-blue-600 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'
-                  }`}
-                >
-                  Theo bác sĩ cụ thể
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRoutingMode('department')}
-                  className={`border-l border-slate-300 px-3 py-1.5 text-[12.5px] font-semibold ${
-                    routingMode === 'department' ? 'bg-blue-600 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'
-                  }`}
-                >
-                  Theo Khoa (chưa rõ bác sĩ)
-                </button>
-              </div>
-            )}
-            {routingMode === 'doctor' ? (
-              <Combobox id="intake-doctor" value={doctorId} onChange={setDoctorId} options={doctorOptions} required />
-            ) : (
-              <Combobox
-                id="intake-department"
-                value={departmentId}
-                onChange={setDepartmentId}
-                options={departmentOptions}
-                required
-                placeholder="Chọn Khoa..."
-              />
-            )}
-            {mode === 'checkin' && routingMode === 'doctor' && (
-              <p className="mt-1 text-xs text-slate-400">Mặc định theo bác sĩ đã đặt lịch ({checkin?.doctorName}) — vẫn đổi được.</p>
-            )}
-          </div>
           <div className="min-w-[220px] flex-1">
             <label htmlFor="intake-source" className={labelClassName}>
               Nguồn khách
@@ -546,6 +553,143 @@ export function ReceptionIntakeForm({
               placeholder="Không bắt buộc — gõ để tìm..."
             />
           </div>
+        </div>
+
+        {/*
+         * "Chuyển vào hàng đợi" (trước đây "Điều phối") — danh sách thẻ bác sĩ kèm "Đang chờ: N"
+         * thời gian thực + thẻ "Khoa X (chung)" viền nét đứt, đúng
+         * docs/design/doctor-queue-virtual-queue-mockup.html (thay hẳn toggle+Combobox trước đó,
+         * yêu cầu chủ dự án 2026-08-21 — bản toggle+Combobox là bản đơn giản hoá lúc code #064,
+         * chưa từng đối chiếu lại đúng mockup đã duyệt).
+         */}
+        <div className="mt-4">
+          <span className={`${labelClassName} mb-2 block`}>
+            Chuyển vào hàng đợi <span className="text-rose-500">*</span>
+          </span>
+          <div>
+            {/* Tách tab Bác sĩ/Khoa (yêu cầu chủ dự án 2026-08-21) — danh sách phẳng gộp chung dễ bể
+                giao diện khi tenant có nhiều Khoa × nhiều bác sĩ; CHỈ hiện tab khi có ≥2 Khoa
+                (đúng khuôn #054/#055, 1 Khoa thì không có gì để tách). Lưới nhiều cột (không phải
+                danh sách dọc 1 cột) để không kéo dài vô hạn khi có nhiều bác sĩ/Khoa — yêu cầu chủ
+                dự án 2026-08-21 lần 2. */}
+            {departmentRoutingAvailable && (
+              <div className="mb-2.5 flex border-b border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setRoutingMode('doctor')}
+                  className={`-mb-px border-b-2 px-3.5 py-2 text-[13px] font-semibold ${
+                    routingMode === 'doctor' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  Bác sĩ
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRoutingMode('department')}
+                  className={`-mb-px border-b-2 px-3.5 py-2 text-[13px] font-semibold ${
+                    routingMode === 'department' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  Khoa
+                </button>
+              </div>
+            )}
+
+            {routingMode === 'doctor' && (
+              <div>
+                {departmentRoutingAvailable && (
+                  <select
+                    value={doctorFilterDepartmentId}
+                    onChange={(e) => setDoctorFilterDepartmentId(e.target.value)}
+                    className={`${inputClassName} mb-2 max-w-xs`}
+                    aria-label="Lọc bác sĩ theo Khoa"
+                  >
+                    <option value="">Tất cả Khoa</option>
+                    {departmentPoolCards.map((dept) => (
+                      <option key={dept.id} value={dept.id}>
+                        {dept.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {filteredDoctorCards.length === 0 && (
+                  <p className="text-sm text-slate-400">
+                    {doctorCards.length === 0 ? 'Chưa có bác sĩ nào đang hoạt động để chọn.' : 'Không có bác sĩ nào thuộc Khoa đã lọc.'}
+                  </p>
+                )}
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                {filteredDoctorCards.map((doctor) => {
+                  const active = routingMode === 'doctor' && doctorId === doctor.id;
+                  return (
+                    <button
+                      key={doctor.id}
+                      type="button"
+                      onClick={() => setDoctorId(doctor.id)}
+                      className={`flex w-full items-center justify-between gap-3 rounded-lg border-2 px-3.5 py-2.5 text-left shadow-sm transition-colors ${
+                        active ? 'border-brand-teal bg-brand-teal' : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex min-w-0 items-center gap-2">
+                        {active && <CheckCircle size={18} weight="fill" className="flex-shrink-0 text-white" aria-hidden="true" />}
+                        <div className="min-w-0">
+                          <div className={`truncate text-[13.5px] font-bold ${active ? 'text-white' : 'text-slate-900'}`}>BS. {doctor.fullName}</div>
+                          <div className={`truncate text-xs ${active ? 'text-white/80' : 'text-slate-500'}`}>
+                            {[doctor.departmentName, doctor.roomName].filter(Boolean).join(' · ') || '—'}
+                          </div>
+                        </div>
+                      </div>
+                      <span
+                        className={`flex-shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${
+                          active ? 'bg-white text-brand-teal' : 'bg-slate-100 text-slate-700'
+                        }`}
+                      >
+                        Đang chờ: {doctor.waitingCount}
+                      </span>
+                    </button>
+                  );
+                })}
+                </div>
+              </div>
+            )}
+
+            {routingMode === 'department' && (
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                {departmentPoolCards.map((dept) => {
+                  const active = routingMode === 'department' && departmentId === dept.id;
+                  return (
+                    <button
+                      key={dept.id}
+                      type="button"
+                      onClick={() => setDepartmentId(dept.id)}
+                      className={`flex w-full items-center justify-between gap-3 rounded-lg border-2 border-dashed px-3.5 py-2.5 text-left shadow-sm transition-colors ${
+                        active ? 'border-blue-600 bg-blue-600' : 'border-blue-300 bg-blue-50/40 hover:border-blue-400'
+                      }`}
+                    >
+                      <div className="flex min-w-0 items-center gap-2">
+                        {active && <CheckCircle size={18} weight="fill" className="flex-shrink-0 text-white" aria-hidden="true" />}
+                        <div className="min-w-0">
+                          <div className={`truncate text-[13.5px] font-bold ${active ? 'text-white' : 'text-slate-900'}`}>{dept.name} (chung)</div>
+                          <div className={`truncate text-xs ${active ? 'text-white/80' : 'text-slate-500'}`}>
+                            {dept.doctorCount > 0 ? `${dept.doctorCount} bác sĩ đang trực · chưa cần chọn ai` : 'Chưa có bác sĩ nào — vẫn tiếp nhận được'}
+                          </div>
+                        </div>
+                      </div>
+                      <span
+                        className={`flex-shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${
+                          active ? 'bg-white text-blue-700' : dept.waitingCount > 0 ? 'bg-rose-50 text-rose-700' : 'bg-slate-100 text-slate-700'
+                        }`}
+                      >
+                        Đang chờ: {dept.waitingCount}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          {mode === 'checkin' && routingMode === 'doctor' && (
+            <p className="mt-1.5 text-xs text-slate-400">Mặc định theo bác sĩ đã đặt lịch ({checkin?.doctorName}) — vẫn chọn được bác sĩ khác.</p>
+          )}
         </div>
 
         <div className="mt-4">

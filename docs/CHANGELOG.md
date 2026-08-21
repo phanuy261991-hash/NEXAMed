@@ -2,6 +2,19 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-21 (2)
+
+"Hàng đợi khám" + "Chuyển vào hàng đợi" — chuỗi phản hồi trực tiếp trên bản chạy thật, làm đúng lại mockup #064 (`docs/DECISIONS.md` #065):
+
+- Cột "Mã" hiện lại ở bảng danh sách 4 danh mục nhân sự (Học vị, Chức danh, Trạng thái làm việc, Hình thức làm việc) — ô nhập trong modal vẫn ẩn.
+- Cột "Người tiếp nhận" mới ở Danh sách tiếp nhận (`encounter.createdBy` resolve tên qua `DoctorDirectoryPort.getUserFullNames()` mới).
+- "Chuyển vào hàng đợi" (Tiếp nhận) làm lại đúng mockup: tách tab "Bác sĩ"/"Khoa" + lọc theo Khoa, lưới nhiều cột, số "Đang chờ" thời gian thực, "N bác sĩ đang trực" = đã chọn phòng hôm nay (fallback "thuộc Khoa" khi 1 phòng).
+- "Chọn phòng làm việc hôm nay" cho "Bỏ qua" lúc đăng nhập (nhớ qua `sessionStorage` theo ngày), bắt chọn lại bắt buộc khi vào "Hàng đợi khám".
+- Card 3 cột "Hàng đợi khám" viết lại theo đúng mockup — sửa 1 bug thật (cảnh báo "chờ lâu" trước đây bỏ sót ca "của tôi", chỉ áp cho hàng chờ chung), thêm badge phút đang khám, nhóm "Của tôi"/"Hàng chờ chung" tách màu rõ, tìm kiếm riêng từng cột.
+- **Phát hiện kỹ thuật**: `apps/web` import `@nexamed/core` qua barrel làm vỡ `vite build` (Rollup, khác `vite dev` chạy được) — đã lùi lại, không dùng `stripVietnameseDiacritics` cho tìm kiếm cột (so khớp thường, không bỏ dấu). Chi tiết + lý do ở `docs/DECISIONS.md` #065.
+- **Đã xác minh thật**: `reception-http.spec.ts` thêm 1 test, tổng 369/369 test `apps/api` pass. `pnpm -w typecheck/lint/build` sạch toàn workspace. Playwright qua Chrome thật với dữ liệu demo cho BS. hungdt (ưu tiên/chờ lâu/hàng chờ chung/đang khám/đã khám).
+- Cập nhật `docs/CURRENT.md`, `docs/DECISIONS.md` (#065).
+
 ## 2026-08-21 (1)
 
 "Hàng đợi khám" — triển khai "Hàng đợi ảo" (Virtual Queue theo Bác sĩ/Khoa) — kiến trúc đã chốt qua mockup ở phiên trước (`docs/DECISIONS.md` #064), phiên này code + kiểm chứng thật:

@@ -12,8 +12,8 @@ import { useReceptionListQuery } from './reception.queries';
 /** Độ rộng cố định theo px (không dùng `fr`) để bảng có chiều rộng nội tại lớn hơn khung nhìn —
  * bắt buộc để `overflow-x-auto` phát huy tác dụng, cho phép cuộn ngang khi 8 cột không vừa màn
  * hình hẹp. Theo đúng thứ tự cột chủ dự án yêu cầu — không còn cột "Bác sĩ" (ngoài danh sách đã
- * chốt), 3 cột chưa có nguồn dữ liệu (Năm sinh/Địa chỉ/Người tiếp nhận) hiện `—`, khớp dữ liệu sau
- * khi backend có trường tương ứng. */
+ * chốt). 2 cột chưa có nguồn dữ liệu (Năm sinh/Địa chỉ) hiện `—`, khớp dữ liệu sau khi backend có
+ * trường tương ứng — "Người tiếp nhận" đã có `item.receivedByName` (`encounter.createdBy`). */
 const GRID_COLUMNS = '140px 200px 100px 140px 240px 170px 130px 170px';
 const TABLE_MIN_WIDTH_PX = 1290;
 const ROW_HEIGHT_PX = 48;
@@ -156,8 +156,7 @@ export function ReceptionListPage() {
                           {meta.label}
                         </span>
                       </div>
-                      {/* Người tiếp nhận — chưa có trường lễ tân/người tạo trong ReceptionListItem, tương tự 2 cột trên. */}
-                      <div role="cell" className="text-center text-slate-400">—</div>
+                      <div role="cell" className="truncate text-center font-medium text-slate-600">{item.receivedByName ?? '—'}</div>
                     </div>
                   );
                 })}

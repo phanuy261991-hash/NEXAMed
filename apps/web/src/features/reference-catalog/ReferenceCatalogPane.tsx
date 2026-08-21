@@ -19,8 +19,9 @@ import {
 const MANAGE_ROLES = ['clinic_admin'];
 
 /**
- * 4 danh mục nhân sự (mở rộng ADM-01, yêu cầu chủ dự án 2026-08-20) — ẩn hẳn khái niệm "Mã" khỏi
- * UI (cả cột bảng lẫn ô nhập trong modal), server tự sinh khi tạo mới (`code` không gửi lên).
+ * 4 danh mục nhân sự (mở rộng ADM-01, yêu cầu chủ dự án 2026-08-20) — server tự sinh `code` khi
+ * tạo mới nên ẩn ô nhập "Mã" trong modal Thêm/Sửa. Cột "Mã" trong bảng danh sách vẫn hiện (yêu
+ * cầu chủ dự án 2026-08-21) — chỉ đọc, không sửa được.
  */
 const AUTO_CODE_CATEGORIES: ReferenceCatalogCategory[] = [
   'ACADEMIC_TITLE',
@@ -120,7 +121,7 @@ export function ReferenceCatalogPane({
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
-                {!hideCode && <th className="w-24 px-4 py-2.5 text-center">Mã</th>}
+                <th className="w-24 px-4 py-2.5 text-center">Mã</th>
                 <th className="px-4 py-2.5 text-left">Tên hiển thị</th>
                 {category === 'EXAM_TYPE' && <th className="w-32 px-4 py-2.5 text-center">Giá</th>}
                 {category === 'EXAM_TYPE' && <th className="w-24 px-4 py-2.5 text-center">Đơn vị</th>}
@@ -131,7 +132,7 @@ export function ReferenceCatalogPane({
             <tbody>
               {items.map((item) => (
                 <tr key={item.id} className={`border-b border-slate-200 last:border-0 ${item.isActive ? '' : 'opacity-50'}`}>
-                  {!hideCode && <td className="px-4 py-2 text-center text-sm font-bold text-slate-800">{item.code}</td>}
+                  <td className="px-4 py-2 text-center text-sm font-bold text-slate-800">{item.code}</td>
                   <td className="px-4 py-2 text-left font-medium text-slate-900">
                     {item.name}
                     {!item.isActive && <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">Đã ẩn</span>}

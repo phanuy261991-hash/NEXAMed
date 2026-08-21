@@ -389,35 +389,40 @@ export class ReceptionService {
     const poolDepartmentId =
       includeDepartmentPool && doctorId ? ((await this.doctorDirectory.getDoctorDepartmentId(tenantId, doctorId)) ?? undefined) : undefined;
 
-    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const encounters = await this.encounterRepository.listForDay(tx, tenantId, {
+    const encounters = await this.unitOfWork.runInTenantScope(tenantId, (tx) =>
+      this.encounterRepository.listForDay(tx, tenantId, {
         dayStart: dayRange.startUtc,
         dayEnd: dayRange.endUtc,
         doctorId,
         poolDepartmentId,
-      });
+      }),
+    );
 
-      const items: ReceptionListItem[] = encounters.map((e) => ({
-        encounterId: e.id,
-        encounterNo: e.encounterNo,
-        appointmentId: e.appointmentId,
-        patientId: e.patientId,
-        patientCode: e.patient.patientCode,
-        fullName: e.patient.fullName,
-        phone: e.patient.phone,
-        doctorId: e.doctorId,
-        departmentId: e.departmentId,
-        isPriority: e.isPriority,
-        chiefComplaint: e.chiefComplaint,
-        status: e.status,
-        checkedInAt: e.checkedInAt.toISOString(),
-        startedAt: e.startedAt?.toISOString() ?? null,
-        completedAt: e.completedAt?.toISOString() ?? null,
-        version: e.version,
-      }));
+    // Resolve tên "Người tiếp nhận" SAU transaction đọc chính — `DoctorDirectoryPort` tự mở
+    // transaction riêng (cùng nguyên tắc đã áp dụng cho routing ở checkIn()/registerDirect()).
+    const receivedByNames = await this.doctorDirectory.getUserFullNames(tenantId, encounters.map((e) => e.createdBy));
 
-      return { items };
-    });
+    const items: ReceptionListItem[] = encounters.map((e) => ({
+      encounterId: e.id,
+      encounterNo: e.encounterNo,
+      appointmentId: e.appointmentId,
+      patientId: e.patientId,
+      patientCode: e.patient.patientCode,
+      fullName: e.patient.fullName,
+      phone: e.patient.phone,
+      doctorId: e.doctorId,
+      departmentId: e.departmentId,
+      isPriority: e.isPriority,
+      chiefComplaint: e.chiefComplaint,
+      receivedByName: receivedByNames.get(e.createdBy) ?? null,
+      status: e.status,
+      checkedInAt: e.checkedInAt.toISOString(),
+      startedAt: e.startedAt?.toISOString() ?? null,
+      completedAt: e.completedAt?.toISOString() ?? null,
+      version: e.version,
+    }));
+
+    return { items };
   }
 
   /**

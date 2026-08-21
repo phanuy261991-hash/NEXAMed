@@ -234,6 +234,8 @@ export const receptionListItemSchema = z.object({
   departmentId: z.string().uuid(),
   isPriority: z.boolean(),
   chiefComplaint: z.string().nullable(),
+  /** Người thực hiện tiếp nhận (`encounter.createdBy`, resolve tên qua `DoctorDirectoryPort.getUserFullNames`) — check-in từ lịch hẹn hay "Tiếp nhận bệnh nhân" đều tính là 1 lần tiếp nhận. `null` nếu tài khoản không còn resolve được tên (trường hợp hiếm). */
+  receivedByName: z.string().nullable(),
   status: encounterStatusSchema,
   checkedInAt: z.string(),
   startedAt: z.string().nullable(),

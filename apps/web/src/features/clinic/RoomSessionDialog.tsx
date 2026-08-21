@@ -5,12 +5,14 @@ import { Button } from '../../shared/ui/Button';
 import { useSetRoomSessionMutation } from './clinic.queries';
 
 /**
- * "Chọn phòng làm việc hôm nay" (docs/DECISIONS.md #054) — hiện khi bác sĩ đăng nhập ở tenant có
- * ≥2 phòng active và chưa chọn phòng cho ngày hôm nay (`RoomSessionGate.tsx`), hoặc bấm lại "Đổi
- * phòng" ở "Hàng đợi khám". Cùng khuôn `PatientMatchDialog.tsx` (overlay + card trắng bo góc) —
- * không có `Dialog`/`Modal` primitive dùng chung trong dự án, mỗi popup tự dựng theo cùng markup.
- * KHÔNG có nút đóng bỏ qua khi bắt buộc chọn lần đầu (`dismissible=false`) — bác sĩ phải chọn 1
- * phòng mới vào được hệ thống làm việc hôm nay; khi mở lại từ "Đổi phòng" thì cho đóng được.
+ * "Chọn phòng làm việc hôm nay" (docs/DECISIONS.md #054, nới lỏng theo phản hồi chủ dự án
+ * 2026-08-21) — hiện khi bác sĩ đăng nhập ở tenant có ≥2 phòng active và chưa chọn phòng cho ngày
+ * hôm nay (`RoomSessionGate.tsx`), hoặc bấm lại "Đổi phòng"/bị bắt chọn lại khi vào "Hàng đợi
+ * khám" (`ReceptionDoctorQueuePage.tsx`). Cùng khuôn `PatientMatchDialog.tsx` (overlay + card
+ * trắng bo góc) — không có `Dialog`/`Modal` primitive dùng chung trong dự án, mỗi popup tự dựng
+ * theo cùng markup. `dismissible=false` CHỈ còn dùng khi bị bắt chọn lại ngay tại "Hàng đợi khám"
+ * (đăng nhập để khám bệnh thì bắt buộc có phòng) — lúc đăng nhập ban đầu LUÔN cho "Bỏ qua" vì bác
+ * sĩ có thể đăng nhập để làm việc khác (xem hồ sơ, đổi lịch...) chứ chưa chắc vào khám ngay.
  */
 export function RoomSessionDialog({
   options,
@@ -65,7 +67,7 @@ export function RoomSessionDialog({
         <div className="flex justify-end gap-2.5 border-t border-slate-200 bg-slate-50 px-6 py-3.5">
           {dismissible && (
             <Button type="button" variant="secondary" onClick={onClose}>
-              Đóng
+              Bỏ qua
             </Button>
           )}
           <Button

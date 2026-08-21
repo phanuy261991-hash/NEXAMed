@@ -6216,6 +6216,12 @@
                                   "null"
                                 ]
                               },
+                              "receivedByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
                               "status": {
                                 "type": "string",
                                 "enum": [
@@ -6258,6 +6264,7 @@
                               "departmentId",
                               "isPriority",
                               "chiefComplaint",
+                              "receivedByName",
                               "status",
                               "checkedInAt",
                               "startedAt",

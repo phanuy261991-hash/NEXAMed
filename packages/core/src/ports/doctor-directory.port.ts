@@ -18,6 +18,13 @@ export interface DoctorDirectoryPort {
   getDoctorDepartmentId(tenantId: string, doctorId: string): Promise<string | null>;
   /** Khoa mặc định ("Khoa chung") — luôn tồn tại đúng 1 dòng/tenant, seed lúc tạo tenant (`seedDefaultRolesForTenant`). */
   getDefaultDepartmentId(tenantId: string): Promise<string>;
+  /**
+   * Tên hiển thị của user theo id — dùng để hiện "Người tiếp nhận" (`encounter.createdBy`, Danh
+   * sách tiếp nhận) và mọi chỗ khác cần resolve tên diễn viên từ id thuần UUID (`created_by`/
+   * `updated_by`/`actor_id` — không phải chỉ riêng bác sĩ). Id không tìm thấy (tài khoản đã xoá
+   * hoặc ngoài tenant) thì bỏ qua thay vì lỗi — caller tự quyết định fallback hiển thị.
+   */
+  getUserFullNames(tenantId: string, userIds: string[]): Promise<Map<string, string>>;
 }
 
 export const DOCTOR_DIRECTORY_PORT = Symbol('DOCTOR_DIRECTORY_PORT');

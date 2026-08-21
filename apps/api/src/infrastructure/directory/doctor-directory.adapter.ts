@@ -35,4 +35,10 @@ export class DoctorDirectoryAdapter implements DoctorDirectoryPort {
     }
     return department.id;
   }
+
+  async getUserFullNames(tenantId: string, userIds: string[]): Promise<Map<string, string>> {
+    const uniqueIds = [...new Set(userIds)];
+    const rows = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.userAccountRepository.findFullNamesByIds(tx, tenantId, uniqueIds));
+    return new Map(rows.map((r) => [r.id, r.fullName]));
+  }
 }
