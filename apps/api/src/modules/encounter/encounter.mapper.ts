@@ -14,6 +14,7 @@ export function toEncounterSummary(encounter: Encounter): EncounterSummary {
     encounterNo: encounter.encounterNo,
     patientId: encounter.patientId,
     doctorId: encounter.doctorId,
+    departmentId: encounter.departmentId,
     appointmentId: encounter.appointmentId,
     status: encounter.status,
     specialty: encounter.specialty,

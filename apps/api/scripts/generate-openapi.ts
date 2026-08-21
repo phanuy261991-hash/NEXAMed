@@ -70,6 +70,7 @@ import {
   createReferenceCatalogRequestSchema,
   departmentSummarySchema,
   departmentTypeSummarySchema,
+  listDepartmentOptionsResponseSchema,
   listDepartmentsResponseSchema,
   listDepartmentTypesResponseSchema,
   updateDepartmentRequestSchema,
@@ -792,6 +793,20 @@ registry.registerPath({
     200: jsonResponse('Thành công', envelope(listDepartmentsResponseSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền user_account.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/departments/options',
+  tags: ['department'],
+  summary:
+    '"Hàng đợi ảo" (#064) — chiếu tối thiểu {id,name} cho khu vực Điều phối Bác sĩ/Khoa lúc Tiếp nhận, chỉ Khoa đang active, gắn quyền reference_catalog.read (không cần user_account.read)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(listDepartmentOptionsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền reference_catalog.read'),
   },
 });
 

@@ -1,7 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { ConcurrentModificationError, formatDisplayCode } from '@nexamed/core';
-import type { CreateDepartmentRequest, DepartmentSummary, ListDepartmentsResponse, UpdateDepartmentRequest } from '@nexamed/shared';
+import type {
+  CreateDepartmentRequest,
+  DepartmentSummary,
+  ListDepartmentOptionsResponse,
+  ListDepartmentsResponse,
+  UpdateDepartmentRequest,
+} from '@nexamed/shared';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { CodeSequenceRepository } from '../../infrastructure/persistence/code-sequence.repository';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
@@ -54,6 +60,14 @@ export class DepartmentService {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const rows = await this.departmentRepository.list(tx, tenantId);
       return { items: rows.map((r) => this.toSummary(r)) };
+    });
+  }
+
+  /** "Hàng đợi ảo" (#064) — chiếu tối thiểu cho khu vực Điều phối lúc Tiếp nhận. */
+  async listDepartmentOptions(tenantId: string): Promise<ListDepartmentOptionsResponse> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const rows = await this.departmentRepository.listActiveOptions(tx, tenantId);
+      return { items: rows };
     });
   }
 

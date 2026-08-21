@@ -3710,11 +3710,19 @@
                                   "string",
                                   "null"
                                 ]
+                              },
+                              "departmentId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
                               }
                             },
                             "required": [
                               "id",
-                              "fullName"
+                              "fullName",
+                              "departmentId"
                             ]
                           }
                         }
@@ -5501,6 +5509,14 @@
                     "type": "integer",
                     "exclusiveMinimum": 0,
                     "default": 1
+                  },
+                  "doctorId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "departmentId": {
+                    "type": "string",
+                    "format": "uuid"
                   }
                 },
                 "required": [
@@ -5540,6 +5556,13 @@
                           "format": "uuid"
                         },
                         "doctorId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "departmentId": {
                           "type": "string",
                           "format": "uuid"
                         },
@@ -5594,6 +5617,7 @@
                         "encounterNo",
                         "patientId",
                         "doctorId",
+                        "departmentId",
                         "appointmentId",
                         "status",
                         "specialty",
@@ -5765,10 +5789,6 @@
                     "type": "string",
                     "format": "uuid"
                   },
-                  "doctorId": {
-                    "type": "string",
-                    "format": "uuid"
-                  },
                   "checkedInAt": {
                     "type": "string"
                   },
@@ -5855,11 +5875,18 @@
                     "type": "integer",
                     "exclusiveMinimum": 0,
                     "default": 1
+                  },
+                  "doctorId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "departmentId": {
+                    "type": "string",
+                    "format": "uuid"
                   }
                 },
                 "required": [
                   "patientId",
-                  "doctorId",
                   "checkedInAt",
                   "examTypeCode",
                   "examTypeName",
@@ -5894,6 +5921,13 @@
                           "format": "uuid"
                         },
                         "doctorId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "departmentId": {
                           "type": "string",
                           "format": "uuid"
                         },
@@ -5948,6 +5982,7 @@
                         "encounterNo",
                         "patientId",
                         "doctorId",
+                        "departmentId",
                         "appointmentId",
                         "status",
                         "specialty",
@@ -6096,6 +6131,26 @@
             "required": false,
             "name": "doctorId",
             "in": "query"
+          },
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "true",
+                    "false"
+                  ]
+                }
+              ],
+              "default": false
+            },
+            "required": false,
+            "name": "includeDepartmentPool",
+            "in": "query"
           }
         ],
         "responses": {
@@ -6132,6 +6187,9 @@
                                 "type": "string",
                                 "format": "uuid"
                               },
+                              "patientCode": {
+                                "type": "string"
+                              },
                               "fullName": {
                                 "type": "string"
                               },
@@ -6139,8 +6197,24 @@
                                 "type": "string"
                               },
                               "doctorId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "departmentId": {
                                 "type": "string",
                                 "format": "uuid"
+                              },
+                              "isPriority": {
+                                "type": "boolean"
+                              },
+                              "chiefComplaint": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               },
                               "status": {
                                 "type": "string",
@@ -6177,9 +6251,13 @@
                               "encounterNo",
                               "appointmentId",
                               "patientId",
+                              "patientCode",
                               "fullName",
                               "phone",
                               "doctorId",
+                              "departmentId",
+                              "isPriority",
+                              "chiefComplaint",
                               "status",
                               "checkedInAt",
                               "startedAt",
@@ -6658,6 +6736,13 @@
                           "format": "uuid"
                         },
                         "doctorId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "departmentId": {
                           "type": "string",
                           "format": "uuid"
                         },
@@ -6712,6 +6797,7 @@
                         "encounterNo",
                         "patientId",
                         "doctorId",
+                        "departmentId",
                         "appointmentId",
                         "status",
                         "specialty",
@@ -6929,6 +7015,13 @@
                           "format": "uuid"
                         },
                         "doctorId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "departmentId": {
                           "type": "string",
                           "format": "uuid"
                         },
@@ -6983,6 +7076,7 @@
                         "encounterNo",
                         "patientId",
                         "doctorId",
+                        "departmentId",
                         "appointmentId",
                         "status",
                         "specialty",
@@ -7181,6 +7275,13 @@
                               "format": "uuid"
                             },
                             "doctorId": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "uuid"
+                            },
+                            "departmentId": {
                               "type": "string",
                               "format": "uuid"
                             },
@@ -7235,6 +7336,7 @@
                             "encounterNo",
                             "patientId",
                             "doctorId",
+                            "departmentId",
                             "appointmentId",
                             "status",
                             "specialty",
@@ -8597,6 +8699,13 @@
                           "format": "uuid"
                         },
                         "doctorId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "departmentId": {
                           "type": "string",
                           "format": "uuid"
                         },
@@ -8651,6 +8760,7 @@
                         "encounterNo",
                         "patientId",
                         "doctorId",
+                        "departmentId",
                         "appointmentId",
                         "status",
                         "specialty",
@@ -10684,6 +10794,130 @@
           },
           "403": {
             "description": "Không có quyền user_account.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/departments/options": {
+      "get": {
+        "tags": [
+          "department"
+        ],
+        "summary": "\"Hàng đợi ảo\" (#064) — chiếu tối thiểu {id,name} cho khu vực Điều phối Bác sĩ/Khoa lúc Tiếp nhận, chỉ Khoa đang active, gắn quyền reference_catalog.read (không cần user_account.read)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền reference_catalog.read",
             "content": {
               "application/json": {
                 "schema": {

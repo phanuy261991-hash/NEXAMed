@@ -16,9 +16,9 @@ export async function registerReception(body: RegisterReceptionRequest): Promise
   return unwrap(await getApiClient().POST('/api/v1/reception/direct', { body })) as EncounterSummary;
 }
 
-export async function getReceptionList(date?: string, doctorId?: string): Promise<ReceptionListResponse> {
+export async function getReceptionList(date?: string, doctorId?: string, includeDepartmentPool?: boolean): Promise<ReceptionListResponse> {
   return unwrap(
-    await getApiClient().GET('/api/v1/reception/list', { params: { query: { date, doctorId } } }),
+    await getApiClient().GET('/api/v1/reception/list', { params: { query: { date, doctorId, includeDepartmentPool } } }),
   ) as ReceptionListResponse;
 }
 

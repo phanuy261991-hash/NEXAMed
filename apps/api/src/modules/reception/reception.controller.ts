@@ -37,7 +37,7 @@ export class ReceptionController {
   async list(@Query() query: unknown, @Req() req: Request) {
     const dto = receptionListQuerySchema.parse(query);
     const { userId, tenantId } = req.user!;
-    return this.receptionService.listReceptions(tenantId, userId, req.dataScope!, dto.date, dto.doctorId);
+    return this.receptionService.listReceptions(tenantId, userId, req.dataScope!, dto.date, dto.doctorId, dto.includeDepartmentPool);
   }
 
   @Post('encounters/:encounterId/vital-signs')

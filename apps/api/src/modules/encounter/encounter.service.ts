@@ -1,10 +1,13 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
   ConcurrentModificationError,
   DiagnosisPrimaryRequiredError,
+  DOCTOR_DIRECTORY_PORT,
+  EncounterAlreadyClaimedError,
   EncounterNotInConsultationError,
   assertEncounterTransition,
   evaluateVitalSignWarnings,
+  type DoctorDirectoryPort,
 } from '@nexamed/core';
 import { calculateAgeYears } from '@nexamed/shared';
 import type {
@@ -48,9 +51,19 @@ export class EncounterService {
     private readonly encounterRepository: EncounterRepository,
     private readonly diagnosisRepository: DiagnosisRepository,
     private readonly clinicalNoteRepository: ClinicalNoteRepository,
+    @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
   ) {}
 
-  /** "Bắt đầu khám" — chỉ bác sĩ phụ trách chính lượt khám đó (`data_scope=personal`, mirror `appointment.update`). */
+  /**
+   * "Bắt đầu khám" — 2 nhánh tuỳ `existing.doctorId` ("Hàng đợi ảo", #064):
+   * - Đã có bác sĩ phụ trách (bình thường): chỉ chính bác sĩ đó (`data_scope=personal`, mirror
+   *   `appointment.update`) hoặc actor scope rộng hơn mới thao tác được.
+   * - Chưa có ai (`doctorId=NULL`, ticket trong hàng chờ chung Khoa): đây là "Nhận ca" — chỉ bác sĩ
+   *   (`personal`) CÙNG Khoa với ticket mới claim được (chặn claim chéo Khoa), set `doctorId=actor`
+   *   ngay lúc chuyển trạng thái. Chống trùng khi 2 bác sĩ bấm gần như đồng thời là FALLBACK (ghi
+   *   có điều kiện `WHERE doctor_id IS NULL`, không WebSocket) — người thua nhận
+   *   `EncounterAlreadyClaimedError` thay vì lỗi version chung chung.
+   */
   async startConsultation(
     tenantId: string,
     actorId: string,
@@ -59,18 +72,43 @@ export class EncounterService {
     dto: StartConsultationRequest,
     meta: RequestMeta,
   ): Promise<EncounterSummary> {
+    // `DoctorDirectoryPort` tự mở transaction RIÊNG (adapter chỉ nhận `tenantId`) — resolve Khoa
+    // của actor TRƯỚC khi vào transaction chính bên dưới để tránh $transaction lồng nhau (đúng
+    // nguyên tắc port không dùng chung tx với thao tác cần atomic, xem docs/DECISIONS.md). Chỉ cần
+    // cho bác sĩ (scope `personal`) — actor khác không bao giờ "Nhận ca" được (nhánh else dưới).
+    const actorDepartmentId = dataScope === 'personal' ? await this.doctorDirectory.getDoctorDepartmentId(tenantId, actorId) : null;
+
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.encounterRepository.findById(tx, tenantId, id);
-      // Cùng triết lý 404 (không 403) khi ngoài scope personal — .claude/docs/multi-tenancy.md,
-      // đúng mẫu AppointmentService.getAppointment().
-      if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId)) {
+      if (!existing) {
         throw new NotFoundException();
       }
-      assertEncounterTransition(existing.status, 'IN_CONSULTATION');
 
-      const count = await this.encounterRepository.startConsultation(tx, tenantId, id, dto.version, actorId);
-      if (count === 0) {
-        throw new ConcurrentModificationError();
+      if (existing.doctorId !== null) {
+        // Cùng triết lý 404 (không 403) khi ngoài scope personal — .claude/docs/multi-tenancy.md,
+        // đúng mẫu AppointmentService.getAppointment().
+        if (dataScope === 'personal' && existing.doctorId !== actorId) {
+          throw new NotFoundException();
+        }
+        assertEncounterTransition(existing.status, 'IN_CONSULTATION');
+        const count = await this.encounterRepository.startConsultation(tx, tenantId, id, dto.version, actorId);
+        if (count === 0) {
+          throw new ConcurrentModificationError();
+        }
+      } else {
+        // "Nhận ca" — chỉ bác sĩ (personal), và chỉ khi Khoa của actor khớp Khoa của ticket.
+        if (dataScope !== 'personal' || actorDepartmentId === null || actorDepartmentId !== existing.departmentId) {
+          throw new NotFoundException();
+        }
+        assertEncounterTransition(existing.status, 'IN_CONSULTATION');
+        const count = await this.encounterRepository.claimFromPool(tx, tenantId, id, dto.version, actorId);
+        if (count === 0) {
+          const recheck = await this.encounterRepository.findById(tx, tenantId, id);
+          if (recheck && recheck.doctorId !== null) {
+            throw new EncounterAlreadyClaimedError();
+          }
+          throw new ConcurrentModificationError();
+        }
       }
 
       await writeAuditLog(tx, tenantId, {

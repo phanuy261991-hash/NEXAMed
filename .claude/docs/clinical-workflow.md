@@ -35,10 +35,11 @@ Quy tắc:
 - Tạo `encounter` từ `appointment`, snapshot thông tin thẻ BHYT vào `insurance_snapshot_json` (số thẻ, tỷ lệ hưởng, nơi đăng ký, hạn thẻ). v1 chỉ lưu để hiển thị và in, **không tính chi trả**.
 - Không thẻ hoặc thẻ hết hạn: snapshot `benefit_rate = 0`, `self_pay = true`.
 - Điều dưỡng ghi `vital_sign` sau check-in. Sinh hiệu ngoài ngưỡng sinh lý cảnh báo trên UI nhưng vẫn cho lưu — không chặn nhập.
+- **Điều phối Bác sĩ/Khoa — "Hàng đợi ảo" (`docs/DECISIONS.md` #064)**: lúc check-in, lễ tân chọn "đích danh bác sĩ" (`encounter.doctor_id` gán ngay, `department_id` server tự suy từ hồ sơ bác sĩ) hoặc "theo Khoa, chưa rõ bác sĩ" (`doctor_id=NULL`, `department_id` client chọn thẳng — lượt khám rơi vào hàng chờ CHUNG của Khoa đó). Không có nhánh thứ ba; mọi `encounter` luôn có `department_id` hợp lệ (Khoa mặc định "Khoa chung" tự seed mỗi tenant nếu chưa gán Khoa cụ thể).
 
 ## Khám bệnh
 
-- Chuyển `IN_CONSULTATION` khi bác sĩ nhận lượt khám; ghi `started_at`.
+- Chuyển `IN_CONSULTATION` khi bác sĩ nhận lượt khám; ghi `started_at`. Với `encounter.doctor_id` đã có sẵn (ca "của mình") đây là "Bắt đầu khám" bình thường. Với `doctor_id=NULL` (ticket trong hàng chờ chung Khoa) đây là **"Nhận ca"** — CHỈ bác sĩ CÙNG Khoa với ticket claim được, `doctor_id` được gán = bác sĩ đó ngay lúc chuyển trạng thái (ghi có điều kiện `WHERE doctor_id IS NULL`, chống 2 bác sĩ nhận trùng cùng lúc — người thua nhận lỗi `ENCOUNTER_ALREADY_CLAIMED`, không phải lỗi hệ thống).
 - Bắt buộc có ít nhất một `diagnosis` với `type = primary` trước khi chuyển `COMPLETED`.
 - Mã chẩn đoán chọn từ `icd10_catalog`. Không cho nhập mã tự do, không tự suy mã từ mô tả bệnh.
 - `clinical_note` theo 4 mục SOAP. Ký ghi chú (`signed_at`) đóng băng nội dung.

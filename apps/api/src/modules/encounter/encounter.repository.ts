@@ -5,7 +5,10 @@ import type { Encounter, VitalSign } from '@prisma/client';
 export interface CreateEncounterData {
   encounterNo: string;
   patientId: string;
-  doctorId: string;
+  /** "Hàng đợi ảo" (#064) — `null` khi tạo thẳng vào hàng chờ chung Khoa, chưa gán bác sĩ nào. */
+  doctorId: string | null;
+  /** "Hàng đợi ảo" (#064) — bắt buộc, đã resolve xong ở `ReceptionService` (từ bác sĩ chọn hoặc Khoa chọn thẳng) trước khi gọi tới đây. */
+  departmentId: string;
   appointmentId: string | null;
   checkedInAt: Date;
   chiefComplaint: string | null;
@@ -26,7 +29,7 @@ export interface CreateEncounterData {
 }
 
 export interface EncounterWithPatientContact extends Encounter {
-  patient: { fullName: string; phone: string };
+  patient: { patientCode: string; fullName: string; phone: string };
 }
 
 export interface EncounterWithPatientDob extends Encounter {
@@ -73,6 +76,7 @@ export class EncounterRepository {
         tenantId,
         patientId: data.patientId,
         doctorId: data.doctorId,
+        departmentId: data.departmentId,
         appointmentId: data.appointmentId,
         encounterNo: data.encounterNo,
         status: 'CHECKED_IN',
@@ -112,13 +116,17 @@ export class EncounterRepository {
    * Danh sách Tiếp nhận — MỌI encounter theo dõi được trong ngày (`CHECKED_IN`/`IN_CONSULTATION`/
    * `COMPLETED`/`CANCELLED` — đủ 4, không chỉ "đang dở dang"), lọc theo `checked_in_at` trong biên
    * ngày (`dayStart`/`dayEnd`, quy đổi giờ Việt Nam ở service qua `vietnamDayRange()`). Kèm
-   * `fullName`/`phone` bệnh nhân (encounter không có cột riêng, join `patient`). `doctorId`: lọc
-   * theo bác sĩ khi actor chỉ có scope `personal`, cùng khuôn `AppointmentRepository.list()`.
+   * `patientCode`/`fullName`/`phone` bệnh nhân (encounter không có cột riêng, join `patient`).
+   * `doctorId`: lọc theo bác sĩ khi actor chỉ có scope `personal`, cùng khuôn
+   * `AppointmentRepository.list()`. `poolDepartmentId` ("Hàng đợi ảo", #064) — CHỈ có tác dụng khi
+   * đi CÙNG `doctorId`: đổi từ lọc đơn `doctorId` sang `OR` "của tôi ∪ hàng chờ chung Khoa" (không
+   * set `where.doctorId` trực tiếp nữa). Không đổi hành vi khi chỉ có `doctorId` hoặc không có gì
+   * (giữ nguyên "Danh sách tiếp nhận" của lễ tân).
    */
   listForDay(
     tx: Prisma.TransactionClient,
     tenantId: string,
-    params: { dayStart: Date; dayEnd: Date; doctorId?: string },
+    params: { dayStart: Date; dayEnd: Date; doctorId?: string; poolDepartmentId?: string },
   ): Promise<EncounterWithPatientContact[]> {
     const where: Prisma.EncounterWhereInput = {
       tenantId,
@@ -126,12 +134,14 @@ export class EncounterRepository {
       status: { in: ['CHECKED_IN', 'IN_CONSULTATION', 'COMPLETED', 'CANCELLED'] },
       checkedInAt: { gte: params.dayStart, lt: params.dayEnd },
     };
-    if (params.doctorId) {
+    if (params.doctorId && params.poolDepartmentId) {
+      where.OR = [{ doctorId: params.doctorId }, { departmentId: params.poolDepartmentId, doctorId: null }];
+    } else if (params.doctorId) {
       where.doctorId = params.doctorId;
     }
     return tx.encounter.findMany({
       where,
-      include: { patient: { select: { fullName: true, phone: true } } },
+      include: { patient: { select: { patientCode: true, fullName: true, phone: true } } },
       orderBy: [{ checkedInAt: 'asc' }, { id: 'asc' }],
     }) as Promise<EncounterWithPatientContact[]>;
   }
@@ -184,6 +194,22 @@ export class EncounterRepository {
     const result = await tx.encounter.updateMany({
       where: { tenantId, id, version: expectedVersion, deletedAt: null, status: 'CHECKED_IN' },
       data: { status: 'IN_CONSULTATION', startedAt: new Date(), updatedBy: actorId, version: { increment: 1 } },
+    });
+    return result.count;
+  }
+
+  /**
+   * "Nhận ca" — "Hàng đợi ảo" (#064): pull một ticket đang chờ TRONG hàng chờ chung Khoa
+   * (`doctor_id IS NULL`), gán `doctor_id = actorId` VÀ chuyển `CHECKED_IN → IN_CONSULTATION` cùng
+   * lúc. Ghi có điều kiện `WHERE doctor_id IS NULL` là cơ chế chống trùng fallback (không
+   * WebSocket) — hai bác sĩ bấm gần như đồng thời thì chỉ một `updateMany` khớp điều kiện này,
+   * người thua `count=0` (service tự phân biệt "version lệch" và "đã bị người khác nhận" bằng cách
+   * đọc lại bản ghi).
+   */
+  async claimFromPool(tx: Prisma.TransactionClient, tenantId: string, id: string, expectedVersion: number, actorId: string): Promise<number> {
+    const result = await tx.encounter.updateMany({
+      where: { tenantId, id, version: expectedVersion, deletedAt: null, status: 'CHECKED_IN', doctorId: null },
+      data: { doctorId: actorId, status: 'IN_CONSULTATION', startedAt: new Date(), updatedBy: actorId, version: { increment: 1 } },
     });
     return result.count;
   }

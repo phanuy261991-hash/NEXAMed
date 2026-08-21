@@ -54,6 +54,24 @@ export const listDepartmentsResponseSchema = z.object({
 });
 export type ListDepartmentsResponse = z.infer<typeof listDepartmentsResponseSchema>;
 
+/**
+ * "Hàng đợi ảo" (#064) — chiếu tối thiểu cho khu vực Điều phối Bác sĩ/Khoa lúc Tiếp nhận
+ * (`GET /departments/options`), gắn quyền `reference_catalog.read` thay vì `user_account.read`
+ * (như `GET /departments` ở trên) — đúng lý do đã áp dụng cho `GET /appointments/doctors`
+ * (`docs/DECISIONS.md` #030): lễ tân có `reference_catalog.read` nhưng không có
+ * `user_account.read`. Chỉ Khoa đang `isActive`.
+ */
+export const departmentOptionSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+});
+export type DepartmentOption = z.infer<typeof departmentOptionSchema>;
+
+export const listDepartmentOptionsResponseSchema = z.object({
+  items: z.array(departmentOptionSchema),
+});
+export type ListDepartmentOptionsResponse = z.infer<typeof listDepartmentOptionsResponseSchema>;
+
 export const createDepartmentRequestSchema = z.object({
   name: z.string().min(1),
   departmentTypeId: z.string().uuid().optional(),

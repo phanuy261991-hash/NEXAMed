@@ -141,6 +141,8 @@ export const doctorOptionSchema = z.object({
   id: z.string().uuid(),
   fullName: z.string(),
   currentRoomName: z.string().nullable().optional(),
+  /** "Hàng đợi ảo" (#064) — Khoa của bác sĩ (`user_account.department_id`), `null` nếu chưa gán. Dùng để khu vực Điều phối ở Tiếp nhận không cần gọi thêm API. */
+  departmentId: z.string().uuid().nullable(),
 });
 export type DoctorOption = z.infer<typeof doctorOptionSchema>;
 

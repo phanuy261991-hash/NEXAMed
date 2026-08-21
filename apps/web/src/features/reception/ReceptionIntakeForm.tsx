@@ -9,6 +9,7 @@ import { Combobox, withLegacyValueOption } from '../../shared/ui/Combobox';
 import { TimeInput } from '../../shared/ui/TimeInput';
 import { useDoctorsQuery } from '../appointment/appointment.queries';
 import { getVietnamTodayDateString, minutesToLabel, vietnamNowMinutes, vnDateTimeToIso } from '../appointment/schedule-grid.utils';
+import { useDepartmentOptionsQuery } from '../department/department.queries';
 import { checkPatientDuplicate } from '../patient/patient.api';
 import {
   useCreatePatientMutation,
@@ -131,7 +132,11 @@ export function ReceptionIntakeForm({
   const [priceTypeCode, setPriceTypeCode] = useState('');
   const [serviceQuantity, setServiceQuantity] = useState(1);
   const [payLater, setPayLater] = useState(true);
+  // Điều phối Bác sĩ/Khoa ("Hàng đợi ảo", docs/DECISIONS.md #064) — mặc định "theo bác sĩ", giữ
+  // đúng bác sĩ đã đặt lịch cho mode='checkin' (vẫn sửa được, khác hành vi cũ khoá cứng).
+  const [routingMode, setRoutingMode] = useState<'doctor' | 'department'>('doctor');
   const [doctorId, setDoctorId] = useState(checkin?.doctorId ?? '');
+  const [departmentId, setDepartmentId] = useState('');
   const [vitals, setVitals] = useState<VitalValues>(EMPTY_VITALS);
   const [error, setError] = useState<string | null>(null);
   /** Popup "Tiếp nhận thành công" (mode='direct') — thay điều hướng ngay lập tức, cho phép tiếp
@@ -139,6 +144,7 @@ export function ReceptionIntakeForm({
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
 
   const doctorsQuery = useDoctorsQuery();
+  const departmentsQuery = useDepartmentOptionsQuery();
   const patientSourceQuery = useReferenceCatalogQuery('PATIENT_SOURCE');
   const receptionTypeQuery = useReferenceCatalogQuery('RECEPTION_TYPE');
   const examFormQuery = useReferenceCatalogQuery('EXAM_FORM');
@@ -208,7 +214,9 @@ export function ReceptionIntakeForm({
     setPriceTypeCode('');
     setServiceQuantity(1);
     setPayLater(true);
+    setRoutingMode('doctor');
     setDoctorId(checkin?.doctorId ?? '');
+    setDepartmentId('');
     setVitals(EMPTY_VITALS);
     setError(null);
   }
@@ -219,6 +227,11 @@ export function ReceptionIntakeForm({
     value: d.id,
     label: d.currentRoomName ? `${d.fullName} · ${d.currentRoomName}` : d.fullName,
   }));
+  // Điều phối theo Khoa ("Hàng đợi ảo", #064) — toggle CHỈ hiện khi tenant có từ 2 Khoa trở lên
+  // (tự ẩn ở quy mô 1-3 bác sĩ/1 Khoa mặc định, đúng khuôn #054/#055: không có gì để chọn thì
+  // không hiện lựa chọn).
+  const departmentOptions = (departmentsQuery.data?.items ?? []).map((d) => ({ value: d.id, label: d.name }));
+  const departmentRoutingAvailable = departmentOptions.length > 1;
   const patientSourceOptions = withLegacyValueOption(
     (patientSourceQuery.data?.items ?? []).map((i) => ({ value: i.code, label: i.name })),
     patientSourceCode,
@@ -256,13 +269,14 @@ export function ReceptionIntakeForm({
 
   const administrativeComplete =
     formValues.fullName.trim() !== '' && formValues.dob !== '' && formValues.phone.trim() !== '' && formValues.gender !== '';
+  const routingComplete = routingMode === 'doctor' ? doctorId !== '' : departmentId !== '';
   const canSubmit =
     administrativeComplete &&
     receptionTypeCode !== '' &&
     examFormCode !== '' &&
     examTypeCode !== '' &&
     (!isPriority || priorityReasonCode !== '') &&
-    (mode === 'checkin' || doctorId !== '');
+    routingComplete;
 
   function buildVitalsPayload() {
     return {
@@ -298,14 +312,20 @@ export function ReceptionIntakeForm({
   }
 
   async function submit(confirmDuplicate: boolean) {
-    if (!selectedExamType) return;
+    if (!selectedExamType || !routingComplete) return;
     setError(null);
     try {
       const patientId = await resolvePatientId(confirmDuplicate);
       if (patientId === null) return; // chặn bởi nghi trùng (PAT-03), chờ người dùng quyết định
 
+      // Điều phối Bác sĩ/Khoa ("Hàng đợi ảo", #064) — CHỈ gửi field đúng nhánh đang chọn (server tự
+      // suy departmentId từ hồ sơ bác sĩ khi routingMode='doctor', không tin departmentId client
+      // gửi kèm cho nhánh đó — xem `ReceptionService.resolveRouting()`).
+      const routingFields = routingMode === 'doctor' ? { doctorId } : { departmentId };
+
       const sharedFields = {
         patientId,
+        ...routingFields,
         chiefComplaint: reason.trim() === '' ? undefined : reason.trim(),
         patientSourceCode: patientSourceCode === '' ? undefined : patientSourceCode,
         examTypeCode: selectedExamType.code,
@@ -322,10 +342,8 @@ export function ReceptionIntakeForm({
       };
 
       if (mode === 'direct') {
-        if (doctorId === '') return;
         await registerMutation.mutateAsync({
           ...sharedFields,
-          doctorId,
           checkedInAt: vnDateTimeToIso(date, time),
         });
         // Hiện popup xác nhận ngay tại trang (không điều hướng) — lễ tân tiếp nhận liên tiếp nhiều
@@ -474,19 +492,48 @@ export function ReceptionIntakeForm({
         </div>
 
         <div className="mt-4 flex flex-wrap items-start gap-3">
-          {mode === 'direct' ? (
-            <div className="min-w-[220px] flex-1">
-              <label htmlFor="intake-doctor" className={labelClassName}>
-                Bác sĩ khám <span className="text-rose-500">*</span>
-              </label>
+          <div className="min-w-[280px] flex-1">
+            <span className={labelClassName}>
+              Điều phối <span className="text-rose-500">*</span>
+            </span>
+            {departmentRoutingAvailable && (
+              <div className="mb-1.5 flex w-fit overflow-hidden rounded-md border border-slate-300">
+                <button
+                  type="button"
+                  onClick={() => setRoutingMode('doctor')}
+                  className={`px-3 py-1.5 text-[12.5px] font-semibold ${
+                    routingMode === 'doctor' ? 'bg-blue-600 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'
+                  }`}
+                >
+                  Theo bác sĩ cụ thể
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRoutingMode('department')}
+                  className={`border-l border-slate-300 px-3 py-1.5 text-[12.5px] font-semibold ${
+                    routingMode === 'department' ? 'bg-blue-600 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'
+                  }`}
+                >
+                  Theo Khoa (chưa rõ bác sĩ)
+                </button>
+              </div>
+            )}
+            {routingMode === 'doctor' ? (
               <Combobox id="intake-doctor" value={doctorId} onChange={setDoctorId} options={doctorOptions} required />
-            </div>
-          ) : (
-            <div className="min-w-[220px] flex-1">
-              <span className={labelClassName}>Bác sĩ khám</span>
-              <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">{checkin?.doctorName}</div>
-            </div>
-          )}
+            ) : (
+              <Combobox
+                id="intake-department"
+                value={departmentId}
+                onChange={setDepartmentId}
+                options={departmentOptions}
+                required
+                placeholder="Chọn Khoa..."
+              />
+            )}
+            {mode === 'checkin' && routingMode === 'doctor' && (
+              <p className="mt-1 text-xs text-slate-400">Mặc định theo bác sĩ đã đặt lịch ({checkin?.doctorName}) — vẫn đổi được.</p>
+            )}
+          </div>
           <div className="min-w-[220px] flex-1">
             <label htmlFor="intake-source" className={labelClassName}>
               Nguồn khách

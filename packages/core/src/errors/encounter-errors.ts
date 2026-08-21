@@ -55,6 +55,21 @@ export class EncounterNotInConsultationError extends DomainError {
 }
 
 /**
+ * "Hàng đợi ảo" (#064) — "Nhận ca" (claim ticket đang chờ trong hàng chờ chung Khoa,
+ * `encounter.doctorId IS NULL`) thất bại vì một bác sĩ khác đã nhận trước (ghi có điều kiện
+ * `WHERE doctor_id IS NULL` không match nữa). Khác `ConcurrentModificationError` (version lệch do
+ * sửa đổi khác) — lỗi này riêng cho đúng tình huống "chậm chân" trong hàng chờ chung, web hiện toast
+ * lịch sự thay vì lỗi đỏ chung chung (xem `docs/DECISIONS.md` #064 điểm 6).
+ */
+export class EncounterAlreadyClaimedError extends DomainError {
+  readonly code = 'ENCOUNTER_ALREADY_CLAIMED';
+
+  constructor() {
+    super('Bệnh nhân này vừa được bác sĩ khác tiếp nhận.');
+  }
+}
+
+/**
  * Khám bệnh (S3-05→07) — vi phạm bất biến nghiệp vụ "đúng một chẩn đoán chính" khi lưu danh sách
  * chẩn đoán hoặc lúc hoàn tất khám (.claude/docs/clinical-workflow.md mục "Khám bệnh"). Zod
  * (`saveDiagnosesRequestSchema`) đã chặn phần lớn ở tầng input cho `PUT .../diagnoses`; lỗi này còn

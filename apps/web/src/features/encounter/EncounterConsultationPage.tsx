@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
+  CaretLeft,
+  CaretRight,
   CalendarBlank,
   CheckCircle,
   ClipboardText,
@@ -10,10 +12,11 @@ import {
   Pill,
   Plus,
   Stethoscope,
+  Users,
   Warning,
   X,
 } from '@phosphor-icons/react';
-import type { DiagnosisType, EncounterHistoryItem, SaveClinicalNoteRequest } from '@nexamed/shared';
+import type { DiagnosisType, EncounterHistoryItem, ReceptionListItem, SaveClinicalNoteRequest } from '@nexamed/shared';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { useAutoCollapseSidebar } from '../../shared/layout/sidebar.context';
 import { ApiError } from '../../shared/api/client';
@@ -22,8 +25,11 @@ import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { Textarea } from '../../shared/ui/Textarea';
+import { useAuthStore } from '../auth/auth.store';
+import { getVietnamTodayDateString } from '../appointment/schedule-grid.utils';
 import { computeAgeLabel } from '../patient/patient-form.utils';
 import { useUpdatePatientMutation } from '../patient/patient.queries';
+import { useReceptionListQuery, useStartConsultationMutation } from '../reception/reception.queries';
 import { Icd10DiagnosisPicker } from './Icd10DiagnosisPicker';
 import { VitalSignsDialog } from './VitalSignsDialog';
 import {
@@ -71,6 +77,11 @@ function formatRelativeTime(iso: string): string {
   return `${Math.round(days / 365)} năm trước`;
 }
 
+/** Dải hàng chờ ("Hàng đợi ảo", #064) — số phút chờ, cùng cách tính `waitMinutes()` ở `ReceptionDoctorQueuePage.tsx`. */
+function queueWaitMinutes(checkedInAt: string): number {
+  return Math.max(0, Math.floor((Date.now() - new Date(checkedInAt).getTime()) / 60_000));
+}
+
 const TABS = [
   { id: 'section-kham', label: '1. Khám & Chẩn đoán', icon: ClipboardText, comingSoon: false },
   { id: 'section-cls', label: '2. Chỉ định cận lâm sàng', icon: Flask, comingSoon: true },
@@ -108,11 +119,36 @@ export function EncounterConsultationPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [draftSaved, setDraftSaved] = useState(false);
   const [vitalsDialogOpen, setVitalsDialogOpen] = useState(false);
+  const [railOpen, setRailOpen] = useState(true);
+  const [railError, setRailError] = useState<string | null>(null);
 
   const saveDiagnosesMutation = useSaveDiagnosesMutation(encounterId);
   const saveClinicalNoteMutation = useSaveClinicalNoteMutation(encounterId);
   const completeMutation = useCompleteConsultationMutation(encounterId);
   const updatePatientMutation = useUpdatePatientMutation(query.data?.patient.id ?? '');
+
+  // Dải hàng chờ thu gọn ("Hàng đợi ảo", docs/DECISIONS.md #064) — cùng nguồn dữ liệu với "Hàng
+  // đợi khám" (`ReceptionDoctorQueuePage.tsx`): "của tôi" ∪ "hàng chờ chung Khoa mình". Loại trừ
+  // chính lượt khám đang xem khỏi danh sách chờ.
+  const currentUser = useAuthStore((s) => s.user);
+  const queueQuery = useReceptionListQuery(getVietnamTodayDateString(), currentUser?.id, true);
+  const startConsultationMutation = useStartConsultationMutation();
+  const waitingQueue = (queueQuery.data?.items ?? []).filter((i) => i.status === 'CHECKED_IN' && i.encounterId !== encounterId);
+
+  async function handleQueueItemClick(item: ReceptionListItem) {
+    setRailError(null);
+    try {
+      const started = await startConsultationMutation.mutateAsync({ id: item.encounterId, body: { version: item.version } });
+      navigate(`/encounters/${started.id}`);
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'ENCOUNTER_ALREADY_CLAIMED') {
+        setRailError(err.message);
+        void queueQuery.refetch();
+        return;
+      }
+      setRailError(err instanceof ApiError ? err.message : 'Không mở được lượt khám này, vui lòng thử lại.');
+    }
+  }
 
   const sectionRefs = {
     'section-kham': useRef<HTMLDivElement>(null),
@@ -391,9 +427,51 @@ export function EncounterConsultationPage() {
       )}
 
       {/* Không gian làm việc chính — chia đôi */}
-      <div className="grid min-h-0 flex-1 grid-cols-[280px_1fr] bg-slate-50">
+      <div className="flex min-h-0 flex-1 bg-slate-50">
+        {/* Dải hàng chờ thu gọn ("Hàng đợi ảo", #064) — ẩn/hiện bằng mũi tên, không đổi Phiếu khám. */}
+        <aside className={`flex min-h-0 flex-shrink-0 flex-col border-r border-slate-200 bg-white transition-[width] ${railOpen ? 'w-52' : 'w-8'}`}>
+          <div className="flex h-11 flex-shrink-0 items-center justify-between border-b border-slate-200 px-2.5">
+            {railOpen && (
+              <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-700">
+                <Users size={13} weight="bold" className="text-slate-400" aria-hidden="true" />
+                Hàng chờ ({waitingQueue.length})
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => setRailOpen((v) => !v)}
+              title={railOpen ? 'Thu gọn hàng chờ' : 'Mở hàng chờ'}
+              className="ml-auto flex h-6 w-6 flex-shrink-0 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+            >
+              {railOpen ? <CaretLeft size={13} weight="bold" aria-hidden="true" /> : <CaretRight size={13} weight="bold" aria-hidden="true" />}
+            </button>
+          </div>
+          {railOpen && (
+            <div className="scroll-hover flex-1 overflow-y-auto p-2">
+              {railError && (
+                <p className="mb-2 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] text-amber-800">{railError}</p>
+              )}
+              {waitingQueue.length === 0 && <p className="px-1 py-2 text-xs text-slate-400">Không có ai đang chờ.</p>}
+              {waitingQueue.map((item) => (
+                <button
+                  key={item.encounterId}
+                  type="button"
+                  onClick={() => void handleQueueItemClick(item)}
+                  disabled={startConsultationMutation.isPending}
+                  className="mb-1.5 block w-full rounded-md border border-slate-200 px-2.5 py-2 text-left hover:border-blue-300 hover:bg-blue-50/50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <div className="truncate text-[12.5px] font-bold text-slate-900">{item.fullName}</div>
+                  <div className="text-[10.5px] text-slate-400">
+                    {item.doctorId === null ? 'Chưa gán bác sĩ' : 'Của tôi'} · Chờ {queueWaitMinutes(item.checkedInAt)} phút
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </aside>
+
         {/* Panel trái — tiền sử */}
-        <aside className="flex min-h-0 flex-col border-r border-slate-200 bg-white">
+        <aside className="flex w-[280px] min-h-0 flex-shrink-0 flex-col border-r border-slate-200 bg-white">
           <div className="flex h-11 flex-shrink-0 items-center gap-1.5 border-b border-slate-200 px-3.5">
             <ClockCounterClockwise size={14} weight="bold" className="text-slate-400" aria-hidden="true" />
             <span className="text-xs font-bold uppercase tracking-wide text-slate-700">Tiền sử &amp; lịch sử khám</span>
@@ -420,7 +498,7 @@ export function EncounterConsultationPage() {
         </aside>
 
         {/* Panel phải — khu vực làm việc */}
-        <main className="flex min-h-0 flex-col">
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col">
           <div className="flex h-11 flex-shrink-0 gap-1 border-b border-slate-200 bg-white px-4">
             {TABS.map((tab) => (
               <button

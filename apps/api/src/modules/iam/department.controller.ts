@@ -32,6 +32,19 @@ export class DepartmentController {
     return this.departmentService.listDepartments(tenantId);
   }
 
+  /**
+   * "Hàng đợi ảo" (#064) — chiếu tối thiểu cho khu vực Điều phối Bác sĩ/Khoa lúc Tiếp nhận
+   * (`ReceptionIntakeForm.tsx`). Gắn quyền `reference_catalog.read` thay vì `user_account.read`
+   * (đúng lý do đã áp dụng cho `GET /appointments/doctors`, `docs/DECISIONS.md` #030) — lễ tân/bác
+   * sĩ/điều dưỡng có `reference_catalog.read` nhưng không có `user_account.read`.
+   */
+  @Get('options')
+  @RequirePermission('reference_catalog', 'read')
+  async listOptions(@Req() req: Request) {
+    const { tenantId } = req.user!;
+    return this.departmentService.listDepartmentOptions(tenantId);
+  }
+
   @Patch(':id')
   @RequirePermission('user_account', 'manage')
   async update(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {

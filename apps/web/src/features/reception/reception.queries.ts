@@ -5,15 +5,16 @@ import { queryKey } from '../../shared/api/query-keys';
 import { cancelEncounter, checkIn, getReceptionList, registerReception, startConsultation } from './reception.api';
 
 /**
- * "Danh sách tiếp nhận" (không `doctorId`) / "Hàng đợi khám" (kèm `doctorId`) — cùng nguồn dữ
- * liệu, chỉ khác tham số lọc. 1 ngày/tenant nhỏ (không cursor) — cùng lý do
- * `useAppointmentsByDateQuery` (chế độ Lưới).
+ * "Danh sách tiếp nhận" (không `doctorId`) / "Hàng đợi khám" (kèm `doctorId`, `includeDepartmentPool`
+ * — "Hàng đợi ảo" #064, gộp thêm hàng chờ chung Khoa của chính bác sĩ đó) — cùng nguồn dữ liệu,
+ * chỉ khác tham số lọc. 1 ngày/tenant nhỏ (không cursor) — cùng lý do `useAppointmentsByDateQuery`
+ * (chế độ Lưới).
  */
-export function useReceptionListQuery(date?: string, doctorId?: string) {
+export function useReceptionListQuery(date?: string, doctorId?: string, includeDepartmentPool?: boolean) {
   const { tenantId } = useAppConfig();
   return useQuery({
-    queryKey: queryKey(tenantId, 'reception', 'list', date, doctorId),
-    queryFn: () => getReceptionList(date, doctorId),
+    queryKey: queryKey(tenantId, 'reception', 'list', date, doctorId, includeDepartmentPool ? 'pool' : undefined),
+    queryFn: () => getReceptionList(date, doctorId, includeDepartmentPool),
     // Danh sách cần cập nhật khá liên tục trong giờ làm việc (khách vừa tiếp nhận xong, bác sĩ vừa
     // bắt đầu khám) — tự làm mới định kỳ thay vì chỉ dựa vào invalidate thủ công sau mutation.
     refetchInterval: 30_000,

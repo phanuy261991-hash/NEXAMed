@@ -247,6 +247,12 @@ model Department {
   // khuôn Room (isActive, không phải soft-delete deletedAt — giữ nguyên lịch sử gán trên
   // user_account.department_id, chỉ ẩn khỏi Combobox chọn mới).
   isActive Boolean @default(true) @map("is_active")
+  // "Hàng đợi ảo" (#064) — đánh dấu "Khoa chung" tự sinh mỗi tenant lúc seed
+  // (`seedDefaultRolesForTenant`), dùng làm fallback `encounter.department_id` khi bác sĩ chưa gán
+  // Khoa hoặc lúc Tiếp nhận chọn thẳng "Khoa chung". Đúng 1 dòng/tenant — ép bằng partial unique
+  // index raw SQL trong migration (`(tenant_id) WHERE is_default`), không khai `@@unique` ở Prisma
+  // (không biểu diễn được unique có điều kiện, cùng lý do patient.nationalIdHash).
+  isDefault Boolean @default(false) @map("is_default")
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -261,8 +267,11 @@ model Department {
   // department_type_id nullable — FK chỉ áp khi có giá trị (Postgres MATCH SIMPLE, cùng mẫu room.floor).
   departmentType DepartmentType? @relation(fields: [tenantId, departmentTypeId], references: [tenantId, id])
   userAccounts UserAccount[]
+  // "Hàng đợi ảo" (#064) — mọi encounter thuộc một Khoa cụ thể (bắt buộc), dù đã gán bác sĩ hay
+  // còn trong hàng chờ chung.
+  encounters   Encounter[]
 
-  // Đích của composite FK (tenant_id, id) từ user_account.
+  // Đích của composite FK (tenant_id, id) từ user_account/encounter.
   @@unique([tenantId, id])
   @@map("department")
 }
@@ -869,7 +878,15 @@ model Encounter {
   id             String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
   tenantId       String          @map("tenant_id") @db.Uuid
   patientId      String          @map("patient_id") @db.Uuid
-  doctorId       String          @map("doctor_id") @db.Uuid
+  // "Hàng đợi ảo" (#064) — nullable: lượt khám còn trong hàng chờ chung Khoa (`departmentId`,
+  // dưới) chưa được bác sĩ nào nhận thì `doctorId=NULL`. "Của tôi" = `doctorId=actor`; "Nhận ca"
+  // (`POST /encounters/:id/start`) set `doctorId` lúc pull từ hàng chờ chung.
+  doctorId       String?         @map("doctor_id") @db.Uuid
+  // "Hàng đợi ảo" (#064) — BẮT BUỘC, khác doctorId (nullable). Suy từ Khoa của bác sĩ đã chọn lúc
+  // Tiếp nhận, hoặc là Khoa client chọn thẳng khi routing "theo Khoa (chưa rõ bác sĩ)". Mọi tenant
+  // luôn có sẵn ít nhất 1 Khoa mặc định ("Khoa chung", seed lúc tạo tenant) nên cột này không bao
+  // giờ thiếu giá trị hợp lệ để gán.
+  departmentId   String          @map("department_id") @db.Uuid
   // Không @unique ở đây — constraint thật là partial unique index raw SQL (WHERE appointment_id
   // IS NOT NULL AND deleted_at IS NULL, xem migration), Prisma không biểu diễn được unique có điều
   // kiện WHERE (cùng lý do patient.nationalIdHash không khai @unique).
@@ -925,7 +942,9 @@ model Encounter {
   // Composite FK (tenant_id, patient_id/doctor_id/appointment_id) -> ...(tenant_id, id): chống trỏ
   // chéo tenant (C5, docs/ERD.md mục 4), appointment_id nullable nên FK chỉ áp khi có giá trị.
   patient     Patient      @relation(fields: [tenantId, patientId], references: [tenantId, id])
-  doctor      UserAccount  @relation("EncounterDoctor", fields: [tenantId, doctorId], references: [tenantId, id])
+  // doctorId nullable — FK chỉ áp khi có giá trị (Postgres MATCH SIMPLE, cùng mẫu room.floorId).
+  doctor      UserAccount? @relation("EncounterDoctor", fields: [tenantId, doctorId], references: [tenantId, id])
+  department  Department   @relation(fields: [tenantId, departmentId], references: [tenantId, id])
   appointment Appointment? @relation(fields: [tenantId, appointmentId], references: [tenantId, id])
   vitalSigns  VitalSign[]
   diagnoses     Diagnosis[]

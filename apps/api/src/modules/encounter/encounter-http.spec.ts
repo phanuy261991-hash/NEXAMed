@@ -29,6 +29,8 @@ describe('HTTP e2e — /api/v1/encounters', () => {
   let doctorAToken: string;
   let doctorAUserId: string;
   let doctorBToken: string;
+  let doctorBUserId: string;
+  let doctorCToken: string;
   let tenantBReceptionistToken: string;
   let tenantBDoctorToken: string;
 
@@ -52,6 +54,46 @@ describe('HTTP e2e — /api/v1/encounters', () => {
 
   function isoAt(hour: number, minute: number, day = 28) {
     return new Date(Date.UTC(2026, 7, day, hour, minute, 0)).toISOString();
+  }
+
+  /** "Hàng đợi ảo" (#064) — Khoa mới, dùng riêng cho từng test để tránh chồng chéo trạng thái. */
+  async function createDepartment(tenantId: string, name: string) {
+    const department = await privileged.department.create({
+      data: { tenantId, name, isActive: true, createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR },
+    });
+    return department.id as string;
+  }
+
+  async function assignDepartment(userId: string, departmentId: string) {
+    await privileged.userAccount.update({ where: { id: userId }, data: { departmentId } });
+  }
+
+  /**
+   * Tạo thẳng lượt khám vào hàng chờ chung của 1 Khoa (`POST /reception/direct`, routing "theo
+   * Khoa" — `doctorId` bỏ trống) — không qua `appointment`, đơn giản hơn `checkInFreshEncounter()`
+   * cho các test "Nhận ca".
+   */
+  async function registerPoolEncounter(hour: number, departmentId: string) {
+    const patientRes = await request(app.getHttpServer())
+      .post('/api/v1/patients')
+      .set(authed(receptionistToken))
+      .send({ fullName: 'Bệnh nhân e2e (pool)', dob: '1990-01-01', gender: 'female', phone: '0933444555', nationalId: randomNationalId() });
+    const patient = patientRes.body.data as { id: string };
+
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/reception/direct')
+      .set(authed(receptionistToken))
+      .send({
+        patientId: patient.id,
+        departmentId,
+        checkedInAt: isoAt(hour, 0),
+        examTypeCode: 'KT',
+        examTypeName: 'Khám thường',
+        examTypePrice: 150_000,
+        receptionTypeCode: 'RT_NEW',
+        examFormCode: 'EF_NORMAL',
+      });
+    return res.body.data as { id: string; doctorId: string | null; departmentId: string };
   }
 
   function randomNationalId(): string {
@@ -81,6 +123,8 @@ describe('HTTP e2e — /api/v1/encounters', () => {
         version: appointment.version,
         // checkInRequestSchema (docs/DECISIONS.md #044) giờ bắt buộc kèm loại khám; thiết kế lại
         // "Tiếp nhận bệnh nhân" (mockup đã duyệt) thêm bắt buộc Loại tiếp nhận/Hình thức khám.
+        // doctorId (docs/DECISIONS.md #064 — "Hàng đợi ảo") nay bắt buộc gửi tường minh.
+        doctorId,
         examTypeCode: 'KT',
         examTypeName: 'Khám thường',
         examTypePrice: 150_000,
@@ -114,7 +158,10 @@ describe('HTTP e2e — /api/v1/encounters', () => {
     const doctorA = await createUserWithRole(fixture.tenantA.id, 'doctor');
     doctorAToken = doctorA.token;
     doctorAUserId = doctorA.userId;
-    doctorBToken = (await createUserWithRole(fixture.tenantA.id, 'doctor')).token;
+    const doctorB = await createUserWithRole(fixture.tenantA.id, 'doctor');
+    doctorBToken = doctorB.token;
+    doctorBUserId = doctorB.userId;
+    doctorCToken = (await createUserWithRole(fixture.tenantA.id, 'doctor')).token;
     tenantBReceptionistToken = (await createUserWithRole(fixture.tenantB.id, 'receptionist')).token;
     tenantBDoctorToken = (await createUserWithRole(fixture.tenantB.id, 'doctor')).token;
   });
@@ -170,6 +217,95 @@ describe('HTTP e2e — /api/v1/encounters', () => {
         .post(`/api/v1/encounters/${encounterId}/start`)
         .set(authed(tenantBDoctorToken))
         .send({ version: 1 });
+
+      expect(res.status).toBe(404);
+    });
+  });
+
+  describe('POST /api/v1/encounters/:id/start — "Nhận ca" (Hàng đợi ảo, #064 — ticket trong hàng chờ chung Khoa, doctorId=NULL)', () => {
+    it('bác sĩ cùng Khoa nhận ca → 200, gán đúng doctorId + IN_CONSULTATION, set startedAt', async () => {
+      const departmentId = await createDepartment(fixture.tenantA.id, 'Khoa Nội — nhận ca OK');
+      await assignDepartment(doctorAUserId, departmentId);
+      const ticket = await registerPoolEncounter(16, departmentId);
+      expect(ticket.doctorId).toBeNull();
+
+      const res = await request(app.getHttpServer()).post(`/api/v1/encounters/${ticket.id}/start`).set(authed(doctorAToken)).send({ version: 1 });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.status).toBe('IN_CONSULTATION');
+      expect(res.body.data.doctorId).toBe(doctorAUserId);
+      expect(res.body.data.startedAt).not.toBeNull();
+      expect(res.body.data.version).toBe(2);
+    });
+
+    it('2 bác sĩ cùng Khoa bấm nhận ca gần như đồng thời → đúng 1 thành công (200), 1 thua', async () => {
+      const departmentId = await createDepartment(fixture.tenantA.id, 'Khoa Nội — race nhận ca');
+      await assignDepartment(doctorAUserId, departmentId);
+      await assignDepartment(doctorBUserId, departmentId);
+      const ticket = await registerPoolEncounter(17, departmentId);
+
+      const [first, second] = await Promise.all([
+        request(app.getHttpServer()).post(`/api/v1/encounters/${ticket.id}/start`).set(authed(doctorAToken)).send({ version: 1 }),
+        request(app.getHttpServer()).post(`/api/v1/encounters/${ticket.id}/start`).set(authed(doctorBToken)).send({ version: 1 }),
+      ]);
+
+      const winner = first.status === 200 ? first : second;
+      const loser = first.status === 200 ? second : first;
+      expect(winner.status).toBe(200);
+      expect([doctorAUserId, doctorBUserId]).toContain(winner.body.data.doctorId);
+      // Bên thua có 2 kết quả hợp lệ tuỳ thời điểm 2 transaction thật sự chồng lấn tới đâu (cùng
+      // tinh thần "3 kết quả đều hợp lệ" ở appointment-http.spec.ts): nếu bên thua đọc ticket
+      // TRƯỚC khi bên thắng commit xong, cả hai cùng vào nhánh "Nhận ca" và bên thua thua ngay ở
+      // bước ghi có điều kiện (409 ENCOUNTER_ALREADY_CLAIMED, đúng thông điệp thân thiện cho UI);
+      // nếu bên thua đọc ticket SAU khi bên thắng đã commit xong, `existing.doctorId` đã khác actor
+      // ngay từ đầu nên rơi vào nhánh "ca của người khác" (404, giống hệt test "bác sĩ khác →
+      // 404" ở trên) — cả hai đều đúng nghĩa "thua cuộc đua nhận ca", không phải bug.
+      expect([404, 409]).toContain(loser.status);
+      if (loser.status === 409) {
+        expect(loser.body.error.code).toBe('ENCOUNTER_ALREADY_CLAIMED');
+      }
+
+      // Xác nhận thật ở DB: đúng 1 bác sĩ được gán, không có trạng thái nửa vời.
+      const updated = await privileged.encounter.findUniqueOrThrow({ where: { id: ticket.id } });
+      expect(updated.doctorId).toBe(winner.body.data.doctorId);
+      expect(updated.status).toBe('IN_CONSULTATION');
+    });
+
+    it('bác sĩ KHÁC Khoa với ticket → 404 (chặn nhận ca chéo Khoa)', async () => {
+      const departmentX = await createDepartment(fixture.tenantA.id, 'Khoa Nội — chủ ticket');
+      const departmentY = await createDepartment(fixture.tenantA.id, 'Khoa Ngoại — bác sĩ khác Khoa');
+      await assignDepartment(doctorAUserId, departmentY);
+      const ticket = await registerPoolEncounter(18, departmentX);
+
+      const res = await request(app.getHttpServer()).post(`/api/v1/encounters/${ticket.id}/start`).set(authed(doctorAToken)).send({ version: 1 });
+
+      expect(res.status).toBe(404);
+    });
+
+    it('bác sĩ chưa gán Khoa nào (departmentId=null) → 404 (không nhận ca được, kể cả ticket cùng Khoa mặc định)', async () => {
+      const departmentId = await createDepartment(fixture.tenantA.id, 'Khoa Nội — bác sĩ chưa gán Khoa');
+      const ticket = await registerPoolEncounter(19, departmentId);
+      // doctorC chưa từng được assignDepartment() — departmentId vẫn NULL.
+
+      const res = await request(app.getHttpServer()).post(`/api/v1/encounters/${ticket.id}/start`).set(authed(doctorCToken)).send({ version: 1 });
+
+      expect(res.status).toBe(404);
+    });
+
+    it('lễ tân (không có encounter.update) không nhận ca được → 403', async () => {
+      const departmentId = await createDepartment(fixture.tenantA.id, 'Khoa Nội — lễ tân không nhận ca');
+      const ticket = await registerPoolEncounter(20, departmentId);
+
+      const res = await request(app.getHttpServer()).post(`/api/v1/encounters/${ticket.id}/start`).set(authed(receptionistToken)).send({ version: 1 });
+
+      expect(res.status).toBe(403);
+    });
+
+    it('tenant B không nhận ca được ticket của tenant A → 404 (cách ly tenant)', async () => {
+      const departmentId = await createDepartment(fixture.tenantA.id, 'Khoa Nội — cách ly tenant');
+      const ticket = await registerPoolEncounter(21, departmentId);
+
+      const res = await request(app.getHttpServer()).post(`/api/v1/encounters/${ticket.id}/start`).set(authed(tenantBDoctorToken)).send({ version: 1 });
 
       expect(res.status).toBe(404);
     });

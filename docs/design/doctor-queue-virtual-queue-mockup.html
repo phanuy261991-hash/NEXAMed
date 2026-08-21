@@ -1,0 +1,624 @@
+<title>Hàng đợi khám</title>
+<style>
+  :root {
+    --bg: #f8fafc;
+    --surface: #ffffff;
+    --surface-muted: #f1f5f9;
+    --border: #e2e8f0;
+    --border-strong: #cbd5e1;
+    --text-primary: #0f172a;
+    --text-secondary: #64748b;
+    --text-tertiary: #94a3b8;
+    --sidebar-bg: #0f172a;
+    --sidebar-text: #94a3b8;
+    --sidebar-text-active: #ffffff;
+
+    --blue: #2563eb;
+    --blue-hover: #1d4ed8;
+    --blue-tint: #eff6ff;
+    --teal: #099078;
+    --teal-tint: #e3f3f0;
+    --teal-active: #065f50;
+
+    --good: #10b981;
+    --good-tint: #ecfdf5;
+    --good-text: #047857;
+    --caution: #f59e0b;
+    --caution-tint: #fffbeb;
+    --caution-text: #b45309;
+    --critical: #e11d48;
+    --critical-tint: #fff1f2;
+    --critical-text: #be123c;
+
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.06);
+    --shadow-md: 0 4px 10px -2px rgba(15, 23, 42, 0.10), 0 2px 4px -2px rgba(15, 23, 42, 0.06);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0a0f1a; --surface: #111a2c; --surface-muted: #0d1526;
+      --border: #223047; --border-strong: #2c3c58;
+      --text-primary: #e8edf5; --text-secondary: #94a3b8; --text-tertiary: #64748b;
+      --sidebar-bg: #060a12; --sidebar-text: #7c8aa3; --sidebar-text-active: #ffffff;
+      --blue: #4f8cff; --blue-hover: #6ba0ff; --blue-tint: #12203f;
+      --teal: #22b79a; --teal-tint: #0f2a26; --teal-active: #1a9481;
+      --good: #34d399; --good-tint: #0c2620; --good-text: #6ee7b7;
+      --caution: #fbbf24; --caution-tint: #2a2107; --caution-text: #fcd34d;
+      --critical: #fb7185; --critical-tint: #2b1116; --critical-text: #fda4af;
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.35);
+      --shadow-md: 0 6px 16px -4px rgba(0, 0, 0, 0.5);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0a0f1a; --surface: #111a2c; --surface-muted: #0d1526;
+    --border: #223047; --border-strong: #2c3c58;
+    --text-primary: #e8edf5; --text-secondary: #94a3b8; --text-tertiary: #64748b;
+    --sidebar-bg: #060a12; --sidebar-text: #7c8aa3; --sidebar-text-active: #ffffff;
+    --blue: #4f8cff; --blue-hover: #6ba0ff; --blue-tint: #12203f;
+    --teal: #22b79a; --teal-tint: #0f2a26; --teal-active: #1a9481;
+    --good: #34d399; --good-tint: #0c2620; --good-text: #6ee7b7;
+    --caution: #fbbf24; --caution-tint: #2a2107; --caution-text: #fcd34d;
+    --critical: #fb7185; --critical-tint: #2b1116; --critical-text: #fda4af;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.35);
+    --shadow-md: 0 6px 16px -4px rgba(0, 0, 0, 0.5);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums lining-nums;
+    -webkit-font-smoothing: antialiased;
+  }
+  button { font-family: inherit; }
+  svg { display: block; flex-shrink: 0; }
+  code { font-family: inherit; background: var(--surface-muted); border-radius: 4px; padding: 0 4px; }
+
+  .shell { display: flex; min-height: 100vh; }
+
+  /* ---------- Sidebar (chỉ để định vị ngữ cảnh) ---------- */
+  .sidebar { width: 208px; flex-shrink: 0; background: var(--sidebar-bg); display: flex; flex-direction: column; padding: 14px 10px; gap: 2px; }
+  .sidebar-logo { display: flex; align-items: center; gap: 8px; padding: 6px 8px 16px; color: #ffffff; font-weight: 700; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 10px; }
+  .sidebar-group-label { font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #5b6b85; padding: 12px 10px 4px; }
+  .sidebar-item { display: flex; align-items: center; gap: 9px; padding: 7px 10px; border-radius: 6px; font-size: 13px; font-weight: 500; color: var(--sidebar-text); }
+  .sidebar-item.active { background: rgba(255,255,255,0.08); color: var(--sidebar-text-active); font-weight: 600; }
+  .sidebar-item .dot { width: 5px; height: 5px; border-radius: 999px; background: var(--blue); margin-left: auto; }
+
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+  .topbar { height: 52px; flex-shrink: 0; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; }
+  .breadcrumb { display: flex; align-items: center; gap: 4px; font-size: 13px; }
+  .crumb { display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 6px; color: var(--text-secondary); font-weight: 500; }
+  .crumb.current { background: var(--blue-tint); color: var(--blue); font-weight: 600; }
+  .topbar-user { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-secondary); }
+  .avatar { width: 28px; height: 28px; border-radius: 999px; background: var(--blue-tint); color: var(--blue); display: flex; align-items: center; justify-content: center; font-size: 11.5px; font-weight: 700; }
+
+  .content { flex: 1; display: flex; flex-direction: column; padding: 18px 24px 28px; gap: 16px; }
+
+  h1.sr-only, h2.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+  .section-heading { display: flex; align-items: baseline; gap: 8px; margin: 6px 0 0; }
+  .section-heading .num { font-size: 11px; font-weight: 700; color: var(--surface); background: var(--text-primary); border-radius: 999px; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .section-heading h2 { margin: 0; font-size: 13px; font-weight: 700; color: var(--text-primary); }
+  .section-heading .sub { font-size: 12px; color: var(--text-tertiary); }
+
+  /* ---------- Dải phiên làm việc ---------- */
+  .session-strip { display: flex; align-items: center; justify-content: space-between; gap: 16px; background: var(--teal-tint); border: 1px solid color-mix(in srgb, var(--teal) 30%, var(--border)); border-radius: 10px; padding: 11px 16px; }
+  .session-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .session-icon { width: 34px; height: 34px; border-radius: 8px; background: var(--surface); display: flex; align-items: center; justify-content: center; color: var(--teal); flex-shrink: 0; box-shadow: var(--shadow-sm); }
+  .session-doctor { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+  .session-room { font-size: 12.5px; color: var(--teal-active); font-weight: 600; display: flex; align-items: center; gap: 5px; }
+  .session-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .session-count { font-size: 12px; font-weight: 600; color: var(--text-secondary); background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px; }
+  .btn-ghost-teal { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--teal); background: var(--surface); border: 1px solid color-mix(in srgb, var(--teal) 35%, var(--border)); border-radius: 7px; padding: 6px 11px; cursor: pointer; }
+
+  /* ---------- Board ---------- */
+  .board { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; height: 560px; }
+  .col { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; min-height: 0; box-shadow: var(--shadow-sm); }
+  .col-head { padding: 12px 14px; border-bottom: 1px solid var(--border); border-top: 3px solid transparent; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .col.waiting .col-head { border-top-color: var(--blue); }
+  .col.active .col-head { border-top-color: var(--caution); }
+  .col.done .col-head { border-top-color: var(--good); }
+  .col-title { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-primary); }
+  .col-title svg { width: 16px; height: 16px; }
+  .col.waiting .col-title svg { color: var(--blue); }
+  .col.active .col-title svg { color: var(--caution-text); }
+  .col.done .col-title svg { color: var(--good-text); }
+  .count-pill { font-size: 11.5px; font-weight: 700; color: var(--surface); background: var(--text-primary); border-radius: 999px; padding: 1px 8px; }
+
+  .col-body { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+  .col-body::-webkit-scrollbar { width: 7px; }
+  .col-body::-webkit-scrollbar-thumb { background: transparent; border-radius: 999px; }
+  .col-body:hover::-webkit-scrollbar-thumb { background: var(--border-strong); }
+
+  .group-label { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-tertiary); display: flex; align-items: center; gap: 6px; padding: 6px 2px 0; }
+  .group-label::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+  .group-caption { font-size: 10.5px; font-weight: 500; color: var(--text-tertiary); font-style: italic; padding: 0 2px 2px; margin-top: -4px; }
+
+  /* ---------- Cards ---------- */
+  .card { border: 1px solid var(--border); border-left: 3px solid var(--border-strong); border-radius: 8px; padding: 10px 12px; background: var(--surface); box-shadow: var(--shadow-sm); }
+  .card.priority { border-left-color: var(--caution); background: color-mix(in srgb, var(--caution-tint) 55%, var(--surface)); }
+  .card.overdue { border-left-color: var(--critical); background: color-mix(in srgb, var(--critical-tint) 45%, var(--surface)); }
+  .card.exam { border-left-color: var(--caution); }
+  .card.pool { border-left-style: dashed; border-left-color: var(--blue); }
+  .card.pool.overdue { border-left-color: var(--critical); }
+
+  .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .card-id { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+  .card-name { font-size: 14px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-code { font-size: 11px; font-weight: 600; color: var(--text-tertiary); flex-shrink: 0; }
+
+  .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 999px; white-space: nowrap; }
+  .badge svg { width: 10px; height: 10px; }
+  .badge.b-priority { background: var(--caution-tint); color: var(--caution-text); }
+  .badge.b-overdue { background: var(--critical-tint); color: var(--critical-text); }
+  .badge.b-scheduled { background: var(--blue-tint); color: var(--blue); }
+  .badge.b-pool { background: var(--blue-tint); color: var(--blue); }
+  .badge.b-exam { background: var(--caution-tint); color: var(--caution-text); }
+
+  .card-complaint { font-size: 12px; color: var(--text-secondary); margin-top: 4px; line-height: 1.4; }
+  .card-complaint b { color: var(--text-primary); font-weight: 600; }
+
+  .card-meta { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: 11.5px; color: var(--text-tertiary); flex-wrap: wrap; }
+  .card-meta span { display: flex; align-items: center; gap: 4px; }
+  .card-meta svg { width: 12px; height: 12px; }
+  .wait-chip { font-weight: 700; }
+  .wait-chip.ok { color: var(--text-secondary); }
+  .wait-chip.warn { color: var(--critical-text); }
+
+  .card-actions { margin-top: 9px; }
+  .btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12.5px; font-weight: 600; border-radius: 7px; padding: 7px 10px; border: none; cursor: pointer; }
+  .btn svg { width: 13px; height: 13px; }
+  .btn-primary { background: var(--blue); color: #ffffff; }
+  .btn-secondary { background: var(--surface); border: 1px solid var(--border-strong); color: var(--text-primary); }
+  .btn-pool { background: var(--surface); border: 1.5px dashed var(--blue); color: var(--blue); }
+
+  .done-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 4px; border-bottom: 1px solid var(--border); }
+  .done-row:last-child { border-bottom: none; }
+  .done-left { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .done-name { font-size: 12.5px; font-weight: 600; color: var(--text-primary); }
+  .done-sub { font-size: 11px; color: var(--text-tertiary); }
+  .done-link { font-size: 11.5px; font-weight: 600; color: var(--blue); white-space: nowrap; cursor: pointer; }
+
+  .empty-mini { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 26px 12px; text-align: center; color: var(--text-tertiary); }
+  .empty-mini svg { width: 30px; height: 30px; opacity: 0.5; }
+  .empty-mini p { margin: 0; font-size: 12px; }
+
+  /* ---------- Màn hình liên quan (mini-screen preview) ---------- */
+  .secondary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .mini-screen { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--surface); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; }
+  .mini-screen-head { padding: 8px 14px; background: var(--surface-muted); border-bottom: 1px solid var(--border); font-size: 11.5px; font-weight: 600; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+  .mini-screen-head svg { width: 12px; height: 12px; color: var(--text-tertiary); }
+  .mini-screen-body { padding: 16px; flex: 1; }
+
+  .routing-toggle { display: flex; gap: 6px; background: var(--surface-muted); border-radius: 8px; padding: 3px; margin-bottom: 14px; }
+  .routing-option { flex: 1; text-align: center; font-size: 12px; font-weight: 600; padding: 7px 8px; border-radius: 6px; color: var(--text-secondary); }
+  .routing-option.active { background: var(--surface); color: var(--blue); box-shadow: var(--shadow-sm); }
+
+  .route-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 10px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 7px; }
+  .route-row.dashed { border-style: dashed; border-color: var(--blue); background: var(--blue-tint); }
+  .route-left { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .route-name { font-size: 12.5px; font-weight: 700; color: var(--text-primary); }
+  .route-sub { font-size: 11px; color: var(--text-tertiary); }
+  .route-count { font-size: 11px; font-weight: 700; color: var(--text-secondary); background: var(--surface-muted); border-radius: 999px; padding: 3px 9px; white-space: nowrap; }
+  .route-count.high { color: var(--critical-text); background: var(--critical-tint); }
+  .route-divider { text-align: center; font-size: 10.5px; font-weight: 700; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; margin: 10px 0; }
+
+  .exam-shell { display: flex; gap: 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; height: 280px; }
+  .exam-rail { width: 132px; flex-shrink: 0; background: var(--surface-muted); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+  .exam-rail-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 9px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-tertiary); border-bottom: 1px solid var(--border); }
+  .exam-rail-item { padding: 8px 9px; border-bottom: 1px solid var(--border); }
+  .exam-rail-name { font-size: 11.5px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .exam-rail-wait { font-size: 10.5px; color: var(--text-tertiary); margin-top: 1px; }
+  .exam-main { flex: 1; background: var(--surface); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: var(--text-tertiary); text-align: center; padding: 16px; }
+  .exam-main strong { color: var(--text-primary); font-size: 13px; }
+  .exam-main span { font-size: 11.5px; max-width: 260px; }
+
+  /* ---------- Ghi chú ---------- */
+  .notes { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; }
+  .notes h2 { margin: 0 0 10px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); }
+  .notes-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px 22px; }
+  .notes-col { display: flex; flex-direction: column; gap: 7px; }
+  .notes-col h3 { margin: 0; font-size: 11.5px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px; }
+  .notes-col h3 svg { width: 13px; height: 13px; flex-shrink: 0; }
+  .notes-col ul { margin: 0; padding-left: 15px; display: flex; flex-direction: column; gap: 5px; }
+  .notes-col li { font-size: 11.5px; line-height: 1.55; color: var(--text-secondary); }
+  .notes-col li b { color: var(--text-primary); }
+
+  /* ---------- Toast minh hoạ ---------- */
+  .toast-wrap { position: fixed; right: 20px; bottom: 20px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; z-index: 20; }
+  .toast-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-tertiary); background: var(--surface); border: 1px dashed var(--border-strong); border-radius: 999px; padding: 3px 9px; }
+  .toast { display: flex; align-items: flex-start; gap: 10px; background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--caution); border-radius: 10px; padding: 11px 14px; box-shadow: var(--shadow-md); max-width: 300px; }
+  .toast svg { width: 17px; height: 17px; color: var(--caution-text); flex-shrink: 0; margin-top: 1px; }
+  .toast p { margin: 0; font-size: 12px; line-height: 1.5; color: var(--text-primary); }
+</style>
+
+<div class="shell">
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v6M9 6h6M7 10c0 5 2 9 5 11 3-2 5-6 5-11a5 5 0 0 0-10 0Z"/></svg>
+      NEXAMed
+    </div>
+    <div class="sidebar-item"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 12 12 4l8 8M6 10v9h12v-9"/></svg>Tổng quan</div>
+    <div class="sidebar-group-label">Tiếp nhận và đặt lịch</div>
+    <div class="sidebar-item"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="4.5" width="17" height="16" rx="2"/><path d="M8 3v3M16 3v3M3.5 9.5h17"/></svg>Lịch hẹn</div>
+    <div class="sidebar-item"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 20v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2M10 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM20 20v-2a4 4 0 0 0-2.7-3.78M15 3.3A4 4 0 0 1 15 11"/></svg>Danh sách tiếp nhận</div>
+    <div class="sidebar-item"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>Tiếp nhận bệnh nhân</div>
+    <div class="sidebar-group-label">Khám bệnh</div>
+    <div class="sidebar-item active">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M6 3v6a4 4 0 0 0 8 0V3M8 3h4M17 13a4 4 0 1 1 4 4"/><circle cx="19" cy="19" r="1.2" fill="currentColor" stroke="none"/></svg>
+      Hàng đợi khám
+      <span class="dot"></span>
+    </div>
+  </nav>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="breadcrumb">
+        <span class="crumb"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 11 12 4l8 7M6 9.5V20h12V9.5"/></svg></span>
+        <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-tertiary)"><path d="M9 5l6 7-6 7"/></svg>
+        <span class="crumb">Khám bệnh</span>
+        <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-tertiary)"><path d="M9 5l6 7-6 7"/></svg>
+        <span class="crumb current">Hàng đợi khám</span>
+      </div>
+      <div class="topbar-user">
+        <span>Xin chào, BS. Ngô Thanh Hải</span>
+        <div class="avatar">NH</div>
+      </div>
+    </div>
+
+    <div class="content">
+      <h1 class="sr-only">Hàng đợi khám</h1>
+
+      <div class="section-heading">
+        <span class="num">1</span>
+        <h2>Hàng đợi khám — màn hình bác sĩ</h2>
+        <span class="sub">(yêu cầu gốc)</span>
+      </div>
+
+      <!-- Dải phiên làm việc: bác sĩ + phòng vật lý đang ngồi — thuần hiển thị/điều phối (#054), KHÔNG phải khoá lưu hàng đợi -->
+      <div class="session-strip">
+        <div class="session-left">
+          <div class="session-icon">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3v6a4 4 0 0 0 8 0V3M8 3h4M17 13a4 4 0 1 1 4 4"/><circle cx="19" cy="19" r="1.2" fill="currentColor" stroke="none"/></svg>
+          </div>
+          <div>
+            <div class="session-doctor">BS. Ngô Thanh Hải · Khoa Nội</div>
+            <div class="session-room">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s7-6.1 7-11.5A7 7 0 0 0 5 9.5C5 14.9 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.2"/></svg>
+              Đang ở Phòng khám số 2
+            </div>
+          </div>
+        </div>
+        <div class="session-right">
+          <span class="session-count">6 lượt khám hôm nay</span>
+          <button class="btn-ghost-teal">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3M14 4h4v4M10 20H6v-4"/></svg>
+            Đổi phòng
+          </button>
+        </div>
+      </div>
+
+      <!-- Bảng 3 cột đúng state machine encounter: CHECKED_IN / IN_CONSULTATION / COMPLETED -->
+      <div class="board">
+
+        <section class="col waiting">
+          <div class="col-head">
+            <div class="col-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+              Đang chờ
+            </div>
+            <span class="count-pill">4</span>
+          </div>
+          <div class="col-body">
+
+            <div class="group-label">Bệnh nhân của tôi</div>
+            <article class="card priority">
+              <div class="card-top">
+                <div class="card-id">
+                  <span class="card-name">Lê Thị Hồng Nhung</span>
+                  <span class="card-code">BN-0231</span>
+                </div>
+                <span class="badge b-priority">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 9 9l-7 1 5 5-1.5 7L12 18l6.5 4L17 15l5-5-7-1-3-7Z"/></svg>
+                  Ưu tiên
+                </span>
+              </div>
+              <div class="card-complaint"><b>Lý do:</b> Cao tuổi, chóng mặt kèm buồn nôn</div>
+              <div class="card-meta">
+                <span class="badge b-scheduled">Đặt lịch với tôi</span>
+                <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Tiếp nhận 08:12</span>
+                <span class="wait-chip ok">Chờ 9 phút</span>
+              </div>
+              <div class="card-actions">
+                <button class="btn btn-primary">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7Z"/></svg>
+                  Bắt đầu khám
+                </button>
+              </div>
+            </article>
+
+            <article class="card">
+              <div class="card-top">
+                <div class="card-id">
+                  <span class="card-name">Phạm Minh Tuấn</span>
+                  <span class="card-code">BN-0198</span>
+                </div>
+              </div>
+              <div class="card-complaint"><b>Lý do:</b> Đau thượng vị 2 ngày</div>
+              <div class="card-meta">
+                <span class="badge b-scheduled">Đặt lịch với tôi</span>
+                <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Tiếp nhận 08:35</span>
+                <span class="wait-chip ok">Chờ 14 phút</span>
+              </div>
+              <div class="card-actions">
+                <button class="btn btn-primary">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7Z"/></svg>
+                  Bắt đầu khám
+                </button>
+              </div>
+            </article>
+
+            <div class="group-label">Hàng chờ chung · Khoa Nội</div>
+            <div class="group-caption">Tự ẩn nếu phòng khám chỉ dùng 1 Khoa mặc định</div>
+
+            <article class="card pool overdue">
+              <div class="card-top">
+                <div class="card-id">
+                  <span class="card-name">Đỗ Văn Bình</span>
+                  <span class="card-code">BN-0304</span>
+                </div>
+                <span class="badge b-overdue">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 8v5M12 16h.01"/><circle cx="12" cy="12" r="9"/></svg>
+                  Chờ lâu
+                </span>
+              </div>
+              <div class="card-complaint"><b>Lý do:</b> Viêm họng, ho có đờm</div>
+              <div class="card-meta">
+                <span class="badge b-pool">Chưa gán bác sĩ</span>
+                <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Tiếp nhận 08:01</span>
+                <span class="wait-chip warn">Chờ 46 phút</span>
+              </div>
+              <div class="card-actions">
+                <button class="btn btn-pool">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
+                  Gọi khám — nhận ca này
+                </button>
+              </div>
+            </article>
+
+            <article class="card pool">
+              <div class="card-top">
+                <div class="card-id">
+                  <span class="card-name">Ngô Thị Bích Ngọc</span>
+                  <span class="card-code">BN-0312</span>
+                </div>
+              </div>
+              <div class="card-complaint"><b>Lý do:</b> Khám sức khoẻ định kỳ</div>
+              <div class="card-meta">
+                <span class="badge b-pool">Chưa gán bác sĩ</span>
+                <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Tiếp nhận 08:52</span>
+                <span class="wait-chip ok">Chờ 5 phút</span>
+              </div>
+              <div class="card-actions">
+                <button class="btn btn-pool">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
+                  Gọi khám — nhận ca này
+                </button>
+              </div>
+            </article>
+
+          </div>
+        </section>
+
+        <section class="col active">
+          <div class="col-head">
+            <div class="col-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3v6a4 4 0 0 0 8 0V3M8 3h4M17 13a4 4 0 1 1 4 4"/><circle cx="19" cy="19" r="1.2" fill="currentColor" stroke="none"/></svg>
+              Đang khám
+            </div>
+            <span class="count-pill">1</span>
+          </div>
+          <div class="col-body">
+
+            <article class="card exam">
+              <div class="card-top">
+                <div class="card-id">
+                  <span class="card-name">Trần Thị Cẩm Vân</span>
+                  <span class="card-code">BN-0177</span>
+                </div>
+                <span class="badge b-exam">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                  8 phút
+                </span>
+              </div>
+              <div class="card-complaint"><b>Lý do:</b> Sốt siêu vi, đau mỏi người</div>
+              <div class="card-meta">
+                <span class="badge b-scheduled">Đặt lịch với tôi</span>
+                <span>Bắt đầu lúc 08:52</span>
+              </div>
+              <div class="card-actions">
+                <button class="btn btn-secondary">
+                  Tiếp tục khám
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                </button>
+              </div>
+            </article>
+
+            <div class="empty-mini" style="margin-top:auto">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M17 20v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2M10 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM20 20v-2a4 4 0 0 0-2.7-3.78M15 3.3A4 4 0 0 1 15 11"/></svg>
+              <p>Chỉ 1 bệnh nhân đang khám cùng lúc</p>
+            </div>
+
+          </div>
+        </section>
+
+        <section class="col done">
+          <div class="col-head">
+            <div class="col-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 6 9 17l-5-5"/></svg>
+              Đã khám hôm nay
+            </div>
+            <span class="count-pill">2</span>
+          </div>
+          <div class="col-body">
+
+            <div class="done-row">
+              <div class="done-left">
+                <span class="done-name">Vũ Thị Kim Oanh</span>
+                <span class="done-sub">LK-260820-0041 · 07:40 – 07:52</span>
+              </div>
+              <span class="done-link">Xem lại</span>
+            </div>
+            <div class="done-row">
+              <div class="done-left">
+                <span class="done-name">Hoàng Anh Dũng</span>
+                <span class="done-sub">LK-260820-0038 · 07:15 – 07:33</span>
+              </div>
+              <span class="done-link">Xem lại</span>
+            </div>
+
+            <div class="empty-mini" style="margin-top:auto">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="m9 12 2 2 4-4"/></svg>
+              <p>Danh sách chỉ để tra cứu lại trong ca — không có thao tác sửa/in ở đây</p>
+            </div>
+
+          </div>
+        </section>
+
+      </div>
+
+      <div class="section-heading">
+        <span class="num">2</span>
+        <h2>2 màn hình liên quan — cùng mô hình dữ liệu, khác trang</h2>
+      </div>
+
+      <div class="secondary-grid">
+
+        <!-- Preview: Check-in điều phối theo Bác sĩ / Khoa -->
+        <div class="mini-screen">
+          <div class="mini-screen-head">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 11 12 4l8 7M6 9.5V20h12V9.5"/></svg>
+            Tiếp nhận và Đặt lịch › Tiếp nhận bệnh nhân — khu vực Điều phối
+          </div>
+          <div class="mini-screen-body">
+            <div class="routing-toggle">
+              <div class="routing-option active">Theo bác sĩ cụ thể</div>
+              <div class="routing-option">Theo Khoa (chưa rõ bác sĩ)</div>
+            </div>
+
+            <div class="route-row">
+              <div class="route-left">
+                <span class="route-name">BS. Ngô Thanh Hải</span>
+                <span class="route-sub">Khoa Nội · Phòng khám số 2 hôm nay</span>
+              </div>
+              <span class="route-count">Đang chờ: 2</span>
+            </div>
+            <div class="route-row">
+              <div class="route-left">
+                <span class="route-name">BS. Trần Đức Long</span>
+                <span class="route-sub">Khoa Nội · Phòng khám số 1 hôm nay</span>
+              </div>
+              <span class="route-count">Đang chờ: 1</span>
+            </div>
+
+            <div class="route-divider">hoặc đẩy vào hàng chờ chung</div>
+
+            <div class="route-row dashed">
+              <div class="route-left">
+                <span class="route-name">Khoa Nội (chung)</span>
+                <span class="route-sub">2 bác sĩ đang trực · chưa cần chọn ai</span>
+              </div>
+              <span class="route-count high">Đang chờ: 3</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Preview: Master-detail trong màn hình khám -->
+        <div class="mini-screen">
+          <div class="mini-screen-head">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M6 3v6a4 4 0 0 0 8 0V3M8 3h4M17 13a4 4 0 1 1 4 4"/><circle cx="19" cy="19" r="1.2" fill="currentColor" stroke="none"/></svg>
+            Khám bệnh › Đang khám — dải hàng đợi thu gọn
+          </div>
+          <div class="mini-screen-body">
+            <div class="exam-shell">
+              <div class="exam-rail">
+                <div class="exam-rail-head">
+                  Hàng chờ (3)
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 6l-6 6 6 6"/></svg>
+                </div>
+                <div class="exam-rail-item">
+                  <div class="exam-rail-name">Phạm Minh Tuấn</div>
+                  <div class="exam-rail-wait">Chờ 14 phút</div>
+                </div>
+                <div class="exam-rail-item">
+                  <div class="exam-rail-name">Đỗ Văn Bình</div>
+                  <div class="exam-rail-wait">Chờ 46 phút · lâu</div>
+                </div>
+                <div class="exam-rail-item">
+                  <div class="exam-rail-name">Ngô Thị Bích Ngọc</div>
+                  <div class="exam-rail-wait">Chờ 5 phút</div>
+                </div>
+              </div>
+              <div class="exam-main">
+                <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>
+                <strong>Phiếu khám — Trần Thị Cẩm Vân</strong>
+                <span>Nội dung đã có sẵn (S3-06/07), không đổi — chỉ thêm dải hàng chờ bên trái, ẩn/hiện bằng mũi tên.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="notes">
+        <h2>Ghi chú thiết kế — theo đúng 4 điểm đã chốt ở vòng hỏi trước</h2>
+        <div class="notes-grid">
+          <div class="notes-col">
+            <h3><svg viewBox="0 0 24 24" fill="none" stroke="var(--good)" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>Đã chốt kiến trúc</h3>
+            <ul>
+              <li>Hàng đợi <b>không phải bảng riêng</b> — chỉ là filter trên <code>encounter</code>: "Của tôi" = <code>doctorId=actor</code>; "Hàng chờ chung" = <code>departmentId=Khoa actor AND doctorId IS NULL</code>.</li>
+              <li><code>encounter.doctorId</code> → nullable; thêm <code>encounter.departmentId</code> (bắt buộc).</li>
+              <li>Mỗi tenant tự có sẵn <b>1 Khoa mặc định</b> lúc khởi tạo — lượt khám/bác sĩ chưa gán Khoa cụ thể vẫn có <code>departmentId</code> hợp lệ.</li>
+              <li>Khối "Hàng chờ chung" (cả ở Check-in lẫn Hàng đợi khám) <b>tự ẩn</b> khi tenant chỉ dùng 1 Khoa — đúng khuôn #054/#055.</li>
+              <li>Chống trùng "Nhận ca": <b>chỉ fallback</b> — ghi có điều kiện <code>WHERE doctor_id IS NULL</code> (ai ghi trước thắng) + toast lịch sự cho người thua (xem góc dưới phải). Không đầu tư WebSocket vòng này.</li>
+              <li><code>room</code>/<code>doctor_room_session</code> (#054) vẫn tách biệt — chỉ hiển thị/điều phối vật lý, không phải khoá lưu hàng đợi.</li>
+            </ul>
+          </div>
+          <div class="notes-col">
+            <h3><svg viewBox="0 0 24 24" fill="none" stroke="var(--caution-text)" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9 2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>Việc thật khi vào code</h3>
+            <ul>
+              <li>Migration: <code>doctorId</code> nullable + <code>departmentId</code> NOT NULL trên <code>encounter</code>, seed Khoa mặc định mỗi tenant.</li>
+              <li><code>POST /reception/check-in|direct</code> thêm chọn Bác sĩ/Khoa, set <code>departmentId</code> tương ứng (suy từ hồ sơ bác sĩ nếu chọn đích danh).</li>
+              <li>Endpoint "Nhận ca" (mở rộng <code>startConsultation</code>) — set <code>doctorId</code> lúc pull, kèm điều kiện chống trùng.</li>
+              <li>Mở rộng query <code>GET /reception/list</code> — nhánh "của tôi" (như hiện tại) + nhánh mới "chung" (<code>departmentId</code> + <code>doctorId IS NULL</code>), cùng cách lọc tường minh đã làm, không đổi <code>PermissionGuard</code>.</li>
+              <li><code>EncounterConsultationPage.tsx</code> (đã có) thêm panel rail hàng chờ — không đổi phần Phiếu khám.</li>
+              <li>Expose <code>is_priority</code>/<code>chief_complaint</code>/<code>patientCode</code> qua <code>ReceptionListItem</code> — cột đã có sẵn từ #052, chỉ thiếu trả về.</li>
+            </ul>
+          </div>
+          <div class="notes-col">
+            <h3><svg viewBox="0 0 24 24" fill="none" stroke="var(--critical-text)" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="m15 9-6 6M9 9l6 6"/></svg>Cố tình KHÔNG làm vòng này</h3>
+            <ul>
+              <li>WebSocket/SSE thật cho realtime disable nút khi người khác vừa nhận ca — dùng fallback (ghi có điều kiện + toast) theo đúng quyết định vừa chốt.</li>
+              <li>Cột "Cận lâm sàng"/chờ kết quả XN-CĐHA — LIS/PACS là v3+, ngoài phạm vi.</li>
+              <li>Loa/TV gọi số thật ngoài sảnh — chưa có tích hợp phần cứng, để dành mở rộng sau.</li>
+              <li>"Sửa ca khám nếu Dược chưa xuất thuốc" — module Kê đơn v1 chỉ ghi + in, chưa có bước xuất thuốc.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="toast-wrap">
+    <span class="toast-label">Ví dụ — bấm nhận ca chậm hơn người khác</span>
+    <div class="toast">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9 2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+      <p>Bệnh nhân <b>Đỗ Văn Bình</b> vừa được <b>BS. Trần Đức Long</b> tiếp nhận. Vui lòng chọn bệnh nhân tiếp theo.</p>
+    </div>
+  </div>
+</div>

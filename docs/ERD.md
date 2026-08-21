@@ -1,6 +1,6 @@
 # ERD: NEXAMed v1
 
-**Version**: v1.21 — 20/08/2026 (xem mục 9 để biết lịch sử thay đổi)
+**Version**: v1.23 — 21/08/2026 (xem mục 9 để biết lịch sử thay đổi)
 **Phạm vi**: chỉ các bảng thuộc v1 (Đặt lịch, Tiếp nhận, Khám bệnh, Kê đơn). Bảng của v2+ (viện phí, kho thuốc, BHYT) **không** tạo ở giai đoạn này.
 **Căn cứ**: `docs/product/prd.md` v1.0, `docs/product/plan.md` v1.0, `.claude/docs/data-model.md`
 
@@ -31,6 +31,7 @@ erDiagram
 
     DEPARTMENT_TYPE ||--o{ DEPARTMENT : "phan loai (tuy chon)"
     DEPARTMENT ||--o{ USER_ACCOUNT : "thuoc ve"
+    DEPARTMENT ||--o{ ENCOUNTER : "khoa phu trach (hang doi ao)"
     DEPARTMENT_TYPE {
         uuid id PK
         uuid tenant_id FK
@@ -176,6 +177,7 @@ erDiagram
         text code
         text name
         boolean is_active
+        boolean is_default "Hang doi ao (#064) - dung 1 dong/tenant, seed luc tao tenant"
     }
 
     ROLE {
@@ -278,7 +280,8 @@ erDiagram
         uuid id PK
         uuid tenant_id FK
         uuid patient_id FK
-        uuid doctor_id FK
+        uuid doctor_id FK "NULL, hang doi ao (#064) - chua duoc bac si nao nhan"
+        uuid department_id FK "bat buoc, hang doi ao (#064)"
         uuid appointment_id FK
         text encounter_no UK
         text status
@@ -438,7 +441,7 @@ erDiagram
 | `tenant_setting` | Cấu hình theo phòng khám | Giờ làm việc, `slot_duration_minutes`, ngưỡng no-show, ngưỡng sinh hiệu, mẫu in. Unique `(tenant_id, key)` |
 | `room` | Phòng khám vật lý | |
 | `department_type` | "Loại Khoa/Phòng" (mở rộng ADM-01, 2026-08-20) | Cấp cha tùy chọn của `department`, cùng khuôn `floor`/`room`. Chỉ tổ chức/phân loại, không ảnh hưởng logic nghiệp vụ |
-| `department` | Khoa/phòng trong tenant | Phục vụ Data Scope `department`; v1 phần lớn phòng khám không dùng nhưng bảng luôn tồn tại. `code` tự sinh (prefix `KP`), `department_type_id` tuỳ chọn, `is_active` quản lý qua UI (2026-08-20) |
+| `department` | Khoa/phòng trong tenant | Phục vụ Data Scope `department`; v1 phần lớn phòng khám không dùng nhưng bảng luôn tồn tại. `code` tự sinh (prefix `KP`), `department_type_id` tuỳ chọn, `is_active` quản lý qua UI (2026-08-20). **`is_default`** (v1.23, `docs/DECISIONS.md` #064) — đúng 1 Khoa "mặc định" ("Khoa chung") mỗi tenant, tự seed lúc tạo tenant (`seedDefaultRolesForTenant`), dùng làm fallback `encounter.department_id` khi bác sĩ chưa gán Khoa hoặc lúc Tiếp nhận chọn thẳng "Khoa chung" — ép đúng 1 dòng/tenant bằng partial unique index (C16) |
 | `user_account` | Tài khoản người dùng | `password_hash` Argon2id; `license_no` cho bác sĩ; `department_id` tuỳ chọn. Mở rộng ADM-01 (2026-08-20): hồ sơ nhân sự đầy đủ (`employee_code` tự sinh, SĐT/email cá nhân+công ty, học vị/chức danh/trạng thái+hình thức làm việc — mã tham chiếu `reference_catalog`, `can_sign_medical_record`, `must_change_password`) |
 | `role` | Vai trò theo tenant | Seed 5 vai trò mặc định lúc tạo tenant, `clinic_admin` tạo thêm được. Unique `(tenant_id, name)` |
 | `permission` | Danh mục hành động toàn hệ thống | Không có `tenant_id`, seed cố định theo code (giống `icd10_catalog`). Unique `(module, action)` |
@@ -469,7 +472,7 @@ erDiagram
 | Bảng | Vai trò |
 |---|---|
 | `appointment` | Lịch hẹn; `status`: `SCHEDULED`, `CANCELLED`, `NO_SHOW`, `CONVERTED`, `RESCHEDULED` |
-| `encounter` | Lượt khám; `status`: `SCHEDULED`, `CHECKED_IN`, `IN_CONSULTATION`, `COMPLETED`, `CANCELLED`, `NO_SHOW` |
+| `encounter` | Lượt khám; `status`: `SCHEDULED`, `CHECKED_IN`, `IN_CONSULTATION`, `COMPLETED`, `CANCELLED`, `NO_SHOW`. **"Hàng đợi ảo"** (v1.23, `docs/DECISIONS.md` #064) — `doctor_id` nay **nullable** (`NULL` = lượt khám còn trong hàng chờ chung Khoa, chưa được bác sĩ nào nhận qua "Nhận ca"); thêm `department_id` **bắt buộc** (suy từ Khoa của bác sĩ đã chọn, hoặc client chọn thẳng khi routing "theo Khoa, chưa rõ bác sĩ") |
 
 `encounter.appointment_id` cho phép `NULL` để hỗ trợ walk-in tạo trực tiếp — v1.11 hiện thực đúng thiết kế này: "Tiếp nhận bệnh nhân" (`POST /reception/direct`) tạo thẳng `encounter` với `appointment_id = NULL`, KHÔNG qua `appointment` (khác hướng ban đầu dự tính đi qua `appointment` với `source='walk_in'` — đã đổi theo yêu cầu chủ dự án, xem `docs/DECISIONS.md`). Quan hệ `appointment↔encounter` là một-không-hoặc-một: mỗi lịch hẹn sinh tối đa một lượt khám (ép bằng partial unique index `(tenant_id, appointment_id) WHERE appointment_id IS NOT NULL AND deleted_at IS NULL`, không khai `@unique` ở Prisma schema — cùng lý do `patient.national_id_hash`).
 
@@ -492,6 +495,8 @@ Bản ghi từ CẢ HAI luồng cùng xuất hiện trong "Danh sách tiếp nh�
 **Sinh hiệu bổ sung sau (v1.12)**: `POST /reception/encounters/:id/vital-signs` (REC-02/03, ngưỡng cảnh báo theo tuổi) vẫn tồn tại như hạ tầng riêng — dành cho lúc thiếu sinh hiệu ở bước tiếp nhận, module Khám bệnh (chưa xây) sẽ gọi lại đúng endpoint này để bổ sung/ghi lần đo mới. Không còn giao diện "Sinh hiệu" độc lập trên "Danh sách tiếp nhận" — sinh hiệu chính chuyển hẳn sang nhập cùng lúc tiếp nhận.
 
 **Khung tối thiểu cho đa chuyên khoa (v1.5, `docs/DECISIONS.md` #033)**: `encounter.specialty` (text, mặc định `'general'`) — chuyên khoa thực tế của lượt khám này, KHÔNG phải của tenant (một phòng khám đa khoa có thể có nhiều `specialty` khác nhau trên các `encounter` khác nhau). v1 luôn `'general'`, chưa vai trò nào đọc/ghi giá trị khác — chỉ chuẩn bị chỗ để Sprint 3 không phải retrofit sau. Chưa thêm bảng tầng cha dài hạn (`pregnancy`/`treatment_plan`) hay cột `episode_id` — đó là việc của lúc thật sự làm gói chuyên khoa cụ thể, xem `docs/product/multi-specialty-analysis.md`.
+
+**"Hàng đợi ảo" (v1.23, `docs/DECISIONS.md` #064)** — "Hàng đợi khám" KHÔNG phải bảng/thực thể riêng, chỉ là filter trên chính `encounter`: "Bệnh nhân của tôi" = `WHERE doctor_id = actor`; "Hàng chờ chung Khoa X" = `WHERE department_id = Khoa actor AND doctor_id IS NULL`. `doctor_id` đổi sang **nullable** (`NULL` = ticket đang chờ trong hàng chờ chung, chưa ai nhận); `department_id` **bắt buộc** trên mọi lượt khám, suy từ Khoa của bác sĩ được chọn lúc Tiếp nhận (server tự suy, không tin client gửi) hoặc client chọn thẳng khi routing "theo Khoa, chưa rõ bác sĩ". Mọi tenant luôn có sẵn 1 "Khoa mặc định" (`department.is_default`, C16) nên cột này không bao giờ thiếu giá trị hợp lệ. "Nhận ca" (mở rộng `POST /encounters/:id/start`) — bác sĩ CÙNG Khoa với ticket set `doctor_id = actor` atomic (`WHERE doctor_id IS NULL`, chống trùng kiểu fallback không WebSocket — 2 bác sĩ bấm gần như đồng thời thì người thua nhận `409 ENCOUNTER_ALREADY_CLAIMED` hoặc `404` tuỳ thời điểm đọc/ghi chồng lấn). `room`/`doctor_room_session` (#054) vẫn THUẦN điều phối vật lý, không phải khoá lưu hàng đợi. Nhóm "Hàng chờ chung" tự ẩn hoàn toàn khi tenant chỉ dùng 1 Khoa (đúng khuôn #054/#055).
 
 ### 3.4 Dữ liệu lâm sàng
 
@@ -537,6 +542,7 @@ Những ràng buộc này đặt ở DB, không chỉ ở tầng ứng dụng.
 | C13 | Composite FK `(tenant_id, floor_id)` nullable | `room.floor_id` | "Tầng" tùy chọn — phòng không gán tầng vẫn hợp lệ, khác mọi composite FK bắt buộc khác |
 | C14 | `UNIQUE (tenant_id, name) WHERE deleted_at IS NULL` | `role` | ADM-07 — tạo lại đúng tên vai trò tuỳ biến đã từng bị ẩn (soft-delete) không vi phạm unique, cùng khuôn `user_role`/C3 |
 | C15 | Composite FK `(tenant_id, department_type_id)` nullable | `department.department_type_id` | Mở rộng ADM-01 (v1.22) — "Loại Khoa/Phòng" tùy chọn, cùng khuôn C13 (`room.floor_id`) |
+| C16 | `UNIQUE (tenant_id) WHERE is_default = true` | `department` | "Hàng đợi ảo" (v1.23, `docs/DECISIONS.md` #064) — đúng 1 Khoa mặc định ("Khoa chung")/tenant, dùng làm fallback `encounter.department_id` |
 
 ---
 
@@ -633,3 +639,4 @@ Khi thêm, các bảng này vẫn phải đủ 8 cột bắt buộc và tuân th
 | v1.20 | 20/08/2026 | S3-06/07 (web) hoàn thành + `clinical_note.section` đổi từ 4 mục SOAP sang 8 mục nhóm Tiền sử/Thăm khám (yêu cầu chủ dự án, migration `20260820150000_clinical_note_sections_v2` — xoá sạch dữ liệu demo/dev cũ trước khi đổi enum, không có tenant production). Thêm `doctor.patient.update = global` vào ma trận RBAC (bác sĩ cập nhật "Tiền sử dị ứng" ghi thẳng `patient.allergy_note`). `reception.recordVitalSigns()` nới điều kiện trạng thái từ chỉ `CHECKED_IN` sang cả `CHECKED_IN`/`IN_CONSULTATION` (bác sĩ bổ sung/đo lại sinh hiệu ngay trong màn khám) — không đổi bảng `vital_sign`. Ngưỡng cảnh báo nhiệt độ (`packages/core`) đổi trần 39.0°C→38.5°C. Xem `docs/DECISIONS.md` (entry sau #059). |
 | v1.21 | 20/08/2026 | Thêm category `OCCUPATION` (Nghề nghiệp) vào enum `reference_catalog_category` (migration `20260820160000_reference_catalog_occupation`, chỉ `ALTER TYPE ... ADD VALUE`) — đảo ngược tiếp phần `occupation` của `docs/DECISIONS.md` #034 (trước đây cố ý để text tự do). Không seed cứng (khác Dân tộc/Quốc tịch, thiếu nguồn dữ liệu chính thức) — `clinic_admin` tự thêm qua UI, đúng khuôn `PATIENT_SOURCE`/`EXAM_TYPE`. `patient.occupation` không đổi cột/kiểu dữ liệu, chỉ đổi ý nghĩa giá trị lưu (mã tham chiếu `reference_catalog` thay vì text tự do), cùng khuôn `ethnicity`/`nationality` đã làm ở #037. Xem `docs/DECISIONS.md` #061. |
 | v1.22 | 20/08/2026 | Mở rộng ADM-01 — "Danh mục quản lý tài khoản" đầy đủ hồ sơ nhân sự (chủ dự án yêu cầu trực tiếp, `docs/DECISIONS.md` #063). `user_account` thêm 10 cột: `employee_code` (tự sinh, prefix `NV`), `phone`, `personal_email`, `company_email`, `academic_title_code`/`position_code`/`employment_status_code`/`employment_type_code` (4 mã tham chiếu `reference_catalog`, không FK cứng — cùng khuôn `patient.ethnicity`/`occupation`), `can_sign_medical_record` (boolean, chỉ lưu metadata — chữ ký số chưa triển khai ở v1), `must_change_password` (boolean, chặn thật lần đăng nhập đầu). `reference_catalog` thêm 4 category mới (`ACADEMIC_TITLE`/`STAFF_POSITION`/`EMPLOYMENT_STATUS`/`EMPLOYMENT_TYPE`) + cột `deactivates_account` (boolean, chỉ có ý nghĩa với `EMPLOYMENT_STATUS` — tách khỏi `code` để không phụ thuộc admin đổi tên mã). Thêm bảng `department_type` và mở rộng `department` thêm `code` (tự sinh, prefix `KP`), `department_type_id` (tuỳ chọn, nullable composite FK — thêm C15, cùng khuôn C13), `is_active` — bảng `department` đã có sẵn từ S1-04b nhưng chưa từng có module/API/UI quản lý, nay có đầy đủ qua "Danh mục Tổ chức và Nhân sự". Migration: `20260820170000_user_account_hr_profile`, `20260820180000_department_management`, `20260820190000_department_code_and_catalog_autocode`, `20260820200000_department_type`. Xem `docs/DECISIONS.md` #063. |
+| v1.23 | 21/08/2026 | "Hàng đợi ảo" (Virtual Queue theo Bác sĩ/Khoa, `docs/DECISIONS.md` #064) — `encounter.doctor_id` đổi thành **nullable** (`NULL` = lượt khám còn trong hàng chờ chung Khoa, chưa được bác sĩ nào nhận). Thêm `encounter.department_id` **bắt buộc** (composite FK → `department`). Thêm `department.is_default` (đúng 1 Khoa mặc định "Khoa chung"/tenant, partial unique — C16), tự seed lúc tạo tenant (`seedDefaultRolesForTenant`). "Hàng đợi khám" không còn lọc CHỈ theo `doctorId` — gộp thêm nhánh "hàng chờ chung Khoa của actor" khi client truyền `includeDepartmentPool=true`. Endpoint "Nhận ca" (mở rộng `POST /encounters/:id/start`) — set `doctorId=actor` atomic khi ticket đang `doctorId=NULL`, chỉ cho bác sĩ cùng Khoa. Migration `20260820210000_encounter_virtual_queue`. Xem `docs/DECISIONS.md` #064. |

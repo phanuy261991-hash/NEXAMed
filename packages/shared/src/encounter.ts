@@ -63,6 +63,30 @@ function requirePriorityReasonWhenPriority(data: { isPriority: boolean; priority
 }
 
 /**
+ * "Hàng đợi ảo" (#064) — khu vực Điều phối Bác sĩ/Khoa, dùng chung cho cả `checkInRequestSchema`
+ * lẫn `registerReceptionRequestSchema`. Chọn "đích danh bác sĩ" (`doctorId`) — server tự suy
+ * `departmentId` từ hồ sơ bác sĩ, KHÔNG dùng `departmentId` client gửi cho nhánh này (xem
+ * `DoctorDirectoryPort.getDoctorDepartmentId`). Chọn "theo Khoa" (`departmentId`, chưa rõ bác sĩ)
+ * — `doctorId` để trống, lượt khám rơi vào hàng chờ chung của Khoa đó. Bắt buộc có ÍT NHẤT một
+ * trong hai trường.
+ */
+const intakeRoutingFieldsSchema = z.object({
+  doctorId: z.string().uuid().optional(),
+  departmentId: z.string().uuid().optional(),
+});
+
+/** Bắt buộc có ÍT NHẤT một trong `doctorId`/`departmentId` — dùng chung cho cả 2 request schema bên dưới. */
+function requireDoctorOrDepartment(data: { doctorId?: string; departmentId?: string }, ctx: z.RefinementCtx) {
+  if (data.doctorId === undefined && data.departmentId === undefined) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['doctorId'],
+      message: 'Phải chọn bác sĩ cụ thể hoặc chọn Khoa.',
+    });
+  }
+}
+
+/**
  * Check-in (`POST /reception/check-in`) — `patientId` đã resolve xong ở web TRƯỚC khi gọi (chọn
  * từ danh sách trùng SĐT, tìm kiếm, hoặc tạo mới qua `POST /patients` riêng — xem
  * docs/DECISIONS.md). `version` là version hiện tại của `appointment` (optimistic locking, cùng
@@ -84,7 +108,9 @@ export const checkInRequestSchema = z
   })
   .merge(intakeVitalSignFieldsSchema)
   .merge(intakeExtendedFieldsSchema)
-  .superRefine(requirePriorityReasonWhenPriority);
+  .merge(intakeRoutingFieldsSchema)
+  .superRefine(requirePriorityReasonWhenPriority)
+  .superRefine(requireDoctorOrDepartment);
 export type CheckInRequest = z.infer<typeof checkInRequestSchema>;
 
 /**
@@ -100,7 +126,6 @@ export type CheckInRequest = z.infer<typeof checkInRequestSchema>;
 export const registerReceptionRequestSchema = z
   .object({
     patientId: z.string().uuid(),
-    doctorId: z.string().uuid(),
     checkedInAt: z.string(),
     chiefComplaint: z.string().optional(),
     patientSourceCode: z.string().optional(),
@@ -110,7 +135,9 @@ export const registerReceptionRequestSchema = z
   })
   .merge(intakeVitalSignFieldsSchema)
   .merge(intakeExtendedFieldsSchema)
-  .superRefine(requirePriorityReasonWhenPriority);
+  .merge(intakeRoutingFieldsSchema)
+  .superRefine(requirePriorityReasonWhenPriority)
+  .superRefine(requireDoctorOrDepartment);
 export type RegisterReceptionRequest = z.infer<typeof registerReceptionRequestSchema>;
 
 /** "Bắt đầu khám" — CHECKED_IN → IN_CONSULTATION. `version` là version của `encounter`. */
@@ -128,7 +155,9 @@ export const encounterSummarySchema = z.object({
   id: z.string().uuid(),
   encounterNo: z.string(),
   patientId: z.string().uuid(),
-  doctorId: z.string().uuid(),
+  /** "Hàng đợi ảo" (#064) — `null` khi lượt khám còn trong hàng chờ chung Khoa, chưa được bác sĩ nào nhận. */
+  doctorId: z.string().uuid().nullable(),
+  departmentId: z.string().uuid(),
   appointmentId: z.string().uuid().nullable(),
   status: encounterStatusSchema,
   specialty: z.string(),
@@ -197,9 +226,14 @@ export const receptionListItemSchema = z.object({
   encounterNo: z.string(),
   appointmentId: z.string().uuid().nullable(),
   patientId: z.string().uuid(),
+  patientCode: z.string(),
   fullName: z.string(),
   phone: z.string(),
-  doctorId: z.string().uuid(),
+  /** "Hàng đợi ảo" (#064) — `null` = đang trong hàng chờ chung Khoa, chưa được bác sĩ nào nhận. */
+  doctorId: z.string().uuid().nullable(),
+  departmentId: z.string().uuid(),
+  isPriority: z.boolean(),
+  chiefComplaint: z.string().nullable(),
   status: encounterStatusSchema,
   checkedInAt: z.string(),
   startedAt: z.string().nullable(),
@@ -223,6 +257,17 @@ export const receptionListQuerySchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'date phải theo định dạng YYYY-MM-DD')
     .optional(),
   doctorId: z.string().uuid().optional(),
+  /**
+   * "Hàng đợi khám" (#064) — bác sĩ đang xem cờ này để gộp thêm "Hàng chờ chung · Khoa của mình"
+   * (`departmentId=Khoa actor AND doctorId IS NULL`) vào cùng kết quả với "Bệnh nhân của tôi". Cờ
+   * TƯỜNG MINH do client gửi (không suy diễn ngầm từ vai trò/scope) — mặc định `false` để "Danh
+   * sách tiếp nhận" (lễ tân) giữ nguyên hành vi cũ.
+   */
+  includeDepartmentPool: z
+    .union([z.boolean(), z.enum(['true', 'false'])])
+    .optional()
+    .default(false)
+    .transform((v) => (typeof v === 'string' ? v === 'true' : v)),
 });
 export type ReceptionListQuery = z.infer<typeof receptionListQuerySchema>;
 

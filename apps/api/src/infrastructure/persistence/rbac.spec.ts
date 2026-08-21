@@ -44,6 +44,9 @@ describe('RBAC: seed vai trò + RLS', () => {
   afterAll(async () => {
     await privileged.rolePermission.deleteMany({ where: { tenantId: { in: [tenantAId, tenantBId] } } });
     await privileged.role.deleteMany({ where: { tenantId: { in: [tenantAId, tenantBId] } } });
+    // "Hàng đợi ảo" (#064) — seedDefaultRolesForTenant() nay cũng seed Khoa mặc định ("Khoa
+    // chung"), FK RESTRICT department→tenant nên phải xoá trước tenant.
+    await privileged.department.deleteMany({ where: { tenantId: { in: [tenantAId, tenantBId] } } });
     await privileged.tenant.deleteMany({ where: { id: { in: [tenantAId, tenantBId] } } });
     await privileged.$disconnect();
     await appPrisma.$disconnect();

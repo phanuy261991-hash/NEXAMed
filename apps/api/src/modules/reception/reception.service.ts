@@ -1,14 +1,16 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, type Encounter, type VitalSign } from '@prisma/client';
 import {
   AppointmentNotCancellableError,
   ConcurrentModificationError,
+  DOCTOR_DIRECTORY_PORT,
   EncounterAlreadyExistsError,
   EncounterNotCheckedInError,
   evaluateVitalSignWarnings,
   formatDisplayCode,
   getVietnamDateString,
   vietnamDayRange,
+  type DoctorDirectoryPort,
 } from '@nexamed/core';
 import {
   ENCOUNTER_NO_PREFIX,
@@ -83,7 +85,28 @@ export class ReceptionService {
     private readonly encounterRepository: EncounterRepository,
     private readonly vitalSignRepository: VitalSignRepository,
     private readonly codeSequenceRepository: CodeSequenceRepository,
+    @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
   ) {}
+
+  /**
+   * Điều phối Bác sĩ/Khoa lúc Tiếp nhận ("Hàng đợi ảo", #064) — dùng chung cho `checkIn()` VÀ
+   * `registerDirect()`. Chọn "đích danh bác sĩ" (`routing.doctorId` có giá trị): server TỰ SUY
+   * `departmentId` từ hồ sơ bác sĩ đó, KHÔNG tin `departmentId` client có thể gửi kèm cho nhánh này
+   * (chặn client giả mạo gán sai Khoa hiển thị) — fallback Khoa mặc định nếu bác sĩ chưa gán Khoa
+   * nào (không throw, vẫn tạo được lượt khám). Chọn "theo Khoa, chưa rõ bác sĩ"
+   * (`routing.doctorId` vắng mặt): `doctorId=null`, `departmentId` lấy thẳng từ client (Zod đã ép
+   * bắt buộc có `departmentId` trong trường hợp này — `intakeRoutingFieldsSchema.superRefine`).
+   */
+  private async resolveRouting(
+    tenantId: string,
+    routing: { doctorId?: string; departmentId?: string },
+  ): Promise<{ doctorId: string | null; departmentId: string }> {
+    if (routing.doctorId) {
+      const departmentId = (await this.doctorDirectory.getDoctorDepartmentId(tenantId, routing.doctorId)) ?? (await this.doctorDirectory.getDefaultDepartmentId(tenantId));
+      return { doctorId: routing.doctorId, departmentId };
+    }
+    return { doctorId: null, departmentId: routing.departmentId! };
+  }
 
   /**
    * `dto.patientId` đã resolve xong ở web TRƯỚC khi gọi (chọn từ danh sách trùng SĐT, tìm kiếm,
@@ -92,6 +115,11 @@ export class ReceptionService {
    * rollback toàn bộ (kể cả dòng `encounter` vừa tạo), không có trạng thái nửa vời.
    */
   async checkIn(tenantId: string, actorId: string, dataScope: DataScope, dto: CheckInRequest, meta: RequestMeta): Promise<EncounterSummary> {
+    // `DoctorDirectoryPort` tự mở transaction RIÊNG (adapter chỉ nhận `tenantId`, không có `tx`
+    // của caller) — resolve TRƯỚC khi vào transaction chính bên dưới để tránh $transaction lồng
+    // nhau (đúng nguyên tắc "không dùng port cho phần cần atomic cùng check-in", docs/DECISIONS.md).
+    const routing = await this.resolveRouting(tenantId, dto);
+
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const appointment = await this.appointmentRepository.findById(tx, tenantId, dto.appointmentId);
       // Cùng triết lý 404 (không 403) khi ngoài scope personal — .claude/docs/multi-tenancy.md.
@@ -104,7 +132,8 @@ export class ReceptionService {
 
       const created = await this.createEncounterAndConvert(tx, tenantId, actorId, {
         appointmentId: appointment.id,
-        doctorId: appointment.doctorId,
+        doctorId: routing.doctorId,
+        departmentId: routing.departmentId,
         patientId: dto.patientId,
         appointmentVersion: dto.version,
         chiefComplaint: dto.chiefComplaint ?? appointment.reason,
@@ -135,6 +164,9 @@ export class ReceptionService {
    * kèm theo — 1 lệnh `create`, thất bại thì tự rollback nguyên transaction.
    */
   async registerDirect(tenantId: string, actorId: string, dto: RegisterReceptionRequest, meta: RequestMeta): Promise<EncounterSummary> {
+    // Resolve routing TRƯỚC transaction chính — cùng lý do đã ghi ở checkIn().
+    const routing = await this.resolveRouting(tenantId, dto);
+
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const seq = await this.codeSequenceRepository.next(tx, tenantId, ENCOUNTER_NO_PREFIX, actorId);
       const encounterNo = formatDisplayCode(ENCOUNTER_NO_PREFIX, new Date(), seq);
@@ -144,7 +176,8 @@ export class ReceptionService {
         created = await this.encounterRepository.create(tx, tenantId, actorId, {
           encounterNo,
           patientId: dto.patientId,
-          doctorId: dto.doctorId,
+          doctorId: routing.doctorId,
+          departmentId: routing.departmentId,
           appointmentId: null,
           checkedInAt: new Date(dto.checkedInAt),
           chiefComplaint: dto.chiefComplaint ?? null,
@@ -235,7 +268,8 @@ export class ReceptionService {
     actorId: string,
     params: {
       appointmentId: string;
-      doctorId: string;
+      doctorId: string | null;
+      departmentId: string;
       patientId: string;
       appointmentVersion: number;
       chiefComplaint: string | null;
@@ -262,6 +296,7 @@ export class ReceptionService {
         encounterNo,
         patientId: params.patientId,
         doctorId: params.doctorId,
+        departmentId: params.departmentId,
         appointmentId: params.appointmentId,
         checkedInAt: new Date(),
         chiefComplaint: params.chiefComplaint,
@@ -271,6 +306,16 @@ export class ReceptionService {
         examTypeCode: params.examTypeCode,
         examTypeName: params.examTypeName,
         examTypePrice: BigInt(params.examTypePrice),
+        // Trước đây bị BỎ SÓT (bug phát hiện thật lúc chạm lại hàm này cho #064) — checkIn() từ
+        // lịch hẹn có sẵn không lưu 7 trường "Thông tin tiếp nhận"/"Chỉ định dịch vụ khám" dù
+        // registerDirect() (Tiếp nhận trực tiếp) đã lưu đúng từ #052. Sửa cùng lúc.
+        receptionTypeCode: params.receptionTypeCode,
+        examFormCode: params.examFormCode,
+        isPriority: params.isPriority,
+        priorityReasonCode: params.priorityReasonCode,
+        priceTypeCode: params.priceTypeCode,
+        examTypeUnit: params.examTypeUnit,
+        serviceQuantity: params.serviceQuantity,
       });
     } catch (err) {
       if (isUniqueConstraintViolation(err)) {
@@ -323,6 +368,9 @@ export class ReceptionService {
    * `packages/shared/src/encounter.ts` (`receptionListItemSchema`). `doctorIdFilter` — trang
    * "Hàng đợi khám" lọc theo 1 bác sĩ cụ thể; chỉ áp dụng khi scope `global` (scope `personal`
    * luôn tự ép về chính actor, bỏ qua tham số này — bác sĩ không thể lọc xem người khác).
+   * `includeDepartmentPool` ("Hàng đợi ảo", #064) — cờ TƯỜNG MINH do client gửi: khi `true` VÀ có
+   * `doctorId` hiệu lực, gộp thêm "hàng chờ chung Khoa của doctorId đó" vào cùng kết quả. Mặc định
+   * `false` — "Danh sách tiếp nhận" (lễ tân, không truyền cờ này) giữ nguyên hành vi cũ tuyệt đối.
    */
   async listReceptions(
     tenantId: string,
@@ -330,16 +378,23 @@ export class ReceptionService {
     dataScope: DataScope,
     date?: string,
     doctorIdFilter?: string,
+    includeDepartmentPool?: boolean,
   ): Promise<ReceptionListResponse> {
     const targetDate = date ?? getVietnamDateString();
     const dayRange = vietnamDayRange(targetDate);
     const doctorId = dataScope === 'personal' ? actorId : doctorIdFilter;
+
+    // Resolve TRƯỚC transaction chính — cùng lý do đã ghi ở checkIn()/registerDirect() (port tự mở
+    // transaction riêng, tránh $transaction lồng nhau).
+    const poolDepartmentId =
+      includeDepartmentPool && doctorId ? ((await this.doctorDirectory.getDoctorDepartmentId(tenantId, doctorId)) ?? undefined) : undefined;
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const encounters = await this.encounterRepository.listForDay(tx, tenantId, {
         dayStart: dayRange.startUtc,
         dayEnd: dayRange.endUtc,
         doctorId,
+        poolDepartmentId,
       });
 
       const items: ReceptionListItem[] = encounters.map((e) => ({
@@ -347,9 +402,13 @@ export class ReceptionService {
         encounterNo: e.encounterNo,
         appointmentId: e.appointmentId,
         patientId: e.patientId,
+        patientCode: e.patient.patientCode,
         fullName: e.patient.fullName,
         phone: e.patient.phone,
         doctorId: e.doctorId,
+        departmentId: e.departmentId,
+        isPriority: e.isPriority,
+        chiefComplaint: e.chiefComplaint,
         status: e.status,
         checkedInAt: e.checkedInAt.toISOString(),
         startedAt: e.startedAt?.toISOString() ?? null,

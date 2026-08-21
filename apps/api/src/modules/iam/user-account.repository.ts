@@ -114,7 +114,7 @@ export class UserAccountRepository {
    * hẹn). Sắp theo `fullName` để cột trên lưới ổn định thứ tự (khác `list()` sắp theo `id`, mục
    * đích khác nhau — đây phục vụ hiển thị, không phải phân trang).
    */
-  async listActiveDoctors(tx: Prisma.TransactionClient, tenantId: string): Promise<{ id: string; fullName: string }[]> {
+  async listActiveDoctors(tx: Prisma.TransactionClient, tenantId: string): Promise<{ id: string; fullName: string; departmentId: string | null }[]> {
     const rows = await tx.userAccount.findMany({
       where: {
         tenantId,
@@ -122,10 +122,19 @@ export class UserAccountRepository {
         isActive: true,
         userRoles: { some: { deletedAt: null, role: { tenantId, deletedAt: null, name: 'doctor' } } },
       },
-      select: { id: true, fullName: true },
+      select: { id: true, fullName: true, departmentId: true },
       orderBy: { fullName: 'asc' },
     });
     return rows;
+  }
+
+  /** "Hàng đợi ảo" (#064) — Khoa của một bác sĩ cụ thể, phục vụ `DoctorDirectoryPort.getDoctorDepartmentId`. `null` nếu không tồn tại/không active hoặc chưa gán Khoa. */
+  async findDepartmentId(tx: Prisma.TransactionClient, tenantId: string, userId: string): Promise<string | null> {
+    const row = await tx.userAccount.findFirst({
+      where: { tenantId, id: userId, deletedAt: null, isActive: true },
+      select: { departmentId: true },
+    });
+    return row?.departmentId ?? null;
   }
 
   /**

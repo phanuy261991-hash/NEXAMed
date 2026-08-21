@@ -1590,6 +1590,8 @@ export interface paths {
                                     id: string;
                                     fullName: string;
                                     currentRoomName?: string | null;
+                                    /** Format: uuid */
+                                    departmentId: string | null;
                                 }[];
                             };
                             meta: Record<string, never>;
@@ -2383,6 +2385,10 @@ export interface paths {
                         examTypeUnit?: string;
                         /** @default 1 */
                         serviceQuantity?: number;
+                        /** Format: uuid */
+                        doctorId?: string;
+                        /** Format: uuid */
+                        departmentId?: string;
                     };
                 };
             };
@@ -2401,7 +2407,9 @@ export interface paths {
                                 /** Format: uuid */
                                 patientId: string;
                                 /** Format: uuid */
-                                doctorId: string;
+                                doctorId: string | null;
+                                /** Format: uuid */
+                                departmentId: string;
                                 /** Format: uuid */
                                 appointmentId: string | null;
                                 /** @enum {string} */
@@ -2507,8 +2515,6 @@ export interface paths {
                     "application/json": {
                         /** Format: uuid */
                         patientId: string;
-                        /** Format: uuid */
-                        doctorId: string;
                         checkedInAt: string;
                         chiefComplaint?: string;
                         patientSourceCode?: string;
@@ -2532,6 +2538,10 @@ export interface paths {
                         examTypeUnit?: string;
                         /** @default 1 */
                         serviceQuantity?: number;
+                        /** Format: uuid */
+                        doctorId?: string;
+                        /** Format: uuid */
+                        departmentId?: string;
                     };
                 };
             };
@@ -2550,7 +2560,9 @@ export interface paths {
                                 /** Format: uuid */
                                 patientId: string;
                                 /** Format: uuid */
-                                doctorId: string;
+                                doctorId: string | null;
+                                /** Format: uuid */
+                                departmentId: string;
                                 /** Format: uuid */
                                 appointmentId: string | null;
                                 /** @enum {string} */
@@ -2632,6 +2644,7 @@ export interface paths {
                 query?: {
                     date?: string;
                     doctorId?: string;
+                    includeDepartmentPool?: boolean | ("true" | "false");
                 };
                 header?: never;
                 path?: never;
@@ -2655,10 +2668,15 @@ export interface paths {
                                     appointmentId: string | null;
                                     /** Format: uuid */
                                     patientId: string;
+                                    patientCode: string;
                                     fullName: string;
                                     phone: string;
                                     /** Format: uuid */
-                                    doctorId: string;
+                                    doctorId: string | null;
+                                    /** Format: uuid */
+                                    departmentId: string;
+                                    isPriority: boolean;
+                                    chiefComplaint: string | null;
                                     /** @enum {string} */
                                     status: "SCHEDULED" | "CHECKED_IN" | "IN_CONSULTATION" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
                                     checkedInAt: string;
@@ -2886,7 +2904,9 @@ export interface paths {
                                 /** Format: uuid */
                                 patientId: string;
                                 /** Format: uuid */
-                                doctorId: string;
+                                doctorId: string | null;
+                                /** Format: uuid */
+                                departmentId: string;
                                 /** Format: uuid */
                                 appointmentId: string | null;
                                 /** @enum {string} */
@@ -3012,7 +3032,9 @@ export interface paths {
                                 /** Format: uuid */
                                 patientId: string;
                                 /** Format: uuid */
-                                doctorId: string;
+                                doctorId: string | null;
+                                /** Format: uuid */
+                                departmentId: string;
                                 /** Format: uuid */
                                 appointmentId: string | null;
                                 /** @enum {string} */
@@ -3130,7 +3152,9 @@ export interface paths {
                                     /** Format: uuid */
                                     patientId: string;
                                     /** Format: uuid */
-                                    doctorId: string;
+                                    doctorId: string | null;
+                                    /** Format: uuid */
+                                    departmentId: string;
                                     /** Format: uuid */
                                     appointmentId: string | null;
                                     /** @enum {string} */
@@ -3650,7 +3674,9 @@ export interface paths {
                                 /** Format: uuid */
                                 patientId: string;
                                 /** Format: uuid */
-                                doctorId: string;
+                                doctorId: string | null;
+                                /** Format: uuid */
+                                departmentId: string;
                                 /** Format: uuid */
                                 appointmentId: string | null;
                                 /** @enum {string} */
@@ -4500,6 +4526,81 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/departments/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** "Hàng đợi ảo" (#064) — chiếu tối thiểu {id,name} cho khu vực Điều phối Bác sĩ/Khoa lúc Tiếp nhận, chỉ Khoa đang active, gắn quyền reference_catalog.read (không cần user_account.read) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền reference_catalog.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;

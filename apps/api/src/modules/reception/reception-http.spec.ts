@@ -89,12 +89,31 @@ describe('HTTP e2e — /api/v1/reception', () => {
     return res.body.data as { id: string };
   }
 
-  /** `checkInRequestSchema` (`docs/DECISIONS.md` #044) giờ dùng chung biểu mẫu với `registerReceptionRequestSchema` — bắt buộc kèm loại khám. */
-  function checkInPayload(appointmentId: string, patientId: string, version: number, overrides: Record<string, unknown> = {}) {
+  /** "Hàng đợi ảo" (#064) — Khoa mới, dùng riêng cho từng test để tránh chồng chéo trạng thái. */
+  async function createDepartment(tenantId: string, name: string) {
+    const department = await privileged.department.create({
+      data: { tenantId, name, isActive: true, createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR },
+    });
+    return department.id as string;
+  }
+
+  async function assignDepartment(userId: string, departmentId: string) {
+    await privileged.userAccount.update({ where: { id: userId }, data: { departmentId } });
+  }
+
+  /**
+   * `checkInRequestSchema` (`docs/DECISIONS.md` #044) giờ dùng chung biểu mẫu với
+   * `registerReceptionRequestSchema` — bắt buộc kèm loại khám. `doctorId` (`docs/DECISIONS.md`
+   * #064 — "Hàng đợi ảo") nay BẮT BUỘC gửi tường minh (server không còn tự suy từ
+   * `appointment.doctorId`) — mặc định truyền đúng bác sĩ của lịch hẹn để giữ hành vi test cũ,
+   * override sang `departmentId` (bỏ `doctorId`) ở test riêng cho nhánh "theo Khoa".
+   */
+  function checkInPayload(appointmentId: string, patientId: string, version: number, doctorId: string, overrides: Record<string, unknown> = {}) {
     return {
       appointmentId,
       patientId,
       version,
+      doctorId,
       examTypeCode: 'KT',
       examTypeName: 'Khám thường',
       examTypePrice: 150_000,
@@ -150,7 +169,7 @@ describe('HTTP e2e — /api/v1/reception', () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/reception/check-in')
         .set(authed(receptionistToken))
-        .send(checkInPayload(appointment.id, patient.id, appointment.version, { patientSourceCode: 'FB', pulse: 80, temperatureC: 37.2 }));
+        .send(checkInPayload(appointment.id, patient.id, appointment.version, doctorAUserId, { patientSourceCode: 'FB', pulse: 80, temperatureC: 37.2 }));
 
       expect(res.status).toBe(200);
       expect(res.body.data.status).toBe('CHECKED_IN');
@@ -184,7 +203,7 @@ describe('HTTP e2e — /api/v1/reception', () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/reception/check-in')
         .set(authed(receptionistToken))
-        .send(checkInPayload(appointment.id, patient.id, 2));
+        .send(checkInPayload(appointment.id, patient.id, 2, doctorAUserId));
 
       expect(res.status).toBe(409);
       expect(res.body.error.code).toBe('APPOINTMENT_NOT_CANCELLABLE');
@@ -193,7 +212,7 @@ describe('HTTP e2e — /api/v1/reception', () => {
     it('hai request check-in TRÙNG một appointment gần như đồng thời → một 200, một 409 (thua cuộc đua)', async () => {
       const appointment = await createAppointment(receptionistToken, doctorAUserId, isoAt(9, 0));
       const patient = await createPatient(receptionistToken);
-      const payload = checkInPayload(appointment.id, patient.id, appointment.version);
+      const payload = checkInPayload(appointment.id, patient.id, appointment.version, doctorAUserId);
 
       const [first, second] = await Promise.all([
         request(app.getHttpServer()).post('/api/v1/reception/check-in').set(authed(receptionistToken)).send(payload),
@@ -220,7 +239,7 @@ describe('HTTP e2e — /api/v1/reception', () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/reception/check-in')
         .set(authed(receptionistToken))
-        .send(checkInPayload(appointment.id, randomUUID(), appointment.version));
+        .send(checkInPayload(appointment.id, randomUUID(), appointment.version, doctorAUserId));
 
       expect(res.status).toBe(404);
     });
@@ -232,7 +251,7 @@ describe('HTTP e2e — /api/v1/reception', () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/reception/check-in')
         .set(authed(receptionistToken))
-        .send(checkInPayload(appointment.id, patient.id, 999));
+        .send(checkInPayload(appointment.id, patient.id, 999, doctorAUserId));
 
       expect(res.status).toBe(409);
       expect(res.body.error.code).toBe('CONCURRENT_MODIFICATION');
@@ -247,7 +266,7 @@ describe('HTTP e2e — /api/v1/reception', () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/reception/check-in')
         .set(authed(doctorAToken))
-        .send(checkInPayload(appointment.id, patient.id, appointment.version));
+        .send(checkInPayload(appointment.id, patient.id, appointment.version, doctorBUserId));
 
       expect(res.status).toBe(403);
       expect(res.body.error.code).toBe('PERMISSION_DENIED');
@@ -260,7 +279,7 @@ describe('HTTP e2e — /api/v1/reception', () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/reception/check-in')
         .set(authed(nurseToken))
-        .send(checkInPayload(appointment.id, patient.id, appointment.version));
+        .send(checkInPayload(appointment.id, patient.id, appointment.version, doctorAUserId));
 
       expect(res.status).toBe(403);
       expect(res.body.error.code).toBe('PERMISSION_DENIED');
@@ -273,7 +292,7 @@ describe('HTTP e2e — /api/v1/reception', () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/reception/check-in')
         .set(authed(tenantBReceptionistToken))
-        .send(checkInPayload(appointment.id, patient.id, appointment.version));
+        .send(checkInPayload(appointment.id, patient.id, appointment.version, doctorAUserId));
 
       expect(res.status).toBe(404);
     });
@@ -285,7 +304,7 @@ describe('HTTP e2e — /api/v1/reception', () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/reception/check-in')
         .set(authed(tenantBReceptionistToken))
-        .send(checkInPayload(appointmentB.id, patientA.id, appointmentB.version));
+        .send(checkInPayload(appointmentB.id, patientA.id, appointmentB.version, tenantBDoctorId));
 
       expect(res.status).toBe(404);
     });
@@ -301,7 +320,7 @@ describe('HTTP e2e — /api/v1/reception', () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/reception/check-in')
         .set(authed(receptionistToken))
-        .send(checkInPayload(appointment.id, patient.id, appointment.version));
+        .send(checkInPayload(appointment.id, patient.id, appointment.version, doctorAUserId));
 
       expect(res.status).toBe(200);
       expect(res.body.data.chiefComplaint).toBe('Đau bụng');
@@ -435,6 +454,116 @@ describe('HTTP e2e — /api/v1/reception', () => {
     });
   });
 
+  describe('Điều phối Bác sĩ/Khoa lúc Tiếp nhận ("Hàng đợi ảo", #064)', () => {
+    function baseExam() {
+      return {
+        examTypeCode: 'KT',
+        examTypeName: 'Khám thường',
+        examTypePrice: 150_000,
+        receptionTypeCode: 'RT_NEW',
+        examFormCode: 'EF_NORMAL',
+      };
+    }
+
+    it('registerDirect theo Khoa (không doctorId) → 200, doctorId=null, departmentId đúng', async () => {
+      const departmentId = await createDepartment(fixture.tenantA.id, 'Khoa Nội — direct theo Khoa');
+      const patient = await createPatient(receptionistToken, { phone: '0933444600' });
+
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/reception/direct')
+        .set(authed(receptionistToken))
+        .send({ patientId: patient.id, departmentId, checkedInAt: isoAt(8, 0, 29), ...baseExam() });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.doctorId).toBeNull();
+      expect(res.body.data.departmentId).toBe(departmentId);
+    });
+
+    it('registerDirect theo bác sĩ cụ thể — server TỰ SUY departmentId từ hồ sơ bác sĩ, bỏ qua departmentId client gửi kèm', async () => {
+      const doctorDept = await createDepartment(fixture.tenantA.id, 'Khoa Nội — của bác sĩ');
+      const spoofedDept = await createDepartment(fixture.tenantA.id, 'Khoa giả mạo — client cố gửi kèm');
+      await assignDepartment(doctorAUserId, doctorDept);
+      const patient = await createPatient(receptionistToken, { phone: '0933444601' });
+
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/reception/direct')
+        .set(authed(receptionistToken))
+        .send({ patientId: patient.id, doctorId: doctorAUserId, departmentId: spoofedDept, checkedInAt: isoAt(8, 15, 29), ...baseExam() });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.doctorId).toBe(doctorAUserId);
+      expect(res.body.data.departmentId).toBe(doctorDept);
+      expect(res.body.data.departmentId).not.toBe(spoofedDept);
+    });
+
+    it('bác sĩ chưa gán Khoa nào → departmentId fallback về Khoa mặc định ("Khoa chung") của tenant', async () => {
+      const defaultDept = await privileged.department.findFirstOrThrow({ where: { tenantId: fixture.tenantA.id, isDefault: true } });
+      const doctorNoDept = await createUserWithRole(fixture.tenantA.id, 'doctor');
+      const patient = await createPatient(receptionistToken, { phone: '0933444602' });
+
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/reception/direct')
+        .set(authed(receptionistToken))
+        .send({ patientId: patient.id, doctorId: doctorNoDept.userId, checkedInAt: isoAt(8, 30, 29), ...baseExam() });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.departmentId).toBe(defaultDept.id);
+    });
+
+    it('registerDirect thiếu cả doctorId lẫn departmentId → 400 VALIDATION_ERROR', async () => {
+      const patient = await createPatient(receptionistToken, { phone: '0933444603' });
+
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/reception/direct')
+        .set(authed(receptionistToken))
+        .send({ patientId: patient.id, checkedInAt: isoAt(8, 45, 29), ...baseExam() });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
+    });
+
+    it('checkIn theo Khoa (không doctorId) dù lịch hẹn gốc đã có bác sĩ → doctorId=null, departmentId theo Khoa đã chọn', async () => {
+      const departmentId = await createDepartment(fixture.tenantA.id, 'Khoa Nội — check-in theo Khoa');
+      const appointment = await createAppointment(receptionistToken, doctorAUserId, isoAt(9, 0, 29));
+      const patient = await createPatient(receptionistToken, { phone: '0933444604' });
+
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/reception/check-in')
+        .set(authed(receptionistToken))
+        .send({ appointmentId: appointment.id, patientId: patient.id, version: appointment.version, departmentId, ...baseExam() });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.doctorId).toBeNull();
+      expect(res.body.data.departmentId).toBe(departmentId);
+    });
+
+    it('checkIn theo bác sĩ KHÁC bác sĩ gốc của lịch hẹn — dùng đúng bác sĩ client chọn, không phải appointment.doctorId', async () => {
+      const appointment = await createAppointment(receptionistToken, doctorAUserId, isoAt(9, 15, 29));
+      const patient = await createPatient(receptionistToken, { phone: '0933444605' });
+
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/reception/check-in')
+        .set(authed(receptionistToken))
+        .send({ appointmentId: appointment.id, patientId: patient.id, version: appointment.version, doctorId: doctorBUserId, ...baseExam() });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.doctorId).toBe(doctorBUserId);
+    });
+
+    it('checkIn thiếu cả doctorId lẫn departmentId → 400 VALIDATION_ERROR', async () => {
+      const appointment = await createAppointment(receptionistToken, doctorAUserId, isoAt(9, 30, 29));
+      const patient = await createPatient(receptionistToken, { phone: '0933444606' });
+
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/reception/check-in')
+        .set(authed(receptionistToken))
+        .send({ appointmentId: appointment.id, patientId: patient.id, version: appointment.version, ...baseExam() });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
+    });
+  });
+
   describe('GET /api/v1/reception/list', () => {
     // `checkIn()` (không nhận checkedInAt tuỳ chỉnh) luôn set checked_in_at = new Date() (giờ hệ
     // thống thật lúc test chạy) — KHÔNG dùng `isoAt(..., targetDay)` để lọc `date` cho các case
@@ -448,7 +577,7 @@ describe('HTTP e2e — /api/v1/reception', () => {
       await request(app.getHttpServer())
         .post('/api/v1/reception/check-in')
         .set(authed(receptionistToken))
-        .send(checkInPayload(toCheckIn.id, patient.id, toCheckIn.version));
+        .send(checkInPayload(toCheckIn.id, patient.id, toCheckIn.version, doctorAUserId));
 
       const res = await request(app.getHttpServer()).get('/api/v1/reception/list').set(authed(receptionistToken));
 
@@ -468,12 +597,12 @@ describe('HTTP e2e — /api/v1/reception', () => {
       await request(app.getHttpServer())
         .post('/api/v1/reception/check-in')
         .set(authed(receptionistToken))
-        .send(checkInPayload(apptA.id, patient.id, apptA.version));
+        .send(checkInPayload(apptA.id, patient.id, apptA.version, doctorAUserId));
       const patient2 = await createPatient(receptionistToken, { phone: '0933444556' });
       await request(app.getHttpServer())
         .post('/api/v1/reception/check-in')
         .set(authed(receptionistToken))
-        .send(checkInPayload(apptB.id, patient2.id, apptB.version));
+        .send(checkInPayload(apptB.id, patient2.id, apptB.version, doctorBUserId));
 
       const res = await request(app.getHttpServer()).get('/api/v1/reception/list').set(authed(doctorAToken));
 
@@ -489,7 +618,7 @@ describe('HTTP e2e — /api/v1/reception', () => {
       await request(app.getHttpServer())
         .post('/api/v1/reception/check-in')
         .set(authed(receptionistToken))
-        .send(checkInPayload(appt.id, patient.id, appt.version));
+        .send(checkInPayload(appt.id, patient.id, appt.version, doctorAUserId));
 
       const res = await request(app.getHttpServer())
         .get('/api/v1/reception/list')
@@ -513,12 +642,123 @@ describe('HTTP e2e — /api/v1/reception', () => {
       const created = await request(app.getHttpServer())
         .post('/api/v1/reception/check-in')
         .set(authed(receptionistToken))
-        .send(checkInPayload(appt.id, patient.id, appt.version));
+        .send(checkInPayload(appt.id, patient.id, appt.version, doctorAUserId));
 
       const res = await request(app.getHttpServer()).get('/api/v1/reception/list').set(authed(tenantBReceptionistToken));
 
       const items = res.body.data.items as Array<{ encounterId: string }>;
       expect(items.find((i) => i.encounterId === created.body.data.id)).toBeUndefined();
+    });
+
+    it('includeDepartmentPool=true ("Hàng đợi khám", #064) — bác sĩ thấy "của tôi" ∪ "hàng chờ chung Khoa mình", KHÔNG thấy pool Khoa khác', async () => {
+      // Không truyền `date` (mặc định "hôm nay") — checkIn() luôn set checkedInAt=new Date() thật
+      // (không nhận tuỳ chỉnh), nên mọi mốc thời gian trong test này đều dùng "bây giờ" cho nhất
+      // quán, thay vì isoAt(..., targetDay) như các test registerDirect thuần ở trên.
+      const myDept = await createDepartment(fixture.tenantA.id, 'Khoa Nội — pool của tôi');
+      const otherDept = await createDepartment(fixture.tenantA.id, 'Khoa Ngoại — pool Khoa khác');
+      await assignDepartment(doctorAUserId, myDept);
+
+      const patientMine = await createPatient(receptionistToken, { phone: '0933444610' });
+      const appt = await createAppointment(receptionistToken, doctorAUserId, isoAt(9, 0));
+      const mine = await request(app.getHttpServer())
+        .post('/api/v1/reception/check-in')
+        .set(authed(receptionistToken))
+        .send(checkInPayload(appt.id, patientMine.id, appt.version, doctorAUserId));
+
+      const patientPoolMine = await createPatient(receptionistToken, { phone: '0933444611' });
+      const poolMine = await request(app.getHttpServer())
+        .post('/api/v1/reception/direct')
+        .set(authed(receptionistToken))
+        .send({
+          patientId: patientPoolMine.id,
+          departmentId: myDept,
+          checkedInAt: new Date().toISOString(),
+          examTypeCode: 'KT',
+          examTypeName: 'Khám thường',
+          examTypePrice: 150_000,
+          receptionTypeCode: 'RT_NEW',
+          examFormCode: 'EF_NORMAL',
+        });
+
+      const patientPoolOther = await createPatient(receptionistToken, { phone: '0933444612' });
+      const poolOther = await request(app.getHttpServer())
+        .post('/api/v1/reception/direct')
+        .set(authed(receptionistToken))
+        .send({
+          patientId: patientPoolOther.id,
+          departmentId: otherDept,
+          checkedInAt: new Date().toISOString(),
+          examTypeCode: 'KT',
+          examTypeName: 'Khám thường',
+          examTypePrice: 150_000,
+          receptionTypeCode: 'RT_NEW',
+          examFormCode: 'EF_NORMAL',
+        });
+
+      // `doctor.encounter.read = global` (PRD ENC-01 — xem toàn bộ tiền sử, kể cả lượt khám bác sĩ
+      // khác phụ trách), nên trang "Hàng đợi khám" LUÔN tự truyền `doctorId=chính mình` tường minh
+      // (không dựa vào data_scope=personal) — đúng hành vi `ReceptionDoctorQueuePage.tsx` hiện có.
+      const res = await request(app.getHttpServer())
+        .get('/api/v1/reception/list')
+        .query({ doctorId: doctorAUserId, includeDepartmentPool: 'true' })
+        .set(authed(doctorAToken));
+
+      expect(res.status).toBe(200);
+      const ids = (res.body.data.items as Array<{ encounterId: string }>).map((i) => i.encounterId);
+      expect(ids).toContain(mine.body.data.id);
+      expect(ids).toContain(poolMine.body.data.id);
+      expect(ids).not.toContain(poolOther.body.data.id);
+    });
+
+    it('includeDepartmentPool bỏ trống (mặc định false) — bác sĩ KHÔNG thấy hàng chờ chung dù cùng Khoa (giữ nguyên hành vi cũ)', async () => {
+      const myDept = await createDepartment(fixture.tenantA.id, 'Khoa Nội — không cờ pool');
+      await assignDepartment(doctorAUserId, myDept);
+
+      const patientPool = await createPatient(receptionistToken, { phone: '0933444613' });
+      const pool = await request(app.getHttpServer())
+        .post('/api/v1/reception/direct')
+        .set(authed(receptionistToken))
+        .send({
+          patientId: patientPool.id,
+          departmentId: myDept,
+          checkedInAt: new Date().toISOString(),
+          examTypeCode: 'KT',
+          examTypeName: 'Khám thường',
+          examTypePrice: 150_000,
+          receptionTypeCode: 'RT_NEW',
+          examFormCode: 'EF_NORMAL',
+        });
+
+      const res = await request(app.getHttpServer())
+        .get('/api/v1/reception/list')
+        .query({ doctorId: doctorAUserId })
+        .set(authed(doctorAToken));
+
+      const ids = (res.body.data.items as Array<{ encounterId: string }>).map((i) => i.encounterId);
+      expect(ids).not.toContain(pool.body.data.id);
+    });
+
+    it('lễ tân ("Danh sách tiếp nhận", không truyền doctorId) — thấy CẢ ticket hàng chờ chung (không lọc theo bác sĩ)', async () => {
+      const dept = await createDepartment(fixture.tenantA.id, 'Khoa Nội — lễ tân thấy pool');
+      const patientPool = await createPatient(receptionistToken, { phone: '0933444614' });
+      const pool = await request(app.getHttpServer())
+        .post('/api/v1/reception/direct')
+        .set(authed(receptionistToken))
+        .send({
+          patientId: patientPool.id,
+          departmentId: dept,
+          checkedInAt: new Date().toISOString(),
+          examTypeCode: 'KT',
+          examTypeName: 'Khám thường',
+          examTypePrice: 150_000,
+          receptionTypeCode: 'RT_NEW',
+          examFormCode: 'EF_NORMAL',
+        });
+
+      const res = await request(app.getHttpServer()).get('/api/v1/reception/list').set(authed(receptionistToken));
+
+      const ids = (res.body.data.items as Array<{ encounterId: string }>).map((i) => i.encounterId);
+      expect(ids).toContain(pool.body.data.id);
     });
   });
 
@@ -529,7 +769,7 @@ describe('HTTP e2e — /api/v1/reception', () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/reception/check-in')
         .set(authed(receptionistToken))
-        .send(checkInPayload(appointment.id, patient.id, appointment.version));
+        .send(checkInPayload(appointment.id, patient.id, appointment.version, doctorAUserId));
       return res.body.data.id as string;
     }
 
