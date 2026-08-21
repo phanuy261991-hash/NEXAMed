@@ -44,7 +44,10 @@ export interface ConsultationPatientFields {
   gender: string;
   phone: string;
   allergyNote: string | null;
-  /** Cần cho bác sĩ cập nhật lại `patient.allergyNote` ngay trong màn khám (optimistic lock). */
+  /** Tiền sử bản thân/gia đình (docs/DECISIONS.md #068) — dữ liệu chung của bệnh nhân, không gắn theo lượt khám. */
+  personalHistory: string | null;
+  familyHistory: string | null;
+  /** Cần cho bác sĩ cập nhật lại `patient.allergyNote`/`personalHistory`/`familyHistory` ngay trong màn khám (optimistic lock). */
   version: number;
 }
 
@@ -152,7 +155,20 @@ export class EncounterRepository {
     return tx.encounter.findFirst({
       where: { tenantId, id, deletedAt: null },
       include: {
-        patient: { select: { id: true, patientCode: true, fullName: true, dob: true, gender: true, phone: true, allergyNote: true, version: true } },
+        patient: {
+          select: {
+            id: true,
+            patientCode: true,
+            fullName: true,
+            dob: true,
+            gender: true,
+            phone: true,
+            allergyNote: true,
+            personalHistory: true,
+            familyHistory: true,
+            version: true,
+          },
+        },
         vitalSigns: { where: { deletedAt: null }, orderBy: { measuredAt: 'desc' }, take: 1 },
       },
     }) as Promise<EncounterWithConsultationPatient | null>;

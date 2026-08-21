@@ -45,6 +45,10 @@ const patientRequestFieldsSchema = z.object({
   insuranceNumber: z.string().min(1).optional(),
   address: patientAddressSchema.optional(),
   allergyNote: z.string().optional(),
+  // Tiền sử bản thân/gia đình (docs/DECISIONS.md #068) — chuyển từ clinical_note (theo lượt khám)
+  // sang đây, đúng khuôn allergyNote: chung, ít đổi, sửa tại chỗ, không nhập lại mỗi lượt khám.
+  personalHistory: z.string().optional(),
+  familyHistory: z.string().optional(),
   relativeFullName: z.string().min(1).optional(),
   relativeRelationship: z.string().min(1).optional(),
   relativePhone: z.string().min(1).optional(),
@@ -122,6 +126,8 @@ export const patientDetailSchema = patientSummarySchema.extend({
   insuranceNumber: z.string().nullable(),
   address: patientAddressSchema.nullable(),
   allergyNote: z.string().nullable(),
+  personalHistory: z.string().nullable(),
+  familyHistory: z.string().nullable(),
   relativeFullName: z.string().nullable(),
   relativeRelationship: z.string().nullable(),
   relativePhone: z.string().nullable(),

@@ -48,8 +48,6 @@ const DIAGNOSIS_TYPE_LABEL: Record<DiagnosisType, string> = { PRIMARY: 'Bệnh c
 type ClinicalKey = keyof SaveClinicalNoteRequest;
 type ClinicalDraft = Record<ClinicalKey, string>;
 const EMPTY_CLINICAL_DRAFT: ClinicalDraft = {
-  personalHistory: '',
-  familyHistory: '',
   reasonForVisit: '',
   illnessProgress: '',
   preliminaryDiagnosis: '',
@@ -57,6 +55,15 @@ const EMPTY_CLINICAL_DRAFT: ClinicalDraft = {
   regionalExam: '',
   plan: '',
 };
+
+/**
+ * "Tiền sử dị ứng"/"Tiền sử bản thân"/"Tiền sử gia đình" (docs/DECISIONS.md #068) — cả 3 đọc/ghi
+ * thẳng `patient.*` qua `PATCH /patients/:id`, KHÔNG lưu theo lượt khám (khác `clinical` ở trên,
+ * gắn `encounter_id`) — dữ liệu chung, ít đổi, sửa tại chỗ, không nhập lại mỗi lượt khám mới.
+ */
+type PatientNoteKey = 'allergyNote' | 'personalHistory' | 'familyHistory';
+type PatientNoteDraft = Record<PatientNoteKey, string>;
+const EMPTY_PATIENT_NOTE_DRAFT: PatientNoteDraft = { allergyNote: '', personalHistory: '', familyHistory: '' };
 
 interface DiagnosisDraft {
   icd10Code: string;
@@ -123,8 +130,8 @@ export function EncounterConsultationPage() {
   const [clinical, setClinical] = useState<ClinicalDraft>(EMPTY_CLINICAL_DRAFT);
   const [clinicalVersions, setClinicalVersions] = useState<Partial<Record<ClinicalKey, number>>>({});
   const [diagnoses, setDiagnoses] = useState<DiagnosisDraft[]>([]);
-  const [allergyDraft, setAllergyDraft] = useState('');
-  const [allergyBaseline, setAllergyBaseline] = useState<{ value: string; version: number } | null>(null);
+  const [patientNoteDraft, setPatientNoteDraft] = useState<PatientNoteDraft>(EMPTY_PATIENT_NOTE_DRAFT);
+  const [patientNoteBaseline, setPatientNoteBaseline] = useState<{ values: PatientNoteDraft; version: number } | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [draftSaved, setDraftSaved] = useState(false);
   const [vitalsDialogOpen, setVitalsDialogOpen] = useState(false);
@@ -170,11 +177,11 @@ export function EncounterConsultationPage() {
   clinicalRef.current = clinical;
   const clinicalVersionsRef = useRef(clinicalVersions);
   clinicalVersionsRef.current = clinicalVersions;
-  const allergyDraftRef = useRef(allergyDraft);
-  allergyDraftRef.current = allergyDraft;
-  const allergyBaselineRef = useRef(allergyBaseline);
-  allergyBaselineRef.current = allergyBaseline;
-  /** `true` = có thay đổi ở ghi chú lâm sàng và/hoặc "Tiền sử dị ứng" chưa lưu lên server. */
+  const patientNoteDraftRef = useRef(patientNoteDraft);
+  patientNoteDraftRef.current = patientNoteDraft;
+  const patientNoteBaselineRef = useRef(patientNoteBaseline);
+  patientNoteBaselineRef.current = patientNoteBaseline;
+  /** `true` = có thay đổi ở ghi chú lâm sàng và/hoặc tiền sử bản thân/gia đình/dị ứng chưa lưu lên server. */
   const dirtyRef = useRef(false);
   /** Bỏ qua đúng 1 lần đánh dấu "dirty" ngay sau khi nạp dữ liệu từ server — tránh autosave tưởng
    * nhầm việc NẠP dữ liệu là NGƯỜI DÙNG vừa gõ. */
@@ -215,8 +222,6 @@ export function EncounterConsultationPage() {
     const note = data.clinicalNote;
     skipNextDirtyRef.current = true;
     setClinical({
-      personalHistory: note.personalHistory?.content ?? '',
-      familyHistory: note.familyHistory?.content ?? '',
       // Chưa từng lưu thì mồi sẵn từ lý do tiếp nhận (`encounter.chiefComplaint`) — bác sĩ gõ
       // thêm/sửa trên đó. Đã lưu rồi (kể cả rỗng có chủ đích) thì tôn trọng đúng giá trị đã lưu.
       reasonForVisit: note.reasonForVisit ? note.reasonForVisit.content : (data.encounter.chiefComplaint ?? ''),
@@ -227,8 +232,6 @@ export function EncounterConsultationPage() {
       plan: note.plan?.content ?? '',
     });
     setClinicalVersions({
-      personalHistory: note.personalHistory?.version,
-      familyHistory: note.familyHistory?.version,
       reasonForVisit: note.reasonForVisit?.version,
       illnessProgress: note.illnessProgress?.version,
       preliminaryDiagnosis: note.preliminaryDiagnosis?.version,
@@ -237,11 +240,15 @@ export function EncounterConsultationPage() {
       plan: note.plan?.version,
     });
     setDiagnoses(data.diagnoses.map((d) => ({ icd10Code: d.icd10Code, icd10Name: d.icd10Name, type: d.type, note: d.note ?? undefined })));
-    // "Tiền sử dị ứng" tự mồi từ patient.allergyNote — sửa ở đây ghi thẳng lại hồ sơ bệnh nhân
-    // (yêu cầu chủ dự án 2026-08-20), không lưu riêng cho lượt khám.
-    const allergy = data.patient.allergyNote ?? '';
-    setAllergyDraft(allergy);
-    setAllergyBaseline({ value: allergy, version: data.patient.version });
+    // "Tiền sử dị ứng"/"bản thân"/"gia đình" tự mồi từ patient.* — sửa ở đây ghi thẳng lại hồ sơ
+    // bệnh nhân (docs/DECISIONS.md #068), không lưu riêng cho lượt khám.
+    const noteValues: PatientNoteDraft = {
+      allergyNote: data.patient.allergyNote ?? '',
+      personalHistory: data.patient.personalHistory ?? '',
+      familyHistory: data.patient.familyHistory ?? '',
+    };
+    setPatientNoteDraft(noteValues);
+    setPatientNoteBaseline({ values: noteValues, version: data.patient.version });
     dirtyRef.current = false;
   }
 
@@ -262,8 +269,6 @@ export function EncounterConsultationPage() {
   /** Khớp đúng payload `PUT .../clinical-note` từ state form — dùng chung cho "Lưu nháp"/"Lưu thay đổi", autosave định kỳ, và flush lúc rời trang. */
   function buildClinicalNotePayload(c: ClinicalDraft, v: Partial<Record<ClinicalKey, number>>): SaveClinicalNoteRequest {
     return {
-      personalHistory: { content: c.personalHistory, version: v.personalHistory },
-      familyHistory: { content: c.familyHistory, version: v.familyHistory },
       reasonForVisit: { content: c.reasonForVisit, version: v.reasonForVisit },
       illnessProgress: { content: c.illnessProgress, version: v.illnessProgress },
       preliminaryDiagnosis: { content: c.preliminaryDiagnosis, version: v.preliminaryDiagnosis },
@@ -278,12 +283,12 @@ export function EncounterConsultationPage() {
     return c.reasonForVisit.trim() !== '' && c.preliminaryDiagnosis.trim() !== '';
   }
 
-  // Autosave ghi chú lâm sàng + "Tiền sử dị ứng" — CHỈ khi đang khám dở (chưa "Hoàn tất khám"): mỗi
-  // lần `clinical`/`allergyDraft` đổi, đợi ~4 giây ngừng gõ (debounce) rồi tự lưu lên server, không
-  // cần bác sĩ nhớ bấm "Lưu nháp". Lỗi vận hành thật chủ dự án báo cáo: rời màn khám sang bệnh nhân
-  // khác khi chưa lưu → mất trắng nội dung đang gõ dở (xem docs/DECISIONS.md). Sửa hồ sơ SAU khi đã
-  // hoàn tất KHÔNG autosave (phiên sửa ngắn, chủ động — chỉ lưu khi bấm "Lưu thay đổi", tránh
-  // autosave âm thầm đụng break-glass).
+  // Autosave ghi chú lâm sàng + tiền sử bản thân/gia đình/dị ứng — CHỈ khi đang khám dở (chưa "Hoàn
+  // tất khám"): mỗi lần `clinical`/`patientNoteDraft` đổi, đợi ~4 giây ngừng gõ (debounce) rồi tự
+  // lưu lên server, không cần bác sĩ nhớ bấm "Lưu nháp". Lỗi vận hành thật chủ dự án báo cáo: rời
+  // màn khám sang bệnh nhân khác khi chưa lưu → mất trắng nội dung đang gõ dở (xem docs/DECISIONS.md).
+  // Sửa hồ sơ SAU khi đã hoàn tất KHÔNG autosave (phiên sửa ngắn, chủ động — chỉ lưu khi bấm "Lưu
+  // thay đổi", tránh autosave âm thầm đụng break-glass).
   useEffect(() => {
     if (skipNextDirtyRef.current) {
       skipNextDirtyRef.current = false;
@@ -293,16 +298,35 @@ export function EncounterConsultationPage() {
     dirtyRef.current = true;
     const timer = setTimeout(() => void runAutosave(), 4000);
     return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ cần đổi `clinical`/`allergyDraft` mới reset debounce, đọc các giá trị khác qua ref/closure lúc timer chạy là đủ mới.
-  }, [clinical, allergyDraft]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ cần đổi `clinical`/`patientNoteDraft` mới reset debounce, đọc các giá trị khác qua ref/closure lúc timer chạy là đủ mới.
+  }, [clinical, patientNoteDraft]);
 
-  /** Vá `patient.allergyNote` nếu có thay đổi thật — dùng chung cho autosave/flush lẫn "Lưu nháp"/"Lưu thay đổi" thủ công. Trả `true` nếu có gọi API (để caller quyết định có cần cập nhật `allergyBaseline` qua state hay không). */
-  async function patchAllergyIfChanged(draft: string, baseline: { value: string; version: number } | null, raw: boolean): Promise<{ value: string; version: number } | null> {
-    if (!baseline || draft === baseline.value) return null;
-    const updated = raw
-      ? await updatePatientRaw(query.data!.patient.id, { allergyNote: draft, version: baseline.version })
-      : await updatePatientMutation.mutateAsync({ allergyNote: draft, version: baseline.version });
-    return { value: updated.allergyNote ?? '', version: updated.version };
+  /**
+   * Vá `patient.allergyNote`/`personalHistory`/`familyHistory` nếu có thay đổi thật (chỉ gửi field
+   * nào thực sự khác baseline, tránh tăng version bệnh nhân vô ích) — dùng chung cho autosave/flush
+   * lẫn "Lưu nháp"/"Lưu thay đổi" thủ công.
+   */
+  async function patchPatientNoteIfChanged(
+    draft: PatientNoteDraft,
+    baseline: { values: PatientNoteDraft; version: number } | null,
+    raw: boolean,
+  ): Promise<{ values: PatientNoteDraft; version: number } | null> {
+    if (!baseline) return null;
+    const changed: Partial<Record<PatientNoteKey, string>> = {};
+    (Object.keys(draft) as PatientNoteKey[]).forEach((key) => {
+      if (draft[key] !== baseline.values[key]) changed[key] = draft[key];
+    });
+    if (Object.keys(changed).length === 0) return null;
+    const payload = { ...changed, version: baseline.version };
+    const updated = raw ? await updatePatientRaw(query.data!.patient.id, payload) : await updatePatientMutation.mutateAsync(payload);
+    return {
+      values: {
+        allergyNote: updated.allergyNote ?? '',
+        personalHistory: updated.personalHistory ?? '',
+        familyHistory: updated.familyHistory ?? '',
+      },
+      version: updated.version,
+    };
   }
 
   async function runAutosave() {
@@ -312,8 +336,6 @@ export function EncounterConsultationPage() {
     try {
       const result = await saveClinicalNoteMutation.mutateAsync(buildClinicalNotePayload(c, clinicalVersionsRef.current));
       setClinicalVersions({
-        personalHistory: result.personalHistory?.version,
-        familyHistory: result.familyHistory?.version,
         reasonForVisit: result.reasonForVisit?.version,
         illnessProgress: result.illnessProgress?.version,
         preliminaryDiagnosis: result.preliminaryDiagnosis?.version,
@@ -321,8 +343,8 @@ export function EncounterConsultationPage() {
         regionalExam: result.regionalExam?.version,
         plan: result.plan?.version,
       });
-      const updatedAllergy = await patchAllergyIfChanged(allergyDraftRef.current, allergyBaselineRef.current, false);
-      if (updatedAllergy) setAllergyBaseline(updatedAllergy);
+      const updatedNote = await patchPatientNoteIfChanged(patientNoteDraftRef.current, patientNoteBaselineRef.current, false);
+      if (updatedNote) setPatientNoteBaseline(updatedNote);
       dirtyRef.current = false;
       setDraftSaved(true);
     } catch {
@@ -344,7 +366,7 @@ export function EncounterConsultationPage() {
         const c = clinicalRef.current;
         if (hasRequiredClinicalFields(c)) {
           void saveClinicalNoteRaw(encounterId, buildClinicalNotePayload(c, clinicalVersionsRef.current))
-            .then(() => patchAllergyIfChanged(allergyDraftRef.current, allergyBaselineRef.current, true))
+            .then(() => patchPatientNoteIfChanged(patientNoteDraftRef.current, patientNoteBaselineRef.current, true))
             .catch(() => {});
         }
         dirtyRef.current = false;
@@ -358,6 +380,10 @@ export function EncounterConsultationPage() {
 
   function setField(key: ClinicalKey, value: string) {
     setClinical((c) => ({ ...c, [key]: value }));
+  }
+
+  function setPatientNote(key: PatientNoteKey, value: string) {
+    setPatientNoteDraft((d) => ({ ...d, [key]: value }));
   }
 
   /**
@@ -428,8 +454,6 @@ export function EncounterConsultationPage() {
     try {
       const result = await saveClinicalNoteMutation.mutateAsync(buildClinicalNotePayload(clinical, clinicalVersions));
       setClinicalVersions({
-        personalHistory: result.personalHistory?.version,
-        familyHistory: result.familyHistory?.version,
         reasonForVisit: result.reasonForVisit?.version,
         illnessProgress: result.illnessProgress?.version,
         preliminaryDiagnosis: result.preliminaryDiagnosis?.version,
@@ -439,10 +463,10 @@ export function EncounterConsultationPage() {
       });
       dirtyRef.current = false;
 
-      // "Tiền sử dị ứng" ghi thẳng lại patient.allergyNote — chỉ gọi khi có thay đổi thật, tránh
-      // tăng version bệnh nhân vô ích mỗi lần bấm "Lưu nháp".
-      const updatedAllergy = await patchAllergyIfChanged(allergyDraft, allergyBaseline, false);
-      if (updatedAllergy) setAllergyBaseline(updatedAllergy);
+      // Tiền sử bản thân/gia đình/dị ứng ghi thẳng lại patient.* — chỉ gọi khi có thay đổi thật,
+      // tránh tăng version bệnh nhân vô ích mỗi lần bấm "Lưu nháp".
+      const updatedNote = await patchPatientNoteIfChanged(patientNoteDraft, patientNoteBaseline, false);
+      if (updatedNote) setPatientNoteBaseline(updatedNote);
 
       setDraftSaved(true);
       if (editingCompleted) setEditingCompleted(false);
@@ -473,8 +497,6 @@ export function EncounterConsultationPage() {
       try {
         const result = await saveClinicalNoteMutation.mutateAsync(buildClinicalNotePayload(c, clinicalVersionsRef.current));
         setClinicalVersions({
-          personalHistory: result.personalHistory?.version,
-          familyHistory: result.familyHistory?.version,
           reasonForVisit: result.reasonForVisit?.version,
           illnessProgress: result.illnessProgress?.version,
           preliminaryDiagnosis: result.preliminaryDiagnosis?.version,
@@ -482,8 +504,8 @@ export function EncounterConsultationPage() {
           regionalExam: result.regionalExam?.version,
           plan: result.plan?.version,
         });
-        const updatedAllergy = await patchAllergyIfChanged(allergyDraftRef.current, allergyBaselineRef.current, false);
-        if (updatedAllergy) setAllergyBaseline(updatedAllergy);
+        const updatedNote = await patchPatientNoteIfChanged(patientNoteDraftRef.current, patientNoteBaselineRef.current, false);
+        if (updatedNote) setPatientNoteBaseline(updatedNote);
         dirtyRef.current = false;
       } catch (err) {
         handleSaveError(err, 'clinical_note', () => void handleComplete(), 'Không lưu được ghi chú trước khi hoàn tất, vui lòng thử lại.');
@@ -557,10 +579,10 @@ export function EncounterConsultationPage() {
                 {editingCompleted ? 'Đang chỉnh sửa thông tin' : `Đã hoàn tất${encounter.completedAt ? ` · ${formatHistoryDate(encounter.completedAt)}` : ''}`}
               </span>
             )}
-            {allergyDraft && (
+            {patientNoteDraft.allergyNote && (
               <span className="flex items-center gap-1.5 whitespace-nowrap rounded-md border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700">
                 <Warning size={13} weight="fill" aria-hidden="true" />
-                DỊ ỨNG: {allergyDraft}
+                DỊ ỨNG: {patientNoteDraft.allergyNote}
               </span>
             )}
           </div>
@@ -737,6 +759,10 @@ export function EncounterConsultationPage() {
                   Thông tin khám lâm sàng
                 </span>
 
+                {/* Tiền sử bản thân/gia đình/dị ứng — thuộc về BỆNH NHÂN (docs/DECISIONS.md #068),
+                    KHÔNG lưu theo lượt khám như 6 mục "Thăm khám" bên dưới: đọc/ghi thẳng
+                    patient.personalHistory/familyHistory/allergyNote, tự mồi từ lần khám trước
+                    (hoặc từ hồ sơ bệnh nhân), sửa tại chỗ không phải nhập lại từ đầu mỗi lượt khám mới. */}
                 <h3 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-700">Tiền sử</h3>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                   <Textarea
@@ -744,8 +770,8 @@ export function EncounterConsultationPage() {
                     label="Tiền sử bản thân"
                     dense
                     rows={2}
-                    value={clinical.personalHistory}
-                    onChange={(e) => setField('personalHistory', e.target.value)}
+                    value={patientNoteDraft.personalHistory}
+                    onChange={(e) => setPatientNote('personalHistory', e.target.value)}
                     readOnly={!canEditNow}
                   />
                   <Textarea
@@ -753,8 +779,8 @@ export function EncounterConsultationPage() {
                     label="Tiền sử gia đình"
                     dense
                     rows={2}
-                    value={clinical.familyHistory}
-                    onChange={(e) => setField('familyHistory', e.target.value)}
+                    value={patientNoteDraft.familyHistory}
+                    onChange={(e) => setPatientNote('familyHistory', e.target.value)}
                     readOnly={!canEditNow}
                   />
                   <div>
@@ -764,8 +790,8 @@ export function EncounterConsultationPage() {
                     <textarea
                       id="clinical-allergy"
                       rows={2}
-                      value={allergyDraft}
-                      onChange={(e) => setAllergyDraft(e.target.value)}
+                      value={patientNoteDraft.allergyNote}
+                      onChange={(e) => setPatientNote('allergyNote', e.target.value)}
                       readOnly={!canEditNow}
                       placeholder="Chưa có ghi chú dị ứng lúc tiếp nhận — nhập mới nếu cần."
                       className="w-full rounded-md border border-rose-200 bg-rose-50/40 px-2 py-1.5 text-[13px] font-semibold text-slate-900 placeholder:font-normal placeholder:text-slate-400 focus:border-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-500/20"

@@ -1162,6 +1162,12 @@
                   "allergyNote": {
                     "type": "string"
                   },
+                  "personalHistory": {
+                    "type": "string"
+                  },
+                  "familyHistory": {
+                    "type": "string"
+                  },
                   "relativeFullName": {
                     "type": "string",
                     "minLength": 1
@@ -1312,6 +1318,18 @@
                             "null"
                           ]
                         },
+                        "personalHistory": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "familyHistory": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "relativeFullName": {
                           "type": [
                             "string",
@@ -1369,6 +1387,8 @@
                         "occupation",
                         "insuranceNumber",
                         "allergyNote",
+                        "personalHistory",
+                        "familyHistory",
                         "relativeFullName",
                         "relativeRelationship",
                         "relativePhone",
@@ -2066,6 +2086,18 @@
                             "null"
                           ]
                         },
+                        "personalHistory": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "familyHistory": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "relativeFullName": {
                           "type": [
                             "string",
@@ -2123,6 +2155,8 @@
                         "occupation",
                         "insuranceNumber",
                         "allergyNote",
+                        "personalHistory",
+                        "familyHistory",
                         "relativeFullName",
                         "relativeRelationship",
                         "relativePhone",
@@ -2344,6 +2378,12 @@
                   "allergyNote": {
                     "type": "string"
                   },
+                  "personalHistory": {
+                    "type": "string"
+                  },
+                  "familyHistory": {
+                    "type": "string"
+                  },
                   "relativeFullName": {
                     "type": "string",
                     "minLength": 1
@@ -2495,6 +2535,18 @@
                             "null"
                           ]
                         },
+                        "personalHistory": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "familyHistory": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "relativeFullName": {
                           "type": [
                             "string",
@@ -2552,6 +2604,8 @@
                         "occupation",
                         "insuranceNumber",
                         "allergyNote",
+                        "personalHistory",
+                        "familyHistory",
                         "relativeFullName",
                         "relativeRelationship",
                         "relativePhone",
@@ -2869,6 +2923,18 @@
                             "null"
                           ]
                         },
+                        "personalHistory": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "familyHistory": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "relativeFullName": {
                           "type": [
                             "string",
@@ -2926,6 +2992,8 @@
                         "occupation",
                         "insuranceNumber",
                         "allergyNote",
+                        "personalHistory",
+                        "familyHistory",
                         "relativeFullName",
                         "relativeRelationship",
                         "relativePhone",
@@ -7382,6 +7450,18 @@
                                 "null"
                               ]
                             },
+                            "personalHistory": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "familyHistory": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
                             "version": {
                               "type": "integer"
                             }
@@ -7394,6 +7474,8 @@
                             "gender",
                             "phone",
                             "allergyNote",
+                            "personalHistory",
+                            "familyHistory",
                             "version"
                           ]
                         },
@@ -7516,6 +7598,12 @@
                               "checkedInAt": {
                                 "type": "string"
                               },
+                              "doctorName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
                               "chiefComplaint": {
                                 "type": [
                                   "string",
@@ -7532,6 +7620,7 @@
                             "required": [
                               "encounterId",
                               "checkedInAt",
+                              "doctorName",
                               "chiefComplaint",
                               "primaryDiagnosisName"
                             ]
@@ -7582,42 +7671,6 @@
                         "clinicalNote": {
                           "type": "object",
                           "properties": {
-                            "personalHistory": {
-                              "type": [
-                                "object",
-                                "null"
-                              ],
-                              "properties": {
-                                "content": {
-                                  "type": "string"
-                                },
-                                "version": {
-                                  "type": "integer"
-                                }
-                              },
-                              "required": [
-                                "content",
-                                "version"
-                              ]
-                            },
-                            "familyHistory": {
-                              "type": [
-                                "object",
-                                "null"
-                              ],
-                              "properties": {
-                                "content": {
-                                  "type": "string"
-                                },
-                                "version": {
-                                  "type": "integer"
-                                }
-                              },
-                              "required": [
-                                "content",
-                                "version"
-                              ]
-                            },
                             "reasonForVisit": {
                               "type": [
                                 "object",
@@ -7728,8 +7781,6 @@
                             }
                           },
                           "required": [
-                            "personalHistory",
-                            "familyHistory",
                             "reasonForVisit",
                             "illnessProgress",
                             "preliminaryDiagnosis",
@@ -8208,34 +8259,6 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "personalHistory": {
-                    "type": "object",
-                    "properties": {
-                      "content": {
-                        "type": "string"
-                      },
-                      "version": {
-                        "type": "integer"
-                      }
-                    },
-                    "required": [
-                      "content"
-                    ]
-                  },
-                  "familyHistory": {
-                    "type": "object",
-                    "properties": {
-                      "content": {
-                        "type": "string"
-                      },
-                      "version": {
-                        "type": "integer"
-                      }
-                    },
-                    "required": [
-                      "content"
-                    ]
-                  },
                   "reasonForVisit": {
                     "type": "object",
                     "properties": {
@@ -8324,8 +8347,6 @@
                   }
                 },
                 "required": [
-                  "personalHistory",
-                  "familyHistory",
                   "reasonForVisit",
                   "illnessProgress",
                   "preliminaryDiagnosis",
@@ -8348,42 +8369,6 @@
                     "data": {
                       "type": "object",
                       "properties": {
-                        "personalHistory": {
-                          "type": [
-                            "object",
-                            "null"
-                          ],
-                          "properties": {
-                            "content": {
-                              "type": "string"
-                            },
-                            "version": {
-                              "type": "integer"
-                            }
-                          },
-                          "required": [
-                            "content",
-                            "version"
-                          ]
-                        },
-                        "familyHistory": {
-                          "type": [
-                            "object",
-                            "null"
-                          ],
-                          "properties": {
-                            "content": {
-                              "type": "string"
-                            },
-                            "version": {
-                              "type": "integer"
-                            }
-                          },
-                          "required": [
-                            "content",
-                            "version"
-                          ]
-                        },
                         "reasonForVisit": {
                           "type": [
                             "object",
@@ -8494,8 +8479,6 @@
                         }
                       },
                       "required": [
-                        "personalHistory",
-                        "familyHistory",
                         "reasonForVisit",
                         "illnessProgress",
                         "preliminaryDiagnosis",

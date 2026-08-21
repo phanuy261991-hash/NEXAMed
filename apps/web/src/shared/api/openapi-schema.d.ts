@@ -704,6 +704,8 @@ export interface paths {
                             province?: string;
                         };
                         allergyNote?: string;
+                        personalHistory?: string;
+                        familyHistory?: string;
                         relativeFullName?: string;
                         relativeRelationship?: string;
                         relativePhone?: string;
@@ -746,6 +748,8 @@ export interface paths {
                                 occupation: string | null;
                                 insuranceNumber: string | null;
                                 allergyNote: string | null;
+                                personalHistory: string | null;
+                                familyHistory: string | null;
                                 relativeFullName: string | null;
                                 relativeRelationship: string | null;
                                 relativePhone: string | null;
@@ -957,6 +961,8 @@ export interface paths {
                                 occupation: string | null;
                                 insuranceNumber: string | null;
                                 allergyNote: string | null;
+                                personalHistory: string | null;
+                                familyHistory: string | null;
                                 relativeFullName: string | null;
                                 relativeRelationship: string | null;
                                 relativePhone: string | null;
@@ -1056,6 +1062,8 @@ export interface paths {
                             province?: string;
                         };
                         allergyNote?: string;
+                        personalHistory?: string;
+                        familyHistory?: string;
                         relativeFullName?: string;
                         relativeRelationship?: string;
                         relativePhone?: string;
@@ -1099,6 +1107,8 @@ export interface paths {
                                 occupation: string | null;
                                 insuranceNumber: string | null;
                                 allergyNote: string | null;
+                                personalHistory: string | null;
+                                familyHistory: string | null;
                                 relativeFullName: string | null;
                                 relativeRelationship: string | null;
                                 relativePhone: string | null;
@@ -1241,6 +1251,8 @@ export interface paths {
                                 occupation: string | null;
                                 insuranceNumber: string | null;
                                 allergyNote: string | null;
+                                personalHistory: string | null;
+                                familyHistory: string | null;
                                 relativeFullName: string | null;
                                 relativeRelationship: string | null;
                                 relativePhone: string | null;
@@ -3176,6 +3188,8 @@ export interface paths {
                                     gender: string;
                                     phone: string;
                                     allergyNote: string | null;
+                                    personalHistory: string | null;
+                                    familyHistory: string | null;
                                     version: number;
                                 };
                                 vitalSigns: {
@@ -3203,6 +3217,7 @@ export interface paths {
                                     /** Format: uuid */
                                     encounterId: string;
                                     checkedInAt: string;
+                                    doctorName: string | null;
                                     chiefComplaint: string | null;
                                     primaryDiagnosisName: string | null;
                                 }[];
@@ -3217,14 +3232,6 @@ export interface paths {
                                     version: number;
                                 }[];
                                 clinicalNote: {
-                                    personalHistory: {
-                                        content: string;
-                                        version: number;
-                                    } | null;
-                                    familyHistory: {
-                                        content: string;
-                                        version: number;
-                                    } | null;
                                     reasonForVisit: {
                                         content: string;
                                         version: number;
@@ -3484,14 +3491,6 @@ export interface paths {
             requestBody?: {
                 content: {
                     "application/json": {
-                        personalHistory: {
-                            content: string;
-                            version?: number;
-                        };
-                        familyHistory: {
-                            content: string;
-                            version?: number;
-                        };
                         reasonForVisit: {
                             content: string;
                             version?: number;
@@ -3528,14 +3527,6 @@ export interface paths {
                     content: {
                         "application/json": {
                             data: {
-                                personalHistory: {
-                                    content: string;
-                                    version: number;
-                                } | null;
-                                familyHistory: {
-                                    content: string;
-                                    version: number;
-                                } | null;
                                 reasonForVisit: {
                                     content: string;
                                     version: number;

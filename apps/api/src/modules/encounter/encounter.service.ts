@@ -206,6 +206,8 @@ export class EncounterService {
           gender: encounter.patient.gender,
           phone: encounter.patient.phone,
           allergyNote: encounter.patient.allergyNote,
+          personalHistory: encounter.patient.personalHistory,
+          familyHistory: encounter.patient.familyHistory,
           version: encounter.patient.version,
         },
         vitalSigns,
@@ -320,8 +322,6 @@ export class EncounterService {
       const beforeRows = isPostCompletionEdit ? await this.clinicalNoteRepository.listForEncounter(tx, tenantId, id) : null;
 
       const sections: { section: ClinicalNoteSection; input: SaveClinicalNoteRequest['reasonForVisit'] }[] = [
-        { section: 'PERSONAL_HISTORY', input: dto.personalHistory },
-        { section: 'FAMILY_HISTORY', input: dto.familyHistory },
         { section: 'REASON_FOR_VISIT', input: dto.reasonForVisit },
         { section: 'ILLNESS_PROGRESS', input: dto.illnessProgress },
         { section: 'PRELIMINARY_DIAGNOSIS', input: dto.preliminaryDiagnosis },
@@ -447,8 +447,6 @@ export class EncounterService {
   private toClinicalNoteResponse(rows: { section: string; content: string; version: number }[]): ClinicalNoteResponse {
     const bySection = new Map(rows.map((row) => [row.section, { content: row.content, version: row.version }]));
     return {
-      personalHistory: bySection.get('PERSONAL_HISTORY') ?? null,
-      familyHistory: bySection.get('FAMILY_HISTORY') ?? null,
       reasonForVisit: bySection.get('REASON_FOR_VISIT') ?? null,
       illnessProgress: bySection.get('ILLNESS_PROGRESS') ?? null,
       preliminaryDiagnosis: bySection.get('PRELIMINARY_DIAGNOSIS') ?? null,

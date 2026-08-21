@@ -322,14 +322,16 @@ export const saveDiagnosesResponseSchema = z.object({ items: z.array(diagnosisIt
 export type SaveDiagnosesResponse = z.infer<typeof saveDiagnosesResponseSchema>;
 
 /**
- * Đổi từ 4 mục SOAP (S/O/A/P) sang 8 mục nhóm "Tiền sử"/"Thăm khám" — yêu cầu chủ dự án 2026-08-20
- * (xem docs/DECISIONS.md). `PLAN` để sẵn cho tab "Kế hoạch điều trị & hẹn tái khám" (chưa xây web).
+ * Đổi từ 4 mục SOAP (S/O/A/P) sang nhóm "Tiền sử"/"Thăm khám" — yêu cầu chủ dự án 2026-08-20 (xem
+ * docs/DECISIONS.md). `PLAN` để sẵn cho tab "Kế hoạch điều trị & hẹn tái khám" (chưa xây web).
  * "Tiền sử dị ứng" KHÔNG có ở đây — trùng `patient.allergyNote` đã có sẵn, đọc/ghi thẳng qua
  * `PATCH /patients/:id`, không tạo section riêng (tránh 2 nguồn sự thật cho cùng một dữ liệu).
+ * "Tiền sử bản thân"/"Tiền sử gia đình" cũng đã CHUYỂN sang `patient.personalHistory`/
+ * `patient.familyHistory` cùng lý do (docs/DECISIONS.md #068) — trước đây gắn theo từng lượt khám
+ * (`PERSONAL_HISTORY`/`FAMILY_HISTORY` ở đây) khiến bác sĩ phải nhập lại từ đầu mỗi lượt khám mới
+ * dù nội dung hầu như không đổi.
  */
 export const CLINICAL_NOTE_SECTIONS = [
-  'PERSONAL_HISTORY',
-  'FAMILY_HISTORY',
   'REASON_FOR_VISIT',
   'ILLNESS_PROGRESS',
   'PRELIMINARY_DIAGNOSIS',
@@ -351,10 +353,8 @@ const requiredClinicalNoteSectionInputSchema = z.object({
   version: z.number().int().optional(),
 });
 
-/** `PUT /encounters/:id/clinical-note` — lưu 8 mục trong một request (khớp form 1 lần bấm Lưu, không autosave). */
+/** `PUT /encounters/:id/clinical-note` — lưu các mục "Thăm khám" trong một request (khớp form 1 lần bấm Lưu, không autosave). "Tiền sử bản thân/gia đình" không còn ở đây — xem `patient.personalHistory`/`familyHistory`. */
 export const saveClinicalNoteRequestSchema = z.object({
-  personalHistory: clinicalNoteSectionInputSchema,
-  familyHistory: clinicalNoteSectionInputSchema,
   reasonForVisit: requiredClinicalNoteSectionInputSchema,
   illnessProgress: clinicalNoteSectionInputSchema,
   preliminaryDiagnosis: requiredClinicalNoteSectionInputSchema,
@@ -367,8 +367,6 @@ export type SaveClinicalNoteRequest = z.infer<typeof saveClinicalNoteRequestSche
 const clinicalNoteSectionValueSchema = z.object({ content: z.string(), version: z.number().int() }).nullable();
 
 export const clinicalNoteResponseSchema = z.object({
-  personalHistory: clinicalNoteSectionValueSchema,
-  familyHistory: clinicalNoteSectionValueSchema,
   reasonForVisit: clinicalNoteSectionValueSchema,
   illnessProgress: clinicalNoteSectionValueSchema,
   preliminaryDiagnosis: clinicalNoteSectionValueSchema,
@@ -398,7 +396,10 @@ export const consultationPatientSchema = z.object({
   gender: z.string(),
   phone: z.string(),
   allergyNote: z.string().nullable(),
-  /** Optimistic lock cho `PATCH /patients/:id` khi bác sĩ cập nhật "Tiền sử dị ứng" ngay màn khám. */
+  /** Tiền sử bản thân/gia đình (docs/DECISIONS.md #068) — dữ liệu chung của bệnh nhân, cùng cơ chế sửa với `allergyNote`. */
+  personalHistory: z.string().nullable(),
+  familyHistory: z.string().nullable(),
+  /** Optimistic lock cho `PATCH /patients/:id` khi bác sĩ cập nhật "Tiền sử dị ứng"/bản thân/gia đình ngay màn khám. */
   version: z.number().int(),
 });
 export type ConsultationPatient = z.infer<typeof consultationPatientSchema>;

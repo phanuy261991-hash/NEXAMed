@@ -138,7 +138,7 @@ Ký hiệu: **P0** bắt buộc cho v1, **P1** làm nếu còn thời gian, **P2
 | ID | Yêu cầu | Ưu tiên |
 |---|---|---|
 | ENC-01 | Màn hình khám: tiền sử các lần khám trước, dị ứng, sinh hiệu lần này | P0 |
-| ENC-02 | Ghi chú lâm sàng theo 2 nhóm "Tiền sử" (bản thân, gia đình, dị ứng) và "Thăm khám" (lý do khám*, quá trình bệnh lý, chẩn đoán sơ bộ*, khám toàn thân, khám bộ phận) — *bắt buộc. Thay mô tả "4 mục SOAP" ban đầu, chốt 2026-08-20 theo yêu cầu chủ dự án, xem `docs/DECISIONS.md` | P0 |
+| ENC-02 | Ghi chú lâm sàng gồm nhóm "Tiền sử" (bản thân, gia đình, dị ứng — thuộc hồ sơ bệnh nhân, dùng chung mọi lượt khám, không nhập lại mỗi lần khám, chốt 2026-08-21 xem `docs/DECISIONS.md` #068) và nhóm "Thăm khám" (lý do khám*, quá trình bệnh lý, chẩn đoán sơ bộ*, khám toàn thân, khám bộ phận — thuộc từng lượt khám) — *bắt buộc. Thay mô tả "4 mục SOAP" ban đầu, chốt 2026-08-20 theo yêu cầu chủ dự án, xem `docs/DECISIONS.md` | P0 |
 | ENC-03 | Chọn chẩn đoán từ danh mục ICD-10, tìm theo mã hoặc theo tên tiếng Việt; bắt buộc có ít nhất một chẩn đoán chính | P0 |
 | ENC-04 | Ký hồ sơ khám: sau khi ký không sửa được, chỉ tạo bản đính chính có lý do | P0 |
 | ENC-05 | Xem lịch sử đính chính: ai sửa, sửa gì, lúc nào, lý do | P0 |

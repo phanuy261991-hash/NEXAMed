@@ -94,6 +94,8 @@ export class PatientService {
           nationalIdHash: dto.nationalId ? hashForLookup(dto.nationalId, encryptionKey) : null,
           addressJson: dto.address ?? Prisma.JsonNull,
           allergyNote: dto.allergyNote ?? null,
+          personalHistory: dto.personalHistory ?? null,
+          familyHistory: dto.familyHistory ?? null,
           nationalIdIssuedAt: dto.nationalIdIssuedAt ? new Date(dto.nationalIdIssuedAt) : null,
           nationalIdIssuedPlace: dto.nationalIdIssuedPlace ?? null,
           ethnicity: dto.ethnicity ?? null,
@@ -221,6 +223,8 @@ export class PatientService {
       if (dto.gender !== undefined) patch.gender = dto.gender;
       if (dto.phone !== undefined) patch.phone = dto.phone;
       if (dto.allergyNote !== undefined) patch.allergyNote = dto.allergyNote;
+      if (dto.personalHistory !== undefined) patch.personalHistory = dto.personalHistory;
+      if (dto.familyHistory !== undefined) patch.familyHistory = dto.familyHistory;
       if (dto.address !== undefined) patch.addressJson = dto.address ?? Prisma.JsonNull;
       if (dto.nationalId !== undefined) {
         patch.nationalIdEnc = dto.nationalId ? encryptPii(dto.nationalId, encryptionKey) : null;
@@ -305,6 +309,8 @@ export class PatientService {
       occupation: patient.occupation,
       insuranceNumber: patient.insuranceNumber,
       allergyNote: patient.allergyNote,
+      personalHistory: patient.personalHistory,
+      familyHistory: patient.familyHistory,
       relativeFullName: patient.relativeFullName,
       relativeRelationship: patient.relativeRelationship,
       relativePhone: patient.relativePhone,

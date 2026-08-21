@@ -685,6 +685,11 @@ model Patient {
   nationalIdHash     String?   @map("national_id_hash")
   addressJson        Json?     @map("address_json") @db.JsonB
   allergyNote        String?   @map("allergy_note")
+  // Tiền sử bản thân/gia đình (docs/DECISIONS.md #068) — chuyển từ `clinical_note` (gắn từng lượt
+  // khám) sang đây, đúng khuôn `allergyNote`: dữ liệu chung, ít đổi, sửa tại chỗ qua
+  // `PATCH /patients/:id`, không nhập lại từ đầu mỗi lượt khám mới.
+  personalHistory    String?   @map("personal_history")
+  familyHistory      String?   @map("family_history")
   mergedIntoId       String?   @map("merged_into_id") @db.Uuid
   globalPatientRef   String?   @map("global_patient_ref") @db.Uuid
   identityVerifiedAt DateTime? @map("identity_verified_at") @db.Timestamptz(6)
@@ -847,15 +852,14 @@ enum DiagnosisType {
   @@map("diagnosis_type")
 }
 
-// Thay thế 4 mục SOAP (S/O/A/P) bằng 8 mục theo nhóm "Tiền sử"/"Thăm khám" — yêu cầu chủ dự án
-// 2026-08-20, xem docs/DECISIONS.md (entry sau #059). PERSONAL_HISTORY/FAMILY_HISTORY thuộc nhóm
-// "Tiền sử" (hiển thị dạng khung/box riêng ở web, KHÔNG gồm dị ứng — dị ứng đọc/ghi thẳng
-// patient.allergyNote, không qua bảng này). REASON_FOR_VISIT/ILLNESS_PROGRESS/
-// PRELIMINARY_DIAGNOSIS/GENERAL_EXAM/REGIONAL_EXAM thuộc nhóm "Thăm khám". PLAN để sẵn cho tab
-// "Kế hoạch điều trị & hẹn tái khám" (chưa xây, xem EncounterConsultationPage.tsx TABS).
+// Thay thế 4 mục SOAP (S/O/A/P) bằng nhóm "Tiền sử"/"Thăm khám" — yêu cầu chủ dự án 2026-08-20, xem
+// docs/DECISIONS.md (entry sau #059). PERSONAL_HISTORY/FAMILY_HISTORY đã CHUYỂN sang
+// `patient.personalHistory`/`patient.familyHistory` (docs/DECISIONS.md #068, cùng lý do dị ứng đọc/
+// ghi thẳng patient.allergyNote không qua bảng này) — dữ liệu chung của bệnh nhân, không gắn theo
+// từng lượt khám. REASON_FOR_VISIT/ILLNESS_PROGRESS/PRELIMINARY_DIAGNOSIS/GENERAL_EXAM/
+// REGIONAL_EXAM thuộc nhóm "Thăm khám". PLAN để sẵn cho tab "Kế hoạch điều trị & hẹn tái khám" (chưa
+// xây, xem EncounterConsultationPage.tsx TABS).
 enum ClinicalNoteSection {
-  PERSONAL_HISTORY
-  FAMILY_HISTORY
   REASON_FOR_VISIT
   ILLNESS_PROGRESS
   PRELIMINARY_DIAGNOSIS

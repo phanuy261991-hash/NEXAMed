@@ -28,6 +28,8 @@ export interface PatientFormValues {
   neighborhood: string;
   province: string;
   allergyNote: string;
+  personalHistory: string;
+  familyHistory: string;
   relativeFullName: string;
   relativeRelationship: string;
   relativePhone: string;
@@ -51,6 +53,8 @@ export const EMPTY_PATIENT_FORM: PatientFormValues = {
   neighborhood: '',
   province: '',
   allergyNote: '',
+  personalHistory: '',
+  familyHistory: '',
   relativeFullName: '',
   relativeRelationship: '',
   relativePhone: '',
@@ -371,6 +375,30 @@ export function PatientFormFields({
               disabled={disabled}
               value={values.neighborhood}
               onChange={(e) => set('neighborhood', e.target.value)}
+              className={inputClassName}
+            />
+          </Field>
+
+          {/* Tiền sử bản thân/gia đình/dị ứng (docs/DECISIONS.md #068) — dùng chung mọi lượt khám
+              của bệnh nhân, không nhập lại theo từng lần khám (khác ghi chú lâm sàng ở màn khám). */}
+          <Field id="personalHistory" label="Tiền sử bản thân" className="col-span-2 sm:col-span-3 lg:col-span-2">
+            <textarea
+              id="personalHistory"
+              rows={2}
+              disabled={disabled}
+              value={values.personalHistory}
+              onChange={(e) => set('personalHistory', e.target.value)}
+              className={inputClassName}
+            />
+          </Field>
+
+          <Field id="familyHistory" label="Tiền sử gia đình" className="col-span-2 sm:col-span-3 lg:col-span-2">
+            <textarea
+              id="familyHistory"
+              rows={2}
+              disabled={disabled}
+              value={values.familyHistory}
+              onChange={(e) => set('familyHistory', e.target.value)}
               className={inputClassName}
             />
           </Field>

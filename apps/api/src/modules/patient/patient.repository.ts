@@ -14,6 +14,8 @@ export interface CreatePatientData {
   // (khác Json bắt buộc, nơi `null` bị hiểu là literal JSON "null") — xem prisma.io/docs.
   addressJson: Prisma.InputJsonValue | typeof Prisma.JsonNull;
   allergyNote: string | null;
+  personalHistory: string | null;
+  familyHistory: string | null;
   // Mở rộng hồ sơ hành chính (docs/DECISIONS.md #034) — text/date tự do, không danh mục.
   nationalIdIssuedAt: Date | null;
   nationalIdIssuedPlace: string | null;

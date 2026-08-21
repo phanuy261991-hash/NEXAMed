@@ -2,6 +2,17 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-21 (5)
+
+"Tiền sử bản thân"/"Tiền sử gia đình" chuyển sang thuộc bệnh nhân thay vì gắn theo lượt khám — lỗ hổng chủ dự án phát hiện, xem `docs/DECISIONS.md` #068:
+
+- **Vấn đề**: 2 trường này trước đây là section của `clinical_note` (gắn `encounter_id`, giống 4 mục "Thăm khám" khác) nên mỗi lượt khám mới luôn rỗng, bác sĩ phải gõ lại từ đầu dù nội dung hầu như không đổi — khác bản chất dữ liệu (thuộc về bệnh nhân, không thuộc một lần khám cụ thể). Hỏi và chốt hướng qua `AskUserQuestion` trước khi sửa: chuyển hẳn thành trường `patient.*` đúng khuôn `allergyNote` (đã tách khỏi `clinical_note` từ #060), thay vì chỉ tự mồi mà vẫn lưu riêng theo lượt khám.
+- **Schema**: thêm `patient.personal_history`/`patient.family_history` (nullable). `clinical_note.section` còn lại 6 giá trị (bỏ `PERSONAL_HISTORY`/`FAMILY_HISTORY`). Migration `20260821150000_patient_history_fields` — backfill nội dung KHÔNG RỖNG gần nhất của mỗi bệnh nhân (theo `encounter.checked_in_at DESC`) từ `clinical_note` cũ trước khi xoá 2 section này và dựng lại enum.
+- **Backend**: đọc/ghi qua `PATCH /patients/:id`, tái dùng permission `doctor.patient.update=global` có sẵn từ #060 (không thêm permission mới). `EncounterService.getConsultationDetail()` trả `personalHistory`/`familyHistory` cùng `allergyNote` trong `patient`; `saveClinicalNote()` bớt 2 field khỏi payload.
+- **Web**: `EncounterConsultationPage.tsx` gộp cơ chế autosave-vào-patient (trước chỉ có `allergyDraft`/`allergyBaseline`) thành `patientNoteDraft`/`patientNoteBaseline` dùng chung cho cả 3 trường (`allergyNote`/`personalHistory`/`familyHistory`) — chỉ gửi field nào thực sự đổi so với baseline. `PatientFormFields.tsx` (dùng chung Thêm/Sửa bệnh nhân + Tiếp nhận bệnh nhân) thêm 2 trường cạnh "Tiền sử dị ứng" để xem/sửa được cả ở hồ sơ bệnh nhân.
+- **Đã xác minh thật**: `encounter-http.spec.ts` +1 test ("Tiền sử bản thân/gia đình lưu ở patient... lượt khám sau vẫn thấy lại") — tổng 375/375 test `apps/api` (28 file), không regression. `pnpm -w typecheck/lint/build` sạch toàn workspace. Playwright qua Chrome thật (tenant/tài khoản dev riêng tạo qua API): nhập tiền sử ở lượt khám 1 → autosave → Hoàn tất khám → tạo lượt khám MỚI cho CÙNG bệnh nhân → 2 trường đã hiện sẵn đúng nội dung cũ, sửa/lưu lại vẫn đúng. Không lỗi console ngoài dự kiến.
+- Cập nhật `docs/ERD.md` (v1.24), `.claude/docs/data-model.md`, `.claude/docs/clinical-workflow.md`, `docs/product/prd.md` (ENC-02), `docs/DECISIONS.md` (#068), `docs/CURRENT.md`.
+
 ## 2026-08-21 (4)
 
 Popup xác nhận "Hoàn tất khám", chuẩn Enter-to-submit bắt buộc toàn app, panel tiền sử thêm tên bác sĩ — xem `docs/DECISIONS.md` #067:

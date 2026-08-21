@@ -26,8 +26,6 @@ const PATIENT_HISTORY_COUNT = 20; // PRD mục 5 / plan.md S3-09: "bệnh nhân 
 const PERF_TARGET_MS = 2000;
 const PERF_TENANT_PREFIX = 'Perf consultation ';
 const NOTE_SECTIONS = [
-  'PERSONAL_HISTORY',
-  'FAMILY_HISTORY',
   'REASON_FOR_VISIT',
   'ILLNESS_PROGRESS',
   'PRELIMINARY_DIAGNOSIS',

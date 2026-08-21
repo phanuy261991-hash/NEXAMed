@@ -918,6 +918,8 @@ function patientDetailToFormValuesLocal(detail: PatientDetail): PatientFormValue
     neighborhood: detail.address?.neighborhood ?? '',
     province: detail.address?.province ?? '',
     allergyNote: detail.allergyNote ?? '',
+    personalHistory: detail.personalHistory ?? '',
+    familyHistory: detail.familyHistory ?? '',
     relativeFullName: detail.relativeFullName ?? '',
     relativeRelationship: detail.relativeRelationship ?? '',
     relativePhone: detail.relativePhone ?? '',

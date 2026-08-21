@@ -1,6 +1,6 @@
 # ERD: NEXAMed v1
 
-**Version**: v1.23 — 21/08/2026 (xem mục 9 để biết lịch sử thay đổi)
+**Version**: v1.24 — 21/08/2026 (xem mục 9 để biết lịch sử thay đổi)
 **Phạm vi**: chỉ các bảng thuộc v1 (Đặt lịch, Tiếp nhận, Khám bệnh, Kê đơn). Bảng của v2+ (viện phí, kho thuốc, BHYT) **không** tạo ở giai đoạn này.
 **Căn cứ**: `docs/product/prd.md` v1.0, `docs/product/plan.md` v1.0, `.claude/docs/data-model.md`
 
@@ -232,6 +232,8 @@ erDiagram
         text national_id_hash
         jsonb address_json
         text allergy_note
+        text personal_history
+        text family_history
         uuid merged_into_id FK
         uuid global_patient_ref
         timestamptz identity_verified_at
@@ -467,6 +469,8 @@ erDiagram
 
 **`address_json.province`/`.ward` (v1.8, `docs/DECISIONS.md` #038, đảo ngược tiếp phần Tỉnh/Xã của #034)**: nay lưu **mã** tham chiếu bảng `province`/`ward` mới (ví dụ `"1"`, `"10105001"`), không lưu tên — cùng cách `ethnicity`/`nationality` đã làm ở #037. Chọn qua Combobox cascading (chọn Tỉnh trước để lọc Xã) ở web thay vì gõ tay.
 
+**`personal_history`/`family_history` (v1.24, `docs/DECISIONS.md` #068)** — chuyển từ `clinical_note.section` (`PERSONAL_HISTORY`/`FAMILY_HISTORY`, gắn theo từng `encounter_id`) sang đây, đúng khuôn `allergy_note`: dữ liệu chung của bệnh nhân, ít đổi giữa các lần khám, sửa tại chỗ qua `PATCH /patients/:id` (permission `doctor.patient.update=global` đã có sẵn từ #060) thay vì phải nhập lại từ đầu mỗi lượt khám mới — đúng lỗ hổng chủ dự án phát hiện khi dùng thử.
+
 ### 3.3 Lịch hẹn và lượt khám
 
 | Bảng | Vai trò |
@@ -504,7 +508,7 @@ Bản ghi từ CẢ HAI luồng cùng xuất hiện trong "Danh sách tiếp nh�
 |---|---|---|
 | `vital_sign` | Sinh hiệu | Lưu số nguyên: nhiệt độ theo phần mười độ C (`temperature_deci_c`, 37.5°C → `375`), cân nặng theo gram, chiều cao theo mm |
 | `diagnosis` | Chẩn đoán | `type`: `PRIMARY` hoặc `SECONDARY`; bắt buộc có đúng một `PRIMARY` khi hoàn tất lượt khám |
-| `clinical_note` | Ghi chú khám (nhóm Tiền sử/Thăm khám) | `section` (8 giá trị, đổi 2026-08-20 — không còn 4 mục SOAP): `PERSONAL_HISTORY`, `FAMILY_HISTORY`, `REASON_FOR_VISIT`, `ILLNESS_PROGRESS`, `PRELIMINARY_DIAGNOSIS`, `GENERAL_EXAM`, `REGIONAL_EXAM`, `PLAN` |
+| `clinical_note` | Ghi chú khám (nhóm "Thăm khám") | `section` (6 giá trị — `PERSONAL_HISTORY`/`FAMILY_HISTORY` chuyển sang `patient.personal_history`/`family_history` v1.24, xem #068): `REASON_FOR_VISIT`, `ILLNESS_PROGRESS`, `PRELIMINARY_DIAGNOSIS`, `GENERAL_EXAM`, `REGIONAL_EXAM`, `PLAN` |
 | `prescription` | Đơn thuốc | Ký logic ở v1; `signature_payload` để sẵn cho chữ ký số, luôn `NULL` |
 | `prescription_item` | Dòng thuốc | v1 không có cột giá, không trừ kho |
 
@@ -640,3 +644,4 @@ Khi thêm, các bảng này vẫn phải đủ 8 cột bắt buộc và tuân th
 | v1.21 | 20/08/2026 | Thêm category `OCCUPATION` (Nghề nghiệp) vào enum `reference_catalog_category` (migration `20260820160000_reference_catalog_occupation`, chỉ `ALTER TYPE ... ADD VALUE`) — đảo ngược tiếp phần `occupation` của `docs/DECISIONS.md` #034 (trước đây cố ý để text tự do). Không seed cứng (khác Dân tộc/Quốc tịch, thiếu nguồn dữ liệu chính thức) — `clinic_admin` tự thêm qua UI, đúng khuôn `PATIENT_SOURCE`/`EXAM_TYPE`. `patient.occupation` không đổi cột/kiểu dữ liệu, chỉ đổi ý nghĩa giá trị lưu (mã tham chiếu `reference_catalog` thay vì text tự do), cùng khuôn `ethnicity`/`nationality` đã làm ở #037. Xem `docs/DECISIONS.md` #061. |
 | v1.22 | 20/08/2026 | Mở rộng ADM-01 — "Danh mục quản lý tài khoản" đầy đủ hồ sơ nhân sự (chủ dự án yêu cầu trực tiếp, `docs/DECISIONS.md` #063). `user_account` thêm 10 cột: `employee_code` (tự sinh, prefix `NV`), `phone`, `personal_email`, `company_email`, `academic_title_code`/`position_code`/`employment_status_code`/`employment_type_code` (4 mã tham chiếu `reference_catalog`, không FK cứng — cùng khuôn `patient.ethnicity`/`occupation`), `can_sign_medical_record` (boolean, chỉ lưu metadata — chữ ký số chưa triển khai ở v1), `must_change_password` (boolean, chặn thật lần đăng nhập đầu). `reference_catalog` thêm 4 category mới (`ACADEMIC_TITLE`/`STAFF_POSITION`/`EMPLOYMENT_STATUS`/`EMPLOYMENT_TYPE`) + cột `deactivates_account` (boolean, chỉ có ý nghĩa với `EMPLOYMENT_STATUS` — tách khỏi `code` để không phụ thuộc admin đổi tên mã). Thêm bảng `department_type` và mở rộng `department` thêm `code` (tự sinh, prefix `KP`), `department_type_id` (tuỳ chọn, nullable composite FK — thêm C15, cùng khuôn C13), `is_active` — bảng `department` đã có sẵn từ S1-04b nhưng chưa từng có module/API/UI quản lý, nay có đầy đủ qua "Danh mục Tổ chức và Nhân sự". Migration: `20260820170000_user_account_hr_profile`, `20260820180000_department_management`, `20260820190000_department_code_and_catalog_autocode`, `20260820200000_department_type`. Xem `docs/DECISIONS.md` #063. |
 | v1.23 | 21/08/2026 | "Hàng đợi ảo" (Virtual Queue theo Bác sĩ/Khoa, `docs/DECISIONS.md` #064) — `encounter.doctor_id` đổi thành **nullable** (`NULL` = lượt khám còn trong hàng chờ chung Khoa, chưa được bác sĩ nào nhận). Thêm `encounter.department_id` **bắt buộc** (composite FK → `department`). Thêm `department.is_default` (đúng 1 Khoa mặc định "Khoa chung"/tenant, partial unique — C16), tự seed lúc tạo tenant (`seedDefaultRolesForTenant`). "Hàng đợi khám" không còn lọc CHỈ theo `doctorId` — gộp thêm nhánh "hàng chờ chung Khoa của actor" khi client truyền `includeDepartmentPool=true`. Endpoint "Nhận ca" (mở rộng `POST /encounters/:id/start`) — set `doctorId=actor` atomic khi ticket đang `doctorId=NULL`, chỉ cho bác sĩ cùng Khoa. Migration `20260820210000_encounter_virtual_queue`. Xem `docs/DECISIONS.md` #064. |
+| v1.24 | 21/08/2026 | Lỗ hổng thật chủ dự án phát hiện: "Tiền sử bản thân"/"Tiền sử gia đình" trước đây gắn `clinical_note.section` theo TỪNG lượt khám (`PERSONAL_HISTORY`/`FAMILY_HISTORY`) nên lượt khám mới không kế thừa, bác sĩ phải gõ lại từ đầu dù nội dung hầu như không đổi. Chuyển 2 mục này thành `patient.personal_history`/`family_history` (nullable, đúng khuôn `patient.allergy_note`) — dữ liệu chung của bệnh nhân, sửa tại chỗ qua `PATCH /patients/:id`, không nhập lại mỗi lượt khám. `clinical_note.section` còn lại 6 giá trị (bỏ 2 giá trị trên). Migration `20260821150000_patient_history_fields` backfill nội dung KHÔNG RỖNG gần nhất của mỗi bệnh nhân từ `clinical_note` cũ trước khi xoá 2 section này và dựng lại enum. Xem `docs/DECISIONS.md` #068. |

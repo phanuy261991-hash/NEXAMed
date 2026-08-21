@@ -380,12 +380,12 @@ describe('HTTP e2e — /api/v1/encounters', () => {
       expect(res.body.data.encounter.id).toBe(encounterId);
       expect(res.body.data.encounter.status).toBe('IN_CONSULTATION');
       expect(res.body.data.patient.fullName).toBe('Bệnh nhân e2e');
+      expect(res.body.data.patient.personalHistory).toBeNull();
+      expect(res.body.data.patient.familyHistory).toBeNull();
       expect(res.body.data.vitalSigns).toBeNull();
       expect(res.body.data.history).toEqual([]);
       expect(res.body.data.diagnoses).toEqual([]);
       expect(res.body.data.clinicalNote).toEqual({
-        personalHistory: null,
-        familyHistory: null,
         reasonForVisit: null,
         illnessProgress: null,
         preliminaryDiagnosis: null,
@@ -437,6 +437,57 @@ describe('HTTP e2e — /api/v1/encounters', () => {
       expect(res.body.data.history[0].encounterId).toBe(firstEncounterId);
       expect(res.body.data.history[0].primaryDiagnosisName).not.toBeNull();
       expect(res.body.data.history[0].doctorName).toBe('User doctor');
+    });
+
+    it('Tiền sử bản thân/gia đình lưu ở patient (không phải theo lượt khám, docs/DECISIONS.md #068) — lượt khám sau vẫn thấy lại, không phải nhập lại từ đầu', async () => {
+      const patientRes = await request(app.getHttpServer())
+        .post('/api/v1/patients')
+        .set(authed(receptionistToken))
+        .send({ fullName: 'Bệnh nhân tiền sử', dob: '1990-01-01', gender: 'female', phone: '0977111222', nationalId: randomNationalId() });
+      const patientId = patientRes.body.data.id as string;
+      const patientVersion = patientRes.body.data.version as number;
+
+      async function directEncounter(hour: number) {
+        const res = await request(app.getHttpServer())
+          .post('/api/v1/reception/direct')
+          .set(authed(receptionistToken))
+          .send({
+            patientId,
+            doctorId: doctorAUserId,
+            checkedInAt: isoAt(hour, 0, 17),
+            examTypeCode: 'KT',
+            examTypeName: 'Khám thường',
+            examTypePrice: 150_000,
+            receptionTypeCode: 'RT_NEW',
+            examFormCode: 'EF_NORMAL',
+          });
+        return res.body.data.id as string;
+      }
+
+      const firstEncounterId = await directEncounter(13);
+      await request(app.getHttpServer()).post(`/api/v1/encounters/${firstEncounterId}/start`).set(authed(doctorAToken)).send({ version: 1 });
+
+      // Bác sĩ nhập tiền sử ở lượt khám đầu — ghi thẳng patient (như allergyNote), không phải clinical_note.
+      const patchRes = await request(app.getHttpServer())
+        .patch(`/api/v1/patients/${patientId}`)
+        .set(authed(doctorAToken))
+        .send({ personalHistory: 'Tăng huyết áp', familyHistory: 'Mẹ bị đái tháo đường', version: patientVersion });
+      expect(patchRes.status).toBe(200);
+
+      await request(app.getHttpServer())
+        .put(`/api/v1/encounters/${firstEncounterId}/diagnoses`)
+        .set(authed(doctorAToken))
+        .send({ diagnoses: [{ icd10Code: 'A00.0', type: 'PRIMARY' as const }] });
+      await request(app.getHttpServer()).post(`/api/v1/encounters/${firstEncounterId}/complete`).set(authed(doctorAToken)).send({ version: 2 });
+
+      const secondEncounterId = await directEncounter(14);
+      await request(app.getHttpServer()).post(`/api/v1/encounters/${secondEncounterId}/start`).set(authed(doctorAToken)).send({ version: 1 });
+
+      const res = await request(app.getHttpServer()).get(`/api/v1/encounters/${secondEncounterId}/consultation`).set(authed(doctorAToken));
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.patient.personalHistory).toBe('Tăng huyết áp');
+      expect(res.body.data.patient.familyHistory).toBe('Mẹ bị đái tháo đường');
     });
 
     it('bác sĩ khác cùng tenant xem được (encounter.read=global cho vai trò doctor, đúng ENC-01 "xem toàn bộ tiền sử") → 200', async () => {
@@ -527,8 +578,6 @@ describe('HTTP e2e — /api/v1/encounters', () => {
 
   describe('PUT /api/v1/encounters/:id/clinical-note — S3-07 (nhóm Tiền sử/Thăm khám, thay 4 mục SOAP cũ)', () => {
     type ClinicalNoteKey =
-      | 'personalHistory'
-      | 'familyHistory'
       | 'reasonForVisit'
       | 'illnessProgress'
       | 'preliminaryDiagnosis'
@@ -538,8 +587,6 @@ describe('HTTP e2e — /api/v1/encounters', () => {
 
     function clinicalNotePayload(overrides?: Partial<Record<ClinicalNoteKey, { content: string; version?: number }>>) {
       return {
-        personalHistory: { content: '' },
-        familyHistory: { content: '' },
         reasonForVisit: { content: 'Sốt 2 ngày' },
         illnessProgress: { content: '' },
         preliminaryDiagnosis: { content: 'Nghi viêm họng' },
@@ -572,8 +619,6 @@ describe('HTTP e2e — /api/v1/encounters', () => {
         .set(authed(doctorAToken))
         .send(
           clinicalNotePayload({
-            personalHistory: { content: '', version: 1 },
-            familyHistory: { content: '', version: 1 },
             reasonForVisit: { content: 'Sốt 3 ngày, ho thêm', version: 1 },
             illnessProgress: { content: '', version: 1 },
             preliminaryDiagnosis: { content: 'Nghi viêm họng', version: 1 },
@@ -591,8 +636,6 @@ describe('HTTP e2e — /api/v1/encounters', () => {
       const encounterId = await startedEncounter(2);
       await request(app.getHttpServer()).put(`/api/v1/encounters/${encounterId}/clinical-note`).set(authed(doctorAToken)).send(clinicalNotePayload());
       const allV1: Record<ClinicalNoteKey, { content: string; version: number }> = {
-        personalHistory: { content: 'x', version: 1 },
-        familyHistory: { content: 'x', version: 1 },
         reasonForVisit: { content: 'x', version: 1 },
         illnessProgress: { content: 'x', version: 1 },
         preliminaryDiagnosis: { content: 'x', version: 1 },
@@ -741,8 +784,6 @@ describe('HTTP e2e — /api/v1/encounters', () => {
         .put(`/api/v1/encounters/${encounterId}/clinical-note`)
         .set(authed(doctorAToken))
         .send({
-          personalHistory: { content: '' },
-          familyHistory: { content: '' },
           reasonForVisit: { content: 'Đau đầu' },
           illnessProgress: { content: '' },
           preliminaryDiagnosis: { content: 'Theo dõi' },
@@ -789,8 +830,6 @@ describe('HTTP e2e — /api/v1/encounters', () => {
         version: number;
       }
       const note = detail.body.data.clinicalNote as {
-        personalHistory: ClinicalNoteSectionValue;
-        familyHistory: ClinicalNoteSectionValue;
         reasonForVisit: ClinicalNoteSectionValue;
         illnessProgress: ClinicalNoteSectionValue;
         preliminaryDiagnosis: ClinicalNoteSectionValue;
@@ -803,8 +842,6 @@ describe('HTTP e2e — /api/v1/encounters', () => {
         .put(`/api/v1/encounters/${encounterId}/clinical-note`)
         .set(authed(doctorAToken))
         .send({
-          personalHistory: { content: note.personalHistory.content, version: note.personalHistory.version },
-          familyHistory: { content: note.familyHistory.content, version: note.familyHistory.version },
           reasonForVisit: { content: 'Đau đầu — sửa lại: kèm chóng mặt', version: note.reasonForVisit.version },
           illnessProgress: { content: note.illnessProgress.content, version: note.illnessProgress.version },
           preliminaryDiagnosis: { content: note.preliminaryDiagnosis.content, version: note.preliminaryDiagnosis.version },
