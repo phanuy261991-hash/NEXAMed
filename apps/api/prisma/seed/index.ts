@@ -4,6 +4,7 @@ import { seedPermissionCatalog } from '../../src/infrastructure/persistence/seed
 import { seedReferenceCatalog } from '../../src/infrastructure/persistence/seed-reference-catalog';
 import { seedGeo } from '../../src/infrastructure/persistence/seed-geo';
 import { seedIcd10Catalog } from '../../src/infrastructure/persistence/seed-icd10';
+import { seedAllergenCatalog } from '../../src/infrastructure/persistence/seed-allergen-catalog';
 
 // Seed toàn cục — danh mục `permission` + `reference_catalog` (không có tenant_id). Seed vai
 // trò/ma trận cho từng tenant cụ thể dùng seedDefaultRolesForTenant (src/infrastructure/
@@ -26,6 +27,8 @@ async function main() {
     console.log('✓ Seed province/ward xong.');
     await seedIcd10Catalog(prisma);
     console.log('✓ Seed icd10 catalog xong.');
+    await seedAllergenCatalog(prisma);
+    console.log('✓ Seed allergen catalog xong.');
   } finally {
     await prisma.$disconnect();
   }

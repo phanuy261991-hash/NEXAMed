@@ -43,6 +43,11 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   ROLE_IN_USE: HttpStatus.CONFLICT,
   // Mở rộng ADM-01 — xung đột giữa Trạng thái làm việc tự-vô-hiệu-hoá và isActive:true yêu cầu.
   ACCOUNT_CANNOT_REACTIVATE_WHILE_RESIGNED: HttpStatus.CONFLICT,
+  // Danh mục "Dị nguyên" (docs/DECISIONS.md #069) — trùng mã tự sinh (retry hết lượt), cùng nhóm
+  // REFERENCE_CATALOG_DUPLICATE_CODE ở trên. ALLERGEN_GROUP_INVALID_REFERENCE không có trong bảng
+  // này nên rơi về mặc định 422 (vi phạm quy tắc nghiệp vụ, không phải xung đột trạng thái).
+  ALLERGEN_GROUP_DUPLICATE_CODE: HttpStatus.CONFLICT,
+  ALLERGEN_DUPLICATE_CODE: HttpStatus.CONFLICT,
 };
 
 /**

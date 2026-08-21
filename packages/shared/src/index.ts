@@ -10,6 +10,7 @@ export * from './role';
 export * from './department';
 export * from './clinic';
 export * from './reference-catalog';
+export * from './allergen';
 export * from './geo';
 export * from './icd10';
 export * from './currency';

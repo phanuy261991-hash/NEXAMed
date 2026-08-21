@@ -13,6 +13,7 @@ import { GeoModule } from './modules/geo/geo.module';
 import { Icd10Module } from './modules/icd10/icd10.module';
 import { EncounterModule } from './modules/encounter/encounter.module';
 import { ReceptionModule } from './modules/reception/reception.module';
+import { AllergenModule } from './modules/allergen/allergen.module';
 import { TenantContextMiddleware } from './common/tenant-context.middleware';
 
 @Module({
@@ -31,6 +32,7 @@ import { TenantContextMiddleware } from './common/tenant-context.middleware';
     Icd10Module,
     EncounterModule,
     ReceptionModule,
+    AllergenModule,
   ],
 })
 export class AppModule implements NestModule {

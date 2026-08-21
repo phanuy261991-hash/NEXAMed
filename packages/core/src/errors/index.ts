@@ -8,3 +8,4 @@ export * from './role-errors';
 export * from './reference-catalog-errors';
 export * from './clinic-errors';
 export * from './encounter-errors';
+export * from './allergen-errors';

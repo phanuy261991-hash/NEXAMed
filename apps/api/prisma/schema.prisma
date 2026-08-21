@@ -486,6 +486,38 @@ model ReferenceCatalog {
   @@map("reference_catalog")
 }
 
+// Danh mục "Dị nguyên" (Allergens, docs/DECISIONS.md #069) — TOÀN HỆ THỐNG, cùng bản chất
+// `reference_catalog` (không tenant_id, không đủ 8 cột bắt buộc, không version, quản lý qua API
+// bởi clinic_admin, "xoá" = is_active=false). Khác `reference_catalog` ở chỗ có 2 CẤP thật
+// (nhóm → dị nguyên) thay vì phẳng theo category — 2 bảng riêng thay vì nhét thêm category mới
+// vào `reference_catalog` vì quan hệ cha-con cần FK thật, không biểu diễn được bằng enum category.
+// `code` của CẢ HAI bảng đều tự sinh (`generateAllergenGroupCode`/`generateAllergenCode`,
+// packages/core/src/allergen/generate-code.ts) — KHÔNG nhận từ client (khác `reference_catalog`
+// vẫn cho phép client tự nhập code). `AllergenGroup.code` tồn tại trong DB nhưng KHÔNG hiển thị ở
+// UI cột trái (chỉ dùng nội bộ, để đồng nhất với Allergen) — cột phải mới hiện "Mã".
+model AllergenGroup {
+  id        String     @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  code      String     @unique
+  name      String
+  isActive  Boolean    @default(true) @map("is_active")
+  allergens Allergen[]
+
+  @@map("allergen_group")
+}
+
+// `allergenGroupId` BẮT BUỘC (không nullable) — khác `department.departmentTypeId` (tuỳ chọn):
+// mỗi Dị nguyên luôn thuộc đúng 1 Nhóm dị nguyên, không có trạng thái "chưa phân loại".
+model Allergen {
+  id              String        @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  allergenGroupId String        @map("allergen_group_id") @db.Uuid
+  code            String        @unique
+  name            String
+  isActive        Boolean       @default(true) @map("is_active")
+  allergenGroup   AllergenGroup @relation(fields: [allergenGroupId], references: [id])
+
+  @@map("allergen")
+}
+
 // Danh mục hành chính Tỉnh/Phường-Xã — TOÀN HỆ THỐNG (cùng bản chất icd10_catalog/permission),
 // không tenant_id, không đủ 8 cột bắt buộc, không version/is_active. Read-only lúc chạy (khác
 // reference_catalog — không có endpoint create/update/delete): dữ liệu hành chính chính thức Bộ

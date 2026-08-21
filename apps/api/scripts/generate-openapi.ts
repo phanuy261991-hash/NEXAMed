@@ -7,6 +7,8 @@ import { z } from 'zod';
 // (patch vào ZodType.prototype) để tự sinh định nghĩa parameter từ field của z.object thường.
 extendZodWithOpenApi(z);
 import {
+  allergenGroupSummarySchema,
+  allergenItemSchema,
   appointmentPhoneLookupQuerySchema,
   appointmentPhoneLookupResponseSchema,
   appointmentSummarySchema,
@@ -65,14 +67,20 @@ import {
   patientByPhoneQuerySchema,
   patientByPhoneResponseSchema,
   patientDetailSchema,
+  createAllergenGroupRequestSchema,
+  createAllergenRequestSchema,
   createDepartmentRequestSchema,
   createDepartmentTypeRequestSchema,
   createReferenceCatalogRequestSchema,
   departmentSummarySchema,
   departmentTypeSummarySchema,
+  listAllergenGroupsResponseSchema,
+  listAllergensResponseSchema,
   listDepartmentOptionsResponseSchema,
   listDepartmentsResponseSchema,
   listDepartmentTypesResponseSchema,
+  updateAllergenGroupRequestSchema,
+  updateAllergenRequestSchema,
   updateDepartmentRequestSchema,
   updateDepartmentTypeRequestSchema,
   receptionListQuerySchema,
@@ -1329,6 +1337,161 @@ registry.registerPath({
     200: jsonResponse('Đã khôi phục', envelope(referenceCatalogItemSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền reference_catalog.manage'),
+    404: errorResponse('Không tìm thấy'),
+  },
+});
+
+// Danh mục "Dị nguyên" (docs/DECISIONS.md #069) — cùng khuôn reference-catalog ở trên, khác ở
+// chỗ mã (`code`) luôn tự sinh, request tạo/sửa KHÔNG có field này.
+const allergenListQuery = z.object({ includeInactive: z.enum(['true', 'false']).optional() });
+const allergenIdParams = z.object({ id: z.string().uuid() });
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/allergen-groups',
+  tags: ['allergen'],
+  summary: 'Danh sách Nhóm dị nguyên — includeInactive=true để xem cả nhóm đã ẩn (màn hình quản lý)',
+  security: [{ bearerAuth: [] }],
+  request: { query: allergenListQuery },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listAllergenGroupsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền allergen_catalog.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/allergen-groups',
+  tags: ['allergen'],
+  summary: 'Thêm Nhóm dị nguyên mới (mã tự sinh)',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createAllergenGroupRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Tạo thành công', envelope(allergenGroupSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền allergen_catalog.manage'),
+    409: errorResponse('Trùng mã tự sinh (hiếm gặp, đã retry hết lượt)'),
+  },
+});
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/allergen-groups/{id}',
+  tags: ['allergen'],
+  summary: 'Sửa một Nhóm dị nguyên',
+  security: [{ bearerAuth: [] }],
+  request: { params: allergenIdParams, body: { content: { 'application/json': { schema: updateAllergenGroupRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Sửa thành công', envelope(allergenGroupSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền allergen_catalog.manage'),
+    404: errorResponse('Không tìm thấy'),
+  },
+});
+
+registry.registerPath({
+  method: 'delete',
+  path: '/api/v1/allergen-groups/{id}',
+  tags: ['allergen'],
+  summary: 'Ẩn một Nhóm dị nguyên (soft — role DB không có quyền DELETE thật)',
+  security: [{ bearerAuth: [] }],
+  request: { params: allergenIdParams },
+  responses: {
+    200: jsonResponse('Đã ẩn', envelope(allergenGroupSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền allergen_catalog.manage'),
+    404: errorResponse('Không tìm thấy'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/allergen-groups/{id}/reactivate',
+  tags: ['allergen'],
+  summary: 'Khôi phục một Nhóm dị nguyên đã ẩn',
+  security: [{ bearerAuth: [] }],
+  request: { params: allergenIdParams },
+  responses: {
+    200: jsonResponse('Đã khôi phục', envelope(allergenGroupSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền allergen_catalog.manage'),
+    404: errorResponse('Không tìm thấy'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/allergens',
+  tags: ['allergen'],
+  summary: 'Danh sách TẤT CẢ Dị nguyên (kèm allergenGroupName) — web tự lọc theo nhóm ở client',
+  security: [{ bearerAuth: [] }],
+  request: { query: allergenListQuery },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listAllergensResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền allergen_catalog.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/allergens',
+  tags: ['allergen'],
+  summary: 'Thêm Dị nguyên mới thuộc 1 Nhóm dị nguyên (mã tự sinh)',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createAllergenRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Tạo thành công', envelope(allergenItemSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền allergen_catalog.manage'),
+    409: errorResponse('Trùng mã tự sinh (hiếm gặp, đã retry hết lượt)'),
+    422: errorResponse('allergenGroupId không tồn tại'),
+  },
+});
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/allergens/{id}',
+  tags: ['allergen'],
+  summary: 'Sửa một Dị nguyên',
+  security: [{ bearerAuth: [] }],
+  request: { params: allergenIdParams, body: { content: { 'application/json': { schema: updateAllergenRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Sửa thành công', envelope(allergenItemSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền allergen_catalog.manage'),
+    404: errorResponse('Không tìm thấy'),
+    422: errorResponse('allergenGroupId không tồn tại'),
+  },
+});
+
+registry.registerPath({
+  method: 'delete',
+  path: '/api/v1/allergens/{id}',
+  tags: ['allergen'],
+  summary: 'Ẩn một Dị nguyên (soft — role DB không có quyền DELETE thật)',
+  security: [{ bearerAuth: [] }],
+  request: { params: allergenIdParams },
+  responses: {
+    200: jsonResponse('Đã ẩn', envelope(allergenItemSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền allergen_catalog.manage'),
+    404: errorResponse('Không tìm thấy'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/allergens/{id}/reactivate',
+  tags: ['allergen'],
+  summary: 'Khôi phục một Dị nguyên đã ẩn',
+  security: [{ bearerAuth: [] }],
+  request: { params: allergenIdParams },
+  responses: {
+    200: jsonResponse('Đã khôi phục', envelope(allergenItemSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền allergen_catalog.manage'),
     404: errorResponse('Không tìm thấy'),
   },
 });

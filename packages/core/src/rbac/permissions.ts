@@ -48,6 +48,12 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   { module: 'audit_log', action: 'read', description: 'Xem nhật ký hoạt động' },
   { module: 'reference_catalog', action: 'read', description: 'Xem danh mục dùng chung (dân tộc, quốc tịch...)' },
   { module: 'reference_catalog', action: 'manage', description: 'Thêm/sửa/ẩn mục trong danh mục dùng chung' },
+  // Danh mục "Dị nguyên" (docs/DECISIONS.md #069) — permission RIÊNG, không tái dùng
+  // reference_catalog.* dù cùng bản chất "danh mục dùng chung toàn hệ thống": Dị nguyên nằm ở
+  // trang "Danh mục Chuyên môn" (lâm sàng), reference_catalog nằm ở "Danh mục hành chính" — tách
+  // permission theo đúng khu vực trang, cùng lý do icd10_catalog không tái dùng reference_catalog.*.
+  { module: 'allergen_catalog', action: 'read', description: 'Xem danh mục Dị nguyên' },
+  { module: 'allergen_catalog', action: 'manage', description: 'Thêm/sửa/ẩn Nhóm dị nguyên và Dị nguyên' },
 ] as const;
 
 export function permissionKey(p: Pick<PermissionDefinition, 'module' | 'action'>): string {
@@ -78,6 +84,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'encounter.create': 'global',
     'encounter.cancel': 'global',
     'reference_catalog.read': 'global',
+    'allergen_catalog.read': 'global',
   },
   nurse: {
     'patient.read': 'global',
@@ -88,6 +95,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'encounter.read': 'global',
     'vital_sign.create': 'global',
     'reference_catalog.read': 'global',
+    'allergen_catalog.read': 'global',
   },
   doctor: {
     'patient.read': 'global',
@@ -114,6 +122,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'prescription.sign': 'personal',
     'prescription.print': 'personal',
     'reference_catalog.read': 'global',
+    'allergen_catalog.read': 'global',
   },
   clinic_admin: {
     'patient.read': 'global',
@@ -136,6 +145,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'audit_log.read': 'global',
     'reference_catalog.read': 'global',
     'reference_catalog.manage': 'global',
+    'allergen_catalog.read': 'global',
+    'allergen_catalog.manage': 'global',
   },
   system_admin: {
     'user_account.read': 'global',
