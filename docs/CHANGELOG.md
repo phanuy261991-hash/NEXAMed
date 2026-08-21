@@ -2,6 +2,17 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-21 (3)
+
+Màn hình khám — sửa 3 lỗi vận hành thật chủ dự án báo cáo, xem `docs/DECISIONS.md` #066:
+
+- **"Xem lại" lượt khám đã "Hoàn tất khám"** không còn hiện "Lưu nháp"/"Hoàn tất khám" — chỉ 1 nút "Chỉnh sửa thông tin". Sửa được: đúng bác sĩ ca đó, hoặc tài khoản khác qua **break-glass** (`apps/web/src/shared/api/break-glass.api.ts`, `shared/ui/BreakGlassDialog.tsx` — lần đầu web gọi tới cơ chế này). Backend (`encounter.service.ts`) mở khoá `saveDiagnoses()`/`saveClinicalNote()` cho cả trạng thái `COMPLETED` (trước chỉ `IN_CONSULTATION`), ghi `audit_log` action riêng (`*_amended_after_completion`) kèm trước/sau đầy đủ khi sửa sau hoàn tất.
+- **Autosave** (debounce ~4 giây + flush khi rời trang) cho ghi chú lâm sàng + "Tiền sử dị ứng" — chống mất nội dung gõ dở khi chuyển sang khám bệnh nhân khác mà chưa bấm "Lưu". Phát hiện thêm bug nặng hơn: bấm từ dải "Hàng chờ" sang ca khác (không unmount trang, route `/encounters/:id` không đổi `key`) trước đây không nạp lại dữ liệu — lẫn dữ liệu 2 bệnh nhân. Sửa bằng `loadedForId` (so `encounterId`) thay `initialized` boolean.
+- **"Hoàn tất khám"** nay bắt buộc lưu xong ghi chú (flush đồng bộ) trước khi cho chuyển trạng thái — không còn đường nào hoàn tất mà bỏ sót nội dung chưa lưu.
+- Nhân tiện: nút "Lưu nháp" → "Lưu"; lỗi ở footer làm nổi bật (khung viền đỏ + icon) — vẫn **giữ inline tại chỗ**, không đổi sang Toast (đúng `.claude/docs/ui-guidelines.md` mục 4.3, đã hỏi trước khi quyết định giữ nguyên).
+- **Đã xác minh thật**: `encounter-http.spec.ts` +5 test (374/374 tổng `apps/api`, 28 file, không regression) — vá thêm 1 lỗ hổng hạ tầng test (`tenant-fixture.ts` chưa từng dọn `break_glass_session`). `pnpm -w typecheck/lint/build` sạch toàn workspace. Playwright qua Chrome thật (dữ liệu tạo riêng qua API — BS. `hungdt` + tài khoản điều dưỡng test): cả 3 kịch bản pass + luồng break-glass trọn vẹn (điều dưỡng bị chặn `403` → dialog → sai mật khẩu báo lỗi tại chỗ → đúng mật khẩu → lưu thành công, audit log đủ `break_glass.request/access` + action sửa sau hoàn tất).
+- Cập nhật `docs/CURRENT.md`, `docs/DECISIONS.md` (#066).
+
 ## 2026-08-21 (2)
 
 "Hàng đợi khám" + "Chuyển vào hàng đợi" — chuỗi phản hồi trực tiếp trên bản chạy thật, làm đúng lại mockup #064 (`docs/DECISIONS.md` #065):

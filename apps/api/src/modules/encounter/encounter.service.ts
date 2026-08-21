@@ -25,7 +25,7 @@ import type {
   StartConsultationRequest,
   VitalSignResponse,
 } from '@nexamed/shared';
-import type { VitalSign } from '@prisma/client';
+import type { Prisma, VitalSign } from '@prisma/client';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
 import type { RequestMeta } from '../../common/request-meta';
@@ -221,6 +221,15 @@ export class EncounterService {
    * `.claude/docs/security-audit.md`). `saveDiagnosesRequestSchema` (Zod) đã chặn phần lớn payload
    * sai (không có/nhiều hơn 1 PRIMARY) — kiểm lại ở đây là lớp phòng thủ thứ hai, không phải kiểm
    * dư thừa (service không tin tưởng input đã qua Zod là bất biến nghiệp vụ đúng tuyệt đối).
+   *
+   * **Sửa sau khi đã "Hoàn tất khám" (`status=COMPLETED`) được phép** — lỗi vận hành thật chủ dự án
+   * báo cáo: trước đây "Xem lại" một lượt khám đã hoàn tất vẫn hiện y hệt giao diện đang khám nhưng
+   * MỌI lần lưu đều bị chặn cứng (`EncounterNotInConsultationError`), không có đường nào sửa sai sót
+   * phát hiện sau đó. Quyết định (xem `docs/DECISIONS.md`): mở khoá sửa TẠI CHỖ (không tạo bản ghi
+   * mới kiểu đính chính — đó là ENC-04/05/Sprint 5, áp dụng cho bản ghi đã `signed_at`; `diagnosis`
+   * v1 chưa có khái niệm ký) + ghi đầy đủ `audit_log` trước/sau bằng action riêng để tra được ai sửa
+   * gì lúc nào. Quyền vẫn y nguyên cơ chế đã có: đúng bác sĩ ca đó (`personal`, ownership check ở
+   * trên) hoặc tài khoản khác qua break-glass (permission.guard.ts, không đổi gì thêm ở đây).
    */
   async saveDiagnoses(
     tenantId: string,
@@ -235,13 +244,16 @@ export class EncounterService {
       if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId)) {
         throw new NotFoundException();
       }
-      if (existing.status !== 'IN_CONSULTATION') {
+      const isPostCompletionEdit = existing.status === 'COMPLETED';
+      if (existing.status !== 'IN_CONSULTATION' && !isPostCompletionEdit) {
         throw new EncounterNotInConsultationError();
       }
       const primaryCount = dto.diagnoses.filter((d) => d.type === 'PRIMARY').length;
       if (primaryCount !== 1) {
         throw new DiagnosisPrimaryRequiredError();
       }
+
+      const beforeRows = isPostCompletionEdit ? await this.diagnosisRepository.listForEncounter(tx, tenantId, id) : null;
 
       await this.diagnosisRepository.replaceForEncounter(
         tx,
@@ -251,25 +263,31 @@ export class EncounterService {
         dto.diagnoses.map((d) => ({ icd10Code: d.icd10Code, type: d.type, note: d.note ?? null })),
       );
 
+      const rows = await this.diagnosisRepository.listForEncounter(tx, tenantId, id);
+
       await writeAuditLog(tx, tenantId, {
         actorId,
-        action: 'encounter.diagnosis_saved',
+        action: isPostCompletionEdit ? 'encounter.diagnosis_amended_after_completion' : 'encounter.diagnosis_saved',
         entityType: 'encounter',
         entityId: id,
+        beforeJson: beforeRows ? (beforeRows.map((r) => ({ icd10Code: r.icd10Code, type: r.type, note: r.note })) as Prisma.InputJsonValue) : undefined,
+        afterJson: beforeRows ? (rows.map((r) => ({ icd10Code: r.icd10Code, type: r.type, note: r.note })) as Prisma.InputJsonValue) : undefined,
         ip: meta.ip,
         userAgent: meta.userAgent,
       });
 
-      const rows = await this.diagnosisRepository.listForEncounter(tx, tenantId, id);
       return { items: rows.map((row) => this.toDiagnosisItem(row)) };
     });
   }
 
   /**
-   * Lưu cả 4 mục SOAP trong một request (khớp form 1 lần bấm "Lưu", không autosave — ENC-06 lưu
-   * nháp offline là P1/Sprint 6). `clinical_note.create`/`update` (`personal`, kế thừa qua
-   * `encounter.doctorId`, cùng lý do `diagnosis.create`). Bản nháp — `signedAt` luôn null, không
-   * có logic bất biến/đính chính ở vòng này (ENC-04/Sprint 5).
+   * Lưu cả 8 mục ghi chú lâm sàng trong một request (khớp form 1 lần bấm "Lưu nháp" HOẶC autosave
+   * định kỳ từ web — xem `docs/DECISIONS.md`, đảo ngược ghi chú "không autosave" ban đầu). Bản
+   * nháp — `signedAt` luôn null, không có logic bất biến/đính chính ở vòng này (ENC-04/Sprint 5).
+   *
+   * **Sửa sau khi đã "Hoàn tất khám" được phép** — cùng quyết định + lý do như `saveDiagnoses()` ở
+   * trên (đọc docstring đó trước). Ghi trước/sau đầy đủ nội dung 8 mục vào `audit_log` khi sửa sau
+   * hoàn tất, vì đây chính là mục "phải lưu log lại" chủ dự án yêu cầu.
    */
   async saveClinicalNote(
     tenantId: string,
@@ -284,9 +302,12 @@ export class EncounterService {
       if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId)) {
         throw new NotFoundException();
       }
-      if (existing.status !== 'IN_CONSULTATION') {
+      const isPostCompletionEdit = existing.status === 'COMPLETED';
+      if (existing.status !== 'IN_CONSULTATION' && !isPostCompletionEdit) {
         throw new EncounterNotInConsultationError();
       }
+
+      const beforeRows = isPostCompletionEdit ? await this.clinicalNoteRepository.listForEncounter(tx, tenantId, id) : null;
 
       const sections: { section: ClinicalNoteSection; input: SaveClinicalNoteRequest['reasonForVisit'] }[] = [
         { section: 'PERSONAL_HISTORY', input: dto.personalHistory },
@@ -305,16 +326,19 @@ export class EncounterService {
         }
       }
 
+      const rows = await this.clinicalNoteRepository.listForEncounter(tx, tenantId, id);
+
       await writeAuditLog(tx, tenantId, {
         actorId,
-        action: 'encounter.clinical_note_saved',
+        action: isPostCompletionEdit ? 'encounter.clinical_note_amended_after_completion' : 'encounter.clinical_note_saved',
         entityType: 'encounter',
         entityId: id,
+        beforeJson: beforeRows ? (Object.fromEntries(beforeRows.map((r) => [r.section, r.content])) as Prisma.InputJsonValue) : undefined,
+        afterJson: beforeRows ? (Object.fromEntries(rows.map((r) => [r.section, r.content])) as Prisma.InputJsonValue) : undefined,
         ip: meta.ip,
         userAgent: meta.userAgent,
       });
 
-      const rows = await this.clinicalNoteRepository.listForEncounter(tx, tenantId, id);
       return this.toClinicalNoteResponse(rows);
     });
   }

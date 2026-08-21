@@ -16,11 +16,12 @@ import {
   Warning,
   X,
 } from '@phosphor-icons/react';
-import type { DiagnosisType, EncounterHistoryItem, ReceptionListItem, SaveClinicalNoteRequest } from '@nexamed/shared';
+import type { ConsultationDetailResponse, DiagnosisType, EncounterHistoryItem, ReceptionListItem, SaveClinicalNoteRequest } from '@nexamed/shared';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { useAutoCollapseSidebar } from '../../shared/layout/sidebar.context';
 import { ApiError } from '../../shared/api/client';
 import { Button } from '../../shared/ui/Button';
+import { BreakGlassDialog } from '../../shared/ui/BreakGlassDialog';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
@@ -28,10 +29,12 @@ import { Textarea } from '../../shared/ui/Textarea';
 import { useAuthStore } from '../auth/auth.store';
 import { getVietnamTodayDateString } from '../appointment/schedule-grid.utils';
 import { computeAgeLabel } from '../patient/patient-form.utils';
+import { updatePatient as updatePatientRaw } from '../patient/patient.api';
 import { useUpdatePatientMutation } from '../patient/patient.queries';
 import { useReceptionListQuery, useStartConsultationMutation } from '../reception/reception.queries';
 import { Icd10DiagnosisPicker } from './Icd10DiagnosisPicker';
 import { VitalSignsDialog } from './VitalSignsDialog';
+import { saveClinicalNote as saveClinicalNoteRaw } from './encounter.api';
 import {
   useCompleteConsultationMutation,
   useConsultationDetailQuery,
@@ -110,7 +113,13 @@ export function EncounterConsultationPage() {
   // sidebar lúc vào màn hình khám, tự khôi phục lại khi rời đi (docs/CURRENT.md yêu cầu chủ dự án).
   useAutoCollapseSidebar();
 
-  const [initialized, setInitialized] = useState(false);
+  // `loadedForId` (thay cho `initialized` boolean cũ) — nạp bản nháp từ server đúng 1 lần MỖI
+  // lượt khám, không phải đúng 1 lần cho cả vòng đời component. Bug thật phát hiện lúc sửa lỗi
+  // vận hành khác (docs/DECISIONS.md): trang `/encounters/:id` không có `key` theo id nên
+  // React Router KHÔNG remount khi bấm từ dải hàng chờ sang lượt khám khác cùng route — `initialized`
+  // boolean cũ không bao giờ reset, khiến bản nháp CŨ của bệnh nhân trước đó tiếp tục hiện trên màn
+  // hình bệnh nhân mới (không phải "mất dữ liệu" mà còn nguy hiểm hơn: lẫn dữ liệu 2 bệnh nhân).
+  const [loadedForId, setLoadedForId] = useState<string | null>(null);
   const [clinical, setClinical] = useState<ClinicalDraft>(EMPTY_CLINICAL_DRAFT);
   const [clinicalVersions, setClinicalVersions] = useState<Partial<Record<ClinicalKey, number>>>({});
   const [diagnoses, setDiagnoses] = useState<DiagnosisDraft[]>([]);
@@ -121,11 +130,38 @@ export function EncounterConsultationPage() {
   const [vitalsDialogOpen, setVitalsDialogOpen] = useState(false);
   const [railOpen, setRailOpen] = useState(true);
   const [railError, setRailError] = useState<string | null>(null);
+  // "Xem lại" một lượt khám đã "Hoàn tất khám" — mặc định chỉ xem, bấm "Chỉnh sửa thông tin" mới mở
+  // lại các ô nhập (lỗi vận hành thật chủ dự án báo cáo, xem docs/DECISIONS.md).
+  const [editingCompleted, setEditingCompleted] = useState(false);
+  // Xin vượt quyền tạm thời (break-glass) khi thao tác lưu bị chặn 403 — `retry` gọi lại đúng thao
+  // tác vừa bị chặn sau khi xin thành công, xem `BreakGlassDialog`.
+  const [breakGlassPrompt, setBreakGlassPrompt] = useState<{ entityType: string; retry: () => void } | null>(null);
 
   const saveDiagnosesMutation = useSaveDiagnosesMutation(encounterId);
   const saveClinicalNoteMutation = useSaveClinicalNoteMutation(encounterId);
   const completeMutation = useCompleteConsultationMutation(encounterId);
   const updatePatientMutation = useUpdatePatientMutation(query.data?.patient.id ?? '');
+
+  const isCompleted = query.data?.encounter.status === 'COMPLETED';
+  /** Các ô nhập/nút thao tác được phép sửa ngay bây giờ — đang khám (chưa hoàn tất) HOẶC đã bấm "Chỉnh sửa thông tin" trên lượt khám đã hoàn tất. */
+  const canEditNow = !isCompleted || editingCompleted;
+
+  // Luôn giữ bản mới nhất trong ref — dùng cho autosave debounce/flush lúc rời trang (effect cleanup
+  // đóng gói giá trị lúc effect được TẠO, không phải lúc effect CHẠY, nên phải đọc qua ref để luôn
+  // lấy đúng nội dung mới nhất thay vì bản state đã cũ tại thời điểm effect setup).
+  const clinicalRef = useRef(clinical);
+  clinicalRef.current = clinical;
+  const clinicalVersionsRef = useRef(clinicalVersions);
+  clinicalVersionsRef.current = clinicalVersions;
+  const allergyDraftRef = useRef(allergyDraft);
+  allergyDraftRef.current = allergyDraft;
+  const allergyBaselineRef = useRef(allergyBaseline);
+  allergyBaselineRef.current = allergyBaseline;
+  /** `true` = có thay đổi ở ghi chú lâm sàng và/hoặc "Tiền sử dị ứng" chưa lưu lên server. */
+  const dirtyRef = useRef(false);
+  /** Bỏ qua đúng 1 lần đánh dấu "dirty" ngay sau khi nạp dữ liệu từ server — tránh autosave tưởng
+   * nhầm việc NẠP dữ liệu là NGƯỜI DÙNG vừa gõ. */
+  const skipNextDirtyRef = useRef(false);
 
   // Dải hàng chờ thu gọn ("Hàng đợi ảo", docs/DECISIONS.md #064) — cùng nguồn dữ liệu với "Hàng
   // đợi khám" (`ReceptionDoctorQueuePage.tsx`): "của tôi" ∪ "hàng chờ chung Khoa mình". Loại trừ
@@ -157,44 +193,147 @@ export function EncounterConsultationPage() {
     'section-hen': useRef<HTMLDivElement>(null),
   };
 
-  // Nạp bản nháp từ server đúng 1 lần lúc tải xong — không ghi đè lại mỗi lần refetch (sau khi lưu
-  // chẩn đoán/ghi chú) để không mất chỉnh sửa đang gõ dở ở các ô khác.
+  /** Đổ dữ liệu server vào form — dùng lúc nạp lần đầu MỖI lượt khám (effect dưới) và lúc bấm "Huỷ" giữa chừng sửa (`handleCancelEdit`). */
+  function populateFromServer(data: ConsultationDetailResponse) {
+    const note = data.clinicalNote;
+    skipNextDirtyRef.current = true;
+    setClinical({
+      personalHistory: note.personalHistory?.content ?? '',
+      familyHistory: note.familyHistory?.content ?? '',
+      // Chưa từng lưu thì mồi sẵn từ lý do tiếp nhận (`encounter.chiefComplaint`) — bác sĩ gõ
+      // thêm/sửa trên đó. Đã lưu rồi (kể cả rỗng có chủ đích) thì tôn trọng đúng giá trị đã lưu.
+      reasonForVisit: note.reasonForVisit ? note.reasonForVisit.content : (data.encounter.chiefComplaint ?? ''),
+      illnessProgress: note.illnessProgress?.content ?? '',
+      preliminaryDiagnosis: note.preliminaryDiagnosis?.content ?? '',
+      generalExam: note.generalExam?.content ?? '',
+      regionalExam: note.regionalExam?.content ?? '',
+      plan: note.plan?.content ?? '',
+    });
+    setClinicalVersions({
+      personalHistory: note.personalHistory?.version,
+      familyHistory: note.familyHistory?.version,
+      reasonForVisit: note.reasonForVisit?.version,
+      illnessProgress: note.illnessProgress?.version,
+      preliminaryDiagnosis: note.preliminaryDiagnosis?.version,
+      generalExam: note.generalExam?.version,
+      regionalExam: note.regionalExam?.version,
+      plan: note.plan?.version,
+    });
+    setDiagnoses(data.diagnoses.map((d) => ({ icd10Code: d.icd10Code, icd10Name: d.icd10Name, type: d.type, note: d.note ?? undefined })));
+    // "Tiền sử dị ứng" tự mồi từ patient.allergyNote — sửa ở đây ghi thẳng lại hồ sơ bệnh nhân
+    // (yêu cầu chủ dự án 2026-08-20), không lưu riêng cho lượt khám.
+    const allergy = data.patient.allergyNote ?? '';
+    setAllergyDraft(allergy);
+    setAllergyBaseline({ value: allergy, version: data.patient.version });
+    dirtyRef.current = false;
+  }
+
+  // Nạp bản nháp từ server đúng 1 lần MỖI lượt khám (`loadedForId !== encounterId`, không phải chỉ
+  // "chưa từng nạp bao giờ") — không ghi đè lại mỗi lần refetch cùng 1 lượt khám (sau khi lưu chẩn
+  // đoán/ghi chú) để không mất chỉnh sửa đang gõ dở ở các ô khác, nhưng PHẢI nạp lại khi chuyển sang
+  // lượt khám khác (xem chú thích ở khai báo `loadedForId`).
   useEffect(() => {
-    if (query.isSuccess && !initialized) {
-      const note = query.data.clinicalNote;
-      setClinical({
-        personalHistory: note.personalHistory?.content ?? '',
-        familyHistory: note.familyHistory?.content ?? '',
-        // Chưa từng lưu thì mồi sẵn từ lý do tiếp nhận (`encounter.chiefComplaint`) — bác sĩ gõ
-        // thêm/sửa trên đó. Đã lưu rồi (kể cả rỗng có chủ đích) thì tôn trọng đúng giá trị đã lưu.
-        reasonForVisit: note.reasonForVisit ? note.reasonForVisit.content : (query.data.encounter.chiefComplaint ?? ''),
-        illnessProgress: note.illnessProgress?.content ?? '',
-        preliminaryDiagnosis: note.preliminaryDiagnosis?.content ?? '',
-        generalExam: note.generalExam?.content ?? '',
-        regionalExam: note.regionalExam?.content ?? '',
-        plan: note.plan?.content ?? '',
-      });
-      setClinicalVersions({
-        personalHistory: note.personalHistory?.version,
-        familyHistory: note.familyHistory?.version,
-        reasonForVisit: note.reasonForVisit?.version,
-        illnessProgress: note.illnessProgress?.version,
-        preliminaryDiagnosis: note.preliminaryDiagnosis?.version,
-        generalExam: note.generalExam?.version,
-        regionalExam: note.regionalExam?.version,
-        plan: note.plan?.version,
-      });
-      setDiagnoses(
-        query.data.diagnoses.map((d) => ({ icd10Code: d.icd10Code, icd10Name: d.icd10Name, type: d.type, note: d.note ?? undefined })),
-      );
-      // "Tiền sử dị ứng" tự mồi từ patient.allergyNote — sửa ở đây ghi thẳng lại hồ sơ bệnh nhân
-      // (yêu cầu chủ dự án 2026-08-20), không lưu riêng cho lượt khám.
-      const allergy = query.data.patient.allergyNote ?? '';
-      setAllergyDraft(allergy);
-      setAllergyBaseline({ value: allergy, version: query.data.patient.version });
-      setInitialized(true);
+    if (query.isSuccess && loadedForId !== encounterId) {
+      populateFromServer(query.data);
+      setEditingCompleted(false);
+      setFormError(null);
+      setDraftSaved(false);
+      setLoadedForId(encounterId);
     }
-  }, [query.isSuccess, query.data, initialized]);
+  }, [query.isSuccess, query.data, loadedForId, encounterId]);
+
+  /** Khớp đúng payload `PUT .../clinical-note` từ state form — dùng chung cho "Lưu nháp"/"Lưu thay đổi", autosave định kỳ, và flush lúc rời trang. */
+  function buildClinicalNotePayload(c: ClinicalDraft, v: Partial<Record<ClinicalKey, number>>): SaveClinicalNoteRequest {
+    return {
+      personalHistory: { content: c.personalHistory, version: v.personalHistory },
+      familyHistory: { content: c.familyHistory, version: v.familyHistory },
+      reasonForVisit: { content: c.reasonForVisit, version: v.reasonForVisit },
+      illnessProgress: { content: c.illnessProgress, version: v.illnessProgress },
+      preliminaryDiagnosis: { content: c.preliminaryDiagnosis, version: v.preliminaryDiagnosis },
+      generalExam: { content: c.generalExam, version: v.generalExam },
+      regionalExam: { content: c.regionalExam, version: v.regionalExam },
+      plan: { content: c.plan, version: v.plan },
+    };
+  }
+
+  /** "Lý do khám"/"Chuẩn đoán" bắt buộc (Zod `saveClinicalNoteRequestSchema`) — autosave/flush im lặng bỏ qua tới khi đủ, tránh 400 giữa chừng lúc bác sĩ chưa gõ tới đó. */
+  function hasRequiredClinicalFields(c: ClinicalDraft): boolean {
+    return c.reasonForVisit.trim() !== '' && c.preliminaryDiagnosis.trim() !== '';
+  }
+
+  // Autosave ghi chú lâm sàng + "Tiền sử dị ứng" — CHỈ khi đang khám dở (chưa "Hoàn tất khám"): mỗi
+  // lần `clinical`/`allergyDraft` đổi, đợi ~4 giây ngừng gõ (debounce) rồi tự lưu lên server, không
+  // cần bác sĩ nhớ bấm "Lưu nháp". Lỗi vận hành thật chủ dự án báo cáo: rời màn khám sang bệnh nhân
+  // khác khi chưa lưu → mất trắng nội dung đang gõ dở (xem docs/DECISIONS.md). Sửa hồ sơ SAU khi đã
+  // hoàn tất KHÔNG autosave (phiên sửa ngắn, chủ động — chỉ lưu khi bấm "Lưu thay đổi", tránh
+  // autosave âm thầm đụng break-glass).
+  useEffect(() => {
+    if (skipNextDirtyRef.current) {
+      skipNextDirtyRef.current = false;
+      return;
+    }
+    if (isCompleted) return;
+    dirtyRef.current = true;
+    const timer = setTimeout(() => void runAutosave(), 4000);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ cần đổi `clinical`/`allergyDraft` mới reset debounce, đọc các giá trị khác qua ref/closure lúc timer chạy là đủ mới.
+  }, [clinical, allergyDraft]);
+
+  /** Vá `patient.allergyNote` nếu có thay đổi thật — dùng chung cho autosave/flush lẫn "Lưu nháp"/"Lưu thay đổi" thủ công. Trả `true` nếu có gọi API (để caller quyết định có cần cập nhật `allergyBaseline` qua state hay không). */
+  async function patchAllergyIfChanged(draft: string, baseline: { value: string; version: number } | null, raw: boolean): Promise<{ value: string; version: number } | null> {
+    if (!baseline || draft === baseline.value) return null;
+    const updated = raw
+      ? await updatePatientRaw(query.data!.patient.id, { allergyNote: draft, version: baseline.version })
+      : await updatePatientMutation.mutateAsync({ allergyNote: draft, version: baseline.version });
+    return { value: updated.allergyNote ?? '', version: updated.version };
+  }
+
+  async function runAutosave() {
+    if (!dirtyRef.current) return;
+    const c = clinicalRef.current;
+    if (!hasRequiredClinicalFields(c)) return;
+    try {
+      const result = await saveClinicalNoteMutation.mutateAsync(buildClinicalNotePayload(c, clinicalVersionsRef.current));
+      setClinicalVersions({
+        personalHistory: result.personalHistory?.version,
+        familyHistory: result.familyHistory?.version,
+        reasonForVisit: result.reasonForVisit?.version,
+        illnessProgress: result.illnessProgress?.version,
+        preliminaryDiagnosis: result.preliminaryDiagnosis?.version,
+        generalExam: result.generalExam?.version,
+        regionalExam: result.regionalExam?.version,
+        plan: result.plan?.version,
+      });
+      const updatedAllergy = await patchAllergyIfChanged(allergyDraftRef.current, allergyBaselineRef.current, false);
+      if (updatedAllergy) setAllergyBaseline(updatedAllergy);
+      dirtyRef.current = false;
+      setDraftSaved(true);
+    } catch {
+      // Im lặng — autosave chạy nền, không làm phiền bác sĩ đang gõ. Vòng debounce kế tiếp (gõ thêm
+      // ký tự bất kỳ) hoặc bấm "Lưu nháp" thủ công sẽ thử lại; lỗi dai dẳng sẽ lộ ra rõ ràng khi đó.
+    }
+  }
+
+  // Rời trang HOẶC chuyển sang lượt khám khác (route `/encounters/:id` không remount khi chỉ đổi
+  // `id`, xem chú thích `loadedForId`) mà còn nội dung chưa lưu — cố lưu 1 lần cuối trước khi state
+  // của lượt khám này biến mất. Đóng closure trực tiếp qua `encounterId` (không qua ref) để cleanup
+  // của ĐÚNG lượt khám cũ chạy với đúng id cũ — effect này tạo lại mỗi khi `encounterId` đổi, cleanup
+  // của bản trước luôn gắn với `encounterId` tại thời điểm nó được tạo. Gọi thẳng API (không qua
+  // mutation hook, vì hook đã gắn với `encounterId` MỚI ngay khi render lại) — không cập nhật state
+  // sau đó vì component có thể đã rời màn hình khám hẳn.
+  useEffect(() => {
+    return () => {
+      if (dirtyRef.current) {
+        const c = clinicalRef.current;
+        if (hasRequiredClinicalFields(c)) {
+          void saveClinicalNoteRaw(encounterId, buildClinicalNotePayload(c, clinicalVersionsRef.current))
+            .then(() => patchAllergyIfChanged(allergyDraftRef.current, allergyBaselineRef.current, true))
+            .catch(() => {});
+        }
+        dirtyRef.current = false;
+      }
+    };
+  }, [encounterId]);
 
   function scrollToTab(sectionId: keyof typeof sectionRefs) {
     sectionRefs[sectionId].current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -205,10 +344,25 @@ export function EncounterConsultationPage() {
   }
 
   /**
+   * Lỗi bị chặn `403 PERMISSION_DENIED` kèm `breakGlassAvailable` → mở dialog xin vượt quyền thay vì
+   * chỉ hiện lỗi đỏ; `retry` gọi lại đúng thao tác vừa bị chặn sau khi xin thành công. Lỗi khác thì
+   * hiện `formError` như cũ. Dùng chung cho mọi thao tác lưu ở màn hình này (chẩn đoán/ghi chú).
+   */
+  function handleSaveError(err: unknown, entityType: string, retry: () => void, fallbackMessage: string) {
+    if (err instanceof ApiError && err.code === 'PERMISSION_DENIED' && (err.details as { breakGlassAvailable?: boolean } | undefined)?.breakGlassAvailable) {
+      setBreakGlassPrompt({ entityType, retry });
+      return;
+    }
+    setFormError(err instanceof ApiError ? err.message : fallbackMessage);
+  }
+
+  /**
    * Lưu ngay mỗi lần thêm/xoá/đổi bệnh chính — giữ bất biến "đúng 1 PRIMARY" tại mọi thời điểm nên
    * an toàn để gọi API luôn (không cần nút "Lưu" riêng cho khối chẩn đoán). Danh sách rỗng thì CHỈ
    * cập nhật UI cục bộ (API bắt buộc tối thiểu 1 dòng) — dữ liệu đã lưu trước đó trên server giữ
-   * nguyên cho tới khi có ít nhất 1 chẩn đoán trở lại.
+   * nguyên cho tới khi có ít nhất 1 chẩn đoán trở lại. Cũng dùng lại đúng hàm này khi sửa chẩn đoán
+   * SAU khi đã "Hoàn tất khám" (backend đã mở khoá — xem `docs/DECISIONS.md`), chỉ khác ở chỗ UI gọi
+   * hàm này có bị ẩn hay không (`canEditNow`, xem JSX bên dưới).
    */
   async function persistDiagnoses(next: DiagnosisDraft[]) {
     setFormError(null);
@@ -224,7 +378,7 @@ export function EncounterConsultationPage() {
         result.items.map((d) => ({ icd10Code: d.icd10Code, icd10Name: d.icd10Name, type: d.type, note: d.note ?? undefined })),
       );
     } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : 'Không lưu được chẩn đoán, vui lòng thử lại.');
+      handleSaveError(err, 'diagnosis', () => void persistDiagnoses(next), 'Không lưu được chẩn đoán, vui lòng thử lại.');
     }
   }
 
@@ -246,24 +400,16 @@ export function EncounterConsultationPage() {
     void persistDiagnoses(remaining);
   }
 
+  /** "Lưu nháp" (đang khám) HOẶC "Lưu thay đổi" (đang sửa lại sau khi đã "Hoàn tất khám", `editingCompleted=true`) — cùng 1 hàm, tự thoát chế độ sửa sau khi lưu xong nếu đang ở nhánh sau. */
   async function handleSaveDraft() {
     setFormError(null);
     setDraftSaved(false);
-    if (!clinical.reasonForVisit.trim() || !clinical.preliminaryDiagnosis.trim()) {
+    if (!hasRequiredClinicalFields(clinical)) {
       setFormError('"Lý do khám" và "Chuẩn đoán" là bắt buộc.');
       return;
     }
     try {
-      const result = await saveClinicalNoteMutation.mutateAsync({
-        personalHistory: { content: clinical.personalHistory, version: clinicalVersions.personalHistory },
-        familyHistory: { content: clinical.familyHistory, version: clinicalVersions.familyHistory },
-        reasonForVisit: { content: clinical.reasonForVisit, version: clinicalVersions.reasonForVisit },
-        illnessProgress: { content: clinical.illnessProgress, version: clinicalVersions.illnessProgress },
-        preliminaryDiagnosis: { content: clinical.preliminaryDiagnosis, version: clinicalVersions.preliminaryDiagnosis },
-        generalExam: { content: clinical.generalExam, version: clinicalVersions.generalExam },
-        regionalExam: { content: clinical.regionalExam, version: clinicalVersions.regionalExam },
-        plan: { content: clinical.plan, version: clinicalVersions.plan },
-      });
+      const result = await saveClinicalNoteMutation.mutateAsync(buildClinicalNotePayload(clinical, clinicalVersions));
       setClinicalVersions({
         personalHistory: result.personalHistory?.version,
         familyHistory: result.familyHistory?.version,
@@ -274,22 +420,59 @@ export function EncounterConsultationPage() {
         regionalExam: result.regionalExam?.version,
         plan: result.plan?.version,
       });
+      dirtyRef.current = false;
 
       // "Tiền sử dị ứng" ghi thẳng lại patient.allergyNote — chỉ gọi khi có thay đổi thật, tránh
       // tăng version bệnh nhân vô ích mỗi lần bấm "Lưu nháp".
-      if (allergyBaseline && allergyDraft !== allergyBaseline.value) {
-        const updated = await updatePatientMutation.mutateAsync({ allergyNote: allergyDraft, version: allergyBaseline.version });
-        setAllergyBaseline({ value: updated.allergyNote ?? '', version: updated.version });
-      }
+      const updatedAllergy = await patchAllergyIfChanged(allergyDraft, allergyBaseline, false);
+      if (updatedAllergy) setAllergyBaseline(updatedAllergy);
 
       setDraftSaved(true);
+      if (editingCompleted) setEditingCompleted(false);
     } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : 'Không lưu được ghi chú, vui lòng thử lại.');
+      handleSaveError(err, 'clinical_note', () => void handleSaveDraft(), 'Không lưu được ghi chú, vui lòng thử lại.');
     }
+  }
+
+  /** "Huỷ" lúc đang sửa lại một lượt khám đã hoàn tất — bỏ mọi thay đổi cục bộ chưa lưu, nạp lại đúng dữ liệu thật trên server. */
+  async function handleCancelEdit() {
+    setFormError(null);
+    const result = await query.refetch();
+    if (result.data) populateFromServer(result.data);
+    setEditingCompleted(false);
   }
 
   async function handleComplete() {
     setFormError(null);
+    // Bảo hiểm cuối trước khi hoàn tất: còn nội dung ghi chú/dị ứng chưa lưu (chưa kịp tới mốc
+    // autosave) thì LƯU TRƯỚC, chỉ hoàn tất khi lưu thành công — lỗi vận hành thật chủ dự án báo cáo
+    // (trước đây "Hoàn tất khám" không quan tâm ghi chú đã lưu hay chưa, xem lại thì nội dung mất).
+    if (dirtyRef.current) {
+      const c = clinicalRef.current;
+      if (!hasRequiredClinicalFields(c)) {
+        setFormError('"Lý do khám" và "Chuẩn đoán" là bắt buộc trước khi hoàn tất khám.');
+        return;
+      }
+      try {
+        const result = await saveClinicalNoteMutation.mutateAsync(buildClinicalNotePayload(c, clinicalVersionsRef.current));
+        setClinicalVersions({
+          personalHistory: result.personalHistory?.version,
+          familyHistory: result.familyHistory?.version,
+          reasonForVisit: result.reasonForVisit?.version,
+          illnessProgress: result.illnessProgress?.version,
+          preliminaryDiagnosis: result.preliminaryDiagnosis?.version,
+          generalExam: result.generalExam?.version,
+          regionalExam: result.regionalExam?.version,
+          plan: result.plan?.version,
+        });
+        const updatedAllergy = await patchAllergyIfChanged(allergyDraftRef.current, allergyBaselineRef.current, false);
+        if (updatedAllergy) setAllergyBaseline(updatedAllergy);
+        dirtyRef.current = false;
+      } catch (err) {
+        handleSaveError(err, 'clinical_note', () => void handleComplete(), 'Không lưu được ghi chú trước khi hoàn tất, vui lòng thử lại.');
+        return;
+      }
+    }
     if (!diagnoses.some((d) => d.type === 'PRIMARY')) {
       setFormError('Phải có ít nhất một chẩn đoán chính trước khi hoàn tất khám.');
       return;
@@ -351,6 +534,12 @@ export function EncounterConsultationPage() {
             <span className="whitespace-nowrap rounded-full bg-brand-teal-tint px-2.5 py-0.5 text-[11px] font-semibold text-brand-teal-active">
               {encounter.encounterNo}
             </span>
+            {isCompleted && (
+              <span className="flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700">
+                <CheckCircle size={12} weight="fill" aria-hidden="true" />
+                {editingCompleted ? 'Đang chỉnh sửa thông tin' : `Đã hoàn tất${encounter.completedAt ? ` · ${formatHistoryDate(encounter.completedAt)}` : ''}`}
+              </span>
+            )}
             {allergyDraft && (
               <span className="flex items-center gap-1.5 whitespace-nowrap rounded-md border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700">
                 <Warning size={13} weight="fill" aria-hidden="true" />
@@ -411,14 +600,18 @@ export function EncounterConsultationPage() {
           ) : (
             <span className="text-xs text-slate-400">Chưa có dữ liệu sinh hiệu</span>
           )}
-          <button
-            type="button"
-            onClick={() => setVitalsDialogOpen(true)}
-            title={vitalSigns ? 'Cập nhật sinh hiệu' : 'Bổ sung sinh hiệu'}
-            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:border-blue-400 hover:text-blue-600"
-          >
-            {vitalSigns ? <PencilSimple size={14} weight="bold" aria-hidden="true" /> : <Plus size={15} weight="bold" aria-hidden="true" />}
-          </button>
+          {/* Nhập/đo lại sinh hiệu chỉ hợp lệ khi CHECKED_IN/IN_CONSULTATION (backend chặn cứng, REC-02/03)
+              — ẩn hẳn khi đã "Hoàn tất khám" thay vì hiện nút rồi báo lỗi khi bấm. */}
+          {!isCompleted && (
+            <button
+              type="button"
+              onClick={() => setVitalsDialogOpen(true)}
+              title={vitalSigns ? 'Cập nhật sinh hiệu' : 'Bổ sung sinh hiệu'}
+              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:border-blue-400 hover:text-blue-600"
+            >
+              {vitalSigns ? <PencilSimple size={14} weight="bold" aria-hidden="true" /> : <Plus size={15} weight="bold" aria-hidden="true" />}
+            </button>
+          )}
         </div>
       </div>
 
@@ -536,6 +729,7 @@ export function EncounterConsultationPage() {
                     rows={2}
                     value={clinical.personalHistory}
                     onChange={(e) => setField('personalHistory', e.target.value)}
+                    readOnly={!canEditNow}
                   />
                   <Textarea
                     id="clinical-family-history"
@@ -544,6 +738,7 @@ export function EncounterConsultationPage() {
                     rows={2}
                     value={clinical.familyHistory}
                     onChange={(e) => setField('familyHistory', e.target.value)}
+                    readOnly={!canEditNow}
                   />
                   <div>
                     <label htmlFor="clinical-allergy" className="mb-1 block text-sm font-semibold text-rose-600">
@@ -554,6 +749,7 @@ export function EncounterConsultationPage() {
                       rows={2}
                       value={allergyDraft}
                       onChange={(e) => setAllergyDraft(e.target.value)}
+                      readOnly={!canEditNow}
                       placeholder="Chưa có ghi chú dị ứng lúc tiếp nhận — nhập mới nếu cần."
                       className="w-full rounded-md border border-rose-200 bg-rose-50/40 px-2 py-1.5 text-[13px] font-semibold text-slate-900 placeholder:font-normal placeholder:text-slate-400 focus:border-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
                     />
@@ -572,6 +768,7 @@ export function EncounterConsultationPage() {
                     rows={2}
                     value={clinical.reasonForVisit}
                     onChange={(e) => setField('reasonForVisit', e.target.value)}
+                    readOnly={!canEditNow}
                   />
                   <Textarea
                     id="clinical-illness-progress"
@@ -580,6 +777,7 @@ export function EncounterConsultationPage() {
                     rows={2}
                     value={clinical.illnessProgress}
                     onChange={(e) => setField('illnessProgress', e.target.value)}
+                    readOnly={!canEditNow}
                   />
                   <Textarea
                     id="clinical-preliminary-diagnosis"
@@ -589,6 +787,7 @@ export function EncounterConsultationPage() {
                     rows={2}
                     value={clinical.preliminaryDiagnosis}
                     onChange={(e) => setField('preliminaryDiagnosis', e.target.value)}
+                    readOnly={!canEditNow}
                   />
                   <Textarea
                     id="clinical-general-exam"
@@ -597,6 +796,7 @@ export function EncounterConsultationPage() {
                     rows={2}
                     value={clinical.generalExam}
                     onChange={(e) => setField('generalExam', e.target.value)}
+                    readOnly={!canEditNow}
                   />
                   <Textarea
                     id="clinical-regional-exam"
@@ -605,13 +805,15 @@ export function EncounterConsultationPage() {
                     rows={2}
                     value={clinical.regionalExam}
                     onChange={(e) => setField('regionalExam', e.target.value)}
+                    readOnly={!canEditNow}
                   />
                 </div>
 
                 <h3 className="mb-2 mt-4 border-t border-dashed border-slate-200 pt-3 text-[11px] font-bold uppercase tracking-wide text-slate-700">
                   Chẩn đoán bệnh (ICD-10) <span className="text-rose-500">*</span>
                 </h3>
-                <Icd10DiagnosisPicker excludeCodes={diagnoses.map((d) => d.icd10Code)} onSelect={handleAddDiagnosis} />
+                {/* "Xem lại" một lượt khám đã hoàn tất — ẩn ô thêm chẩn đoán tới khi bấm "Chỉnh sửa thông tin". */}
+                {canEditNow && <Icd10DiagnosisPicker excludeCodes={diagnoses.map((d) => d.icd10Code)} onSelect={handleAddDiagnosis} />}
 
                 <div className="mt-2.5 flex flex-col gap-1.5">
                   {diagnoses.length === 0 && <p className="text-xs text-slate-400">Chưa chọn chẩn đoán nào.</p>}
@@ -632,25 +834,27 @@ export function EncounterConsultationPage() {
                         </span>
                         <strong>{d.icd10Code}</strong> — {d.icd10Name}
                       </div>
-                      <div className="flex items-center gap-2">
-                        {d.type !== 'PRIMARY' && (
+                      {canEditNow && (
+                        <div className="flex items-center gap-2">
+                          {d.type !== 'PRIMARY' && (
+                            <button
+                              type="button"
+                              onClick={() => handleSetPrimary(d.icd10Code)}
+                              className="text-xs font-semibold text-blue-600 hover:text-blue-700"
+                            >
+                              Đặt làm bệnh chính
+                            </button>
+                          )}
                           <button
                             type="button"
-                            onClick={() => handleSetPrimary(d.icd10Code)}
-                            className="text-xs font-semibold text-blue-600 hover:text-blue-700"
+                            onClick={() => handleRemoveDiagnosis(d.icd10Code)}
+                            className="text-slate-400 hover:text-rose-600"
+                            aria-label={`Bỏ chẩn đoán ${d.icd10Code}`}
                           >
-                            Đặt làm bệnh chính
+                            <X size={15} weight="bold" aria-hidden="true" />
                           </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveDiagnosis(d.icd10Code)}
-                          className="text-slate-400 hover:text-rose-600"
-                          aria-label={`Bỏ chẩn đoán ${d.icd10Code}`}
-                        >
-                          <X size={15} weight="bold" aria-hidden="true" />
-                        </button>
-                      </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -669,29 +873,78 @@ export function EncounterConsultationPage() {
 
       {/* Thanh hành động cố định */}
       <footer className="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white px-5 py-3 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
-        <div className="text-xs text-slate-500">
-          {formError && <span className="font-medium text-rose-600">{formError}</span>}
+        <div className="min-w-0 text-xs text-slate-500">
+          {/* Lỗi hiển thị INLINE tại chỗ phát sinh (không dùng Toast — `.claude/docs/ui-guidelines.md`
+              mục 4.3), nhưng làm nổi bật rõ ràng (khung nền/viền đỏ + icon) thay vì chỉ 1 dòng chữ
+              nhỏ dễ bỏ lỡ — phản hồi thật của chủ dự án khi dùng thử. */}
+          {formError && (
+            <div role="alert" className="flex items-center gap-2 rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-[13px] font-semibold text-rose-700">
+              <Warning size={16} weight="fill" className="flex-shrink-0" aria-hidden="true" />
+              {formError}
+            </div>
+          )}
           {!formError && draftSaved && (
             <span className="flex items-center gap-1.5 font-medium text-emerald-600">
-              <CheckCircle size={14} weight="fill" aria-hidden="true" /> Đã lưu nháp
+              <CheckCircle size={14} weight="fill" aria-hidden="true" /> Đã lưu
             </span>
           )}
         </div>
         <div className="flex gap-3">
-          <Button
-            type="button"
-            variant="secondary"
-            loading={saveClinicalNoteMutation.isPending || updatePatientMutation.isPending}
-            onClick={() => void handleSaveDraft()}
-          >
-            Lưu nháp
-          </Button>
-          <Button type="button" loading={completeMutation.isPending} onClick={() => void handleComplete()}>
-            <CheckCircle size={15} weight="bold" aria-hidden="true" />
-            Hoàn tất khám
-          </Button>
+          {/* Đang khám (chưa hoàn tất) — luồng gốc, không đổi. */}
+          {!isCompleted && (
+            <>
+              <Button
+                type="button"
+                variant="secondary"
+                loading={saveClinicalNoteMutation.isPending || updatePatientMutation.isPending}
+                onClick={() => void handleSaveDraft()}
+              >
+                Lưu
+              </Button>
+              <Button type="button" loading={completeMutation.isPending} onClick={() => void handleComplete()}>
+                <CheckCircle size={15} weight="bold" aria-hidden="true" />
+                Hoàn tất khám
+              </Button>
+            </>
+          )}
+          {/* Đã "Hoàn tất khám", chỉ xem — lỗi vận hành thật chủ dự án báo cáo: trước đây vẫn hiện
+              y hệt 2 nút trên dù không lưu được gì. Chỉ 1 lối vào duy nhất để sửa. */}
+          {isCompleted && !editingCompleted && (
+            <Button type="button" variant="secondary" onClick={() => setEditingCompleted(true)}>
+              <PencilSimple size={14} weight="bold" aria-hidden="true" />
+              Chỉnh sửa thông tin
+            </Button>
+          )}
+          {/* Đang sửa lại sau khi đã hoàn tất — Huỷ bỏ mọi thay đổi chưa lưu, quay về chỉ xem. */}
+          {isCompleted && editingCompleted && (
+            <>
+              <Button type="button" variant="secondary" onClick={() => void handleCancelEdit()}>
+                Huỷ
+              </Button>
+              <Button
+                type="button"
+                loading={saveClinicalNoteMutation.isPending || updatePatientMutation.isPending}
+                onClick={() => void handleSaveDraft()}
+              >
+                Lưu thay đổi
+              </Button>
+            </>
+          )}
         </div>
       </footer>
+
+      {breakGlassPrompt && (
+        <BreakGlassDialog
+          entityType={breakGlassPrompt.entityType}
+          entityId={encounterId}
+          onGranted={() => {
+            const retry = breakGlassPrompt.retry;
+            setBreakGlassPrompt(null);
+            retry();
+          }}
+          onClose={() => setBreakGlassPrompt(null)}
+        />
+      )}
     </div>
   );
 }

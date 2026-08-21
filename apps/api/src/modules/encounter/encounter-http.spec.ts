@@ -31,6 +31,7 @@ describe('HTTP e2e — /api/v1/encounters', () => {
   let doctorBToken: string;
   let doctorBUserId: string;
   let doctorCToken: string;
+  let clinicAdminToken: string;
   let tenantBReceptionistToken: string;
   let tenantBDoctorToken: string;
 
@@ -162,6 +163,7 @@ describe('HTTP e2e — /api/v1/encounters', () => {
     doctorBToken = doctorB.token;
     doctorBUserId = doctorB.userId;
     doctorCToken = (await createUserWithRole(fixture.tenantA.id, 'doctor')).token;
+    clinicAdminToken = (await createUserWithRole(fixture.tenantA.id, 'clinic_admin')).token;
     tenantBReceptionistToken = (await createUserWithRole(fixture.tenantB.id, 'receptionist')).token;
     tenantBDoctorToken = (await createUserWithRole(fixture.tenantB.id, 'doctor')).token;
   });
@@ -722,6 +724,158 @@ describe('HTTP e2e — /api/v1/encounters', () => {
         .send({ version: 1 });
 
       expect(res.status).toBe(404);
+    });
+  });
+
+  /**
+   * Lỗi vận hành thật chủ dự án báo cáo: "Xem lại" một lượt khám đã "Hoàn tất khám" trước đây vẫn bị
+   * chặn cứng mọi lần lưu (`ENCOUNTER_NOT_IN_CONSULTATION`), không có đường nào sửa sai sót phát
+   * hiện sau đó. Quyết định: mở khoá sửa tại chỗ + ghi audit log trước/sau (không phải mô hình đính
+   * chính Thông tư 46 — đó là Sprint 5). Xem `docs/DECISIONS.md`.
+   */
+  describe('Sửa hồ sơ khám sau khi "Hoàn tất khám" (lỗi vận hành thật, chủ dự án báo cáo)', () => {
+    async function completedEncounter(hour: number) {
+      const encounterId = await startedEncounter(hour);
+      await request(app.getHttpServer())
+        .put(`/api/v1/encounters/${encounterId}/clinical-note`)
+        .set(authed(doctorAToken))
+        .send({
+          personalHistory: { content: '' },
+          familyHistory: { content: '' },
+          reasonForVisit: { content: 'Đau đầu' },
+          illnessProgress: { content: '' },
+          preliminaryDiagnosis: { content: 'Theo dõi' },
+          generalExam: { content: '' },
+          regionalExam: { content: '' },
+          plan: { content: '' },
+        });
+      await request(app.getHttpServer())
+        .put(`/api/v1/encounters/${encounterId}/diagnoses`)
+        .set(authed(doctorAToken))
+        .send({ diagnoses: [{ icd10Code: 'A00.0', type: 'PRIMARY' as const }] });
+      await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/complete`).set(authed(doctorAToken)).send({ version: 2 });
+      return encounterId;
+    }
+
+    it('bác sĩ đã khám ca đó sửa chẩn đoán sau khi hoàn tất → 200, ghi audit_log trước/sau bằng action riêng', async () => {
+      const encounterId = await completedEncounter(11);
+
+      const res = await request(app.getHttpServer())
+        .put(`/api/v1/encounters/${encounterId}/diagnoses`)
+        .set(authed(doctorAToken))
+        .send({
+          diagnoses: [
+            { icd10Code: 'A00.0', type: 'PRIMARY' as const },
+            { icd10Code: 'A00.1', type: 'SECONDARY' as const, note: 'Bổ sung sau khi xem lại' },
+          ],
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.items).toHaveLength(2);
+
+      const auditRow = await privileged.auditLog.findFirstOrThrow({
+        where: { tenantId: fixture.tenantA.id, entityId: encounterId, action: 'encounter.diagnosis_amended_after_completion' },
+      });
+      expect(auditRow.beforeJson).toEqual([{ icd10Code: 'A00.0', type: 'PRIMARY', note: null }]);
+      expect((auditRow.afterJson as { icd10Code: string }[]).map((d) => d.icd10Code).sort()).toEqual(['A00.0', 'A00.1']);
+    });
+
+    it('bác sĩ đã khám ca đó sửa ghi chú lâm sàng sau khi hoàn tất → 200, nội dung mới lưu đúng, audit_log ghi trước/sau', async () => {
+      const encounterId = await completedEncounter(12);
+      const detail = await request(app.getHttpServer()).get(`/api/v1/encounters/${encounterId}/consultation`).set(authed(doctorAToken));
+      interface ClinicalNoteSectionValue {
+        content: string;
+        version: number;
+      }
+      const note = detail.body.data.clinicalNote as {
+        personalHistory: ClinicalNoteSectionValue;
+        familyHistory: ClinicalNoteSectionValue;
+        reasonForVisit: ClinicalNoteSectionValue;
+        illnessProgress: ClinicalNoteSectionValue;
+        preliminaryDiagnosis: ClinicalNoteSectionValue;
+        generalExam: ClinicalNoteSectionValue;
+        regionalExam: ClinicalNoteSectionValue;
+        plan: ClinicalNoteSectionValue;
+      };
+
+      const res = await request(app.getHttpServer())
+        .put(`/api/v1/encounters/${encounterId}/clinical-note`)
+        .set(authed(doctorAToken))
+        .send({
+          personalHistory: { content: note.personalHistory.content, version: note.personalHistory.version },
+          familyHistory: { content: note.familyHistory.content, version: note.familyHistory.version },
+          reasonForVisit: { content: 'Đau đầu — sửa lại: kèm chóng mặt', version: note.reasonForVisit.version },
+          illnessProgress: { content: note.illnessProgress.content, version: note.illnessProgress.version },
+          preliminaryDiagnosis: { content: note.preliminaryDiagnosis.content, version: note.preliminaryDiagnosis.version },
+          generalExam: { content: note.generalExam.content, version: note.generalExam.version },
+          regionalExam: { content: note.regionalExam.content, version: note.regionalExam.version },
+          plan: { content: note.plan.content, version: note.plan.version },
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.reasonForVisit.content).toBe('Đau đầu — sửa lại: kèm chóng mặt');
+
+      const auditRow = await privileged.auditLog.findFirstOrThrow({
+        where: { tenantId: fixture.tenantA.id, entityId: encounterId, action: 'encounter.clinical_note_amended_after_completion' },
+      });
+      expect((auditRow.beforeJson as Record<string, string>).REASON_FOR_VISIT).toBe('Đau đầu');
+      expect((auditRow.afterJson as Record<string, string>).REASON_FOR_VISIT).toBe('Đau đầu — sửa lại: kèm chóng mặt');
+    });
+
+    it('bác sĩ KHÁC (không phải người khám ca đó, scope personal) sửa sau khi hoàn tất → vẫn 404', async () => {
+      const encounterId = await completedEncounter(13);
+
+      const res = await request(app.getHttpServer())
+        .put(`/api/v1/encounters/${encounterId}/diagnoses`)
+        .set(authed(doctorBToken))
+        .send({ diagnoses: [{ icd10Code: 'A00.0', type: 'PRIMARY' as const }] });
+
+      expect(res.status).toBe(404);
+    });
+
+    it('clinic_admin (không có quyền clinical_note/diagnosis nào) → 403 breakGlassAvailable; sau khi break-glass thành công → sửa được, ghi thêm audit break_glass.access', async () => {
+      const encounterId = await completedEncounter(14);
+
+      const blocked = await request(app.getHttpServer())
+        .put(`/api/v1/encounters/${encounterId}/diagnoses`)
+        .set(authed(clinicAdminToken))
+        .send({ diagnoses: [{ icd10Code: 'A00.0', type: 'PRIMARY' as const }] });
+      expect(blocked.status).toBe(403);
+      expect(blocked.body.error.details?.breakGlassAvailable).toBe(true);
+
+      const breakGlassRes = await request(app.getHttpServer())
+        .post('/api/v1/break-glass')
+        .set(authed(clinicAdminToken))
+        .send({ entityType: 'diagnosis', entityId: encounterId, reason: 'Sửa nhầm mã bệnh lúc khám, chủ dự án yêu cầu vá lại', password });
+      expect(breakGlassRes.status).toBe(200);
+
+      const res = await request(app.getHttpServer())
+        .put(`/api/v1/encounters/${encounterId}/diagnoses`)
+        .set(authed(clinicAdminToken))
+        .send({
+          diagnoses: [
+            { icd10Code: 'A00.0', type: 'PRIMARY' as const },
+            { icd10Code: 'A00.1', type: 'SECONDARY' as const },
+          ],
+        });
+      expect(res.status).toBe(200);
+
+      const accessRow = await privileged.auditLog.findFirstOrThrow({
+        where: { tenantId: fixture.tenantA.id, entityId: encounterId, action: 'break_glass.access' },
+      });
+      expect(accessRow).not.toBeNull();
+    });
+
+    it('lượt khám CHƯA hoàn tất và cũng không đang khám (CHECKED_IN) → vẫn 409 ENCOUNTER_NOT_IN_CONSULTATION (không đổi hành vi cũ)', async () => {
+      const encounterId = await checkInFreshEncounter(15);
+
+      const res = await request(app.getHttpServer())
+        .put(`/api/v1/encounters/${encounterId}/diagnoses`)
+        .set(authed(doctorAToken))
+        .send({ diagnoses: [{ icd10Code: 'A00.0', type: 'PRIMARY' as const }] });
+
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('ENCOUNTER_NOT_IN_CONSULTATION');
     });
   });
 });

@@ -45,12 +45,17 @@ export class EncounterNotCheckedInError extends DomainError {
   }
 }
 
-/** Lưu SOAP/chẩn đoán hoặc hoàn tất khám khi lượt khám không còn ở `IN_CONSULTATION` (đã hoàn tất/huỷ). */
+/**
+ * Lưu SOAP/chẩn đoán khi lượt khám chưa từng vào `IN_CONSULTATION` (còn `SCHEDULED`/`CHECKED_IN`)
+ * hoặc đã `CANCELLED`/`NO_SHOW`. Sửa lại sau khi đã `COMPLETED` **được phép** — xem "Sửa hồ sơ khám
+ * sau khi Hoàn tất" (`docs/DECISIONS.md`): mở khoá sửa tại chỗ + audit log trước/sau, KHÔNG phải mô
+ * hình đính chính Thông tư 46 (đó là ENC-04/05, Sprint 5, áp dụng cho bản ghi đã `signed_at`).
+ */
 export class EncounterNotInConsultationError extends DomainError {
   readonly code = 'ENCOUNTER_NOT_IN_CONSULTATION';
 
   constructor() {
-    super('Chỉ ghi được khi lượt khám đang ở trạng thái đang khám.');
+    super('Chỉ ghi được khi lượt khám đang ở trạng thái đang khám hoặc đã hoàn tất.');
   }
 }
 

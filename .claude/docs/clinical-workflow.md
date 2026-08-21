@@ -42,7 +42,8 @@ Quy tắc:
 - Chuyển `IN_CONSULTATION` khi bác sĩ nhận lượt khám; ghi `started_at`. Với `encounter.doctor_id` đã có sẵn (ca "của mình") đây là "Bắt đầu khám" bình thường. Với `doctor_id=NULL` (ticket trong hàng chờ chung Khoa) đây là **"Nhận ca"** — CHỈ bác sĩ CÙNG Khoa với ticket claim được, `doctor_id` được gán = bác sĩ đó ngay lúc chuyển trạng thái (ghi có điều kiện `WHERE doctor_id IS NULL`, chống 2 bác sĩ nhận trùng cùng lúc — người thua nhận lỗi `ENCOUNTER_ALREADY_CLAIMED`, không phải lỗi hệ thống).
 - Bắt buộc có ít nhất một `diagnosis` với `type = primary` trước khi chuyển `COMPLETED`.
 - Mã chẩn đoán chọn từ `icd10_catalog`. Không cho nhập mã tự do, không tự suy mã từ mô tả bệnh.
-- `clinical_note` theo 4 mục SOAP. Ký ghi chú (`signed_at`) đóng băng nội dung.
+- `clinical_note` theo 8 mục nhóm "Tiền sử"/"Thăm khám" (đổi từ 4 mục SOAP, `docs/DECISIONS.md` #060). Ký ghi chú (`signed_at`) đóng băng nội dung.
+- **Sửa `diagnosis`/`clinical_note` SAU khi `encounter.status=COMPLETED` được phép** (`docs/DECISIONS.md` #066) — chỉ khi CHƯA ký (`signed_at IS NULL`, đúng thực tế v1 vì ký chưa triển khai). Mở khoá sửa TẠI CHỖ (không tạo bản ghi mới) + ghi `audit_log` action riêng (`*_amended_after_completion`) kèm `beforeJson`/`afterJson`. Quyền: đúng bác sĩ ca đó (`data_scope=personal`) hoặc tài khoản khác qua break-glass — không phải mô hình đính chính ở mục dưới đây (đó chỉ áp dụng khi đã ký).
 
 ## Kê đơn (v1: chỉ in đơn)
 
