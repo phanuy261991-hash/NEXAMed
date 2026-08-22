@@ -582,7 +582,7 @@ Khớp với `docs/product/plan.md`.
 | S2 (tuần 3-4) | `patient`, `insurance_card`, `appointment` |
 | S3 (tuần 5-6) | `icd10_catalog`, `encounter`, `vital_sign`, `diagnosis`, `clinical_note` |
 | S4 (tuần 7-8) | `drug`, `prescription`, `prescription_item` |
-| S5-S6 | Không thêm bảng mới; chỉ thêm cột `supersedes_id`, `amendment_reason` nếu chưa tạo, và trigger C8 |
+| S5-S6 | `invoice`, `invoice_line`, `payment` (thu ngân cơ bản — mở rộng phạm vi v1 chốt 2026-08-22, `docs/DECISIONS.md` #072); thêm cột `supersedes_id`, `amendment_reason` nếu chưa tạo, và trigger C8 |
 
 Khuyến nghị: tạo đủ 8 cột bắt buộc **ngay từ migration đầu tiên của mỗi bảng**, kể cả khi tính năng dùng tới chúng ở sprint sau. Thêm cột vào bảng đã có dữ liệu thật tốn hơn nhiều.
 
@@ -595,7 +595,7 @@ Ghi ra đây để không ai vô tình tạo sớm, và để thiết kế v1 kh
 | Bảng dự kiến | Phase | Điểm neo vào v1 |
 |---|---|---|
 | `service`, `service_order` | v2 | `encounter_id` |
-| `invoice`, `invoice_line`, `payment` | v2 | `encounter_id` |
+| ~~`invoice`, `invoice_line`, `payment`~~ → **chuyển vào v1** (Sprint 5/6, `docs/DECISIONS.md` #072) | ~~v2~~ **v1** | `encounter_id` — chỉ phạm vi **thu ngân cơ bản** (1 phiếu thu/lượt khám, tính từ `encounter.exam_type_price` × `service_quantity` đã snapshot sẵn; in phiếu; đã thu/chưa thu + phương thức; tổng kết cuối ngày). Bảng giá đa đối tượng (`price_book`), công nợ/trả góp theo lộ trình vẫn ở v2. Chưa thiết kế cột chi tiết — làm khi tới Sprint 5, tiền dùng `bigint` đồng như mọi cột tiền khác |
 | `inventory_batch`, `stock_movement` | v2.1 | `drug_id`, `prescription_item_id` |
 | `insurance_claim` | v3 | `encounter_id`, `insurance_card_id` |
 | `drug_catalog` (toàn hệ thống) | v2.1 | `drug.catalog_code` |

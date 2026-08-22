@@ -98,6 +98,10 @@ Thiết kế nhầm thành "1 tenant = 1 chuyên khoa" sẽ rất đau khi gỡ 
 
 Vì `CLAUDE.md` chốt triển khai on-premise, khách kiểm soát máy chủ nên không thể cưỡng chế license bằng kỹ thuật một cách thật sự. "Gói" ở giai đoạn on-prem chỉ là cấu hình lúc triển khai + ràng buộc hợp đồng — không cần đầu tư cơ chế chống crack. (Điều này đổi khi lên cloud — xem mục 5.)
 
+**Cơ chế cụ thể (chốt 2026-08-22, `docs/DECISIONS.md` #069)**: `tenant.enabled_specialties` (tập hợp gói đã mua) set **một lần** qua script/migration lúc đội kỹ thuật cài đặt cho khách — cùng tinh thần `tenantId` hiện nạp qua `apps/web/public/config.json` (sửa lúc deploy, không qua UI, không rebuild). **Không** để `clinic_admin` của khách tự bật/tắt gói qua bất kỳ màn hình "Cấu hình hệ thống" nào — không phải vì sợ họ dùng "lậu" (không cưỡng chế được thật sự ở on-prem, xem trên) mà vì bật một chuyên khoa kéo theo dữ liệu/mẫu bệnh án cần đã được thẩm định chuyên môn đúng cho gói đó (xem "Bẫy cần tránh" #4 ở mục 7), không phải một công tắc cấu hình đơn thuần. Guard kiểm gói đặt ở **tầng API** (không chỉ ẩn menu sidebar, tránh gọi thẳng endpoint bỏ qua UI) — tái dùng khuôn `PermissionGuard` đã có từ S2-01, kiểm `tenant.enabled_specialties` thay vì quyền theo user.
+
+**Mẫu bệnh án in ấn (Tầng 3) — chọn theo `encounter.specialty`, không theo `EXAM_TYPE`**: `EXAM_TYPE` (`reference_catalog`) là danh mục tự do do `clinic_admin` tự thêm/sửa/đổi tên — gắn mẫu pháp lý cố định (Bộ Y tế ban hành) vào đó là rủi ro vận hành (dịch vụ mới không có mẫu, đổi tên làm sai mapping). `encounter.specialty` là giá trị do nhà cung cấp kiểm soát (mỗi giá trị mới gắn 1 gói đã build + thẩm định chuyên môn) — an toàn hơn để gắn văn bản pháp lý. Cho phép override theo dịch vụ cụ thể CHỈ khi pháp lý thật sự yêu cầu mẫu riêng khác mẫu mặc định chuyên khoa — danh sách override khai báo cứng lúc build gói, không phải cấu hình tự do qua UI.
+
 ## 4. Trả lời: "Source có bị quá nặng không?"
 
 | Loại "nặng" | Đánh giá | Ghi chú |

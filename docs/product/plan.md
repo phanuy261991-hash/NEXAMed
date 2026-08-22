@@ -162,6 +162,9 @@ Phần đệm lỗi ở sprint này lớn có chủ ý. Nếu pilot ít lỗi, d
 | S5-05 | Màn hình nhật ký hoạt động: lọc theo bệnh nhân, theo người dùng, theo khoảng thời gian | ADM-03 | 4 | FE2 |
 | S5-06 | Gộp hồ sơ trùng (P1) | PAT-04 | 4 | BE2 |
 | S5-07 | Tự đánh dấu không đến theo ngưỡng cấu hình (P1) | APP-05 | 2 | BE1 |
+| **S5-08** | **Thu ngân cơ bản** (mở rộng phạm vi v1 chốt 2026-08-22, `docs/DECISIONS.md` #072): bảng `invoice`/`invoice_line`/`payment` (neo `encounter_id`, đủ 8 cột bắt buộc + RLS), phiếu thu tính từ dịch vụ đã chỉ định sẵn trên `encounter`, in phiếu (dùng chung hạ tầng in PRE-04), trạng thái đã thu/chưa thu + phương thức thanh toán, tổng kết thu cuối ngày | BIL-01→04 | **Chưa ước lượng** — ước lượng khi lập kế hoạch Sprint 5 | BE2 + FE2 |
+
+**Cảnh báo tải Sprint 5**: sprint này vốn đã có phần đệm lỗi pilot lớn (S5-01, 12 dev-day) — thêm S5-08 làm tổng vượt 33 dev-day ban đầu. Nếu pilot phát sinh nhiều lỗi, **ưu tiên cắt S5-06/S5-07 (đều P1) trước**, không cắt S5-08 (P0, là điều kiện của gate GA — xem mục 9). Có thể dời S5-08 sang Sprint 6 nếu Sprint 5 quá tải, miễn xong trước tuần 12.
 
 **Gate cuối sprint 5**:
 - [ ] Bản ghi đã ký không sửa được qua API, kể cả gọi trực tiếp (có test)
@@ -184,7 +187,7 @@ Phần đệm lỗi ở sprint này lớn có chủ ý. Nếu pilot ít lỗi, d
 | S6-08 | Đệm + checklist GA | — | 6 | Cả nhóm |
 
 **Mốc tuần 12 — GA v1**. Điều kiện:
-- [ ] Pilot ngừng dùng sổ giấy, chạy hoàn toàn trên hệ thống ít nhất 5 ngày làm việc
+- [ ] Pilot ngừng dùng sổ giấy, chạy hoàn toàn trên hệ thống ít nhất 5 ngày làm việc — **bao gồm cả sổ thu tiền** (điều kiện này chính là lý do "Thu ngân cơ bản" được đưa vào v1, xem S5-08 và `docs/DECISIONS.md` #072: không có thu ngân thì phòng khám buộc phải giữ sổ tiền, không đạt được mốc GA)
 - [ ] Đạt các chỉ số ở mục 5 của PRD: tiếp nhận < 90 giây, hồ sơ khám < 3 phút, ICD-10 > 95%, đơn in > 90%
 - [ ] Sao lưu tự động chạy đúng 7 ngày liên tiếp, phục hồi thử thành công
 - [ ] Không lỗi nghiêm trọng nào chưa xử lý (mất dữ liệu, sai bệnh nhân, rò rỉ giữa tenant)

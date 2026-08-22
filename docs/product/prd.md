@@ -169,6 +169,21 @@ Ký hiệu: **P0** bắt buộc cho v1, **P1** làm nếu còn thời gian, **P2
 | ADM-06 | **Break-glass**: khi bị chặn truy cập ngoài phạm vi dữ liệu (data scope), cho phép nhập lại mật khẩu + lý do để vượt quyền tạm thời (mặc định 2 giờ); ghi nhật ký vĩnh viễn, báo `clinic_admin` (v1: qua log, chưa gửi SMS/Zalo thật — xem mục 6) | P0 |
 | ADM-07 | Màn hình cấu hình ma trận phân quyền: chọn vai trò × tính năng → chọn phạm vi dữ liệu (`none`/`personal`/`department`/`global`) qua dropdown; `clinic_admin` tạo được vai trò tuỳ biến ngoài 5 vai trò mặc định | P1 |
 
+### 4.7 Thu ngân cơ bản (mở rộng phạm vi v1, chốt 2026-08-22 — `docs/DECISIONS.md` #072)
+
+> *Là lễ tân, tôi muốn thu tiền và in phiếu thu ngay trên phần mềm, để không phải ghi sổ tiền song song.*
+
+Phạm vi giới hạn ở **thu ngân mức 1** (một phiếu thu cho một lượt khám). Viện phí đầy đủ (bảng giá đa đối tượng, công nợ/trả góp theo lộ trình điều trị), BHYT và báo cáo doanh thu theo kỳ **vẫn ngoài v1**.
+
+| ID | Yêu cầu | Ưu tiên |
+|---|---|---|
+| BIL-01 | Tạo phiếu thu cho một lượt khám, tính tổng từ dịch vụ đã chỉ định sẵn trên lượt khám (không nhập lại giá) | P0 |
+| BIL-02 | In phiếu thu theo mẫu, có thông tin phòng khám (dùng chung hạ tầng in với PRE-04) | P0 |
+| BIL-03 | Đánh dấu trạng thái đã thu/chưa thu và phương thức thanh toán (tiền mặt/chuyển khoản); ghi nhật ký | P0 |
+| BIL-04 | Tổng kết thu cuối ngày: danh sách phiếu thu trong ngày và tổng tiền | P0 |
+
+**Lý do đưa vào v1** (trước đây xếp v2): điều kiện GA ở mục 7 yêu cầu "pilot ngừng dùng sổ giấy, chạy hoàn toàn trên hệ thống" — không có thu ngân thì phòng khám buộc phải giữ sổ tiền, không đạt được điều kiện này. Làm ở Sprint 5/6 (sau pilot, trước GA) để không làm phình Sprint 4.
+
 **Ghi chú kiến trúc phân quyền (chốt 2026-08-08, thay thế mô tả "5 vai trò cố định" ở bản v1.0)**: hệ thống dùng RBAC kết hợp Data Scope (4 mức: `none`/`personal`/`department`/`global`) thay vì quyền on/off đơn thuần. Chi tiết đầy đủ xem `.claude/docs/security-audit.md`. Mức `branch` (đa chi nhánh) **chưa triển khai** — khớp với quyết định hoãn ở câu hỏi Q6 mục 10 bên dưới; ADM-07 (UI cấu hình) là P1, có thể lùi nếu timeline căng (xem mục 7).
 
 ---
@@ -253,7 +268,7 @@ Hai phương án:
 | 5-6 | Tiếp nhận + Khám | REC-01→03, ENC-01→03, danh mục ICD-10 nhập xong và tìm kiếm được |
 | 7 | Kê đơn + In | PRE-01→04, mẫu in đơn được phòng khám pilot duyệt |
 | 8 | **Pilot** | Cài tại phòng khám pilot, đào tạo, chạy song song sổ giấy |
-| 9-10 | Vá lỗi thực tế | Xử lý lỗi từ pilot, hoàn thiện ENC-04, ENC-05, ADM-03 |
+| 9-10 | Vá lỗi thực tế | Xử lý lỗi từ pilot, hoàn thiện ENC-04, ENC-05, ADM-03, **BIL-01→04 (thu ngân cơ bản)** |
 | 11 | Triển khai + Sao lưu | ADM-04, script cài đặt, tài liệu vận hành, diễn tập phục hồi dữ liệu |
 | 12 | **GA v1** | Pilot ngừng dùng sổ giấy; đạt các chỉ số ở mục 5 |
 
@@ -311,9 +326,10 @@ Các câu hỏi cần trả lời, kèm hạn chót vì chúng ảnh hưởng t�
 
 | Phase | Nội dung | Điều kiện bắt đầu |
 |---|---|---|
-| v1 | Đặt lịch, tiếp nhận, khám bệnh, kê đơn in | Đang thực hiện |
+| v1 | Đặt lịch, tiếp nhận, khám bệnh, kê đơn in, **thu ngân cơ bản** (BIL-01→04, Sprint 5/6 — `docs/DECISIONS.md` #072) | Đang thực hiện |
 | v1.1 | Gộp hồ sơ, xuất PDF bệnh án, nhắc lịch SMS/Zalo | Sau GA v1, pilot ổn định 4 tuần |
-| v2 | Viện phí và thanh toán, báo cáo doanh thu | Sau v1.1, có ít nhất 3 khách hàng đang dùng |
+| **v1.5** | **Gói chuyên khoa: Nhi khoa (trước) → Sản phụ khoa (sau)** — cam kết với 2 khách hàng thật đã có (`docs/DECISIONS.md` #070/#071). Viết cụ thể từng gói trên kernel hiện có, không dựng khung "Specialty Pack" trước; gating gói (`tenant.enabled_specialties`) làm cùng gói đầu tiên | Sau GA v1. Mỗi gói cần bác sĩ chuyên khoa tương ứng thẩm định mẫu bệnh án + luồng dữ liệu (đã xong cho cả 2) |
+| v2 | Viện phí đầy đủ (bảng giá đa đối tượng, công nợ/trả góp theo lộ trình), báo cáo doanh thu | Sau v1.1, có ít nhất 3 khách hàng đang dùng |
 | v2.1 | Dược và kho thuốc | Sau v2 |
 | v3 | Tích hợp BHYT và cổng giám định, chữ ký số | Sau khi làm rõ yêu cầu pháp lý và có nhu cầu thực từ khách hàng |
 | v3+ | Hồ sơ bệnh nhân dùng chung liên chi nhánh, cận lâm sàng (LIS/PACS) | Khi có khách hàng chuỗi |
@@ -347,3 +363,4 @@ Các câu hỏi cần trả lời, kèm hạn chót vì chúng ảnh hưởng t�
 |---|---|---|
 | v1.0 | 07/08/2026 | Bản đầu tiên, dựa trên phạm vi kỹ thuật đã chốt |
 | v1.1 | 08/08/2026 | Thay mô tả "5 vai trò cố định" bằng RBAC + Data Scope (ADM-01 cập nhật, thêm ADM-06 break-glass, ADM-07 UI cấu hình ma trận), thêm rủi ro R10 |
+| v1.2 | 22/08/2026 | **Mở rộng phạm vi v1**: thêm mục 4.7 "Thu ngân cơ bản" (BIL-01→04, P0, làm ở Sprint 5/6) — trước đây xếp v2, chuyển vào v1 vì là điều kiện bắt buộc để đạt mốc GA "pilot ngừng dùng sổ giấy hoàn toàn". Thêm phase **v1.5 — Gói chuyên khoa** (Nhi khoa → Sản phụ khoa) vào Appendix A cho 2 khách hàng thật đã có. Xem `docs/DECISIONS.md` #069→#072 |
