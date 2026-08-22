@@ -1,24 +1,52 @@
+import { lazy } from 'react';
 import { Flask, Pill } from '@phosphor-icons/react';
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
-import { AppointmentSchedulePage } from '../features/appointment/AppointmentSchedulePage';
 import { ChangePasswordPage } from '../features/auth/ChangePasswordPage';
 import { LoginPage } from '../features/auth/LoginPage';
 import { RequireAuth } from '../features/auth/RequireAuth';
-import { CatalogAdminPage } from '../features/catalog/CatalogAdminPage';
-import { CatalogClinicalPage } from '../features/catalog-clinical/CatalogClinicalPage';
-import { ClinicConfigPage } from '../features/clinic/ClinicConfigPage';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
-import { EncounterConsultationPage } from '../features/encounter/EncounterConsultationPage';
-import { PatientDetailPage } from '../features/patient/PatientDetailPage';
-import { PatientListPage } from '../features/patient/PatientListPage';
-import { PatientNewPage } from '../features/patient/PatientNewPage';
-import { ReceptionDoctorQueuePage } from '../features/reception/ReceptionDoctorQueuePage';
-import { ReceptionListPage } from '../features/reception/ReceptionListPage';
-import { ReceptionRegisterPage } from '../features/reception/ReceptionRegisterPage';
-import { RolePermissionPage } from '../features/role/RolePermissionPage';
 import { AppShell } from '../shared/layout/AppShell';
 import { ComingSoonPage } from '../shared/ui/ComingSoonPage';
 import { NotFoundPage } from './NotFoundPage';
+
+/**
+ * Code-splitting theo route (`.claude/docs/coding-standards.md` mục Hiệu suất) — trước đây toàn
+ * bộ app nằm trong MỘT chunk, mọi vai trò tải hết mọi màn hình ngay lần vào đầu tiên (đo thật:
+ * 802 kB). Nay mỗi trang nghiệp vụ là một chunk riêng, chỉ tải khi điều hướng tới.
+ *
+ * **Cố ý GIỮ EAGER** (không lazy): `LoginPage` (màn hình đầu tiên của mọi phiên — lazy sẽ thêm
+ * một nhịp chờ ngay lúc mở app), `RequireAuth`/`AppShell`/`DashboardPage` (luôn cần ngay sau khi
+ * đăng nhập), `ChangePasswordPage` (chặn điều hướng lúc buộc đổi mật khẩu lần đầu),
+ * `NotFoundPage`/`ComingSoonPage` (rất nhỏ, tách ra không đáng).
+ *
+ * Component export dạng NAMED nên phải map `.then(m => ({ default: m.X }))` — `React.lazy` chỉ
+ * nhận default export. Không đổi các file trang sang default export để giữ nguyên quy ước
+ * named export của toàn bộ codebase.
+ */
+const PatientListPage = lazy(() => import('../features/patient/PatientListPage').then((m) => ({ default: m.PatientListPage })));
+const PatientNewPage = lazy(() => import('../features/patient/PatientNewPage').then((m) => ({ default: m.PatientNewPage })));
+const PatientDetailPage = lazy(() => import('../features/patient/PatientDetailPage').then((m) => ({ default: m.PatientDetailPage })));
+const AppointmentSchedulePage = lazy(() =>
+  import('../features/appointment/AppointmentSchedulePage').then((m) => ({ default: m.AppointmentSchedulePage })),
+);
+const ReceptionListPage = lazy(() => import('../features/reception/ReceptionListPage').then((m) => ({ default: m.ReceptionListPage })));
+const ReceptionRegisterPage = lazy(() =>
+  import('../features/reception/ReceptionRegisterPage').then((m) => ({ default: m.ReceptionRegisterPage })),
+);
+const ReceptionDoctorQueuePage = lazy(() =>
+  import('../features/reception/ReceptionDoctorQueuePage').then((m) => ({ default: m.ReceptionDoctorQueuePage })),
+);
+const EncounterConsultationPage = lazy(() =>
+  import('../features/encounter/EncounterConsultationPage').then((m) => ({ default: m.EncounterConsultationPage })),
+);
+// Nhóm Quản trị — chỉ `clinic_admin` dùng tới; lễ tân/điều dưỡng/bác sĩ không bao giờ tải các
+// chunk này (gồm cả trang tra cứu ICD-10 và toàn bộ màn hình danh mục).
+const CatalogAdminPage = lazy(() => import('../features/catalog/CatalogAdminPage').then((m) => ({ default: m.CatalogAdminPage })));
+const CatalogClinicalPage = lazy(() =>
+  import('../features/catalog-clinical/CatalogClinicalPage').then((m) => ({ default: m.CatalogClinicalPage })),
+);
+const RolePermissionPage = lazy(() => import('../features/role/RolePermissionPage').then((m) => ({ default: m.RolePermissionPage })));
+const ClinicConfigPage = lazy(() => import('../features/clinic/ClinicConfigPage').then((m) => ({ default: m.ClinicConfigPage })));
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },

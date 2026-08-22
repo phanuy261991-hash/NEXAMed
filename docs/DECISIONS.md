@@ -1038,3 +1038,28 @@ Cả 3 điểm đã được chốt ngay trong cùng phiên — xem **#072**.
 - `docs/product/plan.md` — thêm hạng mục vào Sprint 5/6 + điều kiện gate GA.
 - `docs/ERD.md` mục 7 — `invoice`/`invoice_line`/`payment` chuyển từ "v2" sang "v1 (Sprint 5/6, phạm vi thu ngân cơ bản)".
 - KHÔNG đổi code/schema trong phiên này — chưa tới Sprint 5.
+
+## 073 — Hiệu suất: code-splitting theo route (bundle 802→440 kB) + cưỡng chế ranh giới `web ⇸ core` bằng ESLint; ghi ngưỡng hiệu suất thành quy tắc bắt buộc
+
+**Ngày**: 2026-08-22 (cùng phiên #069→#072)
+**Bối cảnh**: Chủ dự án hỏi "tích hợp đa dạng loại hình phòng khám có gây nặng không?" kèm yêu cầu thường trực *"hãy luôn đảm bảo hiệu suất ứng dụng"*. `docs/product/multi-specialty-analysis.md` mục 4 đã trả lời sẵn "bundle web — không vấn đề, lazy load theo route/chuyên khoa" — nhưng **đo lại thực tế thì giả định đó chưa từng được hiện thực**: `apps/web` có **0 lazy load, 0 dynamic import**, router import tĩnh 21 module, build ra **802.68 kB trong MỘT chunk duy nhất** (gzip 213 kB), Vite cảnh báo vượt ngưỡng 500 kB. Tức kết luận "không nặng" của tài liệu là **có điều kiện**, mà điều kiện chưa đạt — thêm 2 gói chuyên khoa theo cách hiện tại thì mọi phòng khám tải cả code chuyên khoa mình không dùng.
+
+**Phát hiện thứ hai (rủi ro cao hơn)**: `packages/core` nặng **9.6 MB**, trong đó riêng `icd10/data.ts` chiếm **9.1 MB** (15.844 mã ICD-10). Web hiện KHÔNG dính khối này — nhưng không phải nhờ thiết kế: chỉ nhờ `apps/web/package.json` tình cờ không khai dependency, cộng một lần thử import đã làm vỡ Rollup build nên bị lùi lại (#065). ESLint chỉ chặn chiều `core → NestJS/Prisma/React`, **không chặn chiều `web → core`**. Khi làm gói chuyên khoa, áp lực import core vào web sẽ tăng mạnh (hàm thuần như tuổi thai, percentile tăng trưởng nhi cần dùng ở cả hai phía) — đúng lúc 9.1 MB đang nằm chờ trong cùng package.
+
+**Quyết định** (chủ dự án chọn "làm ngay, trước Sprint 4" + "ghi ngưỡng cụ thể vào `.claude/docs/coding-standards.md`"):
+1. **Code-splitting theo route** — 11 trang nghiệp vụ chuyển sang `lazy(() => import(...))` trong `app/router.tsx`; `<Suspense fallback={<PageFallback />}>` bọc RIÊNG vùng nội dung trong `AppShell` (Sidebar/TopBar giữ nguyên khi tải chunk, không nháy cả màn hình). Cố ý **giữ eager**: `LoginPage`, `RequireAuth`, `AppShell`, `DashboardPage`, `ChangePasswordPage`, `NotFoundPage`/`ComingSoonPage` — đều cần ngay lần vào đầu, lazy chỉ thêm nhịp chờ vô ích. Component export named nên map `.then((m) => ({ default: m.X }))`, KHÔNG đổi sang default export (giữ quy ước codebase).
+2. **`shared/ui/PageFallback.tsx`** (mới) — fallback dùng chung, cố ý trung tính (vài thanh `Skeleton`) vì dùng cho mọi route; **không** thay thế skeleton riêng của từng trang (đó là trạng thái chờ *dữ liệu API*, khác với chờ *chunk JS*).
+3. **Cưỡng chế `apps/web` không import `@nexamed/core` bằng ESLint** (`no-restricted-imports` trên `apps/web/**`), kèm thông báo lỗi chỉ rõ cách xử lý đúng (chuyển hàm thuần sang `packages/shared`). Biến hàng rào ngầm thành hàng rào máy kiểm được.
+4. **Ghi mục "Hiệu suất (bắt buộc)" vào `.claude/docs/coding-standards.md`** — ngưỡng đo được: chunk khởi động ≤ 500 kB; mọi trang nghiệp vụ MỚI bắt buộc lazy; cấm `web → core`; truy vấn danh sách phải có index; endpoint gộp phải tránh N+1; nhắc lại 2 ngưỡng đã cam kết ở PRD kèm số đo thật.
+
+**Kết quả đo thật (trước → sau)**:
+| | Trước | Sau |
+|---|---|---|
+| Chunk khởi động | 802.68 kB (gzip 213.47) | **440.65 kB (gzip 132.14)** — giảm 45% |
+| Số chunk JS | 1 | 27 (mỗi trang một chunk: màn khám 46.5 kB, Vai trò & Phân quyền 44.5 kB, Lịch hẹn 41.9 kB...) |
+| Cảnh báo Vite >500 kB | Có | **Hết** |
+
+Hệ quả thực tế: lễ tân đăng nhập nay tải 440 kB + đúng chunk trang mình dùng (`ReceptionListPage` 5.66 kB), thay vì 802 kB gồm cả màn khám lẫn toàn bộ nhóm Quản trị. Khi thêm gói Nhi/Sản sau này, mỗi gói là chunk riêng — phòng khám nhi không tải code sản khoa (đúng giả định mà `multi-specialty-analysis.md` mục 4 đặt ra, nay mới thật sự thành hiện thực).
+
+**Đã xác minh thật**: `pnpm -w typecheck` sạch toàn workspace. ESLint rule mới kiểm chứng bằng file thử vi phạm (`import { romanToInt } from '@nexamed/core'` trong `apps/web`) → chặn đúng kèm thông báo, sau đó xoá file thử. Lint còn đúng 4 lỗi cấu hình plugin `react-hooks/exhaustive-deps` có sẵn từ trước, không phải lỗi mới. Playwright qua Chrome thật (dev server + Postgres thật, tài khoản `dev.admin`): điều hướng đủ **8 route lazy** (`/patients`, `/appointments`, `/reception`, `/reception/doctor-queue`, 4 trang `/admin/*`) — mọi route render nội dung thật, Sidebar còn nguyên, **không route nào kẹt ở fallback**, **0 request lỗi**; console chỉ 2 lỗi cũ đã biết (401 lần refresh đầu, 404 favicon).
+**Không đổi**: backend, schema, API contract — thuần `apps/web` + `eslint.config.js` + tài liệu.

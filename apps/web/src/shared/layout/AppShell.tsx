@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react';
+import { Suspense, type ReactNode } from 'react';
 import { RoomSessionGate } from '../../features/clinic/RoomSessionGate';
+import { PageFallback } from '../ui/PageFallback';
 import { BreadcrumbProvider } from './breadcrumb.context';
 import { Sidebar } from './Sidebar';
 import { SidebarProvider } from './sidebar.context';
@@ -29,7 +30,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Sidebar />
           <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
             <TopBar />
-            <main className="flex-1 overflow-y-auto">{children}</main>
+            {/* Suspense bọc RIÊNG vùng nội dung (không bọc cả app) — Sidebar/TopBar vẫn hiện
+                nguyên trong lúc chunk JS của route lazy đang tải, không nháy cả màn hình. */}
+            <main className="flex-1 overflow-y-auto">
+              <Suspense fallback={<PageFallback />}>{children}</Suspense>
+            </main>
           </div>
         </div>
         <RoomSessionGate />

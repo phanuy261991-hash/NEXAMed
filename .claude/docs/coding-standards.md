@@ -60,6 +60,31 @@ Transaction mở ở service, truyền client transaction xuống repository đ�
 - Mỗi endpoint chạm dữ liệu bệnh nhân bắt buộc có test cách ly tenant (xem `multi-tenancy.md`).
 - Sửa bug thì viết test tái hiện bug trước khi sửa.
 
+## Hiệu suất (bắt buộc — chốt 2026-08-22, `docs/DECISIONS.md` #073)
+
+Yêu cầu thường trực của chủ dự án: **luôn đảm bảo hiệu suất ứng dụng**, không đợi tới lúc chậm mới sửa. Các ngưỡng dưới đây đo được, kiểm được — không dựa vào cảm tính hay trí nhớ.
+
+### Bundle web
+
+- **Chunk khởi động (`index-*.js`) không vượt 500 kB** (ngưỡng cảnh báo mặc định của Vite). Vượt là dấu hiệu phải tách chunk, không phải để nâng `chunkSizeWarningLimit` cho hết cảnh báo. Số đo tham chiếu 2026-08-22 sau khi tách: **440 kB** (gzip 132 kB).
+- **Mọi trang nghiệp vụ mới BẮT BUỘC thêm vào `app/router.tsx` dưới dạng `lazy(() => import(...))`**, không import tĩnh. Ngoại lệ cố ý (giữ eager, đã cân nhắc — không tự ý mở rộng danh sách này): `LoginPage`, `RequireAuth`, `AppShell`, `DashboardPage`, `ChangePasswordPage`, `NotFoundPage`/`ComingSoonPage`.
+- Component export **named** nên phải map `.then((m) => ({ default: m.X }))` — không đổi file trang sang default export chỉ để tiện lazy (phá quy ước named export của codebase).
+- `<Suspense>` đặt **quanh vùng nội dung trong `AppShell`**, không bọc cả app — Sidebar/TopBar phải còn nguyên trong lúc tải chunk. Fallback dùng chung: `shared/ui/PageFallback.tsx`.
+- Kiểm nhanh trước khi merge thay đổi lớn ở web: `pnpm --filter @nexamed/web run build` và đọc bảng chunk — không có cảnh báo "chunks larger than 500 kB".
+
+### Ranh giới phụ thuộc vì lý do hiệu suất
+
+- **`apps/web` KHÔNG được import `@nexamed/core`** — đã cưỡng chế bằng ESLint (`no-restricted-imports` trên `apps/web/**`), không còn dựa vào quy ước ngầm. Lý do: `packages/core` chứa dữ liệu seed lớn phục vụ riêng tầng API (`icd10/data.ts` ~9.1 MB, `geo/data.ts` ~280 kB) — kéo vào web là rủi ro phình bundle trình duyệt.
+- Cần một hàm thuần đang nằm ở `core` cho cả hai phía? **Chuyển hàm đó sang `packages/shared`**, không mở dependency `web → core`. (Tiền lệ: `stripVietnameseDiacritics` từng được thử import vào web, làm vỡ Rollup build — `docs/DECISIONS.md` #065.)
+- Dữ liệu danh mục lớn phục vụ web thì đi qua **API + phân trang/tìm kiếm phía server**, không nhúng vào bundle.
+
+### API và cơ sở dữ liệu
+
+- Mọi truy vấn danh sách/tìm kiếm phải dựa trên index đã có (xem `docs/ERD.md` mục 5); thêm màn hình danh sách mới mà truy vấn theo cột chưa có index thì thêm index trong cùng migration.
+- Endpoint gộp nhiều nguồn dữ liệu (kiểu `GET /encounters/:id/consultation`) phải tránh N+1 — join hoặc gom truy vấn, không lặp query theo từng dòng.
+- Ngưỡng đã cam kết trong `docs/product/prd.md` mục 5, **đo bằng script thật, không ước lượng**: tìm bệnh nhân trên 50.000 hồ sơ **dưới 1 giây** (đo thật: < 35 ms — `apps/api/scripts/perf-patient-search.ts`); tải màn hình khám có đủ tiền sử **dưới 2 giây** (đo thật: 33 ms — `perf-consultation.ts`). Thêm màn hình nặng tương tự thì viết script đo cùng khuôn, chạy tay, không đưa vào CI.
+- Danh sách có thể phình lớn ở web: virtualization bắt buộc (`.claude/docs/ui-guidelines.md` mục 9).
+
 ## Git
 
 - Nhánh: `feat/<domain>-<mô tả ngắn>`, `fix/<domain>-<mô tả ngắn>`.

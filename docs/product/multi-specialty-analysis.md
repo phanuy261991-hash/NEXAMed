@@ -106,12 +106,14 @@ Vì `CLAUDE.md` chốt triển khai on-premise, khách kiểm soát máy chủ n
 
 | Loại "nặng" | Đánh giá | Ghi chú |
 |---|---|---|
-| Bundle web | Không vấn đề | Lazy load theo route/chuyên khoa — phòng khám nhi chỉ tải gói nhi |
+| Bundle web | Không vấn đề — **nhưng có ĐIỀU KIỆN, xem ghi chú dưới bảng** | Lazy load theo route/chuyên khoa — phòng khám nhi chỉ tải gói nhi |
 | Database | Không vấn đề | ~10-20 bảng thêm, rỗng với ai không dùng |
 | RAM/API | Không vấn đề | Vài MB, không đáng kể với máy chủ on-prem |
 | Thời gian build | Tăng, chấp nhận được | — |
 | Bộ test | Tăng mạnh | Hiện ~160 test/~16s → có thể lên 500+ khi đủ 3 gói. Vẫn ổn nếu giữ kỷ luật tách theo module |
 | Chi phí hiểu code | **Vấn đề thật** | Chỉ giữ được nếu ranh giới module nghiêm ngặt (mục 3) |
+
+> ⚠️ **Cập nhật 2026-08-22 (`docs/DECISIONS.md` #073)** — dòng "Bundle web: không vấn đề" ở trên giả định sẵn có lazy load theo route. Đo lại thực tế thì **giả định đó chưa từng được hiện thực**: `apps/web` có 0 lazy load, build ra 802 kB trong MỘT chunk duy nhất. Đã sửa xong trong cùng ngày (code-splitting 11 trang → chunk khởi động còn 440 kB, mỗi trang một chunk riêng), và ghi thành **quy tắc bắt buộc** ở `.claude/docs/coding-standards.md` mục Hiệu suất: mọi trang nghiệp vụ mới BẮT BUỘC lazy, chunk khởi động ≤ 500 kB. Bài học chung: kết luận "không nặng" trong tài liệu này là **có điều kiện** — phải kiểm điều kiện có đạt không trước khi dựa vào nó, không đọc mỗi phần kết luận.
 
 **Kết luận**: nhẹ về kỹ thuật, nặng về tổ chức. Rủi ro thật không phải "source phình to" mà là: mỗi lần sửa kernel phải hồi quy cả 3 chuyên khoa; mỗi ca hỗ trợ cần người hiểu đúng chuyên khoa đó.
 

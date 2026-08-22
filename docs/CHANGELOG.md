@@ -2,6 +2,18 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-22
+
+Hiệu suất: code-splitting theo route + cưỡng chế ranh giới `web ⇸ core` bằng ESLint — xem `docs/DECISIONS.md` #073:
+
+- **Vấn đề đo được (không phải suy đoán)**: `apps/web` có **0 lazy load / 0 dynamic import**, router import tĩnh 21 module → build ra **802.68 kB trong MỘT chunk** (gzip 213 kB), Vite cảnh báo vượt 500 kB. Trong khi `docs/product/multi-specialty-analysis.md` mục 4 đã kết luận sẵn "bundle web không vấn đề — lazy load theo route/chuyên khoa" — tức giả định của tài liệu **chưa từng được hiện thực**.
+- **Rủi ro thứ hai**: `packages/core` nặng 9.6 MB (riêng `icd10/data.ts` 9.1 MB). Web không dính khối này chỉ nhờ quy ước ngầm (`package.json` không khai dependency) — ESLint không hề chặn chiều `web → core`.
+- **Đã sửa**: 11 trang nghiệp vụ chuyển sang `lazy(() => import(...))` (`app/router.tsx`), `<Suspense>` bọc riêng vùng nội dung trong `AppShell` (Sidebar/TopBar không nháy), `shared/ui/PageFallback.tsx` mới; giữ eager `LoginPage`/`RequireAuth`/`AppShell`/`DashboardPage`/`ChangePasswordPage`/`NotFoundPage`. Thêm ESLint `no-restricted-imports` chặn `apps/web` import `@nexamed/core`.
+- **Kết quả**: chunk khởi động **802.68 → 440.65 kB** (gzip 213.47 → 132.14), giảm 45%; 1 → 27 chunk; hết cảnh báo Vite. Lễ tân nay tải 440 kB + đúng chunk trang mình dùng (5.66 kB) thay vì cả màn khám + nhóm Quản trị.
+- **Quy tắc mới bắt buộc** (`.claude/docs/coding-standards.md` mục "Hiệu suất"): chunk khởi động ≤ 500 kB; mọi trang nghiệp vụ mới BẮT BUỘC lazy; cấm `web → core` (cần hàm thuần dùng chung thì chuyển sang `packages/shared`); truy vấn danh sách phải có index; endpoint gộp phải tránh N+1.
+- **Đã xác minh thật**: `pnpm -w typecheck` sạch; ESLint rule mới kiểm bằng file thử vi phạm → chặn đúng rồi xoá; Playwright qua Chrome thật điều hướng đủ 8 route lazy — render đúng, không route nào kẹt fallback, 0 request lỗi. Không đổi backend/schema/API contract.
+- Cập nhật `docs/DECISIONS.md` (#073), `.claude/docs/coding-standards.md`, `docs/product/multi-specialty-analysis.md` (đính chính mục 4), `docs/CURRENT.md`.
+
 ## 2026-08-21 (6)
 
 Rà soát toàn app: tiêu đề cột không cố định khi cuộn — sửa 7 bảng, ghi quy tắc bắt buộc vào `.claude/docs/ui-guidelines.md` mục 9g:
