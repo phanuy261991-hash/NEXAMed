@@ -1,5 +1,8 @@
 import type { CreatePatientRequest, PatientAddress, PatientDetail, PatientGender, UpdatePatientRequest } from '@nexamed/shared';
-import { EMPTY_PATIENT_FORM, type PatientFormValues } from './PatientFormFields';
+import { EMPTY_PATIENT_FORM, type FamilyHistoryRowDraft, type PatientFormValues } from './PatientFormFields';
+import { FAMILY_RELATION_LABELS } from './family-relation';
+
+export { FAMILY_RELATION_LABELS };
 
 /** Chuỗi rỗng → không gửi field (undefined) — khớp field optional của schema dùng chung. */
 function orUndefined(value: string): string | undefined {
@@ -38,10 +41,18 @@ export function toCreatePatientRequest(values: PatientFormValues): CreatePatient
     occupation: orUndefined(values.occupation),
     insuranceNumber: orUndefined(values.insuranceNumber),
     address: toAddress(values),
-    allergyNote: orUndefined(values.allergyNote),
     allergenIds: values.allergenIds,
     personalHistory: orUndefined(values.personalHistory),
-    familyHistory: orUndefined(values.familyHistory),
+    // Bệnh lý nền + thói quen/lối sống có cấu trúc (Sprint 5) — mảng mã ICD-10, cùng ngữ nghĩa allergenIds.
+    conditionCodes: values.conditions.map((c) => c.icd10Code),
+    // Tiền sử gia đình có cấu trúc (Sprint 5) — bỏ dòng chưa chọn đủ quan hệ/bệnh lý (chưa hợp lệ để gửi).
+    familyHistoryRows: values.familyHistoryRows
+      .filter((row) => row.relation !== '' && row.icd10Code !== '')
+      .map((row) => ({
+        relation: row.relation as Exclude<FamilyHistoryRowDraft['relation'], ''>,
+        icd10Code: row.icd10Code,
+        ageOfOnsetYears: row.ageOfOnsetYears.trim() === '' ? undefined : Number(row.ageOfOnsetYears),
+      })),
     relativeFullName: orUndefined(values.relativeFullName),
     relativeRelationship: orUndefined(values.relativeRelationship),
     relativePhone: orUndefined(values.relativePhone),
@@ -53,6 +64,15 @@ export function toUpdatePatientRequest(values: PatientFormValues, version: numbe
   return { ...toCreatePatientRequest(values), version };
 }
 
+/** Khoá tạm cho React key/thao tác xoá dòng khi CHỈNH SỬA — KHÔNG gửi lên server (xem `toCreatePatientRequest`). */
+function makeDraftId(): string {
+  return typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `draft-${Math.random().toString(36).slice(2)}`;
+}
+
+/**
+ * Chuyển `PatientDetail` (dữ liệu server, dùng chung cả `ReceptionIntakeForm.tsx` — trùng lặp lần 2
+ * so với bản cục bộ cũ ở đó, gộp lại theo CLAUDE.md) sang `PatientFormValues` để hiển thị/sửa.
+ */
 export function patientDetailToFormValues(detail: PatientDetail): PatientFormValues {
   return {
     ...EMPTY_PATIENT_FORM,
@@ -71,15 +91,40 @@ export function patientDetailToFormValues(detail: PatientDetail): PatientFormVal
     ward: detail.address?.ward ?? '',
     neighborhood: detail.address?.neighborhood ?? '',
     province: detail.address?.province ?? '',
-    allergyNote: detail.allergyNote ?? '',
     allergenIds: detail.allergens.map((a) => a.id),
     personalHistory: detail.personalHistory ?? '',
-    familyHistory: detail.familyHistory ?? '',
+    conditions: detail.conditions.map((c) => ({ icd10Code: c.icd10Code, icd10Name: c.icd10Name })),
+    familyHistoryRows: detail.familyHistoryRows.map((row) => ({
+      draftId: makeDraftId(),
+      relation: row.relation,
+      icd10Code: row.icd10Code,
+      icd10Name: row.icd10Name,
+      ageOfOnsetYears: row.ageOfOnsetYears === null ? '' : String(row.ageOfOnsetYears),
+    })),
     relativeFullName: detail.relativeFullName ?? '',
     relativeRelationship: detail.relativeRelationship ?? '',
     relativePhone: detail.relativePhone ?? '',
     relativeAddress: detail.relativeAddress ?? '',
   };
+}
+
+/**
+ * Cảnh báo nguy cơ di truyền — CHUNG CHUNG, KHÔNG số liệu % (đã hỏi và chốt với chủ dự án, mockup
+ * chỉ minh hoạ số liệu chưa qua thẩm định y khoa). Quy tắc: ≥2 dòng cùng `icd10Code` → liệt kê
+ * đúng người thân + tên bệnh. Dùng chung cho pill tóm tắt (`PatientFormFields.tsx`) và banner trong
+ * `PatientHistoryDialog.tsx` — tránh viết lại logic đếm 2 nơi.
+ */
+export function findRepeatedFamilyConditions(rows: FamilyHistoryRowDraft[]): { icd10Code: string; icd10Name: string; relationLabels: string[] }[] {
+  const byCode = new Map<string, { icd10Name: string; relationLabels: string[] }>();
+  for (const row of rows) {
+    if (row.icd10Code === '' || row.relation === '') continue;
+    const entry = byCode.get(row.icd10Code) ?? { icd10Name: row.icd10Name, relationLabels: [] };
+    entry.relationLabels.push(FAMILY_RELATION_LABELS[row.relation]);
+    byCode.set(row.icd10Code, entry);
+  }
+  return [...byCode.entries()]
+    .filter(([, v]) => v.relationLabels.length >= 2)
+    .map(([icd10Code, v]) => ({ icd10Code, icd10Name: v.icd10Name, relationLabels: v.relationLabels }));
 }
 
 /** Năm sinh — bóc tách từ `dob` (`YYYY-MM-DD`), rỗng nếu chưa nhập. */

@@ -19,9 +19,10 @@ import {
   usePatientQuery,
   useUpdatePatientMutation,
 } from '../patient/patient.queries';
-import { toCreatePatientRequest, toUpdatePatientRequest } from '../patient/patient-form.utils';
+import { patientDetailToFormValues, toCreatePatientRequest, toUpdatePatientRequest } from '../patient/patient-form.utils';
 import { EMPTY_PATIENT_FORM, PatientFormFields, type PatientFormValues } from '../patient/PatientFormFields';
 import { PatientMatchDialog } from '../patient/PatientMatchDialog';
+import { PatientSearchDialog } from './PatientSearchDialog';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { useCheckInMutation, useReceptionListQuery, useRegisterReceptionMutation } from './reception.queries';
 
@@ -116,6 +117,8 @@ export function ReceptionIntakeForm({
   const [matchedPatient, setMatchedPatient] = useState<PatientDetail | null>(null);
   const [matchedOriginalValues, setMatchedOriginalValues] = useState<PatientFormValues | null>(null);
   const [pendingMatchId, setPendingMatchId] = useState<string | null>(null);
+  /** Popup "Tìm kiếm khách hàng" (Sprint 5) — icon cạnh ô Mã bệnh nhân, chọn xong tái dùng đúng pipeline `pendingMatchId` ở trên. */
+  const [searchDialogOpen, setSearchDialogOpen] = useState(false);
   const [duplicates, setDuplicates] = useState<PatientSummary[] | null>(null);
   /** Đóng popup "trùng SĐT"/"trùng CCCD" thì không tự bật lại cho tới khi giá trị field đó đổi khác. */
   const [phoneMatchDismissed, setPhoneMatchDismissed] = useState(false);
@@ -177,7 +180,7 @@ export function ReceptionIntakeForm({
   // Chi tiết đầy đủ (đủ field ethnicity/nationality/người thân...) cho hồ sơ vừa khớp — load xong thì khoá form.
   useEffect(() => {
     if (patientDetailQuery.data && pendingMatchId === patientDetailQuery.data.id) {
-      const values = patientDetailToFormValuesLocal(patientDetailQuery.data);
+      const values = patientDetailToFormValues(patientDetailQuery.data);
       setMatchedPatient(patientDetailQuery.data);
       setMatchedOriginalValues(values);
       setFormValues(values);
@@ -480,7 +483,18 @@ export function ReceptionIntakeForm({
         patientCode={matchedPatient?.patientCode}
         photoUrl={matchedPatient?.photoUrl}
         version={matchedPatient?.version}
+        onSearchPatient={() => setSearchDialogOpen(true)}
       />
+
+      {searchDialogOpen && (
+        <PatientSearchDialog
+          onClose={() => setSearchDialogOpen(false)}
+          onPick={(patient) => {
+            setPendingMatchId(patient.id);
+            setSearchDialogOpen(false);
+          }}
+        />
+      )}
 
       <div className={sectionBoxClassName}>
         <span className={sectionBadgeClassName}>Thông tin tiếp nhận</span>
@@ -891,38 +905,4 @@ export function ReceptionIntakeForm({
       )}
     </div>
   );
-}
-
-/**
- * Cùng logic `patientDetailToFormValues` (`patient-form.utils.ts`) — viết lại tại chỗ (không
- * import) vì file gốc build ra CommonJS qua `@nexamed/shared`/barrel export, còn hàm này chỉ đọc
- * field của `PatientDetail` (không phải logic nghiệp vụ cần đồng bộ 2 nơi) — an toàn trùng, tránh
- * vấn đề Rollup không dò được named export qua `__exportStar` đã gặp nhiều lần (`docs/DECISIONS.md` #032).
- */
-function patientDetailToFormValuesLocal(detail: PatientDetail): PatientFormValues {
-  return {
-    ...EMPTY_PATIENT_FORM,
-    fullName: detail.fullName,
-    dob: detail.dob,
-    gender: detail.gender,
-    phone: detail.phone,
-    nationalId: detail.nationalId ?? '',
-    nationalIdIssuedAt: detail.nationalIdIssuedAt ?? '',
-    nationalIdIssuedPlace: detail.nationalIdIssuedPlace ?? '',
-    ethnicity: detail.ethnicity ?? '',
-    nationality: detail.nationality ?? '',
-    occupation: detail.occupation ?? '',
-    insuranceNumber: detail.insuranceNumber ?? '',
-    street: detail.address?.street ?? '',
-    ward: detail.address?.ward ?? '',
-    neighborhood: detail.address?.neighborhood ?? '',
-    province: detail.address?.province ?? '',
-    allergyNote: detail.allergyNote ?? '',
-    personalHistory: detail.personalHistory ?? '',
-    familyHistory: detail.familyHistory ?? '',
-    relativeFullName: detail.relativeFullName ?? '',
-    relativeRelationship: detail.relativeRelationship ?? '',
-    relativePhone: detail.relativePhone ?? '',
-    relativeAddress: detail.relativeAddress ?? '',
-  };
 }

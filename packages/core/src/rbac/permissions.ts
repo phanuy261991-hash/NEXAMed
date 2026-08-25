@@ -53,6 +53,10 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   // trang "Danh mục Chuyên môn" (lâm sàng), reference_catalog nằm ở "Danh mục hành chính" — tách
   // permission theo đúng khu vực trang, cùng lý do icd10_catalog không tái dùng reference_catalog.*.
   { module: 'allergen_catalog', action: 'read', description: 'Xem danh mục Dị nguyên' },
+  // `create` tách riêng khỏi `manage` (Sprint 5) — cho phép lễ tân/điều dưỡng/bác sĩ tự thêm dị
+  // nguyên mới NGAY lúc nhập Tiền sử (không phải chờ clinic_admin), nhưng KHÔNG cho sửa/ẩn mục đã
+  // có (vẫn chỉ clinic_admin qua `manage`, tránh sửa/xoá nhầm dữ liệu dùng chung toàn hệ thống).
+  { module: 'allergen_catalog', action: 'create', description: 'Tạo dị nguyên mới (không sửa/ẩn)' },
   { module: 'allergen_catalog', action: 'manage', description: 'Thêm/sửa/ẩn Nhóm dị nguyên và Dị nguyên' },
   // Danh mục thuốc (Sprint 4, S4-03) — theo tenant (khác allergen_catalog/reference_catalog toàn hệ
   // thống). `drug.read` mở cho mọi vai trò lâm sàng (bác sĩ tìm thuốc lúc kê đơn), `drug.manage`
@@ -90,6 +94,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'encounter.cancel': 'global',
     'reference_catalog.read': 'global',
     'allergen_catalog.read': 'global',
+    'allergen_catalog.create': 'global',
     'drug.read': 'global',
   },
   nurse: {
@@ -102,6 +107,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'vital_sign.create': 'global',
     'reference_catalog.read': 'global',
     'allergen_catalog.read': 'global',
+    'allergen_catalog.create': 'global',
     'drug.read': 'global',
   },
   doctor: {
@@ -130,6 +136,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'prescription.print': 'personal',
     'reference_catalog.read': 'global',
     'allergen_catalog.read': 'global',
+    'allergen_catalog.create': 'global',
     'drug.read': 'global',
   },
   clinic_admin: {
@@ -154,6 +161,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'reference_catalog.read': 'global',
     'reference_catalog.manage': 'global',
     'allergen_catalog.read': 'global',
+    'allergen_catalog.create': 'global',
     'allergen_catalog.manage': 'global',
     'drug.read': 'global',
     'drug.manage': 'global',

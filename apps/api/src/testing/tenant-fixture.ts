@@ -72,6 +72,9 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       await prisma.appointment.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // patient_allergen (Sprint 4, chốt 2026-08-25) tham chiếu patient (FK RESTRICT) — xoá trước patient.
       await prisma.patientAllergen.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // patient_condition/patient_family_history (Sprint 5) — cùng lý do, tham chiếu patient (FK RESTRICT).
+      await prisma.patientCondition.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await prisma.patientFamilyHistory.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // patient tự tham chiếu (merged_into_id) — bỏ tham chiếu trước khi xoá để không đụng FK
       // dù test S2-01 hiện chưa seed dữ liệu gộp hồ sơ (PAT-04 chưa hiện thực).
       await prisma.patient.updateMany({ where: { tenantId: { in: tenantIds } }, data: { mergedIntoId: null } });

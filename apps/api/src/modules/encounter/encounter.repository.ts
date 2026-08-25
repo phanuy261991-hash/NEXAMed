@@ -44,10 +44,11 @@ export interface ConsultationPatientFields {
   gender: string;
   phone: string;
   allergyNote: string | null;
-  /** Tiền sử bản thân/gia đình (docs/DECISIONS.md #068) — dữ liệu chung của bệnh nhân, không gắn theo lượt khám. */
+  /** Ghi chú bổ sung tự do (docs/DECISIONS.md #068) — `familyHistory` (text cũ) đã chuyển sang bảng
+   * `patient_family_history` có cấu trúc (Sprint 5), đọc qua `PatientFamilyHistoryRepository`, không
+   * còn ở đây. */
   personalHistory: string | null;
-  familyHistory: string | null;
-  /** Cần cho bác sĩ cập nhật lại `patient.allergyNote`/`personalHistory`/`familyHistory` ngay trong màn khám (optimistic lock). */
+  /** Cần cho bác sĩ cập nhật lại `patient.allergyNote`/`personalHistory` ngay trong màn khám (optimistic lock). */
   version: number;
 }
 
@@ -165,7 +166,6 @@ export class EncounterRepository {
             phone: true,
             allergyNote: true,
             personalHistory: true,
-            familyHistory: true,
             version: true,
           },
         },

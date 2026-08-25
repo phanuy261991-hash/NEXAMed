@@ -597,6 +597,7 @@ export interface paths {
                     cursor?: string;
                     limit?: number;
                     q?: string;
+                    sort?: "created_asc" | "created_desc";
                 };
                 header?: never;
                 path?: never;
@@ -705,12 +706,18 @@ export interface paths {
                         };
                         allergyNote?: string;
                         personalHistory?: string;
-                        familyHistory?: string;
                         relativeFullName?: string;
                         relativeRelationship?: string;
                         relativePhone?: string;
                         relativeAddress?: string;
                         allergenIds?: string[];
+                        conditionCodes?: string[];
+                        familyHistoryRows?: {
+                            /** @enum {string} */
+                            relation: "FATHER" | "MOTHER" | "SIBLING" | "PATERNAL_GRANDPARENT" | "MATERNAL_GRANDPARENT";
+                            icd10Code: string;
+                            ageOfOnsetYears?: number;
+                        }[];
                     };
                 };
             };
@@ -750,7 +757,6 @@ export interface paths {
                                 insuranceNumber: string | null;
                                 allergyNote: string | null;
                                 personalHistory: string | null;
-                                familyHistory: string | null;
                                 relativeFullName: string | null;
                                 relativeRelationship: string | null;
                                 relativePhone: string | null;
@@ -760,6 +766,20 @@ export interface paths {
                                     id: string;
                                     name: string;
                                     allergenGroupName: string;
+                                }[];
+                                conditions: {
+                                    icd10Code: string;
+                                    icd10Name: string;
+                                }[];
+                                familyHistoryRows: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** @enum {string} */
+                                    relation: "FATHER" | "MOTHER" | "SIBLING" | "PATERNAL_GRANDPARENT" | "MATERNAL_GRANDPARENT";
+                                    relationLabel: string;
+                                    icd10Code: string;
+                                    icd10Name: string;
+                                    ageOfOnsetYears: number | null;
                                 }[];
                                 photoUrl: string | null;
                                 /** Format: uuid */
@@ -969,7 +989,6 @@ export interface paths {
                                 insuranceNumber: string | null;
                                 allergyNote: string | null;
                                 personalHistory: string | null;
-                                familyHistory: string | null;
                                 relativeFullName: string | null;
                                 relativeRelationship: string | null;
                                 relativePhone: string | null;
@@ -979,6 +998,20 @@ export interface paths {
                                     id: string;
                                     name: string;
                                     allergenGroupName: string;
+                                }[];
+                                conditions: {
+                                    icd10Code: string;
+                                    icd10Name: string;
+                                }[];
+                                familyHistoryRows: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** @enum {string} */
+                                    relation: "FATHER" | "MOTHER" | "SIBLING" | "PATERNAL_GRANDPARENT" | "MATERNAL_GRANDPARENT";
+                                    relationLabel: string;
+                                    icd10Code: string;
+                                    icd10Name: string;
+                                    ageOfOnsetYears: number | null;
                                 }[];
                                 photoUrl: string | null;
                                 /** Format: uuid */
@@ -1076,12 +1109,18 @@ export interface paths {
                         };
                         allergyNote?: string;
                         personalHistory?: string;
-                        familyHistory?: string;
                         relativeFullName?: string;
                         relativeRelationship?: string;
                         relativePhone?: string;
                         relativeAddress?: string;
                         allergenIds?: string[];
+                        conditionCodes?: string[];
+                        familyHistoryRows?: {
+                            /** @enum {string} */
+                            relation: "FATHER" | "MOTHER" | "SIBLING" | "PATERNAL_GRANDPARENT" | "MATERNAL_GRANDPARENT";
+                            icd10Code: string;
+                            ageOfOnsetYears?: number;
+                        }[];
                         version: number;
                     };
                 };
@@ -1122,7 +1161,6 @@ export interface paths {
                                 insuranceNumber: string | null;
                                 allergyNote: string | null;
                                 personalHistory: string | null;
-                                familyHistory: string | null;
                                 relativeFullName: string | null;
                                 relativeRelationship: string | null;
                                 relativePhone: string | null;
@@ -1132,6 +1170,20 @@ export interface paths {
                                     id: string;
                                     name: string;
                                     allergenGroupName: string;
+                                }[];
+                                conditions: {
+                                    icd10Code: string;
+                                    icd10Name: string;
+                                }[];
+                                familyHistoryRows: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** @enum {string} */
+                                    relation: "FATHER" | "MOTHER" | "SIBLING" | "PATERNAL_GRANDPARENT" | "MATERNAL_GRANDPARENT";
+                                    relationLabel: string;
+                                    icd10Code: string;
+                                    icd10Name: string;
+                                    ageOfOnsetYears: number | null;
                                 }[];
                                 photoUrl: string | null;
                                 /** Format: uuid */
@@ -1272,7 +1324,6 @@ export interface paths {
                                 insuranceNumber: string | null;
                                 allergyNote: string | null;
                                 personalHistory: string | null;
-                                familyHistory: string | null;
                                 relativeFullName: string | null;
                                 relativeRelationship: string | null;
                                 relativePhone: string | null;
@@ -1282,6 +1333,20 @@ export interface paths {
                                     id: string;
                                     name: string;
                                     allergenGroupName: string;
+                                }[];
+                                conditions: {
+                                    icd10Code: string;
+                                    icd10Name: string;
+                                }[];
+                                familyHistoryRows: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** @enum {string} */
+                                    relation: "FATHER" | "MOTHER" | "SIBLING" | "PATERNAL_GRANDPARENT" | "MATERNAL_GRANDPARENT";
+                                    relationLabel: string;
+                                    icd10Code: string;
+                                    icd10Name: string;
+                                    ageOfOnsetYears: number | null;
                                 }[];
                                 photoUrl: string | null;
                                 /** Format: uuid */
@@ -3213,14 +3278,26 @@ export interface paths {
                                     dob: string;
                                     gender: string;
                                     phone: string;
-                                    allergyNote: string | null;
                                     personalHistory: string | null;
-                                    familyHistory: string | null;
                                     allergens: {
                                         /** Format: uuid */
                                         id: string;
                                         name: string;
                                         allergenGroupName: string;
+                                    }[];
+                                    conditions: {
+                                        icd10Code: string;
+                                        icd10Name: string;
+                                    }[];
+                                    familyHistoryRows: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        /** @enum {string} */
+                                        relation: "FATHER" | "MOTHER" | "SIBLING" | "PATERNAL_GRANDPARENT" | "MATERNAL_GRANDPARENT";
+                                        relationLabel: string;
+                                        icd10Code: string;
+                                        icd10Name: string;
+                                        ageOfOnsetYears: number | null;
                                     }[];
                                     version: number;
                                 };

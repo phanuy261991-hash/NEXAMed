@@ -33,7 +33,7 @@ import { formatDobDisplay } from '../../shared/format/date';
 import { updatePatient as updatePatientRaw } from '../patient/patient.api';
 import { useUpdatePatientMutation } from '../patient/patient.queries';
 import { useReceptionListQuery, useStartConsultationMutation } from '../reception/reception.queries';
-import { Icd10DiagnosisPicker } from './Icd10DiagnosisPicker';
+import { Icd10SearchPicker } from '../../shared/ui/Icd10SearchPicker';
 import { PrescriptionPanel } from './PrescriptionPanel';
 import { VitalSignsDialog } from './VitalSignsDialog';
 import { saveClinicalNote as saveClinicalNoteRaw } from './encounter.api';
@@ -59,13 +59,18 @@ const EMPTY_CLINICAL_DRAFT: ClinicalDraft = {
 };
 
 /**
- * "Tiền sử dị ứng"/"Tiền sử bản thân"/"Tiền sử gia đình" (docs/DECISIONS.md #068) — cả 3 đọc/ghi
- * thẳng `patient.*` qua `PATCH /patients/:id`, KHÔNG lưu theo lượt khám (khác `clinical` ở trên,
- * gắn `encounter_id`) — dữ liệu chung, ít đổi, sửa tại chỗ, không nhập lại mỗi lượt khám mới.
+ * "Tiền sử bản thân" (docs/DECISIONS.md #068) — đọc/ghi thẳng `patient.personalHistory` qua
+ * `PATCH /patients/:id`, KHÔNG lưu theo lượt khám (khác `clinical` ở trên, gắn `encounter_id`) —
+ * dữ liệu chung, ít đổi, sửa tại chỗ, không nhập lại mỗi lượt khám mới. "Bệnh lý nền"/"Tiền sử gia
+ * đình"/"Dị nguyên" — CHỈ XEM ở màn khám, sửa qua hồ sơ bệnh nhân/Tiếp nhận (`PatientHistoryDialog`).
+ * "Ghi chú dị ứng" (`allergyNote` tự do) đã BỎ HẲN khỏi màn khám (chốt lại 2026-08-25, sau #065) —
+ * #065 đã bỏ ô nhập này khỏi `PatientHistoryDialog` chuyển hẳn sang chip `allergenIds`, nhưng bỏ sót
+ * ô nhập/autosave riêng vẫn còn ở đây, gây 2 nơi chỉnh cùng khái niệm "dị ứng" không nhất quán
+ * (chủ dự án phát hiện lúc dùng thử). Cột DB `allergy_note` GIỮ NGUYÊN, chỉ ngừng đọc/ghi từ UI.
  */
-type PatientNoteKey = 'allergyNote' | 'personalHistory' | 'familyHistory';
+type PatientNoteKey = 'personalHistory';
 type PatientNoteDraft = Record<PatientNoteKey, string>;
-const EMPTY_PATIENT_NOTE_DRAFT: PatientNoteDraft = { allergyNote: '', personalHistory: '', familyHistory: '' };
+const EMPTY_PATIENT_NOTE_DRAFT: PatientNoteDraft = { personalHistory: '' };
 
 interface DiagnosisDraft {
   icd10Code: string;
@@ -243,12 +248,10 @@ export function EncounterConsultationPage() {
       plan: note.plan?.version,
     });
     setDiagnoses(data.diagnoses.map((d) => ({ icd10Code: d.icd10Code, icd10Name: d.icd10Name, type: d.type, note: d.note ?? undefined })));
-    // "Tiền sử dị ứng"/"bản thân"/"gia đình" tự mồi từ patient.* — sửa ở đây ghi thẳng lại hồ sơ
-    // bệnh nhân (docs/DECISIONS.md #068), không lưu riêng cho lượt khám.
+    // "Tiền sử bản thân" tự mồi từ patient.personalHistory — sửa ở đây ghi thẳng lại hồ sơ bệnh
+    // nhân (docs/DECISIONS.md #068), không lưu riêng cho lượt khám.
     const noteValues: PatientNoteDraft = {
-      allergyNote: data.patient.allergyNote ?? '',
       personalHistory: data.patient.personalHistory ?? '',
-      familyHistory: data.patient.familyHistory ?? '',
     };
     setPatientNoteDraft(noteValues);
     setPatientNoteBaseline({ values: noteValues, version: data.patient.version });
@@ -305,9 +308,9 @@ export function EncounterConsultationPage() {
   }, [clinical, patientNoteDraft]);
 
   /**
-   * Vá `patient.allergyNote`/`personalHistory`/`familyHistory` nếu có thay đổi thật (chỉ gửi field
-   * nào thực sự khác baseline, tránh tăng version bệnh nhân vô ích) — dùng chung cho autosave/flush
-   * lẫn "Lưu nháp"/"Lưu thay đổi" thủ công.
+   * Vá `patient.personalHistory` nếu có thay đổi thật (chỉ gửi field nào thực sự khác baseline,
+   * tránh tăng version bệnh nhân vô ích) — dùng chung cho autosave/flush lẫn "Lưu nháp"/"Lưu thay
+   * đổi" thủ công.
    */
   async function patchPatientNoteIfChanged(
     draft: PatientNoteDraft,
@@ -324,9 +327,7 @@ export function EncounterConsultationPage() {
     const updated = raw ? await updatePatientRaw(query.data!.patient.id, payload) : await updatePatientMutation.mutateAsync(payload);
     return {
       values: {
-        allergyNote: updated.allergyNote ?? '',
         personalHistory: updated.personalHistory ?? '',
-        familyHistory: updated.familyHistory ?? '',
       },
       version: updated.version,
     };
@@ -583,15 +584,16 @@ export function EncounterConsultationPage() {
               </span>
             )}
             {patient.allergens.length > 0 && (
-              <span className="flex items-center gap-1.5 whitespace-nowrap rounded-md border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700">
-                <Warning size={13} weight="fill" aria-hidden="true" />
-                DỊ NGUYÊN: {patient.allergens.map((a) => a.name).join(', ')}
-              </span>
-            )}
-            {patientNoteDraft.allergyNote && (
-              <span className="flex items-center gap-1.5 whitespace-nowrap rounded-md border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700">
-                <Warning size={13} weight="fill" aria-hidden="true" />
-                GHI CHÚ DỊ ỨNG: {patientNoteDraft.allergyNote}
+              <span className="flex flex-wrap items-center gap-1.5 rounded-md border border-rose-300 bg-rose-50 px-2.5 py-1.5">
+                <span className="flex items-center gap-1 whitespace-nowrap text-xs font-bold text-rose-700">
+                  <Warning size={13} weight="fill" aria-hidden="true" />
+                  CẢNH BÁO DỊ ỨNG:
+                </span>
+                {patient.allergens.map((a) => (
+                  <span key={a.id} className="whitespace-nowrap rounded-full border border-rose-300 bg-white px-2.5 py-0.5 text-xs font-semibold text-rose-700">
+                    {a.name} <span className="font-medium text-rose-600">({a.allergenGroupName})</span>
+                  </span>
+                ))}
               </span>
             )}
           </div>
@@ -768,12 +770,36 @@ export function EncounterConsultationPage() {
                   Thông tin khám lâm sàng
                 </span>
 
-                {/* Tiền sử bản thân/gia đình/dị ứng — thuộc về BỆNH NHÂN (docs/DECISIONS.md #068),
-                    KHÔNG lưu theo lượt khám như 6 mục "Thăm khám" bên dưới: đọc/ghi thẳng
-                    patient.personalHistory/familyHistory/allergyNote, tự mồi từ lần khám trước
-                    (hoặc từ hồ sơ bệnh nhân), sửa tại chỗ không phải nhập lại từ đầu mỗi lượt khám mới. */}
+                {/* Tiền sử bản thân — thuộc về BỆNH NHÂN (docs/DECISIONS.md #068), KHÔNG lưu theo
+                    lượt khám như 6 mục "Thăm khám" bên dưới: đọc/ghi thẳng patient.personalHistory,
+                    tự mồi từ lần khám trước (hoặc từ hồ sơ bệnh nhân), sửa tại chỗ không phải nhập
+                    lại từ đầu mỗi lượt khám mới. Bệnh lý nền/Tiền sử gia đình CHỈ XEM, sửa qua hồ sơ
+                    bệnh nhân/Tiếp nhận. Dị ứng (dị nguyên có cấu trúc) hiện ở banner đầu trang, ghi
+                    chú tự do `allergyNote` đã bỏ hẳn khỏi màn khám (chốt lại 2026-08-25, sau #065) —
+                    2 nơi chỉnh cùng khái niệm "dị ứng" không nhất quán, PatientHistoryDialog mới là
+                    nơi quản lý duy nhất. */}
                 <h3 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-700">Tiền sử</h3>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  <div>
+                    <label className="mb-1 block text-sm font-semibold text-slate-800">Bệnh lý nền</label>
+                    <div className="min-h-13 rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5">
+                      {patient.conditions.length === 0 ? (
+                        <span className="text-[13px] text-slate-400">Chưa ghi nhận</span>
+                      ) : (
+                        <div className="flex flex-wrap gap-1">
+                          {patient.conditions.map((c) => (
+                            <span
+                              key={c.icd10Code}
+                              className="rounded-full border border-brand-teal bg-brand-teal-tint px-2 py-0.5 text-[11.5px] font-semibold text-brand-teal-active"
+                            >
+                              {c.icd10Name}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <p className="mt-1 text-[11px] text-slate-400">Chỉ xem — sửa qua hồ sơ bệnh nhân/Tiếp nhận.</p>
+                  </div>
                   <Textarea
                     id="clinical-personal-history"
                     label="Tiền sử bản thân"
@@ -783,28 +809,23 @@ export function EncounterConsultationPage() {
                     onChange={(e) => setPatientNote('personalHistory', e.target.value)}
                     readOnly={!canEditNow}
                   />
-                  <Textarea
-                    id="clinical-family-history"
-                    label="Tiền sử gia đình"
-                    dense
-                    rows={2}
-                    value={patientNoteDraft.familyHistory}
-                    onChange={(e) => setPatientNote('familyHistory', e.target.value)}
-                    readOnly={!canEditNow}
-                  />
                   <div>
-                    <label htmlFor="clinical-allergy" className="mb-1 block text-sm font-semibold text-rose-600">
-                      Tiền sử dị ứng
-                    </label>
-                    <textarea
-                      id="clinical-allergy"
-                      rows={2}
-                      value={patientNoteDraft.allergyNote}
-                      onChange={(e) => setPatientNote('allergyNote', e.target.value)}
-                      readOnly={!canEditNow}
-                      placeholder="Chưa có ghi chú dị ứng lúc tiếp nhận — nhập mới nếu cần."
-                      className="w-full rounded-md border border-rose-200 bg-rose-50/40 px-2 py-1.5 text-[13px] font-semibold text-slate-900 placeholder:font-normal placeholder:text-slate-400 focus:border-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
-                    />
+                    <label className="mb-1 block text-sm font-semibold text-slate-800">Tiền sử gia đình</label>
+                    <div className="min-h-13 rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5 text-[13px] text-slate-700">
+                      {(query.data?.patient.familyHistoryRows.length ?? 0) === 0 ? (
+                        <span className="text-slate-400">Chưa ghi nhận</span>
+                      ) : (
+                        <ul className="space-y-0.5">
+                          {query.data!.patient.familyHistoryRows.map((row) => (
+                            <li key={row.id} className="font-semibold">
+                              {row.relationLabel} — {row.icd10Name}
+                              {row.ageOfOnsetYears !== null && <span className="font-normal text-slate-500"> ({row.ageOfOnsetYears} tuổi)</span>}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                    <p className="mt-1 text-[11px] text-slate-400">Chỉ xem — sửa qua hồ sơ bệnh nhân/Tiếp nhận.</p>
                   </div>
                 </div>
 
@@ -865,7 +886,7 @@ export function EncounterConsultationPage() {
                   Chẩn đoán bệnh (ICD-10) <span className="text-rose-500">*</span>
                 </h3>
                 {/* "Xem lại" một lượt khám đã hoàn tất — ẩn ô thêm chẩn đoán tới khi bấm "Chỉnh sửa thông tin". */}
-                {canEditNow && <Icd10DiagnosisPicker excludeCodes={diagnoses.map((d) => d.icd10Code)} onSelect={handleAddDiagnosis} />}
+                {canEditNow && <Icd10SearchPicker excludeCodes={diagnoses.map((d) => d.icd10Code)} onSelect={handleAddDiagnosis} />}
 
                 <div className="mt-2.5 flex flex-col gap-1.5">
                   {diagnoses.length === 0 && <p className="text-xs text-slate-400">Chưa chọn chẩn đoán nào.</p>}

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { patientAllergenItemSchema } from './patient';
+import { patientAllergenItemSchema, patientConditionItemSchema, patientFamilyHistoryItemSchema } from './patient';
 import { prescriptionResponseSchema } from './prescription';
 
 /**
@@ -397,13 +397,15 @@ export const consultationPatientSchema = z.object({
   dob: z.string(),
   gender: z.string(),
   phone: z.string(),
-  allergyNote: z.string().nullable(),
-  /** Tiền sử bản thân/gia đình (docs/DECISIONS.md #068) — dữ liệu chung của bệnh nhân, cùng cơ chế sửa với `allergyNote`. */
+  /** Tiền sử bản thân (docs/DECISIONS.md #068) — ghi chú bổ sung tự do, sửa tại chỗ trong màn khám. */
   personalHistory: z.string().nullable(),
-  familyHistory: z.string().nullable(),
   /** Dị nguyên đã biết (Sprint 4, chốt 2026-08-25) — dùng cho PRE-03, xem `patientAllergenItemSchema`. */
   allergens: z.array(patientAllergenItemSchema),
-  /** Optimistic lock cho `PATCH /patients/:id` khi bác sĩ cập nhật "Tiền sử dị ứng"/bản thân/gia đình ngay màn khám. */
+  /** Bệnh lý nền + thói quen/lối sống có cấu trúc (Sprint 5) — CHỈ XEM ở màn khám, sửa qua hồ sơ bệnh nhân/Tiếp nhận, cùng khuôn `familyHistoryRows`. */
+  conditions: z.array(patientConditionItemSchema),
+  /** Tiền sử gia đình có cấu trúc (Sprint 5) — CHỈ XEM ở màn khám, sửa qua hồ sơ bệnh nhân/Tiếp nhận, không còn autosave textarea ở đây. */
+  familyHistoryRows: z.array(patientFamilyHistoryItemSchema),
+  /** Optimistic lock cho `PATCH /patients/:id` khi bác sĩ cập nhật "Tiền sử bản thân" ngay màn khám. */
   version: z.number().int(),
 });
 export type ConsultationPatient = z.infer<typeof consultationPatientSchema>;

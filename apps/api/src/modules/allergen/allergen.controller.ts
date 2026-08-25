@@ -20,8 +20,10 @@ export class AllergenController {
     return this.allergenService.list(tenantId, includeInactive === 'true');
   }
 
+  // `create` (Sprint 5) — riêng biệt với `manage`, cấp cho cả lễ tân/điều dưỡng/bác sĩ (thêm dị
+  // nguyên mới ngay lúc nhập Tiền sử) trong khi PATCH/DELETE/reactivate vẫn chỉ clinic_admin.
   @Post()
-  @RequirePermission('allergen_catalog', 'manage')
+  @RequirePermission('allergen_catalog', 'create')
   @HttpCode(200)
   async create(@Body() body: unknown, @Req() req: Request) {
     const dto = createAllergenRequestSchema.parse(body);

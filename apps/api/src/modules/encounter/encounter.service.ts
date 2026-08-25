@@ -17,7 +17,7 @@ import {
   type PrescriptionDrugLine,
   type SignaturePort,
 } from '@nexamed/core';
-import { calculateAgeYears } from '@nexamed/shared';
+import { FAMILY_RELATION_LABELS, calculateAgeYears } from '@nexamed/shared';
 import type {
   AmendPrescriptionRequest,
   CancelEncounterRequest,
@@ -50,6 +50,8 @@ import { ClinicalNoteRepository } from './clinical-note.repository';
 import { PrescriptionRepository, type PrescriptionWithItems } from './prescription.repository';
 import { toEncounterSummary } from './encounter.mapper';
 import { PatientAllergenRepository } from '../patient/patient-allergen.repository';
+import { PatientConditionRepository } from '../patient/patient-condition.repository';
+import { PatientFamilyHistoryRepository } from '../patient/patient-family-history.repository';
 
 const TEMPERATURE_DECI_PER_CELSIUS = 10;
 /** Số lần khám cũ tối đa hiện trong panel tiền sử (ENC-01) — danh sách tóm tắt, không phân trang ở v1. */
@@ -70,6 +72,8 @@ export class EncounterService {
     private readonly clinicalNoteRepository: ClinicalNoteRepository,
     private readonly prescriptionRepository: PrescriptionRepository,
     private readonly patientAllergenRepository: PatientAllergenRepository,
+    private readonly patientConditionRepository: PatientConditionRepository,
+    private readonly patientFamilyHistoryRepository: PatientFamilyHistoryRepository,
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
     @Inject(SIGNATURE_PORT) private readonly signaturePort: SignaturePort,
   ) {}
@@ -219,6 +223,12 @@ export class EncounterService {
       // Kê đơn (Sprint 4) — dị nguyên đã biết của bệnh nhân (PRE-03) + đơn thuốc đang hiệu lực.
       const allergenRows = await this.patientAllergenRepository.listForPatient(tx, tenantId, encounter.patientId);
       const prescriptionRow = await this.prescriptionRepository.findActiveForEncounter(tx, tenantId, id);
+      // Bệnh lý nền + thói quen/lối sống có cấu trúc (Sprint 5) — CHỈ XEM ở màn khám, sửa qua hồ sơ
+      // bệnh nhân/Tiếp nhận (PatientHistoryDialog), cùng khuôn familyHistoryRows ngay dưới.
+      const conditionRows = await this.patientConditionRepository.listForPatient(tx, tenantId, encounter.patientId);
+      // Tiền sử gia đình có cấu trúc (Sprint 5) — CHỈ XEM ở màn khám (không còn textarea/autosave
+      // riêng, xem docs/DECISIONS.md), sửa qua hồ sơ bệnh nhân/Tiếp nhận.
+      const familyHistoryRows = await this.patientFamilyHistoryRepository.listForPatient(tx, tenantId, encounter.patientId);
 
       return {
         encounter: toEncounterSummary(encounter),
@@ -229,10 +239,17 @@ export class EncounterService {
           dob: encounter.patient.dob.toISOString().slice(0, 10),
           gender: encounter.patient.gender,
           phone: encounter.patient.phone,
-          allergyNote: encounter.patient.allergyNote,
           personalHistory: encounter.patient.personalHistory,
-          familyHistory: encounter.patient.familyHistory,
           allergens: allergenRows.map((a) => ({ id: a.allergenId, name: a.allergenName, allergenGroupName: a.allergenGroupName })),
+          conditions: conditionRows.map((c) => ({ icd10Code: c.icd10Code, icd10Name: c.icd10Name })),
+          familyHistoryRows: familyHistoryRows.map((f) => ({
+            id: f.id,
+            relation: f.relation,
+            relationLabel: FAMILY_RELATION_LABELS[f.relation],
+            icd10Code: f.icd10Code,
+            icd10Name: f.icd10Name,
+            ageOfOnsetYears: f.ageOfOnsetYears,
+          })),
           version: encounter.patient.version,
         },
         vitalSigns,

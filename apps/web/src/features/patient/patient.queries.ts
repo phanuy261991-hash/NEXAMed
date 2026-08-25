@@ -24,7 +24,7 @@ const PATIENT_LIST_LIMIT = 50;
  * tục. Giữ kết quả CŨ hiển thị (kèm cờ `isPlaceholderData`) cho tới khi kết quả MỚI về hẳn thì mới
  * thay, không còn khoảng trắng giữa hai lần gõ.
  */
-export function usePatientsQuery(q: string) {
+export function usePatientsQuery(q: string, enabled = true) {
   const { tenantId } = useAppConfig();
   return useInfiniteQuery({
     queryKey: queryKey(tenantId, 'patient', 'list', q || undefined),
@@ -33,6 +33,23 @@ export function usePatientsQuery(q: string) {
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     placeholderData: keepPreviousData,
+    enabled,
+  });
+}
+
+const PATIENT_SEARCH_DEFAULT_LIMIT = 5;
+
+/**
+ * Popup "Tìm kiếm khách hàng" (`PatientSearchDialog`) — hiện sẵn vài hồ sơ MỚI TẠO gần đây trước
+ * khi lễ tân gõ tiêu chí tìm (thay vì khung trống), `sort=created_desc` mới thêm ở API cho đúng
+ * nhu cầu này (Danh sách bệnh nhân không dùng, giữ nguyên `created_asc` mặc định).
+ */
+export function useRecentPatientsQuery(enabled: boolean) {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'patient', 'recent'),
+    queryFn: () => listPatients({ limit: PATIENT_SEARCH_DEFAULT_LIMIT, sort: 'created_desc' }),
+    enabled,
   });
 }
 

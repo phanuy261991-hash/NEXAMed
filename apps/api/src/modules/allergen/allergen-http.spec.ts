@@ -220,14 +220,37 @@ describe('HTTP e2e — /api/v1/allergen-groups, /api/v1/allergens', () => {
       expect(reactivate.body.data.isActive).toBe(true);
     });
 
-    it('receptionist POST/PATCH/DELETE → 403 (chỉ có allergen_catalog.read)', async () => {
+    it('receptionist PATCH/DELETE → 403 (chỉ clinic_admin có allergen_catalog.manage)', async () => {
       const group = await createGroup(clinicAdminToken);
-      const post = await request(app.getHttpServer())
+      const created = await request(app.getHttpServer())
+        .post('/api/v1/allergens')
+        .set(authed(clinicAdminToken))
+        .send({ allergenGroupId: group.body.data.id, name: 'Sửa được bởi ai' });
+      const id = created.body.data.id as string;
+
+      const patch = await request(app.getHttpServer())
+        .patch(`/api/v1/allergens/${id}`)
+        .set(authed(receptionistToken))
+        .send({ name: 'Không được phép sửa' });
+      expect(patch.status).toBe(403);
+      expect(patch.body.error.code).toBe('PERMISSION_DENIED');
+
+      const del = await request(app.getHttpServer()).delete(`/api/v1/allergens/${id}`).set(authed(receptionistToken));
+      expect(del.status).toBe(403);
+      expect(del.body.error.code).toBe('PERMISSION_DENIED');
+    });
+
+    // Sprint 5 — quyền tạo mới (KHÔNG sửa/ẩn) mở cho lễ tân/điều dưỡng/bác sĩ, để thêm dị nguyên
+    // ngay lúc nhập Tiền sử mà không phải chờ clinic_admin (docs/DECISIONS.md).
+    it('receptionist (chỉ có allergen_catalog.create, không có manage) POST tạo dị nguyên mới → 200', async () => {
+      const group = await createGroup(clinicAdminToken, 'Nhóm cho lễ tân');
+      const res = await request(app.getHttpServer())
         .post('/api/v1/allergens')
         .set(authed(receptionistToken))
-        .send({ allergenGroupId: group.body.data.id, name: 'Không được phép' });
-      expect(post.status).toBe(403);
-      expect(post.body.error.code).toBe('PERMISSION_DENIED');
+        .send({ allergenGroupId: group.body.data.id, name: 'Do lễ tân thêm' });
+      expect(res.status).toBe(200);
+      expect(res.body.data.name).toBe('Do lễ tân thêm');
+      expect(res.body.data.code).toMatch(/^DN-[0-9A-F]{8}$/);
     });
   });
 

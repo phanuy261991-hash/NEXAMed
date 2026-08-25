@@ -77,6 +77,8 @@ model Tenant {
   prescriptions     Prescription[]
   prescriptionItems PrescriptionItem[]
   patientAllergens  PatientAllergen[]
+  patientConditions      PatientCondition[]
+  patientFamilyHistories PatientFamilyHistory[]
 
   @@map("tenant")
 }
@@ -594,6 +596,8 @@ model Icd10Catalog {
   whoNote           String?                  @map("who_note")
 
   diagnoses Diagnosis[]
+  patientConditions      PatientCondition[]
+  patientFamilyHistories PatientFamilyHistory[]
 
   @@index([chapterCode])
   @@index([groupCode])
@@ -777,6 +781,10 @@ model Patient {
   encounters   Encounter[]
   // Dị nguyên đã biết (Sprint 4, chốt 2026-08-25) — xem model PatientAllergen.
   allergens    PatientAllergen[]
+  // Bệnh lý nền + thói quen/lối sống, tiền sử gia đình có cấu trúc (Sprint 5) — xem model
+  // PatientCondition/PatientFamilyHistory.
+  conditions        PatientCondition[]
+  familyHistoryRows PatientFamilyHistory[]
 
   // Đích của composite FK (tenant_id, id) từ appointment/encounter (S2-05, S3) sau này.
   @@unique([tenantId, id])
@@ -1230,6 +1238,78 @@ model PatientAllergen {
 
   @@unique([tenantId, id])
   @@map("patient_allergen")
+}
+
+enum FamilyRelation {
+  FATHER
+  MOTHER
+  SIBLING
+  PATERNAL_GRANDPARENT
+  MATERNAL_GRANDPARENT
+
+  @@map("family_relation")
+}
+
+// Bệnh lý nền + thói quen/lối sống của bệnh nhân, dữ liệu có cấu trúc (Sprint 5, thay khối chip
+// "Tiền sử bản thân" trong màn Thêm/Sửa bệnh nhân + Tiếp nhận). `patient.personal_history` GIỮ
+// NGUYÊN làm ghi chú bổ sung tự do, không đổi/xoá — cùng tinh thần allergyNote/PatientAllergen.
+// Thói quen/lối sống (hút thuốc, rượu bia, lười vận động) dùng CHUNG bảng này, mã hoá bằng ICD-10
+// Chương XXI "Yếu tố liên quan sức khoẻ" (Z72.0/Z72.1/Z72.3) — KHÔNG tách bảng/cột riêng, tông màu
+// chip (rose/amber) chỉ là phân loại hiển thị phía web, không có ý nghĩa gì ở tầng DB.
+model PatientCondition {
+  id        String @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId  String @map("tenant_id") @db.Uuid
+  patientId String @map("patient_id") @db.Uuid
+  // FK thường (không composite) tới icd10_catalog.code — danh mục toàn hệ thống, cùng khuôn Diagnosis.icd10Code.
+  icd10Code String @map("icd10_code")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant  Tenant       @relation(fields: [tenantId], references: [id])
+  // Composite FK (tenant_id, patient_id) -> patient(tenant_id, id): chống trỏ chéo tenant.
+  patient Patient      @relation(fields: [tenantId, patientId], references: [tenantId, id])
+  icd10   Icd10Catalog @relation(fields: [icd10Code], references: [code])
+
+  @@unique([tenantId, id])
+  @@map("patient_condition")
+}
+
+// Tiền sử gia đình có cấu trúc (Sprint 5) — ma trận Quan hệ huyết thống x Bệnh lý (ICD-10) + tuổi
+// phát hiện, thay khối "Tiền sử gia đình" text tự do. `patient.family_history` (cột text cũ) GIỮ
+// NGUYÊN trong DB, chỉ ngừng đọc/ghi từ UI mới (không có tenant production nào có dữ liệu thật,
+// không cần migration dọn dẹp). KHÔNG unique trên (patient, relation, icd10Code) — nhiều người
+// thân cùng quan hệ có thể cùng mắc 1 bệnh (vd 2 anh/chị/em ruột), mỗi người 1 dòng riêng.
+model PatientFamilyHistory {
+  id              String         @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId        String         @map("tenant_id") @db.Uuid
+  patientId       String         @map("patient_id") @db.Uuid
+  relation        FamilyRelation
+  // FK thường tới icd10_catalog.code, cùng khuôn PatientCondition.icd10Code.
+  icd10Code       String         @map("icd10_code")
+  ageOfOnsetYears Int?           @map("age_of_onset_years")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant  Tenant       @relation(fields: [tenantId], references: [id])
+  patient Patient      @relation(fields: [tenantId, patientId], references: [tenantId, id])
+  icd10   Icd10Catalog @relation(fields: [icd10Code], references: [code])
+
+  @@unique([tenantId, id])
+  @@map("patient_family_history")
 }
 
 // Append-only — không updated_at, không deleted_at, không version (ngoại lệ đã ghi trong data-model.md).

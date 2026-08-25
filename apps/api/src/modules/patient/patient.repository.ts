@@ -14,8 +14,10 @@ export interface CreatePatientData {
   // (khác Json bắt buộc, nơi `null` bị hiểu là literal JSON "null") — xem prisma.io/docs.
   addressJson: Prisma.InputJsonValue | typeof Prisma.JsonNull;
   allergyNote: string | null;
+  // Ghi chú bổ sung tự do (docs/DECISIONS.md #068) — `familyHistory` (text cũ, cùng khuôn) đã
+  // chuyển sang bảng `patient_family_history` có cấu trúc (Sprint 5), KHÔNG còn nhận qua đây; cột
+  // DB `family_history` vẫn còn nhưng không ai ghi nữa.
   personalHistory: string | null;
-  familyHistory: string | null;
   // Mở rộng hồ sơ hành chính (docs/DECISIONS.md #034) — text/date tự do, không danh mục.
   nationalIdIssuedAt: Date | null;
   nationalIdIssuedPlace: string | null;
@@ -63,7 +65,7 @@ export class PatientRepository {
   list(
     tx: Prisma.TransactionClient,
     tenantId: string,
-    params: { cursor?: string; take: number; search?: { raw: string; normalized: string } },
+    params: { cursor?: string; take: number; search?: { raw: string; normalized: string }; sort?: 'asc' | 'desc' },
   ): Promise<Patient[]> {
     const where: Prisma.PatientWhereInput = { tenantId, deletedAt: null };
     if (params.search) {
@@ -75,7 +77,9 @@ export class PatientRepository {
     }
     return tx.patient.findMany({
       where,
-      orderBy: { id: 'asc' },
+      // `id` là UUIDv7 (time-ordered) — sắp theo `id` tương đương sắp theo thời điểm tạo, không cần
+      // sắp theo `createdAt` riêng. `desc` phục vụ popup "Tìm kiếm khách hàng" (hồ sơ mới nhất trước).
+      orderBy: { id: params.sort ?? 'asc' },
       take: params.take,
       ...(params.cursor ? { cursor: { id: params.cursor }, skip: 1 } : {}),
     });

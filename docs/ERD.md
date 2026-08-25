@@ -1,6 +1,6 @@
 # ERD: NEXAMed v1
 
-**Version**: v1.25 — 25/08/2026 (xem mục 9 để biết lịch sử thay đổi)
+**Version**: v1.26 — 25/08/2026 (xem mục 9 để biết lịch sử thay đổi)
 **Phạm vi**: chỉ các bảng thuộc v1 (Đặt lịch, Tiếp nhận, Khám bệnh, Kê đơn). Bảng của v2+ (viện phí, kho thuốc, BHYT) **không** tạo ở giai đoạn này.
 **Căn cứ**: `docs/product/prd.md` v1.0, `docs/product/plan.md` v1.0, `.claude/docs/data-model.md`
 
@@ -469,6 +469,8 @@ erDiagram
 | `patient` | Hồ sơ hành chính | `national_id_enc` mã hoá AES-256-GCM; `national_id_hash` để tra trùng; `address_json` lưu địa chỉ (PAT-01) |
 | `insurance_card` | Thẻ BHYT | v1 chỉ lưu và hiển thị, không tính chi trả |
 | `patient_allergen` | Dị nguyên đã biết | **Mới (Sprint 4, `docs/DECISIONS.md` 2026-08-25)** — bảng NỐI `patient` ↔ `allergen` (danh mục "Dị nguyên" toàn hệ thống, #069), phục vụ PRE-03 chính xác hơn `patient.allergyNote` tự do. Đủ 8 cột bắt buộc (dữ liệu nghiệp vụ chạm bệnh nhân, khác danh mục hệ thống). `allergenId` FK thường (không composite) tới `allergen.id` — cùng khuôn `diagnosis.icd10Code`. `patient.allergyNote` GIỮ NGUYÊN làm ghi chú bổ sung tự do, không đổi/xoá |
+| `patient_condition` | Bệnh lý nền + thói quen/lối sống có cấu trúc | **Mới (Sprint 5, 25/08/2026)** — mảng mã ICD-10 (bệnh lý nền VÀ thói quen dùng chung, thói quen mã hoá Chương XXI Z72.x), thay khối chip "Tiền sử bản thân" text tự do cũ. `icd10Code` FK thường tới `icd10_catalog.code`. Đủ 8 cột bắt buộc, partial unique `(tenant_id, patient_id, icd10_code) WHERE deleted_at IS NULL` (C19) |
+| `patient_family_history` | Tiền sử gia đình có cấu trúc | **Mới (Sprint 5, 25/08/2026)** — ma trận Quan hệ huyết thống (`relation`, enum `FamilyRelation` 5 giá trị) × Bệnh lý (`icd10Code`, FK thường) × `age_of_onset_years` (nullable). Đủ 8 cột bắt buộc. KHÔNG unique — nhiều người thân cùng quan hệ có thể cùng mắc 1 bệnh, mỗi người 1 dòng riêng. Thay `patient.familyHistory` (text tự do cũ, cột DB giữ nguyên nhưng ngừng đọc/ghi từ UI) |
 
 `patient.merged_into_id` tự trỏ về `patient` trong cùng tenant, dùng cho luồng gộp hồ sơ trùng (PAT-04). Bản ghi nguồn không xoá, chỉ ngừng cho tạo lượt khám mới.
 
@@ -479,6 +481,8 @@ erDiagram
 **`address_json.province`/`.ward` (v1.8, `docs/DECISIONS.md` #038, đảo ngược tiếp phần Tỉnh/Xã của #034)**: nay lưu **mã** tham chiếu bảng `province`/`ward` mới (ví dụ `"1"`, `"10105001"`), không lưu tên — cùng cách `ethnicity`/`nationality` đã làm ở #037. Chọn qua Combobox cascading (chọn Tỉnh trước để lọc Xã) ở web thay vì gõ tay.
 
 **`personal_history`/`family_history` (v1.24, `docs/DECISIONS.md` #068)** — chuyển từ `clinical_note.section` (`PERSONAL_HISTORY`/`FAMILY_HISTORY`, gắn theo từng `encounter_id`) sang đây, đúng khuôn `allergy_note`: dữ liệu chung của bệnh nhân, ít đổi giữa các lần khám, sửa tại chỗ qua `PATCH /patients/:id` (permission `doctor.patient.update=global` đã có sẵn từ #060) thay vì phải nhập lại từ đầu mỗi lượt khám mới — đúng lỗ hổng chủ dự án phát hiện khi dùng thử.
+
+**Tiền sử bản thân/gia đình chuyển sang dữ liệu có cấu trúc (v1.26, Sprint 5, 25/08/2026)** — mockup Artifact duyệt qua 2 vòng chỉnh sửa. `patient.family_history` (text tự do) GIỮ NGUYÊN trong DB nhưng KHÔNG còn đọc/ghi từ UI mới — thay bằng bảng `patient_family_history` (mới, xem model riêng bên dưới). `patient.personal_history` GIỮ NGUYÊN Ý NGHĨA làm ghi chú bổ sung tự do, cạnh chip bệnh lý nền có cấu trúc lưu ở bảng `patient_condition` (mới) — bệnh lý nền VÀ thói quen/lối sống (hút thuốc/rượu bia/lười vận động) đều lưu chung bảng này bằng mã ICD-10 (thói quen dùng Chương XXI Z72.x), không tách cột riêng. `patient.allergy_note` GIỮ NGUYÊN trong DB, KHÔNG còn đọc/ghi từ UI mới (field "Ghi chú dị ứng khác" đã bỏ khỏi giao diện theo yêu cầu). Đồng thời mở quyền `allergen_catalog.create` (tạo mới, KHÔNG sửa/ẩn) cho lễ tân/điều dưỡng/bác sĩ — trước đây chỉ `clinic_admin` (`allergen_catalog.manage`) tạo được, để cho phép thêm dị nguyên mới ngay lúc nhập Tiền sử.
 
 ### 3.3 Lịch hẹn và lượt khám
 
@@ -558,6 +562,7 @@ Những ràng buộc này đặt ở DB, không chỉ ở tầng ứng dụng.
 | C16 | `UNIQUE (tenant_id) WHERE is_default = true` | `department` | "Hàng đợi ảo" (v1.23, `docs/DECISIONS.md` #064) — đúng 1 Khoa mặc định ("Khoa chung")/tenant, dùng làm fallback `encounter.department_id` |
 | C17 | `UNIQUE (tenant_id, encounter_id) WHERE deleted_at IS NULL` | `prescription` | Sprint 4 — đúng 1 đơn ĐANG HIỆU LỰC (nháp hoặc đã ký, chưa bị đính chính/xoá) mỗi lượt khám, cùng khuôn C11/C16 |
 | C18 | `UNIQUE (tenant_id, patient_id, allergen_id) WHERE deleted_at IS NULL` | `patient_allergen` | Sprint 4 — gỡ rồi gán lại đúng dị nguyên đã từng gỡ không vi phạm unique, cùng khuôn C3/C14 |
+| C19 | `UNIQUE (tenant_id, patient_id, icd10_code) WHERE deleted_at IS NULL` | `patient_condition` | Sprint 5 — gỡ rồi gán lại đúng bệnh lý nền đã từng gỡ không vi phạm unique, cùng khuôn C18 |
 
 ---
 
@@ -593,7 +598,7 @@ Khớp với `docs/product/plan.md`.
 | S2 (tuần 3-4) | `patient`, `insurance_card`, `appointment` |
 | S3 (tuần 5-6) | `icd10_catalog`, `encounter`, `vital_sign`, `diagnosis`, `clinical_note` |
 | S4 (tuần 7-8) | `drug`, `prescription`, `prescription_item`, `patient_allergen` (mới, ngoài đặc tả gốc — liên kết `allergen_catalog` #069 với `patient`, `docs/DECISIONS.md` 2026-08-25) |
-| S5-S6 | `invoice`, `invoice_line`, `payment` (thu ngân cơ bản — mở rộng phạm vi v1 chốt 2026-08-22, `docs/DECISIONS.md` #072); thêm cột `supersedes_id`, `amendment_reason` nếu chưa tạo, và trigger C8 |
+| S5-S6 | `patient_condition`, `patient_family_history` (Tiền sử có cấu trúc, 25/08/2026); `invoice`, `invoice_line`, `payment` (thu ngân cơ bản — mở rộng phạm vi v1 chốt 2026-08-22, `docs/DECISIONS.md` #072); thêm cột `supersedes_id`, `amendment_reason` nếu chưa tạo, và trigger C8 |
 
 Khuyến nghị: tạo đủ 8 cột bắt buộc **ngay từ migration đầu tiên của mỗi bảng**, kể cả khi tính năng dùng tới chúng ở sprint sau. Thêm cột vào bảng đã có dữ liệu thật tốn hơn nhiều.
 
@@ -657,3 +662,4 @@ Khi thêm, các bảng này vẫn phải đủ 8 cột bắt buộc và tuân th
 | v1.23 | 21/08/2026 | "Hàng đợi ảo" (Virtual Queue theo Bác sĩ/Khoa, `docs/DECISIONS.md` #064) — `encounter.doctor_id` đổi thành **nullable** (`NULL` = lượt khám còn trong hàng chờ chung Khoa, chưa được bác sĩ nào nhận). Thêm `encounter.department_id` **bắt buộc** (composite FK → `department`). Thêm `department.is_default` (đúng 1 Khoa mặc định "Khoa chung"/tenant, partial unique — C16), tự seed lúc tạo tenant (`seedDefaultRolesForTenant`). "Hàng đợi khám" không còn lọc CHỈ theo `doctorId` — gộp thêm nhánh "hàng chờ chung Khoa của actor" khi client truyền `includeDepartmentPool=true`. Endpoint "Nhận ca" (mở rộng `POST /encounters/:id/start`) — set `doctorId=actor` atomic khi ticket đang `doctorId=NULL`, chỉ cho bác sĩ cùng Khoa. Migration `20260820210000_encounter_virtual_queue`. Xem `docs/DECISIONS.md` #064. |
 | v1.24 | 21/08/2026 | Lỗ hổng thật chủ dự án phát hiện: "Tiền sử bản thân"/"Tiền sử gia đình" trước đây gắn `clinical_note.section` theo TỪNG lượt khám (`PERSONAL_HISTORY`/`FAMILY_HISTORY`) nên lượt khám mới không kế thừa, bác sĩ phải gõ lại từ đầu dù nội dung hầu như không đổi. Chuyển 2 mục này thành `patient.personal_history`/`family_history` (nullable, đúng khuôn `patient.allergy_note`) — dữ liệu chung của bệnh nhân, sửa tại chỗ qua `PATCH /patients/:id`, không nhập lại mỗi lượt khám. `clinical_note.section` còn lại 6 giá trị (bỏ 2 giá trị trên). Migration `20260821150000_patient_history_fields` backfill nội dung KHÔNG RỖNG gần nhất của mỗi bệnh nhân từ `clinical_note` cũ trước khi xoá 2 section này và dựng lại enum. Xem `docs/DECISIONS.md` #068. |
 | v1.25 | 25/08/2026 | Sprint 4 (Kê đơn, S4-01→04) — `drug`/`prescription`/`prescription_item` từ đặc tả thiết kế (đã có sẵn trong ERD từ đầu) chuyển thành ĐÃ HIỆN THỰC, đúng nguyên schema đã đặc tả, không đổi cột nào — migration `20260825090000_prescription`. `prescription` là `SignableEntity` đầu tiên thật sự dùng logic ký; C8 lần đầu là DB trigger thật (chỉ chặn sửa nội dung đã ký, cho phép `printed_at`/soft-delete/`version` tiếp tục đổi) — thêm C17 (đúng 1 đơn hiệu lực/lượt khám). Thêm bảng MỚI `patient_allergen` (ngoài đặc tả gốc — migration `20260825100000_patient_allergen`, thêm C18) liên kết `patient` với danh mục "Dị nguyên" (`allergen_catalog`, #069) đã có sẵn nhưng chưa từng dùng tới, phục vụ PRE-03 chính xác hơn `patient.allergy_note` tự do (giữ nguyên, không đổi/xoá). Xem `docs/DECISIONS.md` (chốt qua `AskUserQuestion` 2026-08-25) và `docs/product/future-modules-reference.md` §2.2.1 (đề xuất kho/hoá đơn thuốc bị loại khỏi phạm vi v1, lưu làm đặc tả v2.1). |
+| v1.26 | 25/08/2026 | Tiền sử bản thân/gia đình chuyển sang dữ liệu có cấu trúc (Sprint 5, mockup Artifact duyệt 2 vòng) — thêm bảng MỚI `patient_condition` (bệnh lý nền + thói quen/lối sống dùng CHUNG, mã ICD-10 Chương XXI Z72.x cho thói quen — migration `20260825110000_patient_history_structured`, thêm C19) và `patient_family_history` (ma trận Quan hệ×Bệnh lý+tuổi phát hiện, KHÔNG unique). `patient.family_history`/`allergy_note` GIỮ NGUYÊN trong DB nhưng ngừng đọc/ghi từ UI mới; `patient.personal_history` giữ nguyên Ý NGHĨA làm ghi chú bổ sung. Thêm permission `allergen_catalog.create` (tách khỏi `manage`) — lễ tân/điều dưỡng/bác sĩ tạo được dị nguyên mới, chỉ `clinic_admin` sửa/ẩn. Kèm popup "Tìm kiếm khách hàng" mới ở Tiếp nhận (không đổi schema, chỉ dùng lại `GET /patients`/`by-national-id` sẵn có). Xem plan đã duyệt (chốt qua `AskUserQuestion` 25/08/2026). |

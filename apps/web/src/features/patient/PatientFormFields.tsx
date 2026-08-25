@@ -1,15 +1,33 @@
-import type { PatientGender } from '@nexamed/shared';
-import { calculateAgeYears, computeAgeLabel, computeBirthYear } from './patient-form.utils';
+import { useState } from 'react';
+import { MagnifyingGlass, PencilSimple } from '@phosphor-icons/react';
+import type { FamilyRelation, PatientGender } from '@nexamed/shared';
+import { calculateAgeYears, computeAgeLabel, computeBirthYear, findRepeatedFamilyConditions } from './patient-form.utils';
 import { PatientAvatarUpload } from './PatientAvatarUpload';
 import { PhoneDuplicateWarning } from './PhoneDuplicateWarning';
+import { PatientHistoryDialog } from './PatientHistoryDialog';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { useProvincesQuery, useWardsQuery } from '../geo/geo.queries';
-import { useAllergensQuery } from '../allergen/allergen.queries';
 import { Combobox, withLegacyValueOption, type ComboboxOption } from '../../shared/ui/Combobox';
-import { MultiSelectCombobox } from '../../shared/ui/MultiSelectCombobox';
 
 /** Khớp `ADULT_AGE_THRESHOLD` trong `packages/shared/src/patient.ts` (docs/DECISIONS.md #035). */
 const ADULT_AGE_THRESHOLD = 18;
+
+/** Một bệnh lý nền/thói quen đã chọn (Sprint 5) — thói quen dùng chung mảng này, mã ICD-10 Chương XXI (Z72.x). */
+export interface ConditionDraft {
+  icd10Code: string;
+  icd10Name: string;
+}
+
+/** Một dòng "Tiền sử gia đình" (Sprint 5) — `draftId` chỉ dùng làm React key/xoá dòng lúc sửa, KHÔNG gửi lên server. */
+export interface FamilyHistoryRowDraft {
+  draftId: string;
+  /** Rỗng khi chưa chọn — cùng nguyên tắc "không tô sẵn giá trị mặc định" ở `gender`. */
+  relation: FamilyRelation | '';
+  icd10Code: string;
+  icd10Name: string;
+  /** Dạng chuỗi để bind trực tiếp vào `<input type="number">`; rỗng nếu chưa nhập. */
+  ageOfOnsetYears: string;
+}
 
 /** Form state phẳng (địa chỉ không lồng) — quy đổi sang/từ payload API ở nơi gọi (New/Edit page). */
 export interface PatientFormValues {
@@ -29,11 +47,14 @@ export interface PatientFormValues {
   ward: string;
   neighborhood: string;
   province: string;
-  allergyNote: string;
-  /** Dị nguyên đã biết — liên kết danh mục "Dị nguyên" có sẵn (Sprint 4, chốt 2026-08-25), KHÁC allergyNote (text tự do, vẫn giữ làm ghi chú bổ sung). */
+  /** Dị nguyên đã biết — liên kết danh mục "Dị nguyên" có sẵn (Sprint 4, chốt 2026-08-25). "Ghi chú dị ứng khác" (text tự do) đã bỏ khỏi UI (Sprint 5) — không có trường thay thế. */
   allergenIds: string[];
+  /** Ghi chú bổ sung tự do cạnh chip bệnh lý nền (Sprint 5) — KHÁC ý nghĩa "Tiền sử bản thân" cũ (nay đã có `conditions`). */
   personalHistory: string;
-  familyHistory: string;
+  /** Bệnh lý nền + thói quen/lối sống có cấu trúc (Sprint 5) — thay ô text "Tiền sử bản thân" cũ. */
+  conditions: ConditionDraft[];
+  /** Tiền sử gia đình có cấu trúc (Sprint 5) — thay ô text "Tiền sử gia đình" cũ. */
+  familyHistoryRows: FamilyHistoryRowDraft[];
   relativeFullName: string;
   relativeRelationship: string;
   relativePhone: string;
@@ -56,10 +77,10 @@ export const EMPTY_PATIENT_FORM: PatientFormValues = {
   ward: '',
   neighborhood: '',
   province: '',
-  allergyNote: '',
   allergenIds: [],
   personalHistory: '',
-  familyHistory: '',
+  conditions: [],
+  familyHistoryRows: [],
   relativeFullName: '',
   relativeRelationship: '',
   relativePhone: '',
@@ -108,6 +129,23 @@ function Field({
   );
 }
 
+/** Badge trạng thái 1 loại Tiền sử trong dòng tóm tắt (mockup đã duyệt) — `empty` nhạt, `teal` đã có dữ liệu, `amber` cần chú ý (phát hiện trùng bệnh lý gia đình), `rose` an toàn/dị ứng. */
+function HistorySummaryPill({ label, count, tone }: { label: string; count: number; tone: 'empty' | 'teal' | 'amber' | 'rose' }) {
+  const toneClassName =
+    tone === 'empty'
+      ? 'border-slate-300 bg-white text-slate-400'
+      : tone === 'teal'
+        ? 'border-brand-teal bg-brand-teal-tint text-brand-teal-active'
+        : tone === 'amber'
+          ? 'border-amber-300 bg-amber-50 text-amber-700'
+          : 'border-rose-300 bg-rose-50 text-rose-700';
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold ${toneClassName}`}>
+      {label} · {count > 0 ? count : 'chưa ghi nhận'}
+    </span>
+  );
+}
+
 /**
  * Form nhập liệu hồ sơ bệnh nhân — dùng chung cho tạo mới (PatientNewPage) và sửa tại chỗ
  * (PatientDetailPage, không modal — đã chốt với chủ dự án). Mở rộng field (docs/DECISIONS.md
@@ -128,6 +166,7 @@ export function PatientFormFields({
   patientCode,
   photoUrl,
   version,
+  onSearchPatient,
 }: {
   values: PatientFormValues;
   onChange: (values: PatientFormValues) => void;
@@ -149,16 +188,18 @@ export function PatientFormFields({
   patientCode?: string;
   photoUrl?: string | null;
   version?: number;
+  /**
+   * Icon "Tìm kiếm khách hàng" cạnh ô Mã bệnh nhân (Sprint 5) — CHỈ truyền từ `ReceptionIntakeForm.tsx`
+   * (mở `PatientSearchDialog`). Không truyền = không hiện icon (Thêm/Sửa bệnh nhân không cần tìm
+   * "bệnh nhân khác" trong lúc đang xem/sửa đúng 1 hồ sơ).
+   */
+  onSearchPatient?: () => void;
 }) {
   function set<K extends keyof PatientFormValues>(key: K, value: PatientFormValues[K]) {
     onChange({ ...values, [key]: value });
   }
 
-  const allergensQuery = useAllergensQuery();
-  const allergenOptions: ComboboxOption[] = (allergensQuery.data?.items ?? []).map((a) => ({
-    value: a.id,
-    label: `${a.name} · ${a.allergenGroupName}`,
-  }));
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
 
   const ethnicityQuery = useReferenceCatalogQuery('ETHNICITY');
   const nationalityQuery = useReferenceCatalogQuery('NATIONALITY');
@@ -212,13 +253,27 @@ export function PatientFormFields({
 
         <div className={`flex-1 ${fieldGridClassName}`}>
           <Field id="patientCode" label="Mã bệnh nhân">
-            <input
-              id="patientCode"
-              readOnly
-              disabled
-              value={patientCode ?? ''}
-              className={readOnlyInputClassName}
-            />
+            <div className="flex items-center gap-1.5">
+              <input
+                id="patientCode"
+                readOnly
+                disabled
+                value={patientCode ?? ''}
+                className={readOnlyInputClassName}
+              />
+              {onSearchPatient && (
+                <button
+                  type="button"
+                  onClick={onSearchPatient}
+                  disabled={disabled}
+                  title="Tìm kiếm khách hàng đã có"
+                  aria-label="Tìm kiếm khách hàng đã có"
+                  className="flex h-9.5 w-9.5 flex-none items-center justify-center rounded-md border border-blue-300 bg-blue-50 text-blue-600 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <MagnifyingGlass size={16} weight="bold" />
+                </button>
+              )}
+            </div>
           </Field>
 
           <Field id="fullName" label="Họ và tên" required>
@@ -390,54 +445,51 @@ export function PatientFormFields({
             />
           </Field>
 
-          {/* Tiền sử bản thân/gia đình/dị ứng (docs/DECISIONS.md #068) — dùng chung mọi lượt khám
-              của bệnh nhân, không nhập lại theo từng lần khám (khác ghi chú lâm sàng ở màn khám). */}
-          <Field id="personalHistory" label="Tiền sử bản thân" className="col-span-2 sm:col-span-3 lg:col-span-2">
-            <textarea
-              id="personalHistory"
-              rows={2}
-              disabled={disabled}
-              value={values.personalHistory}
-              onChange={(e) => set('personalHistory', e.target.value)}
-              className={inputClassName}
-            />
-          </Field>
-
-          <Field id="familyHistory" label="Tiền sử gia đình" className="col-span-2 sm:col-span-3 lg:col-span-2">
-            <textarea
-              id="familyHistory"
-              rows={2}
-              disabled={disabled}
-              value={values.familyHistory}
-              onChange={(e) => set('familyHistory', e.target.value)}
-              className={inputClassName}
-            />
-          </Field>
-
-          <Field id="allergenIds" label="Dị nguyên đã biết" className="col-span-2 sm:col-span-3 lg:col-span-4">
-            <MultiSelectCombobox
-              id="allergenIds"
-              values={values.allergenIds}
-              options={allergenOptions}
-              onChange={(v) => set('allergenIds', v)}
-              disabled={disabled}
-              placeholder="Chọn từ danh mục Dị nguyên..."
-            />
-          </Field>
-
-          <Field id="allergyNote" label="Ghi chú dị ứng khác" className="col-span-2 sm:col-span-3 lg:col-span-4">
-            <textarea
-              id="allergyNote"
-              rows={2}
-              disabled={disabled}
-              value={values.allergyNote}
-              onChange={(e) => set('allergyNote', e.target.value)}
-              className={inputClassName}
-              placeholder="Nội dung tự do khác — không có trong danh mục Dị nguyên ở trên"
-            />
+          {/* Tiền sử bản thân/gia đình/dị ứng (docs/DECISIONS.md #068, chuyển sang dữ liệu có cấu
+              trúc Sprint 5) — dùng chung mọi lượt khám của bệnh nhân, không nhập lại theo từng lần
+              khám (khác ghi chú lâm sàng ở màn khám). 1 dòng tóm tắt + nút "Thêm/Sửa" mở
+              `PatientHistoryDialog` thay 4 field rời rạc trước đây (mockup đã duyệt). */}
+          <Field id="history" label="Tiền sử" className="col-span-2 sm:col-span-3 lg:col-span-4">
+            <div className="flex flex-wrap items-center gap-2 rounded-md border border-slate-300 bg-slate-50 px-3 py-2.5">
+              <div className="flex flex-1 flex-wrap gap-1.5">
+                <HistorySummaryPill
+                  label="Bản thân"
+                  count={values.conditions.length}
+                  tone={values.conditions.length > 0 ? 'teal' : 'empty'}
+                />
+                <HistorySummaryPill
+                  label="Gia đình"
+                  count={values.familyHistoryRows.filter((r) => r.relation !== '' && r.icd10Code !== '').length}
+                  tone={
+                    findRepeatedFamilyConditions(values.familyHistoryRows).length > 0
+                      ? 'amber'
+                      : values.familyHistoryRows.length > 0
+                        ? 'teal'
+                        : 'empty'
+                  }
+                />
+                <HistorySummaryPill label="Dị ứng" count={values.allergenIds.length} tone={values.allergenIds.length > 0 ? 'rose' : 'empty'} />
+              </div>
+              <button
+                type="button"
+                onClick={() => setHistoryDialogOpen(true)}
+                disabled={disabled}
+                className="flex flex-none items-center gap-1.5 rounded-md border border-blue-300 bg-white px-3 py-1.5 text-sm font-semibold text-blue-600 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <PencilSimple size={14} weight="bold" />
+                Thêm / Sửa
+              </button>
+            </div>
           </Field>
         </div>
         </div>
+
+        <PatientHistoryDialog
+          open={historyDialogOpen}
+          onClose={() => setHistoryDialogOpen(false)}
+          values={values}
+          onChange={onChange}
+        />
       </div>
 
       <div className={sectionBoxClassName}>

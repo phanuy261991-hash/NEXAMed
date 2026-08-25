@@ -381,7 +381,7 @@ describe('HTTP e2e — /api/v1/encounters', () => {
       expect(res.body.data.encounter.status).toBe('IN_CONSULTATION');
       expect(res.body.data.patient.fullName).toBe('Bệnh nhân e2e');
       expect(res.body.data.patient.personalHistory).toBeNull();
-      expect(res.body.data.patient.familyHistory).toBeNull();
+      expect(res.body.data.patient.familyHistoryRows).toEqual([]);
       expect(res.body.data.vitalSigns).toBeNull();
       expect(res.body.data.history).toEqual([]);
       expect(res.body.data.diagnoses).toEqual([]);
@@ -467,11 +467,16 @@ describe('HTTP e2e — /api/v1/encounters', () => {
       const firstEncounterId = await directEncounter(13);
       await request(app.getHttpServer()).post(`/api/v1/encounters/${firstEncounterId}/start`).set(authed(doctorAToken)).send({ version: 1 });
 
-      // Bác sĩ nhập tiền sử ở lượt khám đầu — ghi thẳng patient (như allergyNote), không phải clinical_note.
+      // Bác sĩ nhập tiền sử ở lượt khám đầu — ghi thẳng patient (như allergyNote), không phải
+      // clinical_note. familyHistoryRows có cấu trúc (Sprint 5) thay `familyHistory` text tự do cũ.
       const patchRes = await request(app.getHttpServer())
         .patch(`/api/v1/patients/${patientId}`)
         .set(authed(doctorAToken))
-        .send({ personalHistory: 'Tăng huyết áp', familyHistory: 'Mẹ bị đái tháo đường', version: patientVersion });
+        .send({
+          personalHistory: 'Tăng huyết áp',
+          familyHistoryRows: [{ relation: 'MOTHER', icd10Code: 'E11', ageOfOnsetYears: 50 }],
+          version: patientVersion,
+        });
       expect(patchRes.status).toBe(200);
 
       await request(app.getHttpServer())
@@ -487,7 +492,13 @@ describe('HTTP e2e — /api/v1/encounters', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.data.patient.personalHistory).toBe('Tăng huyết áp');
-      expect(res.body.data.patient.familyHistory).toBe('Mẹ bị đái tháo đường');
+      expect(res.body.data.patient.familyHistoryRows).toHaveLength(1);
+      expect(res.body.data.patient.familyHistoryRows[0]).toMatchObject({
+        relation: 'MOTHER',
+        relationLabel: 'Mẹ ruột',
+        icd10Code: 'E11',
+        ageOfOnsetYears: 50,
+      });
     });
 
     it('bác sĩ khác cùng tenant xem được (encounter.read=global cho vai trò doctor, đúng ENC-01 "xem toàn bộ tiền sử") → 200', async () => {

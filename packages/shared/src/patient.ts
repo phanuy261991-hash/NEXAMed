@@ -24,6 +24,27 @@ export const patientAddressSchema = z.object({
 export type PatientAddress = z.infer<typeof patientAddressSchema>;
 
 /**
+ * Quan hệ huyết thống cho Tiền sử gia đình có cấu trúc (Sprint 5) — khớp enum DB `FamilyRelation`.
+ * `FAMILY_RELATION_LABELS` là nhãn tiếng Việt dùng chung web (Combobox/hiển thị tóm tắt).
+ */
+export const FAMILY_RELATIONS = [
+  'FATHER',
+  'MOTHER',
+  'SIBLING',
+  'PATERNAL_GRANDPARENT',
+  'MATERNAL_GRANDPARENT',
+] as const;
+export const familyRelationSchema = z.enum(FAMILY_RELATIONS);
+export type FamilyRelation = z.infer<typeof familyRelationSchema>;
+export const FAMILY_RELATION_LABELS: Record<FamilyRelation, string> = {
+  FATHER: 'Bố ruột',
+  MOTHER: 'Mẹ ruột',
+  SIBLING: 'Anh/Chị/Em ruột',
+  PATERNAL_GRANDPARENT: 'Ông/Bà nội',
+  MATERNAL_GRANDPARENT: 'Ông/Bà ngoại',
+};
+
+/**
  * Mở rộng hồ sơ hành chính (docs/DECISIONS.md #034). `ethnicity`/`nationality`/`occupation` đều
  * là mã (`code`) tham chiếu `reference_catalog` (ví dụ "VNM", "1"; `occupation` đảo ngược tiếp
  * sau #034 — không có nguồn dữ liệu chính thức nên không seed cứng), chọn qua dropdown ở web; vẫn
@@ -45,10 +66,9 @@ const patientRequestFieldsSchema = z.object({
   insuranceNumber: z.string().min(1).optional(),
   address: patientAddressSchema.optional(),
   allergyNote: z.string().optional(),
-  // Tiền sử bản thân/gia đình (docs/DECISIONS.md #068) — chuyển từ clinical_note (theo lượt khám)
-  // sang đây, đúng khuôn allergyNote: chung, ít đổi, sửa tại chỗ, không nhập lại mỗi lượt khám.
+  // Tiền sử bản thân (docs/DECISIONS.md #068) — GIỮ NGUYÊN làm ghi chú bổ sung tự do cạnh chip
+  // bệnh lý nền (Sprint 5, xem conditionCodes), chung mọi lượt khám, sửa tại chỗ.
   personalHistory: z.string().optional(),
-  familyHistory: z.string().optional(),
   relativeFullName: z.string().min(1).optional(),
   relativeRelationship: z.string().min(1).optional(),
   relativePhone: z.string().min(1).optional(),
@@ -59,6 +79,21 @@ const patientRequestFieldsSchema = z.object({
   // `saveDiagnosesRequestSchema`) — `allergyNote` GIỮ NGUYÊN làm ghi chú bổ sung tự do, không đổi ý
   // nghĩa/xoá field này.
   allergenIds: z.array(z.string().uuid()).optional(),
+  // Bệnh lý nền + thói quen/lối sống, dữ liệu có cấu trúc (Sprint 5) — mã ICD-10 (thói quen dùng
+  // Chương XXI Z72.x, KHÔNG tách trường riêng). THAY THẾ TOÀN BỘ khi có mặt, cùng ngữ nghĩa
+  // `allergenIds`.
+  conditionCodes: z.array(z.string().min(1)).optional(),
+  // Tiền sử gia đình có cấu trúc (Sprint 5) — thay `familyHistory` text tự do cũ (cột DB giữ
+  // nguyên, không còn nhận từ client). THAY THẾ TOÀN BỘ khi có mặt.
+  familyHistoryRows: z
+    .array(
+      z.object({
+        relation: familyRelationSchema,
+        icd10Code: z.string().min(1),
+        ageOfOnsetYears: z.number().int().min(0).max(120).optional(),
+      }),
+    )
+    .optional(),
 });
 
 /** Ngưỡng tuổi trưởng thành — dùng cho ràng buộc CCCD bắt buộc bên dưới (docs/DECISIONS.md #035). */
@@ -130,6 +165,24 @@ export const patientAllergenItemSchema = z.object({
 });
 export type PatientAllergenItem = z.infer<typeof patientAllergenItemSchema>;
 
+/** Một bệnh lý nền/thói quen đã gán cho bệnh nhân (Sprint 5) — `icd10Name` denormalized (join ở tầng service). */
+export const patientConditionItemSchema = z.object({
+  icd10Code: z.string(),
+  icd10Name: z.string(),
+});
+export type PatientConditionItem = z.infer<typeof patientConditionItemSchema>;
+
+/** Một dòng Tiền sử gia đình (Sprint 5) — `icd10Name` denormalized, `relationLabel` tiện hiển thị (server tự map từ `FAMILY_RELATION_LABELS`). */
+export const patientFamilyHistoryItemSchema = z.object({
+  id: z.string().uuid(),
+  relation: familyRelationSchema,
+  relationLabel: z.string(),
+  icd10Code: z.string(),
+  icd10Name: z.string(),
+  ageOfOnsetYears: z.number().int().nullable(),
+});
+export type PatientFamilyHistoryItem = z.infer<typeof patientFamilyHistoryItemSchema>;
+
 export const patientDetailSchema = patientSummarySchema.extend({
   nationalId: z.string().nullable(),
   nationalIdIssuedAt: z.string().nullable(),
@@ -141,12 +194,15 @@ export const patientDetailSchema = patientSummarySchema.extend({
   address: patientAddressSchema.nullable(),
   allergyNote: z.string().nullable(),
   personalHistory: z.string().nullable(),
-  familyHistory: z.string().nullable(),
   relativeFullName: z.string().nullable(),
   relativeRelationship: z.string().nullable(),
   relativePhone: z.string().nullable(),
   relativeAddress: z.string().nullable(),
   allergens: z.array(patientAllergenItemSchema),
+  // Bệnh lý nền + thói quen/lối sống, Tiền sử gia đình có cấu trúc (Sprint 5) — thay
+  // `familyHistory` text tự do cũ (cột DB giữ nguyên, không còn trả trong response nữa).
+  conditions: z.array(patientConditionItemSchema),
+  familyHistoryRows: z.array(patientFamilyHistoryItemSchema),
   photoUrl: z.string().nullable(),
   mergedIntoId: z.string().uuid().nullable(),
 });
@@ -167,6 +223,10 @@ export const listPatientsQuerySchema = z.object({
   cursor: z.string().uuid().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(20),
   q: z.string().min(1).max(100).optional(),
+  // Mặc định `created_asc` (giữ nguyên hành vi cũ — Danh sách bệnh nhân không truyền tham số này).
+  // `created_desc` phục vụ popup "Tìm kiếm khách hàng" hiện sẵn vài hồ sơ mới tạo gần đây khi chưa
+  // gõ tiêu chí tìm (id là UUIDv7 nên sắp theo id tương đương sắp theo thời điểm tạo).
+  sort: z.enum(['created_asc', 'created_desc']).default('created_asc'),
 });
 export type ListPatientsQuery = z.infer<typeof listPatientsQuerySchema>;
 

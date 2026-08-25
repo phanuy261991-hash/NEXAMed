@@ -11,21 +11,22 @@ import {
   stripVietnameseDiacritics,
   type StoragePort,
 } from '@nexamed/core';
-import type {
-  CheckPatientDuplicateQuery,
-  CheckPatientDuplicateResponse,
-  CreatePatientRequest,
-  ListPatientsQuery,
-  ListPatientsResponse,
-  PatientAddress,
-  PatientByNationalIdQuery,
-  PatientByNationalIdResponse,
-  PatientByPhoneQuery,
-  PatientByPhoneResponse,
-  PatientDetail,
-  PatientGender,
-  PatientSummary,
-  UpdatePatientRequest,
+import {
+  FAMILY_RELATION_LABELS,
+  type CheckPatientDuplicateQuery,
+  type CheckPatientDuplicateResponse,
+  type CreatePatientRequest,
+  type ListPatientsQuery,
+  type ListPatientsResponse,
+  type PatientAddress,
+  type PatientByNationalIdQuery,
+  type PatientByNationalIdResponse,
+  type PatientByPhoneQuery,
+  type PatientByPhoneResponse,
+  type PatientDetail,
+  type PatientGender,
+  type PatientSummary,
+  type UpdatePatientRequest,
 } from '@nexamed/shared';
 import { randomUUID } from 'node:crypto';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
@@ -36,6 +37,8 @@ import { signFileToken } from '../../infrastructure/storage/signed-url';
 import type { RequestMeta } from '../../common/request-meta';
 import { PatientRepository, type UpdatePatientData } from './patient.repository';
 import { PatientAllergenRepository, type PatientAllergenRow } from './patient-allergen.repository';
+import { PatientConditionRepository, type PatientConditionRow } from './patient-condition.repository';
+import { PatientFamilyHistoryRepository, type PatientFamilyHistoryRow } from './patient-family-history.repository';
 
 /** Ảnh đại diện sống 15 phút — bằng access token TTL, tự làm mới mỗi lần gọi lại API chi tiết. */
 const PHOTO_URL_TTL_SECONDS = 15 * 60;
@@ -67,6 +70,8 @@ export class PatientService {
     private readonly unitOfWork: UnitOfWorkService,
     private readonly patientRepository: PatientRepository,
     private readonly patientAllergenRepository: PatientAllergenRepository,
+    private readonly patientConditionRepository: PatientConditionRepository,
+    private readonly patientFamilyHistoryRepository: PatientFamilyHistoryRepository,
     private readonly codeSequenceRepository: CodeSequenceRepository,
     private readonly configService: ConfigService,
     @Inject(STORAGE_PORT) private readonly storage: StoragePort,
@@ -97,7 +102,6 @@ export class PatientService {
           addressJson: dto.address ?? Prisma.JsonNull,
           allergyNote: dto.allergyNote ?? null,
           personalHistory: dto.personalHistory ?? null,
-          familyHistory: dto.familyHistory ?? null,
           nationalIdIssuedAt: dto.nationalIdIssuedAt ? new Date(dto.nationalIdIssuedAt) : null,
           nationalIdIssuedPlace: dto.nationalIdIssuedPlace ?? null,
           ethnicity: dto.ethnicity ?? null,
@@ -119,6 +123,12 @@ export class PatientService {
       if (dto.allergenIds !== undefined && dto.allergenIds.length > 0) {
         await this.patientAllergenRepository.replaceForPatient(tx, tenantId, created.id, actorId, dto.allergenIds);
       }
+      if (dto.conditionCodes !== undefined && dto.conditionCodes.length > 0) {
+        await this.patientConditionRepository.replaceForPatient(tx, tenantId, created.id, actorId, dto.conditionCodes);
+      }
+      if (dto.familyHistoryRows !== undefined && dto.familyHistoryRows.length > 0) {
+        await this.patientFamilyHistoryRepository.replaceForPatient(tx, tenantId, created.id, actorId, dto.familyHistoryRows);
+      }
 
       await writeAuditLog(tx, tenantId, {
         actorId,
@@ -130,7 +140,9 @@ export class PatientService {
       });
 
       const allergens = await this.patientAllergenRepository.listForPatient(tx, tenantId, created.id);
-      return this.toDetail(created, encryptionKey, allergens);
+      const conditions = await this.patientConditionRepository.listForPatient(tx, tenantId, created.id);
+      const familyHistoryRows = await this.patientFamilyHistoryRepository.listForPatient(tx, tenantId, created.id);
+      return this.toDetail(created, encryptionKey, allergens, conditions, familyHistoryRows);
     });
   }
 
@@ -142,7 +154,9 @@ export class PatientService {
         throw new NotFoundException();
       }
       const allergens = await this.patientAllergenRepository.listForPatient(tx, tenantId, id);
-      return this.toDetail(patient, encryptionKey, allergens);
+      const conditions = await this.patientConditionRepository.listForPatient(tx, tenantId, id);
+      const familyHistoryRows = await this.patientFamilyHistoryRepository.listForPatient(tx, tenantId, id);
+      return this.toDetail(patient, encryptionKey, allergens, conditions, familyHistoryRows);
     });
   }
 
@@ -154,6 +168,7 @@ export class PatientService {
         cursor: query.cursor,
         take: query.limit + 1,
         search,
+        sort: query.sort === 'created_desc' ? 'desc' : 'asc',
       });
       const hasMore = rows.length > query.limit;
       const items = hasMore ? rows.slice(0, query.limit) : rows;
@@ -232,7 +247,6 @@ export class PatientService {
       if (dto.phone !== undefined) patch.phone = dto.phone;
       if (dto.allergyNote !== undefined) patch.allergyNote = dto.allergyNote;
       if (dto.personalHistory !== undefined) patch.personalHistory = dto.personalHistory;
-      if (dto.familyHistory !== undefined) patch.familyHistory = dto.familyHistory;
       if (dto.address !== undefined) patch.addressJson = dto.address ?? Prisma.JsonNull;
       if (dto.nationalId !== undefined) {
         patch.nationalIdEnc = dto.nationalId ? encryptPii(dto.nationalId, encryptionKey) : null;
@@ -265,6 +279,12 @@ export class PatientService {
       if (dto.allergenIds !== undefined) {
         await this.patientAllergenRepository.replaceForPatient(tx, tenantId, id, actorId, dto.allergenIds);
       }
+      if (dto.conditionCodes !== undefined) {
+        await this.patientConditionRepository.replaceForPatient(tx, tenantId, id, actorId, dto.conditionCodes);
+      }
+      if (dto.familyHistoryRows !== undefined) {
+        await this.patientFamilyHistoryRepository.replaceForPatient(tx, tenantId, id, actorId, dto.familyHistoryRows);
+      }
 
       await writeAuditLog(tx, tenantId, {
         actorId,
@@ -280,7 +300,9 @@ export class PatientService {
         throw new NotFoundException();
       }
       const allergens = await this.patientAllergenRepository.listForPatient(tx, tenantId, id);
-      return this.toDetail(updated, encryptionKey, allergens);
+      const conditions = await this.patientConditionRepository.listForPatient(tx, tenantId, id);
+      const familyHistoryRows = await this.patientFamilyHistoryRepository.listForPatient(tx, tenantId, id);
+      return this.toDetail(updated, encryptionKey, allergens, conditions, familyHistoryRows);
     });
   }
 
@@ -311,7 +333,13 @@ export class PatientService {
     return `••••${nationalId.slice(-4)}`;
   }
 
-  private toDetail(patient: Patient, encryptionKey: string, allergens: PatientAllergenRow[]): PatientDetail {
+  private toDetail(
+    patient: Patient,
+    encryptionKey: string,
+    allergens: PatientAllergenRow[],
+    conditions: PatientConditionRow[],
+    familyHistoryRows: PatientFamilyHistoryRow[],
+  ): PatientDetail {
     return {
       ...this.toSummary(patient, encryptionKey),
       nationalId: patient.nationalIdEnc ? decryptPii(patient.nationalIdEnc, encryptionKey) : null,
@@ -323,12 +351,20 @@ export class PatientService {
       insuranceNumber: patient.insuranceNumber,
       allergyNote: patient.allergyNote,
       personalHistory: patient.personalHistory,
-      familyHistory: patient.familyHistory,
       relativeFullName: patient.relativeFullName,
       relativeRelationship: patient.relativeRelationship,
       relativePhone: patient.relativePhone,
       relativeAddress: patient.relativeAddress,
       allergens: allergens.map((a) => ({ id: a.allergenId, name: a.allergenName, allergenGroupName: a.allergenGroupName })),
+      conditions: conditions.map((c) => ({ icd10Code: c.icd10Code, icd10Name: c.icd10Name })),
+      familyHistoryRows: familyHistoryRows.map((f) => ({
+        id: f.id,
+        relation: f.relation,
+        relationLabel: FAMILY_RELATION_LABELS[f.relation],
+        icd10Code: f.icd10Code,
+        icd10Name: f.icd10Name,
+        ageOfOnsetYears: f.ageOfOnsetYears,
+      })),
       photoUrl: patient.photoKey
         ? this.signPhotoUrl(patient.tenantId, patient.photoKey, encryptionKey)
         : null,
@@ -402,7 +438,9 @@ export class PatientService {
         throw new NotFoundException();
       }
       const allergens = await this.patientAllergenRepository.listForPatient(tx, tenantId, id);
-      return this.toDetail(updated, encryptionKey, allergens);
+      const conditions = await this.patientConditionRepository.listForPatient(tx, tenantId, id);
+      const familyHistoryRows = await this.patientFamilyHistoryRepository.listForPatient(tx, tenantId, id);
+      return this.toDetail(updated, encryptionKey, allergens, conditions, familyHistoryRows);
     });
   }
 

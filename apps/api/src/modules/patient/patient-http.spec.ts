@@ -12,6 +12,7 @@ import { DomainExceptionFilter } from '../../common/domain-exception.filter';
 import { createTwoTenantFixture, SYSTEM_TEST_ACTOR, type TwoTenantFixture } from '../../testing/tenant-fixture';
 import { seedPermissionCatalog } from '../../infrastructure/persistence/seed-permissions';
 import { seedDefaultRolesForTenant } from '../../infrastructure/persistence/seed-tenant-roles';
+import { seedIcd10Catalog } from '../../infrastructure/persistence/seed-icd10';
 
 /**
  * HTTP e2e cho module `patient` (S2-01) — controller nghiệp vụ đầu tiên của dự án, nên đây cũng
@@ -65,6 +66,9 @@ describe('HTTP e2e — /api/v1/patients', () => {
 
     fixture = await createTwoTenantFixture(privileged, 'Patient e2e');
     await seedPermissionCatalog(privileged);
+    // Sprint 5 — conditionCodes/familyHistoryRows cần icd10_catalog có dữ liệu thật (FK icd10Code),
+    // cùng cách encounter-http.spec.ts tự seed cho riêng file test của nó.
+    await seedIcd10Catalog(privileged);
     await seedDefaultRolesForTenant(privileged, fixture.tenantA.id, SYSTEM_TEST_ACTOR);
     await seedDefaultRolesForTenant(privileged, fixture.tenantB.id, SYSTEM_TEST_ACTOR);
 
@@ -586,6 +590,114 @@ describe('HTTP e2e — /api/v1/patients', () => {
         .send({ occupation: 'Giáo viên', version: created.body.data.version });
       expect(patchRes.status).toBe(200);
       expect(patchRes.body.data.allergens).toHaveLength(1);
+    });
+  });
+
+  describe('Tiền sử bản thân/gia đình có cấu trúc — conditionCodes/familyHistoryRows (Sprint 5)', () => {
+    it('tạo hồ sơ kèm conditionCodes → trả về đúng icd10Name join', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/patients')
+        .set(authed(receptionistToken))
+        .send({ ...validPayload, nationalId: randomNationalId(), phone: '0911000777', conditionCodes: ['I10', 'E11'] });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.conditions).toHaveLength(2);
+      const codes = res.body.data.conditions.map((c: { icd10Code: string }) => c.icd10Code).sort();
+      expect(codes).toEqual(['E11', 'I10']);
+      expect(res.body.data.conditions.find((c: { icd10Code: string }) => c.icd10Code === 'E11').icd10Name).toBe('Bệnh đái tháo đường típ 2');
+    });
+
+    it('PATCH conditionCodes → THAY THẾ toàn bộ danh sách (không cộng dồn); không gửi → giữ nguyên', async () => {
+      const created = await request(app.getHttpServer())
+        .post('/api/v1/patients')
+        .set(authed(receptionistToken))
+        .send({ ...validPayload, nationalId: randomNationalId(), phone: '0911000778', conditionCodes: ['I10'] });
+      expect(created.body.data.conditions).toHaveLength(1);
+
+      const patchRes = await request(app.getHttpServer())
+        .patch(`/api/v1/patients/${created.body.data.id}`)
+        .set(authed(receptionistToken))
+        .send({ conditionCodes: ['E11', 'J45'], version: created.body.data.version });
+      expect(patchRes.status).toBe(200);
+      expect(patchRes.body.data.conditions.map((c: { icd10Code: string }) => c.icd10Code).sort()).toEqual(['E11', 'J45']);
+
+      const untouchedRes = await request(app.getHttpServer())
+        .patch(`/api/v1/patients/${created.body.data.id}`)
+        .set(authed(receptionistToken))
+        .send({ occupation: 'Kỹ sư', version: patchRes.body.data.version });
+      expect(untouchedRes.status).toBe(200);
+      expect(untouchedRes.body.data.conditions).toHaveLength(2); // không gửi conditionCodes -> giữ nguyên
+    });
+
+    it('tạo hồ sơ kèm familyHistoryRows → trả về đúng relation/relationLabel/icd10Name/ageOfOnsetYears', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/patients')
+        .set(authed(receptionistToken))
+        .send({
+          ...validPayload,
+          nationalId: randomNationalId(),
+          phone: '0911000779',
+          familyHistoryRows: [
+            { relation: 'FATHER', icd10Code: 'E11', ageOfOnsetYears: 48 },
+            { relation: 'MOTHER', icd10Code: 'E11', ageOfOnsetYears: 52 },
+          ],
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.familyHistoryRows).toHaveLength(2);
+      expect(res.body.data.familyHistoryRows).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ relation: 'FATHER', relationLabel: 'Bố ruột', icd10Code: 'E11', ageOfOnsetYears: 48 }),
+          expect.objectContaining({ relation: 'MOTHER', relationLabel: 'Mẹ ruột', icd10Code: 'E11', ageOfOnsetYears: 52 }),
+        ]),
+      );
+    });
+
+    it('PATCH familyHistoryRows → THAY THẾ toàn bộ (2 dòng cùng bệnh lý khác quan hệ vẫn giữ đủ, không unique)', async () => {
+      const created = await request(app.getHttpServer())
+        .post('/api/v1/patients')
+        .set(authed(receptionistToken))
+        .send({
+          ...validPayload,
+          nationalId: randomNationalId(),
+          phone: '0911000780',
+          familyHistoryRows: [{ relation: 'SIBLING', icd10Code: 'I63' }],
+        });
+      expect(created.body.data.familyHistoryRows).toHaveLength(1);
+      expect(created.body.data.familyHistoryRows[0].ageOfOnsetYears).toBeNull();
+
+      const patchRes = await request(app.getHttpServer())
+        .patch(`/api/v1/patients/${created.body.data.id}`)
+        .set(authed(receptionistToken))
+        .send({
+          familyHistoryRows: [
+            { relation: 'SIBLING', icd10Code: 'I63', ageOfOnsetYears: 40 },
+            { relation: 'SIBLING', icd10Code: 'I63', ageOfOnsetYears: 45 },
+          ],
+          version: created.body.data.version,
+        });
+      expect(patchRes.status).toBe(200);
+      expect(patchRes.body.data.familyHistoryRows).toHaveLength(2);
+    });
+
+    it('cách ly tenant — tenant B không thấy được conditions/familyHistoryRows của bệnh nhân tenant A (404 qua RLS + lọc tenantId)', async () => {
+      const created = await request(app.getHttpServer())
+        .post('/api/v1/patients')
+        .set(authed(receptionistToken))
+        .send({
+          ...validPayload,
+          nationalId: randomNationalId(),
+          phone: '0911000781',
+          conditionCodes: ['I10'],
+          familyHistoryRows: [{ relation: 'MOTHER', icd10Code: 'E11' }],
+        });
+      expect(created.body.data.conditions).toHaveLength(1);
+      expect(created.body.data.familyHistoryRows).toHaveLength(1);
+
+      const crossTenantRes = await request(app.getHttpServer())
+        .get(`/api/v1/patients/${created.body.data.id}`)
+        .set(authed(tenantBAdminToken));
+      expect(crossTenantRes.status).toBe(404);
     });
   });
 

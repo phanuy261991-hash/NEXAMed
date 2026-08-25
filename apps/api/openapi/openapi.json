@@ -1165,9 +1165,6 @@
                   "personalHistory": {
                     "type": "string"
                   },
-                  "familyHistory": {
-                    "type": "string"
-                  },
                   "relativeFullName": {
                     "type": "string",
                     "minLength": 1
@@ -1189,6 +1186,44 @@
                     "items": {
                       "type": "string",
                       "format": "uuid"
+                    }
+                  },
+                  "conditionCodes": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "familyHistoryRows": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "relation": {
+                          "type": "string",
+                          "enum": [
+                            "FATHER",
+                            "MOTHER",
+                            "SIBLING",
+                            "PATERNAL_GRANDPARENT",
+                            "MATERNAL_GRANDPARENT"
+                          ]
+                        },
+                        "icd10Code": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "ageOfOnsetYears": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 120
+                        }
+                      },
+                      "required": [
+                        "relation",
+                        "icd10Code"
+                      ]
                     }
                   }
                 },
@@ -1331,12 +1366,6 @@
                             "null"
                           ]
                         },
-                        "familyHistory": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
-                        },
                         "relativeFullName": {
                           "type": [
                             "string",
@@ -1384,6 +1413,69 @@
                             ]
                           }
                         },
+                        "conditions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "icd10Code": {
+                                "type": "string"
+                              },
+                              "icd10Name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "icd10Code",
+                              "icd10Name"
+                            ]
+                          }
+                        },
+                        "familyHistoryRows": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "relation": {
+                                "type": "string",
+                                "enum": [
+                                  "FATHER",
+                                  "MOTHER",
+                                  "SIBLING",
+                                  "PATERNAL_GRANDPARENT",
+                                  "MATERNAL_GRANDPARENT"
+                                ]
+                              },
+                              "relationLabel": {
+                                "type": "string"
+                              },
+                              "icd10Code": {
+                                "type": "string"
+                              },
+                              "icd10Name": {
+                                "type": "string"
+                              },
+                              "ageOfOnsetYears": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "relation",
+                              "relationLabel",
+                              "icd10Code",
+                              "icd10Name",
+                              "ageOfOnsetYears"
+                            ]
+                          }
+                        },
                         "photoUrl": {
                           "type": [
                             "string",
@@ -1418,12 +1510,13 @@
                         "insuranceNumber",
                         "allergyNote",
                         "personalHistory",
-                        "familyHistory",
                         "relativeFullName",
                         "relativeRelationship",
                         "relativePhone",
                         "relativeAddress",
                         "allergens",
+                        "conditions",
+                        "familyHistoryRows",
                         "photoUrl",
                         "mergedIntoId"
                       ]
@@ -1575,6 +1668,19 @@
             },
             "required": false,
             "name": "q",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "created_asc",
+                "created_desc"
+              ],
+              "default": "created_asc"
+            },
+            "required": false,
+            "name": "sort",
             "in": "query"
           }
         ],
@@ -2123,12 +2229,6 @@
                             "null"
                           ]
                         },
-                        "familyHistory": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
-                        },
                         "relativeFullName": {
                           "type": [
                             "string",
@@ -2176,6 +2276,69 @@
                             ]
                           }
                         },
+                        "conditions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "icd10Code": {
+                                "type": "string"
+                              },
+                              "icd10Name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "icd10Code",
+                              "icd10Name"
+                            ]
+                          }
+                        },
+                        "familyHistoryRows": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "relation": {
+                                "type": "string",
+                                "enum": [
+                                  "FATHER",
+                                  "MOTHER",
+                                  "SIBLING",
+                                  "PATERNAL_GRANDPARENT",
+                                  "MATERNAL_GRANDPARENT"
+                                ]
+                              },
+                              "relationLabel": {
+                                "type": "string"
+                              },
+                              "icd10Code": {
+                                "type": "string"
+                              },
+                              "icd10Name": {
+                                "type": "string"
+                              },
+                              "ageOfOnsetYears": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "relation",
+                              "relationLabel",
+                              "icd10Code",
+                              "icd10Name",
+                              "ageOfOnsetYears"
+                            ]
+                          }
+                        },
                         "photoUrl": {
                           "type": [
                             "string",
@@ -2210,12 +2373,13 @@
                         "insuranceNumber",
                         "allergyNote",
                         "personalHistory",
-                        "familyHistory",
                         "relativeFullName",
                         "relativeRelationship",
                         "relativePhone",
                         "relativeAddress",
                         "allergens",
+                        "conditions",
+                        "familyHistoryRows",
                         "photoUrl",
                         "mergedIntoId"
                       ]
@@ -2436,9 +2600,6 @@
                   "personalHistory": {
                     "type": "string"
                   },
-                  "familyHistory": {
-                    "type": "string"
-                  },
                   "relativeFullName": {
                     "type": "string",
                     "minLength": 1
@@ -2460,6 +2621,44 @@
                     "items": {
                       "type": "string",
                       "format": "uuid"
+                    }
+                  },
+                  "conditionCodes": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "familyHistoryRows": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "relation": {
+                          "type": "string",
+                          "enum": [
+                            "FATHER",
+                            "MOTHER",
+                            "SIBLING",
+                            "PATERNAL_GRANDPARENT",
+                            "MATERNAL_GRANDPARENT"
+                          ]
+                        },
+                        "icd10Code": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "ageOfOnsetYears": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 120
+                        }
+                      },
+                      "required": [
+                        "relation",
+                        "icd10Code"
+                      ]
                     }
                   },
                   "version": {
@@ -2603,12 +2802,6 @@
                             "null"
                           ]
                         },
-                        "familyHistory": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
-                        },
                         "relativeFullName": {
                           "type": [
                             "string",
@@ -2656,6 +2849,69 @@
                             ]
                           }
                         },
+                        "conditions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "icd10Code": {
+                                "type": "string"
+                              },
+                              "icd10Name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "icd10Code",
+                              "icd10Name"
+                            ]
+                          }
+                        },
+                        "familyHistoryRows": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "relation": {
+                                "type": "string",
+                                "enum": [
+                                  "FATHER",
+                                  "MOTHER",
+                                  "SIBLING",
+                                  "PATERNAL_GRANDPARENT",
+                                  "MATERNAL_GRANDPARENT"
+                                ]
+                              },
+                              "relationLabel": {
+                                "type": "string"
+                              },
+                              "icd10Code": {
+                                "type": "string"
+                              },
+                              "icd10Name": {
+                                "type": "string"
+                              },
+                              "ageOfOnsetYears": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "relation",
+                              "relationLabel",
+                              "icd10Code",
+                              "icd10Name",
+                              "ageOfOnsetYears"
+                            ]
+                          }
+                        },
                         "photoUrl": {
                           "type": [
                             "string",
@@ -2690,12 +2946,13 @@
                         "insuranceNumber",
                         "allergyNote",
                         "personalHistory",
-                        "familyHistory",
                         "relativeFullName",
                         "relativeRelationship",
                         "relativePhone",
                         "relativeAddress",
                         "allergens",
+                        "conditions",
+                        "familyHistoryRows",
                         "photoUrl",
                         "mergedIntoId"
                       ]
@@ -3015,12 +3272,6 @@
                             "null"
                           ]
                         },
-                        "familyHistory": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
-                        },
                         "relativeFullName": {
                           "type": [
                             "string",
@@ -3068,6 +3319,69 @@
                             ]
                           }
                         },
+                        "conditions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "icd10Code": {
+                                "type": "string"
+                              },
+                              "icd10Name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "icd10Code",
+                              "icd10Name"
+                            ]
+                          }
+                        },
+                        "familyHistoryRows": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "relation": {
+                                "type": "string",
+                                "enum": [
+                                  "FATHER",
+                                  "MOTHER",
+                                  "SIBLING",
+                                  "PATERNAL_GRANDPARENT",
+                                  "MATERNAL_GRANDPARENT"
+                                ]
+                              },
+                              "relationLabel": {
+                                "type": "string"
+                              },
+                              "icd10Code": {
+                                "type": "string"
+                              },
+                              "icd10Name": {
+                                "type": "string"
+                              },
+                              "ageOfOnsetYears": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "relation",
+                              "relationLabel",
+                              "icd10Code",
+                              "icd10Name",
+                              "ageOfOnsetYears"
+                            ]
+                          }
+                        },
                         "photoUrl": {
                           "type": [
                             "string",
@@ -3102,12 +3416,13 @@
                         "insuranceNumber",
                         "allergyNote",
                         "personalHistory",
-                        "familyHistory",
                         "relativeFullName",
                         "relativeRelationship",
                         "relativePhone",
                         "relativeAddress",
                         "allergens",
+                        "conditions",
+                        "familyHistoryRows",
                         "photoUrl",
                         "mergedIntoId"
                       ]
@@ -7554,19 +7869,7 @@
                             "phone": {
                               "type": "string"
                             },
-                            "allergyNote": {
-                              "type": [
-                                "string",
-                                "null"
-                              ]
-                            },
                             "personalHistory": {
-                              "type": [
-                                "string",
-                                "null"
-                              ]
-                            },
-                            "familyHistory": {
                               "type": [
                                 "string",
                                 "null"
@@ -7595,6 +7898,69 @@
                                 ]
                               }
                             },
+                            "conditions": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "icd10Code": {
+                                    "type": "string"
+                                  },
+                                  "icd10Name": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "icd10Code",
+                                  "icd10Name"
+                                ]
+                              }
+                            },
+                            "familyHistoryRows": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "relation": {
+                                    "type": "string",
+                                    "enum": [
+                                      "FATHER",
+                                      "MOTHER",
+                                      "SIBLING",
+                                      "PATERNAL_GRANDPARENT",
+                                      "MATERNAL_GRANDPARENT"
+                                    ]
+                                  },
+                                  "relationLabel": {
+                                    "type": "string"
+                                  },
+                                  "icd10Code": {
+                                    "type": "string"
+                                  },
+                                  "icd10Name": {
+                                    "type": "string"
+                                  },
+                                  "ageOfOnsetYears": {
+                                    "type": [
+                                      "integer",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "relation",
+                                  "relationLabel",
+                                  "icd10Code",
+                                  "icd10Name",
+                                  "ageOfOnsetYears"
+                                ]
+                              }
+                            },
                             "version": {
                               "type": "integer"
                             }
@@ -7606,10 +7972,10 @@
                             "dob",
                             "gender",
                             "phone",
-                            "allergyNote",
                             "personalHistory",
-                            "familyHistory",
                             "allergens",
+                            "conditions",
+                            "familyHistoryRows",
                             "version"
                           ]
                         },

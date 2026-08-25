@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { MagnifyingGlass } from '@phosphor-icons/react';
-import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
-import { ErrorBanner } from '../../shared/ui/ErrorBanner';
-import { Skeleton } from '../../shared/ui/Skeleton';
-import { useIcd10SearchQuery } from '../catalog-clinical/icd10.queries';
+import { useDebouncedValue } from '../hooks/useDebouncedValue';
+import { ErrorBanner } from './ErrorBanner';
+import { Skeleton } from './Skeleton';
+import { useIcd10SearchQuery } from '../../features/catalog-clinical/icd10.queries';
 
 const GENDER_LABEL: Record<string, string> = { male: 'Chỉ nam', female: 'Chỉ nữ' };
 const USAGE_LABEL: Record<string, string> = {
@@ -12,19 +12,22 @@ const USAGE_LABEL: Record<string, string> = {
 };
 
 /**
- * Ô tìm nhanh chọn chẩn đoán ICD-10 — chưa đủ 2 nơi dùng để tách `shared/ui` (chỉ dùng ở màn khám),
- * đúng quy tắc "trùng lặp lần 2 mới trích xuất". Tái dùng `useIcd10SearchQuery` (query hook thuần,
- * không phải domain logic backend — chấp nhận import cross-feature) từ `catalog-clinical`, kết quả
- * hiện thành danh sách bên dưới ô nhập (cùng mẫu `PatientPicker.tsx`, không dùng dropdown overlay
- * tuyệt đối — tránh phải tự xử lý click-outside).
+ * Ô tìm nhanh chọn mã ICD-10 — dùng chung (chuyển từ `features/encounter/Icd10DiagnosisPicker.tsx`
+ * sang `shared/ui` khi có thêm 2 nơi dùng: chip "Tiền sử bản thân" + hàng ma trận "Tiền sử gia
+ * đình", Sprint 5 — đúng quy tắc "trùng lặp lần 2 mới trích xuất" CLAUDE.md). Tái dùng
+ * `useIcd10SearchQuery` (query hook thuần, không phải domain logic backend — chấp nhận import
+ * cross-feature) từ `catalog-clinical`, kết quả hiện thành danh sách bên dưới ô nhập (cùng mẫu
+ * `PatientPicker.tsx`, không dùng dropdown overlay tuyệt đối — tránh phải tự xử lý click-outside).
  */
-export function Icd10DiagnosisPicker({
+export function Icd10SearchPicker({
   excludeCodes,
   onSelect,
+  placeholder = 'Gõ mã ICD-10 hoặc tên bệnh (VD: E11, Tăng huyết áp...)',
 }: {
   /** Mã đã chọn rồi — ẩn khỏi kết quả để không chọn trùng. */
   excludeCodes: string[];
   onSelect: (item: { icd10Code: string; icd10Name: string }) => void;
+  placeholder?: string;
 }) {
   const [query, setQuery] = useState('');
   const debounced = useDebouncedValue(query, 300);
@@ -50,7 +53,7 @@ export function Icd10DiagnosisPicker({
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Gõ mã ICD-10 hoặc tên bệnh (VD: E11, Tăng huyết áp...)"
+          placeholder={placeholder}
           className="w-full rounded-md border border-slate-300 py-2 pl-8 pr-3 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
         />
       </div>

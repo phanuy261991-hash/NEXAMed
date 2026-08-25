@@ -9,7 +9,12 @@ import type {
 } from '@nexamed/shared';
 import { getApiClient, unwrap, uploadFile } from '../../shared/api/client';
 
-export async function listPatients(params: { q?: string; cursor?: string; limit?: number }): Promise<ListPatientsResponse> {
+export async function listPatients(params: {
+  q?: string;
+  cursor?: string;
+  limit?: number;
+  sort?: 'created_asc' | 'created_desc';
+}): Promise<ListPatientsResponse> {
   return unwrap(
     await getApiClient().GET('/api/v1/patients', { params: { query: params } }),
   ) as ListPatientsResponse;
