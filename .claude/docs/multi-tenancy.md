@@ -2,6 +2,10 @@
 
 Mô hình: **shared database, shared schema**, cách ly bằng cột `tenant_id` + Row Level Security của PostgreSQL. Một tenant = một phòng khám (bảng `clinic`).
 
+> **"Một phòng khám" ở đây nghĩa là một CƠ SỞ/CHI NHÁNH, không phải một công ty/pháp nhân** (làm rõ 2026-08-25, `docs/DECISIONS.md` #074). **Không tồn tại tầng "công ty" nào nằm trên `tenant`**: công ty có 3 chi nhánh = 3 tenant tách biệt hoàn toàn, không có gì nối lại (xem hệ quả đầy đủ + lộ trình mở rộng ở `docs/Deploy.md` Phần 0.1). Đừng viết code giả định có thể gom nhiều tenant về một chủ sở hữu — khái niệm đó chưa tồn tại.
+>
+> **Hướng mở rộng ĐÃ CHỐT (2026-08-25, `docs/DECISIONS.md` #075)**: khi có khách chuỗi, `tenant` sẽ trở thành **CÔNG TY** và chi nhánh là bảng `branch` **bên trong** tenant (không phải mỗi chi nhánh một tenant). Hệ quả bắt buộc cho code viết từ nay: **cấm giả định "1 tenant = 1 địa điểm vật lý"**; `code_sequence` **giữ nguyên** theo `(tenant_id, prefix)` (đã đúng hướng — mã bệnh nhân duy nhất toàn công ty); `patient` **không** cần `branch_id`, còn `encounter`/`appointment` thì có. Chi tiết: `docs/Deploy.md` Phần 0.1.
+
 ## Vì sao chọn mô hình này
 
 | Mô hình | Ưu | Nhược |

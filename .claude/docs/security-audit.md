@@ -22,6 +22,8 @@
 
 Không có mức `branch` — v1 một phòng khám một địa điểm (`docs/product/prd.md`, PRD Q6 đã hoãn đa chi nhánh). Nếu sau này cần đa chi nhánh, thêm scope `branch` giữa `department` và `global`, không đổi 4 mức hiện có.
 
+> **Cập nhật 2026-08-25 (`docs/DECISIONS.md` #075)**: hướng đa chi nhánh **đã chốt** — `tenant` = công ty, chi nhánh là `branch` bên trong (mô hình B), bệnh nhân + mã dùng chung toàn công ty. Mức `branch` vẫn **chưa hiện thực** (chỉ code khi có khách chuỗi thật), nhưng nay đã biết trước hình dạng: chèn giữa `department` và `global` đúng như dòng trên. Xem ràng buộc thiết kế bắt buộc ở `docs/Deploy.md` Phần 0.1.
+
 ### Ma trận mặc định seed cho 5 vai trò hệ thống
 
 Seed cụ thể nằm trong `apps/api/prisma/seed/permissions.seed.ts` (nguồn sự thật) — bảng dưới đây tóm tắt để đọc nhanh, **không tự suy ra ma trận khác khi seed đã tồn tại**:

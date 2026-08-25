@@ -2,6 +2,23 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-25
+
+Làm rõ 3 khái niệm triển khai chưa từng ghi ở đâu, ghi thành `docs/Deploy.md` Phần 0 — xem `docs/DECISIONS.md` #074:
+
+- **Bối cảnh**: chủ dự án hỏi 3 câu khi bàn triển khai thật (script bật gói chạy 1 lần có phải chạy lại sau restart? VPS khách thuê có tính là on-prem? cài trên NAS nội bộ được không?) và nêu thẳng điểm mơ hồ: *"tôi thật sự không hiểu tenant được định nghĩa là chi nhánh hay 1 cơ sở/công ty"*. Rà lại: cả 3 câu **chưa từng có ở tài liệu nào** — `Deploy.md` chỉ nói on-prem chung chung, `multi-tenancy.md` định nghĩa "một tenant = một phòng khám" nhưng không nói rõ "phòng khám" là chi nhánh hay pháp nhân.
+- **0.1 — `tenant` = một CƠ SỞ/CHI NHÁNH, không phải công ty**: **không tồn tại tầng "công ty" nào trên `tenant`**. Công ty 3 chi nhánh = 3 tenant tách biệt hoàn toàn (bệnh nhân khám 2 chi nhánh = 2 hồ sơ độc lập, nhân viên = 2 tài khoản, danh mục/giá nhập riêng, không có báo cáo tổng hợp). Là **giới hạn có chủ ý của v1** — khớp PRD Q6 còn treo + scope `branch` chưa triển khai + "hồ sơ dùng chung liên chi nhánh" ở phase v3+. Đã để sẵn `patient.global_patient_ref` + `PatientIdentityPort` để mở rộng mà không đụng schema.
+- **0.2 — ranh giới quyết định cách viết code là single-tenant vs multi-tenant, KHÔNG phải on-prem vs cloud**: máy tại phòng khám / NAS nội bộ / VPS khách thuê đều single-tenant, giống nhau ở mọi mặt ảnh hưởng tới code → **không cần đổi một dòng code nào**, mọi quyết định on-prem vẫn đúng (gồm #072 bật gói bằng script, không license/DRM). Chỉ SaaS multi-tenant mới đổi bản chất và là nơi tập trung rủi ro cache/state rò xuyên tenant. Khác biệt của NAS/VPS nằm ở **vận hành**: VPS bắt buộc TLS + chi phí vận hành tăng tuyến tính theo số khách; NAS cần Docker + RAM ≥ 4 GB + RAID không thay thế backup. Ghi rõ điều **chưa kiểm chứng**: `postgres:18`/Node 20 có bản arm64 nên NAS ARM về nguyên tắc chạy được, nhưng dự án **chưa từng thử thật trên NAS**.
+- **0.3 — cấu hình nào bền vững qua restart**: dữ liệu trong DB (gồm `tenant.enabled_specialties`) bền vững nhờ named volume `postgres_data` → **chạy script một lần là xong**; chỉ phải chạy lại khi khôi phục backup cũ hơn hoặc xoá volume (`docker compose down -v`). Phân biệt với `syncRolePermissionsForAllTenants()` (cố ý chạy mỗi lần bootstrap vì idempotent) — script bật gói **không** đưa vào bootstrap vì "khách mua gói nào" là quyết định thương mại theo hợp đồng.
+- Vá luôn chỗ gốc gây mơ hồ: `.claude/docs/multi-tenancy.md` thêm ghi chú ngay dưới định nghĩa tenant (nơi agent đọc khi viết code chạm tenant). Sửa 2 lỗi tồn đọng ở đầu `Deploy.md`: typo "on-premide" và trạng thái lỗi thời "dự án đang ở Sprint 1/12" (thực tế đã xong Sprint 1-3).
+- **CHỐT hướng đa chi nhánh (#075, cùng ngày)**: ngay sau khi làm rõ #074, chủ dự án quyết định chốt luôn thay vì để treo. Chọn **mô hình B** — `tenant` = **CÔNG TY**, chi nhánh là bảng `branch` **bên trong** (thay hướng ngầm định cũ "mỗi chi nhánh một tenant"); **bệnh nhân + mã dùng chung toàn công ty** (một `patient_code` duy nhất); **chốt hướng nay, chỉ code khi có khách chuỗi thật**.
+  - *Lý do chốt sớm dù chưa code*: chốt trước khi bán = thêm tầng vào schema; chốt sau khi khách đã chạy nhiều cài đặt riêng = phải **merge nhiều database**, xử lý `patient_code` trùng nhau (sequence unique theo `(tenant_id, prefix)`) + rủi ro nhầm bệnh nhân khi gộp dữ liệu y tế.
+  - *Ràng buộc bắt buộc cho mọi code viết từ nay*: **cấm giả định "1 tenant = 1 địa điểm vật lý"**; `code_sequence` **giữ nguyên** theo tenant (đã đúng hướng — không sửa); `patient` **không** cần `branch_id` còn `encounter`/`appointment`/`invoice` thì có; `room`/`floor`/`department` sau này gắn thêm `branch_id`; scope `branch` chèn giữa `department` và `global`.
+  - *Ràng buộc hạ tầng (quan trọng nhất)*: mô hình B đòi hỏi cả công ty dùng chung **một database** → **khách chuỗi buộc phải dùng hạ tầng tập trung**; mỗi chi nhánh một máy riêng thì không thể gộp chung tenant. Phải nói rõ với khách chuỗi trước khi ký hợp đồng.
+  - Trả lời một phần **PRD Q6** — không còn là câu hỏi kiến trúc bỏ ngỏ, chỉ còn là câu hỏi thời điểm thương mại.
+- **Không đổi code/schema** — làm rõ khái niệm đã có, không phải đổi thiết kế.
+- Cập nhật `docs/Deploy.md` (Phần 0 mới + hướng mở rộng ở 0.1), `docs/DECISIONS.md` (#074, #075), `.claude/docs/multi-tenancy.md`, `.claude/docs/security-audit.md`, `docs/product/prd.md` (Q6), `docs/CURRENT.md`.
+
 ## 2026-08-22
 
 Hiệu suất: code-splitting theo route + cưỡng chế ranh giới `web ⇸ core` bằng ESLint — xem `docs/DECISIONS.md` #073:

@@ -315,7 +315,7 @@ Các câu hỏi cần trả lời, kèm hạn chót vì chúng ảnh hưởng t�
 | Q3 | Mô hình kinh doanh: bán đứt theo cài đặt hay thuê bao theo tháng? | Tuần 4 | Ảnh hưởng cơ chế cấp phép, cập nhật phiên bản, và có cần kết nối internet định kỳ hay không |
 | Q4 | Ai chịu trách nhiệm vận hành máy chủ tại phòng khám? | Tuần 6 | Nếu không ai, phải làm bộ cài tự động và cơ chế hỗ trợ từ xa |
 | Q5 | Phòng khám pilot cụ thể là đơn vị nào? | Tuần 3 | Chặn mốc tuần 8 |
-| Q6 | Có cần hỗ trợ nhiều chi nhánh của cùng một chủ ngay ở v1 không? | Tuần 4 | Kiến trúc đã sẵn sàng, nhưng UI chuyển đổi chi nhánh là công việc bổ sung |
+| Q6 | Có cần hỗ trợ nhiều chi nhánh của cùng một chủ ngay ở v1 không? | ~~Tuần 4~~ — **đã trả lời phần kiến trúc 2026-08-25** | **Không làm ở v1**, nhưng hướng đã CHỐT (`docs/DECISIONS.md` #075): `tenant` = công ty, chi nhánh là `branch` bên trong; bệnh nhân + mã dùng chung toàn công ty; chỉ code khi có khách chuỗi thật. Q6 không còn là câu hỏi kiến trúc bỏ ngỏ, chỉ còn là câu hỏi thời điểm thương mại. **Ràng buộc**: khách chuỗi buộc phải dùng hạ tầng tập trung (một database chung) |
 | Q7 | Danh mục thuốc lấy từ đâu, hay để phòng khám tự nhập? | Tuần 5 | Ảnh hưởng khối lượng nhập liệu ban đầu khi triển khai |
 
 ---
