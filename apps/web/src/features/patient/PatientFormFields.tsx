@@ -4,7 +4,9 @@ import { PatientAvatarUpload } from './PatientAvatarUpload';
 import { PhoneDuplicateWarning } from './PhoneDuplicateWarning';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { useProvincesQuery, useWardsQuery } from '../geo/geo.queries';
+import { useAllergensQuery } from '../allergen/allergen.queries';
 import { Combobox, withLegacyValueOption, type ComboboxOption } from '../../shared/ui/Combobox';
+import { MultiSelectCombobox } from '../../shared/ui/MultiSelectCombobox';
 
 /** Khớp `ADULT_AGE_THRESHOLD` trong `packages/shared/src/patient.ts` (docs/DECISIONS.md #035). */
 const ADULT_AGE_THRESHOLD = 18;
@@ -28,6 +30,8 @@ export interface PatientFormValues {
   neighborhood: string;
   province: string;
   allergyNote: string;
+  /** Dị nguyên đã biết — liên kết danh mục "Dị nguyên" có sẵn (Sprint 4, chốt 2026-08-25), KHÁC allergyNote (text tự do, vẫn giữ làm ghi chú bổ sung). */
+  allergenIds: string[];
   personalHistory: string;
   familyHistory: string;
   relativeFullName: string;
@@ -53,6 +57,7 @@ export const EMPTY_PATIENT_FORM: PatientFormValues = {
   neighborhood: '',
   province: '',
   allergyNote: '',
+  allergenIds: [],
   personalHistory: '',
   familyHistory: '',
   relativeFullName: '',
@@ -148,6 +153,12 @@ export function PatientFormFields({
   function set<K extends keyof PatientFormValues>(key: K, value: PatientFormValues[K]) {
     onChange({ ...values, [key]: value });
   }
+
+  const allergensQuery = useAllergensQuery();
+  const allergenOptions: ComboboxOption[] = (allergensQuery.data?.items ?? []).map((a) => ({
+    value: a.id,
+    label: `${a.name} · ${a.allergenGroupName}`,
+  }));
 
   const ethnicityQuery = useReferenceCatalogQuery('ETHNICITY');
   const nationalityQuery = useReferenceCatalogQuery('NATIONALITY');
@@ -403,7 +414,18 @@ export function PatientFormFields({
             />
           </Field>
 
-          <Field id="allergyNote" label="Tiền sử dị ứng" className="col-span-2 sm:col-span-3 lg:col-span-4">
+          <Field id="allergenIds" label="Dị nguyên đã biết" className="col-span-2 sm:col-span-3 lg:col-span-4">
+            <MultiSelectCombobox
+              id="allergenIds"
+              values={values.allergenIds}
+              options={allergenOptions}
+              onChange={(v) => set('allergenIds', v)}
+              disabled={disabled}
+              placeholder="Chọn từ danh mục Dị nguyên..."
+            />
+          </Field>
+
+          <Field id="allergyNote" label="Ghi chú dị ứng khác" className="col-span-2 sm:col-span-3 lg:col-span-4">
             <textarea
               id="allergyNote"
               rows={2}
@@ -411,6 +433,7 @@ export function PatientFormFields({
               value={values.allergyNote}
               onChange={(e) => set('allergyNote', e.target.value)}
               className={inputClassName}
+              placeholder="Nội dung tự do khác — không có trong danh mục Dị nguyên ở trên"
             />
           </Field>
         </div>

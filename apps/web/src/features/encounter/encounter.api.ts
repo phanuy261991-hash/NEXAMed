@@ -1,12 +1,16 @@
 import type {
+  AmendPrescriptionRequest,
   ClinicalNoteResponse,
   CompleteConsultationRequest,
   ConsultationDetailResponse,
   EncounterSummary,
+  PrescriptionResponse,
   RecordVitalSignRequest,
   SaveClinicalNoteRequest,
   SaveDiagnosesRequest,
   SaveDiagnosesResponse,
+  SavePrescriptionItemsRequest,
+  SignPrescriptionRequest,
   VitalSignResponse,
 } from '@nexamed/shared';
 import { getApiClient, unwrap } from '../../shared/api/client';
@@ -43,4 +47,27 @@ export async function recordVitalSigns(encounterId: string, body: RecordVitalSig
       body,
     }),
   ) as VitalSignResponse;
+}
+
+/** Kê đơn (Sprint 4, S4-01/02/04) — xem `docs/product/future-modules-reference.md` §2.2.1 cho những gì CỐ Ý không làm (kho, hoá đơn thuốc). */
+export async function savePrescriptionItems(id: string, body: SavePrescriptionItemsRequest): Promise<PrescriptionResponse> {
+  return unwrap(
+    await getApiClient().PUT('/api/v1/encounters/{id}/prescription-items', { params: { path: { id } }, body }),
+  ) as PrescriptionResponse;
+}
+
+export async function signPrescription(id: string, body: SignPrescriptionRequest): Promise<PrescriptionResponse> {
+  return unwrap(
+    await getApiClient().POST('/api/v1/encounters/{id}/prescription/sign', { params: { path: { id } }, body }),
+  ) as PrescriptionResponse;
+}
+
+export async function printPrescription(id: string): Promise<PrescriptionResponse> {
+  return unwrap(await getApiClient().POST('/api/v1/encounters/{id}/prescription/print', { params: { path: { id } } })) as PrescriptionResponse;
+}
+
+export async function amendPrescription(id: string, body: AmendPrescriptionRequest): Promise<PrescriptionResponse> {
+  return unwrap(
+    await getApiClient().POST('/api/v1/encounters/{id}/prescription/amend', { params: { path: { id } }, body }),
+  ) as PrescriptionResponse;
 }

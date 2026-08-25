@@ -14,6 +14,7 @@ import { Icd10Module } from './modules/icd10/icd10.module';
 import { EncounterModule } from './modules/encounter/encounter.module';
 import { ReceptionModule } from './modules/reception/reception.module';
 import { AllergenModule } from './modules/allergen/allergen.module';
+import { DrugModule } from './modules/drug/drug.module';
 import { TenantContextMiddleware } from './common/tenant-context.middleware';
 
 @Module({
@@ -30,9 +31,10 @@ import { TenantContextMiddleware } from './common/tenant-context.middleware';
     ReferenceCatalogModule,
     GeoModule,
     Icd10Module,
+    AllergenModule,
+    DrugModule,
     EncounterModule,
     ReceptionModule,
-    AllergenModule,
   ],
 })
 export class AppModule implements NestModule {

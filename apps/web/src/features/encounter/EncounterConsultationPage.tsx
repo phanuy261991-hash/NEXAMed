@@ -29,10 +29,12 @@ import { Textarea } from '../../shared/ui/Textarea';
 import { useAuthStore } from '../auth/auth.store';
 import { getVietnamTodayDateString } from '../appointment/schedule-grid.utils';
 import { computeAgeLabel } from '../patient/patient-form.utils';
+import { formatDobDisplay } from '../../shared/format/date';
 import { updatePatient as updatePatientRaw } from '../patient/patient.api';
 import { useUpdatePatientMutation } from '../patient/patient.queries';
 import { useReceptionListQuery, useStartConsultationMutation } from '../reception/reception.queries';
 import { Icd10DiagnosisPicker } from './Icd10DiagnosisPicker';
+import { PrescriptionPanel } from './PrescriptionPanel';
 import { VitalSignsDialog } from './VitalSignsDialog';
 import { saveClinicalNote as saveClinicalNoteRaw } from './encounter.api';
 import {
@@ -95,7 +97,8 @@ function queueWaitMinutes(checkedInAt: string): number {
 const TABS = [
   { id: 'section-kham', label: '1. Khám & Chẩn đoán', icon: ClipboardText, comingSoon: false },
   { id: 'section-cls', label: '2. Chỉ định cận lâm sàng', icon: Flask, comingSoon: true },
-  { id: 'section-donthuoc', label: '3. Kê đơn thuốc', icon: Pill, comingSoon: true },
+  // Sprint 4 (S4-01/02/04) — tab 3 nay có nội dung thật (PrescriptionPanel), không còn "Sắp ra mắt".
+  { id: 'section-donthuoc', label: '3. Kê đơn thuốc', icon: Pill, comingSoon: false },
   { id: 'section-hen', label: '4. Lời dặn & hẹn tái khám', icon: CalendarBlank, comingSoon: true },
 ] as const;
 
@@ -552,7 +555,7 @@ export function EncounterConsultationPage() {
     );
   }
 
-  const { encounter, patient, vitalSigns, history } = query.data;
+  const { encounter, patient, vitalSigns, history, prescription } = query.data;
   const bmi =
     vitalSigns?.weightGram && vitalSigns.heightMm
       ? vitalSigns.weightGram / 1000 / (vitalSigns.heightMm / 1000) ** 2
@@ -579,10 +582,16 @@ export function EncounterConsultationPage() {
                 {editingCompleted ? 'Đang chỉnh sửa thông tin' : `Đã hoàn tất${encounter.completedAt ? ` · ${formatHistoryDate(encounter.completedAt)}` : ''}`}
               </span>
             )}
+            {patient.allergens.length > 0 && (
+              <span className="flex items-center gap-1.5 whitespace-nowrap rounded-md border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700">
+                <Warning size={13} weight="fill" aria-hidden="true" />
+                DỊ NGUYÊN: {patient.allergens.map((a) => a.name).join(', ')}
+              </span>
+            )}
             {patientNoteDraft.allergyNote && (
               <span className="flex items-center gap-1.5 whitespace-nowrap rounded-md border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700">
                 <Warning size={13} weight="fill" aria-hidden="true" />
-                DỊ ỨNG: {patientNoteDraft.allergyNote}
+                GHI CHÚ DỊ ỨNG: {patientNoteDraft.allergyNote}
               </span>
             )}
           </div>
@@ -903,7 +912,20 @@ export function EncounterConsultationPage() {
                 </div>
               </div>
 
-              {/* SECTION 2-4 — chỉ giữ chỗ, ngoài phạm vi v1/Sprint 4 */}
+              {/* SECTION 3 — Kê đơn thuốc (Sprint 4, S4-01/02/04). */}
+              <div ref={sectionRefs['section-donthuoc']}>
+                <PrescriptionPanel
+                  encounterId={encounterId}
+                  prescription={prescription}
+                  hasPrimaryDiagnosis={diagnoses.some((d) => d.type === 'PRIMARY')}
+                  isEditableEncounter={canEditNow}
+                  patientFullName={patient.fullName}
+                  patientDob={formatDobDisplay(patient.dob)}
+                  patientGender={GENDER_LABEL[patient.gender] ?? patient.gender}
+                />
+              </div>
+
+              {/* SECTION 2, 4 — chỉ giữ chỗ, ngoài phạm vi v1/Sprint 4 */}
               {TABS.filter((t) => t.comingSoon).map((tab) => (
                 <div key={tab.id} ref={sectionRefs[tab.id]} className="rounded-lg border border-dashed border-slate-300 bg-white p-8">
                   <EmptyState icon={tab.icon} title={tab.label.replace(/^\d\.\s*/, '')} description="Tính năng sẽ có ở giai đoạn sau." />

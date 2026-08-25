@@ -710,6 +710,7 @@ export interface paths {
                         relativeRelationship?: string;
                         relativePhone?: string;
                         relativeAddress?: string;
+                        allergenIds?: string[];
                     };
                 };
             };
@@ -754,6 +755,12 @@ export interface paths {
                                 relativeRelationship: string | null;
                                 relativePhone: string | null;
                                 relativeAddress: string | null;
+                                allergens: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    allergenGroupName: string;
+                                }[];
                                 photoUrl: string | null;
                                 /** Format: uuid */
                                 mergedIntoId: string | null;
@@ -967,6 +974,12 @@ export interface paths {
                                 relativeRelationship: string | null;
                                 relativePhone: string | null;
                                 relativeAddress: string | null;
+                                allergens: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    allergenGroupName: string;
+                                }[];
                                 photoUrl: string | null;
                                 /** Format: uuid */
                                 mergedIntoId: string | null;
@@ -1068,6 +1081,7 @@ export interface paths {
                         relativeRelationship?: string;
                         relativePhone?: string;
                         relativeAddress?: string;
+                        allergenIds?: string[];
                         version: number;
                     };
                 };
@@ -1113,6 +1127,12 @@ export interface paths {
                                 relativeRelationship: string | null;
                                 relativePhone: string | null;
                                 relativeAddress: string | null;
+                                allergens: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    allergenGroupName: string;
+                                }[];
                                 photoUrl: string | null;
                                 /** Format: uuid */
                                 mergedIntoId: string | null;
@@ -1257,6 +1277,12 @@ export interface paths {
                                 relativeRelationship: string | null;
                                 relativePhone: string | null;
                                 relativeAddress: string | null;
+                                allergens: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    allergenGroupName: string;
+                                }[];
                                 photoUrl: string | null;
                                 /** Format: uuid */
                                 mergedIntoId: string | null;
@@ -3190,6 +3216,12 @@ export interface paths {
                                     allergyNote: string | null;
                                     personalHistory: string | null;
                                     familyHistory: string | null;
+                                    allergens: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                        allergenGroupName: string;
+                                    }[];
                                     version: number;
                                 };
                                 vitalSigns: {
@@ -3257,6 +3289,39 @@ export interface paths {
                                         version: number;
                                     } | null;
                                 };
+                                prescription: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    encounterId: string;
+                                    items: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        /** Format: uuid */
+                                        drugId: string;
+                                        drugName: string;
+                                        activeIngredient: string | null;
+                                        dose: string;
+                                        frequency: string;
+                                        durationDays: number;
+                                        quantity: number;
+                                        instruction: string | null;
+                                    }[];
+                                    warnings: {
+                                        /** @enum {string} */
+                                        kind: "duplicate_active_ingredient" | "allergy";
+                                        label: string;
+                                        drugNames: string[];
+                                    }[];
+                                    signedAt: string | null;
+                                    /** Format: uuid */
+                                    signedBy: string | null;
+                                    printedAt: string | null;
+                                    /** Format: uuid */
+                                    supersedesId: string | null;
+                                    amendmentReason: string | null;
+                                    version: number;
+                                } | null;
                             };
                             meta: Record<string, never>;
                         };
@@ -3745,6 +3810,604 @@ export interface paths {
                     };
                 };
                 /** @description Không đúng một chẩn đoán chính (DIAGNOSIS_PRIMARY_REQUIRED) */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/encounters/{id}/prescription-items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Kê đơn (Sprint 4) — thay thế toàn bộ dòng thuốc của đơn NHÁP hiện tại (tạo đơn nháp nếu chưa có) */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            drugId: string;
+                            dose: string;
+                            frequency: string;
+                            durationDays: number;
+                            quantity: number;
+                            instruction?: string;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                encounterId: string;
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugName: string;
+                                    activeIngredient: string | null;
+                                    dose: string;
+                                    frequency: string;
+                                    durationDays: number;
+                                    quantity: number;
+                                    instruction: string | null;
+                                }[];
+                                warnings: {
+                                    /** @enum {string} */
+                                    kind: "duplicate_active_ingredient" | "allergy";
+                                    label: string;
+                                    drugNames: string[];
+                                }[];
+                                signedAt: string | null;
+                                /** Format: uuid */
+                                signedBy: string | null;
+                                printedAt: string | null;
+                                /** Format: uuid */
+                                supersedesId: string | null;
+                                amendmentReason: string | null;
+                                version: number;
+                            } | null;
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền prescription.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Lượt khám không ở trạng thái đang khám, hoặc đơn đã ký (PRESCRIPTION_ALREADY_SIGNED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Chưa có chẩn đoán chính (PRESCRIPTION_REQUIRES_DIAGNOSIS) */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/encounters/{id}/prescription/sign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ký đơn thuốc NHÁP hiện tại — chữ ký logic, sau khi ký đơn bất biến (trigger C8) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                encounterId: string;
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugName: string;
+                                    activeIngredient: string | null;
+                                    dose: string;
+                                    frequency: string;
+                                    durationDays: number;
+                                    quantity: number;
+                                    instruction: string | null;
+                                }[];
+                                warnings: {
+                                    /** @enum {string} */
+                                    kind: "duplicate_active_ingredient" | "allergy";
+                                    label: string;
+                                    drugNames: string[];
+                                }[];
+                                signedAt: string | null;
+                                /** Format: uuid */
+                                signedBy: string | null;
+                                printedAt: string | null;
+                                /** Format: uuid */
+                                supersedesId: string | null;
+                                amendmentReason: string | null;
+                                version: number;
+                            } | null;
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền prescription.sign */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy đơn nháp để ký (không tồn tại, đã ký, thuộc tenant khác, hoặc ngoài scope personal) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Đơn chưa có dòng thuốc nào (PRESCRIPTION_EMPTY) */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/encounters/{id}/prescription/print": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** In đơn thuốc (PRE-04) — ghi nhận printedAt, idempotent */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                encounterId: string;
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugName: string;
+                                    activeIngredient: string | null;
+                                    dose: string;
+                                    frequency: string;
+                                    durationDays: number;
+                                    quantity: number;
+                                    instruction: string | null;
+                                }[];
+                                warnings: {
+                                    /** @enum {string} */
+                                    kind: "duplicate_active_ingredient" | "allergy";
+                                    label: string;
+                                    drugNames: string[];
+                                }[];
+                                signedAt: string | null;
+                                /** Format: uuid */
+                                signedBy: string | null;
+                                printedAt: string | null;
+                                /** Format: uuid */
+                                supersedesId: string | null;
+                                amendmentReason: string | null;
+                                version: number;
+                            } | null;
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền prescription.print */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy đơn đã ký để in */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/encounters/{id}/prescription/amend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** "Sửa đơn" — đính chính đơn đã ký, tạo đơn mới đã ký ngay, bắt buộc lý do */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            drugId: string;
+                            dose: string;
+                            frequency: string;
+                            durationDays: number;
+                            quantity: number;
+                            instruction?: string;
+                        }[];
+                        amendmentReason: string;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                encounterId: string;
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugName: string;
+                                    activeIngredient: string | null;
+                                    dose: string;
+                                    frequency: string;
+                                    durationDays: number;
+                                    quantity: number;
+                                    instruction: string | null;
+                                }[];
+                                warnings: {
+                                    /** @enum {string} */
+                                    kind: "duplicate_active_ingredient" | "allergy";
+                                    label: string;
+                                    drugNames: string[];
+                                }[];
+                                signedAt: string | null;
+                                /** Format: uuid */
+                                signedBy: string | null;
+                                printedAt: string | null;
+                                /** Format: uuid */
+                                supersedesId: string | null;
+                                amendmentReason: string | null;
+                                version: number;
+                            } | null;
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền prescription.sign */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có đơn đã ký để đính chính */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Danh sách dòng thuốc rỗng (PRESCRIPTION_EMPTY) */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -5843,6 +6506,301 @@ export interface paths {
                     };
                 };
                 /** @description version không khớp (CONCURRENT_MODIFICATION) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/drugs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tìm/liệt kê thuốc (dùng cả lúc kê đơn lẫn trang quản trị Danh mục thuốc) */
+        get: {
+            parameters: {
+                query?: {
+                    q?: string;
+                    includeInactive?: boolean | ("true" | "false");
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                    activeIngredient: string | null;
+                                    unit: string | null;
+                                    concentration: string | null;
+                                    isActive: boolean;
+                                    version: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền drug.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Danh mục thuốc (Sprint 4, S4-03) — tạo thuốc mới, THEO TENANT (phòng khám tự nhập) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        code: string;
+                        name: string;
+                        activeIngredient?: string;
+                        unit?: string;
+                        concentration?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Tạo thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                code: string;
+                                name: string;
+                                activeIngredient: string | null;
+                                unit: string | null;
+                                concentration: string | null;
+                                isActive: boolean;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền drug.manage */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Trùng mã thuốc trong tenant (DRUG_DUPLICATE_CODE) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/drugs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Sửa/ẩn thuốc — bắt buộc kèm version hiện có */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        code?: string;
+                        name?: string;
+                        activeIngredient?: string | null;
+                        unit?: string | null;
+                        concentration?: string | null;
+                        isActive?: boolean;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Sửa thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                code: string;
+                                name: string;
+                                activeIngredient: string | null;
+                                unit: string | null;
+                                concentration: string | null;
+                                isActive: boolean;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền drug.manage */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại hoặc thuộc tenant khác) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Trùng mã thuốc, hoặc version không khớp (CONCURRENT_MODIFICATION) */
                 409: {
                     headers: {
                         [name: string]: unknown;

@@ -73,6 +73,10 @@ model Tenant {
   vitalSigns        VitalSign[]
   diagnoses         Diagnosis[]
   clinicalNotes     ClinicalNote[]
+  drugs             Drug[]
+  prescriptions     Prescription[]
+  prescriptionItems PrescriptionItem[]
+  patientAllergens  PatientAllergen[]
 
   @@map("tenant")
 }
@@ -514,6 +518,8 @@ model Allergen {
   name            String
   isActive        Boolean       @default(true) @map("is_active")
   allergenGroup   AllergenGroup @relation(fields: [allergenGroupId], references: [id])
+  // Bệnh nhân đã gán dị nguyên này (Sprint 4, chốt 2026-08-25) — xem model PatientAllergen.
+  patientAllergens PatientAllergen[]
 
   @@map("allergen")
 }
@@ -769,6 +775,8 @@ model Patient {
   mergedFrom Patient[] @relation("PatientMerge")
   appointments Appointment[]
   encounters   Encounter[]
+  // Dị nguyên đã biết (Sprint 4, chốt 2026-08-25) — xem model PatientAllergen.
+  allergens    PatientAllergen[]
 
   // Đích của composite FK (tenant_id, id) từ appointment/encounter (S2-05, S3) sau này.
   @@unique([tenantId, id])
@@ -985,6 +993,7 @@ model Encounter {
   vitalSigns  VitalSign[]
   diagnoses     Diagnosis[]
   clinicalNotes ClinicalNote[]
+  prescriptions Prescription[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, encounterNo])
@@ -1091,6 +1100,136 @@ model ClinicalNote {
 
   @@unique([tenantId, id])
   @@map("clinical_note")
+}
+
+// Danh mục thuốc (Sprint 4, S4-03) — THEO TENANT, phòng khám tự nhập (PRD mục 8, khác
+// icd10_catalog/allergen_catalog toàn hệ thống). "Trường hợp A" đã chốt (docs/DECISIONS.md
+// 2026-08-25): không tồn kho, không giá bán — chỉ đủ để ghi nhận/tìm kiếm lúc kê đơn. Khi có kho
+// thuốc thật (v2.1), thêm bảng riêng tham chiếu tới đây, không sửa bảng này (xem
+// docs/product/future-modules-reference.md mục 2.2.1).
+model Drug {
+  id               String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String  @map("tenant_id") @db.Uuid
+  code             String
+  name             String
+  activeIngredient String? @map("active_ingredient")
+  unit             String?
+  concentration    String?
+  isActive         Boolean @default(true) @map("is_active")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant            Tenant             @relation(fields: [tenantId], references: [id])
+  prescriptionItems PrescriptionItem[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, code])
+  @@map("drug")
+}
+
+// Đơn thuốc (Sprint 4, S4-01/02/04) — .claude/docs/clinical-workflow.md mục "Kê đơn (v1: chỉ in
+// đơn)": tạo được khi encounter IN_CONSULTATION và đã có chẩn đoán chính; NHÁP (signedAt=null, sửa
+// tự do qua bulk-replace prescriptionItems) cho tới khi ký; ký xong BẤT BIẾN (trigger C8 chặn UPDATE
+// khi signed_at IS NOT NULL — lần đầu tiên trong dự án, xem migration), sửa = đính chính (bản ghi
+// mới supersedesId trỏ về bản cũ, bản cũ soft-delete). signaturePayload luôn NULL ở v1 (chữ ký
+// logic qua SignaturePort no-op).
+model Prescription {
+  id              String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  encounterId     String    @map("encounter_id") @db.Uuid
+  signedAt        DateTime? @map("signed_at") @db.Timestamptz(6)
+  signedBy        String?   @map("signed_by") @db.Uuid
+  signaturePayload Bytes?   @map("signature_payload")
+  printedAt       DateTime? @map("printed_at") @db.Timestamptz(6)
+  supersedesId    String?   @map("supersedes_id") @db.Uuid
+  amendmentReason String?   @map("amendment_reason")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant    Tenant             @relation(fields: [tenantId], references: [id])
+  // Composite FK (tenant_id, encounter_id) -> encounter(tenant_id, id): chống trỏ chéo tenant.
+  encounter Encounter          @relation(fields: [tenantId, encounterId], references: [tenantId, id])
+  items     PrescriptionItem[]
+  // Self-relation đính chính — cùng khuôn patient.mergedInto/mergedFrom, appointment.rescheduledFrom.
+  // Không @unique ở supersedesId (chấp nhận rủi ro lý thuyết, cùng lựa chọn patient.mergedIntoId).
+  supersedes   Prescription?  @relation("PrescriptionAmendment", fields: [tenantId, supersedesId], references: [tenantId, id])
+  supersededBy Prescription[] @relation("PrescriptionAmendment")
+
+  @@unique([tenantId, id])
+  @@map("prescription")
+}
+
+model PrescriptionItem {
+  id             String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId       String  @map("tenant_id") @db.Uuid
+  prescriptionId String  @map("prescription_id") @db.Uuid
+  drugId         String  @map("drug_id") @db.Uuid
+  dose           String
+  frequency      String
+  durationDays   Int     @map("duration_days") @db.SmallInt
+  quantity       Int
+  instruction    String?
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  // Composite FK (tenant_id, prescription_id/drug_id) -> ...(tenant_id, id): chống trỏ chéo tenant.
+  prescription Prescription @relation(fields: [tenantId, prescriptionId], references: [tenantId, id])
+  drug         Drug         @relation(fields: [tenantId, drugId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@map("prescription_item")
+}
+
+// Dị nguyên đã biết của bệnh nhân (Sprint 4, chốt 2026-08-25) — liên kết `patient` với danh mục
+// "Dị nguyên" có sẵn (allergen_catalog, docs/DECISIONS.md #069) thay vì chỉ đọc `allergyNote` tự
+// do, phục vụ PRE-03 chính xác hơn. Bảng NỐI có đủ 8 cột bắt buộc (đây LÀ dữ liệu nghiệp vụ chạm
+// bệnh nhân, không phải danh mục hệ thống) — allergyNote KHÔNG đổi/xoá, vẫn là ghi chú bổ sung.
+model PatientAllergen {
+  id          String @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId    String @map("tenant_id") @db.Uuid
+  patientId   String @map("patient_id") @db.Uuid
+  // FK thường (không composite) tới allergen.id — danh mục toàn hệ thống, không có tenant_id, cùng
+  // khuôn diagnosis.icd10Code -> icd10_catalog.
+  allergenId  String @map("allergen_id") @db.Uuid
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  // Composite FK (tenant_id, patient_id) -> patient(tenant_id, id): chống trỏ chéo tenant.
+  patient Patient @relation(fields: [tenantId, patientId], references: [tenantId, id])
+  allergen Allergen @relation(fields: [allergenId], references: [id])
+
+  @@unique([tenantId, id])
+  @@map("patient_allergen")
 }
 
 // Append-only — không updated_at, không deleted_at, không version (ngoại lệ đã ghi trong data-model.md).

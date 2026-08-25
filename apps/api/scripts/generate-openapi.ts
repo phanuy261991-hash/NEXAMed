@@ -9,6 +9,7 @@ extendZodWithOpenApi(z);
 import {
   allergenGroupSummarySchema,
   allergenItemSchema,
+  amendPrescriptionRequestSchema,
   appointmentPhoneLookupQuerySchema,
   appointmentPhoneLookupResponseSchema,
   appointmentSummarySchema,
@@ -16,6 +17,14 @@ import {
   breakGlassResponseSchema,
   cancelAppointmentRequestSchema,
   cancelEncounterRequestSchema,
+  createDrugRequestSchema,
+  drugSummarySchema,
+  listDrugsQuerySchema,
+  listDrugsResponseSchema,
+  prescriptionResponseSchema,
+  savePrescriptionItemsRequestSchema,
+  signPrescriptionRequestSchema,
+  updateDrugRequestSchema,
   changePasswordRequestSchema,
   changePasswordResponseSchema,
   checkInRequestSchema,
@@ -691,6 +700,81 @@ registry.registerPath({
   },
 });
 
+registry.registerPath({
+  method: 'put',
+  path: '/api/v1/encounters/{id}/prescription-items',
+  tags: ['encounter'],
+  summary: 'Kê đơn (Sprint 4) — thay thế toàn bộ dòng thuốc của đơn NHÁP hiện tại (tạo đơn nháp nếu chưa có)',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: encounterActionIdParams,
+    body: { content: { 'application/json': { schema: savePrescriptionItemsRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Thành công', envelope(prescriptionResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền prescription.create'),
+    404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal)'),
+    409: errorResponse('Lượt khám không ở trạng thái đang khám, hoặc đơn đã ký (PRESCRIPTION_ALREADY_SIGNED)'),
+    422: errorResponse('Chưa có chẩn đoán chính (PRESCRIPTION_REQUIRES_DIAGNOSIS)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/encounters/{id}/prescription/sign',
+  tags: ['encounter'],
+  summary: 'Ký đơn thuốc NHÁP hiện tại — chữ ký logic, sau khi ký đơn bất biến (trigger C8)',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: encounterActionIdParams,
+    body: { content: { 'application/json': { schema: signPrescriptionRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Thành công', envelope(prescriptionResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền prescription.sign'),
+    404: errorResponse('Không tìm thấy đơn nháp để ký (không tồn tại, đã ký, thuộc tenant khác, hoặc ngoài scope personal)'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION)'),
+    422: errorResponse('Đơn chưa có dòng thuốc nào (PRESCRIPTION_EMPTY)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/encounters/{id}/prescription/print',
+  tags: ['encounter'],
+  summary: 'In đơn thuốc (PRE-04) — ghi nhận printedAt, idempotent',
+  security: [{ bearerAuth: [] }],
+  request: { params: encounterActionIdParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(prescriptionResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền prescription.print'),
+    404: errorResponse('Không tìm thấy đơn đã ký để in'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/encounters/{id}/prescription/amend',
+  tags: ['encounter'],
+  summary: '"Sửa đơn" — đính chính đơn đã ký, tạo đơn mới đã ký ngay, bắt buộc lý do',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: encounterActionIdParams,
+    body: { content: { 'application/json': { schema: amendPrescriptionRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Thành công', envelope(prescriptionResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền prescription.sign'),
+    404: errorResponse('Không có đơn đã ký để đính chính'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION)'),
+    422: errorResponse('Danh sách dòng thuốc rỗng (PRESCRIPTION_EMPTY)'),
+  },
+});
+
 const userIdParams = z.object({ id: z.string().uuid() });
 
 registry.registerPath({
@@ -1026,6 +1110,56 @@ registry.registerPath({
     403: errorResponse('Không có quyền clinic_config.update'),
     404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
     409: errorResponse('version không khớp (CONCURRENT_MODIFICATION)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/drugs',
+  tags: ['drug'],
+  summary: 'Danh mục thuốc (Sprint 4, S4-03) — tạo thuốc mới, THEO TENANT (phòng khám tự nhập)',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createDrugRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Tạo thành công', envelope(drugSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền drug.manage'),
+    409: errorResponse('Trùng mã thuốc trong tenant (DRUG_DUPLICATE_CODE)'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/drugs',
+  tags: ['drug'],
+  summary: 'Tìm/liệt kê thuốc (dùng cả lúc kê đơn lẫn trang quản trị Danh mục thuốc)',
+  security: [{ bearerAuth: [] }],
+  request: { query: listDrugsQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listDrugsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền drug.read'),
+  },
+});
+
+const drugIdParams = z.object({ id: z.string().uuid() });
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/drugs/{id}',
+  tags: ['drug'],
+  summary: 'Sửa/ẩn thuốc — bắt buộc kèm version hiện có',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: drugIdParams,
+    body: { content: { 'application/json': { schema: updateDrugRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Sửa thành công', envelope(drugSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền drug.manage'),
+    404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
+    409: errorResponse('Trùng mã thuốc, hoặc version không khớp (CONCURRENT_MODIFICATION)'),
   },
 });
 

@@ -54,6 +54,11 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   // permission theo đúng khu vực trang, cùng lý do icd10_catalog không tái dùng reference_catalog.*.
   { module: 'allergen_catalog', action: 'read', description: 'Xem danh mục Dị nguyên' },
   { module: 'allergen_catalog', action: 'manage', description: 'Thêm/sửa/ẩn Nhóm dị nguyên và Dị nguyên' },
+  // Danh mục thuốc (Sprint 4, S4-03) — theo tenant (khác allergen_catalog/reference_catalog toàn hệ
+  // thống). `drug.read` mở cho mọi vai trò lâm sàng (bác sĩ tìm thuốc lúc kê đơn), `drug.manage`
+  // chỉ clinic_admin, cùng khuôn reference_catalog.*.
+  { module: 'drug', action: 'read', description: 'Xem danh mục thuốc' },
+  { module: 'drug', action: 'manage', description: 'Thêm/sửa/ẩn thuốc trong danh mục' },
 ] as const;
 
 export function permissionKey(p: Pick<PermissionDefinition, 'module' | 'action'>): string {
@@ -85,6 +90,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'encounter.cancel': 'global',
     'reference_catalog.read': 'global',
     'allergen_catalog.read': 'global',
+    'drug.read': 'global',
   },
   nurse: {
     'patient.read': 'global',
@@ -96,6 +102,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'vital_sign.create': 'global',
     'reference_catalog.read': 'global',
     'allergen_catalog.read': 'global',
+    'drug.read': 'global',
   },
   doctor: {
     'patient.read': 'global',
@@ -123,6 +130,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'prescription.print': 'personal',
     'reference_catalog.read': 'global',
     'allergen_catalog.read': 'global',
+    'drug.read': 'global',
   },
   clinic_admin: {
     'patient.read': 'global',
@@ -147,6 +155,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'reference_catalog.manage': 'global',
     'allergen_catalog.read': 'global',
     'allergen_catalog.manage': 'global',
+    'drug.read': 'global',
+    'drug.manage': 'global',
   },
   system_admin: {
     'user_account.read': 'global',

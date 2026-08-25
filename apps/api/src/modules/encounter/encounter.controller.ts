@@ -1,10 +1,13 @@
 import { Body, Controller, Get, HttpCode, Param, Post, Put, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import {
+  amendPrescriptionRequestSchema,
   cancelEncounterRequestSchema,
   completeConsultationRequestSchema,
   saveClinicalNoteRequestSchema,
   saveDiagnosesRequestSchema,
+  savePrescriptionItemsRequestSchema,
+  signPrescriptionRequestSchema,
   startConsultationRequestSchema,
 } from '@nexamed/shared';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
@@ -69,5 +72,43 @@ export class EncounterController {
     const dto = completeConsultationRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
     return this.encounterService.completeConsultation(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+  }
+
+  /** Kê đơn (Sprint 4, S4-01/02) — thay thế toàn bộ dòng thuốc của đơn NHÁP hiện tại. */
+  @Put(':id/prescription-items')
+  @RequirePermission('prescription', 'create', { entityIdParam: 'id' })
+  async savePrescriptionItems(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
+    const dto = savePrescriptionItemsRequestSchema.parse(body);
+    const { userId, tenantId } = req.user!;
+    return this.encounterService.savePrescriptionItems(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+  }
+
+  /** Ký đơn thuốc — sau khi ký đơn bất biến (trigger C8 chặn UPDATE), sửa = "Sửa đơn" (đính chính). */
+  @Post(':id/prescription/sign')
+  @RequirePermission('prescription', 'sign', { entityIdParam: 'id' })
+  @HttpCode(200)
+  async signPrescription(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
+    const dto = signPrescriptionRequestSchema.parse(body);
+    const { userId, tenantId } = req.user!;
+    return this.encounterService.signPrescription(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+  }
+
+  /** In đơn (PRE-04) — ghi nhận `printedAt`, idempotent. Bố cục in nằm ở tầng web. */
+  @Post(':id/prescription/print')
+  @RequirePermission('prescription', 'print', { entityIdParam: 'id' })
+  @HttpCode(200)
+  async printPrescription(@Param('id') id: string, @Req() req: Request) {
+    const { userId, tenantId } = req.user!;
+    return this.encounterService.markPrescriptionPrinted(tenantId, userId, req.dataScope!, id, extractRequestMeta(req));
+  }
+
+  /** "Sửa đơn" — đính chính đơn đã ký, tạo đơn mới đã ký ngay, bắt buộc lý do. */
+  @Post(':id/prescription/amend')
+  @RequirePermission('prescription', 'sign', { entityIdParam: 'id' })
+  @HttpCode(200)
+  async amendPrescription(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
+    const dto = amendPrescriptionRequestSchema.parse(body);
+    const { userId, tenantId } = req.user!;
+    return this.encounterService.amendPrescription(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 }

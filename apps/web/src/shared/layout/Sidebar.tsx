@@ -249,7 +249,8 @@ export function Sidebar() {
                   <NavItem to="/admin/catalog-organization" label="Danh mục Tổ chức và Nhân sự" icon={Users} collapsed={false} indent />
                   <NavItem to="/admin/catalog-clinical" label="Danh mục Chuyên môn" icon={GraduationCap} collapsed={false} indent />
                   <NavItem to="/admin/catalog-paraclinical" label="Danh mục cận lâm sàng" icon={Flask} collapsed={false} indent />
-                  <NavItem to="/admin/catalog-pharmacy" label="Danh mục Dược và Vật tư" icon={Pill} collapsed={false} indent />
+                  {/* Đổi nhãn từ "Danh mục Dược và Vật tư" (Sprint 4) — v1 chỉ quản lý danh mục thuốc, không vật tư/kho (docs/product/future-modules-reference.md mục 2.2.1). */}
+                  <NavItem to="/admin/catalog-pharmacy" label="Danh mục thuốc" icon={Pill} collapsed={false} indent />
                   <NavItem to="/admin/system-config" label="Cấu hình hệ thống" icon={SlidersHorizontal} collapsed={false} indent />
                 </ul>
               )}

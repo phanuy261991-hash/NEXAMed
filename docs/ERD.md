@@ -1,6 +1,6 @@
 # ERD: NEXAMed v1
 
-**Version**: v1.24 — 21/08/2026 (xem mục 9 để biết lịch sử thay đổi)
+**Version**: v1.25 — 25/08/2026 (xem mục 9 để biết lịch sử thay đổi)
 **Phạm vi**: chỉ các bảng thuộc v1 (Đặt lịch, Tiếp nhận, Khám bệnh, Kê đơn). Bảng của v2+ (viện phí, kho thuốc, BHYT) **không** tạo ở giai đoạn này.
 **Căn cứ**: `docs/product/prd.md` v1.0, `docs/product/plan.md` v1.0, `.claude/docs/data-model.md`
 
@@ -80,6 +80,14 @@ erDiagram
     PATIENT |o--o{ APPOINTMENT : "gan sau khi tiep nhan"
     PATIENT ||--o{ ENCOUNTER : "den kham"
     PATIENT ||--o| PATIENT : "merged_into"
+    PATIENT ||--o{ PATIENT_ALLERGEN : "di nguyen da biet"
+    ALLERGEN ||--o{ PATIENT_ALLERGEN : "duoc gan"
+    PATIENT_ALLERGEN {
+        uuid id PK
+        uuid tenant_id FK
+        uuid patient_id FK
+        uuid allergen_id FK
+    }
 
     APPOINTMENT ||--o| ENCOUNTER : "sinh ra"
     ROOM ||--o{ APPOINTMENT : "dien ra tai"
@@ -460,6 +468,7 @@ erDiagram
 |---|---|---|
 | `patient` | Hồ sơ hành chính | `national_id_enc` mã hoá AES-256-GCM; `national_id_hash` để tra trùng; `address_json` lưu địa chỉ (PAT-01) |
 | `insurance_card` | Thẻ BHYT | v1 chỉ lưu và hiển thị, không tính chi trả |
+| `patient_allergen` | Dị nguyên đã biết | **Mới (Sprint 4, `docs/DECISIONS.md` 2026-08-25)** — bảng NỐI `patient` ↔ `allergen` (danh mục "Dị nguyên" toàn hệ thống, #069), phục vụ PRE-03 chính xác hơn `patient.allergyNote` tự do. Đủ 8 cột bắt buộc (dữ liệu nghiệp vụ chạm bệnh nhân, khác danh mục hệ thống). `allergenId` FK thường (không composite) tới `allergen.id` — cùng khuôn `diagnosis.icd10Code`. `patient.allergyNote` GIỮ NGUYÊN làm ghi chú bổ sung tự do, không đổi/xoá |
 
 `patient.merged_into_id` tự trỏ về `patient` trong cùng tenant, dùng cho luồng gộp hồ sơ trùng (PAT-04). Bản ghi nguồn không xoá, chỉ ngừng cho tạo lượt khám mới.
 
@@ -509,8 +518,8 @@ Bản ghi từ CẢ HAI luồng cùng xuất hiện trong "Danh sách tiếp nh�
 | `vital_sign` | Sinh hiệu | Lưu số nguyên: nhiệt độ theo phần mười độ C (`temperature_deci_c`, 37.5°C → `375`), cân nặng theo gram, chiều cao theo mm |
 | `diagnosis` | Chẩn đoán | `type`: `PRIMARY` hoặc `SECONDARY`; bắt buộc có đúng một `PRIMARY` khi hoàn tất lượt khám |
 | `clinical_note` | Ghi chú khám (nhóm "Thăm khám") | `section` (6 giá trị — `PERSONAL_HISTORY`/`FAMILY_HISTORY` chuyển sang `patient.personal_history`/`family_history` v1.24, xem #068): `REASON_FOR_VISIT`, `ILLNESS_PROGRESS`, `PRELIMINARY_DIAGNOSIS`, `GENERAL_EXAM`, `REGIONAL_EXAM`, `PLAN` |
-| `prescription` | Đơn thuốc | Ký logic ở v1; `signature_payload` để sẵn cho chữ ký số, luôn `NULL` |
-| `prescription_item` | Dòng thuốc | v1 không có cột giá, không trừ kho |
+| `prescription` | Đơn thuốc | **Đã hiện thực (Sprint 4, S4-01/02, `docs/DECISIONS.md` 2026-08-25)** — `SignableEntity` ĐẦU TIÊN trong dự án thật sự dùng logic ký (`SignaturePort`); ký logic ở v1, `signature_payload` để sẵn cho chữ ký số, luôn `NULL`. **C8 (mục 4) lần đầu là DB trigger THẬT** (chặn UPDATE `signedAt/signedBy/signaturePayload/encounterId/supersedesId/amendmentReason` khi đã ký — CHO PHÉP `printedAt`/soft-delete/version tiếp tục đổi). Đính chính tạo bản mới ĐÃ KÝ NGAY (không qua lại bước nháp) — khác `clinical_note`/`diagnosis` (chưa có logic ký, vẫn sửa tại chỗ). Partial unique `(tenant_id, encounter_id) WHERE deleted_at IS NULL` — đúng 1 đơn đang hiệu lực/lượt khám |
+| `prescription_item` | Dòng thuốc | **Đã hiện thực (Sprint 4)** — v1 không có cột giá, không trừ kho. Bulk-replace (xoá mềm + tạo lại) khi đơn CHƯA ký, đúng khuôn `diagnosis` |
 
 `clinical_note` và `prescription` có `supersedes_id` + `amendment_reason` cho luồng đính chính: bản mới trỏ về bản cũ, bản cũ đặt `deleted_at` + `deleted_reason`.
 
@@ -521,7 +530,7 @@ Bản ghi từ CẢ HAI luồng cùng xuất hiện trong "Danh sách tiếp nh�
 | `icd10_catalog` | Toàn hệ thống | Không có `tenant_id`, read-only lúc chạy, seed từ danh mục Bộ Y tế — v1.17 seed ĐỦ Chương I-XXII (15.844 mã, S3-01 mở khoá một phần, `docs/DECISIONS.md` #056). `search_key` là tên tiếng Việt đã bỏ dấu và viết thường (tái dùng `nexamed_unaccent_lower()` của `patient`), phục vụ tìm kiếm không dấu. `chapter_code`/`chapter_name`, `block_code`/`block_name`, `group_code`/`group_name` tách từ 3 cấp phân loại của WHO (thay field `chapter` đơn lẻ ở bản thiết kế trước v1.17). `chapter_code` là số La Mã ("I".."XXII") — thứ tự hiển thị đúng phải sắp ở tầng ứng dụng qua `romanToInt()` (`packages/core`), không sắp được theo thứ tự chuỗi ở DB. `gender_restriction`/`usage_restriction` chỉ hiển thị cảnh báo mềm ở trang tra cứu — chưa có logic chặn (thuộc S3-06/07, chưa xây) |
 | `reference_catalog` | Toàn hệ thống | Dân tộc/Quốc tịch (`docs/DECISIONS.md` #037, đảo ngược #034) + Nguồn khách hàng/Loại khám (Sprint 3, v1.11) + Loại tiếp nhận/Hình thức khám/Lý do ưu tiên/Loại giá dịch vụ (v1.13, `docs/DECISIONS.md` #052) + Nghề nghiệp (v1.21, `docs/DECISIONS.md` #061, đảo ngược tiếp phần `occupation` của #034 — không seed cứng, `clinic_admin` tự thêm qua UI) + Học vị/Học hàm, Chức danh, Trạng thái làm việc, Hình thức làm việc (v1.22, mở rộng ADM-01, `docs/DECISIONS.md` #063 — 2 category đầu không seed cứng cùng lý do `OCCUPATION`; 2 category sau seed sẵn giá trị chuẩn) — tái dùng nguyên bảng này thay vì tạo bảng riêng. Không `tenant_id`, **quản lý được qua API** bởi `clinic_admin` (khác `icd10_catalog`/`permission` — read-only lúc chạy) — "xoá" là `is_active=false` (soft), role DB không có quyền `DELETE`. Cột `price`/`unit` (bigint/text, nullable) chỉ có ý nghĩa với category `EXAM_TYPE` — lưu để hiển thị, chưa tính viện phí. Cột `deactivates_account` (boolean, mặc định `false`, v1.22) chỉ có ý nghĩa với category `EMPLOYMENT_STATUS` — mục "Nghỉ việc" đặt `true` để `user_account.employment_status_code` trỏ tới nó tự động vô hiệu hoá tài khoản, tách khỏi `code` (vốn sửa được qua UI) để không phụ thuộc vào việc admin không đổi tên mã |
 | `province` / `ward` | Toàn hệ thống | Tỉnh/Phường-Xã theo sáp nhập hành chính 2025, mã Bộ Nội vụ (`docs/DECISIONS.md` #038, đảo ngược tiếp phần Tỉnh/Xã của #034). Không `tenant_id`, **read-only lúc chạy** (giống `icd10_catalog`, khác `reference_catalog` — không có endpoint quản lý qua API). `ward.code` (8 chữ số) duy nhất toàn quốc, dùng thẳng làm PK |
-| `drug` | Theo tenant | v1 phòng khám tự nhập danh mục thuốc của mình (theo PRD mục 8). Khi có danh mục thuốc quốc gia dùng chung, thêm bảng `drug_catalog` toàn hệ thống và cho `drug.catalog_code` tham chiếu tới |
+| `drug` | Theo tenant | **Đã hiện thực (Sprint 4, S4-03)** — v1 phòng khám tự nhập danh mục thuốc của mình (theo PRD mục 8), không tồn kho/giá bán ("Trường hợp A" đã chốt, `docs/DECISIONS.md` 2026-08-25 — xem `docs/product/future-modules-reference.md` §2.2.1 cho hướng có kho ở v2.1). Khi có danh mục thuốc quốc gia dùng chung, thêm bảng `drug_catalog` toàn hệ thống và cho `drug.catalog_code` tham chiếu tới |
 
 ---
 
@@ -538,7 +547,7 @@ Những ràng buộc này đặt ở DB, không chỉ ở tầng ứng dụng.
 | C5 | Composite FK `(tenant_id, id)` cho mọi quan hệ nghiệp vụ | Toàn bộ | Không thể trỏ chéo tenant kể cả khi code sai |
 | C6 | `CHECK (version >= 1)` và mọi `UPDATE` kèm `WHERE version = ?` | Mọi bảng nghiệp vụ | Optimistic locking |
 | C7 | Partial index `WHERE deleted_at IS NULL` | Bảng lâm sàng | Truy vấn mặc định chỉ đọc bản còn hiệu lực |
-| C8 | Trigger chặn `UPDATE` khi `signed_at IS NOT NULL` | `clinical_note`, `prescription` | Bản ghi đã ký bất biến, không phụ thuộc vào việc ứng dụng nhớ kiểm tra |
+| C8 | Trigger chặn `UPDATE` khi `signed_at IS NOT NULL` | `clinical_note`, `prescription` | Bản ghi đã ký bất biến, không phụ thuộc vào việc ứng dụng nhớ kiểm tra. **`prescription` là bảng đầu tiên có trigger THẬT** (Sprint 4) — `clinical_note` có sẵn cột nhưng chưa từng có trigger (chưa viết logic ký, luôn NULL). Trigger chỉ chặn sửa `signed_at/signed_by/signature_payload/encounter_id/supersedes_id/amendment_reason` — CHO PHÉP `printed_at`/soft-delete/`version` tiếp tục đổi trên bản đã ký |
 | C9 | Không cấp quyền `DELETE` cho app user trên mọi bảng nghiệp vụ | Toàn bộ | Ép soft delete ở tầng quyền, không chỉ ở code |
 | C10 | `CHECK (type IN ('PRIMARY','SECONDARY'))` và unique partial một `PRIMARY` mỗi encounter | `diagnosis` | Bắt buộc đúng một chẩn đoán chính |
 | C11 | `UNIQUE (tenant_id, appointment_id) WHERE appointment_id IS NOT NULL AND deleted_at IS NULL` | `encounter` | Mỗi lịch hẹn sinh tối đa một lượt khám, kể cả khi hai request check-in gần như đồng thời (đúng khuôn C2/C3) |
@@ -547,6 +556,8 @@ Những ràng buộc này đặt ở DB, không chỉ ở tầng ứng dụng.
 | C14 | `UNIQUE (tenant_id, name) WHERE deleted_at IS NULL` | `role` | ADM-07 — tạo lại đúng tên vai trò tuỳ biến đã từng bị ẩn (soft-delete) không vi phạm unique, cùng khuôn `user_role`/C3 |
 | C15 | Composite FK `(tenant_id, department_type_id)` nullable | `department.department_type_id` | Mở rộng ADM-01 (v1.22) — "Loại Khoa/Phòng" tùy chọn, cùng khuôn C13 (`room.floor_id`) |
 | C16 | `UNIQUE (tenant_id) WHERE is_default = true` | `department` | "Hàng đợi ảo" (v1.23, `docs/DECISIONS.md` #064) — đúng 1 Khoa mặc định ("Khoa chung")/tenant, dùng làm fallback `encounter.department_id` |
+| C17 | `UNIQUE (tenant_id, encounter_id) WHERE deleted_at IS NULL` | `prescription` | Sprint 4 — đúng 1 đơn ĐANG HIỆU LỰC (nháp hoặc đã ký, chưa bị đính chính/xoá) mỗi lượt khám, cùng khuôn C11/C16 |
+| C18 | `UNIQUE (tenant_id, patient_id, allergen_id) WHERE deleted_at IS NULL` | `patient_allergen` | Sprint 4 — gỡ rồi gán lại đúng dị nguyên đã từng gỡ không vi phạm unique, cùng khuôn C3/C14 |
 
 ---
 
@@ -581,7 +592,7 @@ Khớp với `docs/product/plan.md`.
 | S1 (bổ sung, Auth — 2026-08-10) | `user_session` (S1-04, rotation + reuse detection); `user_account` thêm `failed_login_count`/`last_failed_login_at`/`locked_until` — xem `docs/DECISIONS.md` #019 |
 | S2 (tuần 3-4) | `patient`, `insurance_card`, `appointment` |
 | S3 (tuần 5-6) | `icd10_catalog`, `encounter`, `vital_sign`, `diagnosis`, `clinical_note` |
-| S4 (tuần 7-8) | `drug`, `prescription`, `prescription_item` |
+| S4 (tuần 7-8) | `drug`, `prescription`, `prescription_item`, `patient_allergen` (mới, ngoài đặc tả gốc — liên kết `allergen_catalog` #069 với `patient`, `docs/DECISIONS.md` 2026-08-25) |
 | S5-S6 | `invoice`, `invoice_line`, `payment` (thu ngân cơ bản — mở rộng phạm vi v1 chốt 2026-08-22, `docs/DECISIONS.md` #072); thêm cột `supersedes_id`, `amendment_reason` nếu chưa tạo, và trigger C8 |
 
 Khuyến nghị: tạo đủ 8 cột bắt buộc **ngay từ migration đầu tiên của mỗi bảng**, kể cả khi tính năng dùng tới chúng ở sprint sau. Thêm cột vào bảng đã có dữ liệu thật tốn hơn nhiều.
@@ -645,3 +656,4 @@ Khi thêm, các bảng này vẫn phải đủ 8 cột bắt buộc và tuân th
 | v1.22 | 20/08/2026 | Mở rộng ADM-01 — "Danh mục quản lý tài khoản" đầy đủ hồ sơ nhân sự (chủ dự án yêu cầu trực tiếp, `docs/DECISIONS.md` #063). `user_account` thêm 10 cột: `employee_code` (tự sinh, prefix `NV`), `phone`, `personal_email`, `company_email`, `academic_title_code`/`position_code`/`employment_status_code`/`employment_type_code` (4 mã tham chiếu `reference_catalog`, không FK cứng — cùng khuôn `patient.ethnicity`/`occupation`), `can_sign_medical_record` (boolean, chỉ lưu metadata — chữ ký số chưa triển khai ở v1), `must_change_password` (boolean, chặn thật lần đăng nhập đầu). `reference_catalog` thêm 4 category mới (`ACADEMIC_TITLE`/`STAFF_POSITION`/`EMPLOYMENT_STATUS`/`EMPLOYMENT_TYPE`) + cột `deactivates_account` (boolean, chỉ có ý nghĩa với `EMPLOYMENT_STATUS` — tách khỏi `code` để không phụ thuộc admin đổi tên mã). Thêm bảng `department_type` và mở rộng `department` thêm `code` (tự sinh, prefix `KP`), `department_type_id` (tuỳ chọn, nullable composite FK — thêm C15, cùng khuôn C13), `is_active` — bảng `department` đã có sẵn từ S1-04b nhưng chưa từng có module/API/UI quản lý, nay có đầy đủ qua "Danh mục Tổ chức và Nhân sự". Migration: `20260820170000_user_account_hr_profile`, `20260820180000_department_management`, `20260820190000_department_code_and_catalog_autocode`, `20260820200000_department_type`. Xem `docs/DECISIONS.md` #063. |
 | v1.23 | 21/08/2026 | "Hàng đợi ảo" (Virtual Queue theo Bác sĩ/Khoa, `docs/DECISIONS.md` #064) — `encounter.doctor_id` đổi thành **nullable** (`NULL` = lượt khám còn trong hàng chờ chung Khoa, chưa được bác sĩ nào nhận). Thêm `encounter.department_id` **bắt buộc** (composite FK → `department`). Thêm `department.is_default` (đúng 1 Khoa mặc định "Khoa chung"/tenant, partial unique — C16), tự seed lúc tạo tenant (`seedDefaultRolesForTenant`). "Hàng đợi khám" không còn lọc CHỈ theo `doctorId` — gộp thêm nhánh "hàng chờ chung Khoa của actor" khi client truyền `includeDepartmentPool=true`. Endpoint "Nhận ca" (mở rộng `POST /encounters/:id/start`) — set `doctorId=actor` atomic khi ticket đang `doctorId=NULL`, chỉ cho bác sĩ cùng Khoa. Migration `20260820210000_encounter_virtual_queue`. Xem `docs/DECISIONS.md` #064. |
 | v1.24 | 21/08/2026 | Lỗ hổng thật chủ dự án phát hiện: "Tiền sử bản thân"/"Tiền sử gia đình" trước đây gắn `clinical_note.section` theo TỪNG lượt khám (`PERSONAL_HISTORY`/`FAMILY_HISTORY`) nên lượt khám mới không kế thừa, bác sĩ phải gõ lại từ đầu dù nội dung hầu như không đổi. Chuyển 2 mục này thành `patient.personal_history`/`family_history` (nullable, đúng khuôn `patient.allergy_note`) — dữ liệu chung của bệnh nhân, sửa tại chỗ qua `PATCH /patients/:id`, không nhập lại mỗi lượt khám. `clinical_note.section` còn lại 6 giá trị (bỏ 2 giá trị trên). Migration `20260821150000_patient_history_fields` backfill nội dung KHÔNG RỖNG gần nhất của mỗi bệnh nhân từ `clinical_note` cũ trước khi xoá 2 section này và dựng lại enum. Xem `docs/DECISIONS.md` #068. |
+| v1.25 | 25/08/2026 | Sprint 4 (Kê đơn, S4-01→04) — `drug`/`prescription`/`prescription_item` từ đặc tả thiết kế (đã có sẵn trong ERD từ đầu) chuyển thành ĐÃ HIỆN THỰC, đúng nguyên schema đã đặc tả, không đổi cột nào — migration `20260825090000_prescription`. `prescription` là `SignableEntity` đầu tiên thật sự dùng logic ký; C8 lần đầu là DB trigger thật (chỉ chặn sửa nội dung đã ký, cho phép `printed_at`/soft-delete/`version` tiếp tục đổi) — thêm C17 (đúng 1 đơn hiệu lực/lượt khám). Thêm bảng MỚI `patient_allergen` (ngoài đặc tả gốc — migration `20260825100000_patient_allergen`, thêm C18) liên kết `patient` với danh mục "Dị nguyên" (`allergen_catalog`, #069) đã có sẵn nhưng chưa từng dùng tới, phục vụ PRE-03 chính xác hơn `patient.allergy_note` tự do (giữ nguyên, không đổi/xoá). Xem `docs/DECISIONS.md` (chốt qua `AskUserQuestion` 2026-08-25) và `docs/product/future-modules-reference.md` §2.2.1 (đề xuất kho/hoá đơn thuốc bị loại khỏi phạm vi v1, lưu làm đặc tả v2.1). |

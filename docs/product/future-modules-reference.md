@@ -44,6 +44,24 @@
 - **Định mức tiêu hao tự động (Medical BOM)**: `Service_BOM` gắn vào `Services`, tự động trừ kho VTTH khi dịch vụ hoàn tất qua event (`ServiceCompletedEvent`) — khớp nguyên tắc "domain event, không import chéo module" đã có trong `.claude/docs/architecture.md`/`coding-standards.md`. Có thể tái dùng cơ chế event bus hiện tại (`EventBusPort`) khi tới lượt.
 - **Hoạt chất chuẩn + cảnh báo tương tác**: `Master_Active_Ingredients`, `Drug_Ingredients` — mở rộng của `PRE-02` (cảnh báo trùng hoạt chất, hiện P0 ở v1 nhưng v1 không có bảng hoạt chất chuẩn, chỉ so trực tiếp `active_ingredient` text trên `drug`). Cân nhắc tách bảng hoạt chất chuẩn nếu cần cảnh báo tương tác thuốc (không chỉ trùng hoạt chất) ở phase sau.
 
+#### 2.2.1. Đặc tả UI/luồng "tách Đơn thuốc y khoa khỏi Hoá đơn bán hàng" (chủ dự án cung cấp 2026-08-25, trước khi bắt đầu Sprint 4)
+
+**Nguyên tắc cốt lõi**: Đơn thuốc y khoa (của bác sĩ) là hồ sơ bệnh án mang tính pháp lý — sau khi bác sĩ ký/lưu, bộ phận khác không được xoá/sửa số lượng trên chính đơn đó (khớp `SignableEntity`/`isSigned()` đã có ở `packages/core`, cùng nguyên tắc `clinical_note`). Hoá đơn thu tiền & phiếu xuất kho (của quầy thuốc/thu ngân) là chứng từ thương mại riêng — dược sĩ/thu ngân được sửa (bớt thuốc, giảm số lượng) theo thực tế khách mua, **không sửa lên bản ghi đơn thuốc gốc**.
+
+**Xác nhận qua `AskUserQuestion` (2026-08-25)**: đã đối chiếu với `CLAUDE.md` — mô tả dưới đây vượt phạm vi v1 (đòi hỏi kho tồn kho thật + danh mục thuốc quốc gia + hoá đơn tiền thuốc, cả ba đều ngoài v1). Chủ dự án chọn **giữ Sprint 4 đúng phạm vi v1 đã chốt** (kê đơn chỉ ghi nhận + in, không kho — đúng "Trường hợp A" bên dưới đã khớp sẵn với thiết kế hiện tại). Toàn bộ mô tả này ghi lại làm đặc tả CHI TIẾT cho v2.1, dùng khi thật sự bắt đầu module dược/kho — không tự suy diễn/rút gọn khi tới lượt, đọc lại nguyên văn.
+
+**Giao diện màn hình kê đơn (bác sĩ)** — ô tìm thuốc gắn 2 Tab/Radio ngay trên ô tìm kiếm:
+- **Tab "Thuốc phòng khám" (kho nội bộ)**: dữ liệu từ danh mục kho của chính phòng khám. Gõ "Augmentin" → dropdown: `Augmentin 1g | Tồn kho: 50 viên | Giá: 18.000đ`. Bác sĩ không kê vượt tồn kho hiển thị.
+- **Tab "Thuốc ngoài" (từ điển thuốc)**: dữ liệu từ danh mục thuốc quốc gia (MIMS/Dược thư) do phần mềm cung cấp sẵn (khớp `drug_catalog` toàn hệ thống đã dự trù ở mục 2.2, E3 `docs/ERD.md`). Gõ "Augmentin" → dropdown: `Augmentin 1g | Kháng sinh | (Mua ngoài)` — không tồn kho/giá.
+
+**Trường hợp A — phòng khám KHÔNG có kho thuốc** (chỉ khám và kê đơn — **đây là toàn bộ phạm vi v1 hiện tại**, không cần thay đổi gì để đạt được): admin tắt module "Quản lý kho" → Tab "Thuốc phòng khám" tự ẩn, bác sĩ mặc định chỉ dùng "Từ điển thuốc ngoài". Kê đơn → in đơn thuốc tiêu chuẩn tại phòng khám. Hệ thống chỉ ghi nhận tiền công khám vào doanh thu, **không** sinh phiếu xuất kho/hoá đơn tiền thuốc — bệnh nhân cầm đơn ra ngoài mua.
+
+**Trường hợp B — phòng khám CÓ kho thuốc và thu tiền**: admin bật "Kho dược" + "Thu ngân", bác sĩ mặc định dùng Tab "Thuốc phòng khám" (thấy tồn kho để cân nhắc). Bấm **"Hoàn thành & Chuyển thu ngân"** thay vì in ngay — máy in tại phòng khám **KHÔNG** in đơn lúc này (tránh bệnh nhân cầm đơn bỏ đi không thanh toán). Hệ thống đẩy trạng thái bệnh nhân sang màn hình Thu ngân/Dược sĩ (tab "Chờ thanh toán"), bill tự tổng hợp **Tiền khám + Tiền thuốc**. Thu ngân bấm **"Xác nhận thu & Xuất kho"** → in 2 bản: hoá đơn thu tiền (cho bệnh nhân) và đơn thuốc kèm liều dùng (để dược sĩ nhặt thuốc) → hệ thống tự trừ tồn kho.
+
+**Kịch bản "lai"** (bác sĩ kê 3 loại, kho chỉ có 2 loại): bác sĩ kê 2 loại đầu ở Tab "Thuốc phòng khám", loại thứ 3 chuyển sang Tab "Thuốc ngoài" + tick **"Bệnh nhân tự mua"**. Hệ thống tách luồng: (1) dữ liệu xuống Thu ngân chỉ tính tiền + xuất kho cho 2 loại của phòng khám; (2) đơn thuốc in cho bệnh nhân vẫn hiển thị đủ cả 3 loại, dòng thứ 3 có ghi chú "Thuốc mua ngoài / Bệnh nhân tự túc".
+
+**Ý nghĩa kiến trúc khi hiện thực v2.1**: tách "Từ điển thuốc" (kê đơn y khoa thuần) khỏi "Danh mục hàng hoá" (quản lý kho/tiền) — đúng tinh thần mục 2.2 ở trên (không gộp `Prescription`/ý định bác sĩ với `Dispense`/thực thi bán hàng vào một bảng). Cấu hình bật/tắt "module Kho dược" theo tenant là khái niệm MỚI, chưa có ở v1 (không có bảng/cột nào tương đương `tenant.enabled_specialties` #069 cho việc này — cần thiết kế khi tới lượt, có thể tái dùng đúng khuôn cấu hình-lúc-triển-khai đã chốt cho gói chuyên khoa).
+
 ### 2.3. Luồng khám & vòng đời encounter (tham khảo, không đổi state machine đã chốt)
 
 - **Nguyên tắc "mỗi lần đến khám = 1 encounter mới, không tái dùng encounter đã đóng"** — đã khớp với `.claude/docs/clinical-workflow.md` hiện tại (encounter một chiều, không có đường lùi).

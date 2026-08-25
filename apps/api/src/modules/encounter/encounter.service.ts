@@ -5,12 +5,21 @@ import {
   DOCTOR_DIRECTORY_PORT,
   EncounterAlreadyClaimedError,
   EncounterNotInConsultationError,
+  PrescriptionAlreadySignedError,
+  PrescriptionEmptyError,
+  PrescriptionRequiresDiagnosisError,
+  SIGNATURE_PORT,
   assertEncounterTransition,
   evaluateVitalSignWarnings,
+  findAllergyMatches,
+  findDuplicateActiveIngredients,
   type DoctorDirectoryPort,
+  type PrescriptionDrugLine,
+  type SignaturePort,
 } from '@nexamed/core';
 import { calculateAgeYears } from '@nexamed/shared';
 import type {
+  AmendPrescriptionRequest,
   CancelEncounterRequest,
   ClinicalNoteResponse,
   ClinicalNoteSection,
@@ -19,9 +28,15 @@ import type {
   DataScope,
   DiagnosisItem,
   EncounterSummary,
+  Prescription as PrescriptionDto,
+  PrescriptionItem as PrescriptionItemDto,
+  PrescriptionResponse,
+  PrescriptionWarning,
   SaveClinicalNoteRequest,
   SaveDiagnosesRequest,
   SaveDiagnosesResponse,
+  SavePrescriptionItemsRequest,
+  SignPrescriptionRequest,
   StartConsultationRequest,
   VitalSignResponse,
 } from '@nexamed/shared';
@@ -32,7 +47,9 @@ import type { RequestMeta } from '../../common/request-meta';
 import { EncounterRepository } from './encounter.repository';
 import { DiagnosisRepository, type DiagnosisWithIcd10Name } from './diagnosis.repository';
 import { ClinicalNoteRepository } from './clinical-note.repository';
+import { PrescriptionRepository, type PrescriptionWithItems } from './prescription.repository';
 import { toEncounterSummary } from './encounter.mapper';
+import { PatientAllergenRepository } from '../patient/patient-allergen.repository';
 
 const TEMPERATURE_DECI_PER_CELSIUS = 10;
 /** Số lần khám cũ tối đa hiện trong panel tiền sử (ENC-01) — danh sách tóm tắt, không phân trang ở v1. */
@@ -51,7 +68,10 @@ export class EncounterService {
     private readonly encounterRepository: EncounterRepository,
     private readonly diagnosisRepository: DiagnosisRepository,
     private readonly clinicalNoteRepository: ClinicalNoteRepository,
+    private readonly prescriptionRepository: PrescriptionRepository,
+    private readonly patientAllergenRepository: PatientAllergenRepository,
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
+    @Inject(SIGNATURE_PORT) private readonly signaturePort: SignaturePort,
   ) {}
 
   /**
@@ -196,6 +216,10 @@ export class EncounterService {
 
       const noteRows = await this.clinicalNoteRepository.listForEncounter(tx, tenantId, id);
 
+      // Kê đơn (Sprint 4) — dị nguyên đã biết của bệnh nhân (PRE-03) + đơn thuốc đang hiệu lực.
+      const allergenRows = await this.patientAllergenRepository.listForPatient(tx, tenantId, encounter.patientId);
+      const prescriptionRow = await this.prescriptionRepository.findActiveForEncounter(tx, tenantId, id);
+
       return {
         encounter: toEncounterSummary(encounter),
         patient: {
@@ -208,12 +232,14 @@ export class EncounterService {
           allergyNote: encounter.patient.allergyNote,
           personalHistory: encounter.patient.personalHistory,
           familyHistory: encounter.patient.familyHistory,
+          allergens: allergenRows.map((a) => ({ id: a.allergenId, name: a.allergenName, allergenGroupName: a.allergenGroupName })),
           version: encounter.patient.version,
         },
         vitalSigns,
         history,
         diagnoses,
         clinicalNote: this.toClinicalNoteResponse(noteRows),
+        prescription: prescriptionRow ? this.toPrescriptionResponse(prescriptionRow, allergenRows.map((a) => a.allergenName)) : null,
       };
     });
 
@@ -400,6 +426,281 @@ export class EncounterService {
       }
       return toEncounterSummary(updated);
     });
+  }
+
+  /**
+   * Kê đơn (Sprint 4, S4-01/02) — thay thế TOÀN BỘ dòng thuốc của đơn NHÁP hiện tại (tạo đơn nháp
+   * nếu chưa có). Cùng điều kiện trạng thái với `saveDiagnoses()`/`saveClinicalNote()`
+   * (IN_CONSULTATION hoặc COMPLETED — cho sửa sau hoàn tất, đọc docstring 2 hàm đó). Bắt buộc đã có
+   * chẩn đoán chính (.claude/docs/clinical-workflow.md: "Tạo được khi encounter IN_CONSULTATION và
+   * đã có chẩn đoán chính") — `PrescriptionRequiresDiagnosisError` nếu chưa. Đơn ĐÃ KÝ không sửa
+   * được qua đây (`PrescriptionAlreadySignedError` — lớp phòng thủ ở service, DB có trigger C8 chặn
+   * cứng hơn; UI bình thường không cho bấm nút này sau khi ký, chỉ hiện "Sửa đơn"/`amendPrescription`).
+   */
+  async savePrescriptionItems(
+    tenantId: string,
+    actorId: string,
+    dataScope: DataScope,
+    id: string,
+    dto: SavePrescriptionItemsRequest,
+    meta: RequestMeta,
+  ): Promise<PrescriptionResponse> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const existing = await this.encounterRepository.findById(tx, tenantId, id);
+      if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId)) {
+        throw new NotFoundException();
+      }
+      const isPostCompletionEdit = existing.status === 'COMPLETED';
+      if (existing.status !== 'IN_CONSULTATION' && !isPostCompletionEdit) {
+        throw new EncounterNotInConsultationError();
+      }
+
+      const primaryCount = await this.diagnosisRepository.countPrimary(tx, tenantId, id);
+      if (primaryCount !== 1) {
+        throw new PrescriptionRequiresDiagnosisError();
+      }
+
+      let active = await this.prescriptionRepository.findActiveForEncounter(tx, tenantId, id);
+      if (active && active.signedAt !== null) {
+        throw new PrescriptionAlreadySignedError();
+      }
+      if (!active) {
+        const created = await this.prescriptionRepository.createDraft(tx, tenantId, id, actorId);
+        active = { ...created, items: [] };
+      }
+
+      await this.prescriptionRepository.replaceItems(tx, tenantId, active.id, actorId, dto.items.map((item) => this.toCreateItemData(item)));
+
+      await writeAuditLog(tx, tenantId, {
+        actorId,
+        action: 'prescription.items_saved',
+        entityType: 'encounter',
+        entityId: id,
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
+
+      const allergenRows = await this.patientAllergenRepository.listForPatient(tx, tenantId, existing.patientId);
+      const updated = await this.prescriptionRepository.findById(tx, tenantId, active.id);
+      if (!updated) {
+        throw new NotFoundException();
+      }
+      return this.toPrescriptionResponse(updated, allergenRows.map((a) => a.allergenName));
+    });
+  }
+
+  /**
+   * Ký đơn NHÁP hiện tại — chữ ký logic qua `SignaturePort` (adapter no-op, xem .claude/docs/
+   * security-audit.md). Bắt buộc ≥1 dòng thuốc (`PrescriptionEmptyError`). KHÔNG "chặn ký cứng" ở
+   * v1 — đã hỏi và chốt với chủ dự án (2026-08-25): không có nguồn dữ liệu chống chỉ định/liều theo
+   * tuổi (PRE-06 hoãn P2, `docs/DECISIONS.md` #072) nên PRE-02/03 chỉ là CẢNH BÁO MỀM, không chặn
+   * ký; có cảnh báo mà bác sĩ vẫn ký thì ghi audit action riêng liệt kê cảnh báo đã bỏ qua.
+   */
+  async signPrescription(
+    tenantId: string,
+    actorId: string,
+    dataScope: DataScope,
+    id: string,
+    dto: SignPrescriptionRequest,
+    meta: RequestMeta,
+  ): Promise<PrescriptionResponse> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const existing = await this.encounterRepository.findById(tx, tenantId, id);
+      if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId)) {
+        throw new NotFoundException();
+      }
+      const isPostCompletionEdit = existing.status === 'COMPLETED';
+      if (existing.status !== 'IN_CONSULTATION' && !isPostCompletionEdit) {
+        throw new EncounterNotInConsultationError();
+      }
+
+      const active = await this.prescriptionRepository.findActiveForEncounter(tx, tenantId, id);
+      if (!active || active.signedAt !== null) {
+        throw new NotFoundException();
+      }
+      if (active.items.length === 0) {
+        throw new PrescriptionEmptyError();
+      }
+
+      const allergenRows = await this.patientAllergenRepository.listForPatient(tx, tenantId, existing.patientId);
+      const allergenNames = allergenRows.map((a) => a.allergenName);
+      const warnings = this.computeWarnings(active.items, allergenNames);
+
+      const signature = await this.signaturePort.sign(tenantId, actorId, { entityType: 'prescription', entityId: active.id });
+      const count = await this.prescriptionRepository.sign(tx, tenantId, active.id, dto.version, actorId, signature.signedAt, signature.signedBy);
+      if (count === 0) {
+        throw new ConcurrentModificationError();
+      }
+
+      await writeAuditLog(tx, tenantId, {
+        actorId,
+        action: warnings.length > 0 ? 'prescription.signed_with_warnings' : 'prescription.signed',
+        entityType: 'encounter',
+        entityId: id,
+        afterJson: warnings.length > 0 ? (warnings as unknown as Prisma.InputJsonValue) : undefined,
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
+
+      const updated = await this.prescriptionRepository.findById(tx, tenantId, active.id);
+      if (!updated) {
+        throw new NotFoundException();
+      }
+      return this.toPrescriptionResponse(updated, allergenNames);
+    });
+  }
+
+  /**
+   * In đơn (PRE-04) — chỉ đơn ĐÃ KÝ mới in được (bố cục in nằm ở tầng web, đây chỉ ghi nhận
+   * `printedAt`). Idempotent — in lại không lỗi, không đổi thời điểm in đầu tiên
+   * (`markPrintedIfNotYet`).
+   */
+  async markPrescriptionPrinted(tenantId: string, actorId: string, dataScope: DataScope, id: string, meta: RequestMeta): Promise<PrescriptionResponse> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const existing = await this.encounterRepository.findById(tx, tenantId, id);
+      if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId)) {
+        throw new NotFoundException();
+      }
+
+      const active = await this.prescriptionRepository.findActiveForEncounter(tx, tenantId, id);
+      if (!active || active.signedAt === null) {
+        throw new NotFoundException();
+      }
+
+      await this.prescriptionRepository.markPrintedIfNotYet(tx, tenantId, active.id, actorId);
+
+      await writeAuditLog(tx, tenantId, {
+        actorId,
+        action: 'prescription.printed',
+        entityType: 'encounter',
+        entityId: id,
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
+
+      const allergenRows = await this.patientAllergenRepository.listForPatient(tx, tenantId, existing.patientId);
+      const updated = await this.prescriptionRepository.findById(tx, tenantId, active.id);
+      if (!updated) {
+        throw new NotFoundException();
+      }
+      return this.toPrescriptionResponse(updated, allergenRows.map((a) => a.allergenName));
+    });
+  }
+
+  /**
+   * Đính chính đơn ĐÃ KÝ (.claude/docs/clinical-workflow.md mục "Amendment hồ sơ") — tạo đơn MỚI
+   * ĐÃ KÝ NGAY (đính chính là một hành động xác nhận trọn vẹn, không qua lại bước nháp),
+   * `supersedesId` trỏ về đơn cũ, đơn cũ soft-delete (`deletedReason='amended'`). `items` là danh
+   * sách ĐẦY ĐỦ của bản đính chính (không diff so với bản cũ, cùng khuôn `saveDiagnoses()`).
+   */
+  async amendPrescription(
+    tenantId: string,
+    actorId: string,
+    dataScope: DataScope,
+    id: string,
+    dto: AmendPrescriptionRequest,
+    meta: RequestMeta,
+  ): Promise<PrescriptionResponse> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const existing = await this.encounterRepository.findById(tx, tenantId, id);
+      if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId)) {
+        throw new NotFoundException();
+      }
+      const isPostCompletionEdit = existing.status === 'COMPLETED';
+      if (existing.status !== 'IN_CONSULTATION' && !isPostCompletionEdit) {
+        throw new EncounterNotInConsultationError();
+      }
+
+      const active = await this.prescriptionRepository.findActiveForEncounter(tx, tenantId, id);
+      if (!active || active.signedAt === null) {
+        throw new NotFoundException();
+      }
+      if (dto.items.length === 0) {
+        throw new PrescriptionEmptyError();
+      }
+
+      const supersedeCount = await this.prescriptionRepository.supersede(tx, tenantId, active.id, dto.version, actorId);
+      if (supersedeCount === 0) {
+        throw new ConcurrentModificationError();
+      }
+
+      const signature = await this.signaturePort.sign(tenantId, actorId, { entityType: 'prescription', entityId: active.id });
+      const created = await this.prescriptionRepository.createAmendment(tx, tenantId, id, actorId, {
+        supersedesId: active.id,
+        amendmentReason: dto.amendmentReason,
+        signedAt: signature.signedAt,
+        signedBy: signature.signedBy,
+      });
+      await this.prescriptionRepository.createItems(tx, tenantId, created.id, actorId, dto.items.map((item) => this.toCreateItemData(item)));
+
+      await writeAuditLog(tx, tenantId, {
+        actorId,
+        action: 'prescription.amended',
+        entityType: 'encounter',
+        entityId: id,
+        beforeJson: active.items.map((i) => ({ drugId: i.drugId, dose: i.dose, quantity: i.quantity })) as unknown as Prisma.InputJsonValue,
+        afterJson: { amendmentReason: dto.amendmentReason, items: dto.items } as unknown as Prisma.InputJsonValue,
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
+
+      const allergenRows = await this.patientAllergenRepository.listForPatient(tx, tenantId, existing.patientId);
+      const updated = await this.prescriptionRepository.findById(tx, tenantId, created.id);
+      if (!updated) {
+        throw new NotFoundException();
+      }
+      return this.toPrescriptionResponse(updated, allergenRows.map((a) => a.allergenName));
+    });
+  }
+
+  private toCreateItemData(item: SavePrescriptionItemsRequest['items'][number]) {
+    return {
+      drugId: item.drugId,
+      dose: item.dose,
+      frequency: item.frequency,
+      durationDays: item.durationDays,
+      quantity: item.quantity,
+      instruction: item.instruction ?? null,
+    };
+  }
+
+  /** PRE-02 (trùng hoạt chất) + PRE-03 (đối chiếu dị nguyên đã biết) — CẢNH BÁO MỀM, không chặn ký (xem docstring `signPrescription`). */
+  private computeWarnings(items: PrescriptionWithItems['items'], allergenNames: string[]): PrescriptionWarning[] {
+    const lines: PrescriptionDrugLine[] = items.map((i) => ({ drugId: i.drugId, drugName: i.drugName, activeIngredient: i.activeIngredient }));
+    const duplicates = findDuplicateActiveIngredients(lines).map(
+      (d): PrescriptionWarning => ({ kind: 'duplicate_active_ingredient', label: d.activeIngredient, drugNames: d.drugNames }),
+    );
+    const allergies = findAllergyMatches(lines, allergenNames).map((a): PrescriptionWarning => ({ kind: 'allergy', label: a.allergenName, drugNames: a.drugNames }));
+    return [...duplicates, ...allergies];
+  }
+
+  private toPrescriptionResponse(row: PrescriptionWithItems, allergenNames: string[]): PrescriptionDto {
+    return {
+      id: row.id,
+      encounterId: row.encounterId,
+      items: row.items.map((item) => this.toPrescriptionItem(item)),
+      warnings: this.computeWarnings(row.items, allergenNames),
+      signedAt: row.signedAt ? row.signedAt.toISOString() : null,
+      signedBy: row.signedBy,
+      printedAt: row.printedAt ? row.printedAt.toISOString() : null,
+      supersedesId: row.supersedesId,
+      amendmentReason: row.amendmentReason,
+      version: row.version,
+    };
+  }
+
+  private toPrescriptionItem(item: PrescriptionWithItems['items'][number]): PrescriptionItemDto {
+    return {
+      id: item.id,
+      drugId: item.drugId,
+      drugName: item.drugName,
+      activeIngredient: item.activeIngredient,
+      dose: item.dose,
+      frequency: item.frequency,
+      durationDays: item.durationDays,
+      quantity: item.quantity,
+      instruction: item.instruction,
+    };
   }
 
   private toVitalSignResponse(vitalSign: VitalSign, dob: Date): VitalSignResponse {

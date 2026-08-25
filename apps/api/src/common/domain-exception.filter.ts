@@ -48,6 +48,12 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   // này nên rơi về mặc định 422 (vi phạm quy tắc nghiệp vụ, không phải xung đột trạng thái).
   ALLERGEN_GROUP_DUPLICATE_CODE: HttpStatus.CONFLICT,
   ALLERGEN_DUPLICATE_CODE: HttpStatus.CONFLICT,
+  // Kê đơn (Sprint 4) — sửa đơn đã ký (lớp phòng thủ, DB trigger C8 chặn cứng hơn) và trùng mã
+  // thuốc là xung đột với trạng thái/dữ liệu hiện có, không phải lỗi input. PRESCRIPTION_REQUIRES_
+  // DIAGNOSIS/PRESCRIPTION_EMPTY không có trong bảng này nên rơi về mặc định 422 (vi phạm quy tắc
+  // nghiệp vụ, không phải xung đột trạng thái đồng thời).
+  PRESCRIPTION_ALREADY_SIGNED: HttpStatus.CONFLICT,
+  DRUG_DUPLICATE_CODE: HttpStatus.CONFLICT,
 };
 
 /**

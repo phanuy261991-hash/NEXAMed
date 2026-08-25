@@ -35,6 +35,7 @@ import { decryptPii, encryptPii, hashForLookup } from '../../infrastructure/cryp
 import { signFileToken } from '../../infrastructure/storage/signed-url';
 import type { RequestMeta } from '../../common/request-meta';
 import { PatientRepository, type UpdatePatientData } from './patient.repository';
+import { PatientAllergenRepository, type PatientAllergenRow } from './patient-allergen.repository';
 
 /** Ảnh đại diện sống 15 phút — bằng access token TTL, tự làm mới mỗi lần gọi lại API chi tiết. */
 const PHOTO_URL_TTL_SECONDS = 15 * 60;
@@ -65,6 +66,7 @@ export class PatientService {
   constructor(
     private readonly unitOfWork: UnitOfWorkService,
     private readonly patientRepository: PatientRepository,
+    private readonly patientAllergenRepository: PatientAllergenRepository,
     private readonly codeSequenceRepository: CodeSequenceRepository,
     private readonly configService: ConfigService,
     @Inject(STORAGE_PORT) private readonly storage: StoragePort,
@@ -114,6 +116,10 @@ export class PatientService {
         throw err;
       }
 
+      if (dto.allergenIds !== undefined && dto.allergenIds.length > 0) {
+        await this.patientAllergenRepository.replaceForPatient(tx, tenantId, created.id, actorId, dto.allergenIds);
+      }
+
       await writeAuditLog(tx, tenantId, {
         actorId,
         action: 'patient.created',
@@ -123,7 +129,8 @@ export class PatientService {
         userAgent: meta.userAgent,
       });
 
-      return this.toDetail(created, encryptionKey);
+      const allergens = await this.patientAllergenRepository.listForPatient(tx, tenantId, created.id);
+      return this.toDetail(created, encryptionKey, allergens);
     });
   }
 
@@ -134,7 +141,8 @@ export class PatientService {
       if (!patient) {
         throw new NotFoundException();
       }
-      return this.toDetail(patient, encryptionKey);
+      const allergens = await this.patientAllergenRepository.listForPatient(tx, tenantId, id);
+      return this.toDetail(patient, encryptionKey, allergens);
     });
   }
 
@@ -254,6 +262,10 @@ export class PatientService {
         throw new ConcurrentModificationError();
       }
 
+      if (dto.allergenIds !== undefined) {
+        await this.patientAllergenRepository.replaceForPatient(tx, tenantId, id, actorId, dto.allergenIds);
+      }
+
       await writeAuditLog(tx, tenantId, {
         actorId,
         action: 'patient.updated',
@@ -267,7 +279,8 @@ export class PatientService {
       if (!updated) {
         throw new NotFoundException();
       }
-      return this.toDetail(updated, encryptionKey);
+      const allergens = await this.patientAllergenRepository.listForPatient(tx, tenantId, id);
+      return this.toDetail(updated, encryptionKey, allergens);
     });
   }
 
@@ -298,7 +311,7 @@ export class PatientService {
     return `••••${nationalId.slice(-4)}`;
   }
 
-  private toDetail(patient: Patient, encryptionKey: string): PatientDetail {
+  private toDetail(patient: Patient, encryptionKey: string, allergens: PatientAllergenRow[]): PatientDetail {
     return {
       ...this.toSummary(patient, encryptionKey),
       nationalId: patient.nationalIdEnc ? decryptPii(patient.nationalIdEnc, encryptionKey) : null,
@@ -315,6 +328,7 @@ export class PatientService {
       relativeRelationship: patient.relativeRelationship,
       relativePhone: patient.relativePhone,
       relativeAddress: patient.relativeAddress,
+      allergens: allergens.map((a) => ({ id: a.allergenId, name: a.allergenName, allergenGroupName: a.allergenGroupName })),
       photoUrl: patient.photoKey
         ? this.signPhotoUrl(patient.tenantId, patient.photoKey, encryptionKey)
         : null,
@@ -387,7 +401,8 @@ export class PatientService {
       if (!updated) {
         throw new NotFoundException();
       }
-      return this.toDetail(updated, encryptionKey);
+      const allergens = await this.patientAllergenRepository.listForPatient(tx, tenantId, id);
+      return this.toDetail(updated, encryptionKey, allergens);
     });
   }
 

@@ -1,8 +1,26 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { CompleteConsultationRequest, RecordVitalSignRequest, SaveClinicalNoteRequest, SaveDiagnosesRequest } from '@nexamed/shared';
+import type {
+  AmendPrescriptionRequest,
+  CompleteConsultationRequest,
+  RecordVitalSignRequest,
+  SaveClinicalNoteRequest,
+  SaveDiagnosesRequest,
+  SavePrescriptionItemsRequest,
+  SignPrescriptionRequest,
+} from '@nexamed/shared';
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
-import { completeConsultation, getConsultationDetail, recordVitalSigns, saveClinicalNote, saveDiagnoses } from './encounter.api';
+import {
+  amendPrescription,
+  completeConsultation,
+  getConsultationDetail,
+  printPrescription,
+  recordVitalSigns,
+  saveClinicalNote,
+  saveDiagnoses,
+  savePrescriptionItems,
+  signPrescription,
+} from './encounter.api';
 
 export function useConsultationDetailQuery(id: string) {
   const { tenantId } = useAppConfig();
@@ -39,6 +57,42 @@ export function useSaveClinicalNoteMutation(id: string) {
   const invalidate = useInvalidateConsultation(id);
   return useMutation({
     mutationFn: (body: SaveClinicalNoteRequest) => saveClinicalNote(id, body),
+    onSuccess: () => void invalidate(),
+  });
+}
+
+/** Kê đơn (Sprint 4, S4-01/02) — thay TOÀN BỘ dòng thuốc của đơn nháp hiện tại. */
+export function useSavePrescriptionItemsMutation(id: string) {
+  const invalidate = useInvalidateConsultation(id);
+  return useMutation({
+    mutationFn: (body: SavePrescriptionItemsRequest) => savePrescriptionItems(id, body),
+    onSuccess: () => void invalidate(),
+  });
+}
+
+/** Ký đơn thuốc — sau khi ký đơn bất biến (trigger C8), sửa = "Sửa đơn" (amend). */
+export function useSignPrescriptionMutation(id: string) {
+  const invalidate = useInvalidateConsultation(id);
+  return useMutation({
+    mutationFn: (body: SignPrescriptionRequest) => signPrescription(id, body),
+    onSuccess: () => void invalidate(),
+  });
+}
+
+/** In đơn (PRE-04) — ghi nhận `printedAt`, idempotent. */
+export function usePrintPrescriptionMutation(id: string) {
+  const invalidate = useInvalidateConsultation(id);
+  return useMutation({
+    mutationFn: () => printPrescription(id),
+    onSuccess: () => void invalidate(),
+  });
+}
+
+/** "Sửa đơn" — đính chính đơn đã ký. */
+export function useAmendPrescriptionMutation(id: string) {
+  const invalidate = useInvalidateConsultation(id);
+  return useMutation({
+    mutationFn: (body: AmendPrescriptionRequest) => amendPrescription(id, body),
     onSuccess: () => void invalidate(),
   });
 }

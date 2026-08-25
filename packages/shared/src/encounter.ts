@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { patientAllergenItemSchema } from './patient';
+import { prescriptionResponseSchema } from './prescription';
 
 /**
  * Lượt khám + Tiếp nhận (Sprint 3, phần 1: REC-01→03) — xem .claude/docs/clinical-workflow.md
@@ -399,6 +401,8 @@ export const consultationPatientSchema = z.object({
   /** Tiền sử bản thân/gia đình (docs/DECISIONS.md #068) — dữ liệu chung của bệnh nhân, cùng cơ chế sửa với `allergyNote`. */
   personalHistory: z.string().nullable(),
   familyHistory: z.string().nullable(),
+  /** Dị nguyên đã biết (Sprint 4, chốt 2026-08-25) — dùng cho PRE-03, xem `patientAllergenItemSchema`. */
+  allergens: z.array(patientAllergenItemSchema),
   /** Optimistic lock cho `PATCH /patients/:id` khi bác sĩ cập nhật "Tiền sử dị ứng"/bản thân/gia đình ngay màn khám. */
   version: z.number().int(),
 });
@@ -416,6 +420,8 @@ export const consultationDetailResponseSchema = z.object({
   history: z.array(encounterHistoryItemSchema),
   diagnoses: z.array(diagnosisItemSchema),
   clinicalNote: clinicalNoteResponseSchema,
+  /** Kê đơn (Sprint 4) — đơn thuốc đang hiệu lực của lượt khám này, `null` nếu chưa kê. */
+  prescription: prescriptionResponseSchema,
 });
 export type ConsultationDetailResponse = z.infer<typeof consultationDetailResponseSchema>;
 

@@ -53,6 +53,12 @@ const patientRequestFieldsSchema = z.object({
   relativeRelationship: z.string().min(1).optional(),
   relativePhone: z.string().min(1).optional(),
   relativeAddress: z.string().min(1).optional(),
+  // Dị nguyên đã biết (Sprint 4, chốt 2026-08-25) — liên kết danh mục "Dị nguyên" có sẵn
+  // (allergen_catalog) thay vì chỉ đọc `allergyNote` tự do, phục vụ PRE-03 (đối chiếu dị ứng lúc kê
+  // đơn) chính xác hơn. THAY THẾ TOÀN BỘ danh sách khi có mặt (không diff từng phần tử, cùng khuôn
+  // `saveDiagnosesRequestSchema`) — `allergyNote` GIỮ NGUYÊN làm ghi chú bổ sung tự do, không đổi ý
+  // nghĩa/xoá field này.
+  allergenIds: z.array(z.string().uuid()).optional(),
 });
 
 /** Ngưỡng tuổi trưởng thành — dùng cho ràng buộc CCCD bắt buộc bên dưới (docs/DECISIONS.md #035). */
@@ -116,6 +122,14 @@ export type PatientSummary = z.infer<typeof patientSummarySchema>;
  * `photoUrl`: signed URL có hạn tính tại thời điểm response (không phải giá trị lưu DB — DB chỉ
  * giữ `photoKey`), null khi chưa có ảnh. Xem `apps/api/src/infrastructure/storage/signed-url.ts`.
  */
+/** Một dị nguyên đã gán cho bệnh nhân — `allergenGroupName` denormalized (join ở tầng service), cùng khuôn `AllergenItem`. */
+export const patientAllergenItemSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  allergenGroupName: z.string(),
+});
+export type PatientAllergenItem = z.infer<typeof patientAllergenItemSchema>;
+
 export const patientDetailSchema = patientSummarySchema.extend({
   nationalId: z.string().nullable(),
   nationalIdIssuedAt: z.string().nullable(),
@@ -132,6 +146,7 @@ export const patientDetailSchema = patientSummarySchema.extend({
   relativeRelationship: z.string().nullable(),
   relativePhone: z.string().nullable(),
   relativeAddress: z.string().nullable(),
+  allergens: z.array(patientAllergenItemSchema),
   photoUrl: z.string().nullable(),
   mergedIntoId: z.string().uuid().nullable(),
 });

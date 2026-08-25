@@ -1,5 +1,5 @@
 import { lazy } from 'react';
-import { Flask, Pill } from '@phosphor-icons/react';
+import { Flask } from '@phosphor-icons/react';
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import { ChangePasswordPage } from '../features/auth/ChangePasswordPage';
 import { LoginPage } from '../features/auth/LoginPage';
@@ -23,6 +23,7 @@ import { NotFoundPage } from './NotFoundPage';
  * nhận default export. Không đổi các file trang sang default export để giữ nguyên quy ước
  * named export của toàn bộ codebase.
  */
+const DrugCatalogPane = lazy(() => import('../features/drug/DrugCatalogPane').then((m) => ({ default: m.DrugCatalogPane })));
 const PatientListPage = lazy(() => import('../features/patient/PatientListPage').then((m) => ({ default: m.PatientListPage })));
 const PatientNewPage = lazy(() => import('../features/patient/PatientNewPage').then((m) => ({ default: m.PatientNewPage })));
 const PatientDetailPage = lazy(() => import('../features/patient/PatientDetailPage').then((m) => ({ default: m.PatientDetailPage })));
@@ -99,16 +100,9 @@ export const router = createBrowserRouter([
           />
         ),
       },
-      {
-        path: 'admin/catalog-pharmacy',
-        element: (
-          <ComingSoonPage
-            pageTitle="Danh mục Dược và Vật tư"
-            icon={Pill}
-            description="Danh mục thuốc, vật tư y tế sẽ quản lý được ở đây khi module tương ứng ra đời."
-          />
-        ),
-      },
+      // Sprint 4, S4-03 — trang "Danh mục thuốc" thật, thay ComingSoonPage cũ. Chỉ thuốc (v1 không
+      // quản lý vật tư y tế/kho — xem docs/product/future-modules-reference.md mục 2.2.1).
+      { path: 'admin/catalog-pharmacy', element: <DrugCatalogPane /> },
       { path: 'admin/system-config', element: <ClinicConfigPage /> },
       // Bắt mọi đường dẫn con không khớp — thay trang trắng 404 mặc định của react-router bằng
       // trang thương hiệu (docs/DECISIONS.md #048). Route `*` ở đây đã phủ hầu hết trường hợp

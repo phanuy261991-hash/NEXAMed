@@ -520,6 +520,75 @@ describe('HTTP e2e — /api/v1/patients', () => {
     });
   });
 
+  describe('Dị nguyên đã biết — allergenIds (Sprint 4, chốt 2026-08-25, liên kết danh mục Dị nguyên có sẵn cho PRE-03)', () => {
+    async function createAllergen(name: string) {
+      const group = await privileged.allergenGroup.create({ data: { code: `AGRP-${randomUUID().slice(0, 8)}`, name: `Nhóm ${name}` } });
+      const allergen = await privileged.allergen.create({ data: { allergenGroupId: group.id, code: `ALG-${randomUUID().slice(0, 8)}`, name } });
+      return allergen.id as string;
+    }
+
+    it('tạo hồ sơ kèm allergenIds → trả về đủ tên + tên nhóm; allergyNote KHÔNG bị ảnh hưởng', async () => {
+      const penicillinId = await createAllergen('Penicillin');
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/patients')
+        .set(authed(receptionistToken))
+        .send({ ...validPayload, nationalId: randomNationalId(), phone: '0911000444', allergenIds: [penicillinId] });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.allergens).toHaveLength(1);
+      expect(res.body.data.allergens[0].name).toBe('Penicillin');
+      expect(res.body.data.allergens[0].allergenGroupName).toBe('Nhóm Penicillin');
+      expect(res.body.data.allergyNote).toBe('Dị ứng penicillin'); // field text tự do vẫn giữ nguyên, không bị allergenIds thay thế
+    });
+
+    it('PATCH allergenIds → THAY THẾ toàn bộ danh sách (không cộng dồn)', async () => {
+      const a1 = await createAllergen('Aspirin');
+      const a2 = await createAllergen('Sulfa');
+      const created = await request(app.getHttpServer())
+        .post('/api/v1/patients')
+        .set(authed(receptionistToken))
+        .send({ ...validPayload, nationalId: randomNationalId(), phone: '0911000555', allergenIds: [a1] });
+      expect(created.body.data.allergens).toHaveLength(1);
+
+      const patchRes = await request(app.getHttpServer())
+        .patch(`/api/v1/patients/${created.body.data.id}`)
+        .set(authed(receptionistToken))
+        .send({ allergenIds: [a2], version: created.body.data.version });
+      expect(patchRes.status).toBe(200);
+      expect(patchRes.body.data.allergens).toHaveLength(1);
+      expect(patchRes.body.data.allergens[0].name).toBe('Sulfa');
+
+      // Gỡ hết rồi gán lại đúng dị nguyên đã từng gỡ — không vi phạm unique (partial index).
+      const clearRes = await request(app.getHttpServer())
+        .patch(`/api/v1/patients/${created.body.data.id}`)
+        .set(authed(receptionistToken))
+        .send({ allergenIds: [], version: patchRes.body.data.version });
+      expect(clearRes.body.data.allergens).toHaveLength(0);
+
+      const reassignRes = await request(app.getHttpServer())
+        .patch(`/api/v1/patients/${created.body.data.id}`)
+        .set(authed(receptionistToken))
+        .send({ allergenIds: [a1, a2], version: clearRes.body.data.version });
+      expect(reassignRes.status).toBe(200);
+      expect(reassignRes.body.data.allergens).toHaveLength(2);
+    });
+
+    it('không gửi allergenIds trong PATCH → giữ nguyên danh sách cũ (undefined khác mảng rỗng)', async () => {
+      const a1 = await createAllergen('Iodine');
+      const created = await request(app.getHttpServer())
+        .post('/api/v1/patients')
+        .set(authed(receptionistToken))
+        .send({ ...validPayload, nationalId: randomNationalId(), phone: '0911000666', allergenIds: [a1] });
+
+      const patchRes = await request(app.getHttpServer())
+        .patch(`/api/v1/patients/${created.body.data.id}`)
+        .set(authed(receptionistToken))
+        .send({ occupation: 'Giáo viên', version: created.body.data.version });
+      expect(patchRes.status).toBe(200);
+      expect(patchRes.body.data.allergens).toHaveLength(1);
+    });
+  });
+
   describe('POST /api/v1/patients/:id/photo — ảnh đại diện (docs/DECISIONS.md #034)', () => {
     let photoPatientId: string;
     let currentVersion: number;

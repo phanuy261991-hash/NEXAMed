@@ -50,13 +50,34 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       await prisma.vitalSign.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.diagnosis.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.clinicalNote.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // prescription_item (Sprint 4) tham chiếu prescription + drug (FK RESTRICT) — xoá trước cả
+      // hai. prescription tự tham chiếu (supersedes_id, đính chính) — KHÔNG null-hoá-rồi-xoá được
+      // như patient.merged_into_id: trigger C8 chặn cả việc sửa supersedes_id trên bản ĐÃ KÝ (đúng
+      // thiết kế — không cho sửa nội dung đã ký kể cả để dọn dẹp). Xoá theo tầng thay vào đó: mỗi
+      // vòng xoá các dòng KHÔNG bị dòng nào khác còn lại trỏ tới (không phải "bản gốc" của ai), lặp
+      // tới khi hết — đủ dùng cho chuỗi đính chính bất kỳ độ sâu, mỗi vòng là 1 câu lệnh riêng nên
+      // không phụ thuộc thứ tự xử lý trong 1 statement như xoá gộp cha-con cùng lúc.
+      await prisma.prescriptionItem.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      for (let i = 0; i < 20; i++) {
+        const referenced = await prisma.prescription.findMany({
+          where: { tenantId: { in: tenantIds }, supersedesId: { not: null } },
+          select: { supersedesId: true },
+        });
+        const referencedIds = [...new Set(referenced.map((r) => r.supersedesId).filter((v): v is string => v !== null))];
+        const deleted = await prisma.prescription.deleteMany({ where: { tenantId: { in: tenantIds }, id: { notIn: referencedIds } } });
+        if (deleted.count === 0) break;
+      }
       await prisma.encounter.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // appointment tham chiếu patient/user_account (FK RESTRICT, S2-05) — phải xoá trước cả hai.
       await prisma.appointment.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // patient_allergen (Sprint 4, chốt 2026-08-25) tham chiếu patient (FK RESTRICT) — xoá trước patient.
+      await prisma.patientAllergen.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // patient tự tham chiếu (merged_into_id) — bỏ tham chiếu trước khi xoá để không đụng FK
       // dù test S2-01 hiện chưa seed dữ liệu gộp hồ sơ (PAT-04 chưa hiện thực).
       await prisma.patient.updateMany({ where: { tenantId: { in: tenantIds } }, data: { mergedIntoId: null } });
       await prisma.patient.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // drug (Sprint 4, S4-03) — prescription_item đã xoá ở trên nên an toàn xoá drug ở đây.
+      await prisma.drug.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.codeSequence.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.userSession.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.rolePermission.deleteMany({ where: { tenantId: { in: tenantIds } } });

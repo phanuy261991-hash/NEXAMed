@@ -48,3 +48,26 @@
 html {
   font-variant-numeric: lining-nums;
 }
+
+/**
+ * Hạ tầng in ấn dùng chung (Sprint 4, S4-04 — PRE-04 in đơn thuốc) — kỹ thuật ẩn toàn bộ trang
+ * bằng `visibility:hidden` (giữ nguyên layout, không gây reflow/nhấp nháy) rồi CHỈ hiện lại phần tử
+ * mang class `.print-area` và con cháu của nó, định vị `absolute` phủ kín trang khi in. Đặt ở tầng
+ * global vì `docs/DECISIONS.md` #072 đã cam kết BIL-02 (phiếu thu, Sprint 5/6) dùng lại đúng hạ
+ * tầng này — không viết riêng cho từng màn hình in.
+ */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+}
