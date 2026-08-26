@@ -19463,7 +19463,8 @@
                 "ACADEMIC_TITLE",
                 "STAFF_POSITION",
                 "EMPLOYMENT_STATUS",
-                "EMPLOYMENT_TYPE"
+                "EMPLOYMENT_TYPE",
+                "UNIT"
               ]
             },
             "required": true,
@@ -19518,7 +19519,8 @@
                                   "ACADEMIC_TITLE",
                                   "STAFF_POSITION",
                                   "EMPLOYMENT_STATUS",
-                                  "EMPLOYMENT_TYPE"
+                                  "EMPLOYMENT_TYPE",
+                                  "UNIT"
                                 ]
                               },
                               "code": {
@@ -19548,6 +19550,62 @@
                               },
                               "deactivatesAccount": {
                                 "type": "boolean"
+                              },
+                              "description": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "prices": {
+                                "type": "array",
+                                "items": {
+                                  "allOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "priceTypeCode": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        },
+                                        "amount": {
+                                          "type": "integer",
+                                          "minimum": 0
+                                        },
+                                        "unitCode": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        },
+                                        "effectiveFrom": {
+                                          "type": "string",
+                                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                                        },
+                                        "effectiveTo": {
+                                          "type": "string",
+                                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                                        }
+                                      },
+                                      "required": [
+                                        "priceTypeCode",
+                                        "amount",
+                                        "unitCode",
+                                        "effectiveFrom"
+                                      ]
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "id": {
+                                          "type": "string",
+                                          "format": "uuid"
+                                        }
+                                      },
+                                      "required": [
+                                        "id"
+                                      ]
+                                    }
+                                  ]
+                                }
                               }
                             },
                             "required": [
@@ -19559,7 +19617,8 @@
                               "isActive",
                               "price",
                               "unit",
-                              "deactivatesAccount"
+                              "deactivatesAccount",
+                              "description"
                             ]
                           }
                         }
@@ -19709,7 +19768,8 @@
                       "ACADEMIC_TITLE",
                       "STAFF_POSITION",
                       "EMPLOYMENT_STATUS",
-                      "EMPLOYMENT_TYPE"
+                      "EMPLOYMENT_TYPE",
+                      "UNIT"
                     ]
                   },
                   "code": {
@@ -19734,6 +19794,47 @@
                   },
                   "deactivatesAccount": {
                     "type": "boolean"
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "isActive": {
+                    "type": "boolean"
+                  },
+                  "examTypePrices": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "priceTypeCode": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "amount": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "unitCode": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "effectiveFrom": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        },
+                        "effectiveTo": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        }
+                      },
+                      "required": [
+                        "priceTypeCode",
+                        "amount",
+                        "unitCode",
+                        "effectiveFrom"
+                      ]
+                    }
                   }
                 },
                 "required": [
@@ -19774,7 +19875,8 @@
                             "ACADEMIC_TITLE",
                             "STAFF_POSITION",
                             "EMPLOYMENT_STATUS",
-                            "EMPLOYMENT_TYPE"
+                            "EMPLOYMENT_TYPE",
+                            "UNIT"
                           ]
                         },
                         "code": {
@@ -19804,6 +19906,62 @@
                         },
                         "deactivatesAccount": {
                           "type": "boolean"
+                        },
+                        "description": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "prices": {
+                          "type": "array",
+                          "items": {
+                            "allOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "priceTypeCode": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "amount": {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  },
+                                  "unitCode": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "effectiveFrom": {
+                                    "type": "string",
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                                  },
+                                  "effectiveTo": {
+                                    "type": "string",
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                                  }
+                                },
+                                "required": [
+                                  "priceTypeCode",
+                                  "amount",
+                                  "unitCode",
+                                  "effectiveFrom"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  }
+                                },
+                                "required": [
+                                  "id"
+                                ]
+                              }
+                            ]
+                          }
                         }
                       },
                       "required": [
@@ -19815,7 +19973,8 @@
                         "isActive",
                         "price",
                         "unit",
-                        "deactivatesAccount"
+                        "deactivatesAccount",
+                        "description"
                       ]
                     },
                     "meta": {
@@ -19976,6 +20135,47 @@
                   },
                   "deactivatesAccount": {
                     "type": "boolean"
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "isActive": {
+                    "type": "boolean"
+                  },
+                  "examTypePrices": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "priceTypeCode": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "amount": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "unitCode": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "effectiveFrom": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        },
+                        "effectiveTo": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        }
+                      },
+                      "required": [
+                        "priceTypeCode",
+                        "amount",
+                        "unitCode",
+                        "effectiveFrom"
+                      ]
+                    }
                   }
                 }
               }
@@ -20012,7 +20212,8 @@
                             "ACADEMIC_TITLE",
                             "STAFF_POSITION",
                             "EMPLOYMENT_STATUS",
-                            "EMPLOYMENT_TYPE"
+                            "EMPLOYMENT_TYPE",
+                            "UNIT"
                           ]
                         },
                         "code": {
@@ -20042,6 +20243,62 @@
                         },
                         "deactivatesAccount": {
                           "type": "boolean"
+                        },
+                        "description": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "prices": {
+                          "type": "array",
+                          "items": {
+                            "allOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "priceTypeCode": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "amount": {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  },
+                                  "unitCode": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "effectiveFrom": {
+                                    "type": "string",
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                                  },
+                                  "effectiveTo": {
+                                    "type": "string",
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                                  }
+                                },
+                                "required": [
+                                  "priceTypeCode",
+                                  "amount",
+                                  "unitCode",
+                                  "effectiveFrom"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  }
+                                },
+                                "required": [
+                                  "id"
+                                ]
+                              }
+                            ]
+                          }
                         }
                       },
                       "required": [
@@ -20053,7 +20310,8 @@
                         "isActive",
                         "price",
                         "unit",
-                        "deactivatesAccount"
+                        "deactivatesAccount",
+                        "description"
                       ]
                     },
                     "meta": {
@@ -20246,7 +20504,8 @@
                             "ACADEMIC_TITLE",
                             "STAFF_POSITION",
                             "EMPLOYMENT_STATUS",
-                            "EMPLOYMENT_TYPE"
+                            "EMPLOYMENT_TYPE",
+                            "UNIT"
                           ]
                         },
                         "code": {
@@ -20276,6 +20535,62 @@
                         },
                         "deactivatesAccount": {
                           "type": "boolean"
+                        },
+                        "description": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "prices": {
+                          "type": "array",
+                          "items": {
+                            "allOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "priceTypeCode": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "amount": {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  },
+                                  "unitCode": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "effectiveFrom": {
+                                    "type": "string",
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                                  },
+                                  "effectiveTo": {
+                                    "type": "string",
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                                  }
+                                },
+                                "required": [
+                                  "priceTypeCode",
+                                  "amount",
+                                  "unitCode",
+                                  "effectiveFrom"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  }
+                                },
+                                "required": [
+                                  "id"
+                                ]
+                              }
+                            ]
+                          }
                         }
                       },
                       "required": [
@@ -20287,7 +20602,8 @@
                         "isActive",
                         "price",
                         "unit",
-                        "deactivatesAccount"
+                        "deactivatesAccount",
+                        "description"
                       ]
                     },
                     "meta": {
@@ -20451,7 +20767,8 @@
                             "ACADEMIC_TITLE",
                             "STAFF_POSITION",
                             "EMPLOYMENT_STATUS",
-                            "EMPLOYMENT_TYPE"
+                            "EMPLOYMENT_TYPE",
+                            "UNIT"
                           ]
                         },
                         "code": {
@@ -20481,6 +20798,62 @@
                         },
                         "deactivatesAccount": {
                           "type": "boolean"
+                        },
+                        "description": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "prices": {
+                          "type": "array",
+                          "items": {
+                            "allOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "priceTypeCode": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "amount": {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  },
+                                  "unitCode": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "effectiveFrom": {
+                                    "type": "string",
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                                  },
+                                  "effectiveTo": {
+                                    "type": "string",
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                                  }
+                                },
+                                "required": [
+                                  "priceTypeCode",
+                                  "amount",
+                                  "unitCode",
+                                  "effectiveFrom"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  }
+                                },
+                                "required": [
+                                  "id"
+                                ]
+                              }
+                            ]
+                          }
                         }
                       },
                       "required": [
@@ -20492,7 +20865,8 @@
                         "isActive",
                         "price",
                         "unit",
-                        "deactivatesAccount"
+                        "deactivatesAccount",
+                        "description"
                       ]
                     },
                     "meta": {

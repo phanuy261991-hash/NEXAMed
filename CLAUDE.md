@@ -8,7 +8,9 @@ Monorepo: `apps/web` (SPA React), `apps/api` (NestJS), `packages/shared` (type +
 
 **Phạm vi v1 — 3 module nghiệp vụ + thu ngân cơ bản**: Đặt lịch, Tiếp nhận, Khám bệnh (bao gồm kê đơn ở mức ghi nhận và in), cùng **Thu ngân cơ bản** (Sprint 5/6, mở rộng phạm vi chốt 2026-08-22 — xem `docs/DECISIONS.md` #072): phiếu thu cho một lượt khám tính từ dịch vụ đã chỉ định sẵn trên `encounter`, in phiếu thu, đánh dấu đã thu/chưa thu + phương thức thanh toán, tổng kết thu cuối ngày. Lý do mở rộng: điều kiện GA v1 yêu cầu "pilot ngừng dùng sổ giấy hoàn toàn" — không có thu ngân thì không đạt được.
 
-**Vẫn KHÔNG thuộc v1**: dược/kho, viện phí đầy đủ (bảng giá đa đối tượng, công nợ/trả góp nhiều đợt theo lộ trình điều trị), BHYT, báo cáo doanh thu theo kỳ. Không viết code cho các module ngoài phạm vi.
+**Đơn giá dịch vụ khám (chốt 2026-08-26, `docs/DECISIONS.md` #079)**: mỗi dịch vụ khám (`reference_catalog` category `EXAM_TYPE`) có thể có nhiều dòng đơn giá theo Loại giá dịch vụ + Đơn vị tính + khoảng ngày hiệu lực, tách riêng theo tenant (bảng `exam_type_price`). Đây là mở rộng có giới hạn của v1 — **KHÔNG** phải "Price Book" đầy đủ.
+
+**Vẫn KHÔNG thuộc v1**: dược/kho, viện phí đầy đủ (bảng giá đa đối tượng theo nhiều loại khách hàng/bảo hiểm khác nhau cùng lúc, công nợ/trả góp nhiều đợt theo lộ trình điều trị), BHYT, báo cáo doanh thu theo kỳ. Không viết code cho các module ngoài phạm vi.
 
 **Triển khai**: on-premise tại từng phòng khám. Code phải viết sẵn sàng cho triển khai tập trung/cloud sau này — mọi phụ thuộc hạ tầng đi qua port/adapter, xem `.claude/docs/project-structure.md`.
 

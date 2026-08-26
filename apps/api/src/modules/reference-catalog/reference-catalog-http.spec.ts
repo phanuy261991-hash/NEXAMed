@@ -241,6 +241,147 @@ describe('HTTP e2e — /api/v1/reference-catalog', () => {
     expect(otherCategory.body.data.deactivatesAccount).toBe(false);
   });
 
+  it('UNIT (Đơn vị tính, 2026-08-26) — mã tự sinh (bỏ qua code client gửi), lưu description, isActive lúc tạo mặc định true còn tuỳ chọn gửi false', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/api/v1/reference-catalog')
+      .set(authed(clinicAdminToken))
+      .send({ category: 'UNIT', name: 'Viên', description: 'Dùng cho thuốc dạng viên nén' });
+    expect(created.status).toBe(200);
+    expect(created.body.data).toMatchObject({
+      category: 'UNIT',
+      name: 'Viên',
+      description: 'Dùng cho thuốc dạng viên nén',
+      isActive: true,
+    });
+    expect(typeof created.body.data.code).toBe('string');
+    expect(created.body.data.code.length).toBeGreaterThan(0);
+
+    const id = created.body.data.id as string;
+    const patched = await request(app.getHttpServer())
+      .patch(`/api/v1/reference-catalog/${id}`)
+      .set(authed(clinicAdminToken))
+      .send({ description: 'Đổi mô tả', isActive: false });
+    expect(patched.status).toBe(200);
+    expect(patched.body.data.description).toBe('Đổi mô tả');
+    expect(patched.body.data.isActive).toBe(false);
+
+    const createdInactive = await request(app.getHttpServer())
+      .post('/api/v1/reference-catalog')
+      .set(authed(clinicAdminToken))
+      .send({ category: 'UNIT', name: 'Lọ (ngưng dùng ngay)', isActive: false });
+    expect(createdInactive.status).toBe(200);
+    expect(createdInactive.body.data.isActive).toBe(false);
+
+    const ethnicity = await request(app.getHttpServer())
+      .post('/api/v1/reference-catalog')
+      .set(authed(clinicAdminToken))
+      .send({ category: 'ETHNICITY', code: `TEST-${randomUUID().slice(0, 8)}`, name: 'Không liên quan UNIT', sortOrder: 985 });
+    expect(ethnicity.body.data.description).toBeNull();
+  });
+
+  it('EXAM_TYPE — "Đơn giá dịch vụ" (docs/DECISIONS.md #079): tạo kèm examTypePrices → trả đúng danh sách; PATCH bulk-replace; bỏ trống mảng lúc PATCH → xoá hết', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/api/v1/reference-catalog')
+      .set(authed(clinicAdminToken))
+      .send({
+        category: 'EXAM_TYPE',
+        name: 'Khám Nội tổng quát test',
+        examTypePrices: [
+          { priceTypeCode: 'THUONG', unitCode: 'LUOT', amount: 150000, effectiveFrom: '2026-01-01' },
+          { priceTypeCode: 'BAO_HIEM', unitCode: 'LUOT', amount: 100000, effectiveFrom: '2026-01-01', effectiveTo: '2026-12-31' },
+        ],
+      });
+    expect(created.status).toBe(200);
+    expect(created.body.data.prices).toHaveLength(2);
+    expect(created.body.data.prices).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ priceTypeCode: 'THUONG', amount: 150000, effectiveFrom: '2026-01-01' }),
+        expect.objectContaining({ priceTypeCode: 'BAO_HIEM', amount: 100000, effectiveTo: '2026-12-31' }),
+      ]),
+    );
+    const id = created.body.data.id as string;
+
+    // GET list cũng phải trả kèm prices (batch fetch, không N+1) — dùng để mở modal Sửa.
+    const list = await request(app.getHttpServer()).get('/api/v1/reference-catalog/EXAM_TYPE').set(authed(clinicAdminToken));
+    const listedItem = list.body.data.items.find((i: { id: string }) => i.id === id);
+    expect(listedItem.prices).toHaveLength(2);
+
+    // PATCH bulk-replace: gửi 1 dòng mới, 2 dòng cũ phải biến mất.
+    const patched = await request(app.getHttpServer())
+      .patch(`/api/v1/reference-catalog/${id}`)
+      .set(authed(clinicAdminToken))
+      .send({ examTypePrices: [{ priceTypeCode: 'UU_DAI', unitCode: 'BUOI', amount: 200000, effectiveFrom: '2026-02-01' }] });
+    expect(patched.status).toBe(200);
+    expect(patched.body.data.prices).toHaveLength(1);
+    expect(patched.body.data.prices[0]).toMatchObject({ priceTypeCode: 'UU_DAI', amount: 200000 });
+
+    // PATCH không gửi examTypePrices → giữ nguyên (không phải "undefined nghĩa là xoá hết").
+    const untouchedPatch = await request(app.getHttpServer())
+      .patch(`/api/v1/reference-catalog/${id}`)
+      .set(authed(clinicAdminToken))
+      .send({ name: 'Đổi tên, không đụng đơn giá' });
+    expect(untouchedPatch.body.data.prices).toHaveLength(1);
+
+    // PATCH gửi mảng RỖNG → chủ ý xoá hết.
+    const cleared = await request(app.getHttpServer())
+      .patch(`/api/v1/reference-catalog/${id}`)
+      .set(authed(clinicAdminToken))
+      .send({ examTypePrices: [] });
+    expect(cleared.body.data.prices).toHaveLength(0);
+  });
+
+  it('EXAM_TYPE — 2 dòng đơn giá CÙNG Loại giá dịch vụ chồng lấn ngày hiệu lực → 409 EXAM_TYPE_PRICE_OVERLAP (C20)', async () => {
+    const overlap = await request(app.getHttpServer())
+      .post('/api/v1/reference-catalog')
+      .set(authed(clinicAdminToken))
+      .send({
+        category: 'EXAM_TYPE',
+        name: 'Dịch vụ trùng ngày hiệu lực',
+        examTypePrices: [
+          { priceTypeCode: 'THUONG', unitCode: 'LUOT', amount: 100000, effectiveFrom: '2026-01-01', effectiveTo: '2026-06-30' },
+          { priceTypeCode: 'THUONG', unitCode: 'LUOT', amount: 120000, effectiveFrom: '2026-06-01' },
+        ],
+      });
+    expect(overlap.status).toBe(409);
+    expect(overlap.body.error.code).toBe('EXAM_TYPE_PRICE_OVERLAP');
+
+    // Khác Loại giá dịch vụ thì chồng ngày vẫn hợp lệ (không cùng khoá exclusion).
+    const ok = await request(app.getHttpServer())
+      .post('/api/v1/reference-catalog')
+      .set(authed(clinicAdminToken))
+      .send({
+        category: 'EXAM_TYPE',
+        name: 'Dịch vụ khác loại giá, cùng ngày vẫn hợp lệ',
+        examTypePrices: [
+          { priceTypeCode: 'THUONG', unitCode: 'LUOT', amount: 100000, effectiveFrom: '2026-01-01' },
+          { priceTypeCode: 'BAO_HIEM', unitCode: 'LUOT', amount: 80000, effectiveFrom: '2026-01-01' },
+        ],
+      });
+    expect(ok.status).toBe(200);
+    expect(ok.body.data.prices).toHaveLength(2);
+  });
+
+  it('EXAM_TYPE — đơn giá TÁCH THEO TENANT (khác reference_catalog cha, toàn hệ thống): tenant B KHÔNG thấy đơn giá tenant A vừa tạo cho cùng 1 mục dùng chung', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/api/v1/reference-catalog')
+      .set(authed(clinicAdminToken))
+      .send({
+        category: 'EXAM_TYPE',
+        name: 'Dịch vụ dùng chung, giá riêng theo tenant',
+        examTypePrices: [{ priceTypeCode: 'THUONG', unitCode: 'LUOT', amount: 100000, effectiveFrom: '2026-01-01' }],
+      });
+    const id = created.body.data.id as string;
+
+    // Tenant B thấy đúng MỤC dùng chung (reference_catalog không cách ly tenant, như test bên dưới)
+    // nhưng KHÔNG thấy đơn giá tenant A vừa tạo — exam_type_price cách ly tenant thật.
+    const listFromTenantB = await request(app.getHttpServer())
+      .get('/api/v1/reference-catalog/EXAM_TYPE')
+      .set(authed(tenantBAdminToken));
+    const itemFromTenantB = listFromTenantB.body.data.items.find((i: { id: string }) => i.id === id);
+    expect(itemFromTenantB).toBeDefined();
+    expect(itemFromTenantB.prices).toHaveLength(0);
+  });
+
   it('không có chủ đích cách ly tenant — tenant B thấy và sửa được đúng dữ liệu tenant A vừa tạo (danh mục toàn hệ thống, giống permission)', async () => {
     const code = `TEST-${randomUUID().slice(0, 8)}`;
     const created = await request(app.getHttpServer())

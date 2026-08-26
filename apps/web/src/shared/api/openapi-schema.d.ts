@@ -8308,7 +8308,7 @@ export interface paths {
                 };
                 header?: never;
                 path: {
-                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE";
+                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT";
                 };
                 cookie?: never;
             };
@@ -8326,7 +8326,7 @@ export interface paths {
                                     /** Format: uuid */
                                     id: string;
                                     /** @enum {string} */
-                                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE";
+                                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT";
                                     code: string;
                                     name: string;
                                     sortOrder: number;
@@ -8334,6 +8334,17 @@ export interface paths {
                                     price: number | null;
                                     unit: string | null;
                                     deactivatesAccount: boolean;
+                                    description: string | null;
+                                    prices?: ({
+                                        priceTypeCode: string;
+                                        amount: number;
+                                        unitCode: string;
+                                        effectiveFrom: string;
+                                        effectiveTo?: string;
+                                    } & {
+                                        /** Format: uuid */
+                                        id: string;
+                                    })[];
                                 }[];
                             };
                             meta: Record<string, never>;
@@ -8416,7 +8427,7 @@ export interface paths {
                 content: {
                     "application/json": {
                         /** @enum {string} */
-                        category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE";
+                        category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT";
                         code?: string;
                         name: string;
                         /** @default 0 */
@@ -8424,6 +8435,15 @@ export interface paths {
                         price?: number;
                         unit?: string;
                         deactivatesAccount?: boolean;
+                        description?: string;
+                        isActive?: boolean;
+                        examTypePrices?: {
+                            priceTypeCode: string;
+                            amount: number;
+                            unitCode: string;
+                            effectiveFrom: string;
+                            effectiveTo?: string;
+                        }[];
                     };
                 };
             };
@@ -8439,7 +8459,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
@@ -8447,6 +8467,17 @@ export interface paths {
                                 price: number | null;
                                 unit: string | null;
                                 deactivatesAccount: boolean;
+                                description: string | null;
+                                prices?: ({
+                                    priceTypeCode: string;
+                                    amount: number;
+                                    unitCode: string;
+                                    effectiveFrom: string;
+                                    effectiveTo?: string;
+                                } & {
+                                    /** Format: uuid */
+                                    id: string;
+                                })[];
                             };
                             meta: Record<string, never>;
                         };
@@ -8538,7 +8569,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
@@ -8546,6 +8577,17 @@ export interface paths {
                                 price: number | null;
                                 unit: string | null;
                                 deactivatesAccount: boolean;
+                                description: string | null;
+                                prices?: ({
+                                    priceTypeCode: string;
+                                    amount: number;
+                                    unitCode: string;
+                                    effectiveFrom: string;
+                                    effectiveTo?: string;
+                                } & {
+                                    /** Format: uuid */
+                                    id: string;
+                                })[];
                             };
                             meta: Record<string, never>;
                         };
@@ -8619,6 +8661,15 @@ export interface paths {
                         price?: number;
                         unit?: string;
                         deactivatesAccount?: boolean;
+                        description?: string;
+                        isActive?: boolean;
+                        examTypePrices?: {
+                            priceTypeCode: string;
+                            amount: number;
+                            unitCode: string;
+                            effectiveFrom: string;
+                            effectiveTo?: string;
+                        }[];
                     };
                 };
             };
@@ -8634,7 +8685,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
@@ -8642,6 +8693,17 @@ export interface paths {
                                 price: number | null;
                                 unit: string | null;
                                 deactivatesAccount: boolean;
+                                description: string | null;
+                                prices?: ({
+                                    priceTypeCode: string;
+                                    amount: number;
+                                    unitCode: string;
+                                    effectiveFrom: string;
+                                    effectiveTo?: string;
+                                } & {
+                                    /** Format: uuid */
+                                    id: string;
+                                })[];
                             };
                             meta: Record<string, never>;
                         };
@@ -8743,7 +8805,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
@@ -8751,6 +8813,17 @@ export interface paths {
                                 price: number | null;
                                 unit: string | null;
                                 deactivatesAccount: boolean;
+                                description: string | null;
+                                prices?: ({
+                                    priceTypeCode: string;
+                                    amount: number;
+                                    unitCode: string;
+                                    effectiveFrom: string;
+                                    effectiveTo?: string;
+                                } & {
+                                    /** Format: uuid */
+                                    id: string;
+                                })[];
                             };
                             meta: Record<string, never>;
                         };

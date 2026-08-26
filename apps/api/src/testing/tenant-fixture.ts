@@ -39,6 +39,8 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       // Thứ tự xoá theo FK: bảng con trước bảng cha. deleteMany trên bảng không có dòng nào
       // khớp là no-op an toàn — không cần biết trước caller có seed role/session hay không.
       await prisma.auditLog.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // exam_type_price (docs/DECISIONS.md #079) — không bảng nào khác tham chiếu tới, xoá sớm an toàn.
+      await prisma.examTypePrice.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // break_glass_session (S1-04c) tham chiếu tenant (FK RESTRICT) — trước đây chưa spec nào
       // trong fixture dùng chung này thật sự tạo phiên break-glass qua HTTP nên lỗ hổng chưa lộ ra;
       // phát hiện thật khi thêm test break-glass cho "sửa hồ sơ khám sau khi Hoàn tất" (encounter).

@@ -18,37 +18,38 @@ const PILLS: ConfigScreenPill[] = [
   { key: 'nationality', label: 'Quốc tịch' },
   { key: 'occupation', label: 'Nghề nghiệp' },
   { key: 'patient-source', label: 'Nguồn khách hàng' },
-  { key: 'exam-type', label: 'Loại khám' },
   // Thiết kế lại "Tiếp nhận bệnh nhân" (mockup đã duyệt) — tái dùng reference_catalog, cùng lý do PATIENT_SOURCE/EXAM_TYPE ở trên.
   { key: 'reception-type', label: 'Loại tiếp nhận' },
   { key: 'exam-form', label: 'Hình thức khám' },
   { key: 'priority-reason', label: 'Lý do ưu tiên' },
   { key: 'price-type', label: 'Loại giá dịch vụ' },
+  { key: 'unit', label: 'Đơn vị tính' },
 ];
 const FIRST_PILL = PILLS[0]!;
 
 /**
- * Trang "Danh mục hành chính" (`/admin/catalog`, đổi tên từ "Danh mục" — `docs/DECISIONS.md`
- * #045) — mỗi danh mục (`reference_catalog`: Dân tộc/Quốc tịch/Nguồn khách hàng/Loại khám; `geo`:
- * Tỉnh/Thành, Phường/Xã — chỉ đọc, #038) là một pill riêng, không còn gộp chung "Danh mục dùng
- * chung". Dùng `ConfigScreenShell` ở chế độ pill phẳng (không cột trái) — nội dung cột phải sát
- * ngay thanh pill, không còn khoảng cột trái như `ClinicConfigPage` (vẫn dùng chế độ có `items`).
+ * Trang "Danh mục dùng chung" (`/admin/catalog`, đổi tên từ "Danh mục hành chính" — chủ dự án
+ * yêu cầu trực tiếp 2026-08-26, vì trang này không còn thuần hành chính từ khi có "Đơn vị tính")
+ * — mỗi danh mục (`reference_catalog`: Dân tộc/Quốc tịch/Nguồn khách hàng/Đơn vị tính...; `geo`:
+ * Tỉnh/Thành, Phường/Xã — chỉ đọc, #038) là một pill riêng. Dùng `ConfigScreenShell` ở chế độ pill
+ * phẳng (không cột trái) — nội dung cột phải sát ngay thanh pill, không còn khoảng cột trái như
+ * `ClinicConfigPage` (vẫn dùng chế độ có `items`).
  */
 export function CatalogAdminPage() {
   const [activePillKey, setActivePillKey] = useState(FIRST_PILL.key);
   const activePill = PILLS.find((p) => p.key === activePillKey) ?? FIRST_PILL;
 
   // Đoạn cuối breadcrumb phải đổi theo pill đang chọn — nếu không, đứng ở "Nguồn khách hàng" vẫn
-  // hiện breadcrumb "Danh mục hành chính" như đứng yên, sai vị trí thực tế đang xem.
+  // hiện breadcrumb "Danh mục dùng chung" như đứng yên, sai vị trí thực tế đang xem.
   useBreadcrumb([
     { label: 'Quản trị' },
-    { label: 'Danh mục hành chính', to: '/admin/catalog' },
+    { label: 'Danh mục dùng chung', to: '/admin/catalog' },
     { label: activePill.label },
   ]);
 
   return (
     <ConfigScreenShell
-      pageLabel="Danh mục hành chính"
+      pageLabel="Danh mục dùng chung"
       pills={PILLS}
       activePillKey={activePillKey}
       onSelectPill={setActivePillKey}
@@ -57,11 +58,11 @@ export function CatalogAdminPage() {
       {activePillKey === 'nationality' && <ReferenceCatalogPane category="NATIONALITY" categoryLabel="Quốc tịch" />}
       {activePillKey === 'occupation' && <ReferenceCatalogPane category="OCCUPATION" categoryLabel="Nghề nghiệp" />}
       {activePillKey === 'patient-source' && <ReferenceCatalogPane category="PATIENT_SOURCE" categoryLabel="Nguồn khách hàng" />}
-      {activePillKey === 'exam-type' && <ReferenceCatalogPane category="EXAM_TYPE" categoryLabel="Loại khám" />}
       {activePillKey === 'reception-type' && <ReferenceCatalogPane category="RECEPTION_TYPE" categoryLabel="Loại tiếp nhận" />}
       {activePillKey === 'exam-form' && <ReferenceCatalogPane category="EXAM_FORM" categoryLabel="Hình thức khám" />}
       {activePillKey === 'priority-reason' && <ReferenceCatalogPane category="PRIORITY_REASON" categoryLabel="Lý do ưu tiên" />}
       {activePillKey === 'price-type' && <ReferenceCatalogPane category="PRICE_TYPE" categoryLabel="Loại giá dịch vụ" />}
+      {activePillKey === 'unit' && <ReferenceCatalogPane category="UNIT" categoryLabel="Đơn vị tính" />}
       {activePillKey === 'province' && <GeoPane mode="province" />}
       {activePillKey === 'ward' && <GeoPane mode="ward" />}
     </ConfigScreenShell>

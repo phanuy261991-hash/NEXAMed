@@ -6,7 +6,7 @@ import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { EmptyState } from '../../shared/ui/EmptyState';
-import { formatVnd } from '../../shared/format/currency';
+import { ApiError } from '../../shared/api/client';
 import {
   useCreateReferenceCatalogItemMutation,
   useDeactivateReferenceCatalogItemMutation,
@@ -14,20 +14,23 @@ import {
   useReferenceCatalogQuery,
   useUpdateReferenceCatalogItemMutation,
 } from './reference-catalog.queries';
+import { ExamTypeFormModal } from './ExamTypeFormModal';
 
 /** Khớp `reference_catalog.manage` (chỉ clinic_admin) — .claude/docs/security-audit.md. */
 const MANAGE_ROLES = ['clinic_admin'];
 
 /**
- * 4 danh mục nhân sự (mở rộng ADM-01, yêu cầu chủ dự án 2026-08-20) — server tự sinh `code` khi
- * tạo mới nên ẩn ô nhập "Mã" trong modal Thêm/Sửa. Cột "Mã" trong bảng danh sách vẫn hiện (yêu
- * cầu chủ dự án 2026-08-21) — chỉ đọc, không sửa được.
+ * 4 danh mục nhân sự (mở rộng ADM-01, yêu cầu chủ dự án 2026-08-20) + "Đơn vị tính" (UNIT,
+ * 2026-08-26, cùng lý do — không có nguồn dữ liệu chính thức để nhập mã tay) — server tự sinh
+ * `code` khi tạo mới nên ẩn ô nhập "Mã" trong modal Thêm/Sửa. Cột "Mã" trong bảng danh sách vẫn
+ * hiện (yêu cầu chủ dự án 2026-08-21) — chỉ đọc, không sửa được.
  */
 const AUTO_CODE_CATEGORIES: ReferenceCatalogCategory[] = [
   'ACADEMIC_TITLE',
   'STAFF_POSITION',
   'EMPLOYMENT_STATUS',
   'EMPLOYMENT_TYPE',
+  'UNIT',
 ];
 
 const inputClassName =
@@ -65,6 +68,12 @@ export function ReferenceCatalogPane({
   const updateMutation = useUpdateReferenceCatalogItemMutation(category);
   const deactivateMutation = useDeactivateReferenceCatalogItemMutation(category);
   const reactivateMutation = useReactivateReferenceCatalogItemMutation(category);
+
+  // Chỉ `ExamTypeFormModal` hiện lỗi này (ví dụ EXAM_TYPE_PRICE_OVERLAP nếu race điều kiện lọt qua
+  // validate tầng client) — modal chung `ItemFormModal` chưa có chỗ hiện lỗi submit từ trước, giữ
+  // nguyên hành vi cũ, không mở rộng ở đây.
+  const mutationError = createMutation.error ?? updateMutation.error;
+  const mutationErrorMessage = mutationError instanceof ApiError ? mutationError.message : undefined;
 
   const items = useMemo(() => {
     const all = query.data?.items ?? [];
@@ -128,8 +137,9 @@ export function ReferenceCatalogPane({
                 <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
                   <th className="w-24 px-4 py-2.5 text-center">Mã</th>
                   <th className="px-4 py-2.5 text-left">Tên hiển thị</th>
-                  {category === 'EXAM_TYPE' && <th className="w-32 px-4 py-2.5 text-center">Giá</th>}
-                  {category === 'EXAM_TYPE' && <th className="w-24 px-4 py-2.5 text-center">Đơn vị</th>}
+                  {category === 'EXAM_TYPE' && <th className="w-32 px-4 py-2.5 text-center">Đơn giá</th>}
+                  {category === 'UNIT' && <th className="px-4 py-2.5 text-left">Mô tả</th>}
+                  {category === 'UNIT' && <th className="w-32 px-4 py-2.5 text-center">Trạng thái</th>}
                   <th className="w-24 px-4 py-2.5 text-center">Thứ tự</th>
                   {canManage && <th className="w-32 px-4 py-2.5 text-center">Thao tác</th>}
                 </tr>
@@ -140,12 +150,36 @@ export function ReferenceCatalogPane({
                     <td className="px-4 py-2 text-center text-sm font-bold text-slate-800">{item.code}</td>
                     <td className="px-4 py-2 text-left font-medium text-slate-900">
                       {item.name}
-                      {!item.isActive && <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">Đã ẩn</span>}
+                      {/* UNIT có cột "Trạng thái" riêng (Đang sử dụng/Ngưng sử dụng) — badge "Đã ẩn" ở đây sẽ trùng lặp thông tin. */}
+                      {!item.isActive && category !== 'UNIT' && (
+                        <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">Đã ẩn</span>
+                      )}
                     </td>
                     {category === 'EXAM_TYPE' && (
-                      <td className="px-4 py-2 text-center font-medium text-slate-600">{item.price !== null ? formatVnd(item.price) : '—'}</td>
+                      <td className="px-4 py-2 text-center font-medium text-slate-600">
+                        {item.prices && item.prices.length > 0 ? (
+                          <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-[12px] font-semibold text-blue-700">{item.prices.length} mức giá</span>
+                        ) : (
+                          <span className="text-slate-400">Chưa có giá</span>
+                        )}
+                      </td>
                     )}
-                    {category === 'EXAM_TYPE' && <td className="px-4 py-2 text-center font-medium text-slate-600">{item.unit ?? '—'}</td>}
+                    {category === 'UNIT' && (
+                      <td className="max-w-xs truncate px-4 py-2 text-left font-medium text-slate-600" title={item.description ?? undefined}>
+                        {item.description ?? '—'}
+                      </td>
+                    )}
+                    {category === 'UNIT' && (
+                      <td className="px-4 py-2 text-center">
+                        <span
+                          className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                            item.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                          }`}
+                        >
+                          {item.isActive ? 'Đang sử dụng' : 'Ngưng sử dụng'}
+                        </span>
+                      </td>
+                    )}
                     <td className="px-4 py-2 text-center text-slate-500">{item.sortOrder}</td>
                     {canManage && (
                       <td className="px-4 py-2 text-center">
@@ -188,7 +222,25 @@ export function ReferenceCatalogPane({
         </div>
       )}
 
-      {modal && (
+      {modal && category === 'EXAM_TYPE' && (
+        <ExamTypeFormModal
+          mode={modal.mode}
+          item={modal.item}
+          submitting={createMutation.isPending || updateMutation.isPending}
+          submitError={mutationErrorMessage}
+          onCancel={() => setModal(null)}
+          onSubmit={(dto) => {
+            const onSettled = () => setModal(null);
+            if (modal.mode === 'create') {
+              createMutation.mutate({ category, ...dto }, { onSuccess: onSettled });
+            } else if (modal.item) {
+              updateMutation.mutate({ id: modal.item.id, body: dto }, { onSuccess: onSettled });
+            }
+          }}
+        />
+      )}
+
+      {modal && category !== 'EXAM_TYPE' && (
         <ItemFormModal
           category={category}
           categoryLabel={categoryLabel}
@@ -254,18 +306,26 @@ function ItemFormModal({
   item?: ReferenceCatalogItem;
   submitting: boolean;
   onCancel: () => void;
-  onSubmit: (dto: { code?: string; name: string; sortOrder: number; price?: number; unit?: string; deactivatesAccount?: boolean }) => void;
+  onSubmit: (dto: {
+    code?: string;
+    name: string;
+    sortOrder: number;
+    deactivatesAccount?: boolean;
+    description?: string;
+    isActive?: boolean;
+  }) => void;
 }) {
   const [code, setCode] = useState(item?.code ?? '');
   const [name, setName] = useState(item?.name ?? '');
   const [sortOrder, setSortOrder] = useState(item?.sortOrder ?? 0);
-  const [price, setPrice] = useState(item?.price !== null && item?.price !== undefined ? String(item.price) : '');
-  const [unit, setUnit] = useState(item?.unit ?? '');
   const [deactivatesAccount, setDeactivatesAccount] = useState(item?.deactivatesAccount ?? false);
-  const isExamType = category === 'EXAM_TYPE';
-  // Mở rộng ADM-01 — chỉ EMPLOYMENT_STATUS có ý nghĩa với deactivatesAccount, cùng khuôn isExamType.
+  const [description, setDescription] = useState(item?.description ?? '');
+  const [isActive, setIsActive] = useState(item?.isActive ?? true);
+  // Mở rộng ADM-01 — chỉ EMPLOYMENT_STATUS có ý nghĩa với deactivatesAccount.
   const isEmploymentStatus = category === 'EMPLOYMENT_STATUS';
-  const isInvalid = (!hideCode && code.trim() === '') || name.trim() === '' || (isExamType && price.trim() === '');
+  // "Đơn vị tính" (2026-08-26) — chỉ category này có Mô tả, cùng khuôn isEmploymentStatus.
+  const isUnit = category === 'UNIT';
+  const isInvalid = (!hideCode && code.trim() === '') || name.trim() === '';
 
   // Bọc `<form>` để Enter trong ô nhập tự submit (chuẩn HTML, không cần tự bắt phím) — mọi form
   // Thêm/Sửa trong app PHẢI theo mẫu này (`.claude/docs/ui-guidelines.md` mục 4.4, bắt buộc từ
@@ -277,9 +337,9 @@ function ItemFormModal({
       code: hideCode ? undefined : code.trim(),
       name: name.trim(),
       sortOrder,
-      price: isExamType && price.trim() !== '' ? Number(price) : undefined,
-      unit: isExamType && unit.trim() !== '' ? unit.trim() : undefined,
       deactivatesAccount: isEmploymentStatus ? deactivatesAccount : undefined,
+      description: isUnit && description.trim() !== '' ? description.trim() : undefined,
+      isActive: isUnit ? isActive : undefined,
     });
   }
 
@@ -292,7 +352,7 @@ function ItemFormModal({
         {!hideCode && (
           <div className="mb-3.5 flex flex-col gap-1.5">
             <label htmlFor="rc-code" className="text-sm font-semibold text-slate-800">
-              Mã
+              Mã <span className="text-rose-500">*</span>
             </label>
             <input id="rc-code" value={code} onChange={(e) => setCode(e.target.value)} className={inputClassName} />
           </div>
@@ -300,36 +360,26 @@ function ItemFormModal({
 
         <div className="mb-3.5 flex flex-col gap-1.5">
           <label htmlFor="rc-name" className="text-sm font-semibold text-slate-800">
-            Tên hiển thị
+            {isUnit ? 'Tên đơn vị' : 'Tên hiển thị'} <span className="text-rose-500">*</span>
           </label>
           <input id="rc-name" value={name} onChange={(e) => setName(e.target.value)} className={inputClassName} />
         </div>
 
-        {isExamType && (
+        {isUnit && (
           <div className="mb-3.5 flex flex-col gap-1.5">
-            <label htmlFor="rc-price" className="text-sm font-semibold text-slate-800">
-              Giá (đồng)
+            <label htmlFor="rc-description" className="text-sm font-semibold text-slate-800">
+              Mô tả
             </label>
-            <input
-              id="rc-price"
-              type="number"
-              min={0}
-              step={1000}
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
+            <textarea
+              id="rc-description"
+              rows={2}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
               className={inputClassName}
             />
           </div>
         )}
 
-        {isExamType && (
-          <div className="mb-3.5 flex flex-col gap-1.5">
-            <label htmlFor="rc-unit" className="text-sm font-semibold text-slate-800">
-              Đơn vị
-            </label>
-            <input id="rc-unit" placeholder="Ví dụ: Lượt, Buổi" value={unit} onChange={(e) => setUnit(e.target.value)} className={inputClassName} />
-          </div>
-        )}
 
         <div className="mb-4 flex flex-col gap-1.5">
           <label htmlFor="rc-sort-order" className="text-sm font-semibold text-slate-800">
@@ -343,6 +393,23 @@ function ItemFormModal({
             className={inputClassName}
           />
         </div>
+
+        {isUnit && (
+          <div className="mb-4 flex flex-col gap-1.5">
+            <label htmlFor="rc-is-active" className="text-sm font-semibold text-slate-800">
+              Trạng thái
+            </label>
+            <select
+              id="rc-is-active"
+              value={isActive ? '1' : '0'}
+              onChange={(e) => setIsActive(e.target.value === '1')}
+              className={inputClassName}
+            >
+              <option value="1">Đang sử dụng</option>
+              <option value="0">Ngưng sử dụng</option>
+            </select>
+          </div>
+        )}
 
         {isEmploymentStatus && (
           <label className="mb-4 flex items-start gap-2 text-sm font-semibold text-slate-800">

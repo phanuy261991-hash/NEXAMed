@@ -95,6 +95,20 @@ Seed dữ liệu thật (không phải placeholder) tại `packages/core/src/ref
 
 **Mở rộng ADM-01 (2026-08-20)** — thêm 4 category `ACADEMIC_TITLE`/`STAFF_POSITION`/`EMPLOYMENT_STATUS`/`EMPLOYMENT_TYPE` + cột `deactivates_account` + cơ chế tự sinh `code` — xem chi tiết đầy đủ ở mục "clinic / tenant_setting / room / department / user_account" phía trên (đặt cùng chỗ mô tả `user_account` mở rộng, vì 2 thay đổi này gắn liền nhau).
 
+**`UNIT` (Đơn vị tính, 2026-08-26, chủ dự án yêu cầu trực tiếp)** — category mới, mã tự sinh (cùng cơ chế 4 category ADM-01 ở trên), quản lý qua trang "Danh mục dùng chung" (đổi tên từ "Danh mục hành chính" cùng đợt). Thêm cột `description` (text, nullable — CHỈ có ý nghĩa với category `UNIT`, cùng khuôn `price`/`unit`/`deactivates_account`). Trang quản lý cho phép set `is_active` ngay trong form Thêm/Sửa cho riêng category này (category khác vẫn chỉ qua action Xoá/Khôi phục — không đổi hành vi cũ).
+
+### exam_type_price (`docs/DECISIONS.md` #079)
+
+"Đơn giá dịch vụ" — bảng giá đa mức THEO TENANT cho một mục `reference_catalog` category `EXAM_TYPE` (mở rộng phạm vi v1 có giới hạn, 2026-08-26 — KHÔNG phải "Price Book" đầy đủ, xem CLAUDE.md). Khác `reference_catalog` cha (toàn hệ thống, không đủ 8 cột bắt buộc): bảng này TÁCH THEO TENANT vì giá dịch vụ khác nhau thật giữa các phòng khám dù cùng tên dịch vụ — đủ 8 cột bắt buộc + RLS như mọi bảng nghiệp vụ khác.
+
+`exam_type_code`/`price_type_code`/`unit_code` (text, tham chiếu `reference_catalog.code` theo category `EXAM_TYPE`/`PRICE_TYPE`/`UNIT` — KHÔNG FK composite thật, cùng cách mọi cột khác tham chiếu bảng đa-category này), `amount` (bigint, đồng), `effective_from`/`effective_to` (`@db.Date` — ngày lịch, không phải mốc thời gian; `effective_to` nullable = vô thời hạn).
+
+Sửa/xoá tự do (không phải `SignableEntity`, không giữ lịch sử giá — chốt qua `AskUserQuestion` 2026-08-26). Quản lý bằng **bulk-replace** (đúng khuôn `diagnosis.replaceForEncounter()`): mỗi lần Lưu gửi TOÀN BỘ danh sách đơn giá, server xoá mềm hết dòng cũ rồi tạo lại — không diff từng dòng.
+
+**C20** — `EXCLUDE USING gist` trên `(tenant_id, exam_type_code, price_type_code, daterange(effective_from, COALESCE(effective_to,'infinity'),'[]'))` chặn 2 dòng cùng dịch vụ + cùng Loại giá dịch vụ có khoảng ngày hiệu lực chồng lấn, kể cả ghi đồng thời (cùng kỹ thuật C2 — `appointment_doctor_slot_excl`, cần `btree_gist`, hàm `nexamed_exam_type_price_range()` đánh dấu `IMMUTABLE`). Vi phạm ném `PrismaClientUnknownRequestError`, map thành `ExamTypePriceOverlapError` (409 `EXAM_TYPE_PRICE_OVERLAP`).
+
+Quyền: dùng chung `reference_catalog.read`/`reference_catalog.manage` (không thêm permission mới) — quản lý qua CÙNG modal Thêm/Sửa "Dịch vụ khám" (`ExamTypeFormModal.tsx`), bulk-replace trong CÙNG transaction tạo/sửa `reference_catalog` (không phải endpoint riêng).
+
 ### icd10_catalog (`docs/DECISIONS.md` #056)
 
 Danh mục ICD-10 toàn hệ thống (S3-01, mở khoá một phần — hiện seed ĐỦ Chương I-XXII, 15.844 mã, qua cơ chế seed idempotent). Cùng bản chất `province`/`ward`: không `tenant_id`, không đủ 8 cột bắt buộc, không `version`. Read-only lúc chạy (khác `reference_catalog`) — danh mục Bộ Y tế, không ai cần sửa qua UI; vì vậy REVOKE `INSERT`/`UPDATE` khỏi `nexamed_app`, chỉ seed script (role đặc quyền) ghi được. `chapter_code` là số La Mã ("I".."XXII") — thứ tự hiển thị đúng phải sắp lại ở tầng ứng dụng qua `romanToInt()` (`packages/core/src/icd10/roman-numeral.ts`), sắp trực tiếp theo thứ tự chuỗi ở DB sẽ sai ("IX" đứng trước "V").

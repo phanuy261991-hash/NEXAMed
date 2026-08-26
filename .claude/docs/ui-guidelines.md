@@ -97,6 +97,22 @@ Ví dụ đã áp dụng: Dân tộc/Quốc tịch/Giới tính (`PatientFormFie
 
 Ví dụ đã áp dụng: Giờ hẹn (`AppointmentQuickCreatePanel.tsx`), giờ dời lịch (`AppointmentDetailPanel.tsx`), giờ tiếp nhận (`ReceptionIntakeForm.tsx`), giờ mở/đóng cửa theo ngày (`ClinicHoursPane.tsx`).
 
+### 4.1e. MoneyInput — chuẩn bắt buộc cho MỌI ô nhập số tiền (chốt 2026-08-26)
+
+**BẮT BUỘC dùng `MoneyInput`** (`apps/web/src/shared/ui/MoneyInput.tsx`) cho mọi ô nhập số tiền (đồng) — tự nhảy **dấu chấm** phân cách hàng nghìn ngay lúc gõ (ví dụ gõ `1000000` → hiện `1.000.000`), khớp chuẩn `vi-VN` đã dùng để HIỂN THỊ (`formatVnd()`, `shared/format/currency.ts`) — **thống nhất dấu chấm, không phải dấu phẩy**, áp dụng cho mọi ô nhập tiền phát sinh sau này, không riêng một màn hình cụ thể.
+
+Đặc tả `MoneyInput`: `<input type="text" inputMode="numeric">` (không dùng `type="number"` — không hiển thị được dấu phân cách), tự giữ chuỗi hiển thị + vị trí con trỏ nội bộ. Props: `id`, `value`/`onChange` — **là SỐ THẬT** (`number | undefined`), không phải chuỗi đã định dạng — nơi gọi không cần quan tâm định dạng hiển thị, `required?`, `disabled?`, `placeholder?`, `className?`.
+
+Ví dụ đã áp dụng: "Đơn giá" trong khối "Đơn giá dịch vụ" (`ExamTypeFormModal.tsx`, docs/DECISIONS.md #079).
+
+### 4.1f. SearchableCombobox — dropdown có ô tìm kiếm riêng cho danh mục DÀI (chốt 2026-08-26)
+
+Dùng `SearchableCombobox` (`apps/web/src/shared/ui/SearchableCombobox.tsx`) thay cho `Combobox` (mục 4.1b) khi danh mục có thể lên tới hàng trăm mục (ví dụ "Đơn vị tính") — khác `Combobox` gốc ở chỗ ô ĐÓNG chỉ là NÚT hiện nhãn đã chọn (không gõ trực tiếp vào ô được), mở ra mới có ô tìm kiếm RIÊNG nằm trong panel (placeholder mặc định "Nhập từ khoá tìm kiếm..."). Lý do tách khỏi `Combobox`: với danh sách rất dài, gõ tìm ngay trong ô đóng (như `Combobox` gốc) dễ mất dấu giá trị đã chọn trước đó. Vẫn cùng ngôn ngữ thị giác (viền, mũi tên xoay, panel `top-full`) để đồng nhất toàn app — `Combobox` (danh mục ngắn/trung bình, gõ trực tiếp) vẫn là lựa chọn MẶC ĐỊNH, chỉ đổi sang `SearchableCombobox` khi danh mục thật sự dài.
+
+Props: `id`, `value`/`onChange` (chuỗi `value` của `ComboboxOption`), `options: ComboboxOption[]`, `disabled?`, `placeholder?`, `searchPlaceholder?`.
+
+Ví dụ đã áp dụng: "Đơn vị tính" trong khối "Đơn giá dịch vụ" (`ExamTypeFormModal.tsx`, docs/DECISIONS.md #079).
+
 ### 4.2. Bảng dữ liệu y tế (Medical Data Tables)
 - **Cột:** Phải có tính năng cố định (sticky) cột "Tên bệnh nhân" ở bên trái và cột "Hành động" ở bên phải.
 - **Hàng (Row):** Có thể click vào bất cứ đâu trên hàng để xem chi tiết (không chỉ click vào nút xem).

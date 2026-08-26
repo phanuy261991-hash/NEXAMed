@@ -7,9 +7,10 @@ import { z } from 'zod';
  * danh sách tên có sắp xếp, quản lý qua Cấu hình). `RECEPTION_TYPE`/`EXAM_FORM`/`PRIORITY_REASON`/
  * `PRICE_TYPE` — thiết kế lại "Tiếp nhận bệnh nhân" (mockup đã duyệt): Loại tiếp nhận, Hình thức
  * khám, Lý do ưu tiên, Loại giá dịch vụ — cùng lý do tái dùng bảng này thay vì 4 bảng riêng, quản
- * lý qua UI (thêm/sửa/ẩn) như `PATIENT_SOURCE`/`EXAM_TYPE`. `PRICE_TYPE` là danh mục PHẲNG độc lập
- * (không có bảng giá đa mức theo từng `EXAM_TYPE` — việc đó là "Price Book" thật, thuộc module
- * Viện phí v2, ngoài phạm vi v1) — chọn chỉ để ghi chú, không đổi `price` đang hiển thị.
+ * lý qua UI (thêm/sửa/ẩn) như `PATIENT_SOURCE`/`EXAM_TYPE`. `PRICE_TYPE` là danh mục PHẲNG độc
+ * lập, dùng làm "nhãn loại giá" cho bảng `exam_type_price` (docs/DECISIONS.md #079, 2026-08-26 —
+ * mở rộng phạm vi v1, xem `examTypePriceItemSchema` bên dưới) — bảng giá đa mức THEO TENANT cho
+ * từng dịch vụ khám (`EXAM_TYPE`), khác chính bảng `reference_catalog` này (toàn hệ thống).
  * `OCCUPATION` (Nghề nghiệp) — đảo ngược tiếp phần `occupation` của #034 (không có nguồn dữ liệu
  * chính thức như Dân tộc/Quốc tịch, không seed cứng — quản lý qua UI như `PATIENT_SOURCE`).
  * Quản lý được qua API bởi `clinic_admin` (`reference_catalog.manage`), mọi vai trò lâm sàng đọc
@@ -32,14 +33,44 @@ export const referenceCatalogCategorySchema = z.enum([
   'STAFF_POSITION',
   'EMPLOYMENT_STATUS',
   'EMPLOYMENT_TYPE',
+  // Đơn vị tính (ví dụ "Viên", "Lọ", "Chai") — chủ dự án yêu cầu trực tiếp 2026-08-26. Mã tự
+  // sinh (giống 4 category nhân sự ở trên), có thêm `description` (chỉ category này dùng).
+  'UNIT',
 ]);
 export type ReferenceCatalogCategory = z.infer<typeof referenceCatalogCategorySchema>;
+
+/**
+ * 1 dòng "Đơn giá dịch vụ" (`exam_type_price`, docs/DECISIONS.md #079, 2026-08-26) — thuộc về
+ * MỘT tenant + MỘT mục `reference_catalog` category `EXAM_TYPE` (`examTypeCode`). `priceTypeCode`/
+ * `unitCode` là mã tham chiếu `reference_catalog` (category `PRICE_TYPE`/`UNIT`), lưu thẳng
+ * string — không FK thật (cùng cách `patient.ethnicity` tham chiếu category `ETHNICITY`). Cùng
+ * (examTypeCode, priceTypeCode) KHÔNG được có 2 dòng còn hiệu lực với khoảng ngày chồng lấn nhau
+ * (C20, ép ở DB bằng exclusion constraint — không chỉ validate tầng ứng dụng).
+ */
+export const examTypePriceInputSchema = z
+  .object({
+    priceTypeCode: z.string().min(1),
+    amount: z.number().int().nonnegative(),
+    unitCode: z.string().min(1),
+    /** Định dạng "YYYY-MM-DD" (không giờ — đây là ngày lịch, không phải mốc thời gian). */
+    effectiveFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    effectiveTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  })
+  .refine((v) => v.effectiveTo === undefined || v.effectiveTo >= v.effectiveFrom, {
+    message: 'Ngày kết thúc phải sau hoặc bằng Ngày hiệu lực',
+    path: ['effectiveTo'],
+  });
+export type ExamTypePriceInput = z.infer<typeof examTypePriceInputSchema>;
+
+export const examTypePriceItemSchema = examTypePriceInputSchema.and(z.object({ id: z.string().uuid() }));
+export type ExamTypePriceItem = z.infer<typeof examTypePriceItemSchema>;
 
 /**
  * `price` (đồng) — CHỈ có ý nghĩa với category `EXAM_TYPE` (giá tham khảo của loại khám), `null`
  * với các category khác. v1 chỉ LƯU để hiển thị, không tính toán/xuất hoá đơn (viện phí ngoài
  * phạm vi CLAUDE.md) — xem docs/DECISIONS.md. `unit` (Đơn vị, ví dụ "Lượt"/"Buổi") — cùng bản chất
- * `price`, chỉ có ý nghĩa với `EXAM_TYPE`.
+ * `price`, chỉ có ý nghĩa với `EXAM_TYPE`. `description` (Mô tả tự do) — chỉ có ý nghĩa với
+ * category `UNIT` (Đơn vị tính, 2026-08-26), cùng bản chất `price`/`unit`.
  */
 export const referenceCatalogItemSchema = z.object({
   id: z.string().uuid(),
@@ -52,6 +83,10 @@ export const referenceCatalogItemSchema = z.object({
   unit: z.string().nullable(),
   /** Chỉ có ý nghĩa với category EMPLOYMENT_STATUS — xem docs/DECISIONS.md (mở rộng ADM-01). */
   deactivatesAccount: z.boolean(),
+  /** Chỉ có ý nghĩa với category UNIT (Đơn vị tính) — xem docs/DECISIONS.md. */
+  description: z.string().nullable(),
+  /** Chỉ có ý nghĩa với category EXAM_TYPE — danh sách đơn giá còn hiệu lực (docs/DECISIONS.md #079). */
+  prices: z.array(examTypePriceItemSchema).optional(),
 });
 export type ReferenceCatalogItem = z.infer<typeof referenceCatalogItemSchema>;
 
@@ -74,6 +109,17 @@ export const createReferenceCatalogRequestSchema = z.object({
   price: z.number().int().nonnegative().optional(),
   unit: z.string().min(1).optional(),
   deactivatesAccount: z.boolean().optional(),
+  description: z.string().min(1).optional(),
+  /** Chỉ ItemFormModal của category UNIT gửi field này (checkbox "Đang sử dụng" ngay trong form,
+   * cùng mẫu RoomPane/DepartmentPane) — category khác vẫn quản lý trạng thái qua action Xoá/Khôi
+   * phục riêng (deactivate/reactivate), không đổi hành vi cũ. */
+  isActive: z.boolean().optional(),
+  /**
+   * Chỉ category EXAM_TYPE gửi field này (docs/DECISIONS.md #079) — TOÀN BỘ danh sách đơn giá
+   * mong muốn sau khi lưu (bulk-replace trong CÙNG transaction tạo dịch vụ, đúng khuôn `PUT
+   * .../diagnoses`) — không phải "thêm thêm", bỏ trống mảng là chủ ý xoá hết đơn giá cũ.
+   */
+  examTypePrices: z.array(examTypePriceInputSchema).optional(),
 });
 export type CreateReferenceCatalogRequest = z.infer<typeof createReferenceCatalogRequestSchema>;
 
@@ -84,5 +130,10 @@ export const updateReferenceCatalogRequestSchema = z.object({
   price: z.number().int().nonnegative().optional(),
   unit: z.string().min(1).optional(),
   deactivatesAccount: z.boolean().optional(),
+  description: z.string().min(1).optional(),
+  isActive: z.boolean().optional(),
+  /** Bulk-replace đơn giá, đúng ngữ nghĩa như `createReferenceCatalogRequestSchema` — `undefined`
+   * (không gửi field) = không đụng tới đơn giá hiện có, mảng rỗng = xoá hết. */
+  examTypePrices: z.array(examTypePriceInputSchema).optional(),
 });
 export type UpdateReferenceCatalogRequest = z.infer<typeof updateReferenceCatalogRequestSchema>;

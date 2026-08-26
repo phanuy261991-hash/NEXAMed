@@ -2,6 +2,7 @@
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import eslintConfigPrettier from 'eslint-config-prettier';
+import reactHooks from 'eslint-plugin-react-hooks';
 
 const CORE_RESTRICTED_MESSAGE =
   'packages/core là logic nghiệp vụ thuần — không phụ thuộc framework/hạ tầng (xem .claude/docs/project-structure.md).';
@@ -60,6 +61,7 @@ export default tseslint.config(
   },
   {
     files: ['apps/web/**/*.ts', 'apps/web/**/*.tsx'],
+    plugins: { 'react-hooks': reactHooks },
     rules: {
       'no-restricted-imports': [
         'error',
@@ -67,6 +69,13 @@ export default tseslint.config(
           patterns: [{ group: ['@nexamed/core', '@nexamed/core/*'], message: WEB_RESTRICTED_MESSAGE }],
         },
       ],
+      // Chỉ bật 2 rule cổ điển (đúng thứ mã nguồn đang có `eslint-disable-next-line` tham chiếu tới
+      // — trước đây báo lỗi "Definition for rule ... was not found" vì plugin chưa từng cài/đăng
+      // ký, 2026-08-26). KHÔNG bật cả bộ `recommended`/`recommended-latest` của plugin (v7 gộp
+      // thêm nhiều rule hướng React Compiler — immutability/purity/set-state-in-render...) — chưa
+      // rà soát tác động, ngoài phạm vi việc này.
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
     },
   },
   eslintConfigPrettier,

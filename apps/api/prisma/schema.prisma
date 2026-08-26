@@ -79,6 +79,7 @@ model Tenant {
   patientAllergens  PatientAllergen[]
   patientConditions      PatientCondition[]
   patientFamilyHistories PatientFamilyHistory[]
+  examTypePrices         ExamTypePrice[]
 
   @@map("tenant")
 }
@@ -456,6 +457,9 @@ enum ReferenceCatalogCategory {
   STAFF_POSITION
   EMPLOYMENT_STATUS
   EMPLOYMENT_TYPE
+  // Đơn vị tính (ví dụ "Viên", "Lọ", "Chai") — chủ dự án yêu cầu trực tiếp 2026-08-26. Không có
+  // nguồn dữ liệu chính thức, không seed cứng, quản lý qua UI như OCCUPATION.
+  UNIT
 
   @@map("reference_catalog_category")
 }
@@ -487,9 +491,52 @@ model ReferenceCatalog {
   // Tách thành cột riêng thay vì so khớp `code` cố định ("NGHI_VIEC"...) vì `code` sửa được qua
   // UI (ReferenceCatalogPane) — so khớp chuỗi sẽ hỏng ngầm khi admin đổi mã.
   deactivatesAccount Boolean @default(false) @map("deactivates_account")
+  // Mô tả tự do — CHỈ có ý nghĩa với category UNIT (Đơn vị tính, chủ dự án yêu cầu trực tiếp
+  // 2026-08-26), NULL với category khác (cùng bản chất price/unit/deactivatesAccount ở trên).
+  description String?
 
   @@unique([category, code])
   @@map("reference_catalog")
+}
+
+// "Đơn giá dịch vụ" (docs/DECISIONS.md #079, chủ dự án yêu cầu trực tiếp 2026-08-26) — bảng giá
+// đa mức THEO TENANT cho một mục `reference_catalog` category EXAM_TYPE: 1 dịch vụ khám có thể có
+// NHIỀU dòng đơn giá (khác Loại giá dịch vụ và/hoặc khác khoảng ngày hiệu lực). Mở rộng phạm vi v1
+// đã chốt — CLAUDE.md trước đây loại "bảng giá đa đối tượng" khỏi v1 dưới dạng viện phí đầy đủ
+// (đa đối tượng/công nợ/trả góp); đây là dạng ĐƠN GIẢN HƠN nhiều (không nợ/không trả góp, chỉ đa
+// mức theo loại giá + hiệu lực theo ngày) nên chốt đưa riêng phần này vào v1.
+//
+// TÁCH theo tenant (khác `reference_catalog` cha — toàn hệ thống, không tenant_id) vì giá dịch vụ
+// khám khác nhau thật giữa các phòng khám dù cùng tên dịch vụ — đủ 8 cột bắt buộc + RLS như mọi
+// bảng nghiệp vụ khác. `examTypeCode`/`priceTypeCode`/`unitCode` lưu THẲNG mã (text, KHÔNG FK
+// composite thật) — đúng cách mọi cột tham chiếu `reference_catalog` khác đã làm (`patient.
+// ethnicity`, `encounter.exam_type_code`...) vì `reference_catalog` là 1 bảng dùng chung nhiều
+// category, FK thật không biểu diễn được "chỉ trỏ đúng 1 category". Sửa/xoá tự do (không phải
+// SignableEntity, không giữ lịch sử — chốt qua AskUserQuestion 2026-08-26); "xoá" vẫn là soft
+// (is_active không có ở đây — dùng deleted_at, role DB không có quyền DELETE cứng).
+model ExamTypePrice {
+  id            String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  examTypeCode  String    @map("exam_type_code")
+  priceTypeCode String    @map("price_type_code")
+  unitCode      String    @map("unit_code")
+  amount        BigInt
+  effectiveFrom DateTime  @map("effective_from") @db.Date
+  effectiveTo   DateTime? @map("effective_to") @db.Date
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, id])
+  @@map("exam_type_price")
 }
 
 // Danh mục "Dị nguyên" (Allergens, docs/DECISIONS.md #069) — TOÀN HỆ THỐNG, cùng bản chất

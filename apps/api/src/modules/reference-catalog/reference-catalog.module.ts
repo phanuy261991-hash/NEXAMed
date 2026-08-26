@@ -3,6 +3,7 @@ import { REFERENCE_CATALOG_READER_PORT } from '@nexamed/core';
 import { ReferenceCatalogController } from './reference-catalog.controller';
 import { ReferenceCatalogService } from './reference-catalog.service';
 import { ReferenceCatalogRepository } from './reference-catalog.repository';
+import { ExamTypePriceRepository } from './exam-type-price.repository';
 import { ReferenceCatalogReaderAdapter } from '../../infrastructure/reference-catalog/reference-catalog-reader.adapter';
 
 /**
@@ -16,6 +17,7 @@ import { ReferenceCatalogReaderAdapter } from '../../infrastructure/reference-ca
   providers: [
     ReferenceCatalogService,
     ReferenceCatalogRepository,
+    ExamTypePriceRepository,
     { provide: REFERENCE_CATALOG_READER_PORT, useClass: ReferenceCatalogReaderAdapter },
   ],
   exports: [REFERENCE_CATALOG_READER_PORT],

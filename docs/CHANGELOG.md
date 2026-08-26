@@ -2,6 +2,33 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-26 (3)
+
+"Đơn giá dịch vụ" cho Dịch vụ khám (EXAM_TYPE) — mở rộng phạm vi v1 có giới hạn (chủ dự án yêu cầu trực tiếp, xem `docs/DECISIONS.md` #079):
+
+- **Xung đột phát hiện + chốt qua `AskUserQuestion`**: yêu cầu ban đầu (1 dịch vụ có nhiều dòng đơn giá theo Loại giá dịch vụ + hiệu lực theo ngày) trùng đúng "Price Book" mà CLAUDE.md/comment code cũ đã loại khỏi v1 — đã dừng lại, nêu rõ, chủ dự án xác nhận chốt mở rộng ngay. Phạm vi mới KHÔNG bao gồm giá đa đối tượng (BHYT/đối tác), công nợ/trả góp.
+- **Bảng mới `exam_type_price`** (migration `20260826100000_exam_type_price`) — TÁCH THEO TENANT (khác `reference_catalog` cha, toàn hệ thống — chốt qua `AskUserQuestion`), đủ 8 cột bắt buộc + RLS. **C20**: `EXCLUDE USING gist` chặn 2 dòng cùng (dịch vụ, Loại giá dịch vụ) có ngày hiệu lực chồng lấn, kể cả ghi đồng thời — cùng kỹ thuật C2 (`appointment_doctor_slot_excl`). Sửa/xoá tự do, quản lý bằng bulk-replace (đúng khuôn `diagnosis`) trong CÙNG transaction tạo/sửa dịch vụ.
+- **2 component `shared/ui` mới, dùng chung được ngay**: `MoneyInput.tsx` (tự nhảy dấu chấm phân cách hàng nghìn lúc gõ — quy tắc bắt buộc mới cho MỌI ô nhập tiền, `ui-guidelines.md` mục 4.1e) và `SearchableCombobox.tsx` (dropdown có ô tìm kiếm riêng trong panel cho danh mục dài, mục 4.1f).
+- **`ExamTypeFormModal.tsx` mới** (tách khỏi `ItemFormModal` dùng chung — độ phức tạp khối "Đơn giá dịch vụ" vượt xa modal chung 16 category). Mockup Artifact duyệt nhiều vòng trước khi code (thử label nổi theo ảnh mẫu → chủ dự án phản hồi "xấu hơn" → quay lại label cố định; mở rộng modal 880px→1180px).
+- **EXAM_TYPE thêm vào nhóm mã tự sinh** (đúng yêu cầu gốc), danh sách "Dịch vụ khám" đổi cột Giá/Đơn vị cũ thành 1 cột "Đơn giá" (badge số mức giá).
+- **Bug thật phát hiện + sửa cùng lúc** (không phải do tính năng mới): PATCH `reference-catalog` chỉ gửi field không thuộc bảng cha (ví dụ chỉ `examTypePrices`) khiến `updateMany` toàn `undefined` là no-op, Prisma trả `count:0` → service cũ hiểu nhầm 404. Sửa bằng cờ `hasCatalogFieldChanges`.
+- **Đã xác minh thật**: `reference-catalog-http.spec.ts` +3 test (15/15) — tạo/sửa kèm đơn giá, bulk-replace đúng ngữ nghĩa (không gửi field = giữ nguyên, gửi mảng rỗng = xoá hết), 409 `EXAM_TYPE_PRICE_OVERLAP` khi chồng ngày, cách ly đơn giá theo tenant (khác mục dùng chung). Tổng 409/413 test `apps/api` pass (1 file fail là flake `geo-http.spec.ts` đã biết trước, pass 100% khi chạy riêng). `pnpm -w typecheck/lint/build` sạch toàn workspace.
+- Cập nhật `CLAUDE.md` (phạm vi v1), `docs/DECISIONS.md` (#079), `docs/ERD.md` (v1.28, C20), `.claude/docs/data-model.md`, `.claude/docs/ui-guidelines.md` (mục 4.1e/4.1f), `docs/CURRENT.md`.
+
+## 2026-08-26 (2)
+
+"Danh mục hành chính" đổi tên "Danh mục dùng chung" + thêm pill "Đơn vị tính" (chủ dự án yêu cầu trực tiếp), tiện sửa luôn lỗ hổng cấu hình ESLint có sẵn từ trước — xem `docs/DECISIONS.md` #078:
+
+- **Category `UNIT` mới** trong `reference_catalog` (migration `20260826090000_reference_catalog_unit`) + cột mới `reference_catalog.description` (migration `20260826091500_reference_catalog_description`, TEXT nullable, chỉ có ý nghĩa với category UNIT — cùng bản chất `price`/`unit`/`deactivatesAccount`). `packages/shared` thêm `description`/`isActive` vào create/update request schema (`isActive` — CHỈ form UNIT gửi, category khác vẫn quản lý trạng thái qua action Xoá/Khôi phục riêng như trước, không đổi hành vi).
+- **UI**: Sidebar + `CatalogAdminPage.tsx` đổi nhãn "Danh mục hành chính" → "Danh mục dùng chung". Pill "Đơn vị tính" mới — mã tự sinh (thêm `UNIT` vào `AUTO_CODE_CATEGORIES`), "Tên đơn vị" bắt buộc (dấu `*` đỏ, áp dụng luôn cho "Mã"/"Tên hiển thị" ở mọi category khác — thiếu sót cũ so với `.claude/docs/ui-guidelines.md` mục 4.1), "Mô tả" (textarea), "Trạng thái" (select "Đang sử dụng"/"Ngưng sử dụng" ngay trong form + cột badge riêng trong bảng — cùng màu `emerald-50`/`slate-100` đã dùng ở `RoomPane`/`DepartmentPane`/`AllergenPane`; badge "Đã ẩn" trùng lặp bị ẩn cho riêng category này), "Thứ tự hiển thị".
+- **Vá lỗ hổng ESLint có sẵn**: `eslint-plugin-react-hooks` chưa từng được cài dù 5 file đã có `eslint-disable-next-line react-hooks/exhaustive-deps` — ESLint 9 flat config báo lỗi "rule không tồn tại" (`pnpm lint` đỏ từ trước, bị coi nhầm là "lỗi cấu hình không liên quan" nhiều đợt). Cài `eslint-plugin-react-hooks@^7.1.1`, đăng ký 2 rule cổ điển (`rules-of-hooks`/`exhaustive-deps`, KHÔNG bật cả bộ `recommended` v7 — gộp thêm nhiều rule hướng React Compiler, chưa rà soát tác động) cho `apps/web` trong `eslint.config.js`. Kết quả 0 lỗi (trước 5), lộ thêm 6 warning thật tiền-nhiệm (thiếu dependency `useMemo`/`useEffect` ở 6 file không liên quan, không chặn build/lint) — để nguyên, ngoài phạm vi việc này. Dọn 1 disable-comment thừa ở `AppointmentSchedulePage.tsx`.
+- **Đã xác minh thật**: `reference-catalog-http.spec.ts` +1 test (12/12), tổng 401/413 test `apps/api` pass (2 file fail là flake `geo-http`/`auth-login-http` đã biết trước — race seed `role_permission`, pass 100% khi chạy riêng, không liên quan). `pnpm -w typecheck/lint/build` sạch toàn workspace (lint 0 lỗi, giảm từ 5).
+- Cập nhật `docs/CURRENT.md`, `docs/ERD.md` (v1.27), `.claude/docs/data-model.md`, `docs/DECISIONS.md` (#078).
+
+## 2026-08-26
+
+Chuyển pill "Loại khám" từ "Danh mục hành chính" sang "Danh mục Chuyên môn", đổi nhãn thành "Dịch vụ khám" (chủ dự án yêu cầu trực tiếp — thuộc chuyên môn/giá dịch vụ khám, không phải hành chính, xem `docs/DECISIONS.md` #078). Chỉ đổi vị trí pill (`CatalogAdminPage.tsx` → `CatalogClinicalPage.tsx`) + nhãn hiển thị, không đổi `category` (`EXAM_TYPE`) hay dữ liệu — nhãn "Loại khám" ở ô chọn tại "Tiếp nhận bệnh nhân" (`ReceptionIntakeForm.tsx`) giữ nguyên, không thuộc phạm vi yêu cầu. `pnpm --filter @nexamed/web run typecheck` sạch.
+
 ## 2026-08-25 (5)
 
 Redesign màn hình khám (ngoài kế hoạch, chủ dự án yêu cầu trực tiếp qua nhiều lượt chỉnh trên bản chạy thật) — xem `docs/DECISIONS.md` #077:
