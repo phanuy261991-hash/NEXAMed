@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  CaretLeft,
-  CaretRight,
   CalendarBlank,
   CheckCircle,
   ClipboardText,
@@ -12,11 +10,10 @@ import {
   Pill,
   Plus,
   Stethoscope,
-  Users,
   Warning,
   X,
 } from '@phosphor-icons/react';
-import type { ConsultationDetailResponse, DiagnosisType, EncounterHistoryItem, ReceptionListItem, SaveClinicalNoteRequest } from '@nexamed/shared';
+import type { ConsultationDetailResponse, DiagnosisType, EncounterHistoryItem, PatientAllergenItem, SaveClinicalNoteRequest } from '@nexamed/shared';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { useAutoCollapseSidebar } from '../../shared/layout/sidebar.context';
 import { ApiError } from '../../shared/api/client';
@@ -26,14 +23,13 @@ import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { Textarea } from '../../shared/ui/Textarea';
-import { useAuthStore } from '../auth/auth.store';
-import { getVietnamTodayDateString } from '../appointment/schedule-grid.utils';
-import { computeAgeLabel } from '../patient/patient-form.utils';
+import { computeAgeLabel, buildHistoryUpdatePayload, consultationPatientToHistoryFormValues } from '../patient/patient-form.utils';
+import { PatientHistoryDialog } from '../patient/PatientHistoryDialog';
+import type { PatientFormValues } from '../patient/PatientFormFields';
 import { formatDobDisplay } from '../../shared/format/date';
-import { updatePatient as updatePatientRaw } from '../patient/patient.api';
 import { useUpdatePatientMutation } from '../patient/patient.queries';
-import { useReceptionListQuery, useStartConsultationMutation } from '../reception/reception.queries';
 import { Icd10SearchPicker } from '../../shared/ui/Icd10SearchPicker';
+import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { PrescriptionPanel } from './PrescriptionPanel';
 import { VitalSignsDialog } from './VitalSignsDialog';
 import { saveClinicalNote as saveClinicalNoteRaw } from './encounter.api';
@@ -58,20 +54,6 @@ const EMPTY_CLINICAL_DRAFT: ClinicalDraft = {
   plan: '',
 };
 
-/**
- * "Tiền sử bản thân" (docs/DECISIONS.md #068) — đọc/ghi thẳng `patient.personalHistory` qua
- * `PATCH /patients/:id`, KHÔNG lưu theo lượt khám (khác `clinical` ở trên, gắn `encounter_id`) —
- * dữ liệu chung, ít đổi, sửa tại chỗ, không nhập lại mỗi lượt khám mới. "Bệnh lý nền"/"Tiền sử gia
- * đình"/"Dị nguyên" — CHỈ XEM ở màn khám, sửa qua hồ sơ bệnh nhân/Tiếp nhận (`PatientHistoryDialog`).
- * "Ghi chú dị ứng" (`allergyNote` tự do) đã BỎ HẲN khỏi màn khám (chốt lại 2026-08-25, sau #065) —
- * #065 đã bỏ ô nhập này khỏi `PatientHistoryDialog` chuyển hẳn sang chip `allergenIds`, nhưng bỏ sót
- * ô nhập/autosave riêng vẫn còn ở đây, gây 2 nơi chỉnh cùng khái niệm "dị ứng" không nhất quán
- * (chủ dự án phát hiện lúc dùng thử). Cột DB `allergy_note` GIỮ NGUYÊN, chỉ ngừng đọc/ghi từ UI.
- */
-type PatientNoteKey = 'personalHistory';
-type PatientNoteDraft = Record<PatientNoteKey, string>;
-const EMPTY_PATIENT_NOTE_DRAFT: PatientNoteDraft = { personalHistory: '' };
-
 interface DiagnosisDraft {
   icd10Code: string;
   icd10Name: string;
@@ -94,9 +76,9 @@ function formatRelativeTime(iso: string): string {
   return `${Math.round(days / 365)} năm trước`;
 }
 
-/** Dải hàng chờ ("Hàng đợi ảo", #064) — số phút chờ, cùng cách tính `waitMinutes()` ở `ReceptionDoctorQueuePage.tsx`. */
-function queueWaitMinutes(checkedInAt: string): number {
-  return Math.max(0, Math.floor((Date.now() - new Date(checkedInAt).getTime()) / 60_000));
+/** Thói quen/lối sống dùng CHUNG mảng `patient.conditions` với bệnh lý nền, mã hoá ICD-10 Chương XXI (Z72.x) — xem `PatientHistoryDialog.tsx`. */
+function isHabitConditionCode(icd10Code: string): boolean {
+  return icd10Code.startsWith('Z72');
 }
 
 const TABS = [
@@ -135,16 +117,21 @@ export function EncounterConsultationPage() {
   // boolean cũ không bao giờ reset, khiến bản nháp CŨ của bệnh nhân trước đó tiếp tục hiện trên màn
   // hình bệnh nhân mới (không phải "mất dữ liệu" mà còn nguy hiểm hơn: lẫn dữ liệu 2 bệnh nhân).
   const [loadedForId, setLoadedForId] = useState<string | null>(null);
+  /**
+   * Tab panel trái ("Tiền sử bệnh" | "Lịch sử khám", theo yêu cầu chủ dự án — tách hẳn 2 tab thay vì
+   * cuộn chung 1 cột, giải quyết triệt để thiếu không gian). Mặc định: bệnh nhân MỚI (chưa có lượt
+   * khám nào trước đây) → mở "Tiền sử bệnh"; bệnh nhân CŨ (đã có lịch sử) → mở "Lịch sử khám" (bác sĩ
+   * thường cần xem lần khám trước trước khi khám mới) — quyết định lúc nạp dữ liệu, xem effect dưới.
+   */
+  const [historyPanelTab, setHistoryPanelTab] = useState<'personal' | 'visits'>('visits');
   const [clinical, setClinical] = useState<ClinicalDraft>(EMPTY_CLINICAL_DRAFT);
   const [clinicalVersions, setClinicalVersions] = useState<Partial<Record<ClinicalKey, number>>>({});
   const [diagnoses, setDiagnoses] = useState<DiagnosisDraft[]>([]);
-  const [patientNoteDraft, setPatientNoteDraft] = useState<PatientNoteDraft>(EMPTY_PATIENT_NOTE_DRAFT);
-  const [patientNoteBaseline, setPatientNoteBaseline] = useState<{ values: PatientNoteDraft; version: number } | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [draftSaved, setDraftSaved] = useState(false);
   const [vitalsDialogOpen, setVitalsDialogOpen] = useState(false);
-  const [railOpen, setRailOpen] = useState(true);
-  const [railError, setRailError] = useState<string | null>(null);
+  /** Dialog "Tiền sử bệnh nhân" (Dị ứng/Bản thân/Gia đình) — dùng lại `PatientHistoryDialog` đã có sẵn, mở từ nút "+ Thêm" ở panel Tiền sử bên trái. */
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   // "Xem lại" một lượt khám đã "Hoàn tất khám" — mặc định chỉ xem, bấm "Chỉnh sửa thông tin" mới mở
   // lại các ô nhập (lỗi vận hành thật chủ dự án báo cáo, xem docs/DECISIONS.md).
   const [editingCompleted, setEditingCompleted] = useState(false);
@@ -169,6 +156,8 @@ export function EncounterConsultationPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showCompleteSuccessDialog, navigate]);
 
+  /** Loại tiếp nhận (Khám mới/Tái khám/...) — chỉ có mã ở `encounter.receptionTypeCode`, tự resolve tên hiển thị qua danh mục dùng chung, hiện ở banner cạnh SĐT. */
+  const receptionTypeCatalogQuery = useReferenceCatalogQuery('RECEPTION_TYPE');
   const saveDiagnosesMutation = useSaveDiagnosesMutation(encounterId);
   const saveClinicalNoteMutation = useSaveClinicalNoteMutation(encounterId);
   const completeMutation = useCompleteConsultationMutation(encounterId);
@@ -185,38 +174,11 @@ export function EncounterConsultationPage() {
   clinicalRef.current = clinical;
   const clinicalVersionsRef = useRef(clinicalVersions);
   clinicalVersionsRef.current = clinicalVersions;
-  const patientNoteDraftRef = useRef(patientNoteDraft);
-  patientNoteDraftRef.current = patientNoteDraft;
-  const patientNoteBaselineRef = useRef(patientNoteBaseline);
-  patientNoteBaselineRef.current = patientNoteBaseline;
-  /** `true` = có thay đổi ở ghi chú lâm sàng và/hoặc tiền sử bản thân/gia đình/dị ứng chưa lưu lên server. */
+  /** `true` = có thay đổi ở ghi chú lâm sàng chưa lưu lên server. */
   const dirtyRef = useRef(false);
   /** Bỏ qua đúng 1 lần đánh dấu "dirty" ngay sau khi nạp dữ liệu từ server — tránh autosave tưởng
    * nhầm việc NẠP dữ liệu là NGƯỜI DÙNG vừa gõ. */
   const skipNextDirtyRef = useRef(false);
-
-  // Dải hàng chờ thu gọn ("Hàng đợi ảo", docs/DECISIONS.md #064) — cùng nguồn dữ liệu với "Hàng
-  // đợi khám" (`ReceptionDoctorQueuePage.tsx`): "của tôi" ∪ "hàng chờ chung Khoa mình". Loại trừ
-  // chính lượt khám đang xem khỏi danh sách chờ.
-  const currentUser = useAuthStore((s) => s.user);
-  const queueQuery = useReceptionListQuery(getVietnamTodayDateString(), currentUser?.id, true);
-  const startConsultationMutation = useStartConsultationMutation();
-  const waitingQueue = (queueQuery.data?.items ?? []).filter((i) => i.status === 'CHECKED_IN' && i.encounterId !== encounterId);
-
-  async function handleQueueItemClick(item: ReceptionListItem) {
-    setRailError(null);
-    try {
-      const started = await startConsultationMutation.mutateAsync({ id: item.encounterId, body: { version: item.version } });
-      navigate(`/encounters/${started.id}`);
-    } catch (err) {
-      if (err instanceof ApiError && err.code === 'ENCOUNTER_ALREADY_CLAIMED') {
-        setRailError(err.message);
-        void queueQuery.refetch();
-        return;
-      }
-      setRailError(err instanceof ApiError ? err.message : 'Không mở được lượt khám này, vui lòng thử lại.');
-    }
-  }
 
   const sectionRefs = {
     'section-kham': useRef<HTMLDivElement>(null),
@@ -248,13 +210,6 @@ export function EncounterConsultationPage() {
       plan: note.plan?.version,
     });
     setDiagnoses(data.diagnoses.map((d) => ({ icd10Code: d.icd10Code, icd10Name: d.icd10Name, type: d.type, note: d.note ?? undefined })));
-    // "Tiền sử bản thân" tự mồi từ patient.personalHistory — sửa ở đây ghi thẳng lại hồ sơ bệnh
-    // nhân (docs/DECISIONS.md #068), không lưu riêng cho lượt khám.
-    const noteValues: PatientNoteDraft = {
-      personalHistory: data.patient.personalHistory ?? '',
-    };
-    setPatientNoteDraft(noteValues);
-    setPatientNoteBaseline({ values: noteValues, version: data.patient.version });
     dirtyRef.current = false;
   }
 
@@ -268,6 +223,7 @@ export function EncounterConsultationPage() {
       setEditingCompleted(false);
       setFormError(null);
       setDraftSaved(false);
+      setHistoryPanelTab(query.data.history.length === 0 ? 'personal' : 'visits');
       setLoadedForId(encounterId);
     }
   }, [query.isSuccess, query.data, loadedForId, encounterId]);
@@ -284,17 +240,16 @@ export function EncounterConsultationPage() {
     };
   }
 
-  /** "Lý do khám"/"Chuẩn đoán" bắt buộc (Zod `saveClinicalNoteRequestSchema`) — autosave/flush im lặng bỏ qua tới khi đủ, tránh 400 giữa chừng lúc bác sĩ chưa gõ tới đó. */
+  /** "Lý do khám"/"Chẩn đoán" bắt buộc (Zod `saveClinicalNoteRequestSchema`) — autosave/flush im lặng bỏ qua tới khi đủ, tránh 400 giữa chừng lúc bác sĩ chưa gõ tới đó. */
   function hasRequiredClinicalFields(c: ClinicalDraft): boolean {
     return c.reasonForVisit.trim() !== '' && c.preliminaryDiagnosis.trim() !== '';
   }
 
-  // Autosave ghi chú lâm sàng + tiền sử bản thân/gia đình/dị ứng — CHỈ khi đang khám dở (chưa "Hoàn
-  // tất khám"): mỗi lần `clinical`/`patientNoteDraft` đổi, đợi ~4 giây ngừng gõ (debounce) rồi tự
-  // lưu lên server, không cần bác sĩ nhớ bấm "Lưu nháp". Lỗi vận hành thật chủ dự án báo cáo: rời
-  // màn khám sang bệnh nhân khác khi chưa lưu → mất trắng nội dung đang gõ dở (xem docs/DECISIONS.md).
-  // Sửa hồ sơ SAU khi đã hoàn tất KHÔNG autosave (phiên sửa ngắn, chủ động — chỉ lưu khi bấm "Lưu
-  // thay đổi", tránh autosave âm thầm đụng break-glass).
+  // Autosave ghi chú lâm sàng — CHỈ khi đang khám dở (chưa "Hoàn tất khám"): mỗi lần `clinical` đổi,
+  // đợi ~4 giây ngừng gõ (debounce) rồi tự lưu lên server, không cần bác sĩ nhớ bấm "Lưu nháp". Lỗi
+  // vận hành thật chủ dự án báo cáo: rời màn khám sang bệnh nhân khác khi chưa lưu → mất trắng nội
+  // dung đang gõ dở (xem docs/DECISIONS.md). Sửa hồ sơ SAU khi đã hoàn tất KHÔNG autosave (phiên sửa
+  // ngắn, chủ động — chỉ lưu khi bấm "Lưu thay đổi", tránh autosave âm thầm đụng break-glass).
   useEffect(() => {
     if (skipNextDirtyRef.current) {
       skipNextDirtyRef.current = false;
@@ -304,34 +259,8 @@ export function EncounterConsultationPage() {
     dirtyRef.current = true;
     const timer = setTimeout(() => void runAutosave(), 4000);
     return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ cần đổi `clinical`/`patientNoteDraft` mới reset debounce, đọc các giá trị khác qua ref/closure lúc timer chạy là đủ mới.
-  }, [clinical, patientNoteDraft]);
-
-  /**
-   * Vá `patient.personalHistory` nếu có thay đổi thật (chỉ gửi field nào thực sự khác baseline,
-   * tránh tăng version bệnh nhân vô ích) — dùng chung cho autosave/flush lẫn "Lưu nháp"/"Lưu thay
-   * đổi" thủ công.
-   */
-  async function patchPatientNoteIfChanged(
-    draft: PatientNoteDraft,
-    baseline: { values: PatientNoteDraft; version: number } | null,
-    raw: boolean,
-  ): Promise<{ values: PatientNoteDraft; version: number } | null> {
-    if (!baseline) return null;
-    const changed: Partial<Record<PatientNoteKey, string>> = {};
-    (Object.keys(draft) as PatientNoteKey[]).forEach((key) => {
-      if (draft[key] !== baseline.values[key]) changed[key] = draft[key];
-    });
-    if (Object.keys(changed).length === 0) return null;
-    const payload = { ...changed, version: baseline.version };
-    const updated = raw ? await updatePatientRaw(query.data!.patient.id, payload) : await updatePatientMutation.mutateAsync(payload);
-    return {
-      values: {
-        personalHistory: updated.personalHistory ?? '',
-      },
-      version: updated.version,
-    };
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ cần đổi `clinical` mới reset debounce, đọc các giá trị khác qua ref/closure lúc timer chạy là đủ mới.
+  }, [clinical]);
 
   async function runAutosave() {
     if (!dirtyRef.current) return;
@@ -347,8 +276,6 @@ export function EncounterConsultationPage() {
         regionalExam: result.regionalExam?.version,
         plan: result.plan?.version,
       });
-      const updatedNote = await patchPatientNoteIfChanged(patientNoteDraftRef.current, patientNoteBaselineRef.current, false);
-      if (updatedNote) setPatientNoteBaseline(updatedNote);
       dirtyRef.current = false;
       setDraftSaved(true);
     } catch {
@@ -369,9 +296,7 @@ export function EncounterConsultationPage() {
       if (dirtyRef.current) {
         const c = clinicalRef.current;
         if (hasRequiredClinicalFields(c)) {
-          void saveClinicalNoteRaw(encounterId, buildClinicalNotePayload(c, clinicalVersionsRef.current))
-            .then(() => patchPatientNoteIfChanged(patientNoteDraftRef.current, patientNoteBaselineRef.current, true))
-            .catch(() => {});
+          void saveClinicalNoteRaw(encounterId, buildClinicalNotePayload(c, clinicalVersionsRef.current)).catch(() => {});
         }
         dirtyRef.current = false;
       }
@@ -384,10 +309,6 @@ export function EncounterConsultationPage() {
 
   function setField(key: ClinicalKey, value: string) {
     setClinical((c) => ({ ...c, [key]: value }));
-  }
-
-  function setPatientNote(key: PatientNoteKey, value: string) {
-    setPatientNoteDraft((d) => ({ ...d, [key]: value }));
   }
 
   /**
@@ -452,7 +373,7 @@ export function EncounterConsultationPage() {
     setFormError(null);
     setDraftSaved(false);
     if (!hasRequiredClinicalFields(clinical)) {
-      setFormError('"Lý do khám" và "Chuẩn đoán" là bắt buộc.');
+      setFormError('"Lý do khám" và "Chẩn đoán" là bắt buộc.');
       return;
     }
     try {
@@ -466,12 +387,6 @@ export function EncounterConsultationPage() {
         plan: result.plan?.version,
       });
       dirtyRef.current = false;
-
-      // Tiền sử bản thân/gia đình/dị ứng ghi thẳng lại patient.* — chỉ gọi khi có thay đổi thật,
-      // tránh tăng version bệnh nhân vô ích mỗi lần bấm "Lưu nháp".
-      const updatedNote = await patchPatientNoteIfChanged(patientNoteDraft, patientNoteBaseline, false);
-      if (updatedNote) setPatientNoteBaseline(updatedNote);
-
       setDraftSaved(true);
       if (editingCompleted) setEditingCompleted(false);
     } catch (err) {
@@ -495,7 +410,7 @@ export function EncounterConsultationPage() {
     if (dirtyRef.current) {
       const c = clinicalRef.current;
       if (!hasRequiredClinicalFields(c)) {
-        setFormError('"Lý do khám" và "Chuẩn đoán" là bắt buộc trước khi hoàn tất khám.');
+        setFormError('"Lý do khám" và "Chẩn đoán" là bắt buộc trước khi hoàn tất khám.');
         return;
       }
       try {
@@ -508,8 +423,6 @@ export function EncounterConsultationPage() {
           regionalExam: result.regionalExam?.version,
           plan: result.plan?.version,
         });
-        const updatedNote = await patchPatientNoteIfChanged(patientNoteDraftRef.current, patientNoteBaselineRef.current, false);
-        if (updatedNote) setPatientNoteBaseline(updatedNote);
         dirtyRef.current = false;
       } catch (err) {
         handleSaveError(err, 'clinical_note', () => void handleComplete(), 'Không lưu được ghi chú trước khi hoàn tất, vui lòng thử lại.');
@@ -563,6 +476,20 @@ export function EncounterConsultationPage() {
       : null;
   const bmiClass = bmi != null ? classifyBmi(bmi) : null;
   const warningFields = new Set((vitalSigns?.warnings ?? []).map((w) => w.field));
+  /** Tách bệnh lý nền/thói quen khỏi cùng mảng `patient.conditions` để hiện 2 dòng riêng ở panel Tiền sử (xem `isHabitConditionCode`). */
+  const personalDiseaseConditions = patient.conditions.filter((c) => !isHabitConditionCode(c.icd10Code));
+  const personalHabitConditions = patient.conditions.filter((c) => isHabitConditionCode(c.icd10Code));
+  const receptionTypeName = encounter.receptionTypeCode
+    ? (receptionTypeCatalogQuery.data?.items.find((i) => i.code === encounter.receptionTypeCode)?.name ?? null)
+    : null;
+
+  function handlePatientHistoryChange(values: PatientFormValues) {
+    const payload = buildHistoryUpdatePayload(values, query.data!.patient.version);
+    updatePatientMutation.mutate(payload, {
+      onSuccess: () => void query.refetch(),
+      onError: (err) => handleSaveError(err, 'patient', () => handlePatientHistoryChange(values), 'Không lưu được tiền sử, vui lòng thử lại.'),
+    });
+  }
 
   return (
     <div className="flex h-full flex-col">
@@ -583,21 +510,9 @@ export function EncounterConsultationPage() {
                 {editingCompleted ? 'Đang chỉnh sửa thông tin' : `Đã hoàn tất${encounter.completedAt ? ` · ${formatHistoryDate(encounter.completedAt)}` : ''}`}
               </span>
             )}
-            {patient.allergens.length > 0 && (
-              <span className="flex flex-wrap items-center gap-1.5 rounded-md border border-rose-300 bg-rose-50 px-2.5 py-1.5">
-                <span className="flex items-center gap-1 whitespace-nowrap text-xs font-bold text-rose-700">
-                  <Warning size={13} weight="fill" aria-hidden="true" />
-                  CẢNH BÁO DỊ ỨNG:
-                </span>
-                {patient.allergens.map((a) => (
-                  <span key={a.id} className="whitespace-nowrap rounded-full border border-rose-300 bg-white px-2.5 py-0.5 text-xs font-semibold text-rose-700">
-                    {a.name} <span className="font-medium text-rose-600">({a.allergenGroupName})</span>
-                  </span>
-                ))}
-              </span>
-            )}
+            {patient.allergens.length > 0 && <AllergyBanner allergens={patient.allergens} />}
           </div>
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-500">
+          <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-500">
             <span>
               Mã BN: <strong className="font-bold text-slate-900">{patient.patientCode}</strong>
             </span>
@@ -613,6 +528,14 @@ export function EncounterConsultationPage() {
             <span>
               SĐT: <strong className="font-bold text-slate-900">{patient.phone}</strong>
             </span>
+            {receptionTypeName && (
+              <>
+                <span className="text-slate-300">|</span>
+                <span className="whitespace-nowrap rounded-full bg-blue-100 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-blue-700">
+                  {receptionTypeName}
+                </span>
+              </>
+            )}
           </div>
         </div>
 
@@ -671,73 +594,125 @@ export function EncounterConsultationPage() {
 
       {/* Không gian làm việc chính — chia đôi */}
       <div className="flex min-h-0 flex-1 bg-slate-50">
-        {/* Dải hàng chờ thu gọn ("Hàng đợi ảo", #064) — ẩn/hiện bằng mũi tên, không đổi Phiếu khám. */}
-        <aside className={`flex min-h-0 flex-shrink-0 flex-col border-r border-slate-200 bg-white transition-[width] ${railOpen ? 'w-52' : 'w-8'}`}>
-          <div className="flex h-11 flex-shrink-0 items-center justify-between border-b border-slate-200 px-2.5">
-            {railOpen && (
-              <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-700">
-                <Users size={13} weight="bold" className="text-slate-400" aria-hidden="true" />
-                Hàng chờ ({waitingQueue.length})
-              </span>
-            )}
+        {/* Panel trái — 2 tab riêng biệt "Tiền sử bệnh"/"Lịch sử khám" (thay cột cuộn chung 1 khối
+            trước đây — giải quyết triệt để thiếu không gian, giúp bác sĩ tập trung đúng luồng đang
+            cần). Tab mặc định chọn theo `historyPanelTab` lúc nạp dữ liệu (xem effect nạp bản nháp):
+            bệnh nhân MỚI (chưa có lượt khám nào) → "Tiền sử bệnh"; bệnh nhân CŨ → "Lịch sử khám". Đã
+            bỏ dải "Khách đang chờ" (theo yêu cầu chủ dự án) — điều hướng giữa các bệnh nhân quay lại
+            "Hàng đợi khám". */}
+        <aside className="flex w-[384px] min-h-0 flex-shrink-0 flex-col border-r border-slate-200 bg-white">
+          <div className="flex h-11 flex-shrink-0 border-b border-slate-200">
             <button
               type="button"
-              onClick={() => setRailOpen((v) => !v)}
-              title={railOpen ? 'Thu gọn hàng chờ' : 'Mở hàng chờ'}
-              className="ml-auto flex h-6 w-6 flex-shrink-0 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+              onClick={() => setHistoryPanelTab('personal')}
+              className={`flex flex-1 items-center justify-center gap-1.5 border-b-2 text-xs font-bold uppercase tracking-wide ${
+                historyPanelTab === 'personal' ? 'border-blue-600 bg-blue-50/60 text-blue-700' : 'border-transparent text-slate-500 hover:text-blue-600'
+              }`}
             >
-              {railOpen ? <CaretLeft size={13} weight="bold" aria-hidden="true" /> : <CaretRight size={13} weight="bold" aria-hidden="true" />}
+              <Warning size={13} weight="bold" aria-hidden="true" />
+              Tiền sử bệnh
+            </button>
+            <button
+              type="button"
+              onClick={() => setHistoryPanelTab('visits')}
+              className={`flex flex-1 items-center justify-center gap-1.5 border-b-2 text-xs font-bold uppercase tracking-wide ${
+                historyPanelTab === 'visits' ? 'border-blue-600 bg-blue-50/60 text-blue-700' : 'border-transparent text-slate-500 hover:text-blue-600'
+              }`}
+            >
+              <ClockCounterClockwise size={13} weight="bold" aria-hidden="true" />
+              Lịch sử khám
             </button>
           </div>
-          {railOpen && (
-            <div className="scroll-hover flex-1 overflow-y-auto p-2">
-              {railError && (
-                <p className="mb-2 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] text-amber-800">{railError}</p>
-              )}
-              {waitingQueue.length === 0 && <p className="px-1 py-2 text-xs text-slate-400">Không có ai đang chờ.</p>}
-              {waitingQueue.map((item) => (
-                <button
-                  key={item.encounterId}
-                  type="button"
-                  onClick={() => void handleQueueItemClick(item)}
-                  disabled={startConsultationMutation.isPending}
-                  className="mb-1.5 block w-full rounded-md border border-slate-200 px-2.5 py-2 text-left hover:border-blue-300 hover:bg-blue-50/50 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <div className="truncate text-[12.5px] font-bold text-slate-900">{item.fullName}</div>
-                  <div className="text-[10.5px] text-slate-400">
-                    {item.doctorId === null ? 'Chưa gán bác sĩ' : 'Của tôi'} · Chờ {queueWaitMinutes(item.checkedInAt)} phút
-                  </div>
-                </button>
-              ))}
+
+          {historyPanelTab === 'personal' && (
+            <div className="scroll-hover flex-1 overflow-y-auto p-3">
+              <div className="flex flex-col gap-3">
+                <HistoryBoxCard title="Tiền sử dị ứng" onAdd={() => setHistoryDialogOpen(true)}>
+                  {patient.allergens.length === 0 ? (
+                    <p className="text-[13px] text-slate-400">Chưa ghi nhận dị ứng nào.</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5">
+                      {patient.allergens.map((a) => (
+                        <span key={a.id} className="rounded-full border border-rose-300 bg-rose-50 px-2.5 py-1 text-[12px] font-semibold text-rose-700">
+                          {a.name} <span className="font-medium text-rose-500">({a.allergenGroupName})</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </HistoryBoxCard>
+
+                <HistoryBoxCard title="Tiền sử bản thân" onAdd={() => setHistoryDialogOpen(true)}>
+                  {personalDiseaseConditions.length === 0 && personalHabitConditions.length === 0 && !patient.personalHistory ? (
+                    <p className="text-[13px] text-slate-400">Chưa ghi nhận.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {personalDiseaseConditions.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {personalDiseaseConditions.map((c) => (
+                            <span
+                              key={c.icd10Code}
+                              className="rounded-full border border-brand-teal bg-brand-teal-tint px-2.5 py-1 text-[12px] font-semibold text-brand-teal-active"
+                            >
+                              {c.icd10Name}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {personalHabitConditions.length > 0 && (
+                        <p className="text-[12.5px]">
+                          <span className="font-semibold text-slate-700">Thói quen: </span>
+                          <span className="text-slate-600">{personalHabitConditions.map((c) => c.icd10Name).join(' / ')}</span>
+                        </p>
+                      )}
+                      {patient.personalHistory && (
+                        <p className="text-[12.5px]">
+                          <span className="font-semibold text-slate-700">Ghi chú: </span>
+                          <span className="text-slate-600">{patient.personalHistory}</span>
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </HistoryBoxCard>
+
+                <HistoryBoxCard title="Tiền sử gia đình" onAdd={() => setHistoryDialogOpen(true)}>
+                  {patient.familyHistoryRows.length === 0 ? (
+                    <p className="text-[13px] text-slate-400">Chưa ghi nhận.</p>
+                  ) : (
+                    <ul className="space-y-1">
+                      {patient.familyHistoryRows.map((row) => (
+                        <li key={row.id} className="text-[12.5px] font-semibold text-slate-800">
+                          {row.relationLabel}: <span className="font-normal text-slate-600">{row.icd10Name}</span>
+                          {row.ageOfOnsetYears !== null && <span className="font-normal text-slate-400"> ({row.ageOfOnsetYears} tuổi)</span>}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </HistoryBoxCard>
+              </div>
             </div>
           )}
-        </aside>
 
-        {/* Panel trái — tiền sử */}
-        <aside className="flex w-[280px] min-h-0 flex-shrink-0 flex-col border-r border-slate-200 bg-white">
-          <div className="flex h-11 flex-shrink-0 items-center gap-1.5 border-b border-slate-200 px-3.5">
-            <ClockCounterClockwise size={14} weight="bold" className="text-slate-400" aria-hidden="true" />
-            <span className="text-xs font-bold uppercase tracking-wide text-slate-700">Tiền sử &amp; lịch sử khám</span>
-          </div>
-          <div className="scroll-hover flex-1 overflow-y-auto p-3">
-            {history.length === 0 && <p className="px-1 py-2 text-xs text-slate-400">Chưa có lượt khám nào trước đây.</p>}
-            {history.length > 0 && (
-              <>
-                <SectionLabel>Lần khám gần nhất</SectionLabel>
-                <HistoryCard item={history[0]!} highlighted />
-              </>
-            )}
-            {history.length > 1 && (
-              <>
-                <SectionLabel className="mt-3">Lịch sử cũ hơn</SectionLabel>
-                <div className="flex flex-col gap-2">
-                  {history.slice(1).map((item) => (
-                    <HistoryCard key={item.encounterId} item={item} />
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
+          {historyPanelTab === 'visits' && (
+            <div className="scroll-hover flex-1 overflow-y-auto p-3">
+              {history.length === 0 && <p className="px-1 py-2 text-xs text-slate-400">Chưa có lượt khám nào trước đây.</p>}
+              {history.length > 0 && (
+                <>
+                  <SectionLabel>Lần khám gần nhất</SectionLabel>
+                  <HistoryCard item={history[0]!} highlighted />
+                </>
+              )}
+              {history.length > 1 && (
+                <>
+                  <SectionLabel className="mt-3">Lịch sử cũ hơn</SectionLabel>
+                  <div className="flex flex-col gap-2">
+                    {history.slice(1).map((item) => (
+                      <HistoryCard key={item.encounterId} item={item} />
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </aside>
 
         {/* Panel phải — khu vực làm việc */}
@@ -770,68 +745,10 @@ export function EncounterConsultationPage() {
                   Thông tin khám lâm sàng
                 </span>
 
-                {/* Tiền sử bản thân — thuộc về BỆNH NHÂN (docs/DECISIONS.md #068), KHÔNG lưu theo
-                    lượt khám như 6 mục "Thăm khám" bên dưới: đọc/ghi thẳng patient.personalHistory,
-                    tự mồi từ lần khám trước (hoặc từ hồ sơ bệnh nhân), sửa tại chỗ không phải nhập
-                    lại từ đầu mỗi lượt khám mới. Bệnh lý nền/Tiền sử gia đình CHỈ XEM, sửa qua hồ sơ
-                    bệnh nhân/Tiếp nhận. Dị ứng (dị nguyên có cấu trúc) hiện ở banner đầu trang, ghi
-                    chú tự do `allergyNote` đã bỏ hẳn khỏi màn khám (chốt lại 2026-08-25, sau #065) —
-                    2 nơi chỉnh cùng khái niệm "dị ứng" không nhất quán, PatientHistoryDialog mới là
-                    nơi quản lý duy nhất. */}
-                <h3 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-700">Tiền sử</h3>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                  <div>
-                    <label className="mb-1 block text-sm font-semibold text-slate-800">Bệnh lý nền</label>
-                    <div className="min-h-13 rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5">
-                      {patient.conditions.length === 0 ? (
-                        <span className="text-[13px] text-slate-400">Chưa ghi nhận</span>
-                      ) : (
-                        <div className="flex flex-wrap gap-1">
-                          {patient.conditions.map((c) => (
-                            <span
-                              key={c.icd10Code}
-                              className="rounded-full border border-brand-teal bg-brand-teal-tint px-2 py-0.5 text-[11.5px] font-semibold text-brand-teal-active"
-                            >
-                              {c.icd10Name}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <p className="mt-1 text-[11px] text-slate-400">Chỉ xem — sửa qua hồ sơ bệnh nhân/Tiếp nhận.</p>
-                  </div>
-                  <Textarea
-                    id="clinical-personal-history"
-                    label="Tiền sử bản thân"
-                    dense
-                    rows={2}
-                    value={patientNoteDraft.personalHistory}
-                    onChange={(e) => setPatientNote('personalHistory', e.target.value)}
-                    readOnly={!canEditNow}
-                  />
-                  <div>
-                    <label className="mb-1 block text-sm font-semibold text-slate-800">Tiền sử gia đình</label>
-                    <div className="min-h-13 rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5 text-[13px] text-slate-700">
-                      {(query.data?.patient.familyHistoryRows.length ?? 0) === 0 ? (
-                        <span className="text-slate-400">Chưa ghi nhận</span>
-                      ) : (
-                        <ul className="space-y-0.5">
-                          {query.data!.patient.familyHistoryRows.map((row) => (
-                            <li key={row.id} className="font-semibold">
-                              {row.relationLabel} — {row.icd10Name}
-                              {row.ageOfOnsetYears !== null && <span className="font-normal text-slate-500"> ({row.ageOfOnsetYears} tuổi)</span>}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                    <p className="mt-1 text-[11px] text-slate-400">Chỉ xem — sửa qua hồ sơ bệnh nhân/Tiếp nhận.</p>
-                  </div>
-                </div>
-
-                <h3 className="mb-2 mt-4 border-t border-dashed border-slate-200 pt-3 text-[11px] font-bold uppercase tracking-wide text-slate-700">
-                  Thăm khám
-                </h3>
+                {/* "Tiền sử" (dị ứng/bệnh lý nền/thói quen/gia đình) đã chuyển sang panel trái
+                    (3 khung riêng, có nút "+ Thêm" mở `PatientHistoryDialog`) — không còn hiện ở
+                    đây, tránh trùng lặp 2 nơi cùng đọc chung một dữ liệu (theo yêu cầu chủ dự án). */}
+                <h3 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-700">Thăm khám</h3>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                   <Textarea
                     id="clinical-reason"
@@ -854,7 +771,7 @@ export function EncounterConsultationPage() {
                   />
                   <Textarea
                     id="clinical-preliminary-diagnosis"
-                    label="Chuẩn đoán"
+                    label="Chẩn đoán"
                     required
                     dense
                     rows={2}
@@ -1019,6 +936,13 @@ export function EncounterConsultationPage() {
         </div>
       </footer>
 
+      <PatientHistoryDialog
+        open={historyDialogOpen}
+        onClose={() => setHistoryDialogOpen(false)}
+        values={consultationPatientToHistoryFormValues(patient)}
+        onChange={handlePatientHistoryChange}
+      />
+
       {breakGlassPrompt && (
         <BreakGlassDialog
           entityType={breakGlassPrompt.entityType}
@@ -1050,6 +974,102 @@ export function EncounterConsultationPage() {
 
 function SectionLabel({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return <div className={`mb-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-700 ${className}`}>{children}</div>;
+}
+
+/** Chip 1 dị ứng — dùng chung cho phần hiện sẵn lẫn danh sách đầy đủ trong dropdown "xem thêm". */
+function AllergenChip({ allergen }: { allergen: PatientAllergenItem }) {
+  return (
+    <span className="whitespace-nowrap rounded-full border border-rose-300 bg-white px-2.5 py-0.5 text-xs font-semibold text-rose-700">
+      {allergen.name} <span className="font-medium text-rose-600">({allergen.allergenGroupName})</span>
+    </span>
+  );
+}
+
+/**
+ * Banner "CẢNH BÁO DỊ ỨNG" ở đầu trang khám — chỉ hiện tối đa 2 chip đầu tiên (theo yêu cầu chủ dự
+ * án, tránh chiếm quá nhiều chỗ ở dòng định danh chính); còn lại gộp vào nút "+N", rê chuột hoặc bấm
+ * vào mở dropdown liệt kê ĐẦY ĐỦ dị nguyên. **Chưa có "mức độ nghiêm trọng"** — hệ thống hiện không
+ * lưu trường này cho dị nguyên (`patient_allergen`/`allergen_catalog` chỉ có tên + nhóm), nên dropdown
+ * chỉ hiện tên + nhóm như banner chính, không bịa số liệu mức độ.
+ */
+function AllergyBanner({ allergens }: { allergens: PatientAllergenItem[] }) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [open]);
+
+  const VISIBLE_LIMIT = 2;
+  const visible = allergens.slice(0, VISIBLE_LIMIT);
+  const hiddenCount = allergens.length - visible.length;
+
+  return (
+    <span
+      ref={containerRef}
+      className="relative flex flex-wrap items-center gap-1.5 rounded-md border border-rose-300 bg-rose-50 px-2.5 py-1.5"
+      onMouseEnter={() => hiddenCount > 0 && setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <span className="flex items-center gap-1 whitespace-nowrap text-xs font-bold text-rose-700">
+        <Warning size={13} weight="fill" aria-hidden="true" />
+        CẢNH BÁO DỊ ỨNG:
+      </span>
+      {visible.map((a) => (
+        <AllergenChip key={a.id} allergen={a} />
+      ))}
+      {hiddenCount > 0 && (
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          aria-label={`Xem thêm ${hiddenCount} dị ứng khác`}
+          className="whitespace-nowrap rounded-full border border-rose-300 bg-rose-100 px-2.5 py-0.5 text-xs font-bold text-rose-700 hover:bg-rose-200"
+        >
+          +{hiddenCount}
+        </button>
+      )}
+      {open && hiddenCount > 0 && (
+        <div className="scroll-hover absolute left-0 top-full z-20 mt-1.5 max-h-64 w-72 overflow-y-auto rounded-lg border border-rose-200 bg-white p-3 shadow-lg">
+          <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-rose-700">Toàn bộ dị ứng ({allergens.length})</p>
+          <div className="flex flex-wrap gap-1.5">
+            {allergens.map((a) => (
+              <AllergenChip key={a.id} allergen={a} />
+            ))}
+          </div>
+        </div>
+      )}
+    </span>
+  );
+}
+
+/**
+ * Khung "Tiền sử dị ứng"/"Tiền sử bản thân"/"Tiền sử gia đình" ở panel trái màn khám — tiêu đề +
+ * nút "+ Thêm" (mở `PatientHistoryDialog`, dùng chung cho cả 3 khung vì đó là dialog sửa cả 3 mục
+ * cùng lúc) trên cùng 1 khung viền, theo mẫu ảnh tham khảo chủ dự án gửi.
+ */
+function HistoryBoxCard({ title, onAdd, children }: { title: string; onAdd: () => void; children: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-3.5 shadow-sm">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h3 className="text-[11px] font-bold uppercase tracking-wide text-slate-700">{title}</h3>
+        <button
+          type="button"
+          onClick={onAdd}
+          className="flex flex-shrink-0 items-center gap-1 rounded-full border border-dashed border-blue-400 bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-600 hover:bg-blue-100"
+        >
+          <Plus size={11} weight="bold" aria-hidden="true" />
+          Thêm
+        </button>
+      </div>
+      {children}
+    </div>
+  );
 }
 
 /**

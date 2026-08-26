@@ -167,6 +167,10 @@ export const encounterSummarySchema = z.object({
   startedAt: z.string().nullable(),
   completedAt: z.string().nullable(),
   chiefComplaint: z.string().nullable(),
+  /** Loại khám (snapshot `reference_catalog` category `EXAM_TYPE` lúc tiếp nhận, #052). */
+  examTypeName: z.string().nullable(),
+  /** Loại tiếp nhận — mã tham chiếu `reference_catalog` category `RECEPTION_TYPE` (vd `RT_NEW`=Khám mới, `RT_FOLLOWUP`=Tái khám). Không có cột tên snapshot (khác `examTypeName`) — web tự resolve tên hiển thị qua `GET /reference-catalog/RECEPTION_TYPE`. Hiện ở banner màn khám cạnh SĐT (báo bác sĩ biết khám mới hay tái khám). */
+  receptionTypeCode: z.string().nullable(),
   version: z.number().int(),
 });
 export type EncounterSummary = z.infer<typeof encounterSummarySchema>;

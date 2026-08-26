@@ -1,4 +1,4 @@
-import type { CreatePatientRequest, PatientAddress, PatientDetail, PatientGender, UpdatePatientRequest } from '@nexamed/shared';
+import type { ConsultationPatient, CreatePatientRequest, PatientAddress, PatientDetail, PatientGender, UpdatePatientRequest } from '@nexamed/shared';
 import { EMPTY_PATIENT_FORM, type FamilyHistoryRowDraft, type PatientFormValues } from './PatientFormFields';
 import { FAMILY_RELATION_LABELS } from './family-relation';
 
@@ -7,6 +7,19 @@ export { FAMILY_RELATION_LABELS };
 /** Chuỗi rỗng → không gửi field (undefined) — khớp field optional của schema dùng chung. */
 function orUndefined(value: string): string | undefined {
   return value.trim() === '' ? undefined : value;
+}
+
+/** Bỏ dòng "Tiền sử gia đình" chưa chọn đủ quan hệ/bệnh lý — dùng chung cho `toCreatePatientRequest` và `buildHistoryUpdatePayload` (màn khám). */
+export function toFamilyHistoryRowsPayload(
+  rows: FamilyHistoryRowDraft[],
+): { relation: Exclude<FamilyHistoryRowDraft['relation'], ''>; icd10Code: string; ageOfOnsetYears?: number }[] {
+  return rows
+    .filter((row) => row.relation !== '' && row.icd10Code !== '')
+    .map((row) => ({
+      relation: row.relation as Exclude<FamilyHistoryRowDraft['relation'], ''>,
+      icd10Code: row.icd10Code,
+      ageOfOnsetYears: row.ageOfOnsetYears.trim() === '' ? undefined : Number(row.ageOfOnsetYears),
+    }));
 }
 
 /**
@@ -46,13 +59,7 @@ export function toCreatePatientRequest(values: PatientFormValues): CreatePatient
     // Bệnh lý nền + thói quen/lối sống có cấu trúc (Sprint 5) — mảng mã ICD-10, cùng ngữ nghĩa allergenIds.
     conditionCodes: values.conditions.map((c) => c.icd10Code),
     // Tiền sử gia đình có cấu trúc (Sprint 5) — bỏ dòng chưa chọn đủ quan hệ/bệnh lý (chưa hợp lệ để gửi).
-    familyHistoryRows: values.familyHistoryRows
-      .filter((row) => row.relation !== '' && row.icd10Code !== '')
-      .map((row) => ({
-        relation: row.relation as Exclude<FamilyHistoryRowDraft['relation'], ''>,
-        icd10Code: row.icd10Code,
-        ageOfOnsetYears: row.ageOfOnsetYears.trim() === '' ? undefined : Number(row.ageOfOnsetYears),
-      })),
+    familyHistoryRows: toFamilyHistoryRowsPayload(values.familyHistoryRows),
     relativeFullName: orUndefined(values.relativeFullName),
     relativeRelationship: orUndefined(values.relativeRelationship),
     relativePhone: orUndefined(values.relativePhone),
@@ -105,6 +112,45 @@ export function patientDetailToFormValues(detail: PatientDetail): PatientFormVal
     relativeRelationship: detail.relativeRelationship ?? '',
     relativePhone: detail.relativePhone ?? '',
     relativeAddress: detail.relativeAddress ?? '',
+  };
+}
+
+/**
+ * Bản rút gọn của `patientDetailToFormValues` — dùng khi mở `PatientHistoryDialog` NGAY TỪ màn hình
+ * khám (`EncounterConsultationPage.tsx`), nơi chỉ có `ConsultationPatient` (hẹp hơn `PatientDetail`,
+ * không có CCCD/địa chỉ/dân tộc...). Chỉ điền đúng 4 trường Tiền sử mà dialog đọc/ghi tới — các
+ * trường khác giữ nguyên mặc định rỗng của `EMPTY_PATIENT_FORM`, không ảnh hưởng vì `buildHistoryUpdatePayload`
+ * bên dưới KHÔNG gửi chúng lên server.
+ */
+export function consultationPatientToHistoryFormValues(patient: ConsultationPatient): PatientFormValues {
+  return {
+    ...EMPTY_PATIENT_FORM,
+    personalHistory: patient.personalHistory ?? '',
+    conditions: patient.conditions.map((c) => ({ icd10Code: c.icd10Code, icd10Name: c.icd10Name })),
+    familyHistoryRows: patient.familyHistoryRows.map((row) => ({
+      draftId: makeDraftId(),
+      relation: row.relation,
+      icd10Code: row.icd10Code,
+      icd10Name: row.icd10Name,
+      ageOfOnsetYears: row.ageOfOnsetYears === null ? '' : String(row.ageOfOnsetYears),
+    })),
+    allergenIds: patient.allergens.map((a) => a.id),
+  };
+}
+
+/**
+ * PATCH tối thiểu chỉ 4 trường Tiền sử (dị ứng/bệnh lý nền/gia đình/ghi chú) — dùng khi lưu từ
+ * `PatientHistoryDialog` mở ở màn hình khám. KHÔNG dùng `toUpdatePatientRequest` đầy đủ ở đây: hàm đó
+ * gửi kèm `ethnicity`/`nationality` lấy từ `EMPTY_PATIENT_FORM` (giá trị mặc định "1"/"VNM" cho form
+ * TẠO MỚI) — nếu tái dùng nguyên sẽ ghi đè nhầm 2 trường này của bệnh nhân đã có sẵn giá trị khác.
+ */
+export function buildHistoryUpdatePayload(values: PatientFormValues, version: number): UpdatePatientRequest {
+  return {
+    version,
+    personalHistory: values.personalHistory,
+    allergenIds: values.allergenIds,
+    conditionCodes: values.conditions.map((c) => c.icd10Code),
+    familyHistoryRows: toFamilyHistoryRowsPayload(values.familyHistoryRows),
   };
 }
 

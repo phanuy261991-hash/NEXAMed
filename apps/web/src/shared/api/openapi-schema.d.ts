@@ -2522,6 +2522,8 @@ export interface paths {
                                 startedAt: string | null;
                                 completedAt: string | null;
                                 chiefComplaint: string | null;
+                                examTypeName: string | null;
+                                receptionTypeCode: string | null;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -2675,6 +2677,8 @@ export interface paths {
                                 startedAt: string | null;
                                 completedAt: string | null;
                                 chiefComplaint: string | null;
+                                examTypeName: string | null;
+                                receptionTypeCode: string | null;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -3020,6 +3024,8 @@ export interface paths {
                                 startedAt: string | null;
                                 completedAt: string | null;
                                 chiefComplaint: string | null;
+                                examTypeName: string | null;
+                                receptionTypeCode: string | null;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -3148,6 +3154,8 @@ export interface paths {
                                 startedAt: string | null;
                                 completedAt: string | null;
                                 chiefComplaint: string | null;
+                                examTypeName: string | null;
+                                receptionTypeCode: string | null;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -3268,6 +3276,8 @@ export interface paths {
                                     startedAt: string | null;
                                     completedAt: string | null;
                                     chiefComplaint: string | null;
+                                    examTypeName: string | null;
+                                    receptionTypeCode: string | null;
                                     version: number;
                                 };
                                 patient: {
@@ -3820,6 +3830,8 @@ export interface paths {
                                 startedAt: string | null;
                                 completedAt: string | null;
                                 chiefComplaint: string | null;
+                                examTypeName: string | null;
+                                receptionTypeCode: string | null;
                                 version: number;
                             };
                             meta: Record<string, never>;

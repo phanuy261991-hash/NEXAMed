@@ -269,7 +269,7 @@ export function ReceptionDoctorQueuePage() {
               <div key={item.encounterId} className="rounded-lg border-2 border-l-4 border-slate-200 border-l-amber-500 bg-white p-3 shadow-sm">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="truncate text-[15px] font-extrabold text-slate-900">{item.fullName}</div>
+                    <div className="truncate text-[15px] font-bold text-slate-900">{item.fullName}</div>
                     <div className="text-[11.5px] font-semibold text-slate-500">
                       {item.patientCode} · Bắt đầu lúc {item.startedAt ? formatTime(item.startedAt) : '—'}
                     </div>
@@ -471,7 +471,7 @@ function WaitingCard({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <span className="truncate text-[15px] font-extrabold text-slate-900">{item.fullName}</span>
+          <span className="truncate text-[15px] font-bold text-slate-900">{item.fullName}</span>
           <span className="ml-1.5 text-[11px] font-bold text-slate-500">{item.patientCode}</span>
         </div>
         {criticalState === 'overdue' && (

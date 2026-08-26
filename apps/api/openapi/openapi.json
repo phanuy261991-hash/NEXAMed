@@ -6101,6 +6101,18 @@
                             "null"
                           ]
                         },
+                        "examTypeName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "receptionTypeCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -6118,6 +6130,8 @@
                         "startedAt",
                         "completedAt",
                         "chiefComplaint",
+                        "examTypeName",
+                        "receptionTypeCode",
                         "version"
                       ]
                     },
@@ -6466,6 +6480,18 @@
                             "null"
                           ]
                         },
+                        "examTypeName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "receptionTypeCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -6483,6 +6509,8 @@
                         "startedAt",
                         "completedAt",
                         "chiefComplaint",
+                        "examTypeName",
+                        "receptionTypeCode",
                         "version"
                       ]
                     },
@@ -7288,6 +7316,18 @@
                             "null"
                           ]
                         },
+                        "examTypeName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "receptionTypeCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -7305,6 +7345,8 @@
                         "startedAt",
                         "completedAt",
                         "chiefComplaint",
+                        "examTypeName",
+                        "receptionTypeCode",
                         "version"
                       ]
                     },
@@ -7567,6 +7609,18 @@
                             "null"
                           ]
                         },
+                        "examTypeName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "receptionTypeCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -7584,6 +7638,8 @@
                         "startedAt",
                         "completedAt",
                         "chiefComplaint",
+                        "examTypeName",
+                        "receptionTypeCode",
                         "version"
                       ]
                     },
@@ -7827,6 +7883,18 @@
                                 "null"
                               ]
                             },
+                            "examTypeName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "receptionTypeCode": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
                             "version": {
                               "type": "integer"
                             }
@@ -7844,6 +7912,8 @@
                             "startedAt",
                             "completedAt",
                             "chiefComplaint",
+                            "examTypeName",
+                            "receptionTypeCode",
                             "version"
                           ]
                         },
@@ -9388,6 +9458,18 @@
                             "null"
                           ]
                         },
+                        "examTypeName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "receptionTypeCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -9405,6 +9487,8 @@
                         "startedAt",
                         "completedAt",
                         "chiefComplaint",
+                        "examTypeName",
+                        "receptionTypeCode",
                         "version"
                       ]
                     },

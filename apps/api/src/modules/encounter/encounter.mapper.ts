@@ -22,6 +22,8 @@ export function toEncounterSummary(encounter: Encounter): EncounterSummary {
     startedAt: encounter.startedAt?.toISOString() ?? null,
     completedAt: encounter.completedAt?.toISOString() ?? null,
     chiefComplaint: encounter.chiefComplaint,
+    examTypeName: encounter.examTypeName,
+    receptionTypeCode: encounter.receptionTypeCode,
     version: encounter.version,
   };
 }

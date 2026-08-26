@@ -2,6 +2,19 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-25 (5)
+
+Redesign màn hình khám (ngoài kế hoạch, chủ dự án yêu cầu trực tiếp qua nhiều lượt chỉnh trên bản chạy thật) — xem `docs/DECISIONS.md` #077:
+
+- **Bỏ dải "Khách đang chờ"** ở panel trái màn khám. **Panel "Tiền sử & lịch sử khám" đổi thành 2 TAB riêng** ("Tiền sử bệnh" | "Lịch sử khám"), rộng thêm 280px→384px — tab mặc định: bệnh nhân mới → "Tiền sử bệnh", bệnh nhân đã có lượt khám trước → "Lịch sử khám".
+- **Tab "Tiền sử bệnh"** hiện 3 khung boxed card mới (`HistoryBoxCard`): "Tiền sử dị ứng"/"Tiền sử bản thân" (chip bệnh lý nền + dòng "Thói quen"/"Ghi chú")/"Tiền sử gia đình" — mỗi khung có nút "+ Thêm" mở lại **`PatientHistoryDialog` có sẵn** (dùng chung cho cả 3 mục, lưu PATCH ngay khi bấm "Lưu tiền sử", không đợi nút Lưu của màn khám). Thêm 2 hàm mới `apps/web/src/features/patient/patient-form.utils.ts`: `consultationPatientToHistoryFormValues()`, `buildHistoryUpdatePayload()` (PATCH tối thiểu 4 trường, cố ý không dùng `toUpdatePatientRequest()` đầy đủ — tránh ghi đè nhầm `ethnicity`/`nationality` bằng giá trị mặc định form Tạo mới). **Không thêm trường "Phẫu thuật" riêng** — dùng lại `personalHistory` (Ghi chú bổ sung) có sẵn.
+- **Khung "Thông tin khám lâm sàng"** không còn hiện Bệnh lý nền/Tiền sử bản thân/Tiền sử gia đình (đã chuyển hẳn sang panel trái) — chỉ còn "Thăm khám" (5 trường). Sửa lỗi chính tả **"Chuẩn đoán" → "Chẩn đoán"** (nhãn + 2 thông báo lỗi).
+- **Banner "CẢNH BÁO DỊ ỨNG"** giới hạn hiện tối đa 2 chip, còn lại gộp nút "+N" (rê chuột/bấm mở dropdown liệt kê đầy đủ) — chưa hiện "mức độ nghiêm trọng" vì hệ thống chưa lưu trường này.
+- **Thêm badge "Loại tiếp nhận"** (Khám mới/Tái khám...) cạnh SĐT ở banner bệnh nhân — `encounterSummarySchema` (`packages/shared`) thêm 2 trường mới additive `examTypeName`/`receptionTypeCode` (chỉ export thêm cột DB đã có sẵn từ #052, không migration), web tự resolve tên hiển thị qua `useReferenceCatalogQuery('RECEPTION_TYPE')` có sẵn.
+- **`ReceptionDoctorQueuePage.tsx`**: tên bệnh nhân trên thẻ hàng đợi `font-extrabold`→`font-bold` cho dễ đọc hơn (yêu cầu trực tiếp).
+- **Đã xác minh**: `pnpm -w typecheck` sạch toàn workspace (nhiều lần), `pnpm --filter @nexamed/web run build` sạch (không lỗi Rollup export, chunk không phình bất thường). Playwright qua Chrome thật (dữ liệu demo qua HTTP API — 1 bệnh nhân 2 lượt khám, lượt 1 hoàn tất): dải hàng chờ đã mất, tab mặc định đúng theo lịch sử, dialog "+ Thêm" mở đúng dữ liệu hiện có + lưu xong cập nhật ngay, badge "Loại tiếp nhận" đúng. `apps/api`: 396/412 test pass (16 skip chủ đích), 3 file fail là flake `geo-http.spec.ts`/`auth-login-http.spec.ts` đã biết trước (race seed `role_permission`), không liên quan thay đổi lần này.
+- Cập nhật `docs/DECISIONS.md` (#077), `docs/CURRENT.md`.
+
 ## 2026-08-25 (4)
 
 Redesign popup "Tìm kiếm khách hàng" + chip dị nguyên giới hạn theo nhóm + banner cảnh báo dị ứng ở màn khám (theo yêu cầu chủ dự án) — kèm phát hiện + vá 2 lỗ hổng thật lúc dùng thử:
