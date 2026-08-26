@@ -6,6 +6,7 @@ import { MoneyInput } from '../../shared/ui/MoneyInput';
 import { Textarea } from '../../shared/ui/Textarea';
 import { Button } from '../../shared/ui/Button';
 import { formatVnd } from '../../shared/format/currency';
+import { makeDraftId } from '../../shared/make-draft-id';
 import { useReferenceCatalogQuery } from './reference-catalog.queries';
 import type { ExamTypePriceInput, ReferenceCatalogItem } from '@nexamed/shared';
 
@@ -14,10 +15,6 @@ const inputClassName =
 const sectionBoxClassName = 'relative rounded-lg border border-slate-200 p-6 pt-8';
 const sectionBadgeClassName =
   'absolute -top-3 left-4 rounded-md bg-blue-600 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white';
-
-function makeDraftId(): string {
-  return typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `draft-${Math.random().toString(36).slice(2)}`;
-}
 
 interface PriceDraftRow extends ExamTypePriceInput {
   draftId: string;
@@ -235,14 +232,10 @@ export function ExamTypeFormModal({
                 </label>
                 <input id="et-to" type="date" value={draftTo} onChange={(e) => setDraftTo(e.target.value)} className={inputClassName} />
               </div>
-              <button
-                type="button"
-                onClick={handleAddRow}
-                className="inline-flex h-[42px] items-center justify-center gap-1.5 rounded-md border border-dashed border-blue-400 bg-blue-50 px-4 text-sm font-bold text-blue-600 hover:bg-blue-100"
-              >
+              <Button type="button" variant="add" onClick={handleAddRow}>
                 <Plus size={14} weight="bold" aria-hidden="true" />
                 Thêm
-              </button>
+              </Button>
             </div>
 
             {rowError && (

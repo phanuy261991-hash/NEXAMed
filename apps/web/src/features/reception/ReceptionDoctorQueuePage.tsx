@@ -165,7 +165,7 @@ export function ReceptionDoctorQueuePage() {
           </div>
           <div>
             <div className="text-[14px] font-bold text-slate-900">
-              BS. {currentUser?.fullName}
+              {currentUser?.fullName}
               {selfDepartmentName ? ` · ${selfDepartmentName}` : ''}
             </div>
             {(singleRoomName ?? mySessionQuery.data?.roomName) && (

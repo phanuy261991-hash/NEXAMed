@@ -2468,9 +2468,6 @@ export interface paths {
                         version: number;
                         chiefComplaint?: string;
                         patientSourceCode?: string;
-                        examTypeCode: string;
-                        examTypeName: string;
-                        examTypePrice: number;
                         pulse?: number;
                         temperatureC?: number;
                         bpSystolic?: number;
@@ -2484,10 +2481,15 @@ export interface paths {
                         /** @default false */
                         isPriority?: boolean;
                         priorityReasonCode?: string;
-                        priceTypeCode?: string;
-                        examTypeUnit?: string;
-                        /** @default 1 */
-                        serviceQuantity?: number;
+                        services: {
+                            examTypeCode: string;
+                            examTypeName: string;
+                            priceTypeCode?: string;
+                            unitCode?: string;
+                            examTypePrice?: number;
+                            /** @default 1 */
+                            quantity?: number;
+                        }[];
                         /** Format: uuid */
                         doctorId?: string;
                         /** Format: uuid */
@@ -2623,9 +2625,6 @@ export interface paths {
                         checkedInAt: string;
                         chiefComplaint?: string;
                         patientSourceCode?: string;
-                        examTypeCode: string;
-                        examTypeName: string;
-                        examTypePrice: number;
                         pulse?: number;
                         temperatureC?: number;
                         bpSystolic?: number;
@@ -2639,10 +2638,15 @@ export interface paths {
                         /** @default false */
                         isPriority?: boolean;
                         priorityReasonCode?: string;
-                        priceTypeCode?: string;
-                        examTypeUnit?: string;
-                        /** @default 1 */
-                        serviceQuantity?: number;
+                        services: {
+                            examTypeCode: string;
+                            examTypeName: string;
+                            priceTypeCode?: string;
+                            unitCode?: string;
+                            examTypePrice?: number;
+                            /** @default 1 */
+                            quantity?: number;
+                        }[];
                         /** Format: uuid */
                         doctorId?: string;
                         /** Format: uuid */

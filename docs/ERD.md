@@ -93,6 +93,7 @@ erDiagram
     ROOM ||--o{ APPOINTMENT : "dien ra tai"
 
     ENCOUNTER ||--o{ VITAL_SIGN : "sinh hieu"
+    ENCOUNTER ||--o{ ENCOUNTER_SERVICE_ITEM : "chi dinh dich vu kham"
     ENCOUNTER ||--o{ DIAGNOSIS : "chan doan"
     ENCOUNTER ||--o{ CLINICAL_NOTE : "ghi chu SOAP"
     ENCOUNTER ||--o{ PRESCRIPTION : "don thuoc"
@@ -303,16 +304,16 @@ erDiagram
         jsonb insurance_snapshot
         text cancel_reason
         text patient_source_code
-        text exam_type_code
-        text exam_type_name
-        bigint exam_type_price
+        text exam_type_code "DEPRECATED #080, xem ENCOUNTER_SERVICE_ITEM"
+        text exam_type_name "DEPRECATED #080"
+        bigint exam_type_price "DEPRECATED #080"
         text reception_type_code
         text exam_form_code
         boolean is_priority
         text priority_reason_code
-        text price_type_code
-        text exam_type_unit
-        int service_quantity
+        text price_type_code "DEPRECATED #080"
+        text exam_type_unit "DEPRECATED #080"
+        int service_quantity "DEPRECATED #080"
     }
 
     VITAL_SIGN {
@@ -328,6 +329,18 @@ erDiagram
         int weight_gram
         int height_mm
         timestamptz measured_at
+    }
+
+    ENCOUNTER_SERVICE_ITEM {
+        uuid id PK
+        uuid tenant_id FK
+        uuid encounter_id FK
+        text exam_type_code
+        text exam_type_name
+        text price_type_code
+        text unit_code
+        bigint exam_type_price
+        int quantity
     }
 
     DIAGNOSIS {
@@ -501,13 +514,13 @@ erDiagram
 - **Check-in từ lịch hẹn có sẵn**: `POST /reception/check-in` đọc `appointment` đang `SCHEDULED`, tạo `encounter` (`status=CHECKED_IN`), gắn `patient_id` đã resolve xong ở web, và chuyển `appointment.status → CONVERTED` — cả ba **atomic trong 1 transaction** (module `reception` chia sẻ `AppointmentRepository`/`EncounterRepository` qua Nest `exports`, xem `docs/DECISIONS.md`). Kích hoạt bằng nút "Tiếp nhận" mở popup ngay trên panel chi tiết Lịch hẹn (bác sĩ/giờ cố định theo lịch hẹn, không sửa ở đây) — KHÔNG có trang hàng đợi riêng để làm việc này.
 - **"Tiếp nhận bệnh nhân" (v1.11)**: `POST /reception/direct` — khách đến thẳng phòng khám, không qua đặt lịch trước. Tạo thẳng `encounter` (`appointment_id=NULL`). Trang web riêng "Tiếp nhận bệnh nhân" (menu con dưới "Tiếp nhận và Đặt lịch"), đủ trường ngày giờ/bác sĩ tự chọn.
 
-Cả hai luồng đều lưu `patient_source_code` (mã danh mục `PATIENT_SOURCE`, tuỳ chọn) và snapshot `exam_type_code`/`exam_type_name`/`exam_type_price` (category `EXAM_TYPE`, bắt buộc — copy nguyên giá trị từ `reference_catalog` LÚC TẠO, không JOIN lại khi đọc, cùng tinh thần `insurance_snapshot`), và có thể kèm sinh hiệu (tuỳ chọn, tạo 1 dòng `vital_sign` trong cùng transaction nếu có nhập — v1.12).
+Cả hai luồng đều lưu `patient_source_code` (mã danh mục `PATIENT_SOURCE`, tuỳ chọn) và "Chỉ định dịch vụ khám" — **danh sách NHIỀU dịch vụ** (v1.29, `docs/DECISIONS.md` #080, đảo ngược #052 điểm 6), tạo kèm N dòng `encounter_service_item` trong cùng transaction (bắt buộc ít nhất 1 dòng, xem mục 3.4) — và có thể kèm sinh hiệu (tuỳ chọn, tạo 1 dòng `vital_sign` trong cùng transaction nếu có nhập — v1.12).
 
 Bản ghi từ CẢ HAI luồng cùng xuất hiện trong "Danh sách tiếp nhận" (`GET /reception/list`, lễ tân theo dõi trạng thái THUẦN — không có thao tác nào trên trang này, v1.12) và trang riêng "Hàng đợi khám" (cùng endpoint, thêm `doctorId` — bác sĩ chỉ thấy `CHECKED_IN` của chính mình dù `encounter.read` scope là `global`, lọc tường minh ở query chứ không dựa permission scope; "Bắt đầu khám" thực hiện NGAY TẠI ĐÂY, v1.12).
 
 "Bắt đầu khám" (`CHECKED_IN→IN_CONSULTATION`) và "bỏ về" (`CHECKED_IN→CANCELLED`, bắt buộc lý do — cột `encounter.cancel_reason`) thuộc module `encounter` riêng (`POST /encounters/:id/start|cancel`), áp dụng chung cho encounter tạo từ cả hai luồng.
 
-`encounter.insurance_snapshot` là bản chụp thẻ BHYT tại thời điểm check-in — v1 luôn `{ selfPay: true }` (module `insurance_card`/S2-04 chưa làm). Không join động về `insurance_card` khi in hay tra cứu về sau. `encounter.exam_type_price` chỉ **lưu để hiển thị** — v1 KHÔNG tính toán/xuất hoá đơn (viện phí ngoài phạm vi CLAUDE.md).
+`encounter.insurance_snapshot` là bản chụp thẻ BHYT tại thời điểm check-in — v1 luôn `{ selfPay: true }` (module `insurance_card`/S2-04 chưa làm). Không join động về `insurance_card` khi in hay tra cứu về sau. `encounter_service_item.exam_type_price` chỉ **lưu để hiển thị** — v1 KHÔNG tính toán/xuất hoá đơn (viện phí ngoài phạm vi CLAUDE.md).
 
 **Sinh hiệu bổ sung sau (v1.12)**: `POST /reception/encounters/:id/vital-signs` (REC-02/03, ngưỡng cảnh báo theo tuổi) vẫn tồn tại như hạ tầng riêng — dành cho lúc thiếu sinh hiệu ở bước tiếp nhận, module Khám bệnh (chưa xây) sẽ gọi lại đúng endpoint này để bổ sung/ghi lần đo mới. Không còn giao diện "Sinh hiệu" độc lập trên "Danh sách tiếp nhận" — sinh hiệu chính chuyển hẳn sang nhập cùng lúc tiếp nhận.
 
@@ -520,6 +533,7 @@ Bản ghi từ CẢ HAI luồng cùng xuất hiện trong "Danh sách tiếp nh�
 | Bảng | Vai trò | Đặc thù |
 |---|---|---|
 | `vital_sign` | Sinh hiệu | Lưu số nguyên: nhiệt độ theo phần mười độ C (`temperature_deci_c`, 37.5°C → `375`), cân nặng theo gram, chiều cao theo mm |
+| `encounter_service_item` | "Chỉ định dịch vụ khám" | **Mới (v1.29, `docs/DECISIONS.md` #080)** — danh sách NHIỀU dịch vụ/lượt khám, thay 6 cột `exam_type_*`/`price_type_code`/`exam_type_unit`/`service_quantity` DEPRECATED trên `encounter` (giữ nguyên trong DB, ngừng ghi từ Tiếp nhận mới). Mọi field SNAPSHOT lúc thêm — `price_type_code`/`unit_code`/`exam_type_price` cascade thật từ `exam_type_price` (#079, lọc dòng còn hiệu lực hôm nay), NULLABLE khi dịch vụ chưa được cấu hình đơn giá. Không có khái niệm ký/bất biến — sở hữu bởi module `reception` (cùng `vital_sign`), tạo trong CÙNG transaction check-in/tiếp nhận trực tiếp |
 | `diagnosis` | Chẩn đoán | `type`: `PRIMARY` hoặc `SECONDARY`; bắt buộc có đúng một `PRIMARY` khi hoàn tất lượt khám |
 | `clinical_note` | Ghi chú khám (nhóm "Thăm khám") | `section` (6 giá trị — `PERSONAL_HISTORY`/`FAMILY_HISTORY` chuyển sang `patient.personal_history`/`family_history` v1.24, xem #068): `REASON_FOR_VISIT`, `ILLNESS_PROGRESS`, `PRELIMINARY_DIAGNOSIS`, `GENERAL_EXAM`, `REGIONAL_EXAM`, `PLAN` |
 | `prescription` | Đơn thuốc | **Đã hiện thực (Sprint 4, S4-01/02, `docs/DECISIONS.md` 2026-08-25)** — `SignableEntity` ĐẦU TIÊN trong dự án thật sự dùng logic ký (`SignaturePort`); ký logic ở v1, `signature_payload` để sẵn cho chữ ký số, luôn `NULL`. **C8 (mục 4) lần đầu là DB trigger THẬT** (chặn UPDATE `signedAt/signedBy/signaturePayload/encounterId/supersedesId/amendmentReason` khi đã ký — CHO PHÉP `printedAt`/soft-delete/version tiếp tục đổi). Đính chính tạo bản mới ĐÃ KÝ NGAY (không qua lại bước nháp) — khác `clinical_note`/`diagnosis` (chưa có logic ký, vẫn sửa tại chỗ). Partial unique `(tenant_id, encounter_id) WHERE deleted_at IS NULL` — đúng 1 đơn đang hiệu lực/lượt khám |
@@ -583,6 +597,7 @@ Những ràng buộc này đặt ở DB, không chỉ ở tầng ứng dụng.
 | `audit_log (tenant_id, actor_id, occurred_at DESC)` | Tra nhật ký theo người dùng |
 | `user_session (tenant_id, user_id, expires_at DESC) WHERE deleted_at IS NULL` | Tra phiên còn hiệu lực của một user (thu hồi hàng loạt) |
 | `ward (province_code)` | Cascading Tỉnh → Phường/Xã trong form địa chỉ bệnh nhân (`docs/DECISIONS.md` #038) |
+| `encounter_service_item (tenant_id, encounter_id)` | Tra danh sách "Chỉ định dịch vụ khám" theo lượt khám (`docs/DECISIONS.md` #080) |
 
 `patient.search_key` là cột dẫn xuất (tên đã bỏ dấu, viết thường), cập nhật bằng trigger hoặc generated column — không tính lại trong câu truy vấn.
 
@@ -601,6 +616,7 @@ Khớp với `docs/product/plan.md`.
 | S3 (tuần 5-6) | `icd10_catalog`, `encounter`, `vital_sign`, `diagnosis`, `clinical_note` |
 | S4 (tuần 7-8) | `drug`, `prescription`, `prescription_item`, `patient_allergen` (mới, ngoài đặc tả gốc — liên kết `allergen_catalog` #069 với `patient`, `docs/DECISIONS.md` 2026-08-25) |
 | S5-S6 | `patient_condition`, `patient_family_history` (Tiền sử có cấu trúc, 25/08/2026); `invoice`, `invoice_line`, `payment` (thu ngân cơ bản — mở rộng phạm vi v1 chốt 2026-08-22, `docs/DECISIONS.md` #072); thêm cột `supersedes_id`, `amendment_reason` nếu chưa tạo, và trigger C8 |
+| Ngoài kế hoạch, sau S4 (2026-08-26) | `encounter_service_item` — "Chỉ định dịch vụ khám" đổi từ 1 dịch vụ/lượt khám sang danh sách nhiều dịch vụ + cascade giá thật theo `exam_type_price` (`docs/DECISIONS.md` #080) |
 
 Khuyến nghị: tạo đủ 8 cột bắt buộc **ngay từ migration đầu tiên của mỗi bảng**, kể cả khi tính năng dùng tới chúng ở sprint sau. Thêm cột vào bảng đã có dữ liệu thật tốn hơn nhiều.
 
@@ -613,7 +629,7 @@ Ghi ra đây để không ai vô tình tạo sớm, và để thiết kế v1 kh
 | Bảng dự kiến | Phase | Điểm neo vào v1 |
 |---|---|---|
 | `service`, `service_order` | v2 | `encounter_id` |
-| ~~`invoice`, `invoice_line`, `payment`~~ → **chuyển vào v1** (Sprint 5/6, `docs/DECISIONS.md` #072) | ~~v2~~ **v1** | `encounter_id` — chỉ phạm vi **thu ngân cơ bản** (1 phiếu thu/lượt khám, tính từ `encounter.exam_type_price` × `service_quantity` đã snapshot sẵn; in phiếu; đã thu/chưa thu + phương thức; tổng kết cuối ngày). Bảng giá đa đối tượng (`price_book`), công nợ/trả góp theo lộ trình vẫn ở v2. Chưa thiết kế cột chi tiết — làm khi tới Sprint 5, tiền dùng `bigint` đồng như mọi cột tiền khác |
+| ~~`invoice`, `invoice_line`, `payment`~~ → **chuyển vào v1** (Sprint 5/6, `docs/DECISIONS.md` #072) | ~~v2~~ **v1** | `encounter_id` — chỉ phạm vi **thu ngân cơ bản** (1 phiếu thu/lượt khám; in phiếu; đã thu/chưa thu + phương thức; tổng kết cuối ngày). **Cập nhật (v1.29, `docs/DECISIONS.md` #080)**: tính tiền lượt khám giờ phải **SUM nhiều dòng `encounter_service_item`** (`exam_type_price × quantity`, bỏ qua dòng chưa cấu hình đơn giá), KHÔNG còn đọc 1 giá trị đơn `encounter.exam_type_price × service_quantity` (2 cột này đã deprecated) — đọc lại #080 trước khi thiết kế `invoice_line`. Bảng giá đa đối tượng (`price_book`), công nợ/trả góp theo lộ trình vẫn ở v2. Chưa thiết kế cột chi tiết — làm khi tới Sprint 5, tiền dùng `bigint` đồng như mọi cột tiền khác |
 | `inventory_batch`, `stock_movement` | v2.1 | `drug_id`, `prescription_item_id` |
 | `insurance_claim` | v3 | `encounter_id`, `insurance_card_id` |
 | `drug_catalog` (toàn hệ thống) | v2.1 | `drug.catalog_code` |
@@ -667,3 +683,4 @@ Khi thêm, các bảng này vẫn phải đủ 8 cột bắt buộc và tuân th
 | v1.26 | 25/08/2026 | Tiền sử bản thân/gia đình chuyển sang dữ liệu có cấu trúc (Sprint 5, mockup Artifact duyệt 2 vòng) — thêm bảng MỚI `patient_condition` (bệnh lý nền + thói quen/lối sống dùng CHUNG, mã ICD-10 Chương XXI Z72.x cho thói quen — migration `20260825110000_patient_history_structured`, thêm C19) và `patient_family_history` (ma trận Quan hệ×Bệnh lý+tuổi phát hiện, KHÔNG unique). `patient.family_history`/`allergy_note` GIỮ NGUYÊN trong DB nhưng ngừng đọc/ghi từ UI mới; `patient.personal_history` giữ nguyên Ý NGHĨA làm ghi chú bổ sung. Thêm permission `allergen_catalog.create` (tách khỏi `manage`) — lễ tân/điều dưỡng/bác sĩ tạo được dị nguyên mới, chỉ `clinic_admin` sửa/ẩn. Kèm popup "Tìm kiếm khách hàng" mới ở Tiếp nhận (không đổi schema, chỉ dùng lại `GET /patients`/`by-national-id` sẵn có). Xem plan đã duyệt (chốt qua `AskUserQuestion` 25/08/2026). |
 | v1.27 | 26/08/2026 | Thêm category `UNIT` (Đơn vị tính) vào enum `reference_catalog_category` (migration `20260826090000_reference_catalog_unit`, chỉ `ALTER TYPE ... ADD VALUE`) — chủ dự án yêu cầu trực tiếp, mã tự sinh (cùng cơ chế 4 category ADM-01). Thêm cột `reference_catalog.description` (text, nullable — migration `20260826091500_reference_catalog_description`, CHỈ có ý nghĩa với category `UNIT`, cùng khuôn `price`/`unit`/`deactivates_account`). Trang "Danh mục hành chính" đổi tên "Danh mục dùng chung" (không còn thuần hành chính). Không thêm bảng/FK mới. |
 | v1.28 | 26/08/2026 | "Đơn giá dịch vụ" cho Dịch vụ khám — MỞ RỘNG phạm vi v1 có giới hạn (`docs/DECISIONS.md` #079, chủ dự án yêu cầu trực tiếp, đã hỏi qua `AskUserQuestion` vì xung đột với "Price Book" từng loại khỏi v1). Thêm bảng MỚI `exam_type_price` (migration `20260826100000_exam_type_price`, thêm C20) — TÁCH THEO TENANT (khác `reference_catalog` cha), nhiều dòng đơn giá/dịch vụ theo Loại giá dịch vụ × Đơn vị tính × khoảng ngày hiệu lực, sửa/xoá tự do (không giữ lịch sử), C20 (`EXCLUDE USING gist`) chặn chồng lấn ngày hiệu lực cùng (dịch vụ, Loại giá dịch vụ) ở tầng DB. `EXAM_TYPE` thêm vào nhóm mã tự sinh (không đổi schema, chỉ hành vi web). Xem `docs/DECISIONS.md` #079. |
+| v1.29 | 26/08/2026 | "Chỉ định dịch vụ khám" ở Tiếp nhận đổi từ 1 dịch vụ/lượt khám sang DANH SÁCH nhiều dịch vụ + cascade giá thật theo `exam_type_price` (`docs/DECISIONS.md` #080, chủ dự án yêu cầu trực tiếp, xác nhận qua `AskUserQuestion`). Thêm bảng MỚI `encounter_service_item` (migration `20260826110000_encounter_service_item`, sở hữu bởi module `reception` cùng `vital_sign`, không thêm C mới — cấu trúc như `vital_sign`, không có exclusion/check đặc biệt). 6 cột `exam_type_code/name/price`/`price_type_code`/`exam_type_unit`/`service_quantity` trên `encounter` chuyển DEPRECATED (giữ nguyên trong DB, ngừng ghi từ Tiếp nhận mới). `priceTypeCode`/`unitCode`/`examTypePrice` trên dòng mới nullable — dịch vụ chưa có đơn giá hiệu lực ở `exam_type_price` vẫn thêm được. Ảnh hưởng trực tiếp thiết kế Thu ngân cơ bản (#072, Sprint 5/6, chưa code) — xem mục 7. Xem `docs/DECISIONS.md` #080. |

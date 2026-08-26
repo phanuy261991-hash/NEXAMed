@@ -5925,18 +5925,6 @@
                   "patientSourceCode": {
                     "type": "string"
                   },
-                  "examTypeCode": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "examTypeName": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "examTypePrice": {
-                    "type": "integer",
-                    "minimum": 0
-                  },
                   "pulse": {
                     "type": "integer",
                     "minimum": 0,
@@ -5992,16 +5980,41 @@
                   "priorityReasonCode": {
                     "type": "string"
                   },
-                  "priceTypeCode": {
-                    "type": "string"
-                  },
-                  "examTypeUnit": {
-                    "type": "string"
-                  },
-                  "serviceQuantity": {
-                    "type": "integer",
-                    "exclusiveMinimum": 0,
-                    "default": 1
+                  "services": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "examTypeCode": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "examTypeName": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "priceTypeCode": {
+                          "type": "string"
+                        },
+                        "unitCode": {
+                          "type": "string"
+                        },
+                        "examTypePrice": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "quantity": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0,
+                          "default": 1
+                        }
+                      },
+                      "required": [
+                        "examTypeCode",
+                        "examTypeName"
+                      ]
+                    },
+                    "minItems": 1
                   },
                   "doctorId": {
                     "type": "string",
@@ -6016,11 +6029,9 @@
                   "appointmentId",
                   "patientId",
                   "version",
-                  "examTypeCode",
-                  "examTypeName",
-                  "examTypePrice",
                   "receptionTypeCode",
-                  "examFormCode"
+                  "examFormCode",
+                  "services"
                 ]
               }
             }
@@ -6305,18 +6316,6 @@
                   "patientSourceCode": {
                     "type": "string"
                   },
-                  "examTypeCode": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "examTypeName": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "examTypePrice": {
-                    "type": "integer",
-                    "minimum": 0
-                  },
                   "pulse": {
                     "type": "integer",
                     "minimum": 0,
@@ -6372,16 +6371,41 @@
                   "priorityReasonCode": {
                     "type": "string"
                   },
-                  "priceTypeCode": {
-                    "type": "string"
-                  },
-                  "examTypeUnit": {
-                    "type": "string"
-                  },
-                  "serviceQuantity": {
-                    "type": "integer",
-                    "exclusiveMinimum": 0,
-                    "default": 1
+                  "services": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "examTypeCode": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "examTypeName": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "priceTypeCode": {
+                          "type": "string"
+                        },
+                        "unitCode": {
+                          "type": "string"
+                        },
+                        "examTypePrice": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "quantity": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0,
+                          "default": 1
+                        }
+                      },
+                      "required": [
+                        "examTypeCode",
+                        "examTypeName"
+                      ]
+                    },
+                    "minItems": 1
                   },
                   "doctorId": {
                     "type": "string",
@@ -6395,11 +6419,9 @@
                 "required": [
                   "patientId",
                   "checkedInAt",
-                  "examTypeCode",
-                  "examTypeName",
-                  "examTypePrice",
                   "receptionTypeCode",
-                  "examFormCode"
+                  "examFormCode",
+                  "services"
                 ]
               }
             }

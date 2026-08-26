@@ -96,9 +96,7 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
         patientId: patient.id,
         version: appointment.version,
         doctorId,
-        examTypeCode: 'KT',
-        examTypeName: 'Khám thường',
-        examTypePrice: 150_000,
+        services: [{ examTypeCode: 'KT', examTypeName: 'Khám thường', examTypePrice: 150_000, quantity: 1 }],
         receptionTypeCode: 'RT_NEW',
         examFormCode: 'EF_NORMAL',
       });
@@ -171,9 +169,7 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
         patientId: patient.id,
         version: appointment.version,
         doctorId: doctorAUserId,
-        examTypeCode: 'KT',
-        examTypeName: 'Khám thường',
-        examTypePrice: 150_000,
+        services: [{ examTypeCode: 'KT', examTypeName: 'Khám thường', examTypePrice: 150_000, quantity: 1 }],
         receptionTypeCode: 'RT_NEW',
         examFormCode: 'EF_NORMAL',
       });

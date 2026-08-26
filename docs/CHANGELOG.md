@@ -2,6 +2,20 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-26 (4)
+
+"Chỉ định dịch vụ khám" ở Tiếp nhận — đổi từ 1 dịch vụ/lượt khám sang danh sách nhiều dịch vụ + cascade giá thật theo `exam_type_price` (chủ dự án yêu cầu trực tiếp, chốt qua `AskUserQuestion`, xem `docs/DECISIONS.md` #080):
+
+- **Đảo ngược `docs/DECISIONS.md` #052 điểm 6**: "Loại giá dịch vụ" trước đây cố ý làm phẳng (không cascade), nay chọn Loại khám → lọc `exam_type_price` (#079) còn hiệu lực hôm nay → chỉ hiện đúng mức đã cấu hình → Đơn vị/Đơn giá tự điền. Phát hiện thêm: `ExamTypeFormModal.tsx` (#079) đã ngừng set `reference_catalog.price`/`unit` cho `EXAM_TYPE` — `ReceptionIntakeForm.tsx` đang đọc 2 cột "chết", bug tiềm ẩn do #079 để lại.
+- **Bảng mới `encounter_service_item`** (migration `20260826110000_encounter_service_item`, sở hữu module `reception`, đúng khuôn `vital_sign`) — cho phép NHIỀU dịch vụ/lượt khám. 6 cột `exam_type_*`/`price_type_code`/`exam_type_unit`/`service_quantity` trên `encounter` chuyển DEPRECATED (giữ DB, ngừng ghi).
+- **`ReceptionIntakeForm.tsx`** viết lại khối "Chỉ định dịch vụ khám": dòng nháp (Loại khám/Loại giá/Đơn vị/Số lượng) + nút "+ Thêm" đẩy vào danh sách, xoá được từng dòng, tổng cộng tính từ các dòng có giá — dịch vụ chưa cấu hình đơn giá vẫn thêm được (không chặn tiếp nhận).
+- **`shared/make-draft-id.ts`** mới (tách `makeDraftId()` dùng chung lần 2 từ `ExamTypeFormModal.tsx`).
+- **Ghi nhận, chưa code**: ý nghĩa thật của checkbox "Thanh toán sau" (gate "Hàng đợi khám" — có check thì vào hàng đợi ngay, không check thì chờ thanh toán thật) để dành cho Thu ngân cơ bản Sprint 5/6 (chưa có module thanh toán để kiểm tra). **Ảnh hưởng #072**: tính tiền lượt khám giờ phải SUM nhiều dòng `encounter_service_item`.
+- **Bug tiền nhiệm không liên quan, sửa cùng lúc**: `scripts/check-mandatory-columns.mjs` thiếu exemption cho `AllergenGroup`/`Allergen` (danh mục toàn hệ thống #069, lộ ra khi thêm model mới) — thêm 2 exemption + mô tả bảng còn thiếu trong `.claude/docs/data-model.md`.
+- **Sửa tiếp lúc kiểm bằng Playwright/Chrome thật**: 2 badge bỏ chữ phụ ("Sinh hiệu (không bắt buộc)"→"Sinh hiệu", bỏ "— chỉ lưu để hiển thị, chưa tính viện phí" khỏi badge "Chỉ định dịch vụ khám"). **Bug thật phát hiện qua ảnh chụp** (có sẵn từ trước, không phải do #080): thẻ chọn bác sĩ hiện lặp "BS. BS. Lê Quang Minh (demo)" vì `fullName` tài khoản demo đã có sẵn "BS." mà UI vẫn tự thêm cứng — bỏ tiền tố cứng ở 3 nơi (`ReceptionIntakeForm.tsx`, `ReceptionDoctorQueuePage.tsx`, `EncounterConsultationPage.tsx`). Thêm `Button` `variant="add"` (viền đứt nét, giữ nguyên giao diện đã duyệt #079) — gộp nút "+ Thêm" viết tay trùng lặp ở cả `ExamTypeFormModal.tsx` lẫn `ReceptionIntakeForm.tsx` vào dùng chung.
+- **Đã xác minh thật**: `reception-http.spec.ts` +2 test (services nhiều dòng, services rỗng → 400), cập nhật toàn bộ payload cũ ở `reception-http.spec.ts`/`encounter-http.spec.ts`/`prescription-http.spec.ts`. Tổng 411/418 test `apps/api` pass (7 skip do 1 file fail là flake `geo-http.spec.ts` đã biết trước — pass 100% khi chạy riêng). `pnpm -w typecheck/lint/build` sạch toàn workspace, chunk web khởi động không đổi (440.93 kB). **Playwright qua Chrome thật + Postgres thật** (tenant dev, tài khoản `dev.admin`): cascade Loại khám→Loại giá dịch vụ→Đơn vị/Đơn giá đúng, dịch vụ chưa cấu hình giá vẫn thêm được, Tổng cộng tính đúng, Lưu tiếp nhận thành công, hàng đợi cập nhật đúng — query DB xác nhận `encounter_service_item` khớp tuyệt đối với UI, 6 cột deprecated trên `encounter` đều NULL.
+- Cập nhật `docs/ERD.md` (v1.29), `docs/DECISIONS.md` (#080), `.claude/docs/data-model.md`, `docs/CURRENT.md`.
+
 ## 2026-08-26 (3)
 
 "Đơn giá dịch vụ" cho Dịch vụ khám (EXAM_TYPE) — mở rộng phạm vi v1 có giới hạn (chủ dự án yêu cầu trực tiếp, xem `docs/DECISIONS.md` #079):

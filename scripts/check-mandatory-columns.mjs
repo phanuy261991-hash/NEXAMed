@@ -34,6 +34,11 @@ const EXEMPTIONS = {
   Ward: [...APPEND_ONLY_EXEMPT, 'tenant_id', 'id'],
   // Danh mục ICD-10 toàn hệ thống, read-only (S3-01) — cùng bản chất Province/Ward, PK là `code`.
   Icd10Catalog: [...APPEND_ONLY_EXEMPT, 'tenant_id', 'id'],
+  // Danh mục Dị nguyên toàn hệ thống, quản lý qua API (Sprint 4) — cùng bản chất ReferenceCatalog
+  // (có `id` riêng, không tenant_id/version). Thiếu exemption này từ lúc thêm bảng, không phải bug
+  // mới — phát hiện lại khi rà soát cùng lúc thêm EncounterServiceItem (docs/DECISIONS.md #080).
+  AllergenGroup: [...APPEND_ONLY_EXEMPT, 'tenant_id'],
+  Allergen: [...APPEND_ONLY_EXEMPT, 'tenant_id'],
 };
 
 const schema = readFileSync(SCHEMA_PATH, 'utf8');

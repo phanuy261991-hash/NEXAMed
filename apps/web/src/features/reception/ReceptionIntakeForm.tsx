@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
-import { CheckCircle, UserPlus } from '@phosphor-icons/react';
-import type { PatientDetail, PatientSummary } from '@nexamed/shared';
+import { CheckCircle, Plus, Trash, UserPlus } from '@phosphor-icons/react';
+import type { EncounterServiceItemInput, PatientDetail, PatientSummary } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { formatVnd } from '../../shared/format/currency';
 import { computeBmi } from '../../shared/format/bmi';
+import { isDateRangeActiveToday } from '../../shared/format/date';
+import { makeDraftId } from '../../shared/make-draft-id';
 import { Button } from '../../shared/ui/Button';
 import { Combobox, withLegacyValueOption } from '../../shared/ui/Combobox';
 import { TimeInput } from '../../shared/ui/TimeInput';
@@ -62,6 +64,11 @@ function toNumber(v: string): number | undefined {
   if (v.trim() === '') return undefined;
   const n = Number(v);
   return Number.isNaN(n) ? undefined : n;
+}
+
+/** "Chỉ định dịch vụ khám" (docs/DECISIONS.md #080) — 1 dòng đã thêm vào danh sách nháp. */
+interface ServiceLineDraft extends EncounterServiceItemInput {
+  draftId: string;
 }
 
 function VitalField({ id, label, value, onChange, step }: { id: string; label: string; value: string; onChange: (v: string) => void; step?: string }) {
@@ -132,9 +139,11 @@ export function ReceptionIntakeForm({
   const [examFormCode, setExamFormCode] = useState('');
   const [isPriority, setIsPriority] = useState(false);
   const [priorityReasonCode, setPriorityReasonCode] = useState('');
-  const [examTypeCode, setExamTypeCode] = useState('');
-  const [priceTypeCode, setPriceTypeCode] = useState('');
-  const [serviceQuantity, setServiceQuantity] = useState(1);
+  const [serviceLines, setServiceLines] = useState<ServiceLineDraft[]>([]);
+  const [draftExamTypeCode, setDraftExamTypeCode] = useState('');
+  const [draftPriceTypeCode, setDraftPriceTypeCode] = useState('');
+  const [draftQuantity, setDraftQuantity] = useState(1);
+  const [serviceError, setServiceError] = useState<string | null>(null);
   const [payLater, setPayLater] = useState(true);
   // Điều phối Bác sĩ/Khoa ("Hàng đợi ảo", docs/DECISIONS.md #064) — mặc định "theo bác sĩ", giữ
   // đúng bác sĩ đã đặt lịch cho mode='checkin' (vẫn sửa được, khác hành vi cũ khoá cứng).
@@ -164,6 +173,7 @@ export function ReceptionIntakeForm({
   const examFormQuery = useReferenceCatalogQuery('EXAM_FORM');
   const priorityReasonQuery = useReferenceCatalogQuery('PRIORITY_REASON');
   const priceTypeQuery = useReferenceCatalogQuery('PRICE_TYPE');
+  const unitQuery = useReferenceCatalogQuery('UNIT');
   const examTypeQuery = useReferenceCatalogQuery('EXAM_TYPE');
   const registerMutation = useRegisterReceptionMutation();
   const checkInMutation = useCheckInMutation();
@@ -224,9 +234,11 @@ export function ReceptionIntakeForm({
     setExamFormCode('');
     setIsPriority(false);
     setPriorityReasonCode('');
-    setExamTypeCode('');
-    setPriceTypeCode('');
-    setServiceQuantity(1);
+    setServiceLines([]);
+    setDraftExamTypeCode('');
+    setDraftPriceTypeCode('');
+    setDraftQuantity(1);
+    setServiceError(null);
     setPayLater(true);
     setRoutingMode('doctor');
     setDoctorId(checkin?.doctorId ?? '');
@@ -303,17 +315,51 @@ export function ReceptionIntakeForm({
     (priorityReasonQuery.data?.items ?? []).map((i) => ({ value: i.code, label: i.name })),
     priorityReasonCode,
   );
-  const priceTypeOptions = withLegacyValueOption(
-    (priceTypeQuery.data?.items ?? []).map((i) => ({ value: i.code, label: i.name })),
-    priceTypeCode,
-  );
+  // "Chỉ định dịch vụ khám" (docs/DECISIONS.md #080) — cascade thật theo `exam_type_price` (#079):
+  // chọn Loại khám → lọc `prices[]` của mục đó còn hiệu lực HÔM NAY → "Loại giá dịch vụ" chỉ hiện
+  // đúng các mức đã cấu hình, Đơn vị/Đơn giá tự điền theo dòng giá đã chọn. Đảo ngược #052 điểm 6
+  // (khi đó cố ý làm phẳng, bảng exam_type_price chưa tồn tại).
+  const priceTypeLabelByCode = new Map((priceTypeQuery.data?.items ?? []).map((i) => [i.code, i.name] as const));
+  const unitLabelByCode = new Map((unitQuery.data?.items ?? []).map((i) => [i.code, i.name] as const));
   const examTypeItems = examTypeQuery.data?.items ?? [];
-  const examTypeOptions = withLegacyValueOption(
-    examTypeItems.map((i) => ({ value: i.code, label: i.price !== null ? `${i.name} — ${formatVnd(i.price)}` : i.name })),
-    examTypeCode,
-  );
-  const selectedExamType = examTypeItems.find((i) => i.code === examTypeCode) ?? null;
-  const serviceAmount = selectedExamType?.price !== null && selectedExamType?.price !== undefined ? selectedExamType.price * serviceQuantity : null;
+  const examTypeOptions = examTypeItems.map((i) => ({ value: i.code, label: i.name }));
+  const draftExamType = examTypeItems.find((i) => i.code === draftExamTypeCode) ?? null;
+  const todayDate = getVietnamTodayDateString();
+  const draftActivePrices = (draftExamType?.prices ?? []).filter((p) => isDateRangeActiveToday(p.effectiveFrom, p.effectiveTo, todayDate));
+  const draftHasConfiguredPrice = draftActivePrices.length > 0;
+  const draftPriceTypeOptions = draftActivePrices.map((p) => ({ value: p.priceTypeCode, label: priceTypeLabelByCode.get(p.priceTypeCode) ?? p.priceTypeCode }));
+  const draftSelectedPrice = draftActivePrices.find((p) => p.priceTypeCode === draftPriceTypeCode) ?? null;
+  const draftUnitLabel = draftSelectedPrice ? (unitLabelByCode.get(draftSelectedPrice.unitCode) ?? draftSelectedPrice.unitCode) : '—';
+  const serviceLinesTotal = serviceLines.reduce((sum, l) => (l.examTypePrice !== undefined ? sum + l.examTypePrice * l.quantity : sum), 0);
+  const serviceLinesHasUnpriced = serviceLines.some((l) => l.examTypePrice === undefined);
+
+  function addServiceLine() {
+    if (!draftExamType) return;
+    if (draftHasConfiguredPrice && !draftSelectedPrice) {
+      setServiceError('Vui lòng chọn Loại giá dịch vụ.');
+      return;
+    }
+    setServiceError(null);
+    setServiceLines((prev) => [
+      ...prev,
+      {
+        draftId: makeDraftId(),
+        examTypeCode: draftExamType.code,
+        examTypeName: draftExamType.name,
+        priceTypeCode: draftSelectedPrice?.priceTypeCode,
+        unitCode: draftSelectedPrice?.unitCode,
+        examTypePrice: draftSelectedPrice?.amount,
+        quantity: draftQuantity,
+      },
+    ]);
+    setDraftExamTypeCode('');
+    setDraftPriceTypeCode('');
+    setDraftQuantity(1);
+  }
+
+  function removeServiceLine(draftId: string) {
+    setServiceLines((prev) => prev.filter((l) => l.draftId !== draftId));
+  }
 
   const weightGram = toNumber(vitals.weightKg) !== undefined ? Math.round(Number(vitals.weightKg) * 1000) : undefined;
   const heightMm = toNumber(vitals.heightCm) !== undefined ? Math.round(Number(vitals.heightCm) * 10) : undefined;
@@ -329,7 +375,7 @@ export function ReceptionIntakeForm({
     administrativeComplete &&
     receptionTypeCode !== '' &&
     examFormCode !== '' &&
-    examTypeCode !== '' &&
+    serviceLines.length > 0 &&
     (!isPriority || priorityReasonCode !== '') &&
     routingComplete;
 
@@ -367,7 +413,7 @@ export function ReceptionIntakeForm({
   }
 
   async function submit(confirmDuplicate: boolean) {
-    if (!selectedExamType || !routingComplete) return;
+    if (serviceLines.length === 0 || !routingComplete) return;
     setError(null);
     try {
       const patientId = await resolvePatientId(confirmDuplicate);
@@ -383,16 +429,18 @@ export function ReceptionIntakeForm({
         ...routingFields,
         chiefComplaint: reason.trim() === '' ? undefined : reason.trim(),
         patientSourceCode: patientSourceCode === '' ? undefined : patientSourceCode,
-        examTypeCode: selectedExamType.code,
-        examTypeName: selectedExamType.name,
-        examTypePrice: selectedExamType.price ?? 0,
-        examTypeUnit: selectedExamType.unit ?? undefined,
+        services: serviceLines.map((l): EncounterServiceItemInput => ({
+          examTypeCode: l.examTypeCode,
+          examTypeName: l.examTypeName,
+          priceTypeCode: l.priceTypeCode,
+          unitCode: l.unitCode,
+          examTypePrice: l.examTypePrice,
+          quantity: l.quantity,
+        })),
         receptionTypeCode,
         examFormCode,
         isPriority,
         priorityReasonCode: isPriority && priorityReasonCode !== '' ? priorityReasonCode : undefined,
-        priceTypeCode: priceTypeCode === '' ? undefined : priceTypeCode,
-        serviceQuantity,
         ...buildVitalsPayload(),
       };
 
@@ -646,7 +694,7 @@ export function ReceptionIntakeForm({
                       <div className="flex min-w-0 items-center gap-2">
                         {active && <CheckCircle size={18} weight="fill" className="flex-shrink-0 text-white" aria-hidden="true" />}
                         <div className="min-w-0">
-                          <div className={`truncate text-[13.5px] font-bold ${active ? 'text-white' : 'text-slate-900'}`}>BS. {doctor.fullName}</div>
+                          <div className={`truncate text-[13.5px] font-bold ${active ? 'text-white' : 'text-slate-900'}`}>{doctor.fullName}</div>
                           <div className={`truncate text-xs ${active ? 'text-white/80' : 'text-slate-500'}`}>
                             {[doctor.departmentName, doctor.roomName].filter(Boolean).join(' · ') || '—'}
                           </div>
@@ -725,7 +773,7 @@ export function ReceptionIntakeForm({
       </div>
 
       <div className={sectionBoxClassName}>
-        <span className={sectionBadgeClassName}>Sinh hiệu (không bắt buộc)</span>
+        <span className={sectionBadgeClassName}>Sinh hiệu</span>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <VitalField id="intake-pulse" label="Mạch (l/p)" value={vitals.pulse} onChange={(v) => setVitals((p) => ({ ...p, pulse: v }))} />
           <VitalField
@@ -777,13 +825,22 @@ export function ReceptionIntakeForm({
       </div>
 
       <div className={sectionBoxClassName}>
-        <span className={sectionBadgeTealClassName}>Chỉ định dịch vụ khám — chỉ lưu để hiển thị, chưa tính viện phí</span>
-        <div className="flex flex-wrap items-start gap-3">
+        <span className={sectionBadgeTealClassName}>Chỉ định dịch vụ khám</span>
+        <div className="flex flex-wrap items-end gap-3">
           <div className="min-w-[200px] flex-1">
             <label htmlFor="intake-exam-type" className={labelClassName}>
-              Loại khám <span className="text-rose-500">*</span>
+              Loại khám
             </label>
-            <Combobox id="intake-exam-type" value={examTypeCode} onChange={setExamTypeCode} options={examTypeOptions} required />
+            <Combobox
+              id="intake-exam-type"
+              value={draftExamTypeCode}
+              onChange={(v) => {
+                setDraftExamTypeCode(v);
+                setDraftPriceTypeCode('');
+                setServiceError(null);
+              }}
+              options={examTypeOptions}
+            />
           </div>
           <div className="min-w-[180px] flex-1">
             <label htmlFor="intake-price-type" className={labelClassName}>
@@ -791,16 +848,17 @@ export function ReceptionIntakeForm({
             </label>
             <Combobox
               id="intake-price-type"
-              value={priceTypeCode}
-              onChange={setPriceTypeCode}
-              options={priceTypeOptions}
-              placeholder="Không bắt buộc — gõ để tìm..."
+              value={draftPriceTypeCode}
+              onChange={setDraftPriceTypeCode}
+              options={draftPriceTypeOptions}
+              disabled={!draftExamType || !draftHasConfiguredPrice}
+              placeholder={draftExamType && !draftHasConfiguredPrice ? 'Chưa cấu hình đơn giá' : 'Gõ để tìm...'}
             />
           </div>
           <div className="w-28 flex-none">
             <span className={labelClassName}>Đơn vị</span>
             <div className="flex h-[38px] items-center rounded-md border border-slate-200 bg-slate-50 px-3 text-[15px] font-semibold text-slate-800">
-              {selectedExamType?.unit ?? '—'}
+              {draftUnitLabel}
             </div>
           </div>
           <div className="w-24 flex-none">
@@ -811,8 +869,8 @@ export function ReceptionIntakeForm({
               id="intake-quantity"
               type="number"
               min={1}
-              value={serviceQuantity}
-              onChange={(e) => setServiceQuantity(Math.max(1, Number(e.target.value) || 1))}
+              value={draftQuantity}
+              onChange={(e) => setDraftQuantity(Math.max(1, Number(e.target.value) || 1))}
               className={inputClassName}
             />
           </div>
@@ -823,7 +881,20 @@ export function ReceptionIntakeForm({
               Thanh toán sau
             </label>
           </div>
+          <Button id="intake-service-add" type="button" variant="add" onClick={addServiceLine} disabled={!draftExamTypeCode}>
+            <Plus size={14} weight="bold" aria-hidden="true" />
+            Thêm dịch vụ
+          </Button>
         </div>
+
+        {draftExamType && !draftHasConfiguredPrice && (
+          <p className="mt-1.5 text-xs text-amber-600">Chưa cấu hình đơn giá hiệu lực cho dịch vụ này — vẫn thêm được, chỉ thiếu Đơn giá/Đơn vị.</p>
+        )}
+        {serviceError && (
+          <p role="alert" className="mt-1.5 text-xs font-semibold text-rose-600">
+            {serviceError}
+          </p>
+        )}
 
         <div className="mt-4 overflow-hidden rounded-lg border border-slate-200">
           <table className="w-full border-collapse text-sm">
@@ -835,28 +906,50 @@ export function ReceptionIntakeForm({
                 <th className="px-3 py-2.5">Đơn giá</th>
                 <th className="px-3 py-2.5">Thành tiền</th>
                 <th className="px-3 py-2.5">Trạng thái</th>
+                <th className="w-10 px-3 py-2.5" />
               </tr>
             </thead>
-            {selectedExamType ? (
+            {serviceLines.length > 0 ? (
               <tbody>
-                <tr>
-                  <td className="px-3 py-3 text-center font-semibold text-slate-800">{selectedExamType.code}</td>
-                  <td className="px-3 py-3 text-left font-semibold text-slate-900">{selectedExamType.name}</td>
-                  <td className="px-3 py-3 text-center font-medium text-slate-700">{serviceQuantity}</td>
-                  <td className="px-3 py-3 text-center font-medium text-slate-700">
-                    {selectedExamType.price !== null ? formatVnd(selectedExamType.price) : '—'}
+                {serviceLines.map((line) => (
+                  <tr key={line.draftId} className="border-b border-slate-200 last:border-0">
+                    <td className="px-3 py-3 text-center font-semibold text-slate-800">{line.examTypeCode}</td>
+                    <td className="px-3 py-3 text-left font-semibold text-slate-900">{line.examTypeName}</td>
+                    <td className="px-3 py-3 text-center font-medium text-slate-700">{line.quantity}</td>
+                    <td className="px-3 py-3 text-center font-medium text-slate-700">
+                      {line.examTypePrice !== undefined ? formatVnd(line.examTypePrice) : '—'}
+                    </td>
+                    <td className="px-3 py-3 text-center font-bold text-slate-800">
+                      {line.examTypePrice !== undefined ? formatVnd(line.examTypePrice * line.quantity) : '—'}
+                    </td>
+                    <td className="px-3 py-3 text-center">
+                      <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700">Chờ thực hiện</span>
+                    </td>
+                    <td className="px-3 py-3 text-center">
+                      <button
+                        type="button"
+                        onClick={() => removeServiceLine(line.draftId)}
+                        aria-label={`Xoá ${line.examTypeName}`}
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                      >
+                        <Trash size={15} weight="regular" aria-hidden="true" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                <tr className="bg-slate-50">
+                  <td colSpan={4} className="px-3 py-2.5 text-right font-bold text-slate-800">
+                    Tổng cộng{serviceLinesHasUnpriced ? ' (chưa gồm dịch vụ thiếu đơn giá)' : ''}
                   </td>
-                  <td className="px-3 py-3 text-center font-bold text-slate-800">{serviceAmount !== null ? formatVnd(serviceAmount) : '—'}</td>
-                  <td className="px-3 py-3 text-center">
-                    <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700">Chờ thực hiện</span>
-                  </td>
+                  <td className="px-3 py-2.5 text-center font-bold text-slate-800">{formatVnd(serviceLinesTotal)}</td>
+                  <td colSpan={2} />
                 </tr>
               </tbody>
             ) : (
               <tbody>
                 <tr>
-                  <td colSpan={6} className="px-3 py-6 text-center text-sm font-medium text-slate-500">
-                    Chưa có dịch vụ chỉ định — chọn &quot;Loại khám&quot; ở trên để thêm.
+                  <td colSpan={7} className="px-3 py-6 text-center text-sm font-medium text-slate-500">
+                    Chưa có dịch vụ chỉ định — chọn &quot;Loại khám&quot; ở trên rồi bấm &quot;Thêm&quot;.
                   </td>
                 </tr>
               </tbody>

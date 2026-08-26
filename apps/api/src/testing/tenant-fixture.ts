@@ -50,6 +50,9 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       // appointment/patient/user_account. diagnosis còn tham chiếu icd10_catalog (FK RESTRICT,
       // S3-05→07) nhưng icd10_catalog không thuộc phạm vi tenant nên không cần xoá ở đây.
       await prisma.vitalSign.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // encounter_service_item (docs/DECISIONS.md #080) — cùng lý do vital_sign, sub-resource của
+      // encounter, không có self-reference nên xoá thẳng, không cần vòng lặp theo tầng.
+      await prisma.encounterServiceItem.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.diagnosis.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.clinicalNote.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // prescription_item (Sprint 4) tham chiếu prescription + drug (FK RESTRICT) — xoá trước cả

@@ -1091,7 +1091,7 @@ function HistoryCard({ item, highlighted = false }: { item: EncounterHistoryItem
           {formatHistoryDate(item.checkedInAt)}
           {highlighted && <span className="text-[11px] font-medium text-slate-400">({formatRelativeTime(item.checkedInAt)})</span>}
         </span>
-        {item.doctorName && <div className="mt-0.5 truncate text-[11px] font-semibold text-slate-500">BS. {item.doctorName}</div>}
+        {item.doctorName && <div className="mt-0.5 truncate text-[11px] font-semibold text-slate-500">{item.doctorName}</div>}
       </div>
       {item.primaryDiagnosisName && (
         <div className={`mb-1 font-bold text-slate-900 ${highlighted ? 'text-[13.5px]' : 'text-[12.5px]'}`}>{item.primaryDiagnosisName}</div>

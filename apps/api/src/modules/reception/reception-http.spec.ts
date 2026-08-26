@@ -108,15 +108,18 @@ describe('HTTP e2e — /api/v1/reception', () => {
    * `appointment.doctorId`) — mặc định truyền đúng bác sĩ của lịch hẹn để giữ hành vi test cũ,
    * override sang `departmentId` (bỏ `doctorId`) ở test riêng cho nhánh "theo Khoa".
    */
+  /** "Chỉ định dịch vụ khám" (docs/DECISIONS.md #080) — 1 dòng mặc định, test override bằng `services`. */
+  function defaultServices() {
+    return [{ examTypeCode: 'KT', examTypeName: 'Khám thường', examTypePrice: 150_000, quantity: 1 }];
+  }
+
   function checkInPayload(appointmentId: string, patientId: string, version: number, doctorId: string, overrides: Record<string, unknown> = {}) {
     return {
       appointmentId,
       patientId,
       version,
       doctorId,
-      examTypeCode: 'KT',
-      examTypeName: 'Khám thường',
-      examTypePrice: 150_000,
+      services: defaultServices(),
       // Thiết kế lại "Tiếp nhận bệnh nhân" (mockup đã duyệt) — bắt buộc kèm Loại tiếp nhận/Hình thức khám.
       receptionTypeCode: 'RT_NEW',
       examFormCode: 'EF_NORMAL',
@@ -184,8 +187,10 @@ describe('HTTP e2e — /api/v1/reception', () => {
       expect(updatedAppointment.patientId).toBe(patient.id);
       const encounter = await privileged.encounter.findUniqueOrThrow({ where: { id: res.body.data.id } });
       expect(encounter.insuranceSnapshot).toEqual({ selfPay: true });
-      expect(encounter.examTypeCode).toBe('KT');
       expect(encounter.patientSourceCode).toBe('FB');
+      // "Chỉ định dịch vụ khám" (docs/DECISIONS.md #080) — lưu ở bảng con, không còn ở cột encounter.
+      const serviceItem = await privileged.encounterServiceItem.findFirstOrThrow({ where: { encounterId: res.body.data.id } });
+      expect(serviceItem.examTypeCode).toBe('KT');
       // Sinh hiệu nhập cùng lúc check-in phải tạo được dòng vital_sign tương ứng (docs/DECISIONS.md #044).
       const vitalSign = await privileged.vitalSign.findFirstOrThrow({ where: { encounterId: res.body.data.id } });
       expect(vitalSign.pulse).toBe(80);
@@ -333,9 +338,7 @@ describe('HTTP e2e — /api/v1/reception', () => {
         patientId,
         doctorId,
         checkedInAt,
-        examTypeCode: 'KT',
-        examTypeName: 'Khám thường',
-        examTypePrice: 150_000,
+        services: defaultServices(),
         receptionTypeCode: 'RT_NEW',
         examFormCode: 'EF_NORMAL',
         ...overrides,
@@ -359,10 +362,43 @@ describe('HTTP e2e — /api/v1/reception', () => {
 
       const encounter = await privileged.encounter.findUniqueOrThrow({ where: { id: res.body.data.id } });
       expect(encounter.appointmentId).toBeNull();
-      expect(encounter.examTypeCode).toBe('KT');
-      expect(encounter.examTypeName).toBe('Khám thường');
-      expect(encounter.examTypePrice).toBe(150_000n);
       expect(encounter.patientSourceCode).toBe('FB');
+      const serviceItem = await privileged.encounterServiceItem.findFirstOrThrow({ where: { encounterId: res.body.data.id } });
+      expect(serviceItem.examTypeCode).toBe('KT');
+      expect(serviceItem.examTypeName).toBe('Khám thường');
+      expect(serviceItem.examTypePrice).toBe(150_000n);
+    });
+
+    it('services[] nhiều dòng — 200, mỗi dòng lưu đúng trong encounter_service_item, dòng chưa có đơn giá vẫn lưu được với priceTypeCode/unitCode/examTypePrice=null', async () => {
+      const patient = await createPatient(receptionistToken);
+
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/reception/direct')
+        .set(authed(receptionistToken))
+        .send(
+          directPayload(patient.id, doctorAUserId, isoAt(8, 5, 28), {
+            services: [
+              { examTypeCode: 'KT', examTypeName: 'Khám thường', priceTypeCode: 'PT_SERVICE', unitCode: 'LUOT', examTypePrice: 150_000, quantity: 1 },
+              { examTypeCode: 'SA', examTypeName: 'Siêu âm', quantity: 2 },
+            ],
+          }),
+        );
+
+      expect(res.status).toBe(200);
+      const items = await privileged.encounterServiceItem.findMany({ where: { encounterId: res.body.data.id }, orderBy: { createdAt: 'asc' } });
+      expect(items).toHaveLength(2);
+      expect(items[0]).toMatchObject({ examTypeCode: 'KT', priceTypeCode: 'PT_SERVICE', unitCode: 'LUOT', examTypePrice: 150_000n, quantity: 1 });
+      expect(items[1]).toMatchObject({ examTypeCode: 'SA', priceTypeCode: null, unitCode: null, examTypePrice: null, quantity: 2 });
+    });
+
+    it('services rỗng → 400 (bắt buộc ít nhất 1 dịch vụ khám)', async () => {
+      const patient = await createPatient(receptionistToken);
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/reception/direct')
+        .set(authed(receptionistToken))
+        .send(directPayload(patient.id, doctorAUserId, isoAt(8, 10, 28), { services: [] }));
+
+      expect(res.status).toBe(400);
     });
 
     it('không truyền patientSourceCode → lưu null, vẫn tạo thành công', async () => {
@@ -403,18 +439,17 @@ describe('HTTP e2e — /api/v1/reception', () => {
           directPayload(patient.id, doctorAUserId, isoAt(9, 20, 28), {
             isPriority: true,
             priorityReasonCode: 'PR_ELDERLY',
-            priceTypeCode: 'PT_SERVICE',
-            examTypeUnit: 'Lượt',
-            serviceQuantity: 2,
+            services: [{ examTypeCode: 'KT', examTypeName: 'Khám thường', examTypePrice: 150_000, priceTypeCode: 'PT_SERVICE', unitCode: 'LUOT', quantity: 2 }],
           }),
         );
       expect(res.status).toBe(200);
       const encounter = await privileged.encounter.findUniqueOrThrow({ where: { id: res.body.data.id } });
       expect(encounter.isPriority).toBe(true);
       expect(encounter.priorityReasonCode).toBe('PR_ELDERLY');
-      expect(encounter.priceTypeCode).toBe('PT_SERVICE');
-      expect(encounter.examTypeUnit).toBe('Lượt');
-      expect(encounter.serviceQuantity).toBe(2);
+      const serviceItem = await privileged.encounterServiceItem.findFirstOrThrow({ where: { encounterId: res.body.data.id } });
+      expect(serviceItem.priceTypeCode).toBe('PT_SERVICE');
+      expect(serviceItem.unitCode).toBe('LUOT');
+      expect(serviceItem.quantity).toBe(2);
     });
 
     it('patientId không tồn tại → 404', async () => {
@@ -457,9 +492,7 @@ describe('HTTP e2e — /api/v1/reception', () => {
   describe('Điều phối Bác sĩ/Khoa lúc Tiếp nhận ("Hàng đợi ảo", #064)', () => {
     function baseExam() {
       return {
-        examTypeCode: 'KT',
-        examTypeName: 'Khám thường',
-        examTypePrice: 150_000,
+        services: defaultServices(),
         receptionTypeCode: 'RT_NEW',
         examFormCode: 'EF_NORMAL',
       };
@@ -609,9 +642,7 @@ describe('HTTP e2e — /api/v1/reception', () => {
           patientId: patient2.id,
           doctorId: doctorAUserId,
           checkedInAt: new Date().toISOString(),
-          examTypeCode: 'KT',
-          examTypeName: 'Khám thường',
-          examTypePrice: 150_000,
+          services: defaultServices(),
           receptionTypeCode: 'RT_NEW',
           examFormCode: 'EF_NORMAL',
         });
@@ -706,9 +737,7 @@ describe('HTTP e2e — /api/v1/reception', () => {
           patientId: patientPoolMine.id,
           departmentId: myDept,
           checkedInAt: new Date().toISOString(),
-          examTypeCode: 'KT',
-          examTypeName: 'Khám thường',
-          examTypePrice: 150_000,
+          services: defaultServices(),
           receptionTypeCode: 'RT_NEW',
           examFormCode: 'EF_NORMAL',
         });
@@ -721,9 +750,7 @@ describe('HTTP e2e — /api/v1/reception', () => {
           patientId: patientPoolOther.id,
           departmentId: otherDept,
           checkedInAt: new Date().toISOString(),
-          examTypeCode: 'KT',
-          examTypeName: 'Khám thường',
-          examTypePrice: 150_000,
+          services: defaultServices(),
           receptionTypeCode: 'RT_NEW',
           examFormCode: 'EF_NORMAL',
         });
@@ -755,9 +782,7 @@ describe('HTTP e2e — /api/v1/reception', () => {
           patientId: patientPool.id,
           departmentId: myDept,
           checkedInAt: new Date().toISOString(),
-          examTypeCode: 'KT',
-          examTypeName: 'Khám thường',
-          examTypePrice: 150_000,
+          services: defaultServices(),
           receptionTypeCode: 'RT_NEW',
           examFormCode: 'EF_NORMAL',
         });
@@ -781,9 +806,7 @@ describe('HTTP e2e — /api/v1/reception', () => {
           patientId: patientPool.id,
           departmentId: dept,
           checkedInAt: new Date().toISOString(),
-          examTypeCode: 'KT',
-          examTypeName: 'Khám thường',
-          examTypePrice: 150_000,
+          services: defaultServices(),
           receptionTypeCode: 'RT_NEW',
           examFormCode: 'EF_NORMAL',
         });

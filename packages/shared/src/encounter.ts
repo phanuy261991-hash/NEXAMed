@@ -33,24 +33,45 @@ const intakeVitalSignFieldsSchema = z.object({
 });
 
 /**
- * Trường "Thông tin tiếp nhận"/"Chỉ định dịch vụ khám" mở rộng (thiết kế lại theo mockup đã duyệt)
- * — dùng chung cho cả `checkInRequestSchema`/`registerReceptionRequestSchema`. `receptionTypeCode`
- * (Loại tiếp nhận)/`examFormCode` (Hình thức khám) bắt buộc (category `RECEPTION_TYPE`/
- * `EXAM_FORM`). `isPriority`/`priorityReasonCode` (Ưu tiên khám — category `PRIORITY_REASON`,
- * bắt buộc CHỈ khi `isPriority=true`, ràng buộc ở `.superRefine()` bên dưới). `priceTypeCode`
- * (Loại giá dịch vụ, category `PRICE_TYPE`)/`examTypeUnit` (Đơn vị, snapshot từ `reference_catalog.
- * unit` của `EXAM_TYPE` đã chọn)/`serviceQuantity` (mặc định 1) — cùng tinh thần SNAPSHOT với
- * `examTypeCode/Name/Price` đã có, CHỈ lưu để hiển thị trong bảng dịch vụ, KHÔNG tính viện phí/
- * xuất hoá đơn (ngoài phạm vi v1, CLAUDE.md).
+ * Trường "Thông tin tiếp nhận" mở rộng (thiết kế lại theo mockup đã duyệt) — dùng chung cho cả
+ * `checkInRequestSchema`/`registerReceptionRequestSchema`. `receptionTypeCode` (Loại tiếp nhận)/
+ * `examFormCode` (Hình thức khám) bắt buộc (category `RECEPTION_TYPE`/`EXAM_FORM`).
+ * `isPriority`/`priorityReasonCode` (Ưu tiên khám — category `PRIORITY_REASON`, bắt buộc CHỈ khi
+ * `isPriority=true`, ràng buộc ở `.superRefine()` bên dưới). "Chỉ định dịch vụ khám" tách riêng
+ * thành `services[]` (docs/DECISIONS.md #080) — xem `encounterServiceItemInputSchema`.
  */
 const intakeExtendedFieldsSchema = z.object({
   receptionTypeCode: z.string().min(1),
   examFormCode: z.string().min(1),
   isPriority: z.boolean().default(false),
   priorityReasonCode: z.string().optional(),
+});
+
+/**
+ * "Chỉ định dịch vụ khám" (docs/DECISIONS.md #080) — 1 lượt khám cho phép NHIỀU dịch vụ (đảo
+ * ngược #052 điểm 6, khi đó cố ý làm phẳng "Loại giá dịch vụ" để tránh dựng "Price Book"). Web
+ * chọn Loại khám (category `EXAM_TYPE`) → lọc `prices[]` của mục đó (bảng `exam_type_price`, #079)
+ * còn hiệu lực hôm nay → "Loại giá dịch vụ" chỉ hiện đúng các mức đã cấu hình, "Đơn vị"/"Đơn giá"
+ * tự điền theo dòng giá đã chọn. `priceTypeCode`/`unitCode`/`examTypePrice` NULLABLE — dịch vụ
+ * chưa được cấu hình đơn giá hiệu lực vẫn thêm được (mục này chỉ lưu để hiển thị, KHÔNG tính viện
+ * phí/xuất hoá đơn — ngoài phạm vi v1, CLAUDE.md). Mọi field SNAPSHOT tại thời điểm thêm, không
+ * JOIN lại lúc đọc — cùng tinh thần `insuranceSnapshot`.
+ */
+export const encounterServiceItemInputSchema = z.object({
+  examTypeCode: z.string().min(1),
+  examTypeName: z.string().min(1),
   priceTypeCode: z.string().optional(),
-  examTypeUnit: z.string().optional(),
-  serviceQuantity: z.number().int().positive().default(1),
+  unitCode: z.string().optional(),
+  examTypePrice: z.number().int().nonnegative().optional(),
+  quantity: z.number().int().positive().default(1),
+});
+export type EncounterServiceItemInput = z.infer<typeof encounterServiceItemInputSchema>;
+
+export const encounterServiceItemSchema = encounterServiceItemInputSchema.extend({ id: z.string().uuid() });
+export type EncounterServiceItem = z.infer<typeof encounterServiceItemSchema>;
+
+const intakeServiceFieldsSchema = z.object({
+  services: z.array(encounterServiceItemInputSchema).min(1, 'Cần chỉ định ít nhất 1 dịch vụ khám.'),
 });
 
 /** Bắt buộc `priorityReasonCode` khi `isPriority=true` — dùng chung cho cả 2 request schema bên dưới. */
@@ -104,12 +125,10 @@ export const checkInRequestSchema = z
     version: z.number().int(),
     chiefComplaint: z.string().optional(),
     patientSourceCode: z.string().optional(),
-    examTypeCode: z.string().min(1),
-    examTypeName: z.string().min(1),
-    examTypePrice: z.number().int().nonnegative(),
   })
   .merge(intakeVitalSignFieldsSchema)
   .merge(intakeExtendedFieldsSchema)
+  .merge(intakeServiceFieldsSchema)
   .merge(intakeRoutingFieldsSchema)
   .superRefine(requirePriorityReasonWhenPriority)
   .superRefine(requireDoctorOrDepartment);
@@ -119,11 +138,10 @@ export type CheckInRequest = z.infer<typeof checkInRequestSchema>;
  * "Tiếp nhận bệnh nhân" (`POST /reception/direct`) — khách đến thẳng phòng khám, KHÔNG qua đặt
  * lịch trước, KHÔNG tạo `appointment` (khác hẳn hướng đã bác bỏ "tạo appointment+encounter cùng
  * lúc" — xem Context trong plan). Tạo thẳng `encounter` với `appointmentId=null`. `patientId` đã
- * resolve xong ở web (giống `checkInRequestSchema`). `examTypeCode`/`examTypeName`/`examTypePrice`
- * là SNAPSHOT tại thời điểm tạo (copy từ `reference_catalog` category `EXAM_TYPE` lúc chọn trên
- * web, không JOIN lại lúc đọc) — đổi giá/tên danh mục sau này không ảnh hồ sơ cũ, cùng tinh thần
- * `insurance_snapshot`. `patientSourceCode` (category `PATIENT_SOURCE`) tuỳ chọn. Chỉ số sinh hiệu
- * (tuỳ chọn) nhập cùng lúc — thiếu thì bác sĩ tự bổ sung ở form phiếu khám sau (`docs/DECISIONS.md` #044).
+ * resolve xong ở web (giống `checkInRequestSchema`). "Chỉ định dịch vụ khám" là `services[]`
+ * (docs/DECISIONS.md #080, xem `encounterServiceItemInputSchema`). `patientSourceCode` (category
+ * `PATIENT_SOURCE`) tuỳ chọn. Chỉ số sinh hiệu (tuỳ chọn) nhập cùng lúc — thiếu thì bác sĩ tự bổ
+ * sung ở form phiếu khám sau (`docs/DECISIONS.md` #044).
  */
 export const registerReceptionRequestSchema = z
   .object({
@@ -131,12 +149,10 @@ export const registerReceptionRequestSchema = z
     checkedInAt: z.string(),
     chiefComplaint: z.string().optional(),
     patientSourceCode: z.string().optional(),
-    examTypeCode: z.string().min(1),
-    examTypeName: z.string().min(1),
-    examTypePrice: z.number().int().nonnegative(),
   })
   .merge(intakeVitalSignFieldsSchema)
   .merge(intakeExtendedFieldsSchema)
+  .merge(intakeServiceFieldsSchema)
   .merge(intakeRoutingFieldsSchema)
   .superRefine(requirePriorityReasonWhenPriority)
   .superRefine(requireDoctorOrDepartment);

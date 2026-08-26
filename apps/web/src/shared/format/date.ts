@@ -12,3 +12,13 @@ export function formatDobDisplay(dob: string): string {
   if (!year || !month || !day) return dob;
   return `${day}/${month}/${year}`;
 }
+
+/**
+ * `today` còn nằm trong khoảng `[from, to]` không — 3 tham số đều `YYYY-MM-DD` (ngày lịch thuần,
+ * so sánh chuỗi ISO đúng thứ tự thời gian, không cần parse `Date`). `to` trống = vô thời hạn.
+ * Dùng cho "Đơn giá dịch vụ" (`exam_type_price`, `docs/DECISIONS.md` #079/#080) — lọc dòng giá còn
+ * hiệu lực hôm nay khi cascade Loại khám → Loại giá dịch vụ ở Tiếp nhận.
+ */
+export function isDateRangeActiveToday(from: string, to: string | undefined, today: string): boolean {
+  return from <= today && (to === undefined || to >= today);
+}

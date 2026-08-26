@@ -71,6 +71,7 @@ model Tenant {
   appointments      Appointment[]
   encounters        Encounter[]
   vitalSigns        VitalSign[]
+  encounterServiceItems EncounterServiceItem[]
   diagnoses         Diagnosis[]
   clinicalNotes     ClinicalNote[]
   drugs             Drug[]
@@ -1006,10 +1007,10 @@ model Encounter {
   // "Tiếp nhận bệnh nhân" (tạo encounter trực tiếp, appointmentId=null) — mã danh mục
   // PATIENT_SOURCE đã chọn, tuỳ chọn. Cùng convention patient.ethnicity: lưu code, không lưu tên.
   patientSourceCode String?       @map("patient_source_code")
-  // SNAPSHOT loại khám (category EXAM_TYPE) tại thời điểm tạo — copy tên+giá từ reference_catalog
-  // lúc chọn trên web, không JOIN lại lúc đọc, cùng tinh thần insuranceSnapshot: đổi giá/tên danh
-  // mục sau này không ảnh hồ sơ cũ. NULL khi encounter tạo qua check-in từ lịch hẹn (không có
-  // loại khám ở luồng đó).
+  // DEPRECATED (docs/DECISIONS.md #080) — "Chỉ định dịch vụ khám" chuyển từ 1 dịch vụ/lượt khám
+  // sang danh sách nhiều dòng ở bảng con `EncounterServiceItem` bên dưới. 6 cột này GIỮ NGUYÊN
+  // trong DB (dữ liệu cũ trước #080 vẫn đọc được) nhưng luồng Tiếp nhận mới NGỪNG ghi — cùng cách
+  // đã làm với patient.familyHistory/allergyNote (#065/#068). Không xoá cột, không migration.
   examTypeCode      String?       @map("exam_type_code")
   examTypeName      String?       @map("exam_type_name")
   examTypePrice     BigInt?       @map("exam_type_price")
@@ -1021,9 +1022,8 @@ model Encounter {
   examFormCode      String?       @map("exam_form_code")
   isPriority        Boolean       @default(false) @map("is_priority")
   priorityReasonCode String?      @map("priority_reason_code")
-  // "Chỉ định dịch vụ khám" — Loại giá dịch vụ (PRICE_TYPE, tuỳ chọn, chỉ ghi chú) + Đơn vị/Số
-  // lượng SNAPSHOT tại thời điểm tạo (cùng tinh thần examTypeCode/Name/Price) — chỉ lưu để hiển
-  // thị, KHÔNG tính viện phí/xuất hoá đơn (ngoài phạm vi v1, CLAUDE.md).
+  // DEPRECATED (docs/DECISIONS.md #080) — cùng lý do 3 cột exam_type_* ở trên, thay bằng
+  // EncounterServiceItem.priceTypeCode/unitCode/quantity (nhiều dòng).
   priceTypeCode     String?       @map("price_type_code")
   examTypeUnit      String?       @map("exam_type_unit")
   serviceQuantity   Int           @default(1) @map("service_quantity")
@@ -1046,6 +1046,7 @@ model Encounter {
   department  Department   @relation(fields: [tenantId, departmentId], references: [tenantId, id])
   appointment Appointment? @relation(fields: [tenantId, appointmentId], references: [tenantId, id])
   vitalSigns  VitalSign[]
+  serviceItems  EncounterServiceItem[]
   diagnoses     Diagnosis[]
   clinicalNotes ClinicalNote[]
   prescriptions Prescription[]
@@ -1053,6 +1054,41 @@ model Encounter {
   @@unique([tenantId, id])
   @@unique([tenantId, encounterNo])
   @@map("encounter")
+}
+
+// "Chỉ định dịch vụ khám" (docs/DECISIONS.md #080) — danh sách nhiều dịch vụ/lượt khám, thay cho
+// 6 cột exam_type_*/price_type_code/... đã deprecated trên Encounter (xem comment ở model trên).
+// Sub-resource sở hữu bởi module `reception` (đúng khuôn VitalSign — KHÔNG có khái niệm ký/bất
+// biến như PrescriptionItem). Mọi field SNAPSHOT tại thời điểm thêm (copy từ reference_catalog/
+// exam_type_price lúc chọn trên web, không JOIN lại lúc đọc) — cùng tinh thần insuranceSnapshot.
+// priceTypeCode/unitCode/examTypePrice nullable: dịch vụ chưa được cấu hình đơn giá hiệu lực ở
+// exam_type_price vẫn thêm được (mục này chỉ lưu để hiển thị, KHÔNG tính viện phí — CLAUDE.md).
+model EncounterServiceItem {
+  id            String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String  @map("tenant_id") @db.Uuid
+  encounterId   String  @map("encounter_id") @db.Uuid
+  examTypeCode  String  @map("exam_type_code")
+  examTypeName  String  @map("exam_type_name")
+  priceTypeCode String? @map("price_type_code")
+  unitCode      String? @map("unit_code")
+  examTypePrice BigInt? @map("exam_type_price")
+  quantity      Int     @default(1)
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  // Composite FK (tenant_id, encounter_id) -> encounter(tenant_id, id): chống trỏ chéo tenant.
+  encounter Encounter @relation(fields: [tenantId, encounterId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@map("encounter_service_item")
 }
 
 // Sinh hiệu (Sprint 3, REC-02/03) — xem docs/ERD.md mục 3.4 (khối VITAL_SIGN), .claude/docs/

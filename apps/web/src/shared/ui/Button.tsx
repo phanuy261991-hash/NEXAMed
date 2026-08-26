@@ -9,12 +9,16 @@ import { CircleNotch } from '@phosphor-icons/react';
  * phải thứ tự trong chuỗi class ở HTML, nên override qua `className` bị chữ trắng trên nền
  * trắng (phát hiện thật khi kiểm bằng trình duyệt ở S2-08, nút "Huỷ" vô hình).
  */
-type ButtonVariant = 'primary' | 'secondary' | 'danger';
+type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'add';
 
 const VARIANT_CLASSNAME: Record<ButtonVariant, string> = {
   primary: 'bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800',
   secondary: 'bg-white text-slate-700 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 active:bg-slate-100',
   danger: 'bg-rose-600 text-white hover:bg-rose-700 active:bg-rose-800',
+  // "Thêm dòng vào danh sách" (khác "Lưu"/"Huỷ" — không phải hành động chính của form) — viền đứt
+  // nét, đúng khuôn đã dùng ở `ExamTypeFormModal.tsx`/`ReceptionIntakeForm.tsx` trước khi trích
+  // xuất vào đây (docs/DECISIONS.md #080).
+  add: 'border border-dashed border-blue-400 bg-blue-50 text-blue-600 hover:bg-blue-100',
 };
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {

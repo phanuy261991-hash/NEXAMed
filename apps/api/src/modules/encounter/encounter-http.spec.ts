@@ -88,9 +88,7 @@ describe('HTTP e2e — /api/v1/encounters', () => {
         patientId: patient.id,
         departmentId,
         checkedInAt: isoAt(hour, 0),
-        examTypeCode: 'KT',
-        examTypeName: 'Khám thường',
-        examTypePrice: 150_000,
+        services: [{ examTypeCode: 'KT', examTypeName: 'Khám thường', examTypePrice: 150_000, quantity: 1 }],
         receptionTypeCode: 'RT_NEW',
         examFormCode: 'EF_NORMAL',
       });
@@ -126,9 +124,7 @@ describe('HTTP e2e — /api/v1/encounters', () => {
         // "Tiếp nhận bệnh nhân" (mockup đã duyệt) thêm bắt buộc Loại tiếp nhận/Hình thức khám.
         // doctorId (docs/DECISIONS.md #064 — "Hàng đợi ảo") nay bắt buộc gửi tường minh.
         doctorId,
-        examTypeCode: 'KT',
-        examTypeName: 'Khám thường',
-        examTypePrice: 150_000,
+        services: [{ examTypeCode: 'KT', examTypeName: 'Khám thường', examTypePrice: 150_000, quantity: 1 }],
         receptionTypeCode: 'RT_NEW',
         examFormCode: 'EF_NORMAL',
       });
@@ -410,9 +406,7 @@ describe('HTTP e2e — /api/v1/encounters', () => {
             patientId,
             doctorId: doctorAUserId,
             checkedInAt: isoAt(hour, 0, 17),
-            examTypeCode: 'KT',
-            examTypeName: 'Khám thường',
-            examTypePrice: 150_000,
+            services: [{ examTypeCode: 'KT', examTypeName: 'Khám thường', examTypePrice: 150_000, quantity: 1 }],
             receptionTypeCode: 'RT_NEW',
             examFormCode: 'EF_NORMAL',
           });
@@ -455,9 +449,7 @@ describe('HTTP e2e — /api/v1/encounters', () => {
             patientId,
             doctorId: doctorAUserId,
             checkedInAt: isoAt(hour, 0, 17),
-            examTypeCode: 'KT',
-            examTypeName: 'Khám thường',
-            examTypePrice: 150_000,
+            services: [{ examTypeCode: 'KT', examTypeName: 'Khám thường', examTypePrice: 150_000, quantity: 1 }],
             receptionTypeCode: 'RT_NEW',
             examFormCode: 'EF_NORMAL',
           });

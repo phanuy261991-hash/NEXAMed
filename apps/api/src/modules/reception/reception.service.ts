@@ -17,6 +17,7 @@ import {
   calculateAgeYears,
   type CheckInRequest,
   type DataScope,
+  type EncounterServiceItemInput,
   type EncounterSummary,
   type ReceptionListItem,
   type ReceptionListResponse,
@@ -33,6 +34,19 @@ import { AppointmentRepository } from '../appointment/appointment.repository';
 import { EncounterRepository } from '../encounter/encounter.repository';
 import { toEncounterSummary } from '../encounter/encounter.mapper';
 import { VitalSignRepository } from './vital-sign.repository';
+import { EncounterServiceItemRepository, type CreateEncounterServiceItemData } from './encounter-service-item.repository';
+
+/** "Chỉ định dịch vụ khám" (docs/DECISIONS.md #080) — map từ shape request web sang shape repository (BigInt hoá `examTypePrice`, field thiếu → `null`). */
+function mapServiceItems(services: EncounterServiceItemInput[]): CreateEncounterServiceItemData[] {
+  return services.map((s) => ({
+    examTypeCode: s.examTypeCode,
+    examTypeName: s.examTypeName,
+    priceTypeCode: s.priceTypeCode ?? null,
+    unitCode: s.unitCode ?? null,
+    examTypePrice: s.examTypePrice !== undefined ? BigInt(s.examTypePrice) : null,
+    quantity: s.quantity,
+  }));
+}
 
 function isForeignKeyViolation(err: unknown): boolean {
   return err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2003';
@@ -84,6 +98,7 @@ export class ReceptionService {
     private readonly appointmentRepository: AppointmentRepository,
     private readonly encounterRepository: EncounterRepository,
     private readonly vitalSignRepository: VitalSignRepository,
+    private readonly encounterServiceItemRepository: EncounterServiceItemRepository,
     private readonly codeSequenceRepository: CodeSequenceRepository,
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
   ) {}
@@ -138,18 +153,13 @@ export class ReceptionService {
         appointmentVersion: dto.version,
         chiefComplaint: dto.chiefComplaint ?? appointment.reason,
         patientSourceCode: dto.patientSourceCode ?? null,
-        examTypeCode: dto.examTypeCode,
-        examTypeName: dto.examTypeName,
-        examTypePrice: dto.examTypePrice,
         receptionTypeCode: dto.receptionTypeCode,
         examFormCode: dto.examFormCode,
         isPriority: dto.isPriority,
         priorityReasonCode: dto.priorityReasonCode ?? null,
-        priceTypeCode: dto.priceTypeCode ?? null,
-        examTypeUnit: dto.examTypeUnit ?? null,
-        serviceQuantity: dto.serviceQuantity,
         meta,
       });
+      await this.encounterServiceItemRepository.createMany(tx, tenantId, actorId, created.id, mapServiceItems(dto.services));
       if (hasAnyVitalSign(dto)) {
         await this.createIntakeVitalSign(tx, tenantId, actorId, created.id, dto, meta);
       }
@@ -184,16 +194,10 @@ export class ReceptionService {
           // v1: chưa làm S2-04 (lưu thẻ BHYT) — luôn tự chi trả, xem docs/DECISIONS.md.
           insuranceSnapshot: { selfPay: true },
           patientSourceCode: dto.patientSourceCode ?? null,
-          examTypeCode: dto.examTypeCode,
-          examTypeName: dto.examTypeName,
-          examTypePrice: BigInt(dto.examTypePrice),
           receptionTypeCode: dto.receptionTypeCode,
           examFormCode: dto.examFormCode,
           isPriority: dto.isPriority,
           priorityReasonCode: dto.priorityReasonCode ?? null,
-          priceTypeCode: dto.priceTypeCode ?? null,
-          examTypeUnit: dto.examTypeUnit ?? null,
-          serviceQuantity: dto.serviceQuantity,
         });
       } catch (err) {
         if (isForeignKeyViolation(err)) {
@@ -202,6 +206,8 @@ export class ReceptionService {
         }
         throw err;
       }
+
+      await this.encounterServiceItemRepository.createMany(tx, tenantId, actorId, created.id, mapServiceItems(dto.services));
 
       await writeAuditLog(tx, tenantId, {
         actorId,
@@ -274,16 +280,10 @@ export class ReceptionService {
       appointmentVersion: number;
       chiefComplaint: string | null;
       patientSourceCode: string | null;
-      examTypeCode: string;
-      examTypeName: string;
-      examTypePrice: number;
       receptionTypeCode: string;
       examFormCode: string;
       isPriority: boolean;
       priorityReasonCode: string | null;
-      priceTypeCode: string | null;
-      examTypeUnit: string | null;
-      serviceQuantity: number;
       meta: RequestMeta;
     },
   ): Promise<Encounter> {
@@ -303,19 +303,14 @@ export class ReceptionService {
         // v1: chưa làm S2-04 (lưu thẻ BHYT) — luôn tự chi trả, xem docs/DECISIONS.md.
         insuranceSnapshot: { selfPay: true },
         patientSourceCode: params.patientSourceCode,
-        examTypeCode: params.examTypeCode,
-        examTypeName: params.examTypeName,
-        examTypePrice: BigInt(params.examTypePrice),
         // Trước đây bị BỎ SÓT (bug phát hiện thật lúc chạm lại hàm này cho #064) — checkIn() từ
-        // lịch hẹn có sẵn không lưu 7 trường "Thông tin tiếp nhận"/"Chỉ định dịch vụ khám" dù
-        // registerDirect() (Tiếp nhận trực tiếp) đã lưu đúng từ #052. Sửa cùng lúc.
+        // lịch hẹn có sẵn không lưu 4 trường "Thông tin tiếp nhận" dù registerDirect() (Tiếp nhận
+        // trực tiếp) đã lưu đúng từ #052. Sửa cùng lúc. "Chỉ định dịch vụ khám" tách riêng thành
+        // encounter_service_item, tạo ở caller sau khi có created.id (docs/DECISIONS.md #080).
         receptionTypeCode: params.receptionTypeCode,
         examFormCode: params.examFormCode,
         isPriority: params.isPriority,
         priorityReasonCode: params.priorityReasonCode,
-        priceTypeCode: params.priceTypeCode,
-        examTypeUnit: params.examTypeUnit,
-        serviceQuantity: params.serviceQuantity,
       });
     } catch (err) {
       if (isUniqueConstraintViolation(err)) {
