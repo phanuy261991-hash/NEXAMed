@@ -5,12 +5,17 @@ export interface CreateUserAccountData {
   username: string;
   passwordHash: string;
   fullName: string;
+  displayName: string;
   licenseNo: string | null;
+  licenseIssuedAt: Date | null;
+  licenseIssuedPlace: string | null;
   departmentId: string | null;
+  defaultRoomId: string | null;
   employeeCode: string | null;
   phone: string | null;
-  personalEmail: string | null;
-  companyEmail: string | null;
+  email: string | null;
+  dob: Date | null;
+  gender: string | null;
   academicTitleCode: string | null;
   positionCode: string | null;
   employmentStatusCode: string | null;
@@ -22,11 +27,16 @@ export interface CreateUserAccountData {
 
 export interface UpdateUserAccountData {
   fullName?: string;
+  displayName?: string;
   licenseNo?: string | null;
+  licenseIssuedAt?: Date | null;
+  licenseIssuedPlace?: string | null;
   departmentId?: string | null;
+  defaultRoomId?: string | null;
   phone?: string | null;
-  personalEmail?: string | null;
-  companyEmail?: string | null;
+  email?: string | null;
+  dob?: Date | null;
+  gender?: string | null;
   academicTitleCode?: string | null;
   positionCode?: string | null;
   employmentStatusCode?: string | null;
@@ -35,6 +45,8 @@ export interface UpdateUserAccountData {
   mustChangePassword?: boolean;
   isActive?: boolean;
   passwordHash?: string;
+  /** Chỉ `UserAccountService.uploadSignature()` gán field này — không đi qua `updateUserAccountRequestSchema` (đúng khuôn `patient.photoKey`). */
+  signatureKey?: string | null;
 }
 
 /**
@@ -51,12 +63,17 @@ export class UserAccountRepository {
         username: data.username,
         passwordHash: data.passwordHash,
         fullName: data.fullName,
+        displayName: data.displayName,
         licenseNo: data.licenseNo,
+        licenseIssuedAt: data.licenseIssuedAt,
+        licenseIssuedPlace: data.licenseIssuedPlace,
         departmentId: data.departmentId,
+        defaultRoomId: data.defaultRoomId,
         employeeCode: data.employeeCode,
         phone: data.phone,
-        personalEmail: data.personalEmail,
-        companyEmail: data.companyEmail,
+        email: data.email,
+        dob: data.dob,
+        gender: data.gender,
         academicTitleCode: data.academicTitleCode,
         positionCode: data.positionCode,
         employmentStatusCode: data.employmentStatusCode,

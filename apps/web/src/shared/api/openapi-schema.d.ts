@@ -4557,10 +4557,15 @@ export interface paths {
                                     employeeCode: string | null;
                                     username: string;
                                     fullName: string;
+                                    displayName: string | null;
                                     phone: string | null;
-                                    personalEmail: string | null;
-                                    companyEmail: string | null;
+                                    email: string | null;
+                                    dob: string | null;
+                                    /** @enum {string|null} */
+                                    gender: "male" | "female" | null;
                                     licenseNo: string | null;
+                                    licenseIssuedAt: string | null;
+                                    licenseIssuedPlace: string | null;
                                     academicTitleCode: string | null;
                                     positionCode: string | null;
                                     employmentStatusCode: string | null;
@@ -4569,6 +4574,9 @@ export interface paths {
                                     mustChangePassword: boolean;
                                     /** Format: uuid */
                                     departmentId: string | null;
+                                    /** Format: uuid */
+                                    defaultRoomId: string | null;
+                                    signatureUrl: string | null;
                                     isActive: boolean;
                                     roleNames: string[];
                                     version: number;
@@ -4626,12 +4634,18 @@ export interface paths {
                         username: string;
                         password: string;
                         fullName: string;
+                        displayName: string;
                         phone?: string;
                         /** Format: email */
-                        personalEmail?: string;
-                        /** Format: email */
-                        companyEmail?: string;
+                        email?: string;
+                        /** Format: date */
+                        dob?: string;
+                        /** @enum {string} */
+                        gender?: "male" | "female";
                         licenseNo?: string;
+                        /** Format: date */
+                        licenseIssuedAt?: string;
+                        licenseIssuedPlace?: string;
                         academicTitleCode?: string;
                         positionCode?: string;
                         employmentStatusCode?: string;
@@ -4642,6 +4656,8 @@ export interface paths {
                         mustChangePassword?: boolean;
                         /** Format: uuid */
                         departmentId?: string;
+                        /** Format: uuid */
+                        defaultRoomId?: string;
                         roleIds: string[];
                     };
                 };
@@ -4660,10 +4676,15 @@ export interface paths {
                                 employeeCode: string | null;
                                 username: string;
                                 fullName: string;
+                                displayName: string | null;
                                 phone: string | null;
-                                personalEmail: string | null;
-                                companyEmail: string | null;
+                                email: string | null;
+                                dob: string | null;
+                                /** @enum {string|null} */
+                                gender: "male" | "female" | null;
                                 licenseNo: string | null;
+                                licenseIssuedAt: string | null;
+                                licenseIssuedPlace: string | null;
                                 academicTitleCode: string | null;
                                 positionCode: string | null;
                                 employmentStatusCode: string | null;
@@ -4672,6 +4693,9 @@ export interface paths {
                                 mustChangePassword: boolean;
                                 /** Format: uuid */
                                 departmentId: string | null;
+                                /** Format: uuid */
+                                defaultRoomId: string | null;
+                                signatureUrl: string | null;
                                 isActive: boolean;
                                 roleNames: string[];
                                 version: number;
@@ -4780,10 +4804,15 @@ export interface paths {
                                 employeeCode: string | null;
                                 username: string;
                                 fullName: string;
+                                displayName: string | null;
                                 phone: string | null;
-                                personalEmail: string | null;
-                                companyEmail: string | null;
+                                email: string | null;
+                                dob: string | null;
+                                /** @enum {string|null} */
+                                gender: "male" | "female" | null;
                                 licenseNo: string | null;
+                                licenseIssuedAt: string | null;
+                                licenseIssuedPlace: string | null;
                                 academicTitleCode: string | null;
                                 positionCode: string | null;
                                 employmentStatusCode: string | null;
@@ -4792,6 +4821,9 @@ export interface paths {
                                 mustChangePassword: boolean;
                                 /** Format: uuid */
                                 departmentId: string | null;
+                                /** Format: uuid */
+                                defaultRoomId: string | null;
+                                signatureUrl: string | null;
                                 isActive: boolean;
                                 roleNames: string[];
                                 version: number;
@@ -4866,12 +4898,18 @@ export interface paths {
                 content: {
                     "application/json": {
                         fullName?: string;
+                        displayName?: string;
                         phone?: string | null;
                         /** Format: email */
-                        personalEmail?: string | null;
-                        /** Format: email */
-                        companyEmail?: string | null;
+                        email?: string | null;
+                        /** Format: date */
+                        dob?: string | null;
+                        /** @enum {string|null} */
+                        gender?: "male" | "female" | null;
                         licenseNo?: string | null;
+                        /** Format: date */
+                        licenseIssuedAt?: string | null;
+                        licenseIssuedPlace?: string | null;
                         academicTitleCode?: string | null;
                         positionCode?: string | null;
                         employmentStatusCode?: string | null;
@@ -4879,6 +4917,8 @@ export interface paths {
                         canSignMedicalRecord?: boolean;
                         /** Format: uuid */
                         departmentId?: string | null;
+                        /** Format: uuid */
+                        defaultRoomId?: string | null;
                         isActive?: boolean;
                         roleIds?: string[];
                         version: number;
@@ -4899,10 +4939,15 @@ export interface paths {
                                 employeeCode: string | null;
                                 username: string;
                                 fullName: string;
+                                displayName: string | null;
                                 phone: string | null;
-                                personalEmail: string | null;
-                                companyEmail: string | null;
+                                email: string | null;
+                                dob: string | null;
+                                /** @enum {string|null} */
+                                gender: "male" | "female" | null;
                                 licenseNo: string | null;
+                                licenseIssuedAt: string | null;
+                                licenseIssuedPlace: string | null;
                                 academicTitleCode: string | null;
                                 positionCode: string | null;
                                 employmentStatusCode: string | null;
@@ -4911,6 +4956,9 @@ export interface paths {
                                 mustChangePassword: boolean;
                                 /** Format: uuid */
                                 departmentId: string | null;
+                                /** Format: uuid */
+                                defaultRoomId: string | null;
+                                signatureUrl: string | null;
                                 isActive: boolean;
                                 roleNames: string[];
                                 version: number;
@@ -5040,10 +5088,15 @@ export interface paths {
                                 employeeCode: string | null;
                                 username: string;
                                 fullName: string;
+                                displayName: string | null;
                                 phone: string | null;
-                                personalEmail: string | null;
-                                companyEmail: string | null;
+                                email: string | null;
+                                dob: string | null;
+                                /** @enum {string|null} */
+                                gender: "male" | "female" | null;
                                 licenseNo: string | null;
+                                licenseIssuedAt: string | null;
+                                licenseIssuedPlace: string | null;
                                 academicTitleCode: string | null;
                                 positionCode: string | null;
                                 employmentStatusCode: string | null;
@@ -5052,6 +5105,9 @@ export interface paths {
                                 mustChangePassword: boolean;
                                 /** Format: uuid */
                                 departmentId: string | null;
+                                /** Format: uuid */
+                                defaultRoomId: string | null;
+                                signatureUrl: string | null;
                                 isActive: boolean;
                                 roleNames: string[];
                                 version: number;

@@ -140,7 +140,7 @@ describe('HTTP e2e — /api/v1/users', () => {
     const res = await request(app.getHttpServer())
       .post('/api/v1/users')
       .set(authed(clinicAdminToken))
-      .send({ username: `x-${randomUUID()}`, password: staffPassword, fullName: 'X', roleIds: [randomUUID()] });
+      .send({ username: `x-${randomUUID()}`, password: staffPassword, fullName: 'X', displayName: 'X', roleIds: [randomUUID()] });
 
     expect(res.status).toBe(422);
     expect(res.body.error.code).toBe('ROLE_INVALID_REFERENCE');
@@ -154,7 +154,13 @@ describe('HTTP e2e — /api/v1/users', () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/users')
         .set(authed(clinicAdminToken))
-        .send({ username, password: staffPassword, fullName: 'Nhân viên E2E', roleIds: [await roleId(fixture.tenantA.id, 'nurse')] });
+        .send({
+          username,
+          password: staffPassword,
+          fullName: 'Nhân viên E2E',
+          displayName: 'Nhân viên E2E',
+          roleIds: [await roleId(fixture.tenantA.id, 'nurse')],
+        });
 
       expect(res.status).toBe(200);
       expect(res.body.data.username).toBe(username);
@@ -172,7 +178,13 @@ describe('HTTP e2e — /api/v1/users', () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/users')
         .set(authed(clinicAdminToken))
-        .send({ username, password: staffPassword, fullName: 'Trùng tên', roleIds: [await roleId(fixture.tenantA.id, 'nurse')] });
+        .send({
+          username,
+          password: staffPassword,
+          fullName: 'Trùng tên',
+          displayName: 'Trùng tên',
+          roleIds: [await roleId(fixture.tenantA.id, 'nurse')],
+        });
 
       expect(res.status).toBe(409);
       expect(res.body.error.code).toBe('USER_ACCOUNT_DUPLICATE_USERNAME');

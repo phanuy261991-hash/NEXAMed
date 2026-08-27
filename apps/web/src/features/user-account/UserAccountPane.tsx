@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { MagnifyingGlass, PencilSimple, Plus } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, MagnifyingGlass, PencilSimple, Plus, Prohibit } from '@phosphor-icons/react';
 import type { UserAccountSummary } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { Button } from '../../shared/ui/Button';
@@ -43,6 +43,7 @@ export function UserAccountPane() {
   const [search, setSearch] = useState('');
   const [modal, setModal] = useState<{ mode: 'create' | 'edit'; item?: UserAccountSummary } | null>(null);
   const [resetPasswordTarget, setResetPasswordTarget] = useState<UserAccountSummary | null>(null);
+  const [deactivateTarget, setDeactivateTarget] = useState<UserAccountSummary | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const accountsQuery = useUserAccountsQuery();
@@ -100,9 +101,14 @@ export function UserAccountPane() {
           username: values.username.trim(),
           password: values.password,
           fullName: values.fullName.trim(),
+          displayName: values.displayName.trim(),
           phone: values.phone.trim() || undefined,
-          personalEmail: values.personalEmail.trim() || undefined,
-          companyEmail: values.companyEmail.trim() || undefined,
+          email: values.email.trim() || undefined,
+          dob: values.dob || undefined,
+          gender: values.gender || undefined,
+          licenseNo: values.licenseNo.trim() || undefined,
+          licenseIssuedAt: values.licenseIssuedAt || undefined,
+          licenseIssuedPlace: values.licenseIssuedPlace.trim() || undefined,
           academicTitleCode: values.academicTitleCode || undefined,
           positionCode: values.positionCode || undefined,
           employmentStatusCode: values.employmentStatusCode || undefined,
@@ -110,16 +116,17 @@ export function UserAccountPane() {
           canSignMedicalRecord: values.canSignMedicalRecord,
           mustChangePassword: values.mustChangePassword,
           departmentId: values.departmentId || undefined,
+          defaultRoomId: values.defaultRoomId || undefined,
           roleIds: values.roleIds,
         },
         { onSuccess: () => setModal(null), onError: (err) => setActionError(errorMessage(err)) },
       );
     } else if (modal?.item) {
-      // Trạng thái làm việc tự-vô-hiệu-hoá (checkbox "Đang hoạt động" đã bị khoá/disabled trong
+      // Trạng thái làm việc tự-vô-hiệu-hoá (toggle "Đang hoạt động" đã bị khoá/disabled trong
       // form, xem UserAccountFormDialog) — KHÔNG gửi `isActive` trong trường hợp này. Form React
       // luôn giữ `values.isActive` là boolean cụ thể (không có khái niệm "chưa đụng tới" như
       // field text rỗng), gửi thẳng `true` sẽ bị backend hiểu là client cố ép kích hoạt lại →
-      // 409 ACCOUNT_CANNOT_REACTIVATE_WHILE_RESIGNED dù người dùng không hề đụng vào checkbox đó
+      // 409 ACCOUNT_CANNOT_REACTIVATE_WHILE_RESIGNED dù người dùng không hề đụng vào toggle đó
       // (bug thật phát hiện lúc kiểm bằng Playwright, không phải suy đoán) — để trống cho backend
       // tự lặng lẽ ép `false` (`resolveAccountActiveState`, `user-account.service.ts`).
       const statusDeactivates = values.employmentStatusCode
@@ -130,15 +137,21 @@ export function UserAccountPane() {
           id: modal.item.id,
           body: {
             fullName: values.fullName.trim(),
+            displayName: values.displayName.trim(),
             phone: nullableText(values.phone),
-            personalEmail: nullableText(values.personalEmail),
-            companyEmail: nullableText(values.companyEmail),
+            email: nullableText(values.email),
+            dob: values.dob || null,
+            gender: values.gender || null,
+            licenseNo: nullableText(values.licenseNo),
+            licenseIssuedAt: values.licenseIssuedAt || null,
+            licenseIssuedPlace: nullableText(values.licenseIssuedPlace),
             academicTitleCode: nullableText(values.academicTitleCode),
             positionCode: nullableText(values.positionCode),
             employmentStatusCode: nullableText(values.employmentStatusCode),
             employmentTypeCode: nullableText(values.employmentTypeCode),
             canSignMedicalRecord: values.canSignMedicalRecord,
             departmentId: nullableText(values.departmentId),
+            defaultRoomId: nullableText(values.defaultRoomId),
             isActive: statusDeactivates ? undefined : values.isActive,
             roleIds: values.roleIds,
             version: modal.item.version,
@@ -147,6 +160,21 @@ export function UserAccountPane() {
         { onSuccess: () => setModal(null), onError: (err) => setActionError(errorMessage(err)) },
       );
     }
+  }
+
+  /** Nút "Vô hiệu hoá" nhanh ở danh sách (không cần mở form Sửa) — bắt xác nhận vì thu hồi phiên đang mở ngay lập tức. */
+  function handleDeactivate(item: UserAccountSummary) {
+    setActionError(null);
+    updateMutation.mutate(
+      { id: item.id, body: { isActive: false, version: item.version } },
+      { onSuccess: () => setDeactivateTarget(null), onError: (err) => setActionError(errorMessage(err)) },
+    );
+  }
+
+  /** "Kích hoạt lại" — trực tiếp không cần xác nhận (cùng cách `ReferenceCatalogPane` xử lý "Khôi phục"). Có thể 409 nếu Trạng thái làm việc vẫn tự-vô-hiệu-hoá. */
+  function handleReactivate(item: UserAccountSummary) {
+    setActionError(null);
+    updateMutation.mutate({ id: item.id, body: { isActive: true, version: item.version } }, { onError: (err) => setActionError(errorMessage(err)) });
   }
 
   return (
@@ -232,15 +260,39 @@ export function UserAccountPane() {
                       {item.isActive ? 'Đang hoạt động' : 'Vô hiệu hoá'}
                     </span>
                   </td>
-                  <td className="px-4 py-2 text-center">
-                    <button
-                      type="button"
-                      title="Sửa"
-                      onClick={() => setModal({ mode: 'edit', item })}
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                    >
-                      <PencilSimple size={15} weight="regular" aria-hidden="true" />
-                    </button>
+                  <td className="px-2 py-2">
+                    {/* ≤3 nút thao tác → xếp ngang 1 hàng (không cho wrap xuống dòng, tránh chồng
+                        lên nhau khi cột hẹp); >3 nút thì gộp vào 1 nút "..." mở menu thay vì thêm
+                        icon rời — chưa tới ngưỡng đó ở đây (2 nút). */}
+                    <div className="flex flex-nowrap items-center justify-center gap-1">
+                      <button
+                        type="button"
+                        title="Sửa"
+                        onClick={() => setModal({ mode: 'edit', item })}
+                        className="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                      >
+                        <PencilSimple size={15} weight="regular" aria-hidden="true" />
+                      </button>
+                      {item.isActive ? (
+                        <button
+                          type="button"
+                          title="Vô hiệu hoá"
+                          onClick={() => setDeactivateTarget(item)}
+                          className="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                        >
+                          <Prohibit size={15} weight="regular" aria-hidden="true" />
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          title="Kích hoạt lại"
+                          onClick={() => handleReactivate(item)}
+                          className="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-blue-50 hover:text-blue-600"
+                        >
+                          <ArrowCounterClockwise size={15} weight="regular" aria-hidden="true" />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -270,6 +322,25 @@ export function UserAccountPane() {
             setModal(null);
           }}
         />
+      )}
+
+      {deactivateTarget && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/45 p-4">
+          <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
+            <p className="text-sm font-semibold text-slate-900">Vô hiệu hoá tài khoản &quot;{deactivateTarget.fullName}&quot;?</p>
+            <p className="mt-1.5 text-xs text-slate-500">
+              Tài khoản sẽ không đăng nhập được nữa và mọi phiên đang mở bị đăng xuất ngay lập tức. Có thể kích hoạt lại sau.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button type="button" variant="secondary" onClick={() => setDeactivateTarget(null)}>
+                Huỷ
+              </Button>
+              <Button type="button" variant="danger" loading={updateMutation.isPending} onClick={() => handleDeactivate(deactivateTarget)}>
+                Vô hiệu hoá
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

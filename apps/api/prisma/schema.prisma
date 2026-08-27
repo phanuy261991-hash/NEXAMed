@@ -156,8 +156,11 @@ model Room {
   appointments       Appointment[]
   doctorRoomSessions DoctorRoomSession[]
   examStations       ExamStation[]
+  // Đích ngược của user_account.default_room_id (redesign 3-tab #082) — "Phòng khám mặc định".
+  usersWithDefaultRoom UserAccount[]
 
-  // Đích của composite FK (tenant_id, id) từ appointment (S2-05), doctor_room_session, exam_station.
+  // Đích của composite FK (tenant_id, id) từ appointment (S2-05), doctor_room_session, exam_station,
+  // user_account.default_room_id.
   @@unique([tenantId, id])
   @@map("room")
 }
@@ -285,23 +288,38 @@ model Department {
 }
 
 model UserAccount {
-  id           String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId     String  @map("tenant_id") @db.Uuid
-  departmentId String? @map("department_id") @db.Uuid
-  username     String
-  passwordHash String  @map("password_hash")
-  fullName     String  @map("full_name")
-  licenseNo    String? @map("license_no")
-  isActive     Boolean @default(true) @map("is_active")
+  id            String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String  @map("tenant_id") @db.Uuid
+  departmentId  String? @map("department_id") @db.Uuid
+  defaultRoomId String? @map("default_room_id") @db.Uuid
+  username      String
+  passwordHash  String  @map("password_hash")
+  fullName      String  @map("full_name")
+  // Tên hiển thị (redesign 3-tab, 2026-08-27, docs/DECISIONS.md #082) — dùng khi in đơn thuốc/HSBA
+  // và mọi nơi hiển thị tên tài khoản. Nullable ở DB (tài khoản cũ trước tính năng này để trống,
+  // không backfill), NHƯNG bắt buộc ở `createUserAccountRequestSchema` cho tài khoản tạo mới.
+  displayName   String? @map("display_name")
+  licenseNo     String? @map("license_no")
+  isActive      Boolean @default(true) @map("is_active")
 
   // Hồ sơ nhân sự (mở rộng ADM-01) — tất cả nullable, tài khoản cũ trước tính năng này để trống,
   // không backfill (chưa có tenant production). employeeCode sinh tự động qua code_sequence
   // (prefix "NV") CHỈ cho tài khoản tạo mới, không unique cứng ở DB (tài khoản cũ đều NULL, có
   // thể trùng NULL — Postgres không tính NULL trùng NULL trong UNIQUE thường).
-  employeeCode          String?  @map("employee_code")
+  employeeCode          String?   @map("employee_code")
   phone                 String?
-  personalEmail         String?  @map("personal_email")
-  companyEmail          String?  @map("company_email")
+  // Gộp personal_email/company_email cũ thành 1 cột (redesign 3-tab, #082) — đảo ngược thiết kế
+  // ADM-01 ban đầu, chốt qua AskUserQuestion (không backfill company_email cũ, chưa có tenant
+  // production).
+  email                 String?   @map("email")
+  dob                   DateTime? @map("dob") @db.Date
+  gender                String?   @map("gender")
+  licenseIssuedAt        DateTime? @map("license_issued_at") @db.Date
+  licenseIssuedPlace     String?   @map("license_issued_place")
+  // Ảnh chữ ký (PNG, redesign 3-tab #082) — khoá lưu trên StoragePort, cùng mẫu patient.photoKey/
+  // clinic.logoKey. Chỉ upload được SAU khi tài khoản đã tồn tại (endpoint riêng, cần `id` để đặt
+  // tên key) — đúng ràng buộc đã áp dụng cho patient.photoKey.
+  signatureKey           String?   @map("signature_key")
   // 4 cột dưới lưu `code` của reference_catalog (category tương ứng) — không FK cứng, cùng khuôn
   // patient.ethnicity/occupation (xem comment model ReferenceCatalog).
   academicTitleCode     String?  @map("academic_title_code")
@@ -333,7 +351,11 @@ model UserAccount {
   tenant     Tenant      @relation(fields: [tenantId], references: [id])
   // Composite FK (tenant_id, department_id) -> department(tenant_id, id): department_id
   // nullable nên FK chỉ áp khi có giá trị (Postgres MATCH SIMPLE — xem docs/DECISIONS.md).
-  department Department? @relation(fields: [tenantId, departmentId], references: [tenantId, id])
+  department  Department? @relation(fields: [tenantId, departmentId], references: [tenantId, id])
+  // "Phòng khám mặc định" (redesign 3-tab #082) — cùng mẫu department ở trên, FK chỉ áp khi có
+  // giá trị. Chỉ là gợi ý mặc định hiển thị, KHÔNG đổi cơ chế "Phòng làm việc hôm nay"
+  // (doctor_room_session, #054) — hai khái niệm tách biệt.
+  defaultRoom Room?       @relation(fields: [tenantId, defaultRoomId], references: [tenantId, id])
   userRoles  UserRole[]
   sessions   UserSession[]
   appointmentsAsDoctor Appointment[] @relation("AppointmentDoctor")

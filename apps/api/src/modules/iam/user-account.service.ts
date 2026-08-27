@@ -1,14 +1,20 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import * as argon2 from 'argon2';
+import { randomUUID } from 'node:crypto';
 import { Prisma, type UserAccount } from '@prisma/client';
 import {
   ConcurrentModificationError,
   formatDisplayCode,
+  InvalidSignatureError,
   REFERENCE_CATALOG_READER_PORT,
   resolveAccountActiveState,
   RoleInvalidReferenceError,
+  sniffImageExtension,
+  STORAGE_PORT,
   UserAccountDuplicateUsernameError,
   type ReferenceCatalogReaderPort,
+  type StoragePort,
 } from '@nexamed/core';
 import type {
   CreateUserAccountRequest,
@@ -16,11 +22,13 @@ import type {
   ListUserAccountsResponse,
   ResetUserPasswordRequest,
   UpdateUserAccountRequest,
+  UserAccountGender,
   UserAccountSummary,
 } from '@nexamed/shared';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { CodeSequenceRepository } from '../../infrastructure/persistence/code-sequence.repository';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
+import { signFileToken } from '../../infrastructure/storage/signed-url';
 import type { RequestMeta } from '../../common/request-meta';
 import { SessionRepository } from './session.repository';
 import { UserAccountAuthRepository } from './user-account-auth.repository';
@@ -33,6 +41,10 @@ function isUsernameConflict(err: unknown): boolean {
 
 const EMPLOYEE_CODE_PREFIX = 'NV';
 const EMPLOYMENT_STATUS_CATEGORY = 'EMPLOYMENT_STATUS';
+/** Chữ ký sống 15 phút — bằng access token TTL, cùng khuôn `PHOTO_URL_TTL_SECONDS` ở `patient.service.ts`. */
+const SIGNATURE_URL_TTL_SECONDS = 15 * 60;
+/** Cũng dùng ở `user-account.controller.ts` (giới hạn `FileInterceptor`) — ảnh chữ ký nhỏ hơn ảnh đại diện, giới hạn chặt hơn `MAX_PHOTO_SIZE_BYTES` (3MB). */
+export const MAX_SIGNATURE_SIZE_BYTES = 1 * 1024 * 1024;
 
 /**
  * CRUD tài khoản + gán vai trò (S2-07, ADM-01) — xem .claude/docs/coding-standards.md mục
@@ -43,6 +55,12 @@ const EMPLOYMENT_STATUS_CATEGORY = 'EMPLOYMENT_STATUS';
  * Mở rộng ADM-01 (hồ sơ nhân sự): `employeeCode` sinh qua `CodeSequenceRepository` đúng khuôn
  * `PATIENT_CODE_PREFIX` (`patient.service.ts`). Trạng thái làm việc tự-vô-hiệu-hoá tài khoản (ví
  * dụ "Nghỉ việc") đọc qua `ReferenceCatalogReaderPort` — xem `resolveAccountActiveState`.
+ *
+ * Redesign 3-tab (#082, 2026-08-27): thêm hồ sơ cá nhân/pháp lý (dob/gender/CCHN) + upload chữ ký
+ * (`uploadSignature`, đúng khuôn `PatientService.uploadPhoto` — CHỈ nhận PNG, khác patient nhận cả
+ * JPG) + "Phòng khám mặc định" (`defaultRoomId`, composite FK tới `room`, không validate tồn tại
+ * trước — cùng cách đã làm với `departmentId`, lỗi FK client tự gửi id lạ hiếm khi xảy ra qua UI
+ * thật vì Combobox chỉ load từ danh sách có sẵn).
  */
 @Injectable()
 export class UserAccountService {
@@ -53,7 +71,9 @@ export class UserAccountService {
     private readonly sessionRepository: SessionRepository,
     private readonly roleRepository: RoleRepository,
     private readonly codeSequenceRepository: CodeSequenceRepository,
+    private readonly configService: ConfigService,
     @Inject(REFERENCE_CATALOG_READER_PORT) private readonly referenceCatalogReader: ReferenceCatalogReaderPort,
+    @Inject(STORAGE_PORT) private readonly storage: StoragePort,
   ) {}
 
   /** `null` khi `employmentStatusCode` không truyền — không tra cứu, coi như không có trạng thái. */
@@ -105,12 +125,17 @@ export class UserAccountService {
           username: dto.username,
           passwordHash,
           fullName: dto.fullName,
+          displayName: dto.displayName,
           licenseNo: dto.licenseNo ?? null,
+          licenseIssuedAt: dto.licenseIssuedAt ? new Date(dto.licenseIssuedAt) : null,
+          licenseIssuedPlace: dto.licenseIssuedPlace ?? null,
           departmentId: dto.departmentId ?? null,
+          defaultRoomId: dto.defaultRoomId ?? null,
           employeeCode,
           phone: dto.phone ?? null,
-          personalEmail: dto.personalEmail ?? null,
-          companyEmail: dto.companyEmail ?? null,
+          email: dto.email ?? null,
+          dob: dto.dob ? new Date(dto.dob) : null,
+          gender: dto.gender ?? null,
           academicTitleCode: dto.academicTitleCode ?? null,
           positionCode: dto.positionCode ?? null,
           employmentStatusCode: dto.employmentStatusCode ?? null,
@@ -196,11 +221,16 @@ export class UserAccountService {
 
     const patch: UpdateUserAccountData = {};
     if (dto.fullName !== undefined) patch.fullName = dto.fullName;
+    if (dto.displayName !== undefined) patch.displayName = dto.displayName;
     if (dto.licenseNo !== undefined) patch.licenseNo = dto.licenseNo;
+    if (dto.licenseIssuedAt !== undefined) patch.licenseIssuedAt = dto.licenseIssuedAt ? new Date(dto.licenseIssuedAt) : null;
+    if (dto.licenseIssuedPlace !== undefined) patch.licenseIssuedPlace = dto.licenseIssuedPlace;
     if (dto.departmentId !== undefined) patch.departmentId = dto.departmentId;
+    if (dto.defaultRoomId !== undefined) patch.defaultRoomId = dto.defaultRoomId;
     if (dto.phone !== undefined) patch.phone = dto.phone;
-    if (dto.personalEmail !== undefined) patch.personalEmail = dto.personalEmail;
-    if (dto.companyEmail !== undefined) patch.companyEmail = dto.companyEmail;
+    if (dto.email !== undefined) patch.email = dto.email;
+    if (dto.dob !== undefined) patch.dob = dto.dob ? new Date(dto.dob) : null;
+    if (dto.gender !== undefined) patch.gender = dto.gender;
     if (dto.academicTitleCode !== undefined) patch.academicTitleCode = dto.academicTitleCode;
     if (dto.positionCode !== undefined) patch.positionCode = dto.positionCode;
     if (dto.employmentTypeCode !== undefined) patch.employmentTypeCode = dto.employmentTypeCode;
@@ -325,16 +355,92 @@ export class UserAccountService {
     });
   }
 
+  /**
+   * Upload/thay ảnh chữ ký (redesign 3-tab #082) — đúng khuôn `PatientService.uploadPhoto`, CHỈ
+   * nhận PNG (khác patient nhận cả JPG — chữ ký cần nền trong suốt). Chỉ gọi được sau khi tài
+   * khoản đã tồn tại (cần `id` để đặt tên key), cùng ràng buộc `patient.photoKey`.
+   */
+  async uploadSignature(
+    tenantId: string,
+    actorId: string,
+    id: string,
+    expectedVersion: number,
+    fileBuffer: Buffer,
+    meta: RequestMeta,
+  ): Promise<UserAccountSummary> {
+    if (fileBuffer.byteLength > MAX_SIGNATURE_SIZE_BYTES) {
+      throw new InvalidSignatureError('Ảnh chữ ký vượt quá 1MB, vui lòng chọn ảnh nhỏ hơn.');
+    }
+    const extension = sniffImageExtension(fileBuffer);
+    if (extension !== 'png') {
+      throw new InvalidSignatureError('Chỉ nhận ảnh chữ ký định dạng PNG.');
+    }
+
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const existing = await this.userAccountRepository.findById(tx, tenantId, id);
+      if (!existing) {
+        throw new NotFoundException();
+      }
+
+      const key = `user_account/${id}/signature/${randomUUID()}.png`;
+      await this.storage.save(tenantId, key, fileBuffer, 'image/png');
+
+      const updatedCount = await this.userAccountRepository.updateIfVersionMatches(tx, tenantId, id, expectedVersion, actorId, {
+        signatureKey: key,
+      });
+      if (updatedCount === 0) {
+        // Ảnh mới đã lưu nhưng cột chưa đổi — dọn ngay, không để rác không ai trỏ tới.
+        await this.storage.delete(tenantId, key);
+        throw new ConcurrentModificationError();
+      }
+
+      if (existing.signatureKey) {
+        await this.storage.delete(tenantId, existing.signatureKey);
+      }
+
+      await writeAuditLog(tx, tenantId, {
+        actorId,
+        action: 'user_account.signature_updated',
+        entityType: 'user_account',
+        entityId: id,
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
+
+      const updated = await this.userAccountRepository.findById(tx, tenantId, id);
+      if (!updated) {
+        throw new NotFoundException();
+      }
+      const roleNames = await this.userAccountAuthRepository.findRoleNamesForUser(tx, tenantId, id);
+      return this.toSummary(updated, roleNames);
+    });
+  }
+
+  private formatDate(date: Date): string {
+    return date.toISOString().slice(0, 10);
+  }
+
+  private signSignatureUrl(tenantId: string, key: string): string {
+    const encryptionKey = this.configService.getOrThrow<string>('ENCRYPTION_KEY');
+    const exp = Math.floor(Date.now() / 1000) + SIGNATURE_URL_TTL_SECONDS;
+    const token = signFileToken({ tenantId, key, exp }, encryptionKey);
+    return `/api/v1/files/${token}`;
+  }
+
   private toSummary(user: UserAccount, roleNames: readonly string[]): UserAccountSummary {
     return {
       id: user.id,
       employeeCode: user.employeeCode,
       username: user.username,
       fullName: user.fullName,
+      displayName: user.displayName,
       phone: user.phone,
-      personalEmail: user.personalEmail,
-      companyEmail: user.companyEmail,
+      email: user.email,
+      dob: user.dob ? this.formatDate(user.dob) : null,
+      gender: user.gender as UserAccountGender | null,
       licenseNo: user.licenseNo,
+      licenseIssuedAt: user.licenseIssuedAt ? this.formatDate(user.licenseIssuedAt) : null,
+      licenseIssuedPlace: user.licenseIssuedPlace,
       academicTitleCode: user.academicTitleCode,
       positionCode: user.positionCode,
       employmentStatusCode: user.employmentStatusCode,
@@ -342,6 +448,8 @@ export class UserAccountService {
       canSignMedicalRecord: user.canSignMedicalRecord,
       mustChangePassword: user.mustChangePassword,
       departmentId: user.departmentId,
+      defaultRoomId: user.defaultRoomId,
+      signatureUrl: user.signatureKey ? this.signSignatureUrl(user.tenantId, user.signatureKey) : null,
       isActive: user.isActive,
       roleNames: [...roleNames],
       version: user.version,

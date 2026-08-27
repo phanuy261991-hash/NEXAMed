@@ -8,21 +8,36 @@ import { z } from 'zod';
  * định (`USER_ROLES`), đã đổi cùng lúc ADM-07 hiện thực vì vai trò tuỳ biến không có tên cố định
  * để enum hoá.
  */
+/** Chỉ 2 giá trị (khác `patientGenderSchema` ở `patient.ts` có thêm `other`) — đúng yêu cầu form Thêm tài khoản (redesign 3-tab, 2026-08-27). */
+export const USER_ACCOUNT_GENDERS = ['male', 'female'] as const;
+export const userAccountGenderSchema = z.enum(USER_ACCOUNT_GENDERS);
+export type UserAccountGender = z.infer<typeof userAccountGenderSchema>;
+
 /**
- * Hồ sơ nhân sự (mở rộng ADM-01) — mọi trường dưới đều tuỳ chọn trừ `fullName`/`username`/
- * `password`/`roleIds` (đã bắt buộc từ trước). 4 trường `*Code` lưu `code` của `reference_catalog`
- * (category ACADEMIC_TITLE/STAFF_POSITION/EMPLOYMENT_STATUS/EMPLOYMENT_TYPE) — không FK cứng,
- * cùng khuôn `patient.ethnicity`/`occupation`. `mustChangePassword` bắt tài khoản đổi mật khẩu ở
- * lần đăng nhập kế tiếp (enforce thật, xem `changePasswordRequestSchema` ở auth.ts).
+ * Hồ sơ nhân sự (mở rộng ADM-01, redesign 3-tab 2026-08-27 — `docs/DECISIONS.md` #082) — mọi
+ * trường dưới đều tuỳ chọn trừ `fullName`/`username`/`password`/`displayName`/`roleIds`. 4 trường
+ * `*Code` lưu `code` của `reference_catalog` (category ACADEMIC_TITLE/STAFF_POSITION/
+ * EMPLOYMENT_STATUS/EMPLOYMENT_TYPE) — không FK cứng, cùng khuôn `patient.ethnicity`/`occupation`.
+ * `mustChangePassword` bắt tài khoản đổi mật khẩu ở lần đăng nhập kế tiếp (enforce thật, xem
+ * `changePasswordRequestSchema` ở auth.ts). `email` GỘP `personalEmail`/`companyEmail` cũ thành 1
+ * trường duy nhất (đảo ngược thiết kế ADM-01 ban đầu). `displayName` bắt buộc — dùng khi in đơn
+ * thuốc/HSBA và mọi nơi hiển thị tên tài khoản (web tự gợi ý ghép Học vị/Học hàm + Họ tên, người
+ * dùng chỉnh lại được, xem `UserAccountFormDialog.tsx`). `signatureKey` KHÔNG có ở đây — chữ ký
+ * chỉ upload được sau khi tài khoản đã tồn tại (cùng lý do `patient.photoKey`), xem
+ * `uploadSignatureFormSchema` ở `user-account.controller.ts` (`apps/api`).
  */
 export const createUserAccountRequestSchema = z.object({
   username: z.string().min(3).max(50),
   password: z.string().min(8),
   fullName: z.string().min(1),
+  displayName: z.string().min(1),
   phone: z.string().optional(),
-  personalEmail: z.string().email().optional(),
-  companyEmail: z.string().email().optional(),
+  email: z.string().email().optional(),
+  dob: z.string().date().optional(),
+  gender: userAccountGenderSchema.optional(),
   licenseNo: z.string().optional(),
+  licenseIssuedAt: z.string().date().optional(),
+  licenseIssuedPlace: z.string().optional(),
   academicTitleCode: z.string().optional(),
   positionCode: z.string().optional(),
   employmentStatusCode: z.string().optional(),
@@ -30,6 +45,7 @@ export const createUserAccountRequestSchema = z.object({
   canSignMedicalRecord: z.boolean().optional().default(false),
   mustChangePassword: z.boolean().optional().default(false),
   departmentId: z.string().uuid().optional(),
+  defaultRoomId: z.string().uuid().optional(),
   roleIds: z.array(z.string().uuid()).min(1),
 });
 export type CreateUserAccountRequest = z.infer<typeof createUserAccountRequestSchema>;
@@ -38,20 +54,26 @@ export type CreateUserAccountRequest = z.infer<typeof createUserAccountRequestSc
  * Sửa hồ sơ/vai trò/trạng thái tài khoản — bắt buộc kèm `version` (optimistic locking, cùng quy
  * ước `updatePatientRequestSchema`). Đổi mật khẩu KHÔNG nằm ở đây — xem
  * `resetUserPasswordRequestSchema` (tách riêng, đúng nguyên tắc "gộp mối lo khác nhau vào một
- * endpoint" nên tránh cho thao tác nhạy cảm).
+ * endpoint" nên tránh cho thao tác nhạy cảm). `displayName` KHÔNG nullable (trường bắt buộc, chỉ
+ * bỏ qua khi không đổi — client luôn gửi lại giá trị hiện tại nếu không sửa).
  */
 export const updateUserAccountRequestSchema = z.object({
   fullName: z.string().min(1).optional(),
+  displayName: z.string().min(1).optional(),
   phone: z.string().nullable().optional(),
-  personalEmail: z.string().email().nullable().optional(),
-  companyEmail: z.string().email().nullable().optional(),
+  email: z.string().email().nullable().optional(),
+  dob: z.string().date().nullable().optional(),
+  gender: userAccountGenderSchema.nullable().optional(),
   licenseNo: z.string().nullable().optional(),
+  licenseIssuedAt: z.string().date().nullable().optional(),
+  licenseIssuedPlace: z.string().nullable().optional(),
   academicTitleCode: z.string().nullable().optional(),
   positionCode: z.string().nullable().optional(),
   employmentStatusCode: z.string().nullable().optional(),
   employmentTypeCode: z.string().nullable().optional(),
   canSignMedicalRecord: z.boolean().optional(),
   departmentId: z.string().uuid().nullable().optional(),
+  defaultRoomId: z.string().uuid().nullable().optional(),
   isActive: z.boolean().optional(),
   roleIds: z.array(z.string().uuid()).min(1).optional(),
   version: z.number().int().positive(),
@@ -66,16 +88,24 @@ export const resetUserPasswordRequestSchema = z.object({
 });
 export type ResetUserPasswordRequest = z.infer<typeof resetUserPasswordRequestSchema>;
 
-/** Không bao giờ chứa `passwordHash` — chỉ tên vai trò để hiển thị, không phải ma trận quyền. */
+/**
+ * Không bao giờ chứa `passwordHash` — chỉ tên vai trò để hiển thị, không phải ma trận quyền.
+ * `signatureUrl` là URL đã ký (cùng cơ chế `patient.photoUrl`) — không bao giờ lộ `signatureKey`
+ * thô ra API.
+ */
 export const userAccountSummarySchema = z.object({
   id: z.string().uuid(),
   employeeCode: z.string().nullable(),
   username: z.string(),
   fullName: z.string(),
+  displayName: z.string().nullable(),
   phone: z.string().nullable(),
-  personalEmail: z.string().nullable(),
-  companyEmail: z.string().nullable(),
+  email: z.string().nullable(),
+  dob: z.string().nullable(),
+  gender: userAccountGenderSchema.nullable(),
   licenseNo: z.string().nullable(),
+  licenseIssuedAt: z.string().nullable(),
+  licenseIssuedPlace: z.string().nullable(),
   academicTitleCode: z.string().nullable(),
   positionCode: z.string().nullable(),
   employmentStatusCode: z.string().nullable(),
@@ -83,6 +113,8 @@ export const userAccountSummarySchema = z.object({
   canSignMedicalRecord: z.boolean(),
   mustChangePassword: z.boolean(),
   departmentId: z.string().uuid().nullable(),
+  defaultRoomId: z.string().uuid().nullable(),
+  signatureUrl: z.string().nullable(),
   isActive: z.boolean(),
   roleNames: z.array(z.string()),
   version: z.number().int(),

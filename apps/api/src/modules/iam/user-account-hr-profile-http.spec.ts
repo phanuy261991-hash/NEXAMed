@@ -124,9 +124,13 @@ describe('HTTP e2e — /api/v1/users (hồ sơ nhân sự + Trạng thái làm v
           username,
           password: staffPassword,
           fullName: 'Nhân sự đủ hồ sơ',
+          displayName: 'Nhân sự đủ hồ sơ',
           phone: '0900000000',
-          personalEmail: 'ca.nhan@example.com',
-          companyEmail: 'cong.ty@example.com',
+          email: 'nhansu@example.com',
+          dob: '1990-05-20',
+          gender: 'female',
+          licenseIssuedAt: '2015-01-10',
+          licenseIssuedPlace: 'Sở Y tế TP.HCM',
           canSignMedicalRecord: true,
           mustChangePassword: true,
           roleIds: [await roleId(fixture.tenantA.id, 'nurse')],
@@ -135,8 +139,11 @@ describe('HTTP e2e — /api/v1/users (hồ sơ nhân sự + Trạng thái làm v
       expect(res.status).toBe(200);
       expect(res.body.data.employeeCode).toMatch(/^NV\d{4}\d{6}$/);
       expect(res.body.data.phone).toBe('0900000000');
-      expect(res.body.data.personalEmail).toBe('ca.nhan@example.com');
-      expect(res.body.data.companyEmail).toBe('cong.ty@example.com');
+      expect(res.body.data.email).toBe('nhansu@example.com');
+      expect(res.body.data.dob).toBe('1990-05-20');
+      expect(res.body.data.gender).toBe('female');
+      expect(res.body.data.licenseIssuedAt).toBe('2015-01-10');
+      expect(res.body.data.licenseIssuedPlace).toBe('Sở Y tế TP.HCM');
       expect(res.body.data.canSignMedicalRecord).toBe(true);
       expect(res.body.data.mustChangePassword).toBe(true);
     });
@@ -150,6 +157,7 @@ describe('HTTP e2e — /api/v1/users (hồ sơ nhân sự + Trạng thái làm v
           username: `e2e-resigned-${randomUUID()}`,
           password: staffPassword,
           fullName: 'Nhân sự nghỉ việc từ đầu',
+          displayName: 'Nhân sự nghỉ việc từ đầu',
           employmentStatusCode: resignedCode,
           roleIds: [await roleId(fixture.tenantA.id, 'nurse')],
         });
@@ -163,7 +171,13 @@ describe('HTTP e2e — /api/v1/users (hồ sơ nhân sự + Trạng thái làm v
       const created = await request(app.getHttpServer())
         .post('/api/v1/users')
         .set(authed(clinicAdminToken))
-        .send({ username, password: staffPassword, fullName: 'Sắp nghỉ việc', roleIds: [await roleId(fixture.tenantA.id, 'nurse')] });
+        .send({
+          username,
+          password: staffPassword,
+          fullName: 'Sắp nghỉ việc',
+          displayName: 'Sắp nghỉ việc',
+          roleIds: [await roleId(fixture.tenantA.id, 'nurse')],
+        });
       const userId = created.body.data.id as string;
 
       const login = await request(app.getHttpServer())
@@ -195,6 +209,7 @@ describe('HTTP e2e — /api/v1/users (hồ sơ nhân sự + Trạng thái làm v
           username,
           password: staffPassword,
           fullName: 'Đã nghỉ việc',
+          displayName: 'Đã nghỉ việc',
           employmentStatusCode: resignedCode,
           roleIds: [await roleId(fixture.tenantA.id, 'nurse')],
         });
@@ -220,6 +235,7 @@ describe('HTTP e2e — /api/v1/users (hồ sơ nhân sự + Trạng thái làm v
           username,
           password: staffPassword,
           fullName: 'Đang làm việc',
+          displayName: 'Đang làm việc',
           employmentStatusCode: activeCode,
           roleIds: [await roleId(fixture.tenantA.id, 'nurse')],
         });
@@ -295,6 +311,108 @@ describe('HTTP e2e — /api/v1/users (hồ sơ nhân sự + Trạng thái làm v
         .set(authed(tenantBAdminToken))
         .send({ name: 'Không được phép', version: renamed.body.data.version });
       expect(crossTenant.status).toBe(404);
+    });
+  });
+
+  /** Redesign form "Thêm tài khoản" sang 3-tab (docs/DECISIONS.md #082) — chữ ký + Phòng khám mặc định + vô hiệu hoá nhanh. */
+  describe('redesign 3-tab (#082): chữ ký, Phòng khám mặc định, vô hiệu hoá/kích hoạt lại', () => {
+    const pngBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x01, 0x02, 0x03]);
+    const jpegBytes = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46]);
+
+    async function createRoom(name: string): Promise<{ id: string }> {
+      const res = await request(app.getHttpServer()).post('/api/v1/rooms').set(authed(clinicAdminToken)).send({ name });
+      expect(res.status).toBe(200);
+      return { id: res.body.data.id as string };
+    }
+
+    async function createAccount(overrides: Record<string, unknown> = {}) {
+      const username = `e2e-tab-${randomUUID()}`;
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/users')
+        .set(authed(clinicAdminToken))
+        .send({
+          username,
+          password: staffPassword,
+          fullName: 'Tài khoản 3-tab',
+          displayName: 'Tài khoản 3-tab',
+          roleIds: [await roleId(fixture.tenantA.id, 'nurse')],
+          ...overrides,
+        });
+      expect(res.status).toBe(200);
+      return res.body.data as { id: string; version: number; signatureUrl: string | null; defaultRoomId: string | null };
+    }
+
+    it('tạo tài khoản kèm defaultRoomId hợp lệ → lưu đúng, signatureUrl null khi chưa upload', async () => {
+      const room = await createRoom(`Phòng mặc định ${randomUUID().slice(0, 8)}`);
+      const created = await createAccount({ defaultRoomId: room.id });
+      expect(created.defaultRoomId).toBe(room.id);
+      expect(created.signatureUrl).toBeNull();
+    });
+
+    it('upload chữ ký PNG hợp lệ → 200, signatureUrl khác null, đọc được thật đúng content-type; sai định dạng (JPG) → 400 USER_ACCOUNT_INVALID_SIGNATURE', async () => {
+      const created = await createAccount();
+
+      const badFormat = await request(app.getHttpServer())
+        .post(`/api/v1/users/${created.id}/signature`)
+        .set(authed(clinicAdminToken))
+        .field('version', String(created.version))
+        .attach('file', jpegBytes, 'signature.jpg');
+      expect(badFormat.status).toBe(400);
+      expect(badFormat.body.error.code).toBe('USER_ACCOUNT_INVALID_SIGNATURE');
+
+      const ok = await request(app.getHttpServer())
+        .post(`/api/v1/users/${created.id}/signature`)
+        .set(authed(clinicAdminToken))
+        .field('version', String(created.version))
+        .attach('file', pngBytes, 'signature.png');
+      expect(ok.status).toBe(200);
+      expect(ok.body.data.signatureUrl).toBeTruthy();
+      expect(ok.body.data.version).toBe(created.version + 1);
+
+      const fileRes = await request(app.getHttpServer()).get(ok.body.data.signatureUrl);
+      expect(fileRes.status).toBe(200);
+      expect(fileRes.headers['content-type']).toContain('image/png');
+    });
+
+    it('cách ly tenant: tenant B upload chữ ký cho tài khoản tenant A → 404', async () => {
+      const created = await createAccount();
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/users/${created.id}/signature`)
+        .set(authed(tenantBAdminToken))
+        .field('version', String(created.version))
+        .attach('file', pngBytes, 'signature.png');
+      expect(res.status).toBe(404);
+    });
+
+    it('vô hiệu hoá nhanh (PATCH isActive:false không kèm field khác) → 200, THU HỒI phiên đang mở; kích hoạt lại → 200', async () => {
+      const username = `e2e-qd-${randomUUID()}`;
+      const created = await createAccount({ username });
+
+      const login = await request(app.getHttpServer())
+        .post('/api/v1/auth/login')
+        .send({ tenantId: fixture.tenantA.id, username, password: staffPassword });
+      expect(login.status).toBe(200);
+      const oldRefreshCookie = refreshCookieFrom(login);
+
+      // Đăng nhập thành công cũng tăng version của user_account (reset failedLoginCount) — đọc
+      // lại version hiện tại thay vì dùng `created.version`, cùng lý do đã ghi ở
+      // `user-account-http.spec.ts`.
+      const deactivated = await request(app.getHttpServer())
+        .patch(`/api/v1/users/${created.id}`)
+        .set(authed(clinicAdminToken))
+        .send({ isActive: false, version: await currentVersion(clinicAdminToken, created.id) });
+      expect(deactivated.status).toBe(200);
+      expect(deactivated.body.data.isActive).toBe(false);
+
+      const refreshAfter = await request(app.getHttpServer()).post('/api/v1/auth/refresh').set('Cookie', oldRefreshCookie);
+      expect(refreshAfter.status).toBe(401);
+
+      const reactivated = await request(app.getHttpServer())
+        .patch(`/api/v1/users/${created.id}`)
+        .set(authed(clinicAdminToken))
+        .send({ isActive: true, version: deactivated.body.data.version });
+      expect(reactivated.status).toBe(200);
+      expect(reactivated.body.data.isActive).toBe(true);
     });
   });
 });

@@ -21,3 +21,12 @@ export class AccountCannotReactivateWhileResignedError extends DomainError {
     super('Không thể kích hoạt tài khoản khi Trạng thái làm việc vẫn đang ở nhóm tự động vô hiệu hoá (ví dụ "Nghỉ việc"). Đổi Trạng thái làm việc trước.');
   }
 }
+
+/** Upload chữ ký (redesign 3-tab, #082) — sai magic byte/không phải PNG hoặc vượt kích thước cho phép. */
+export class InvalidSignatureError extends DomainError {
+  readonly code = 'USER_ACCOUNT_INVALID_SIGNATURE';
+
+  constructor(message: string) {
+    super(message);
+  }
+}

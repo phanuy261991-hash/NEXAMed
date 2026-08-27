@@ -11171,18 +11171,36 @@
                     "type": "string",
                     "minLength": 1
                   },
+                  "displayName": {
+                    "type": "string",
+                    "minLength": 1
+                  },
                   "phone": {
                     "type": "string"
                   },
-                  "personalEmail": {
+                  "email": {
                     "type": "string",
                     "format": "email"
                   },
-                  "companyEmail": {
+                  "dob": {
                     "type": "string",
-                    "format": "email"
+                    "format": "date"
+                  },
+                  "gender": {
+                    "type": "string",
+                    "enum": [
+                      "male",
+                      "female"
+                    ]
                   },
                   "licenseNo": {
+                    "type": "string"
+                  },
+                  "licenseIssuedAt": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "licenseIssuedPlace": {
                     "type": "string"
                   },
                   "academicTitleCode": {
@@ -11209,6 +11227,10 @@
                     "type": "string",
                     "format": "uuid"
                   },
+                  "defaultRoomId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
                   "roleIds": {
                     "type": "array",
                     "items": {
@@ -11222,6 +11244,7 @@
                   "username",
                   "password",
                   "fullName",
+                  "displayName",
                   "roleIds"
                 ]
               }
@@ -11255,25 +11278,53 @@
                         "fullName": {
                           "type": "string"
                         },
+                        "displayName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "phone": {
                           "type": [
                             "string",
                             "null"
                           ]
                         },
-                        "personalEmail": {
+                        "email": {
                           "type": [
                             "string",
                             "null"
                           ]
                         },
-                        "companyEmail": {
+                        "dob": {
                           "type": [
                             "string",
                             "null"
+                          ]
+                        },
+                        "gender": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "male",
+                            "female"
                           ]
                         },
                         "licenseNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "licenseIssuedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "licenseIssuedPlace": {
                           "type": [
                             "string",
                             "null"
@@ -11316,6 +11367,19 @@
                           ],
                           "format": "uuid"
                         },
+                        "defaultRoomId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "signatureUrl": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "isActive": {
                           "type": "boolean"
                         },
@@ -11334,10 +11398,14 @@
                         "employeeCode",
                         "username",
                         "fullName",
+                        "displayName",
                         "phone",
-                        "personalEmail",
-                        "companyEmail",
+                        "email",
+                        "dob",
+                        "gender",
                         "licenseNo",
+                        "licenseIssuedAt",
+                        "licenseIssuedPlace",
                         "academicTitleCode",
                         "positionCode",
                         "employmentStatusCode",
@@ -11345,6 +11413,8 @@
                         "canSignMedicalRecord",
                         "mustChangePassword",
                         "departmentId",
+                        "defaultRoomId",
+                        "signatureUrl",
                         "isActive",
                         "roleNames",
                         "version"
@@ -11553,25 +11623,53 @@
                               "fullName": {
                                 "type": "string"
                               },
+                              "displayName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
                               "phone": {
                                 "type": [
                                   "string",
                                   "null"
                                 ]
                               },
-                              "personalEmail": {
+                              "email": {
                                 "type": [
                                   "string",
                                   "null"
                                 ]
                               },
-                              "companyEmail": {
+                              "dob": {
                                 "type": [
                                   "string",
                                   "null"
+                                ]
+                              },
+                              "gender": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "male",
+                                  "female"
                                 ]
                               },
                               "licenseNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "licenseIssuedAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "licenseIssuedPlace": {
                                 "type": [
                                   "string",
                                   "null"
@@ -11614,6 +11712,19 @@
                                 ],
                                 "format": "uuid"
                               },
+                              "defaultRoomId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "signatureUrl": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
                               "isActive": {
                                 "type": "boolean"
                               },
@@ -11632,10 +11743,14 @@
                               "employeeCode",
                               "username",
                               "fullName",
+                              "displayName",
                               "phone",
-                              "personalEmail",
-                              "companyEmail",
+                              "email",
+                              "dob",
+                              "gender",
                               "licenseNo",
+                              "licenseIssuedAt",
+                              "licenseIssuedPlace",
                               "academicTitleCode",
                               "positionCode",
                               "employmentStatusCode",
@@ -11643,6 +11758,8 @@
                               "canSignMedicalRecord",
                               "mustChangePassword",
                               "departmentId",
+                              "defaultRoomId",
+                              "signatureUrl",
                               "isActive",
                               "roleNames",
                               "version"
@@ -11788,25 +11905,53 @@
                         "fullName": {
                           "type": "string"
                         },
+                        "displayName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "phone": {
                           "type": [
                             "string",
                             "null"
                           ]
                         },
-                        "personalEmail": {
+                        "email": {
                           "type": [
                             "string",
                             "null"
                           ]
                         },
-                        "companyEmail": {
+                        "dob": {
                           "type": [
                             "string",
                             "null"
+                          ]
+                        },
+                        "gender": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "male",
+                            "female"
                           ]
                         },
                         "licenseNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "licenseIssuedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "licenseIssuedPlace": {
                           "type": [
                             "string",
                             "null"
@@ -11849,6 +11994,19 @@
                           ],
                           "format": "uuid"
                         },
+                        "defaultRoomId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "signatureUrl": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "isActive": {
                           "type": "boolean"
                         },
@@ -11867,10 +12025,14 @@
                         "employeeCode",
                         "username",
                         "fullName",
+                        "displayName",
                         "phone",
-                        "personalEmail",
-                        "companyEmail",
+                        "email",
+                        "dob",
+                        "gender",
                         "licenseNo",
+                        "licenseIssuedAt",
+                        "licenseIssuedPlace",
                         "academicTitleCode",
                         "positionCode",
                         "employmentStatusCode",
@@ -11878,6 +12040,8 @@
                         "canSignMedicalRecord",
                         "mustChangePassword",
                         "departmentId",
+                        "defaultRoomId",
+                        "signatureUrl",
                         "isActive",
                         "roleNames",
                         "version"
@@ -12022,27 +12186,54 @@
                     "type": "string",
                     "minLength": 1
                   },
+                  "displayName": {
+                    "type": "string",
+                    "minLength": 1
+                  },
                   "phone": {
                     "type": [
                       "string",
                       "null"
                     ]
                   },
-                  "personalEmail": {
+                  "email": {
                     "type": [
                       "string",
                       "null"
                     ],
                     "format": "email"
                   },
-                  "companyEmail": {
+                  "dob": {
                     "type": [
                       "string",
                       "null"
                     ],
-                    "format": "email"
+                    "format": "date"
+                  },
+                  "gender": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "enum": [
+                      "male",
+                      "female"
+                    ]
                   },
                   "licenseNo": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "licenseIssuedAt": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "date"
+                  },
+                  "licenseIssuedPlace": {
                     "type": [
                       "string",
                       "null"
@@ -12076,6 +12267,13 @@
                     "type": "boolean"
                   },
                   "departmentId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "uuid"
+                  },
+                  "defaultRoomId": {
                     "type": [
                       "string",
                       "null"
@@ -12132,25 +12330,53 @@
                         "fullName": {
                           "type": "string"
                         },
+                        "displayName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "phone": {
                           "type": [
                             "string",
                             "null"
                           ]
                         },
-                        "personalEmail": {
+                        "email": {
                           "type": [
                             "string",
                             "null"
                           ]
                         },
-                        "companyEmail": {
+                        "dob": {
                           "type": [
                             "string",
                             "null"
+                          ]
+                        },
+                        "gender": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "male",
+                            "female"
                           ]
                         },
                         "licenseNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "licenseIssuedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "licenseIssuedPlace": {
                           "type": [
                             "string",
                             "null"
@@ -12193,6 +12419,19 @@
                           ],
                           "format": "uuid"
                         },
+                        "defaultRoomId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "signatureUrl": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "isActive": {
                           "type": "boolean"
                         },
@@ -12211,10 +12450,14 @@
                         "employeeCode",
                         "username",
                         "fullName",
+                        "displayName",
                         "phone",
-                        "personalEmail",
-                        "companyEmail",
+                        "email",
+                        "dob",
+                        "gender",
                         "licenseNo",
+                        "licenseIssuedAt",
+                        "licenseIssuedPlace",
                         "academicTitleCode",
                         "positionCode",
                         "employmentStatusCode",
@@ -12222,6 +12465,8 @@
                         "canSignMedicalRecord",
                         "mustChangePassword",
                         "departmentId",
+                        "defaultRoomId",
+                        "signatureUrl",
                         "isActive",
                         "roleNames",
                         "version"
@@ -12473,25 +12718,53 @@
                         "fullName": {
                           "type": "string"
                         },
+                        "displayName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "phone": {
                           "type": [
                             "string",
                             "null"
                           ]
                         },
-                        "personalEmail": {
+                        "email": {
                           "type": [
                             "string",
                             "null"
                           ]
                         },
-                        "companyEmail": {
+                        "dob": {
                           "type": [
                             "string",
                             "null"
+                          ]
+                        },
+                        "gender": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "male",
+                            "female"
                           ]
                         },
                         "licenseNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "licenseIssuedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "licenseIssuedPlace": {
                           "type": [
                             "string",
                             "null"
@@ -12534,6 +12807,19 @@
                           ],
                           "format": "uuid"
                         },
+                        "defaultRoomId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "signatureUrl": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "isActive": {
                           "type": "boolean"
                         },
@@ -12552,10 +12838,14 @@
                         "employeeCode",
                         "username",
                         "fullName",
+                        "displayName",
                         "phone",
-                        "personalEmail",
-                        "companyEmail",
+                        "email",
+                        "dob",
+                        "gender",
                         "licenseNo",
+                        "licenseIssuedAt",
+                        "licenseIssuedPlace",
                         "academicTitleCode",
                         "positionCode",
                         "employmentStatusCode",
@@ -12563,6 +12853,8 @@
                         "canSignMedicalRecord",
                         "mustChangePassword",
                         "departmentId",
+                        "defaultRoomId",
+                        "signatureUrl",
                         "isActive",
                         "roleNames",
                         "version"

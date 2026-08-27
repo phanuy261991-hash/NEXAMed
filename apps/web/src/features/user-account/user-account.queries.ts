@@ -2,7 +2,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CreateUserAccountRequest, ResetUserPasswordRequest, UpdateUserAccountRequest } from '@nexamed/shared';
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
-import { createUserAccount, listUserAccounts, resetUserPassword, updateUserAccount } from './user-account.api';
+import {
+  createUserAccount,
+  listUserAccounts,
+  resetUserPassword,
+  updateUserAccount,
+  uploadUserAccountSignature,
+} from './user-account.api';
 
 /**
  * Quy mô nhân sự một phòng khám 1-3 bác sĩ rất nhỏ (khác bệnh nhân, mục tiêu 50.000 hồ sơ) — lấy
@@ -46,6 +52,15 @@ export function useResetUserPasswordMutation() {
   const invalidate = useInvalidateUserAccounts();
   return useMutation({
     mutationFn: ({ id, body }: { id: string; body: ResetUserPasswordRequest }) => resetUserPassword(id, body),
+    onSuccess: invalidate,
+  });
+}
+
+/** Ảnh chữ ký (redesign 3-tab, #082) — cùng mẫu `useUploadPatientPhotoMutation`. */
+export function useUploadUserAccountSignatureMutation() {
+  const invalidate = useInvalidateUserAccounts();
+  return useMutation({
+    mutationFn: ({ id, file, version }: { id: string; file: File; version: number }) => uploadUserAccountSignature(id, file, version),
     onSuccess: invalidate,
   });
 }

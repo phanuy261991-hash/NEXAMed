@@ -2,6 +2,18 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-27 (2)
+
+Redesign form "Thêm tài khoản" sang 3 Tab (Thông tin chung / Chuyên môn và Pháp lý / Cấu hình và Vai trò) — chủ dự án yêu cầu trực tiếp, mockup Artifact tương tác duyệt nhiều vòng trước khi code (xem `docs/DECISIONS.md` #082):
+
+- **Gộp `personal_email`/`company_email` cũ thành 1 cột `email`** (migration `20260827100000_user_account_profile_tabs`, RENAME COLUMN giữ dữ liệu `personal_email`, xoá hẳn `company_email` — chốt qua `AskUserQuestion`).
+- **7 cột mới trên `user_account`**: `dob`, `gender` (2 giá trị, khác `patient.gender`), `license_issued_at`/`license_issued_place` (đi cùng `license_no` có sẵn nhưng UI cũ chưa hiển thị), `display_name` (bắt buộc lúc tạo mới, web tự gợi ý ghép Học vị/Học hàm + Họ tên), `signature_key` (ảnh chữ ký PNG, endpoint riêng `POST /users/:id/signature`, chỉ nhận PNG khác `patient.photoKey` nhận cả JPG), `default_room_id` (FK → `room`, "Phòng khám mặc định" thuần gợi ý hiển thị).
+- **`UserAccountFormDialog.tsx` viết lại toàn bộ** theo 3 tab, giữ mounted cả 3 panel (class `hidden`, không unmount). Giới tính đổi thành 2 checkbox tròn loại trừ lẫn nhau (CSS `.round-checkbox` mới). Trạng thái tài khoản đổi thành segmented toggle màu `brand-teal`. `UserAccountSignatureUpload.tsx` mới (đúng khuôn `PatientAvatarUpload.tsx`, khoá tới khi tài khoản đã tồn tại).
+- **`UserAccountPane.tsx`** thêm nút "Vô hiệu hoá" (kèm xác nhận, chủ dự án yêu cầu giữa lúc code) + "Kích hoạt lại" (trực tiếp) ở danh sách — không endpoint mới, chỉ `PATCH /users/:id`.
+- **4 bug thật phát hiện lúc kiểm bằng Playwright/Chrome thật, sửa cùng lúc**: (1) 2 icon Thao tác chồng lên nhau (cột hẹp, thiếu `flex-nowrap`) — chốt quy tắc ≤3 nút xếp ngang/>3 nút gộp menu "...". (2) Nút "Đặt lại mật khẩu" lệch khung so với ô cạnh bên — sửa bằng nhãn vô hình cùng chiều cao thay vì `items-end` suy diễn. (3) Nút "Lưu thay đổi" bị khoá vĩnh viễn khi Sửa tài khoản cũ vì SĐT/Tên hiển thị bắt buộc ở cả 2 chế độ — chỉ bắt buộc lúc Tạo mới, khớp đúng backend vốn đã coi optional khi PATCH. (4) "Tên hiển thị" không tự gợi ý cho tài khoản cũ — sửa điều kiện "đã chỉnh tay" + thêm `useEffect` tính gợi ý ngay lúc mount.
+- **Đã xác minh thật**: `user-account-http.spec.ts` (18/18) + `user-account-hr-profile-http.spec.ts` (+7 test mới, 13/13) — tổng 411/412 test `apps/api` pass (1 flake `icd10-http.spec.ts` đã biết, race seed `role_permission`, pass 100% chạy riêng). `pnpm -w typecheck/lint/build` sạch toàn workspace, chunk web không đổi (440.93 kB). Playwright qua Chrome thật (`dev.admin`) 2 vòng — vòng 1 luồng Tạo tài khoản trọn vẹn + Vô hiệu hoá/Kích hoạt lại, vòng 2 xác nhận 4 bug đã sửa đúng trên tài khoản demo cũ thiếu SĐT/Tên hiển thị.
+- Cập nhật `docs/ERD.md` (v1.30), `.claude/docs/data-model.md`, `docs/DECISIONS.md` (#082), `docs/CURRENT.md`.
+
 ## 2026-08-27
 
 "Chức danh"/"Học vị-Học hàm" — thêm Mô tả + Trạng thái ngay trong form, đúng khuôn "Đơn vị tính" (chủ dự án yêu cầu trực tiếp, xem `docs/DECISIONS.md` #081):

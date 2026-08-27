@@ -22,6 +22,7 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   // Sai định dạng/kích thước ảnh — lỗi input của client, không phải xung đột trạng thái.
   PATIENT_INVALID_PHOTO: HttpStatus.BAD_REQUEST,
   CLINIC_INVALID_LOGO: HttpStatus.BAD_REQUEST,
+  USER_ACCOUNT_INVALID_SIGNATURE: HttpStatus.BAD_REQUEST,
   CONCURRENT_MODIFICATION: HttpStatus.CONFLICT,
   APPOINTMENT_SLOT_CONFLICT: HttpStatus.CONFLICT,
   APPOINTMENT_NOT_CANCELLABLE: HttpStatus.CONFLICT,

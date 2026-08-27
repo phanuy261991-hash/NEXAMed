@@ -1,5 +1,21 @@
-import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Req,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import type { Request } from 'express';
+import { z } from 'zod';
 import {
   createUserAccountRequestSchema,
   listUserAccountsQuerySchema,
@@ -10,7 +26,10 @@ import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
 import { extractRequestMeta } from '../../common/request-meta';
-import { UserAccountService } from './user-account.service';
+import { MAX_SIGNATURE_SIZE_BYTES, UserAccountService } from './user-account.service';
+
+/** `version` đến từ multipart field dạng text (multer đặt vào `req.body` như mọi field không phải file), cùng khuôn `uploadPatientPhotoFormSchema`. */
+const uploadSignatureFormSchema = z.object({ version: z.coerce.number().int().positive() });
 
 /** S2-07, ADM-01 — module `iam` sở hữu tài khoản/vai trò (.claude/docs/architecture.md). */
 @Controller('users')
@@ -57,5 +76,28 @@ export class UserAccountController {
     const dto = resetUserPasswordRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
     return this.userAccountService.resetPassword(tenantId, userId, id, dto, extractRequestMeta(req));
+  }
+
+  /**
+   * Upload/thay ảnh chữ ký (redesign 3-tab, #082) — tái dùng quyền `user_account.manage`. Magic-
+   * byte/kích thước kiểm ở `UserAccountService.uploadSignature` (không tin `Content-Type` multer
+   * đọc từ header — .claude/docs/security-audit.md), cùng khuôn `PatientController.uploadPhoto`.
+   */
+  @Post(':id/signature')
+  @RequirePermission('user_account', 'manage', { entityIdParam: 'id' })
+  @HttpCode(200)
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_SIGNATURE_SIZE_BYTES } }))
+  async uploadSignature(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Body() body: unknown,
+    @Req() req: Request,
+  ) {
+    if (!file) {
+      throw new BadRequestException('Thiếu file ảnh chữ ký.');
+    }
+    const { version } = uploadSignatureFormSchema.parse(body);
+    const { userId, tenantId } = req.user!;
+    return this.userAccountService.uploadSignature(tenantId, userId, id, version, file.buffer, extractRequestMeta(req));
   }
 }
