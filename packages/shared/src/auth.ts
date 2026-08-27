@@ -27,6 +27,8 @@ export const currentUserSchema = z.object({
   id: z.string().uuid(),
   username: z.string(),
   fullName: z.string(),
+  /** Tên hiển thị (ADM-01 mở rộng #082) — null cho tài khoản cũ chưa từng cập nhật. */
+  displayName: z.string().nullable(),
   roles: z.array(z.string()),
   /**
    * Bắt buộc đổi mật khẩu ở lần đăng nhập kế tiếp (mở rộng ADM-01) — web đọc cờ này để chặn điều

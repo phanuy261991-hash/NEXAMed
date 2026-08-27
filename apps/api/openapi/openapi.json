@@ -87,6 +87,12 @@
                             "fullName": {
                               "type": "string"
                             },
+                            "displayName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
                             "roles": {
                               "type": "array",
                               "items": {
@@ -101,6 +107,7 @@
                             "id",
                             "username",
                             "fullName",
+                            "displayName",
                             "roles",
                             "mustChangePassword"
                           ]
@@ -371,6 +378,12 @@
                         "fullName": {
                           "type": "string"
                         },
+                        "displayName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "roles": {
                           "type": "array",
                           "items": {
@@ -385,6 +398,7 @@
                         "id",
                         "username",
                         "fullName",
+                        "displayName",
                         "roles",
                         "mustChangePassword"
                       ]
@@ -4198,6 +4212,12 @@
                               "fullName": {
                                 "type": "string"
                               },
+                              "displayName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
                               "currentRoomName": {
                                 "type": [
                                   "string",
@@ -4215,6 +4235,7 @@
                             "required": [
                               "id",
                               "fullName",
+                              "displayName",
                               "departmentId"
                             ]
                           }

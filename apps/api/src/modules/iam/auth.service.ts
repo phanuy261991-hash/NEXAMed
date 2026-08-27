@@ -26,6 +26,7 @@ export interface CurrentUserResult {
   id: string;
   username: string;
   fullName: string;
+  displayName: string | null;
   roles: string[];
   mustChangePassword: boolean;
 }
@@ -132,7 +133,14 @@ export class AuthService {
         result: {
           accessToken: accessToken.token,
           expiresIn: accessToken.expiresIn,
-          user: { id: user.id, username: user.username, fullName: user.fullName, roles, mustChangePassword: user.mustChangePassword },
+          user: {
+            id: user.id,
+            username: user.username,
+            fullName: user.fullName,
+            displayName: user.displayName,
+            roles,
+            mustChangePassword: user.mustChangePassword,
+          },
           refreshToken: issued.rawRefreshToken,
           refreshExpiresIn: issued.expiresIn,
         },
@@ -288,7 +296,14 @@ export class AuthService {
         throw new AccountDisabledError();
       }
       const roles = await this.userAccountAuthRepository.findRoleNamesForUser(tx, tenantId, userId);
-      return { id: user.id, username: user.username, fullName: user.fullName, roles, mustChangePassword: user.mustChangePassword };
+      return {
+        id: user.id,
+        username: user.username,
+        fullName: user.fullName,
+        displayName: user.displayName,
+        roles,
+        mustChangePassword: user.mustChangePassword,
+      };
     });
   }
 

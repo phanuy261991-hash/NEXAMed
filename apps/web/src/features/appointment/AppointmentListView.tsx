@@ -53,7 +53,7 @@ export function AppointmentListView({
   onOpenAppointment: (a: AppointmentSummary) => void;
 }) {
   const query = useAppointmentsListQuery(date);
-  const doctorNameById = useMemo(() => new Map(doctors.map((d) => [d.id, d.fullName])), [doctors]);
+  const doctorNameById = useMemo(() => new Map(doctors.map((d) => [d.id, d.displayName ?? d.fullName])), [doctors]);
 
   const appointments = query.data?.pages.flatMap((page) => page.items) ?? [];
   const hasNextPage = query.hasNextPage ?? false;

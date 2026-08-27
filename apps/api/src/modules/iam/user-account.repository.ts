@@ -131,7 +131,10 @@ export class UserAccountRepository {
    * hẹn). Sắp theo `fullName` để cột trên lưới ổn định thứ tự (khác `list()` sắp theo `id`, mục
    * đích khác nhau — đây phục vụ hiển thị, không phải phân trang).
    */
-  async listActiveDoctors(tx: Prisma.TransactionClient, tenantId: string): Promise<{ id: string; fullName: string; departmentId: string | null }[]> {
+  async listActiveDoctors(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+  ): Promise<{ id: string; fullName: string; displayName: string | null; departmentId: string | null }[]> {
     const rows = await tx.userAccount.findMany({
       where: {
         tenantId,
@@ -139,7 +142,7 @@ export class UserAccountRepository {
         isActive: true,
         userRoles: { some: { deletedAt: null, role: { tenantId, deletedAt: null, name: 'doctor' } } },
       },
-      select: { id: true, fullName: true, departmentId: true },
+      select: { id: true, fullName: true, displayName: true, departmentId: true },
       orderBy: { fullName: 'asc' },
     });
     return rows;
@@ -158,13 +161,15 @@ export class UserAccountRepository {
    * Tên hiển thị theo id, phục vụ `DoctorDirectoryPort.getUserFullNames` — không lọc `isActive`/
    * `deletedAt` (khác `findDepartmentId`) vì mục đích chỉ để hiển thị tên đã từng thao tác (ví dụ
    * "Người tiếp nhận"), kể cả tài khoản sau này bị vô hiệu hoá/xoá thì tên cũ vẫn nên hiện đúng.
+   * Ưu tiên `displayName` (#082) nếu tài khoản đã có, `fullName` là fallback cho tài khoản cũ.
    */
   async findFullNamesByIds(tx: Prisma.TransactionClient, tenantId: string, userIds: readonly string[]): Promise<{ id: string; fullName: string }[]> {
     if (userIds.length === 0) return [];
-    return tx.userAccount.findMany({
+    const rows = await tx.userAccount.findMany({
       where: { tenantId, id: { in: [...userIds] } },
-      select: { id: true, fullName: true },
+      select: { id: true, fullName: true, displayName: true },
     });
+    return rows.map((r) => ({ id: r.id, fullName: r.displayName ?? r.fullName }));
   }
 
   /**

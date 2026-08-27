@@ -8,7 +8,9 @@
  * tiếp `user_account`/`department` — đã lọc `tenant_id` theo RLS, không phải no-op.
  */
 export interface DoctorDirectoryPort {
-  listActiveDoctors(tenantId: string): Promise<{ id: string; fullName: string; departmentId: string | null }[]>;
+  listActiveDoctors(
+    tenantId: string,
+  ): Promise<{ id: string; fullName: string; displayName: string | null; departmentId: string | null }[]>;
   /**
    * "Hàng đợi ảo" (#064) — server tự suy `departmentId` từ hồ sơ bác sĩ khi Tiếp nhận/Check-in chọn
    * "đích danh bác sĩ", KHÔNG tin giá trị `departmentId` client tự gửi cho nhánh này (chỉ trường

@@ -56,7 +56,7 @@ export function AppointmentDetailPanel({
   // "Dời lịch": bác sĩ trống/bận theo NGÀY ĐANG DỜI TỚI — có thể khác ngày lịch hẹn gốc, tải riêng.
   const rescheduleDayQuery = useAppointmentsByDateQuery(rescheduleDate);
 
-  const doctorNameById = useMemo(() => new Map(doctors.map((d) => [d.id, d.fullName])), [doctors]);
+  const doctorNameById = useMemo(() => new Map(doctors.map((d) => [d.id, d.displayName ?? d.fullName])), [doctors]);
 
   useEffect(() => {
     if (!appointment) return;

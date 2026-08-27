@@ -225,6 +225,7 @@ describe('AuthService — login/refresh/logout', () => {
       id: userAId,
       username: usernameA,
       fullName: 'Bác sĩ A',
+      displayName: null,
       roles: ['doctor'],
       mustChangePassword: false,
     });

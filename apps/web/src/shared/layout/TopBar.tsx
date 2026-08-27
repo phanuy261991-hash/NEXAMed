@@ -95,7 +95,7 @@ export function TopBar() {
 
       <div className="relative flex items-center gap-3" ref={menuRef}>
         <span className="text-sm text-slate-500">
-          Xin chào, <strong className="font-semibold text-slate-900">{user.fullName}</strong>
+          Xin chào, <strong className="font-semibold text-slate-900">{user.displayName ?? user.fullName}</strong>
         </span>
         <button
           type="button"
@@ -105,7 +105,7 @@ export function TopBar() {
           aria-label="Menu tài khoản"
           className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-blue-50 text-xs font-bold text-blue-600 hover:bg-blue-100"
         >
-          {getInitials(user.fullName)}
+          {getInitials(user.displayName ?? user.fullName)}
         </button>
 
         {menuOpen && (

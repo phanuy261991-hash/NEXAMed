@@ -2,6 +2,17 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-27 (3)
+
+`displayName` (#082) được thêm cột + form nhập nhưng chưa từng được đọc ra ở bất kỳ nơi hiển thị tên tài khoản nào — chủ dự án phát hiện lúc dùng thử (TopBar vẫn hiện Họ tên), vá xuyên suốt toàn app (xem `docs/DECISIONS.md` #083):
+
+- **Nguyên nhân gốc**: #082 chỉ thêm cột `display_name` + form nhập, không có endpoint đọc nào (login, `GET /auth/me`, `GET /appointments/doctors`, resolve tên theo id) từng trả trường này — mọi nơi hiển thị tên tài khoản vẫn đọc thẳng `fullName` cũ.
+- **Schema đọc bổ sung `displayName` song song `fullName`**: `currentUserSchema` (`packages/shared/src/auth.ts`, dùng chung `loginResponseSchema.user`/`GET /auth/me`), `doctorOptionSchema` (`packages/shared/src/appointment.ts`, `GET /appointments/doctors`). `AuthService.login()`/`getCurrentUser()`, `UserAccountRepository.listActiveDoctors()`, `DoctorDirectoryPort` (`packages/core`) cập nhật theo.
+- **`UserAccountRepository.findFullNamesByIds()` COALESCE `displayName ?? fullName` ngay tại repository** (không đổi tên hàm/kiểu trả về, đúng nghĩa docstring sẵn có "tên hiển thị theo id") — tự vá "Người tiếp nhận" (Danh sách tiếp nhận) và tên bác sĩ ở panel Tiền sử & lịch sử khám mà không cần đổi frontend.
+- **8 nơi hiển thị tên bác sĩ/tài khoản ở `apps/web` áp `displayName ?? fullName` tại điểm tiêu thụ**: `TopBar.tsx` (chào + initials avatar), `ReceptionIntakeForm.tsx` ("Chuyển vào hàng đợi"), `ReceptionDoctorQueuePage.tsx` (header "Hàng đợi khám"), `PrescriptionPanel.tsx` (tên bác sĩ ký khi in đơn — đúng mục đích #082), `AppointmentQuickCreatePanel.tsx` ("Người tạo lịch"), `DoctorAvailabilityList.tsx`, `AppointmentGridView.tsx` (cột bác sĩ + `aria-label`), `AppointmentDetailPanel.tsx`/`AppointmentListView.tsx` (`doctorNameById`). Không đổi `UserAccountPane.tsx`/`UserAccountFormDialog.tsx` (màn CRUD hiển thị đúng 2 cột riêng biệt "Họ tên"/"Tên hiển thị", không phải "tên hiệu lực").
+- **Đã xác minh thật**: `auth.spec.ts` cập nhật 1 assertion (`displayName: null`). Tổng 422/422 test `apps/api` pass (1 file `icd10-http.spec.ts` dính flake race seed `role_permission` đã biết từ #082, pass 100% khi chạy riêng — không phải regression). `pnpm -w typecheck/lint/build` sạch toàn workspace, chunk web không đổi (440.96 kB). OpenAPI + web codegen đã sinh lại cho 2 schema đổi. Playwright qua Chrome thật: TopBar fallback đúng cả 2 chiều (`displayName=null` → hiện `fullName`; có `displayName` → hiện đúng, avatar initials đổi theo); tạo tài khoản bác sĩ test tạm (`displayName` khác hẳn `fullName`) + 1 bệnh nhân + 1 lượt khám `CHECKED_IN` gán đích danh bác sĩ đó, xác nhận "Hàng đợi khám" hiện đúng tên hiển thị ở cả header lẫn `GET /appointments/doctors` — toàn bộ dữ liệu test đã xoá cứng qua script trực tiếp DB (role migration có quyền `DELETE`) sau khi chủ dự án xác nhận xong.
+- Không migration/schema mới (`display_name` đã có sẵn từ #082). Cập nhật `docs/DECISIONS.md` (#083), `docs/CURRENT.md`.
+
 ## 2026-08-27 (2)
 
 Redesign form "Thêm tài khoản" sang 3 Tab (Thông tin chung / Chuyên môn và Pháp lý / Cấu hình và Vai trò) — chủ dự án yêu cầu trực tiếp, mockup Artifact tương tác duyệt nhiều vòng trước khi code (xem `docs/DECISIONS.md` #082):

@@ -69,7 +69,7 @@ export function PrescriptionPanel({
   patientDob: string;
   patientGender: string;
 }) {
-  const doctorName = useAuthStore((s) => s.user?.fullName) ?? '';
+  const doctorName = useAuthStore((s) => s.user?.displayName ?? s.user?.fullName) ?? '';
   const clinicQuery = useClinicProfileQuery();
 
   const saveMutation = useSavePrescriptionItemsMutation(encounterId);

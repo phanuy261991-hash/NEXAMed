@@ -267,7 +267,7 @@ export function ReceptionIntakeForm({
 
   const doctorCards = (doctorsQuery.data?.items ?? []).map((d) => ({
     id: d.id,
-    fullName: d.fullName,
+    fullName: d.displayName ?? d.fullName,
     departmentId: d.departmentId,
     departmentName: d.departmentId ? (departmentsQuery.data?.items.find((dep) => dep.id === d.departmentId)?.name ?? null) : null,
     roomName: d.currentRoomName ?? null,

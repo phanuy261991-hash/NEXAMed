@@ -140,6 +140,8 @@ export type EditAppointmentRequest = z.infer<typeof editAppointmentRequestSchema
 export const doctorOptionSchema = z.object({
   id: z.string().uuid(),
   fullName: z.string(),
+  /** Tên hiển thị (ADM-01 mở rộng #082) — null cho tài khoản cũ, web tự fallback về `fullName`. */
+  displayName: z.string().nullable(),
   currentRoomName: z.string().nullable().optional(),
   /** "Hàng đợi ảo" (#064) — Khoa của bác sĩ (`user_account.department_id`), `null` nếu chưa gán. Dùng để khu vực Điều phối ở Tiếp nhận không cần gọi thêm API. */
   departmentId: z.string().uuid().nullable(),

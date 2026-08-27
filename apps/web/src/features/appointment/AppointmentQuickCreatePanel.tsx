@@ -309,7 +309,7 @@ export function AppointmentQuickCreatePanel({
                 type="text"
                 readOnly
                 disabled
-                value={currentUser?.fullName ?? ''}
+                value={currentUser?.displayName ?? currentUser?.fullName ?? ''}
                 className={readOnlyInputClassName}
               />
             </div>

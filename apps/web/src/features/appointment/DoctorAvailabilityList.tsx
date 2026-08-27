@@ -39,7 +39,7 @@ export function DoctorAvailabilityList({
             }`}
           >
             <span className={`text-sm font-semibold ${active ? 'text-white' : 'text-slate-900'}`}>
-              {d.fullName}
+              {d.displayName ?? d.fullName}
               {/* "Phòng làm việc hôm nay" (docs/DECISIONS.md #054) — tự ẩn khi bác sĩ chưa chọn phòng hoặc tenant chưa dùng mô hình nhiều phòng. */}
               {d.currentRoomName && (
                 <span className={`ml-1.5 font-normal ${active ? 'text-white/80' : 'text-slate-500'}`}>· {d.currentRoomName}</span>

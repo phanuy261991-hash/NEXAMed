@@ -47,6 +47,7 @@ export interface paths {
                                     id: string;
                                     username: string;
                                     fullName: string;
+                                    displayName: string | null;
                                     roles: string[];
                                     mustChangePassword: boolean;
                                 };
@@ -235,6 +236,7 @@ export interface paths {
                                 id: string;
                                 username: string;
                                 fullName: string;
+                                displayName: string | null;
                                 roles: string[];
                                 mustChangePassword: boolean;
                             };
@@ -1692,6 +1694,7 @@ export interface paths {
                                     /** Format: uuid */
                                     id: string;
                                     fullName: string;
+                                    displayName: string | null;
                                     currentRoomName?: string | null;
                                     /** Format: uuid */
                                     departmentId: string | null;
