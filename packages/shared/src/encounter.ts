@@ -170,12 +170,28 @@ export type RegisterReceptionRequest = z.infer<typeof registerReceptionRequestSc
 export const startConsultationRequestSchema = z.object({ version: z.number().int() });
 export type StartConsultationRequest = z.infer<typeof startConsultationRequestSchema>;
 
-/** "Bỏ về" — CHECKED_IN → CANCELLED, bắt buộc lý do (.claude/docs/clinical-workflow.md). */
+/**
+ * "Khách bỏ về" — `CHECKED_IN → CANCELLED`, và từ #085 cả `IN_CONSULTATION → CANCELLED` (khách bỏ
+ * về giữa chừng sau khi bác sĩ đã nhận ca). Bắt buộc lý do (.claude/docs/clinical-workflow.md).
+ *
+ * Phiếu thu đi kèm được xử lý trong CÙNG transaction: `UNPAID → CANCELLED`; `PAID` giữ nguyên và
+ * chờ hoàn tiền riêng qua `POST /billing/invoices/:encounterId/refund` (quyền `invoice.refund`).
+ */
 export const cancelEncounterRequestSchema = z.object({
   cancelReason: z.string().min(1),
   version: z.number().int(),
 });
 export type CancelEncounterRequest = z.infer<typeof cancelEncounterRequestSchema>;
+
+/**
+ * #085 "Trả về hàng chờ" — `IN_CONSULTATION → CHECKED_IN`, đồng thời nhả `doctorId` về `null` để
+ * lượt khám quay lại hàng chờ chung Khoa cho bác sĩ khác nhận ("Hàng đợi ảo" #064). Dùng khi bác
+ * sĩ nhận nhầm ca của người khác hoặc bận đột xuất — KHÁC hẳn "Khách bỏ về" (khách vẫn đang chờ
+ * khám, không huỷ gì). Không có lý do bắt buộc: đây là thao tác điều phối nội bộ, không đóng ca,
+ * không đụng tiền — vết đã đủ ở `audit_log`.
+ */
+export const releaseEncounterRequestSchema = z.object({ version: z.number().int() });
+export type ReleaseEncounterRequest = z.infer<typeof releaseEncounterRequestSchema>;
 
 export const encounterSummarySchema = z.object({
   id: z.string().uuid(),

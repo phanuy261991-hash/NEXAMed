@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { MagnifyingGlass, PencilSimple, Plus } from '@phosphor-icons/react';
 import type { DrugSummary } from '@nexamed/shared';
 import { useAuthStore } from '../auth/auth.store';
@@ -6,7 +6,10 @@ import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { EmptyState } from '../../shared/ui/EmptyState';
+import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
+import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
+import { useRowSelection } from '../../shared/hooks/useRowSelection';
 import { useCreateDrugMutation, useDrugsQuery, useUpdateDrugMutation } from './drug.queries';
 
 /** Khớp `drug.manage` (chỉ clinic_admin) — .claude/docs/security-audit.md. */
@@ -40,7 +43,9 @@ export function DrugCatalogPane() {
   const createMutation = useCreateDrugMutation();
   const updateMutation = useUpdateDrugMutation();
 
-  const items = query.data?.items ?? [];
+  const items = useMemo(() => query.data?.items ?? [], [query.data]);
+  const itemIds = useMemo(() => items.map((d) => d.id), [items]);
+  const rowSelection = useRowSelection(itemIds);
 
   return (
     <div className="flex h-full flex-col">
@@ -91,6 +96,14 @@ export function DrugCatalogPane() {
             <table className="w-full border-collapse text-sm">
               <thead className="sticky top-0 z-10">
                 <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+                  <th className="w-10 px-4 py-2.5 text-center">
+                    <SelectionCheckbox
+                      checked={rowSelection.allLoadedSelected}
+                      indeterminate={rowSelection.someLoadedSelected}
+                      onChange={rowSelection.toggleAll}
+                      ariaLabel="Chọn tất cả"
+                    />
+                  </th>
                   <th className="w-24 px-4 py-2.5 text-center">Mã</th>
                   <th className="px-4 py-2.5 text-left">Tên thuốc</th>
                   <th className="px-4 py-2.5 text-left">Hoạt chất</th>
@@ -103,6 +116,9 @@ export function DrugCatalogPane() {
               <tbody>
                 {items.map((drug) => (
                   <tr key={drug.id} className={`border-b border-slate-200 last:border-0 ${drug.isActive ? '' : 'opacity-50'}`}>
+                    <td className="px-4 py-2 text-center">
+                      <SelectionCheckbox checked={rowSelection.isSelected(drug.id)} onChange={() => rowSelection.toggle(drug.id)} ariaLabel={`Chọn ${drug.name}`} />
+                    </td>
                     <td className="px-4 py-2 text-center text-sm font-bold text-slate-800">{drug.code}</td>
                     <td className="px-4 py-2 text-left font-medium text-slate-900">{drug.name}</td>
                     <td className="px-4 py-2 text-left font-medium text-slate-600">{drug.activeIngredient ?? '—'}</td>
@@ -136,6 +152,8 @@ export function DrugCatalogPane() {
           </div>
         </div>
       )}
+
+      <SelectionToolbar count={rowSelection.selectedCount} onClear={rowSelection.clear} />
 
       {modal && (
         <DrugFormModal

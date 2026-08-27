@@ -7,6 +7,9 @@ import { Combobox } from '../../shared/ui/Combobox';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { EmptyState } from '../../shared/ui/EmptyState';
+import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
+import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
+import { useRowSelection } from '../../shared/hooks/useRowSelection';
 import { useCreateDepartmentMutation, useDepartmentsQuery, useUpdateDepartmentMutation } from './department.queries';
 import { useCreateDepartmentTypeMutation, useDepartmentTypesQuery, useUpdateDepartmentTypeMutation } from './department-type.queries';
 
@@ -54,6 +57,9 @@ export function DepartmentPane() {
     if (!hasTypes || selectedTypeId === null) return all;
     return all.filter((d) => d.departmentTypeId === selectedTypeId);
   }, [query.data, hasTypes, selectedTypeId]);
+
+  const itemIds = useMemo(() => items.map((d) => d.id), [items]);
+  const rowSelection = useRowSelection(itemIds);
 
   return (
     <div className="flex h-full flex-col gap-3">
@@ -174,6 +180,14 @@ export function DepartmentPane() {
                 <table className="w-full border-collapse text-sm">
                   <thead className="sticky top-0 z-10">
                     <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+                      <th className="w-10 px-4 py-2.5 text-center">
+                        <SelectionCheckbox
+                          checked={rowSelection.allLoadedSelected}
+                          indeterminate={rowSelection.someLoadedSelected}
+                          onChange={rowSelection.toggleAll}
+                          ariaLabel="Chọn tất cả"
+                        />
+                      </th>
                       <th className="w-28 px-4 py-2.5 text-center">Mã</th>
                       <th className="px-4 py-2.5 text-left">Tên Khoa/Phòng</th>
                       {hasTypes && <th className="w-40 px-4 py-2.5 text-center">Phân loại</th>}
@@ -184,6 +198,13 @@ export function DepartmentPane() {
                   <tbody>
                     {items.map((department) => (
                       <tr key={department.id} className={`border-b border-slate-200 last:border-0 ${department.isActive ? '' : 'opacity-50'}`}>
+                        <td className="px-4 py-2 text-center">
+                          <SelectionCheckbox
+                            checked={rowSelection.isSelected(department.id)}
+                            onChange={() => rowSelection.toggle(department.id)}
+                            ariaLabel={`Chọn ${department.name}`}
+                          />
+                        </td>
                         {/* Mã không bấm được → đen, không xanh (.claude/docs/ui-guidelines.md mục 9 nhóm 2) — tự sinh, không sửa qua UI này. */}
                         <td className="px-4 py-2 text-center font-semibold text-slate-800">{department.code ?? '—'}</td>
                         <td className="px-4 py-2 text-left font-medium text-slate-900">{department.name}</td>
@@ -218,6 +239,8 @@ export function DepartmentPane() {
           )}
         </div>
       </div>
+
+      <SelectionToolbar count={rowSelection.selectedCount} onClear={rowSelection.clear} />
 
       {typeModal && (
         <DepartmentTypeFormModal

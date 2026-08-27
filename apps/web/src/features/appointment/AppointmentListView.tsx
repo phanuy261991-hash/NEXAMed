@@ -5,11 +5,15 @@ import type { AppointmentSummary, DoctorOption } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
+import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
+import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
 import { Skeleton } from '../../shared/ui/Skeleton';
+import { useRowSelection } from '../../shared/hooks/useRowSelection';
 import { APPOINTMENT_SOURCE_LABEL, APPOINTMENT_STATUS_META } from './appointment-status';
 import { useAppointmentsListQuery } from './appointment.queries';
 
-const GRID_COLUMNS = '130px 140px 1.4fr 1.1fr 110px 130px';
+/** Cột đầu (chọn dòng) để sẵn cho hành động hàng loạt sau này, chưa có hành động nào dùng tới. */
+const GRID_COLUMNS = '40px 130px 140px 1.4fr 1.1fr 110px 130px';
 const ROW_HEIGHT_PX = 52;
 
 /** Quy đổi UTC+7 cố định — cùng kỹ thuật `vietnam-day-range.ts`/`format-display-code.ts`. */
@@ -55,7 +59,9 @@ export function AppointmentListView({
   const query = useAppointmentsListQuery(date);
   const doctorNameById = useMemo(() => new Map(doctors.map((d) => [d.id, d.displayName ?? d.fullName])), [doctors]);
 
-  const appointments = query.data?.pages.flatMap((page) => page.items) ?? [];
+  const appointments = useMemo(() => query.data?.pages.flatMap((page) => page.items) ?? [], [query.data]);
+  const appointmentIds = useMemo(() => appointments.map((a) => a.id), [appointments]);
+  const rowSelection = useRowSelection(appointmentIds);
   const hasNextPage = query.hasNextPage ?? false;
   const rowCount = hasNextPage ? appointments.length + 1 : appointments.length;
 
@@ -107,6 +113,14 @@ export function AppointmentListView({
           style={{ gridTemplateColumns: GRID_COLUMNS }}
           className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-bold uppercase tracking-wide text-slate-800"
         >
+          <div role="columnheader" className="flex items-center justify-center py-2.5">
+            <SelectionCheckbox
+              checked={rowSelection.allLoadedSelected}
+              indeterminate={rowSelection.someLoadedSelected}
+              onChange={rowSelection.toggleAll}
+              ariaLabel="Chọn tất cả"
+            />
+          </div>
           <div role="columnheader" className="py-2.5 text-center">Mã đặt lịch</div>
           <div role="columnheader" className="py-2.5 text-center">Thời gian</div>
           <div role="columnheader" className="py-2.5 text-center">Họ tên</div>
@@ -147,6 +161,9 @@ export function AppointmentListView({
                   style={{ ...rowStyle, gridTemplateColumns: GRID_COLUMNS }}
                   className="grid items-center border-b border-slate-100 px-4 text-sm hover:bg-slate-50 focus:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500/40"
                 >
+                  <div role="cell" className="flex items-center justify-center">
+                    <SelectionCheckbox checked={rowSelection.isSelected(a.id)} onChange={() => rowSelection.toggle(a.id)} ariaLabel={`Chọn ${a.fullName}`} />
+                  </div>
                   <div
                     role="cell"
                     onDoubleClick={() => onOpenAppointment(a)}
@@ -172,6 +189,8 @@ export function AppointmentListView({
           </div>
         </div>
       </div>
+
+      <SelectionToolbar count={rowSelection.selectedCount} onClear={rowSelection.clear} />
     </div>
   );
 }

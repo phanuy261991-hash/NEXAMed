@@ -7858,6 +7858,294 @@
         }
       }
     },
+    "/api/v1/encounters/{id}/release": {
+      "post": {
+        "tags": [
+          "encounter"
+        ],
+        "summary": "#085 \"Trả về hàng chờ\" — IN_CONSULTATION → CHECKED_IN, nhả doctorId (bác sĩ nhận nhầm ca/bận đột xuất)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "encounterNo": {
+                          "type": "string"
+                        },
+                        "patientId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "doctorId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "departmentId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "appointmentId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "SCHEDULED",
+                            "CHECKED_IN",
+                            "IN_CONSULTATION",
+                            "COMPLETED",
+                            "CANCELLED",
+                            "NO_SHOW"
+                          ]
+                        },
+                        "specialty": {
+                          "type": "string"
+                        },
+                        "checkedInAt": {
+                          "type": "string"
+                        },
+                        "startedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "completedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "chiefComplaint": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "examTypeName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "receptionTypeCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "encounterNo",
+                        "patientId",
+                        "doctorId",
+                        "departmentId",
+                        "appointmentId",
+                        "status",
+                        "specialty",
+                        "checkedInAt",
+                        "startedAt",
+                        "completedAt",
+                        "chiefComplaint",
+                        "examTypeName",
+                        "receptionTypeCode",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền encounter.update",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Chuyển trạng thái không hợp lệ (ENCOUNTER_INVALID_TRANSITION) hoặc version không khớp (CONCURRENT_MODIFICATION)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/encounters/{id}/consultation": {
       "get": {
         "tags": [
@@ -11273,7 +11561,9 @@
                                 "type": "string",
                                 "enum": [
                                   "UNPAID",
-                                  "PAID"
+                                  "PAID",
+                                  "CANCELLED",
+                                  "REFUNDED"
                                 ]
                               },
                               "paymentMethod": {
@@ -11288,6 +11578,9 @@
                                   "string",
                                   "null"
                                 ]
+                              },
+                              "needsRefund": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -11304,7 +11597,8 @@
                               "totalAmount",
                               "status",
                               "paymentMethod",
-                              "paidAt"
+                              "paidAt",
+                              "needsRefund"
                             ]
                           }
                         },
@@ -11319,6 +11613,15 @@
                         },
                         "unpaidTotalAmount": {
                           "type": "integer"
+                        },
+                        "refundedCount": {
+                          "type": "integer"
+                        },
+                        "refundedTotalAmount": {
+                          "type": "integer"
+                        },
+                        "netTotalAmount": {
+                          "type": "integer"
                         }
                       },
                       "required": [
@@ -11326,7 +11629,10 @@
                         "paidCount",
                         "paidTotalAmount",
                         "unpaidCount",
-                        "unpaidTotalAmount"
+                        "unpaidTotalAmount",
+                        "refundedCount",
+                        "refundedTotalAmount",
+                        "netTotalAmount"
                       ]
                     },
                     "meta": {
@@ -11458,7 +11764,9 @@
                           "type": "string",
                           "enum": [
                             "UNPAID",
-                            "PAID"
+                            "PAID",
+                            "CANCELLED",
+                            "REFUNDED"
                           ]
                         },
                         "totalAmount": {
@@ -11532,6 +11840,9 @@
                         "departmentName": {
                           "type": "string"
                         },
+                        "encounterVersion": {
+                          "type": "integer"
+                        },
                         "printedAt": {
                           "type": [
                             "string",
@@ -11564,6 +11875,24 @@
                             "null"
                           ]
                         },
+                        "encounterCancelled": {
+                          "type": "boolean"
+                        },
+                        "needsRefund": {
+                          "type": "boolean"
+                        },
+                        "refundedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "refundReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -11581,11 +11910,16 @@
                         "patientCode",
                         "fullName",
                         "departmentName",
+                        "encounterVersion",
                         "printedAt",
                         "pendingPaymentMethod",
                         "pendingCashReceivedAmount",
                         "paymentMethod",
                         "paidAt",
+                        "encounterCancelled",
+                        "needsRefund",
+                        "refundedAt",
+                        "refundReason",
                         "version"
                       ]
                     },
@@ -11740,7 +12074,9 @@
                           "type": "string",
                           "enum": [
                             "UNPAID",
-                            "PAID"
+                            "PAID",
+                            "CANCELLED",
+                            "REFUNDED"
                           ]
                         },
                         "totalAmount": {
@@ -11814,6 +12150,9 @@
                         "departmentName": {
                           "type": "string"
                         },
+                        "encounterVersion": {
+                          "type": "integer"
+                        },
                         "printedAt": {
                           "type": [
                             "string",
@@ -11846,6 +12185,24 @@
                             "null"
                           ]
                         },
+                        "encounterCancelled": {
+                          "type": "boolean"
+                        },
+                        "needsRefund": {
+                          "type": "boolean"
+                        },
+                        "refundedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "refundReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -11863,11 +12220,16 @@
                         "patientCode",
                         "fullName",
                         "departmentName",
+                        "encounterVersion",
                         "printedAt",
                         "pendingPaymentMethod",
                         "pendingCashReceivedAmount",
                         "paymentMethod",
                         "paidAt",
+                        "encounterCancelled",
+                        "needsRefund",
+                        "refundedAt",
+                        "refundReason",
                         "version"
                       ]
                     },
@@ -12084,7 +12446,9 @@
                           "type": "string",
                           "enum": [
                             "UNPAID",
-                            "PAID"
+                            "PAID",
+                            "CANCELLED",
+                            "REFUNDED"
                           ]
                         },
                         "totalAmount": {
@@ -12158,6 +12522,9 @@
                         "departmentName": {
                           "type": "string"
                         },
+                        "encounterVersion": {
+                          "type": "integer"
+                        },
                         "printedAt": {
                           "type": [
                             "string",
@@ -12190,6 +12557,24 @@
                             "null"
                           ]
                         },
+                        "encounterCancelled": {
+                          "type": "boolean"
+                        },
+                        "needsRefund": {
+                          "type": "boolean"
+                        },
+                        "refundedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "refundReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -12207,11 +12592,16 @@
                         "patientCode",
                         "fullName",
                         "departmentName",
+                        "encounterVersion",
                         "printedAt",
                         "pendingPaymentMethod",
                         "pendingCashReceivedAmount",
                         "paymentMethod",
                         "paidAt",
+                        "encounterCancelled",
+                        "needsRefund",
+                        "refundedAt",
+                        "refundReason",
                         "version"
                       ]
                     },
@@ -12386,6 +12776,409 @@
         }
       }
     },
+    "/api/v1/billing/invoices/{encounterId}/refund": {
+      "post": {
+        "tags": [
+          "billing"
+        ],
+        "summary": "#085 \"Hoàn tiền\" cho lượt khám đã huỷ, quyền riêng invoice.refund — chỉ hoàn TOÀN PHẦN, bắt buộc lý do",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "encounterId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "version": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "reason",
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "encounterId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "invoiceNo": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "UNPAID",
+                            "PAID",
+                            "CANCELLED",
+                            "REFUNDED"
+                          ]
+                        },
+                        "totalAmount": {
+                          "type": "integer"
+                        },
+                        "lines": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "examTypeCode": {
+                                "type": "string"
+                              },
+                              "examTypeName": {
+                                "type": "string"
+                              },
+                              "priceTypeCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "unitCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "unitPrice": {
+                                "type": "integer"
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "lineTotal": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "examTypeCode",
+                              "examTypeName",
+                              "priceTypeCode",
+                              "unitCode",
+                              "unitPrice",
+                              "quantity",
+                              "lineTotal"
+                            ]
+                          }
+                        },
+                        "encounterNo": {
+                          "type": "string"
+                        },
+                        "checkedInAt": {
+                          "type": "string"
+                        },
+                        "patientId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "patientCode": {
+                          "type": "string"
+                        },
+                        "fullName": {
+                          "type": "string"
+                        },
+                        "departmentName": {
+                          "type": "string"
+                        },
+                        "encounterVersion": {
+                          "type": "integer"
+                        },
+                        "printedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "pendingPaymentMethod": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "minLength": 1
+                        },
+                        "pendingCashReceivedAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "paymentMethod": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "minLength": 1
+                        },
+                        "paidAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "encounterCancelled": {
+                          "type": "boolean"
+                        },
+                        "needsRefund": {
+                          "type": "boolean"
+                        },
+                        "refundedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "refundReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "encounterId",
+                        "invoiceNo",
+                        "status",
+                        "totalAmount",
+                        "lines",
+                        "encounterNo",
+                        "checkedInAt",
+                        "patientId",
+                        "patientCode",
+                        "fullName",
+                        "departmentName",
+                        "encounterVersion",
+                        "printedAt",
+                        "pendingPaymentMethod",
+                        "pendingCashReceivedAmount",
+                        "paymentMethod",
+                        "paidAt",
+                        "encounterCancelled",
+                        "needsRefund",
+                        "refundedAt",
+                        "refundReason",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Thiếu lý do",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền invoice.refund",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không có phiếu thu cho lượt khám này",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp (CONCURRENT_MODIFICATION) hoặc chưa đủ điều kiện hoàn tiền — phiếu chưa PAID hoặc lượt khám chưa huỷ (INVOICE_NOT_REFUNDABLE)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/billing/invoices/{encounterId}/save-draft": {
       "post": {
         "tags": [
@@ -12470,7 +13263,9 @@
                           "type": "string",
                           "enum": [
                             "UNPAID",
-                            "PAID"
+                            "PAID",
+                            "CANCELLED",
+                            "REFUNDED"
                           ]
                         },
                         "totalAmount": {
@@ -12544,6 +13339,9 @@
                         "departmentName": {
                           "type": "string"
                         },
+                        "encounterVersion": {
+                          "type": "integer"
+                        },
                         "printedAt": {
                           "type": [
                             "string",
@@ -12576,6 +13374,24 @@
                             "null"
                           ]
                         },
+                        "encounterCancelled": {
+                          "type": "boolean"
+                        },
+                        "needsRefund": {
+                          "type": "boolean"
+                        },
+                        "refundedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "refundReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -12593,11 +13409,16 @@
                         "patientCode",
                         "fullName",
                         "departmentName",
+                        "encounterVersion",
                         "printedAt",
                         "pendingPaymentMethod",
                         "pendingCashReceivedAmount",
                         "paymentMethod",
                         "paidAt",
+                        "encounterCancelled",
+                        "needsRefund",
+                        "refundedAt",
+                        "refundReason",
                         "version"
                       ]
                     },
@@ -12792,7 +13613,9 @@
                           "type": "string",
                           "enum": [
                             "UNPAID",
-                            "PAID"
+                            "PAID",
+                            "CANCELLED",
+                            "REFUNDED"
                           ]
                         },
                         "totalAmount": {
@@ -12866,6 +13689,9 @@
                         "departmentName": {
                           "type": "string"
                         },
+                        "encounterVersion": {
+                          "type": "integer"
+                        },
                         "printedAt": {
                           "type": [
                             "string",
@@ -12898,6 +13724,24 @@
                             "null"
                           ]
                         },
+                        "encounterCancelled": {
+                          "type": "boolean"
+                        },
+                        "needsRefund": {
+                          "type": "boolean"
+                        },
+                        "refundedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "refundReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -12915,11 +13759,16 @@
                         "patientCode",
                         "fullName",
                         "departmentName",
+                        "encounterVersion",
                         "printedAt",
                         "pendingPaymentMethod",
                         "pendingCashReceivedAmount",
                         "paymentMethod",
                         "paidAt",
+                        "encounterCancelled",
+                        "needsRefund",
+                        "refundedAt",
+                        "refundReason",
                         "version"
                       ]
                     },

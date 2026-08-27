@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  ArrowCounterClockwise,
   ArrowRight,
   ArrowsClockwise,
   CalendarCheck,
@@ -17,11 +18,13 @@ import {
   UsersThree,
   Warning,
   X,
+  XCircle,
   type Icon,
 } from '@phosphor-icons/react';
 import type { ReceptionListItem } from '@nexamed/shared';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
+import { CancelEncounterDialog } from '../../shared/ui/CancelEncounterDialog';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { ApiError } from '../../shared/api/client';
@@ -31,7 +34,7 @@ import { getVietnamTodayDateString } from '../appointment/schedule-grid.utils';
 import { useDepartmentOptionsQuery } from '../department/department.queries';
 import { RoomSessionDialog } from '../clinic/RoomSessionDialog';
 import { useMyRoomSessionQuery, useRoomOptionsQuery } from '../clinic/clinic.queries';
-import { useReceptionListQuery, useStartConsultationMutation } from './reception.queries';
+import { useReceptionListQuery, useReleaseEncounterMutation, useStartConsultationMutation } from './reception.queries';
 
 /** Ngưỡng "chờ lâu" — THUẦN hiển thị (không chặn, không lưu DB), cùng tinh thần
  * `APPOINTMENT_SPAM_CANCELLED_THRESHOLD` (docs/DECISIONS.md #032): ngưỡng cảnh báo mềm sống ở
@@ -81,12 +84,16 @@ export function ReceptionDoctorQueuePage() {
   const navigate = useNavigate();
   const [rowError, setRowError] = useState<string | null>(null);
   const [claimToast, setClaimToast] = useState<string | null>(null);
+  // #085 — "Khách bỏ về"/"Trả về hàng chờ" ngay trên thẻ, không cần chạy sang trang khác.
+  const [cancellingItem, setCancellingItem] = useState<ReceptionListItem | null>(null);
+  const [releasingItem, setReleasingItem] = useState<ReceptionListItem | null>(null);
+  const releaseMutation = useReleaseEncounterMutation();
   // Tìm trong từng cột riêng (yêu cầu chủ dự án 2026-08-21) — 3 ô độc lập, không ảnh hưởng lẫn nhau.
   const [waitingSearch, setWaitingSearch] = useState({ open: false, query: '' });
   const [examSearch, setExamSearch] = useState({ open: false, query: '' });
   const [doneSearch, setDoneSearch] = useState({ open: false, query: '' });
 
-  const listQuery = useReceptionListQuery(today, currentUser?.id, true);
+  const listQuery = useReceptionListQuery(today, currentUser?.id, true, true);
   const departmentsQuery = useDepartmentOptionsQuery();
   const doctorsQuery = useDoctorsQuery();
   const startConsultationMutation = useStartConsultationMutation();
@@ -235,7 +242,14 @@ export function ReceptionDoctorQueuePage() {
                   Bệnh nhân của tôi
                 </GroupLabel>
                 {mineFiltered.map((item) => (
-                  <WaitingCard key={item.encounterId} item={item} pool={false} loading={startConsultationMutation.isPending} onStart={() => void handleStart(item)} />
+                  <WaitingCard
+                    key={item.encounterId}
+                    item={item}
+                    pool={false}
+                    loading={startConsultationMutation.isPending}
+                    onStart={() => void handleStart(item)}
+                    onCancel={() => setCancellingItem(item)}
+                  />
                 ))}
               </div>
             )}
@@ -246,7 +260,14 @@ export function ReceptionDoctorQueuePage() {
                   Hàng chờ chung{poolDepartmentName ? ` · ${poolDepartmentName}` : ''}
                 </GroupLabel>
                 {poolFiltered.map((item) => (
-                  <WaitingCard key={item.encounterId} item={item} pool loading={startConsultationMutation.isPending} onStart={() => void handleStart(item)} />
+                  <WaitingCard
+                    key={item.encounterId}
+                    item={item}
+                    pool
+                    loading={startConsultationMutation.isPending}
+                    onStart={() => void handleStart(item)}
+                    onCancel={() => setCancellingItem(item)}
+                  />
                 ))}
               </div>
             )}
@@ -287,10 +308,36 @@ export function ReceptionDoctorQueuePage() {
                     {item.chiefComplaint}
                   </p>
                 )}
-                <Button type="button" variant="secondary" className="mt-2.5 w-full" onClick={() => navigate(`/encounters/${item.encounterId}`)}>
-                  Tiếp tục khám
-                  <ArrowRight size={13} weight="bold" aria-hidden="true" />
-                </Button>
+                {/* #085 — 1 dòng duy nhất: hành động chính (đầy chữ) + 2 nút phụ chỉ-icon, đúng
+                    mẫu WaitingCard bên trên (thu ngắn thẻ, tránh 2 dòng nút). "Trả về hàng chờ"
+                    (bác sĩ nhận nhầm ca/bận đột xuất) và "Hủy khám" (khách bỏ về giữa chừng) là 2
+                    tình huống khác nhau, xem docs/DECISIONS.md #085. */}
+                <div className="mt-2.5 flex gap-1.5">
+                  <Button type="button" variant="secondary" className="flex-1" onClick={() => navigate(`/encounters/${item.encounterId}`)}>
+                    Tiếp tục khám
+                    <ArrowRight size={13} weight="bold" aria-hidden="true" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="flex-shrink-0 px-2.5"
+                    onClick={() => setReleasingItem(item)}
+                    aria-label="Trả về hàng chờ"
+                    title="Trả về hàng chờ"
+                  >
+                    <ArrowCounterClockwise size={15} weight="bold" aria-hidden="true" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="danger"
+                    className="flex-shrink-0 px-2.5"
+                    onClick={() => setCancellingItem(item)}
+                    aria-label="Hủy khám"
+                    title="Hủy khám"
+                  >
+                    <XCircle size={15} weight="bold" aria-hidden="true" />
+                  </Button>
+                </div>
               </div>
             ))}
           </QueueColumn>
@@ -335,6 +382,67 @@ export function ReceptionDoctorQueuePage() {
           <p className="text-xs leading-relaxed text-slate-800">{claimToast}</p>
         </div>
       )}
+
+      {cancellingItem && (
+        <CancelEncounterDialog
+          encounterId={cancellingItem.encounterId}
+          version={cancellingItem.version}
+          onCancelled={() => setCancellingItem(null)}
+          onClose={() => setCancellingItem(null)}
+        />
+      )}
+
+      {releasingItem && (
+        <ReleaseEncounterConfirm
+          item={releasingItem}
+          loading={releaseMutation.isPending}
+          onConfirm={async () => {
+            try {
+              await releaseMutation.mutateAsync({ id: releasingItem.encounterId, body: { version: releasingItem.version } });
+              setReleasingItem(null);
+            } catch (err) {
+              setRowError(err instanceof ApiError ? err.message : 'Không trả về hàng chờ được, vui lòng thử lại.');
+              setReleasingItem(null);
+            }
+          }}
+          onClose={() => setReleasingItem(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * #085 "Trả về hàng chờ" — xác nhận đơn giản, KHÔNG cần lý do (khác "Khách bỏ về") vì đây là thao
+ * tác điều phối nội bộ, không đóng ca, không đụng tiền — vết đã đủ ở `audit_log`.
+ */
+function ReleaseEncounterConfirm({
+  item,
+  loading,
+  onConfirm,
+  onClose,
+}: {
+  item: ReceptionListItem;
+  loading: boolean;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4">
+      <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-2xl">
+        <h3 className="text-base font-bold text-slate-900">Trả về hàng chờ?</h3>
+        <p className="mt-1.5 text-sm text-slate-600">
+          <span className="font-semibold text-slate-800">{item.fullName}</span> sẽ quay lại hàng chờ chung Khoa cho bác sĩ khác nhận, không huỷ lượt khám.
+        </p>
+        <div className="mt-4 flex justify-end gap-2.5">
+          <Button type="button" variant="secondary" onClick={onClose}>
+            Đóng
+          </Button>
+          <Button type="button" loading={loading} onClick={onConfirm}>
+            Xác nhận
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -449,11 +557,13 @@ function WaitingCard({
   pool,
   loading,
   onStart,
+  onCancel,
 }: {
   item: ReceptionListItem;
   pool: boolean;
   loading: boolean;
   onStart: () => void;
+  onCancel: () => void;
 }) {
   const minutes = waitMinutes(item.checkedInAt);
   const overdue = minutes >= WAIT_WARNING_MINUTES;
@@ -509,10 +619,16 @@ function WaitingCard({
         </span>
         <span className={`font-extrabold ${overdue ? 'text-rose-600' : 'text-slate-700'}`}>Chờ {minutes} phút</span>
       </div>
-      <Button type="button" variant={pool ? 'secondary' : 'primary'} className="mt-2.5 w-full" loading={loading} onClick={onStart}>
-        {pool ? <PlusCircle size={13} weight="bold" aria-hidden="true" /> : <Play size={13} weight="bold" aria-hidden="true" />}
-        {pool ? 'Gọi khám — nhận ca này' : 'Bắt đầu khám'}
-      </Button>
+      <div className="mt-2.5 flex gap-1.5">
+        <Button type="button" variant={pool ? 'secondary' : 'primary'} className="flex-1" loading={loading} onClick={onStart}>
+          {pool ? <PlusCircle size={13} weight="bold" aria-hidden="true" /> : <Play size={13} weight="bold" aria-hidden="true" />}
+          {pool ? 'Gọi khám — nhận ca này' : 'Bắt đầu khám'}
+        </Button>
+        {/* #085 — khách bỏ về trước khi bác sĩ kịp gọi khám, khỏi phải chạy ra quầy nhờ lễ tân. */}
+        <Button type="button" variant="danger" className="flex-shrink-0 px-2.5" onClick={onCancel} aria-label="Hủy khám" title="Hủy khám">
+          <XCircle size={15} weight="bold" aria-hidden="true" />
+        </Button>
+      </div>
     </article>
   );
 }

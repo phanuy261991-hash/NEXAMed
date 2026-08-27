@@ -35,6 +35,7 @@ import type {
   PrescriptionItem as PrescriptionItemDto,
   PrescriptionResponse,
   PrescriptionWarning,
+  ReleaseEncounterRequest,
   SaveClinicalNoteRequest,
   SaveDiagnosesRequest,
   SaveDiagnosesResponse,
@@ -55,6 +56,7 @@ import { toEncounterSummary } from './encounter.mapper';
 import { PatientAllergenRepository } from '../patient/patient-allergen.repository';
 import { PatientConditionRepository } from '../patient/patient-condition.repository';
 import { PatientFamilyHistoryRepository } from '../patient/patient-family-history.repository';
+import { InvoiceRepository } from '../billing/invoice.repository';
 
 const TEMPERATURE_DECI_PER_CELSIUS = 10;
 /** Số lần khám cũ tối đa hiện trong panel tiền sử (ENC-01) — danh sách tóm tắt, không phân trang ở v1. */
@@ -77,6 +79,7 @@ export class EncounterService {
     private readonly patientAllergenRepository: PatientAllergenRepository,
     private readonly patientConditionRepository: PatientConditionRepository,
     private readonly patientFamilyHistoryRepository: PatientFamilyHistoryRepository,
+    private readonly invoiceRepository: InvoiceRepository,
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
     @Inject(SIGNATURE_PORT) private readonly signaturePort: SignaturePort,
     @Inject(CLINIC_CONFIG_READER_PORT) private readonly clinicConfigReader: ClinicConfigReaderPort,
@@ -172,7 +175,17 @@ export class EncounterService {
     });
   }
 
-  /** "Bỏ về" — bắt buộc lý do (.claude/docs/clinical-workflow.md). `data_scope=personal` cho bác sĩ, `global` cho lễ tân/clinic_admin. */
+  /**
+   * "Khách bỏ về" — bắt buộc lý do (.claude/docs/clinical-workflow.md). `data_scope=personal` cho
+   * bác sĩ (chỉ ca của chính mình), `global` cho lễ tân/clinic_admin (mọi ca). Từ #085 nhận cả
+   * `CHECKED_IN` lẫn `IN_CONSULTATION` làm trạng thái nguồn (khách bỏ về giữa chừng sau khi bác sĩ
+   * đã "Nhận ca"), xem `docs/DECISIONS.md` #085.
+   *
+   * Phiếu thu đi kèm xử lý trong CÙNG transaction (`InvoiceRepository` dùng chung, đúng "chia sẻ
+   * Repository giữa module trong 1 transaction" #042): `UNPAID → CANCELLED`; `PAID` GIỮ NGUYÊN chờ
+   * hoàn tiền riêng qua `POST /billing/invoices/:encounterId/refund` (quyền `invoice.refund`) —
+   * lễ tân không có quyền hoàn tiền vẫn huỷ được ca ngay, không kẹt chờ admin.
+   */
   async cancelEncounter(
     tenantId: string,
     actorId: string,
@@ -187,15 +200,78 @@ export class EncounterService {
         throw new NotFoundException();
       }
       assertEncounterTransition(existing.status, 'CANCELLED');
+      // v1 không có luồng nào tạo encounter ở SCHEDULED (luôn thẳng CHECKED_IN, xem comment đầu
+      // encounter-state-machine.ts) — `assertEncounterTransition` ở trên đã chặn mọi cạnh khác,
+      // narrow an toàn cho tham số `fromStatus` của repository.
+      const fromStatus = existing.status as 'CHECKED_IN' | 'IN_CONSULTATION';
 
-      const count = await this.encounterRepository.cancel(tx, tenantId, id, dto.version, dto.cancelReason, actorId);
+      const count = await this.encounterRepository.cancel(tx, tenantId, id, fromStatus, dto.version, dto.cancelReason, actorId);
+      if (count === 0) {
+        throw new ConcurrentModificationError();
+      }
+
+      // #085 — đóng phiếu thu CHƯA thu (nếu có). `count=0` là bình thường (phiếu đã PAID chờ hoàn
+      // tiền riêng, hoặc lượt khám không có phiếu thu), không phải lỗi.
+      const cancelledInvoiceCount = await this.invoiceRepository.cancelUnpaidForEncounter(tx, tenantId, id, actorId);
+
+      await writeAuditLog(tx, tenantId, {
+        actorId,
+        action: 'encounter.cancelled',
+        entityType: 'encounter',
+        entityId: id,
+        afterJson: { cancelReason: dto.cancelReason, fromStatus },
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
+      if (cancelledInvoiceCount > 0) {
+        await writeAuditLog(tx, tenantId, {
+          actorId,
+          action: 'invoice.cancelled',
+          entityType: 'encounter',
+          entityId: id,
+          afterJson: { status: 'CANCELLED', reason: 'encounter_cancelled' },
+          ip: meta.ip,
+          userAgent: meta.userAgent,
+        });
+      }
+
+      const updated = await this.encounterRepository.findById(tx, tenantId, id);
+      if (!updated) {
+        throw new NotFoundException();
+      }
+      return toEncounterSummary(updated);
+    });
+  }
+
+  /**
+   * #085 "Trả về hàng chờ" — `IN_CONSULTATION → CHECKED_IN`, nhả `doctorId` về `null` để lượt
+   * khám quay lại hàng chờ chung Khoa ("Hàng đợi ảo" #064) cho bác sĩ khác nhận. Dùng khi bác sĩ
+   * nhận nhầm ca của người khác hoặc bận đột xuất — KHÁC "Khách bỏ về": khách vẫn đang chờ khám,
+   * không đóng ca, không đụng phiếu thu. `data_scope=personal` chỉ nhả được ca của chính mình.
+   */
+  async releaseEncounter(
+    tenantId: string,
+    actorId: string,
+    dataScope: DataScope,
+    id: string,
+    dto: ReleaseEncounterRequest,
+    meta: RequestMeta,
+  ): Promise<EncounterSummary> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const existing = await this.encounterRepository.findById(tx, tenantId, id);
+      if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId)) {
+        throw new NotFoundException();
+      }
+      assertEncounterTransition(existing.status, 'CHECKED_IN');
+
+      const count = await this.encounterRepository.release(tx, tenantId, id, dto.version, actorId);
       if (count === 0) {
         throw new ConcurrentModificationError();
       }
 
       await writeAuditLog(tx, tenantId, {
         actorId,
-        action: 'encounter.cancelled',
+        action: 'encounter.released',
         entityType: 'encounter',
         entityId: id,
         ip: meta.ip,

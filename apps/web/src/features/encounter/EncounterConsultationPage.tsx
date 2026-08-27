@@ -19,6 +19,7 @@ import { useAutoCollapseSidebar } from '../../shared/layout/sidebar.context';
 import { ApiError } from '../../shared/api/client';
 import { Button } from '../../shared/ui/Button';
 import { BreakGlassDialog } from '../../shared/ui/BreakGlassDialog';
+import { CancelEncounterDialog } from '../../shared/ui/CancelEncounterDialog';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
@@ -140,6 +141,8 @@ export function EncounterConsultationPage() {
   const [breakGlassPrompt, setBreakGlassPrompt] = useState<{ entityType: string; retry: () => void } | null>(null);
   /** Popup "Hoàn tất khám thành công" — cùng khuôn popup "Tiếp nhận thành công" (`ReceptionIntakeForm.tsx`), theo yêu cầu chủ dự án. */
   const [showCompleteSuccessDialog, setShowCompleteSuccessDialog] = useState(false);
+  /** #085 "Khách bỏ về" ngay tại màn khám — bác sĩ đang khám dở phát hiện khách đã rời đi. */
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
 
   // Cho phép bấm Enter để xác nhận popup "Hoàn tất khám thành công" (yêu cầu chủ dự án) — nghe
   // phím ở `window` thay vì chỉ `autoFocus` nút, vì Enter cần hoạt động dù focus đang ở đâu (ví dụ
@@ -896,6 +899,12 @@ export function EncounterConsultationPage() {
           {/* Đang khám (chưa hoàn tất) — luồng gốc, không đổi. */}
           {!isCompleted && (
             <>
+              {/* #085 — khách bỏ về giữa chừng, đóng ca hẳn ngay tại đây thay vì phải chạy ra
+                  quầy/Hàng đợi khám. COMPLETED là trạng thái cuối nên nút này không hiện khi đã
+                  hoàn tất (state machine không cho phép huỷ ca đã xong). */}
+              <Button type="button" variant="danger" onClick={() => setCancelDialogOpen(true)}>
+                Hủy khám
+              </Button>
               <Button
                 type="button"
                 variant="secondary"
@@ -967,6 +976,15 @@ export function EncounterConsultationPage() {
             </Button>
           </div>
         </div>
+      )}
+
+      {cancelDialogOpen && query.data && (
+        <CancelEncounterDialog
+          encounterId={encounterId}
+          version={query.data.encounter.version}
+          onCancelled={() => navigate('/reception/doctor-queue')}
+          onClose={() => setCancelDialogOpen(false)}
+        />
       )}
     </div>
   );

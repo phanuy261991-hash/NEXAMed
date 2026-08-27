@@ -6,20 +6,24 @@ import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
+import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
+import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
+import { useRowSelection } from '../../shared/hooks/useRowSelection';
 import { usePatientsQuery } from './patient.queries';
 import { computeBirthYear, formatAddressLine } from './patient-form.utils';
 import { useAllWardsQuery, useProvincesQuery } from '../geo/geo.queries';
 
 const GENDER_LABEL: Record<string, string> = { male: 'Nam', female: 'Nữ', other: 'Khác' };
 /**
- * Thứ tự cột (docs/DECISIONS.md #034): Mã BN, Họ tên, CCCD, Giới tính, Năm sinh, Điện thoại, Địa
- * chỉ. Hai cột dài (Họ tên, Địa chỉ) CÙNG chia phần rộng còn lại (`minmax(0,*fr)`) thay vì một cột
- * `1fr` duy nhất nuốt hết chiều rộng — đó là nguyên nhân khoảng cách quá rộng ở bản trước (màn
- * hình đã bỏ `max-w`, 1fr một mình kéo giãn ra toàn bộ phần dư).
+ * Thứ tự cột (docs/DECISIONS.md #034): chọn dòng, Mã BN, Họ tên, CCCD, Giới tính, Năm sinh, Điện
+ * thoại, Địa chỉ. Hai cột dài (Họ tên, Địa chỉ) CÙNG chia phần rộng còn lại (`minmax(0,*fr)`) thay
+ * vì một cột `1fr` duy nhất nuốt hết chiều rộng — đó là nguyên nhân khoảng cách quá rộng ở bản
+ * trước (màn hình đã bỏ `max-w`, 1fr một mình kéo giãn ra toàn bộ phần dư). Cột đầu (chọn dòng) để
+ * sẵn cho hành động hàng loạt sau này, chưa có hành động nào dùng tới.
  */
-const GRID_COLUMNS = '130px minmax(0,1.3fr) 120px 90px 90px 130px minmax(0,1.6fr)';
+const GRID_COLUMNS = '40px 130px minmax(0,1.3fr) 120px 90px 90px 130px minmax(0,1.6fr)';
 const ROW_HEIGHT_PX = 44;
 
 /**
@@ -56,7 +60,9 @@ export function PatientListPage() {
     [wardsQuery.data],
   );
 
-  const patients = query.data?.pages.flatMap((page) => page.items) ?? [];
+  const patients = useMemo(() => query.data?.pages.flatMap((page) => page.items) ?? [], [query.data]);
+  const patientIds = useMemo(() => patients.map((p) => p.id), [patients]);
+  const rowSelection = useRowSelection(patientIds);
   const hasNextPage = query.hasNextPage ?? false;
   const rowCount = hasNextPage ? patients.length + 1 : patients.length;
 
@@ -149,6 +155,14 @@ export function PatientListPage() {
               style={{ gridTemplateColumns: GRID_COLUMNS }}
               className="grid flex-shrink-0 gap-x-4 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-bold uppercase tracking-wide text-slate-800"
             >
+              <div role="columnheader" className="flex items-center justify-center py-2.5">
+                <SelectionCheckbox
+                  checked={rowSelection.allLoadedSelected}
+                  indeterminate={rowSelection.someLoadedSelected}
+                  onChange={rowSelection.toggleAll}
+                  ariaLabel="Chọn tất cả"
+                />
+              </div>
               <div role="columnheader" className="py-2.5 text-center">Mã bệnh nhân</div>
               <div role="columnheader" className="py-2.5 text-center">Họ tên</div>
               <div role="columnheader" className="py-2.5 text-center">CCCD</div>
@@ -189,6 +203,13 @@ export function PatientListPage() {
                       style={{ ...rowStyle, gridTemplateColumns: GRID_COLUMNS }}
                       className="grid items-center gap-x-4 border-b border-slate-100 px-4 text-sm hover:bg-slate-50 focus:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500/40"
                     >
+                      <div role="cell" className="flex items-center justify-center">
+                        <SelectionCheckbox
+                          checked={rowSelection.isSelected(patient.id)}
+                          onChange={() => rowSelection.toggle(patient.id)}
+                          ariaLabel={`Chọn ${patient.fullName}`}
+                        />
+                      </div>
                       <div
                         role="cell"
                         onDoubleClick={() => openPatient(patient.id)}
@@ -212,6 +233,8 @@ export function PatientListPage() {
           </div>
         </div>
       )}
+
+      <SelectionToolbar count={rowSelection.selectedCount} onClear={rowSelection.clear} />
     </div>
   );
 }

@@ -5,13 +5,16 @@
 ```
 SCHEDULED ──check-in──> CHECKED_IN ──bác sĩ nhận──> IN_CONSULTATION ──hoàn tất──> COMPLETED
 
-SCHEDULED  ──huỷ──> CANCELLED
-SCHEDULED  ──quá giờ, không đến──> NO_SHOW
-CHECKED_IN ──bỏ về──> CANCELLED (bắt buộc có lý do)
+SCHEDULED       ──huỷ──> CANCELLED
+SCHEDULED       ──quá giờ, không đến──> NO_SHOW
+CHECKED_IN      ──bỏ về──> CANCELLED (bắt buộc có lý do)
+IN_CONSULTATION ──bỏ về──> CANCELLED (bắt buộc có lý do, #085)
+IN_CONSULTATION ──trả về hàng chờ──> CHECKED_IN (#085, xem dưới)
 ```
 
 Quy tắc:
 - Chỉ chuyển theo cạnh đã định nghĩa. Không nhảy cóc, không có đường lùi từ `COMPLETED`.
+- **`IN_CONSULTATION → CHECKED_IN` (v1.33, `docs/DECISIONS.md` #085) là ĐƯỜNG LÙI ĐẦU TIÊN của state machine này** — không vi phạm câu chữ ở trên (chỉ cấm đường lùi TỪ `COMPLETED`, dữ liệu đã hoàn tất), nhưng vẫn là nới nguyên tắc có chủ đích: "Trả về hàng chờ" khi bác sĩ nhận nhầm ca của người khác hoặc bận đột xuất, nhả `doctor_id` về `NULL` để ticket quay lại hàng chờ chung Khoa (không huỷ ca, không đụng phiếu thu).
 - v1 dừng ở `COMPLETED`. Trạng thái `CLOSED` gắn với thanh toán, thuộc v2 — không thêm vào enum bây giờ.
 - `NO_SHOW` do job nền đánh dấu sau `scheduled_at + ngưỡng`, ngưỡng lấy từ `tenant_setting`, mặc định 60 phút. Không hard-code trong service.
 - Mỗi lần chuyển trạng thái ghi một dòng `audit_log` kèm actor, trạng thái trước/sau, thời điểm.
@@ -44,6 +47,15 @@ Quy tắc:
 - Mã chẩn đoán chọn từ `icd10_catalog`. Không cho nhập mã tự do, không tự suy mã từ mô tả bệnh.
 - `clinical_note` theo 6 mục nhóm "Thăm khám" (đổi từ 4 mục SOAP, `docs/DECISIONS.md` #060). Ký ghi chú (`signed_at`) đóng băng nội dung. "Tiền sử bản thân"/"gia đình"/"dị ứng" KHÔNG thuộc `clinical_note` — dùng chung mọi lượt khám của bệnh nhân, không nhập lại mỗi lần khám (`docs/DECISIONS.md` #068). Từ Sprint 5 (25/08/2026): "Tiền sử bản thân" (bệnh lý nền + thói quen) và "Tiền sử gia đình" đã chuyển sang dữ liệu có cấu trúc — bảng `patient_condition`/`patient_family_history` (mã ICD-10), KHÔNG còn đọc/ghi `patient.family_history` (cột text cũ, vẫn còn trong DB nhưng không dùng). `patient.personal_history` giữ nguyên làm ghi chú bổ sung tự do cạnh chip; `patient.allergy_note` giữ nguyên trong DB nhưng UI không còn field riêng cho nó — dị ứng nay chỉ qua danh mục có cấu trúc (`patient_allergen`). Màn Khám bệnh chỉ XEM tóm tắt "Tiền sử gia đình" (không sửa tại đó), sửa qua hồ sơ bệnh nhân/Tiếp nhận.
 - **Sửa `diagnosis`/`clinical_note` SAU khi `encounter.status=COMPLETED` được phép** (`docs/DECISIONS.md` #066) — chỉ khi CHƯA ký (`signed_at IS NULL`, đúng thực tế v1 vì ký chưa triển khai). Mở khoá sửa TẠI CHỖ (không tạo bản ghi mới) + ghi `audit_log` action riêng (`*_amended_after_completion`) kèm `beforeJson`/`afterJson`. Quyền: đúng bác sĩ ca đó (`data_scope=personal`) hoặc tài khoản khác qua break-glass — không phải mô hình đính chính ở mục dưới đây (đó chỉ áp dụng khi đã ký).
+
+## Huỷ lượt khám + hoàn tiền (v1.33, `docs/DECISIONS.md` #085)
+
+3 tình huống vận hành thật, tách bạch 3 khái niệm dễ nhầm:
+
+- **"Đánh dấu chưa thu"** (`InvoiceService.revertPayment`, có từ #084) = SỬA THAO TÁC BẤM NHẦM. Soft-delete dòng `payment`, `invoice.status` quay lại `UNPAID` như chưa từng thu. KHÔNG liên quan tới việc encounter có bị huỷ hay không.
+- **"Khách bỏ về / Huỷ lượt khám"** (`POST /encounters/:id/cancel`, mở rộng nhận cả `CHECKED_IN` lẫn `IN_CONSULTATION` làm trạng thái nguồn) = đóng ca hẳn. Trong CÙNG transaction: phiếu thu `UNPAID → CANCELLED` (không còn gì để thu, rớt khỏi tổng kết cuối ngày nhưng vẫn tra cứu lại được theo mã phiếu — khác soft-delete); phiếu `PAID` **GIỮ NGUYÊN** (không tự nhảy `REFUNDED`) chờ hoàn tiền riêng. Quyền `encounter.cancel` — lễ tân/clinic_admin (`global`) hoặc bác sĩ (`personal`, chỉ ca của chính mình) đều huỷ được ngay, không cần chờ ai có quyền hoàn tiền.
+- **"Hoàn tiền"** (`POST /billing/invoices/:encounterId/refund`, quyền RIÊNG `invoice.refund` — mặc định CHỈ `clinic_admin`) = tiền đã vào két nay trả ra thật. Chỉ hoàn được khi ĐỒNG THỜI phiếu đang `PAID` VÀ lượt khám đã `CANCELLED`. Tạo dòng `payment` mới `type='REFUND'` đối ứng (không xoá dòng thu gốc) + `invoice.status → REFUNDED`. v1 chỉ hoàn TOÀN PHẦN (đúng số đã thu, không nhận số tiền tuỳ ý từ client).
+- **"Trả về hàng chờ"** (`POST /encounters/:id/release`, chỉ áp dụng `IN_CONSULTATION`) = KHÔNG phải huỷ. Bác sĩ nhả `doctor_id` về `NULL`, ca quay lại hàng chờ chung Khoa cho bác sĩ khác nhận — dùng khi nhận nhầm ca hoặc bận đột xuất, không đụng phiếu thu.
 
 ## Kê đơn (v1: chỉ in đơn)
 

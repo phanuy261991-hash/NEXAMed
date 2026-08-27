@@ -28,6 +28,8 @@ describe('HTTP e2e — /api/v1/billing/invoices', () => {
   let doctorAUserId: string;
   let doctorAToken: string;
   let tenantBReceptionistToken: string;
+  let clinicAdminToken: string;
+  let tenantBClinicAdminToken: string;
 
   async function createUserWithRole(tenantId: string, roleName: string) {
     const username = `e2e-billing-${roleName}-${randomUUID()}`;
@@ -94,7 +96,20 @@ describe('HTTP e2e — /api/v1/billing/invoices', () => {
     doctorAToken = doctorA.token;
     doctorAUserId = doctorA.userId;
     tenantBReceptionistToken = (await createUserWithRole(fixture.tenantB.id, 'receptionist')).token;
+    clinicAdminToken = (await createUserWithRole(fixture.tenantA.id, 'clinic_admin')).token;
+    // Cách ly tenant cho refund() phải test bằng vai trò CÓ đúng permission `invoice.refund`
+    // (clinic_admin) ở tenant B — receptionist tenant B không có quyền này nên sẽ 403 trước khi
+    // kịp chạm tới bước tra `encounterId` (PermissionGuard chặn theo data_scope trước data thật).
+    tenantBClinicAdminToken = (await createUserWithRole(fixture.tenantB.id, 'clinic_admin')).token;
   });
+
+  /** #085 — huỷ lượt khám qua endpoint `encounter` (cross-module), dùng chung trong test hoàn tiền. */
+  async function cancelEncounter(encounterId: string, version: number, reason = 'Khách bỏ về') {
+    return request(app.getHttpServer())
+      .post(`/api/v1/encounters/${encounterId}/cancel`)
+      .set(authed(receptionistToken))
+      .send({ cancelReason: reason, version });
+  }
 
   afterAll(async () => {
     await fixture.cleanup();
@@ -219,6 +234,18 @@ describe('HTTP e2e — /api/v1/billing/invoices', () => {
         .send({ method: 'CASH', version: 1 });
       expect(res.status).toBe(404);
     });
+
+    it('#085 — phiếu đã CANCELLED (lượt khám huỷ khi chưa thu) → 409 INVOICE_CLOSED, không thu được nữa', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+      await cancelEncounter(encounter.id, 1);
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/billing/invoices/${encounter.id}/pay`)
+        .set(authed(receptionistToken))
+        .send({ method: 'CASH', version: 1 });
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('INVOICE_CLOSED');
+    });
   });
 
   describe('POST /api/v1/billing/invoices/:encounterId/revert-payment', () => {
@@ -255,6 +282,141 @@ describe('HTTP e2e — /api/v1/billing/invoices', () => {
         .set(authed(receptionistToken))
         .send({ reason: '', version: 2 });
       expect(res.status).toBe(400);
+    });
+
+    it('#085 — phiếu đã REFUNDED (hoàn tiền xong) → 409 INVOICE_CLOSED, không "đánh dấu chưa thu" được nữa', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+      await request(app.getHttpServer()).post(`/api/v1/billing/invoices/${encounter.id}/pay`).set(authed(receptionistToken)).send({ method: 'CASH', version: 1 });
+      await cancelEncounter(encounter.id, 1);
+      await request(app.getHttpServer())
+        .post(`/api/v1/billing/invoices/${encounter.id}/refund`)
+        .set(authed(clinicAdminToken))
+        .send({ reason: 'Hoàn tiền test', version: 2 });
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/billing/invoices/${encounter.id}/revert-payment`)
+        .set(authed(receptionistToken))
+        .send({ reason: 'Nhầm', version: 3 });
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('INVOICE_CLOSED');
+    });
+  });
+
+  describe('POST /api/v1/billing/invoices/:encounterId/refund (#085 — hoàn tiền cho lượt khám đã huỷ)', () => {
+    it('đủ điều kiện (PAID + lượt khám đã huỷ), clinic_admin → 200, status REFUNDED, ghi lại refundedAt/refundReason', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+      await request(app.getHttpServer()).post(`/api/v1/billing/invoices/${encounter.id}/pay`).set(authed(receptionistToken)).send({ method: 'CASH', version: 1 });
+      const cancelRes = await cancelEncounter(encounter.id, 1);
+      expect(cancelRes.status).toBe(200);
+
+      // Trước khi hoàn — GET xác nhận needsRefund=true, encounterCancelled=true, vẫn PAID.
+      const before = await request(app.getHttpServer()).get(`/api/v1/billing/invoices/${encounter.id}`).set(authed(clinicAdminToken));
+      expect(before.body.data.status).toBe('PAID');
+      expect(before.body.data.encounterCancelled).toBe(true);
+      expect(before.body.data.needsRefund).toBe(true);
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/billing/invoices/${encounter.id}/refund`)
+        .set(authed(clinicAdminToken))
+        .send({ reason: 'Khách bỏ về, hoàn lại tiền', version: 2 });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.status).toBe('REFUNDED');
+      expect(res.body.data.needsRefund).toBe(false);
+      expect(res.body.data.refundedAt).not.toBeNull();
+      expect(res.body.data.refundReason).toBe('Khách bỏ về, hoàn lại tiền');
+      // Vết thu tiền gốc vẫn còn nguyên — chỉ thêm dòng REFUND đối ứng, không xoá dòng PAYMENT.
+      expect(res.body.data.paymentMethod).toBe('CASH');
+    });
+
+    it('lễ tân (không có invoice.refund, chỉ có invoice.update) → 403', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+      await request(app.getHttpServer()).post(`/api/v1/billing/invoices/${encounter.id}/pay`).set(authed(receptionistToken)).send({ method: 'CASH', version: 1 });
+      await cancelEncounter(encounter.id, 1);
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/billing/invoices/${encounter.id}/refund`)
+        .set(authed(receptionistToken))
+        .send({ reason: 'Thử hoàn', version: 2 });
+      expect(res.status).toBe(403);
+    });
+
+    it('lượt khám CHƯA huỷ (vẫn PAID bình thường) → 409 INVOICE_NOT_REFUNDABLE, chặn hoàn nhầm', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+      await request(app.getHttpServer()).post(`/api/v1/billing/invoices/${encounter.id}/pay`).set(authed(receptionistToken)).send({ method: 'CASH', version: 1 });
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/billing/invoices/${encounter.id}/refund`)
+        .set(authed(clinicAdminToken))
+        .send({ reason: 'Không nên hoàn được', version: 2 });
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('INVOICE_NOT_REFUNDABLE');
+    });
+
+    it('phiếu CHƯA thu (huỷ khi UNPAID → tự CANCELLED) → 409 INVOICE_NOT_REFUNDABLE (không có gì để hoàn)', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+      await cancelEncounter(encounter.id, 1);
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/billing/invoices/${encounter.id}/refund`)
+        .set(authed(clinicAdminToken))
+        .send({ reason: 'Không có gì để hoàn', version: 1 });
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('INVOICE_NOT_REFUNDABLE');
+    });
+
+    it('hoàn 2 lần (đã REFUNDED) → 409 INVOICE_NOT_REFUNDABLE', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+      await request(app.getHttpServer()).post(`/api/v1/billing/invoices/${encounter.id}/pay`).set(authed(receptionistToken)).send({ method: 'CASH', version: 1 });
+      await cancelEncounter(encounter.id, 1);
+      await request(app.getHttpServer())
+        .post(`/api/v1/billing/invoices/${encounter.id}/refund`)
+        .set(authed(clinicAdminToken))
+        .send({ reason: 'Lần 1', version: 2 });
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/billing/invoices/${encounter.id}/refund`)
+        .set(authed(clinicAdminToken))
+        .send({ reason: 'Lần 2', version: 3 });
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('INVOICE_NOT_REFUNDABLE');
+    });
+
+    it('version cũ → 409 CONCURRENT_MODIFICATION', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+      await request(app.getHttpServer()).post(`/api/v1/billing/invoices/${encounter.id}/pay`).set(authed(receptionistToken)).send({ method: 'CASH', version: 1 });
+      await cancelEncounter(encounter.id, 1);
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/billing/invoices/${encounter.id}/refund`)
+        .set(authed(clinicAdminToken))
+        .send({ reason: 'Sai version', version: 99 });
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('CONCURRENT_MODIFICATION');
+    });
+
+    it('thiếu lý do → 400', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+      await request(app.getHttpServer()).post(`/api/v1/billing/invoices/${encounter.id}/pay`).set(authed(receptionistToken)).send({ method: 'CASH', version: 1 });
+      await cancelEncounter(encounter.id, 1);
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/billing/invoices/${encounter.id}/refund`)
+        .set(authed(clinicAdminToken))
+        .send({ reason: '', version: 2 });
+      expect(res.status).toBe(400);
+    });
+
+    it('tenant B (clinic_admin, CÓ đúng quyền invoice.refund) hoàn tiền phiếu thu của tenant A → 404 (cách ly tenant, không phải 403)', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+      await request(app.getHttpServer()).post(`/api/v1/billing/invoices/${encounter.id}/pay`).set(authed(receptionistToken)).send({ method: 'CASH', version: 1 });
+      await cancelEncounter(encounter.id, 1);
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/billing/invoices/${encounter.id}/refund`)
+        .set(authed(tenantBClinicAdminToken))
+        .send({ reason: 'x', version: 2 });
+      expect(res.status).toBe(404);
     });
   });
 

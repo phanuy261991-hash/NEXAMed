@@ -3,6 +3,7 @@ import type {
   InvoiceResponse,
   ListBillingInvoicesResponse,
   MarkInvoicePaidRequest,
+  RefundInvoiceRequest,
   RevertInvoicePaymentRequest,
   SaveInvoiceDraftRequest,
 } from '@nexamed/shared';
@@ -27,6 +28,13 @@ export async function markInvoicePaid(encounterId: string, body: MarkInvoicePaid
 export async function revertInvoicePayment(encounterId: string, body: RevertInvoicePaymentRequest): Promise<Invoice> {
   return unwrap(
     await getApiClient().POST('/api/v1/billing/invoices/{encounterId}/revert-payment', { params: { path: { encounterId } }, body }),
+  ) as Invoice;
+}
+
+/** #085 — HOÀN TIỀN cho lượt khám đã huỷ, quyền riêng `invoice.refund` (không phải mọi vai trò gọi được). */
+export async function refundInvoice(encounterId: string, body: RefundInvoiceRequest): Promise<Invoice> {
+  return unwrap(
+    await getApiClient().POST('/api/v1/billing/invoices/{encounterId}/refund', { params: { path: { encounterId } }, body }),
   ) as Invoice;
 }
 

@@ -13,7 +13,16 @@ import { EncounterInvalidTransitionError } from '../errors/encounter-errors';
 const ENCOUNTER_TRANSITIONS: Record<EncounterStatus, readonly EncounterStatus[]> = {
   SCHEDULED: ['CHECKED_IN', 'CANCELLED', 'NO_SHOW'],
   CHECKED_IN: ['IN_CONSULTATION', 'CANCELLED'],
-  IN_CONSULTATION: ['COMPLETED'],
+  // 2 cạnh dưới thêm ở #085 (huỷ lượt khám + hoàn tiền) — trước đó `IN_CONSULTATION` chỉ có đúng
+  // một đường ra là `COMPLETED`, mà "Hoàn tất khám" lại bắt buộc có chẩn đoán chính: bác sĩ đã
+  // "Nhận ca"/"Bắt đầu khám" rồi khách bỏ về giữa chừng là NGÕ CỤT thật, không đóng ca được.
+  //   → CANCELLED  = khách bỏ về thật (bắt buộc lý do, đóng ca hẳn).
+  //   → CHECKED_IN = "Trả về hàng chờ": bác sĩ nhả ca (doctorId về null) khi nhận nhầm ca của
+  //     người khác hoặc bận đột xuất — lượt khám quay lại hàng chờ chung cho bác sĩ khác nhận.
+  // `CHECKED_IN` là ĐƯỜNG LÙI ĐẦU TIÊN của state machine này. Không vi phạm quy tắc đã chốt ở
+  // .claude/docs/clinical-workflow.md (chỉ cấm đường lùi TỪ `COMPLETED` — dữ liệu đã ký/hoàn tất),
+  // nhưng vẫn là nới nguyên tắc có chủ đích, đã ghi rõ ở tài liệu đó cùng #085.
+  IN_CONSULTATION: ['COMPLETED', 'CANCELLED', 'CHECKED_IN'],
   COMPLETED: [],
   CANCELLED: [],
   NO_SHOW: [],

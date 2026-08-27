@@ -21,10 +21,12 @@ import {
   listBillingInvoicesQuerySchema,
   listBillingInvoicesResponseSchema,
   markInvoicePaidRequestSchema,
+  refundInvoiceRequestSchema,
   revertInvoicePaymentRequestSchema,
   saveInvoiceDraftRequestSchema,
   cancelAppointmentRequestSchema,
   cancelEncounterRequestSchema,
+  releaseEncounterRequestSchema,
   createDrugRequestSchema,
   drugSummarySchema,
   listDrugsQuerySchema,
@@ -634,6 +636,25 @@ registry.registerPath({
 });
 
 registry.registerPath({
+  method: 'post',
+  path: '/api/v1/encounters/{id}/release',
+  tags: ['encounter'],
+  summary: '#085 "Trả về hàng chờ" — IN_CONSULTATION → CHECKED_IN, nhả doctorId (bác sĩ nhận nhầm ca/bận đột xuất)',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: encounterActionIdParams,
+    body: { content: { 'application/json': { schema: releaseEncounterRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Thành công', envelope(encounterSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền encounter.update'),
+    404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal)'),
+    409: errorResponse('Chuyển trạng thái không hợp lệ (ENCOUNTER_INVALID_TRANSITION) hoặc version không khớp (CONCURRENT_MODIFICATION)'),
+  },
+});
+
+registry.registerPath({
   method: 'get',
   path: '/api/v1/encounters/{id}/consultation',
   tags: ['encounter'],
@@ -849,6 +870,28 @@ registry.registerPath({
     403: errorResponse('Không có quyền invoice.update'),
     404: errorResponse('Không có phiếu thu cho lượt khám này'),
     409: errorResponse('version không khớp (CONCURRENT_MODIFICATION) hoặc chưa từng đánh dấu Đã thu (INVOICE_NOT_PAID)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/billing/invoices/{encounterId}/refund',
+  tags: ['billing'],
+  summary: '#085 "Hoàn tiền" cho lượt khám đã huỷ, quyền riêng invoice.refund — chỉ hoàn TOÀN PHẦN, bắt buộc lý do',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: billingEncounterIdParams,
+    body: { content: { 'application/json': { schema: refundInvoiceRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Thành công', envelope(invoiceResponseSchema)),
+    400: errorResponse('Thiếu lý do'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền invoice.refund'),
+    404: errorResponse('Không có phiếu thu cho lượt khám này'),
+    409: errorResponse(
+      'version không khớp (CONCURRENT_MODIFICATION) hoặc chưa đủ điều kiện hoàn tiền — phiếu chưa PAID hoặc lượt khám chưa huỷ (INVOICE_NOT_REFUNDABLE)',
+    ),
   },
 });
 

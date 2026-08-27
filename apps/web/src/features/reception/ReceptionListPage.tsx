@@ -1,22 +1,34 @@
 import { useState } from 'react';
-import { CaretLeft, CaretRight, ClipboardText } from '@phosphor-icons/react';
+import { CaretLeft, CaretRight, ClipboardText, XCircle } from '@phosphor-icons/react';
+import type { EncounterStatus } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
+import { Button } from '../../shared/ui/Button';
+import { CancelEncounterDialog } from '../../shared/ui/CancelEncounterDialog';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
+import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
+import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
 import { Skeleton } from '../../shared/ui/Skeleton';
+import { useRowSelection } from '../../shared/hooks/useRowSelection';
 import { addDays, formatDateLabel, getVietnamTodayDateString } from '../appointment/schedule-grid.utils';
 import { ENCOUNTER_STATUS_META } from './encounter-status';
 import { useReceptionListQuery } from './reception.queries';
 
 /** Độ rộng cố định theo px (không dùng `fr`) để bảng có chiều rộng nội tại lớn hơn khung nhìn —
- * bắt buộc để `overflow-x-auto` phát huy tác dụng, cho phép cuộn ngang khi 8 cột không vừa màn
+ * bắt buộc để `overflow-x-auto` phát huy tác dụng, cho phép cuộn ngang khi 9 cột không vừa màn
  * hình hẹp. Theo đúng thứ tự cột chủ dự án yêu cầu — không còn cột "Bác sĩ" (ngoài danh sách đã
  * chốt). 2 cột chưa có nguồn dữ liệu (Năm sinh/Địa chỉ) hiện `—`, khớp dữ liệu sau khi backend có
- * trường tương ứng — "Người tiếp nhận" đã có `item.receivedByName` (`encounter.createdBy`). */
-const GRID_COLUMNS = '140px 200px 100px 140px 240px 170px 130px 170px';
-const TABLE_MIN_WIDTH_PX = 1290;
+ * trường tương ứng — "Người tiếp nhận" đã có `item.receivedByName` (`encounter.createdBy`).
+ * Cột "Thao tác" thêm ở #085 — đảo ngược một phần #044 (trang này vốn chốt THUẦN theo dõi, không
+ * thao tác nào) vì "khách bỏ về" thường báo ở quầy lễ tân, không phải với bác sĩ. Cột đầu (chọn
+ * dòng) để sẵn cho hành động hàng loạt sau này, chưa có hành động nào dùng tới. */
+const GRID_COLUMNS = '40px 140px 200px 100px 140px 240px 170px 130px 170px 110px';
+const TABLE_MIN_WIDTH_PX = 1440;
 const ROW_HEIGHT_PX = 48;
+
+/** Chỉ huỷ được khi còn "sống" — đã COMPLETED/CANCELLED thì không còn thao tác nào ở đây. */
+const CANCELLABLE_STATUSES: EncounterStatus[] = ['CHECKED_IN', 'IN_CONSULTATION'];
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
@@ -42,10 +54,14 @@ export function ReceptionListPage() {
   useBreadcrumb([{ label: 'Tiếp nhận và Đặt lịch' }, { label: 'Danh sách tiếp nhận' }]);
 
   const [date, setDate] = useState(getVietnamTodayDateString());
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   const listQuery = useReceptionListQuery(date);
 
   const items = listQuery.data?.items ?? [];
+  const cancellingItem = items.find((i) => i.encounterId === cancellingId) ?? null;
+  const itemIds = items.map((i) => i.encounterId);
+  const rowSelection = useRowSelection(itemIds);
 
   return (
     <div className="flex h-full flex-col gap-2.5 p-3">
@@ -123,6 +139,14 @@ export function ReceptionListPage() {
                 style={{ gridTemplateColumns: GRID_COLUMNS }}
                 className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-bold uppercase tracking-wide text-slate-800"
               >
+                <div role="columnheader" className="flex items-center justify-center py-2.5">
+                  <SelectionCheckbox
+                    checked={rowSelection.allLoadedSelected}
+                    indeterminate={rowSelection.someLoadedSelected}
+                    onChange={rowSelection.toggleAll}
+                    ariaLabel="Chọn tất cả"
+                  />
+                </div>
                 <div role="columnheader" className="py-2.5 text-center">Mã lượt khám</div>
                 <div role="columnheader" className="py-2.5 text-center">Họ tên</div>
                 <div role="columnheader" className="py-2.5 text-center">Năm sinh</div>
@@ -131,6 +155,7 @@ export function ReceptionListPage() {
                 <div role="columnheader" className="py-2.5 text-center">Ngày giờ tiếp nhận</div>
                 <div role="columnheader" className="py-2.5 text-center">Trạng thái</div>
                 <div role="columnheader" className="py-2.5 text-center">Người tiếp nhận</div>
+                <div role="columnheader" className="py-2.5 text-center">Thao tác</div>
               </div>
 
               <div className="scroll-hover flex-1 overflow-y-auto overflow-x-hidden">
@@ -143,6 +168,13 @@ export function ReceptionListPage() {
                       style={{ gridTemplateColumns: GRID_COLUMNS, minHeight: ROW_HEIGHT_PX }}
                       className="grid items-center border-b border-slate-100 px-4 text-sm"
                     >
+                      <div role="cell" className="flex items-center justify-center">
+                        <SelectionCheckbox
+                          checked={rowSelection.isSelected(item.encounterId)}
+                          onChange={() => rowSelection.toggle(item.encounterId)}
+                          ariaLabel={`Chọn ${item.fullName}`}
+                        />
+                      </div>
                       <div role="cell" className="truncate text-center font-semibold text-slate-800">{item.encounterNo}</div>
                       <div role="cell" className="truncate font-medium text-slate-900">{item.fullName}</div>
                       {/* Năm sinh — chưa có `dob` trong ReceptionListItem (packages/shared), hiện UI trước theo yêu cầu, khớp dữ liệu khi backend bổ sung. */}
@@ -157,6 +189,19 @@ export function ReceptionListPage() {
                         </span>
                       </div>
                       <div role="cell" className="truncate text-center font-medium text-slate-600">{item.receivedByName ?? '—'}</div>
+                      <div role="cell" className="text-center">
+                        {CANCELLABLE_STATUSES.includes(item.status) && (
+                          <Button
+                            type="button"
+                            variant="danger"
+                            className="px-2.5 py-1 text-xs"
+                            onClick={() => setCancellingId(item.encounterId)}
+                          >
+                            <XCircle size={13} weight="bold" aria-hidden="true" />
+                            Hủy
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
@@ -164,6 +209,17 @@ export function ReceptionListPage() {
             </div>
           </div>
         </div>
+      )}
+
+      <SelectionToolbar count={rowSelection.selectedCount} onClear={rowSelection.clear} />
+
+      {cancellingItem && (
+        <CancelEncounterDialog
+          encounterId={cancellingItem.encounterId}
+          version={cancellingItem.version}
+          onCancelled={() => setCancellingId(null)}
+          onClose={() => setCancellingId(null)}
+        />
       )}
     </div>
   );

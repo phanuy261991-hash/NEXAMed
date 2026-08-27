@@ -68,6 +68,10 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   { module: 'invoice', action: 'read', description: 'Xem phiếu thu' },
   { module: 'invoice', action: 'update', description: 'Đánh dấu đã thu/chưa thu, chọn phương thức thanh toán' },
   { module: 'invoice', action: 'print', description: 'In phiếu thu' },
+  // #085 — TÁCH khỏi `invoice.update` có chủ đích: "thu tiền vào" và "trả tiền ra khỏi két" là 2
+  // mức nhạy cảm khác hẳn nhau. Mặc định CHỈ `clinic_admin` có (lễ tân KHÔNG) — chủ phòng khám tự
+  // cấp thêm cho lễ tân qua màn "Vai trò & Phân quyền" nếu tin tưởng/quy mô nhỏ.
+  { module: 'invoice', action: 'refund', description: 'Hoàn tiền phiếu thu của lượt khám đã huỷ' },
 ] as const;
 
 export function permissionKey(p: Pick<PermissionDefinition, 'module' | 'action'>): string {
@@ -178,6 +182,10 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'invoice.read': 'global',
     'invoice.update': 'global',
     'invoice.print': 'global',
+    // #085 — DUY NHẤT clinic_admin có sẵn quyền hoàn tiền (lễ tân không, xem comment ở
+    // PERMISSION_CATALOG). Tenant đã cài sẵn tự được vá dòng này lúc API khởi động qua
+    // `syncRolePermissionsForAllTenants()`, không cần thao tác tay.
+    'invoice.refund': 'global',
   },
   system_admin: {
     'user_account.read': 'global',

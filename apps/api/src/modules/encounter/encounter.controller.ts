@@ -4,6 +4,7 @@ import {
   amendPrescriptionRequestSchema,
   cancelEncounterRequestSchema,
   completeConsultationRequestSchema,
+  releaseEncounterRequestSchema,
   saveClinicalNoteRequestSchema,
   saveDiagnosesRequestSchema,
   savePrescriptionItemsRequestSchema,
@@ -38,6 +39,16 @@ export class EncounterController {
     const dto = cancelEncounterRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
     return this.encounterService.cancelEncounter(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+  }
+
+  /** #085 "Trả về hàng chờ" — bác sĩ nhả ca (nhận nhầm/bận đột xuất), dùng chung quyền `encounter.update` với "Bắt đầu khám". */
+  @Post(':id/release')
+  @RequirePermission('encounter', 'update', { entityIdParam: 'id' })
+  @HttpCode(200)
+  async release(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
+    const dto = releaseEncounterRequestSchema.parse(body);
+    const { userId, tenantId } = req.user!;
+    return this.encounterService.releaseEncounter(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 
   /** Màn hình khám (S3-05) — gộp tiền sử + dị ứng + sinh hiệu trong một request. */

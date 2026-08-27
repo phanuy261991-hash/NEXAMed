@@ -90,6 +90,58 @@ html {
 }
 
 /**
+ * Checkbox chọn dòng trong bảng danh sách (SelectionCheckbox, để sẵn cho hành động hàng loạt) —
+ * checkbox mặc định của trình duyệt hiện đại (Chromium/Windows) tự vẽ thêm bóng/độ nổi quanh ô đã
+ * chọn, không tắt được bằng class Tailwind thường — chủ dự án phản hồi "nhìn không đẹp". Cùng cách
+ * đã làm với `.round-checkbox`: `appearance: none` rồi tự vẽ lại hoàn toàn, phẳng, không đổ bóng
+ * (`.claude/docs/ui-guidelines.md` mục 2.2).
+ */
+.selection-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  flex-shrink: 0;
+  border-radius: 4px;
+  border: 1.5px solid var(--color-slate-300);
+  position: relative;
+  cursor: pointer;
+}
+.selection-checkbox:hover {
+  border-color: var(--color-blue-400);
+}
+.selection-checkbox:checked,
+.selection-checkbox:indeterminate {
+  border-color: var(--color-blue-600);
+  background-color: var(--color-blue-600);
+}
+.selection-checkbox:checked::after {
+  content: '';
+  position: absolute;
+  left: 4.5px;
+  top: 1.5px;
+  width: 4px;
+  height: 8px;
+  border: solid white;
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+}
+.selection-checkbox:indeterminate::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 6.25px;
+  width: 8px;
+  height: 1.5px;
+  background: white;
+}
+.selection-checkbox:focus-visible {
+  outline: 2px solid var(--color-blue-600);
+  outline-offset: 2px;
+}
+
+/**
  * Hạ tầng in ấn dùng chung (Sprint 4, S4-04 — PRE-04 in đơn thuốc) — kỹ thuật ẩn toàn bộ trang
  * bằng `visibility:hidden` (giữ nguyên layout, không gây reflow/nhấp nháy) rồi CHỈ hiện lại phần tử
  * mang class `.print-area` và con cháu của nó, định vị `absolute` phủ kín trang khi in. Đặt ở tầng

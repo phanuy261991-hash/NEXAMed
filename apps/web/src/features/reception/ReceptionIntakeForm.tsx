@@ -146,8 +146,8 @@ export function ReceptionIntakeForm({
   const [serviceError, setServiceError] = useState<string | null>(null);
   // Thu ngân cơ bản (Sprint 5/6) — ý nghĩa thật đã ghi nhận từ #080: true = lượt khám được PHÉP
   // vào Hàng đợi khám dù chưa thu tiền. Chỉ hiện khi tenant đã bật "Cấu hình thanh toán" (xem
-  // `deferredPaymentEnabledQuery` bên dưới); mặc định KHÔNG check — lễ tân chủ động tích nếu muốn
-  // cho nợ, không phải hành vi ngầm định.
+  // `deferredPaymentEnabledQuery` bên dưới) — lúc đó mặc định TÍCH SẴN (đồng bộ theo cấu hình bật,
+  // xem effect bên dưới), lễ tân tự bỏ tick nếu ca này không muốn cho nợ.
   const [allowsDeferredPayment, setAllowsDeferredPayment] = useState(false);
   // Điều phối Bác sĩ/Khoa ("Hàng đợi ảo", docs/DECISIONS.md #064) — mặc định "theo bác sĩ", giữ
   // đúng bác sĩ đã đặt lịch cho mode='checkin' (vẫn sửa được, khác hành vi cũ khoá cứng).
@@ -169,6 +169,12 @@ export function ReceptionIntakeForm({
   const roomOptionsQuery = useRoomOptionsQuery();
   const deferredPaymentStatusQuery = useDeferredPaymentEnabledQuery();
   const deferredPaymentFeatureEnabled = deferredPaymentStatusQuery.data?.enabled ?? false;
+  // Đồng bộ mặc định checkbox theo cấu hình mỗi khi cờ tenant đổi (tải trang, admin bật/tắt xong
+  // reload) — KHÔNG chạy lại khi chỉ đổi state cục bộ, nên lễ tân tự bỏ tick vẫn giữ nguyên lựa
+  // chọn của họ cho tới lần đổi cấu hình/tenant kế tiếp.
+  useEffect(() => {
+    setAllowsDeferredPayment(deferredPaymentFeatureEnabled);
+  }, [deferredPaymentFeatureEnabled]);
   // "Đang chờ: N" theo bác sĩ/Khoa cho danh sách thẻ điều phối (mockup
   // docs/design/doctor-queue-virtual-queue-mockup.html) — tái dùng nguyên `GET /reception/list`
   // của "Hàng đợi khám" thay vì thêm endpoint đếm riêng, lễ tân đã có `encounter.read=global` nên
@@ -245,7 +251,7 @@ export function ReceptionIntakeForm({
     setDraftPriceTypeCode('');
     setDraftQuantity(1);
     setServiceError(null);
-    setAllowsDeferredPayment(false);
+    setAllowsDeferredPayment(deferredPaymentFeatureEnabled);
     setRoutingMode('doctor');
     setDoctorId(checkin?.doctorId ?? '');
     setDepartmentId('');

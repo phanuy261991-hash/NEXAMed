@@ -6,6 +6,9 @@ import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { EmptyState } from '../../shared/ui/EmptyState';
+import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
+import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
+import { useRowSelection } from '../../shared/hooks/useRowSelection';
 import { ApiError } from '../../shared/api/client';
 import {
   useCreateReferenceCatalogItemMutation,
@@ -92,6 +95,9 @@ export function ReferenceCatalogPane({
     return all.filter((i) => i.name.toLowerCase().includes(q) || i.code.toLowerCase().includes(q));
   }, [query.data, search]);
 
+  const itemIds = useMemo(() => items.map((i) => i.id), [items]);
+  const rowSelection = useRowSelection(itemIds);
+
   return (
     <div className="flex h-full flex-col">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -145,6 +151,14 @@ export function ReferenceCatalogPane({
             <table className="w-full border-collapse text-sm">
               <thead className="sticky top-0 z-10">
                 <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+                  <th className="w-10 px-4 py-2.5 text-center">
+                    <SelectionCheckbox
+                      checked={rowSelection.allLoadedSelected}
+                      indeterminate={rowSelection.someLoadedSelected}
+                      onChange={rowSelection.toggleAll}
+                      ariaLabel="Chọn tất cả"
+                    />
+                  </th>
                   <th className="w-24 px-4 py-2.5 text-center">Mã</th>
                   <th className="px-4 py-2.5 text-left">Tên hiển thị</th>
                   {category === 'EXAM_TYPE' && <th className="w-32 px-4 py-2.5 text-center">Đơn giá</th>}
@@ -157,6 +171,9 @@ export function ReferenceCatalogPane({
               <tbody>
                 {items.map((item) => (
                   <tr key={item.id} className={`border-b border-slate-200 last:border-0 ${item.isActive ? '' : 'opacity-50'}`}>
+                    <td className="px-4 py-2 text-center">
+                      <SelectionCheckbox checked={rowSelection.isSelected(item.id)} onChange={() => rowSelection.toggle(item.id)} ariaLabel={`Chọn ${item.name}`} />
+                    </td>
                     <td className="px-4 py-2 text-center text-sm font-bold text-slate-800">{item.code}</td>
                     <td className="px-4 py-2 text-left font-medium text-slate-900">
                       {item.name}
@@ -231,6 +248,8 @@ export function ReferenceCatalogPane({
           </div>
         </div>
       )}
+
+      <SelectionToolbar count={rowSelection.selectedCount} onClear={rowSelection.clear} />
 
       {modal && category === 'EXAM_TYPE' && (
         <ExamTypeFormModal

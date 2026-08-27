@@ -4,6 +4,7 @@ import type {
   EncounterSummary,
   ReceptionListResponse,
   RegisterReceptionRequest,
+  ReleaseEncounterRequest,
   StartConsultationRequest,
 } from '@nexamed/shared';
 import { getApiClient, unwrap } from '../../shared/api/client';
@@ -16,9 +17,14 @@ export async function registerReception(body: RegisterReceptionRequest): Promise
   return unwrap(await getApiClient().POST('/api/v1/reception/direct', { body })) as EncounterSummary;
 }
 
-export async function getReceptionList(date?: string, doctorId?: string, includeDepartmentPool?: boolean): Promise<ReceptionListResponse> {
+export async function getReceptionList(
+  date?: string,
+  doctorId?: string,
+  includeDepartmentPool?: boolean,
+  queueView?: boolean,
+): Promise<ReceptionListResponse> {
   return unwrap(
-    await getApiClient().GET('/api/v1/reception/list', { params: { query: { date, doctorId, includeDepartmentPool } } }),
+    await getApiClient().GET('/api/v1/reception/list', { params: { query: { date, doctorId, includeDepartmentPool, queueView } } }),
   ) as ReceptionListResponse;
 }
 
@@ -31,5 +37,12 @@ export async function startConsultation(id: string, body: StartConsultationReque
 export async function cancelEncounter(id: string, body: CancelEncounterRequest): Promise<EncounterSummary> {
   return unwrap(
     await getApiClient().POST('/api/v1/encounters/{id}/cancel', { params: { path: { id } }, body }),
+  ) as EncounterSummary;
+}
+
+/** #085 "Trả về hàng chờ" — bác sĩ nhả ca nhận nhầm/bận đột xuất, KHÁC "Khách bỏ về" (không huỷ gì). */
+export async function releaseEncounter(id: string, body: ReleaseEncounterRequest): Promise<EncounterSummary> {
+  return unwrap(
+    await getApiClient().POST('/api/v1/encounters/{id}/release', { params: { path: { id } }, body }),
   ) as EncounterSummary;
 }

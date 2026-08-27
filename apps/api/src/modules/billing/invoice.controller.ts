@@ -1,6 +1,12 @@
 import { Body, Controller, Get, HttpCode, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
-import { listBillingInvoicesQuerySchema, markInvoicePaidRequestSchema, revertInvoicePaymentRequestSchema, saveInvoiceDraftRequestSchema } from '@nexamed/shared';
+import {
+  listBillingInvoicesQuerySchema,
+  markInvoicePaidRequestSchema,
+  refundInvoiceRequestSchema,
+  revertInvoicePaymentRequestSchema,
+  saveInvoiceDraftRequestSchema,
+} from '@nexamed/shared';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
@@ -45,6 +51,20 @@ export class InvoiceController {
     const dto = revertInvoicePaymentRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
     return this.invoiceService.revertPayment(tenantId, userId, encounterId, dto, extractRequestMeta(req));
+  }
+
+  /**
+   * #085 — HOÀN TIỀN cho lượt khám đã huỷ. Quyền RIÊNG `invoice.refund` (KHÁC `invoice.update` của
+   * mọi endpoint trên) — mặc định chỉ `clinic_admin` có, lễ tân không: tiền ra khỏi két là thao
+   * tác nhạy cảm hơn hẳn thu tiền vào.
+   */
+  @Post(':encounterId/refund')
+  @RequirePermission('invoice', 'refund', { entityIdParam: 'encounterId' })
+  @HttpCode(200)
+  async refund(@Param('encounterId') encounterId: string, @Body() body: unknown, @Req() req: Request) {
+    const dto = refundInvoiceRequestSchema.parse(body);
+    const { userId, tenantId } = req.user!;
+    return this.invoiceService.refund(tenantId, userId, encounterId, dto, extractRequestMeta(req));
   }
 
   /** "Lưu tạm" (F8) — phương thức/tiền khách đưa đang nhập dở, chưa "Thu tiền". */

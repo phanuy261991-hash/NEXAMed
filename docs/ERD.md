@@ -502,7 +502,7 @@ erDiagram
 | Bảng | Vai trò |
 |---|---|
 | `appointment` | Lịch hẹn; `status`: `SCHEDULED`, `CANCELLED`, `NO_SHOW`, `CONVERTED`, `RESCHEDULED` |
-| `encounter` | Lượt khám; `status`: `SCHEDULED`, `CHECKED_IN`, `IN_CONSULTATION`, `COMPLETED`, `CANCELLED`, `NO_SHOW`. **"Hàng đợi ảo"** (v1.23, `docs/DECISIONS.md` #064) — `doctor_id` nay **nullable** (`NULL` = lượt khám còn trong hàng chờ chung Khoa, chưa được bác sĩ nào nhận qua "Nhận ca"); thêm `department_id` **bắt buộc** (suy từ Khoa của bác sĩ đã chọn, hoặc client chọn thẳng khi routing "theo Khoa, chưa rõ bác sĩ") |
+| `encounter` | Lượt khám; `status`: `SCHEDULED`, `CHECKED_IN`, `IN_CONSULTATION`, `COMPLETED`, `CANCELLED`, `NO_SHOW`. **"Hàng đợi ảo"** (v1.23, `docs/DECISIONS.md` #064) — `doctor_id` nay **nullable** (`NULL` = lượt khám còn trong hàng chờ chung Khoa, chưa được bác sĩ nào nhận qua "Nhận ca"); thêm `department_id` **bắt buộc** (suy từ Khoa của bác sĩ đã chọn, hoặc client chọn thẳng khi routing "theo Khoa, chưa rõ bác sĩ"). **Huỷ lượt khám + hoàn tiền (v1.33, `docs/DECISIONS.md` #085)**: state machine thêm 2 cạnh `IN_CONSULTATION → CANCELLED` (khách bỏ về giữa chừng) và `IN_CONSULTATION → CHECKED_IN` (nhả `doctor_id` về `NULL`, "Trả về hàng chờ" — ĐƯỜNG LÙI ĐẦU TIÊN của state machine này, không vi phạm quy tắc "không đường lùi từ COMPLETED") |
 
 `encounter.appointment_id` cho phép `NULL` để hỗ trợ walk-in tạo trực tiếp — v1.11 hiện thực đúng thiết kế này: "Tiếp nhận bệnh nhân" (`POST /reception/direct`) tạo thẳng `encounter` với `appointment_id = NULL`, KHÔNG qua `appointment` (khác hướng ban đầu dự tính đi qua `appointment` với `source='walk_in'` — đã đổi theo yêu cầu chủ dự án, xem `docs/DECISIONS.md`). Quan hệ `appointment↔encounter` là một-không-hoặc-một: mỗi lịch hẹn sinh tối đa một lượt khám (ép bằng partial unique index `(tenant_id, appointment_id) WHERE appointment_id IS NOT NULL AND deleted_at IS NULL`, không khai `@unique` ở Prisma schema — cùng lý do `patient.national_id_hash`).
 
@@ -557,13 +557,21 @@ Bản ghi từ CẢ HAI luồng cùng xuất hiện trong "Danh sách tiếp nh�
 
 | Bảng | Vai trò | Đặc thù |
 |---|---|---|
-| `invoice` | Phiếu thu | Đúng 1/lượt khám (C21). Tự động tạo trong CÙNG transaction check-in/tiếp nhận trực tiếp, ngay sau khi có `encounter_service_item` — chỉ tạo nếu tổng (dòng có giá) `> 0` (không có gì để thu thì không tạo). `status` (`UNPAID`/`PAID`), `total_amount` snapshot lúc tạo. `pending_payment_method`/`pending_cash_received_amount` — "Lưu tạm" (F8), KHÔNG phải trạng thái nghiệp vụ, xoá sạch khi đánh dấu Đã thu. KHÔNG dùng `SignableEntity`/trigger C8 — khoá sửa chỉ ở tầng service |
+| `invoice` | Phiếu thu | Đúng 1/lượt khám (C21). Tự động tạo trong CÙNG transaction check-in/tiếp nhận trực tiếp, ngay sau khi có `encounter_service_item` — chỉ tạo nếu tổng (dòng có giá) `> 0` (không có gì để thu thì không tạo). `status` (4 giá trị từ v1.33, xem dưới), `total_amount` snapshot lúc tạo. `pending_payment_method`/`pending_cash_received_amount` — "Lưu tạm" (F8), KHÔNG phải trạng thái nghiệp vụ, xoá sạch khi đánh dấu Đã thu. KHÔNG dùng `SignableEntity`/trigger C8 — khoá sửa chỉ ở tầng service |
 | `invoice_line` | Dòng dịch vụ đã tính tiền | Snapshot 1-1 từ `encounter_service_item` có giá (`docs/DECISIONS.md` #080 — SUM nhiều dòng, bỏ qua dòng chưa cấu hình giá). `source_service_item_id` biết nguồn gốc dòng |
-| `payment` | Lịch sử thu tiền | v1 luôn tối đa 1 dòng HIỆU LỰC/invoice (đủ cho "đã thu/chưa thu" nhị phân) — tách bảng riêng để không đổi schema nếu v2 cần nhiều đợt thanh toán. "Đánh dấu chưa thu" = soft-delete dòng này (`deleted_reason` bắt buộc) + `invoice.status` quay lại `UNPAID` |
+| `payment` | Lịch sử thu/hoàn tiền | v1 tối đa 1 dòng HIỆU LỰC mỗi CHIỀU (`type`)/invoice — tách bảng riêng để không đổi schema nếu v2 cần nhiều đợt thanh toán. "Đánh dấu chưa thu" (bấm nhầm) = soft-delete dòng `PAYMENT` (`deleted_reason` bắt buộc) + `invoice.status` quay lại `UNPAID`. **"Hoàn tiền" (v1.33, #085) là dòng MỚI, SỐNG, `type='REFUND'`** — đối ứng dòng `PAYMENT` gốc (KHÔNG soft-delete gì), giữ đủ vết 2 chiều |
 
 **`payment.method`/`invoice.pending_payment_method` (v1.32, `docs/DECISIONS.md` #084)** — TEXT, mã tham chiếu `reference_catalog` category `PAYMENT_METHOD` mới (KHÔNG FK cứng, đúng khuôn `exam_type_code`/`price_type_code`/`unit_code`), không còn Postgres enum `payment_method` cố định như thiết kế ban đầu — `clinic_admin` quản lý (thêm/sửa/ẩn) hình thức thanh toán qua "Danh mục dùng chung". Seed sẵn 2 mã mặc định `CASH`/`BANK_TRANSFER` (migration `20260827121000_seed_payment_method_catalog`).
 
 `encounter` thêm `allows_deferred_payment` (boolean, mặc định `false`) — ý nghĩa thật checkbox "Thanh toán sau" đã ghi nhận ở #080: gate "Bắt đầu khám"/"Nhận ca" khi còn phiếu thu `UNPAID` (chỉ có hiệu lực khi `tenant_setting.deferred_payment_enabled=true`, cấu hình cấp phòng khám tại `/admin/system-config` → pill "Cấu hình thanh toán").
+
+**Huỷ lượt khám + hoàn tiền (v1.33, `docs/DECISIONS.md` #085)** — 3 tình huống vận hành thật: khách bỏ về chưa đóng tiền, khách đã đóng tiền rồi huỷ (cần hoàn), khách rút khỏi hàng đợi khi bác sĩ đã nhận ca.
+
+- `invoice_status` (enum) mở 2 → 4 giá trị: `UNPAID ──thu tiền──> PAID ──hoàn tiền──> REFUNDED`, và `UNPAID ──huỷ lượt khám──> CANCELLED`. Huỷ lượt khám khi phiếu đã `PAID` **GIỮ NGUYÊN `PAID`** (không tự nhảy `REFUNDED`) — hoàn tiền là thao tác riêng, quyền riêng, để lễ tân (không có quyền hoàn tiền) vẫn huỷ được ca ngay khi admin vắng mặt. Cặp (`PAID`, lượt khám đã huỷ) là nguồn suy ra cảnh báo "Cần hoàn tiền" (`needsRefund`, không lưu cột riêng).
+- `payment` thêm `type` (enum `payment_type`: `PAYMENT`/`REFUND`, mặc định `PAYMENT`) và `reason` (text, bắt buộc ở tầng service khi `type=REFUND`, dùng in phiếu chi).
+- Ba khái niệm dễ nhầm, tách bạch: "Đánh dấu chưa thu" (sửa thao tác BẤM NHẦM, xoá vết đã thu) ≠ "Huỷ lượt khám" (khách bỏ về, đóng `invoice` nếu chưa thu) ≠ "Hoàn tiền" (tiền đã vào két, nay trả ra thật, ghi thêm chứ không xoá).
+- v1 chỉ hoàn **TOÀN PHẦN** (không nhận số tiền từ client, luôn đúng bằng `invoice.total_amount` đã thu) — mở hoàn một phần sau này không cần đổi schema (`payment.amount` đã lưu số thật).
+- Quyền mới `invoice.refund` — TÁCH khỏi `invoice.update`, mặc định **CHỈ `clinic_admin`** (lễ tân không có).
 
 ---
 

@@ -140,6 +140,20 @@ Ví dụ đã áp dụng: "Đơn vị tính" trong khối "Đơn giá dịch v�
 
 ---
 
+### 4.5. Nút bấm — BẮT BUỘC dùng component `Button` dùng chung (chốt 2026-08-28)
+
+**Cấm viết tay `<button className="...">` với màu/viền tự chọn** ở bất kỳ đâu trong `apps/web`, kể cả nút nhỏ/chỉ-icon trong card hoặc ô bảng dày đặc — luôn dùng `Button` (`apps/web/src/shared/ui/Button.tsx`, variant `primary`/`secondary`/`danger`/`add`). Nút chỉ-icon vẫn dùng `Button` (icon làm children, thêm `aria-label`/`title`), chỉ chỉnh kích thước qua `className` (`px-2.5`, `flex-shrink-0`...) — **không** override màu nền/chữ qua `className` (đọc docstring trong `Button.tsx` về xung đột CSS specificity).
+
+**Lý do chốt**: chủ dự án phát hiện trực tiếp nhiều nút "Khách bỏ về/Hủy" ở `ReceptionDoctorQueuePage.tsx`/`ReceptionListPage.tsx` được viết tay với viền/màu nhạt tuỳ tiện thay vì dùng `variant="danger"` có sẵn — giao diện không nhất quán, nhợt nhạt. Chỉ viết `<button>` tay khi thực sự KHÔNG phải "nút hành động" theo nghĩa `Button` (ví dụ toggle mở/đóng sidebar, link điều hướng dạng icon thuần UI, không phải submit/thao tác dữ liệu).
+
+### 4.6. Checkbox chọn dòng hàng loạt (Selection scaffolding, chốt 2026-08-28)
+
+`shared/ui/SelectionCheckbox.tsx` — checkbox DÙNG CHUNG cho mọi bảng danh sách khi cần chọn dòng cho hành động hàng loạt sau này. **Không dùng checkbox mặc định của trình duyệt** (`<input type="checkbox">` trần) — checkbox hiện đại (Chromium/Windows) tự vẽ thêm bóng/độ nổi quanh ô đã chọn, chủ dự án phản hồi "nhìn không đẹp". `SelectionCheckbox` dùng class `.selection-checkbox` (`apps/web/src/app/index.css`, `appearance: none` rồi tự vẽ lại — cùng kỹ thuật `.round-checkbox` có sẵn từ #082), hỗ trợ cả trạng thái `indeterminate` (gán qua ref, không phải prop JSX).
+
+`shared/hooks/useRowSelection.ts` — state chọn dòng dùng chung (`toggle`/`toggleAll`/`clear`/`isSelected`/`allLoadedSelected`/`someLoadedSelected`). "Chọn tất cả" ở tiêu đề CHỈ tác động các dòng **đã tải** (trang hiện tại/đã tải qua cuộn vô hạn) — không gọi API để chọn hết mọi bản ghi khớp bộ lọc trên server (phức tạp hơn, để dành khi có hành động hàng loạt thật cần tới). `shared/ui/SelectionToolbar.tsx` — thanh nổi cố định dưới màn hình khi có ≥1 dòng được chọn (đúng mục 4.2 "Bulk Actions"), hiện tại CHỈ hiện số lượng + nút "Bỏ chọn" vì **chưa có hành động hàng loạt nào được chốt** — thêm nút hành động thật vào `children` của component này khi có yêu cầu cụ thể, không tự phát minh hành động.
+
+**Phạm vi áp dụng**: mọi bảng CRUD/quản lý thật (9 bảng: `AllergenPane`/`RoomPane`/`DepartmentPane`/`DrugCatalogPane`/`ReferenceCatalogPane`/`UserAccountPane`/`PatientListPage`/`AppointmentListView`/`ReceptionListPage`/`InvoiceListPage`). **Không áp dụng** cho danh mục chỉ đọc không có CRUD nào (ICD-10, Tỉnh/Thành-Phường/Xã) — không có hành động hàng loạt nào khả dĩ cho dữ liệu không sửa được.
+
 ## 5. TIÊU CHUẨN TRUY CẬP (ACCESSIBILITY - A11y)
 - Mọi thẻ `<img>` và `<svg>` (Icon) đều phải có `alt` hoặc `aria-label` mô tả bằng tiếng Việt (VD: `aria-label="Đóng cửa sổ"`).
 - Contrast Ratio (Độ tương phản) của Text trên Background phải luôn đạt chuẩn WCAG AA (Tối thiểu 4.5:1). Không dùng chữ màu xám quá nhạt trên nền trắng.

@@ -1335,11 +1335,23 @@ model PrescriptionItem {
   @@map("prescription_item")
 }
 
+// CANCELLED/REFUNDED thêm ở #085 (huỷ lượt khám + hoàn tiền) — xem comment model Invoice bên dưới.
 enum InvoiceStatus {
   UNPAID
   PAID
+  CANCELLED
+  REFUNDED
 
   @@map("invoice_status")
+}
+
+// Tách "thu vào" khỏi "trả ra" trên cùng bảng payment (#085). KHÔNG dùng amount âm — cột `type`
+// tường minh cho phép SUM theo nhóm ở tổng kết cuối ngày mà không phải phân nhánh theo dấu.
+enum PaymentType {
+  PAYMENT
+  REFUND
+
+  @@map("payment_type")
 }
 
 // Phiếu thu (Sprint 5/6, Thu ngân cơ bản, BIL-01→04) — .claude/docs/clinical-workflow.md mục
@@ -1351,6 +1363,13 @@ enum InvoiceStatus {
 // EncounterService.startConsultation). KHÔNG dùng SignableEntity/trigger C8 kiểu Prescription —
 // phạm vi "mức 1" của #072 không có amendment, khoá sửa invoice_line khi status=PAID chỉ ở tầng
 // service (không phải hồ sơ lâm sàng, không bắt buộc theo Thông tư 46/2018/TT-BYT).
+// #085 (huỷ lượt khám + hoàn tiền) — status nay 4 giá trị:
+//   UNPAID ──thu tiền──> PAID ──hoàn tiền──> REFUNDED
+//      └──huỷ lượt khám──> CANCELLED
+// CANCELLED (huỷ khi chưa thu) rớt khỏi tab "Chờ thu" + tổng kết cuối ngày nhưng VẪN tra cứu lại
+// được theo mã phiếu (khác soft-delete — phiếu có thể đã in đưa khách trước khi huỷ). Huỷ lượt
+// khám khi đã PAID thì status GIỮ NGUYÊN PAID (không tự nhảy REFUNDED) — hoàn tiền là thao tác
+// riêng cần quyền `invoice.refund`, xem InvoiceService.refund().
 // pendingPaymentMethod/pendingCashReceivedAmount = "Lưu tạm" (F8) trên màn Chi tiết thanh toán —
 // lễ tân đang nhập dở (chọn phương thức/gõ tiền khách đưa) mà chưa bấm "Thu tiền", lưu lại để mở
 // tiếp đúng chỗ (kể cả người/máy khác) — KHÔNG phải trạng thái nghiệp vụ (status vẫn UNPAID), xoá
@@ -1433,13 +1452,23 @@ model InvoiceLine {
 // thanh toán/công nợ. "Đánh dấu chưa thu" (huỷ nhầm) = soft-delete dòng payment (deletedReason bắt
 // buộc) + Invoice.status quay lại UNPAID — không xoá cứng theo CLAUDE.md.
 model Payment {
-  id        String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId  String   @map("tenant_id") @db.Uuid
-  invoiceId String   @map("invoice_id") @db.Uuid
+  id        String      @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId  String      @map("tenant_id") @db.Uuid
+  invoiceId String      @map("invoice_id") @db.Uuid
   // Mã tham chiếu reference_catalog category PAYMENT_METHOD (text, không FK — xem comment Invoice.pendingPaymentMethod).
   method    String
+  // #085 — PAYMENT = tiền khách trả vào; REFUND = tiền hoàn lại khách khi huỷ lượt khám đã thu.
+  // Dòng REFUND là dòng SỐNG (deleted_at IS NULL) đối ứng dòng PAYMENT gốc — KHÔNG soft-delete
+  // dòng gốc (đó là cơ chế "Đánh dấu chưa thu" cho thao tác BẤM NHẦM, nghĩa hoàn toàn khác).
+  type      PaymentType @default(PAYMENT)
+  // amount LUÔN dương kể cả dòng REFUND (chiều tiền đọc từ `type`) — v1 chỉ hoàn TOÀN PHẦN nên
+  // amount dòng REFUND luôn bằng đúng amount dòng PAYMENT gốc; cột vẫn lưu số thật để mở hoàn một
+  // phần sau này không phải đổi schema.
   amount    BigInt
-  paidAt    DateTime @map("paid_at") @db.Timestamptz(6)
+  paidAt    DateTime    @map("paid_at") @db.Timestamptz(6)
+  // Lý do hoàn tiền — bắt buộc ở tầng service khi type=REFUND, null với dòng PAYMENT. Khác
+  // deletedReason (8 cột bắt buộc): đây là lý do nghiệp vụ in lên phiếu chi cho khách ký nhận.
+  reason    String?
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)

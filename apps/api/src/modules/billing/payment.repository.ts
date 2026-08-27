@@ -17,7 +17,27 @@ export class PaymentRepository {
     paidAt: Date,
   ): Promise<Payment> {
     return tx.payment.create({
-      data: { tenantId, invoiceId, method, amount, paidAt, createdBy: actorId, updatedBy: actorId },
+      data: { tenantId, invoiceId, method, amount, paidAt, type: 'PAYMENT', createdBy: actorId, updatedBy: actorId },
+    });
+  }
+
+  /**
+   * #085 — dòng tiền TRẢ RA khi hoàn tiền, đối ứng dòng `create()` ở trên (đã thu). Là dòng SỐNG
+   * (không soft-delete gì) — cùng tồn tại song song với dòng `PAYMENT` gốc để giữ đủ vết 2 chiều.
+   * `method` mặc định lấy đúng phương thức đã thu (trả lại đúng kênh nhận vào), `reason` bắt buộc.
+   */
+  createRefund(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    actorId: string,
+    invoiceId: string,
+    method: string,
+    amount: bigint,
+    refundedAt: Date,
+    reason: string,
+  ): Promise<Payment> {
+    return tx.payment.create({
+      data: { tenantId, invoiceId, method, amount, paidAt: refundedAt, type: 'REFUND', reason, createdBy: actorId, updatedBy: actorId },
     });
   }
 

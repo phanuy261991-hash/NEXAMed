@@ -7,6 +7,9 @@ import { Combobox } from '../../shared/ui/Combobox';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { EmptyState } from '../../shared/ui/EmptyState';
+import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
+import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
+import { useRowSelection } from '../../shared/hooks/useRowSelection';
 import { ExamStationDialog } from './ExamStationDialog';
 import {
   useCreateFloorMutation,
@@ -68,6 +71,9 @@ export function RoomPane() {
     if (!hasFloors || selectedFloorId === null) return all;
     return all.filter((r) => r.floorId === selectedFloorId);
   }, [roomsQuery.data, hasFloors, selectedFloorId]);
+
+  const roomIds = useMemo(() => rooms.map((r) => r.id), [rooms]);
+  const rowSelection = useRowSelection(roomIds);
 
   return (
     <div className="flex h-full flex-col gap-3">
@@ -195,6 +201,14 @@ export function RoomPane() {
                 <table className="w-full border-collapse text-sm">
                   <thead className="sticky top-0 z-10">
                     <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+                      <th className="w-10 px-4 py-2.5 text-center">
+                        <SelectionCheckbox
+                          checked={rowSelection.allLoadedSelected}
+                          indeterminate={rowSelection.someLoadedSelected}
+                          onChange={rowSelection.toggleAll}
+                          ariaLabel="Chọn tất cả"
+                        />
+                      </th>
                       <th className="px-4 py-2.5 text-left">Tên phòng</th>
                       {hasFloors && <th className="w-36 px-4 py-2.5 text-center">Tầng</th>}
                       <th className="w-32 px-4 py-2.5 text-center">Bàn khám</th>
@@ -205,6 +219,13 @@ export function RoomPane() {
                   <tbody>
                     {rooms.map((room) => (
                       <tr key={room.id} className={`border-b border-slate-200 last:border-0 ${room.isActive ? '' : 'opacity-50'}`}>
+                        <td className="px-4 py-2 text-center">
+                          <SelectionCheckbox
+                            checked={rowSelection.isSelected(room.id)}
+                            onChange={() => rowSelection.toggle(room.id)}
+                            ariaLabel={`Chọn ${room.name}`}
+                          />
+                        </td>
                         <td className="px-4 py-2 text-left font-medium text-slate-900">{room.name}</td>
                         {hasFloors && <td className="px-4 py-2 text-center text-slate-600">{room.floorName ?? '—'}</td>}
                         <td className="px-4 py-2 text-center">
@@ -246,6 +267,8 @@ export function RoomPane() {
           )}
         </div>
       </div>
+
+      <SelectionToolbar count={rowSelection.selectedCount} onClear={rowSelection.clear} />
 
       {floorModal && (
         <FloorFormModal

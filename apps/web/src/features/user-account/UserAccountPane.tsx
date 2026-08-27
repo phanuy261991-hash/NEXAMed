@@ -7,6 +7,9 @@ import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { PasswordInput } from '../../shared/ui/PasswordInput';
+import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
+import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
+import { useRowSelection } from '../../shared/hooks/useRowSelection';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { useDepartmentsQuery } from '../department/department.queries';
 import { useRolesQuery } from '../role/role.queries';
@@ -88,6 +91,9 @@ export function UserAccountPane() {
         (u.employeeCode ?? '').toLowerCase().includes(q),
     );
   }, [accountsQuery.data, search]);
+
+  const itemIds = useMemo(() => items.map((u) => u.id), [items]);
+  const rowSelection = useRowSelection(itemIds);
 
   function currentRoleIdsFor(item: UserAccountSummary): string[] {
     return item.roleNames.map((name) => roleIdByName.get(name)).filter((id): id is string => id !== undefined);
@@ -221,6 +227,14 @@ export function UserAccountPane() {
           <table className="w-full border-collapse text-sm">
             <thead className="sticky top-0 z-10">
               <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+                <th className="w-10 px-4 py-2.5 text-center">
+                  <SelectionCheckbox
+                    checked={rowSelection.allLoadedSelected}
+                    indeterminate={rowSelection.someLoadedSelected}
+                    onChange={rowSelection.toggleAll}
+                    ariaLabel="Chọn tất cả"
+                  />
+                </th>
                 <th className="w-32 px-4 py-2.5 text-center">Mã NV</th>
                 <th className="px-4 py-2.5 text-left">Họ tên</th>
                 <th className="px-4 py-2.5 text-center">Tên đăng nhập</th>
@@ -234,6 +248,9 @@ export function UserAccountPane() {
             <tbody>
               {items.map((item) => (
                 <tr key={item.id} className="border-b border-slate-200 last:border-0">
+                  <td className="px-4 py-2 text-center">
+                    <SelectionCheckbox checked={rowSelection.isSelected(item.id)} onChange={() => rowSelection.toggle(item.id)} ariaLabel={`Chọn ${item.fullName}`} />
+                  </td>
                   <td
                     className="cursor-pointer px-4 py-2 text-center font-medium text-blue-600 hover:text-blue-700"
                     onDoubleClick={() => setModal({ mode: 'edit', item })}
@@ -300,6 +317,8 @@ export function UserAccountPane() {
           </table>
         </div>
       )}
+
+      <SelectionToolbar count={rowSelection.selectedCount} onClear={rowSelection.clear} />
 
       {modal && (
         <UserAccountFormDialog

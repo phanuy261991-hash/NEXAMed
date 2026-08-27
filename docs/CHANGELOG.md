@@ -2,6 +2,30 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-28 (2)
+
+Đổi tên "Khách bỏ về" → "Hủy"/"Hủy khám"/"Hủy lượt khám" theo trạng thái + redesign popup xác nhận + chuẩn hoá dùng chung `Button` + checkbox chọn dòng hàng loạt (scaffolding) — chuỗi phản hồi trực tiếp trên bản chạy thật, xem `docs/DECISIONS.md` #086:
+
+- **Đổi chữ theo trạng thái lượt khám**: CHECKED_IN → "Hủy" (`ReceptionListPage.tsx`, icon-only ở `WaitingCard`); IN_CONSULTATION → "Hủy khám" (`EncounterConsultationPage.tsx`, thẻ "Đang khám"); popup dùng chung + nút ở phiếu thu → "Hủy lượt khám" (bỏ hẳn cụm "Khách bỏ về").
+- **Redesign `CancelEncounterDialog.tsx`** — bỏ khối icon tròn viền glow "nhìn AI look", chuyển về đúng mẫu popup xác nhận đơn giản đã có sẵn (`rounded-lg`/`shadow-xl`, không icon tròn).
+- **Chuẩn hoá bắt buộc dùng component `Button`** (`.claude/docs/ui-guidelines.md` mục 4.5 mới) — sửa 4 nút viết tay màu nhạt tuỳ tiện sang đúng `variant="danger"`/`"secondary"`.
+- **`InvoiceListPage.tsx`**: "Đã thu [ngày]" → tĩnh "Đã thu hôm nay".
+- **Checkbox chọn dòng hàng loạt (scaffolding, `.claude/docs/ui-guidelines.md` mục 4.6 mới)** — thêm cho 9 bảng danh sách thật (bỏ qua ICD-10/Tỉnh-Thành-Phường-Xã vì chỉ đọc): `shared/hooks/useRowSelection.ts`, `shared/ui/SelectionCheckbox.tsx` (checkbox custom `.selection-checkbox`, `appearance: none` — tránh bóng/glow mặc định của checkbox Chromium hiện đại), `shared/ui/SelectionToolbar.tsx` (thanh nổi "Đã chọn N", chưa có hành động hàng loạt nào được chốt).
+- **Đã xác minh thật**: `pnpm -w typecheck` sạch, `pnpm run lint` 0 lỗi, `pnpm --filter @nexamed/web run build` sạch (448.88 kB, không đổi). Playwright qua Chrome thật: checkbox phẳng/chọn tất cả/indeterminate đúng, "Đã thu hôm nay" đúng, Danh sách tiếp nhận không vỡ layout. Chưa dựng lại dữ liệu test để chụp trực tiếp nút "Hủy khám" ở Hàng đợi khám.
+- Cập nhật `.claude/docs/ui-guidelines.md` (mục 4.5/4.6), `docs/DECISIONS.md` (#086), `docs/TASK.md`.
+
+## 2026-08-28
+
+Huỷ lượt khám + hoàn tiền — 3 tình huống vận hành thật chủ dự án nêu, xem `docs/DECISIONS.md` #085:
+
+- **`invoice_status` mở 2→4 giá trị** (`UNPAID→PAID→REFUNDED`, `UNPAID→CANCELLED`) + `payment.type` (`PAYMENT`/`REFUND`) — tách bạch "Đánh dấu chưa thu" (bấm nhầm) ≠ "Huỷ lượt khám" (đóng phiếu nếu chưa thu) ≠ "Hoàn tiền" (dòng payment mới đối ứng, không xoá vết cũ).
+- **`encounter-state-machine.ts` thêm 2 cạnh mới ở `IN_CONSULTATION`**: `→CANCELLED` (khách bỏ về giữa chừng) và `→CHECKED_IN` ("Trả về hàng chờ", đường lùi đầu tiên của state machine — bác sĩ nhả ca nhận nhầm/bận đột xuất).
+- **`POST /encounters/:id/cancel`** mở rộng nhận cả `IN_CONSULTATION`, đóng phiếu thu `UNPAID→CANCELLED` trong cùng transaction; phiếu `PAID` giữ nguyên chờ hoàn riêng. **`POST /encounters/:id/release`** mới (Trả về hàng chờ). **`POST /billing/invoices/:encounterId/refund`** mới, quyền riêng `invoice.refund` (mặc định chỉ `clinic_admin`) — chỉ hoàn TOÀN PHẦN, bắt buộc lý do.
+- Web: `shared/ui/CancelEncounterDialog.tsx` (mới, dùng chung 4 nơi: Danh sách tiếp nhận, Hàng đợi khám, Màn khám, Chi tiết phiếu thu), badge 4 trạng thái + "Cần hoàn tiền" ở `InvoiceListPage.tsx`/`InvoiceDetailPage.tsx`, tổng kết cuối ngày 3 số (Đã thu/Đã hoàn/Thực thu).
+- Tiện sửa bug wiring có sẵn: `queueView` (Thu ngân #084 đã thiết kế lọc ẩn ca chưa thu khỏi Hàng đợi khám) chưa từng được frontend truyền lên — đã nối lại.
+- **Đã xác minh thật**: `packages/core` 118/118 test (+13 `invoice-lifecycle.spec.ts`, +2 cạnh state machine), `apps/api` 468/468 test (+10 `billing-http.spec.ts`, +8 `encounter-http.spec.ts`), `pnpm -w typecheck` sạch, `pnpm --filter @nexamed/web run build` sạch (448.82 kB). Migration đã áp lên Postgres dev. **Chưa verify Playwright** — còn treo cho phiên sau.
+- Cập nhật `docs/ERD.md` (v1.33), `.claude/docs/clinical-workflow.md`, `docs/DECISIONS.md` (#085), `docs/TASK.md`.
+
 ## 2026-08-27 (4)
 
 Thu ngân cơ bản (Sprint 5/6, BIL-01→04) hoàn tất verify từ phiên trước + danh mục "Hình thức thanh toán" thay enum cố định + 3 chỉnh sửa UI trực tiếp (xem `docs/DECISIONS.md` #084):

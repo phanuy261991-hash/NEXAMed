@@ -11,16 +11,19 @@ const VALID_EDGES: [EncounterStatus, EncounterStatus][] = [
   ['CHECKED_IN', 'IN_CONSULTATION'],
   ['CHECKED_IN', 'CANCELLED'],
   ['IN_CONSULTATION', 'COMPLETED'],
+  // #085 — khách bỏ về giữa chừng / bác sĩ trả ca về hàng chờ chung.
+  ['IN_CONSULTATION', 'CANCELLED'],
+  ['IN_CONSULTATION', 'CHECKED_IN'],
 ];
 
 describe('canTransitionEncounter', () => {
-  it('cho phép đúng 6 cạnh hợp lệ theo .claude/docs/clinical-workflow.md', () => {
+  it('cho phép đúng 8 cạnh hợp lệ theo .claude/docs/clinical-workflow.md', () => {
     for (const [from, to] of VALID_EDGES) {
       expect(canTransitionEncounter(from, to)).toBe(true);
     }
   });
 
-  it('chặn mọi cặp còn lại trong ma trận 6×6 (không nhảy cóc, không đường lùi)', () => {
+  it('chặn mọi cặp còn lại trong ma trận 6×6 (không nhảy cóc, không tự chuyển về chính mình)', () => {
     const validSet = new Set(VALID_EDGES.map(([from, to]) => `${from}->${to}`));
     let invalidCount = 0;
     for (const from of ENCOUNTER_STATUSES) {
@@ -31,9 +34,17 @@ describe('canTransitionEncounter', () => {
         expect(canTransitionEncounter(from, to)).toBe(false);
       }
     }
-    // 6×6 = 36 cặp, 6 hợp lệ → 30 cặp phải bị chặn (bao gồm mọi trạng thái giữ nguyên, mọi cạnh
+    // 6×6 = 36 cặp, 8 hợp lệ → 28 cặp phải bị chặn (bao gồm mọi trạng thái giữ nguyên, mọi cạnh
     // đi ra khỏi COMPLETED/CANCELLED/NO_SHOW).
-    expect(invalidCount).toBe(30);
+    expect(invalidCount).toBe(28);
+  });
+
+  it('#085 — IN_CONSULTATION có đúng 3 đường ra, KHÔNG có đường về SCHEDULED/NO_SHOW', () => {
+    expect(canTransitionEncounter('IN_CONSULTATION', 'COMPLETED')).toBe(true);
+    expect(canTransitionEncounter('IN_CONSULTATION', 'CANCELLED')).toBe(true);
+    expect(canTransitionEncounter('IN_CONSULTATION', 'CHECKED_IN')).toBe(true);
+    expect(canTransitionEncounter('IN_CONSULTATION', 'SCHEDULED')).toBe(false);
+    expect(canTransitionEncounter('IN_CONSULTATION', 'NO_SHOW')).toBe(false);
   });
 
   it('không có đường lùi từ trạng thái cuối (COMPLETED/CANCELLED/NO_SHOW)', () => {

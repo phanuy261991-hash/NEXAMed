@@ -24,3 +24,4 @@ export * from './vital-sign/vital-sign-thresholds';
 export * from './vital-sign/bmi';
 export * from './prescription/warnings';
 export * from './billing/compute-invoice-lines';
+export * from './billing/invoice-lifecycle';

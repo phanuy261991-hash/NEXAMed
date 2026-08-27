@@ -1,8 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { MarkInvoicePaidRequest, RevertInvoicePaymentRequest, SaveInvoiceDraftRequest } from '@nexamed/shared';
+import type { MarkInvoicePaidRequest, RefundInvoiceRequest, RevertInvoicePaymentRequest, SaveInvoiceDraftRequest } from '@nexamed/shared';
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
-import { getBillingInvoice, getBillingInvoiceList, markInvoicePaid, printInvoice, revertInvoicePayment, saveInvoiceDraft } from './invoice.api';
+import {
+  getBillingInvoice,
+  getBillingInvoiceList,
+  markInvoicePaid,
+  printInvoice,
+  refundInvoice,
+  revertInvoicePayment,
+  saveInvoiceDraft,
+} from './invoice.api';
 
 /** "Thu ngân" (danh sách trong ngày) + tổng kết cuối ngày (BIL-04) — 1 ngày/tenant nhỏ, không cursor. */
 export function useBillingInvoiceListQuery(date?: string) {
@@ -53,6 +61,21 @@ export function useRevertInvoicePaymentMutation(encounterId: string) {
     onSuccess: () => {
       void invalidate();
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'reception') });
+    },
+  });
+}
+
+/** #085 — hoàn tiền cho lượt khám đã huỷ. Nút chỉ hiện với vai trò có `invoice.refund` (mặc định chỉ `clinic_admin`). */
+export function useRefundInvoiceMutation(encounterId: string) {
+  const { tenantId } = useAppConfig();
+  const queryClient = useQueryClient();
+  const invalidate = useInvalidateInvoice();
+  return useMutation({
+    mutationFn: (body: RefundInvoiceRequest) => refundInvoice(encounterId, body),
+    onSuccess: () => {
+      void invalidate();
+      // Tổng kết cuối ngày đổi (paidTotalAmount/refundedTotalAmount/netTotalAmount) — làm mới luôn.
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'invoice', 'list') });
     },
   });
 }

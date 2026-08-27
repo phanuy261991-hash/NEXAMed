@@ -21,3 +21,29 @@ export class InvoiceNotPaidError extends DomainError {
     super('Phiếu thu này chưa được đánh dấu đã thu.');
   }
 }
+
+/**
+ * #085 — mọi thao tác tiền bạc (thu tiền/lưu tạm/đánh dấu chưa thu/hoàn tiền) trên phiếu thu đã
+ * ĐÓNG SỔ (`CANCELLED` do lượt khám bị huỷ khi chưa thu, hoặc `REFUNDED` do đã hoàn tiền xong).
+ * Trước #085 không tồn tại tình huống này (phiếu chỉ có UNPAID/PAID, luôn thao tác được).
+ */
+export class InvoiceClosedError extends DomainError {
+  readonly code = 'INVOICE_CLOSED';
+
+  constructor() {
+    super('Phiếu thu này đã đóng sổ (lượt khám đã huỷ hoặc đã hoàn tiền) — không thao tác được nữa.');
+  }
+}
+
+/**
+ * #085 — hoàn tiền khi chưa đủ điều kiện: phiếu chưa ở `PAID` (chưa thu thì không có gì để hoàn),
+ * hoặc lượt khám CHƯA bị huỷ (chặn hoàn nhầm cho ca vẫn đang khám bình thường — phải huỷ lượt khám
+ * trước, xem `canRefundInvoice()` ở `@nexamed/core` `billing/invoice-lifecycle.ts`).
+ */
+export class InvoiceNotRefundableError extends DomainError {
+  readonly code = 'INVOICE_NOT_REFUNDABLE';
+
+  constructor() {
+    super('Chỉ hoàn tiền được cho phiếu thu đã thu tiền của lượt khám đã huỷ.');
+  }
+}

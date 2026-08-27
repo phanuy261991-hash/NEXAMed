@@ -41,8 +41,9 @@ export function PaymentConfigPane() {
         <div>
           <p className="text-[14.5px] font-bold text-slate-900">Bật cho phép &quot;Thanh toán sau&quot;</p>
           <p className="mt-1.5 max-w-2xl text-[13px] leading-relaxed text-slate-500">
-            Khi bật, lễ tân có thể tích &quot;Thanh toán sau&quot; để cho khách nợ — lượt khám vào Hàng đợi khám ngay,
-            chưa cần thu tiền. Mặc định tắt: mọi lượt khám phải thu tiền trước khi vào hàng đợi.
+            Khi bật, form Tiếp nhận tự tích sẵn &quot;Thanh toán sau&quot; — lễ tân có thể bỏ tích nếu ca đó cần thu
+            tiền ngay. Lượt khám tích &quot;Thanh toán sau&quot; vào Hàng đợi khám ngay, chưa cần thu tiền. Mặc định
+            tắt: mọi lượt khám phải thu tiền trước khi vào hàng đợi.
           </p>
         </div>
         <label className="relative mt-0.5 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center">

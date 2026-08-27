@@ -65,6 +65,10 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   ENCOUNTER_PAYMENT_REQUIRED: HttpStatus.CONFLICT,
   INVOICE_ALREADY_PAID: HttpStatus.CONFLICT,
   INVOICE_NOT_PAID: HttpStatus.CONFLICT,
+  // #085 (huỷ lượt khám + hoàn tiền) — cùng nhóm CONFLICT: đều là "trạng thái hiện tại của phiếu
+  // thu/lượt khám không cho phép thao tác này", không phải lỗi input.
+  INVOICE_CLOSED: HttpStatus.CONFLICT,
+  INVOICE_NOT_REFUNDABLE: HttpStatus.CONFLICT,
 };
 
 /**

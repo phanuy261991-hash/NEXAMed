@@ -3243,6 +3243,135 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/encounters/{id}/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** #085 "Trả về hàng chờ" — IN_CONSULTATION → CHECKED_IN, nhả doctorId (bác sĩ nhận nhầm ca/bận đột xuất) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                encounterNo: string;
+                                /** Format: uuid */
+                                patientId: string;
+                                /** Format: uuid */
+                                doctorId: string | null;
+                                /** Format: uuid */
+                                departmentId: string;
+                                /** Format: uuid */
+                                appointmentId: string | null;
+                                /** @enum {string} */
+                                status: "SCHEDULED" | "CHECKED_IN" | "IN_CONSULTATION" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
+                                specialty: string;
+                                checkedInAt: string;
+                                startedAt: string | null;
+                                completedAt: string | null;
+                                chiefComplaint: string | null;
+                                examTypeName: string | null;
+                                receptionTypeCode: string | null;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền encounter.update */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Chuyển trạng thái không hợp lệ (ENCOUNTER_INVALID_TRANSITION) hoặc version không khớp (CONCURRENT_MODIFICATION) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/encounters/{id}/consultation": {
         parameters: {
             query?: never;
@@ -4576,14 +4705,18 @@ export interface paths {
                                     departmentName: string;
                                     totalAmount: number;
                                     /** @enum {string} */
-                                    status: "UNPAID" | "PAID";
+                                    status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                     paymentMethod: string | null;
                                     paidAt: string | null;
+                                    needsRefund: boolean;
                                 }[];
                                 paidCount: number;
                                 paidTotalAmount: number;
                                 unpaidCount: number;
                                 unpaidTotalAmount: number;
+                                refundedCount: number;
+                                refundedTotalAmount: number;
+                                netTotalAmount: number;
                             };
                             meta: Record<string, never>;
                         };
@@ -4662,7 +4795,7 @@ export interface paths {
                                 encounterId: string;
                                 invoiceNo: string;
                                 /** @enum {string} */
-                                status: "UNPAID" | "PAID";
+                                status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                 totalAmount: number;
                                 lines: {
                                     /** Format: uuid */
@@ -4682,11 +4815,16 @@ export interface paths {
                                 patientCode: string;
                                 fullName: string;
                                 departmentName: string;
+                                encounterVersion: number;
                                 printedAt: string | null;
                                 pendingPaymentMethod: string | null;
                                 pendingCashReceivedAmount: number | null;
                                 paymentMethod: string | null;
                                 paidAt: string | null;
+                                encounterCancelled: boolean;
+                                needsRefund: boolean;
+                                refundedAt: string | null;
+                                refundReason: string | null;
                                 version: number;
                             } | null;
                             meta: Record<string, never>;
@@ -4775,7 +4913,7 @@ export interface paths {
                                 encounterId: string;
                                 invoiceNo: string;
                                 /** @enum {string} */
-                                status: "UNPAID" | "PAID";
+                                status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                 totalAmount: number;
                                 lines: {
                                     /** Format: uuid */
@@ -4795,11 +4933,16 @@ export interface paths {
                                 patientCode: string;
                                 fullName: string;
                                 departmentName: string;
+                                encounterVersion: number;
                                 printedAt: string | null;
                                 pendingPaymentMethod: string | null;
                                 pendingCashReceivedAmount: number | null;
                                 paymentMethod: string | null;
                                 paidAt: string | null;
+                                encounterCancelled: boolean;
+                                needsRefund: boolean;
+                                refundedAt: string | null;
+                                refundReason: string | null;
                                 version: number;
                             } | null;
                             meta: Record<string, never>;
@@ -4916,7 +5059,7 @@ export interface paths {
                                 encounterId: string;
                                 invoiceNo: string;
                                 /** @enum {string} */
-                                status: "UNPAID" | "PAID";
+                                status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                 totalAmount: number;
                                 lines: {
                                     /** Format: uuid */
@@ -4936,11 +5079,16 @@ export interface paths {
                                 patientCode: string;
                                 fullName: string;
                                 departmentName: string;
+                                encounterVersion: number;
                                 printedAt: string | null;
                                 pendingPaymentMethod: string | null;
                                 pendingCashReceivedAmount: number | null;
                                 paymentMethod: string | null;
                                 paidAt: string | null;
+                                encounterCancelled: boolean;
+                                needsRefund: boolean;
+                                refundedAt: string | null;
+                                refundReason: string | null;
                                 version: number;
                             } | null;
                             meta: Record<string, never>;
@@ -5030,6 +5178,167 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/billing/invoices/{encounterId}/refund": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** #085 "Hoàn tiền" cho lượt khám đã huỷ, quyền riêng invoice.refund — chỉ hoàn TOÀN PHẦN, bắt buộc lý do */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    encounterId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        reason: string;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                encounterId: string;
+                                invoiceNo: string;
+                                /** @enum {string} */
+                                status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
+                                totalAmount: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    examTypeCode: string;
+                                    examTypeName: string;
+                                    priceTypeCode: string | null;
+                                    unitCode: string | null;
+                                    unitPrice: number;
+                                    quantity: number;
+                                    lineTotal: number;
+                                }[];
+                                encounterNo: string;
+                                checkedInAt: string;
+                                /** Format: uuid */
+                                patientId: string;
+                                patientCode: string;
+                                fullName: string;
+                                departmentName: string;
+                                encounterVersion: number;
+                                printedAt: string | null;
+                                pendingPaymentMethod: string | null;
+                                pendingCashReceivedAmount: number | null;
+                                paymentMethod: string | null;
+                                paidAt: string | null;
+                                encounterCancelled: boolean;
+                                needsRefund: boolean;
+                                refundedAt: string | null;
+                                refundReason: string | null;
+                                version: number;
+                            } | null;
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu lý do */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền invoice.refund */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có phiếu thu cho lượt khám này */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION) hoặc chưa đủ điều kiện hoàn tiền — phiếu chưa PAID hoặc lượt khám chưa huỷ (INVOICE_NOT_REFUNDABLE) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/billing/invoices/{encounterId}/save-draft": {
         parameters: {
             query?: never;
@@ -5073,7 +5382,7 @@ export interface paths {
                                 encounterId: string;
                                 invoiceNo: string;
                                 /** @enum {string} */
-                                status: "UNPAID" | "PAID";
+                                status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                 totalAmount: number;
                                 lines: {
                                     /** Format: uuid */
@@ -5093,11 +5402,16 @@ export interface paths {
                                 patientCode: string;
                                 fullName: string;
                                 departmentName: string;
+                                encounterVersion: number;
                                 printedAt: string | null;
                                 pendingPaymentMethod: string | null;
                                 pendingCashReceivedAmount: number | null;
                                 paymentMethod: string | null;
                                 paidAt: string | null;
+                                encounterCancelled: boolean;
+                                needsRefund: boolean;
+                                refundedAt: string | null;
+                                refundReason: string | null;
                                 version: number;
                             } | null;
                             meta: Record<string, never>;
@@ -5207,7 +5521,7 @@ export interface paths {
                                 encounterId: string;
                                 invoiceNo: string;
                                 /** @enum {string} */
-                                status: "UNPAID" | "PAID";
+                                status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                 totalAmount: number;
                                 lines: {
                                     /** Format: uuid */
@@ -5227,11 +5541,16 @@ export interface paths {
                                 patientCode: string;
                                 fullName: string;
                                 departmentName: string;
+                                encounterVersion: number;
                                 printedAt: string | null;
                                 pendingPaymentMethod: string | null;
                                 pendingCashReceivedAmount: number | null;
                                 paymentMethod: string | null;
                                 paidAt: string | null;
+                                encounterCancelled: boolean;
+                                needsRefund: boolean;
+                                refundedAt: string | null;
+                                refundReason: string | null;
                                 version: number;
                             } | null;
                             meta: Record<string, never>;

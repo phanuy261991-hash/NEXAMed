@@ -271,18 +271,39 @@ export class EncounterRepository {
     return result.count;
   }
 
-  /** "Bỏ về" — `CHECKED_IN → CANCELLED`, bắt buộc lý do. Không soft-delete (giữ nguyên `deletedAt = null`, cùng cách `appointment.status='CANCELLED'` không soft-delete). */
+  /**
+   * "Khách bỏ về" — `CHECKED_IN → CANCELLED` hoặc (#085) `IN_CONSULTATION → CANCELLED`, bắt buộc
+   * lý do. `fromStatus` truyền từ service (đã đọc `existing.status` + `assertEncounterTransition`
+   * xác nhận hợp lệ) — ghép vào `WHERE` để atomic đúng cạnh nguồn, cùng khuôn `claimFromPool()`.
+   * Không soft-delete (giữ nguyên `deletedAt = null`, cùng cách `appointment.status='CANCELLED'`
+   * không soft-delete). `doctorId` GIỮ NGUYÊN (không null hoá) — vết "ai đang khám khi bỏ về".
+   */
   async cancel(
     tx: Prisma.TransactionClient,
     tenantId: string,
     id: string,
+    fromStatus: 'CHECKED_IN' | 'IN_CONSULTATION',
     expectedVersion: number,
     cancelReason: string,
     actorId: string,
   ): Promise<number> {
     const result = await tx.encounter.updateMany({
-      where: { tenantId, id, version: expectedVersion, deletedAt: null, status: 'CHECKED_IN' },
+      where: { tenantId, id, version: expectedVersion, deletedAt: null, status: fromStatus },
       data: { status: 'CANCELLED', cancelReason, updatedBy: actorId, version: { increment: 1 } },
+    });
+    return result.count;
+  }
+
+  /**
+   * #085 "Trả về hàng chờ" — `IN_CONSULTATION → CHECKED_IN`, nhả `doctorId` về `null` (quay lại
+   * hàng chờ chung Khoa cho bác sĩ khác nhận, "Hàng đợi ảo" #064) + xoá `startedAt` (dọn sạch —
+   * `claimFromPool()`/`startConsultation()` sẽ set lại đúng thời điểm khi có bác sĩ nhận ca mới,
+   * để `startedAt` cũ nằm lại lúc đang CHECKED_IN chỉ gây nhiễu lúc debug).
+   */
+  async release(tx: Prisma.TransactionClient, tenantId: string, id: string, expectedVersion: number, actorId: string): Promise<number> {
+    const result = await tx.encounter.updateMany({
+      where: { tenantId, id, version: expectedVersion, deletedAt: null, status: 'IN_CONSULTATION' },
+      data: { status: 'CHECKED_IN', doctorId: null, startedAt: null, updatedBy: actorId, version: { increment: 1 } },
     });
     return result.count;
   }

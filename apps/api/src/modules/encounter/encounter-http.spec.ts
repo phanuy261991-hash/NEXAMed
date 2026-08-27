@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser';
 import request from 'supertest';
 import { PrismaClient } from '@prisma/client';
 import * as argon2 from 'argon2';
+import { getVietnamDateString } from '@nexamed/core';
 import { AppModule } from '../../app.module';
 import { ResponseInterceptor } from '../../common/response.interceptor';
 import { DomainExceptionFilter } from '../../common/domain-exception.filter';
@@ -397,17 +398,55 @@ describe('HTTP e2e — /api/v1/encounters', () => {
       expect(res.body.data.status).toBe('CANCELLED');
     });
 
-    it('bỏ về encounter đã IN_CONSULTATION → 409 ENCOUNTER_INVALID_TRANSITION', async () => {
+    // #085 — trước đây IN_CONSULTATION không có đường ra nào ngoài COMPLETED (bắt buộc chẩn đoán
+    // chính) nên bác sĩ đã "Nhận ca" thì không "bỏ về" được nữa — ngõ cụt thật, đã mở cạnh mới.
+    it('#085 — "bỏ về" khi đã IN_CONSULTATION (khách bỏ về giữa chừng) → 200, phiếu thu ĐÃ THU giữ nguyên PAID + needsRefund=true', async () => {
       const encounterId = await checkInFreshEncounter(14);
       await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/start`).set(authed(doctorAToken)).send({ version: 1 });
 
       const res = await request(app.getHttpServer())
         .post(`/api/v1/encounters/${encounterId}/cancel`)
         .set(authed(receptionistToken))
-        .send({ cancelReason: 'Không hợp lệ nữa', version: 2 });
+        .send({ cancelReason: 'Khách bỏ về giữa chừng', version: 2 });
 
-      expect(res.status).toBe(409);
-      expect(res.body.error.code).toBe('ENCOUNTER_INVALID_TRANSITION');
+      expect(res.status).toBe(200);
+      expect(res.body.data.status).toBe('CANCELLED');
+
+      const invoiceRes = await request(app.getHttpServer())
+        .get(`/api/v1/billing/invoices/${encounterId}`)
+        .set(authed(receptionistToken));
+      expect(invoiceRes.body.data.status).toBe('PAID');
+      expect(invoiceRes.body.data.encounterCancelled).toBe(true);
+      expect(invoiceRes.body.data.needsRefund).toBe(true);
+    });
+
+    it('#085 — "bỏ về" khi CHƯA thu tiền → phiếu thu tự đóng CANCELLED, vẫn tra cứu lại được nhưng không tính vào tổng kết cuối ngày', async () => {
+      const encounterId = await checkInUnpaidEncounter(30);
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/encounters/${encounterId}/cancel`)
+        .set(authed(receptionistToken))
+        .send({ cancelReason: 'Khách bỏ về, chưa đóng tiền', version: 1 });
+      expect(res.status).toBe(200);
+
+      const invoiceRes = await request(app.getHttpServer())
+        .get(`/api/v1/billing/invoices/${encounterId}`)
+        .set(authed(receptionistToken));
+      expect(invoiceRes.body.data.status).toBe('CANCELLED');
+      expect(invoiceRes.body.data.needsRefund).toBe(false);
+
+      // Vẫn hiện trong danh sách trong ngày (tra cứu lại được — phiếu có thể đã in đưa khách
+      // trước lúc huỷ, KHÔNG phải soft-delete) — chỉ loại khỏi các cột tiền/đếm tổng kết.
+      const listRes = await request(app.getHttpServer())
+        .get('/api/v1/billing/invoices')
+        .query({ date: getVietnamDateString() })
+        .set(authed(receptionistToken));
+      const items = listRes.body.data.items as { encounterId: string; status: string }[];
+      const found = items.find((i) => i.encounterId === encounterId);
+      expect(found?.status).toBe('CANCELLED');
+      // Quy tắc cộng tổng đúng (không đếm CANCELLED vào bất kỳ cột tiền nào) đã có unit test riêng
+      // ở `packages/core` `invoice-lifecycle.spec.ts` — ở đây chỉ xác nhận status resolve đúng qua
+      // toàn bộ stack HTTP thật.
     });
 
     it('tenant B không "bỏ về" được lượt khám của tenant A → 404', async () => {
@@ -418,6 +457,80 @@ describe('HTTP e2e — /api/v1/encounters', () => {
         .set(authed(tenantBReceptionistToken))
         .send({ cancelReason: 'x', version: 1 });
 
+      expect(res.status).toBe(404);
+    });
+  });
+
+  describe('POST /api/v1/encounters/:id/release — #085 "Trả về hàng chờ"', () => {
+    it('bác sĩ nhả ca của chính mình → 200, IN_CONSULTATION→CHECKED_IN, doctorId về null', async () => {
+      const encounterId = await checkInFreshEncounter(31);
+      await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/start`).set(authed(doctorAToken)).send({ version: 1 });
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/encounters/${encounterId}/release`)
+        .set(authed(doctorAToken))
+        .send({ version: 2 });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.status).toBe('CHECKED_IN');
+      expect(res.body.data.doctorId).toBeNull();
+      expect(res.body.data.version).toBe(3);
+    });
+
+    it('nhả xong ticket thật sự quay về hàng chờ chung (doctorId=NULL) — "Nhận ca" lại được ngay, không kẹt ở trạng thái lửng', async () => {
+      // "Nhận ca" đòi actorDepartmentId khớp departmentId ticket (xem test dòng ~347 "bác sĩ chưa
+      // gán Khoa → 404") — gán Khoa rõ ràng cho doctorA để tự nhận lại đúng ticket của chính mình.
+      const departmentId = await createDepartment(fixture.tenantA.id, 'Khoa Nội — release tự nhận lại');
+      await assignDepartment(doctorAUserId, departmentId);
+      const encounterId = await checkInFreshEncounter(32);
+      await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/start`).set(authed(doctorAToken)).send({ version: 1 });
+      const releaseRes = await request(app.getHttpServer())
+        .post(`/api/v1/encounters/${encounterId}/release`)
+        .set(authed(doctorAToken))
+        .send({ version: 2 });
+      expect(releaseRes.body.data.doctorId).toBeNull();
+
+      // "Nhận ca" lại (nhánh doctorId===null của startConsultation, KHÔNG phải nhánh "bác sĩ phụ
+      // trách chính") — chính doctorA claim lại được vì luôn cùng Khoa với ticket của mình.
+      const res = await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/start`).set(authed(doctorAToken)).send({ version: 3 });
+      expect(res.status).toBe(200);
+      expect(res.body.data.status).toBe('IN_CONSULTATION');
+      expect(res.body.data.doctorId).toBe(doctorAUserId);
+    });
+
+    it('còn CHECKED_IN (chưa từng "Nhận ca") → 409 ENCOUNTER_INVALID_TRANSITION', async () => {
+      const encounterId = await checkInFreshEncounter(33);
+
+      const res = await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/release`).set(authed(doctorAToken)).send({ version: 1 });
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('ENCOUNTER_INVALID_TRANSITION');
+    });
+
+    it('bác sĩ khác (không phải người đang khám, scope personal) → 404', async () => {
+      const encounterId = await checkInFreshEncounter(34);
+      await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/start`).set(authed(doctorAToken)).send({ version: 1 });
+
+      const res = await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/release`).set(authed(doctorBToken)).send({ version: 2 });
+      expect(res.status).toBe(404);
+    });
+
+    it('version cũ → 409 CONCURRENT_MODIFICATION', async () => {
+      const encounterId = await checkInFreshEncounter(35);
+      await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/start`).set(authed(doctorAToken)).send({ version: 1 });
+
+      const res = await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/release`).set(authed(doctorAToken)).send({ version: 99 });
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('CONCURRENT_MODIFICATION');
+    });
+
+    it('tenant B không "trả về hàng chờ" được lượt khám của tenant A → 404 (cách ly tenant)', async () => {
+      const encounterId = await checkInFreshEncounter(36);
+      await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/start`).set(authed(doctorAToken)).send({ version: 1 });
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/encounters/${encounterId}/release`)
+        .set(authed(tenantBDoctorToken))
+        .send({ version: 2 });
       expect(res.status).toBe(404);
     });
   });

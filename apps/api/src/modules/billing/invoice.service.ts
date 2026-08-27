@@ -1,9 +1,22 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { ConcurrentModificationError, getVietnamDateString, vietnamDayRange, InvoiceAlreadyPaidError, InvoiceNotPaidError } from '@nexamed/core';
+import {
+  canRefundInvoice,
+  computeDailyBillingTotals,
+  ConcurrentModificationError,
+  getVietnamDateString,
+  InvoiceAlreadyPaidError,
+  InvoiceClosedError,
+  InvoiceNotPaidError,
+  InvoiceNotRefundableError,
+  isInvoiceClosed,
+  needsRefund as computeNeedsRefund,
+  vietnamDayRange,
+} from '@nexamed/core';
 import type {
   Invoice as InvoiceDto,
   ListBillingInvoicesResponse,
   MarkInvoicePaidRequest,
+  RefundInvoiceRequest,
   RevertInvoicePaymentRequest,
   SaveInvoiceDraftRequest,
 } from '@nexamed/shared';
@@ -14,6 +27,7 @@ import { InvoiceRepository, type BillingListRow, type InvoiceWithLines } from '.
 import { PaymentRepository } from './payment.repository';
 
 function toInvoiceResponse(row: InvoiceWithLines): InvoiceDto {
+  const encounterCancelled = row.encounter.status === 'CANCELLED';
   return {
     id: row.id,
     encounterId: row.encounterId,
@@ -22,6 +36,7 @@ function toInvoiceResponse(row: InvoiceWithLines): InvoiceDto {
     totalAmount: Number(row.totalAmount),
     encounterNo: row.encounter.encounterNo,
     checkedInAt: row.encounter.checkedInAt.toISOString(),
+    encounterVersion: row.encounter.version,
     patientId: row.encounter.patient.id,
     patientCode: row.encounter.patient.patientCode,
     fullName: row.encounter.patient.fullName,
@@ -41,6 +56,11 @@ function toInvoiceResponse(row: InvoiceWithLines): InvoiceDto {
     pendingCashReceivedAmount: row.pendingCashReceivedAmount !== null ? Number(row.pendingCashReceivedAmount) : null,
     paymentMethod: row.activePayment?.method ?? null,
     paidAt: row.activePayment?.paidAt.toISOString() ?? null,
+    // #085 — cảnh báo hoàn tiền + vết hoàn tiền, xem `needsRefund()`/`invoice-lifecycle.ts` ở `@nexamed/core`.
+    encounterCancelled,
+    needsRefund: computeNeedsRefund({ invoiceStatus: row.status, encounterCancelled }),
+    refundedAt: row.refundPayment?.paidAt.toISOString() ?? null,
+    refundReason: row.refundPayment?.reason ?? null,
     version: row.version,
   };
 }
@@ -69,31 +89,18 @@ export class InvoiceService {
     const dayRange = vietnamDayRange(targetDate);
     const rows = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.invoiceRepository.listForDay(tx, tenantId, dayRange.startUtc, dayRange.endUtc));
 
-    let paidCount = 0;
-    let paidTotalAmount = 0;
-    let unpaidCount = 0;
-    let unpaidTotalAmount = 0;
-    for (const row of rows) {
-      const amount = Number(row.totalAmount);
-      if (row.status === 'PAID') {
-        paidCount += 1;
-        paidTotalAmount += amount;
-      } else {
-        unpaidCount += 1;
-        unpaidTotalAmount += amount;
-      }
-    }
+    // #085 — nguồn tính duy nhất `computeDailyBillingTotals()` ở `@nexamed/core`, không cộng tay ở
+    // đây nữa (giữ đúng quy ước "REFUNDED vẫn tính vào paidTotalAmount rồi trừ ra ở netTotalAmount").
+    const totals = computeDailyBillingTotals(rows.map((row) => ({ status: row.status, totalAmount: Number(row.totalAmount) })));
 
     return {
       items: rows.map((row) => this.toBillingListItem(row)),
-      paidCount,
-      paidTotalAmount,
-      unpaidCount,
-      unpaidTotalAmount,
+      ...totals,
     };
   }
 
   private toBillingListItem(row: BillingListRow): ListBillingInvoicesResponse['items'][number] {
+    const encounterCancelled = row.encounter.status === 'CANCELLED';
     return {
       invoiceId: row.id,
       invoiceNo: row.invoiceNo,
@@ -109,6 +116,7 @@ export class InvoiceService {
       status: row.status,
       paymentMethod: row.activePayment?.method ?? null,
       paidAt: row.activePayment?.paidAt.toISOString() ?? null,
+      needsRefund: computeNeedsRefund({ invoiceStatus: row.status, encounterCancelled }),
     };
   }
 
@@ -124,8 +132,13 @@ export class InvoiceService {
       const count = await this.invoiceRepository.markPaid(tx, tenantId, invoice.id, dto.version, actorId);
       if (count === 0) {
         const recheck = await this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
-        if (recheck && recheck.status === 'PAID') {
+        if (recheck?.status === 'PAID') {
           throw new InvoiceAlreadyPaidError();
+        }
+        // #085 — phiếu CANCELLED (lượt khám bị huỷ khi chưa thu) hoặc REFUNDED (đã hoàn) không còn
+        // thu được nữa — khác lệch `version` thường (đó mới là ConcurrentModificationError).
+        if (recheck && isInvoiceClosed(recheck.status)) {
+          throw new InvoiceClosedError();
         }
         throw new ConcurrentModificationError();
       }
@@ -157,8 +170,13 @@ export class InvoiceService {
       const count = await this.invoiceRepository.revertPayment(tx, tenantId, invoice.id, dto.version, actorId);
       if (count === 0) {
         const recheck = await this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
-        if (recheck && recheck.status === 'UNPAID') {
+        if (recheck?.status === 'UNPAID') {
           throw new InvoiceNotPaidError();
+        }
+        // #085 — REFUNDED (đã hoàn tiền thật) không "đánh dấu chưa thu" lại được: đó là sửa thao
+        // tác BẤM NHẦM, không phải cách đảo ngược một khoản đã hoàn — phải xử lý qua sổ sách khác.
+        if (recheck && isInvoiceClosed(recheck.status)) {
+          throw new InvoiceClosedError();
         }
         throw new ConcurrentModificationError();
       }
@@ -171,6 +189,59 @@ export class InvoiceService {
         entityId: invoice.id,
         beforeJson: { status: 'PAID' },
         afterJson: { status: 'UNPAID', reason: dto.reason },
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
+
+      const updated = await this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
+      return toInvoiceResponse(updated!);
+    });
+  }
+
+  /**
+   * #085 — "Hoàn tiền" thật cho lượt khám đã huỷ, quyền riêng `invoice.refund`. KHÁC hẳn
+   * `revertPayment()` ở trên: đây là tiền đã vào két nay trả ra — tạo dòng `payment` type `REFUND`
+   * ĐỐI ỨNG dòng đã thu (không xoá/sửa dòng cũ), giữ đủ vết 2 chiều để đối soát két cuối ngày.
+   * Chỉ hoàn TOÀN PHẦN ở v1 — số tiền lấy đúng `invoice.totalAmount` đã thu, không nhận từ client.
+   */
+  async refund(tenantId: string, actorId: string, encounterId: string, dto: RefundInvoiceRequest, meta: RequestMeta): Promise<InvoiceDto> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const invoice = await this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
+      if (!invoice) {
+        throw new NotFoundException();
+      }
+      const encounterCancelled = invoice.encounter.status === 'CANCELLED';
+      if (!canRefundInvoice({ invoiceStatus: invoice.status, encounterCancelled })) {
+        // Chặn ĐỒNG THỜI 2 điều kiện: phiếu phải đang PAID (chưa hoàn lần nào) VÀ lượt khám phải
+        // đã thực sự bị huỷ — tránh hoàn nhầm cho ca vẫn đang khám bình thường.
+        throw new InvoiceNotRefundableError();
+      }
+
+      const refundedAt = new Date();
+      const count = await this.invoiceRepository.markRefunded(tx, tenantId, invoice.id, dto.version, actorId);
+      if (count === 0) {
+        throw new ConcurrentModificationError();
+      }
+      // `activePayment` chắc chắn tồn tại ở đây — `canRefundInvoice` đã xác nhận `status='PAID'`,
+      // mà phiếu PAID luôn có đúng 1 dòng payment type PAYMENT hiệu lực (xem markPaid()).
+      await this.paymentRepository.createRefund(
+        tx,
+        tenantId,
+        actorId,
+        invoice.id,
+        invoice.activePayment!.method,
+        invoice.totalAmount,
+        refundedAt,
+        dto.reason,
+      );
+
+      await writeAuditLog(tx, tenantId, {
+        actorId,
+        action: 'invoice.refunded',
+        entityType: 'invoice',
+        entityId: invoice.id,
+        beforeJson: { status: 'PAID' },
+        afterJson: { status: 'REFUNDED', amount: invoice.totalAmount.toString(), reason: dto.reason },
         ip: meta.ip,
         userAgent: meta.userAgent,
       });

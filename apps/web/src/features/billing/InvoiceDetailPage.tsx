@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Bank, CheckCircle, CreditCard, Money, Printer, Receipt } from '@phosphor-icons/react';
+import { ArrowLeft, Bank, CheckCircle, CreditCard, Money, Printer, Receipt, Warning, XCircle } from '@phosphor-icons/react';
 import type { PaymentMethod } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
+import { CancelEncounterDialog } from '../../shared/ui/CancelEncounterDialog';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { MoneyInput } from '../../shared/ui/MoneyInput';
@@ -18,6 +19,7 @@ import {
   useBillingInvoiceQuery,
   useMarkInvoicePaidMutation,
   usePrintInvoiceMutation,
+  useRefundInvoiceMutation,
   useRevertInvoicePaymentMutation,
   useSaveInvoiceDraftMutation,
 } from './invoice.queries';
@@ -27,6 +29,9 @@ const PAYMENT_METHOD_ICON: Record<string, typeof Money> = {
   CASH: Money,
   BANK_TRANSFER: Bank,
 };
+
+/** #085 — hoàn tiền là thao tác nhạy cảm hơn thu tiền, mặc định CHỈ clinic_admin (khớp `invoice.refund` ở ma trận mặc định, `packages/core/src/rbac/permissions.ts`). Ẩn hẳn nút với vai trò không có quyền, đúng `.claude/docs/ui-guidelines.md` mục 9. */
+const REFUND_ROLES = ['clinic_admin'];
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
@@ -51,7 +56,9 @@ const methodChipSelected = 'border-brand-teal bg-brand-teal text-white';
 export function InvoiceDetailPage() {
   const { encounterId = '' } = useParams<{ encounterId: string }>();
   const navigate = useNavigate();
-  const collectedByName = useAuthStore((s) => s.user?.displayName ?? s.user?.fullName) ?? '';
+  const currentUser = useAuthStore((s) => s.user);
+  const collectedByName = currentUser?.displayName ?? currentUser?.fullName ?? '';
+  const canRefund = currentUser?.roles.some((role) => REFUND_ROLES.includes(role)) ?? false;
 
   const invoiceQuery = useBillingInvoiceQuery(encounterId);
   const clinicQuery = useClinicPrintHeaderQuery();
@@ -67,6 +74,11 @@ export function InvoiceDetailPage() {
   const [revertReason, setRevertReason] = useState('');
   const [revertOpen, setRevertOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // #085 — "Khách bỏ về/Huỷ lượt khám" ngay tại đây (dùng chung CancelEncounterDialog) + "Hoàn
+  // tiền" riêng cho phiếu đã thu của lượt khám đã huỷ, bắt buộc lý do.
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [refundReason, setRefundReason] = useState('');
+  const [refundOpen, setRefundOpen] = useState(false);
 
   // Khôi phục "Lưu tạm" (F8) nếu có — nạp đúng 1 lần khi dữ liệu về, không ghi đè lúc người dùng đang gõ dở.
   useEffect(() => {
@@ -81,6 +93,7 @@ export function InvoiceDetailPage() {
   const revertMutation = useRevertInvoicePaymentMutation(encounterId);
   const draftMutation = useSaveInvoiceDraftMutation(encounterId);
   const printMutation = usePrintInvoiceMutation(encounterId);
+  const refundMutation = useRefundInvoiceMutation(encounterId);
 
   const changeAmount = method === 'CASH' && cashReceived !== undefined ? cashReceived - (invoice?.totalAmount ?? 0) : null;
 
@@ -123,6 +136,18 @@ export function InvoiceDetailPage() {
     }
   }
 
+  async function handleRefund() {
+    if (!invoice || refundReason.trim() === '') return;
+    setError(null);
+    try {
+      await refundMutation.mutateAsync({ reason: refundReason.trim(), version: invoice.version });
+      setRefundOpen(false);
+      setRefundReason('');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Có lỗi xảy ra, vui lòng thử lại.');
+    }
+  }
+
   return (
     <div className="flex h-full flex-col gap-4 overflow-y-auto p-4">
       <h1 className="sr-only">Chi tiết thanh toán</h1>
@@ -160,12 +185,37 @@ export function InvoiceDetailPage() {
             <h2 className="text-base font-bold text-slate-900">
               Phiếu thu <span className="text-blue-600">{invoice.invoiceNo}</span>
             </h2>
-            {invoice.status === 'PAID' ? (
+            {invoice.status === 'PAID' && (
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700">
                 <CheckCircle size={12} weight="bold" aria-hidden="true" /> Đã thu
               </span>
-            ) : (
+            )}
+            {invoice.status === 'UNPAID' && (
               <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-bold text-amber-700">Chờ thu</span>
+            )}
+            {/* #085 — CANCELLED (huỷ khi chưa thu)/REFUNDED (đã hoàn tiền xong) là 2 trạng thái đóng sổ mới. */}
+            {invoice.status === 'CANCELLED' && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-600">
+                <XCircle size={12} weight="bold" aria-hidden="true" /> Đã huỷ (chưa thu)
+              </span>
+            )}
+            {invoice.status === 'REFUNDED' && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2.5 py-0.5 text-xs font-bold text-violet-700">
+                <ArrowLeft size={12} weight="bold" aria-hidden="true" /> Đã hoàn tiền
+              </span>
+            )}
+            {invoice.needsRefund && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-bold text-rose-700">
+                <Warning size={12} weight="fill" aria-hidden="true" /> Cần hoàn tiền
+              </span>
+            )}
+            {/* #085 — "Hủy lượt khám" ngay tại đây, dùng chung dialog. Ẩn khi lượt khám đã huỷ rồi
+                (encounterCancelled) — không huỷ lại lần 2. */}
+            {!invoice.encounterCancelled && (
+              <Button type="button" variant="danger" className="ml-auto px-2.5 py-1 text-xs" onClick={() => setCancelOpen(true)}>
+                <XCircle size={13} weight="bold" aria-hidden="true" />
+                Hủy lượt khám
+              </Button>
             )}
           </div>
 
@@ -220,7 +270,7 @@ export function InvoiceDetailPage() {
             <div className="flex flex-col gap-3.5 rounded-lg border border-slate-200 bg-white p-4">
               <div className="flex items-baseline justify-between border-b border-dashed border-slate-200 pb-3">
                 <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Cần thu</span>
-                <span className="text-2xl font-extrabold tabular-nums text-slate-900">{formatVnd(invoice.totalAmount)}</span>
+                <span className="text-2xl font-bold tabular-nums text-slate-900">{formatVnd(invoice.totalAmount)}</span>
               </div>
 
               {invoice.status === 'UNPAID' ? (
@@ -259,7 +309,7 @@ export function InvoiceDetailPage() {
                       {changeAmount !== null && changeAmount >= 0 && (
                         <div className="flex items-baseline justify-between rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2">
                           <span className="text-xs font-bold text-emerald-700">Tiền trả lại</span>
-                          <span className="text-lg font-extrabold tabular-nums text-emerald-700">{formatVnd(changeAmount)}</span>
+                          <span className="text-lg font-bold tabular-nums text-emerald-700">{formatVnd(changeAmount)}</span>
                         </div>
                       )}
                     </div>
@@ -280,19 +330,46 @@ export function InvoiceDetailPage() {
                     </Button>
                   </div>
                 </>
+              ) : invoice.status === 'CANCELLED' ? (
+                // #085 — huỷ khi CHƯA thu tiền: không có gì để thu/hoàn, không có phương thức/ngày thu.
+                <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5 text-[13px] text-slate-600">
+                  Lượt khám này đã bị huỷ trước khi thu tiền — phiếu thu đóng lại, không tính vào tổng kết cuối ngày.
+                </p>
               ) : (
                 <div className="flex flex-col gap-2">
                   <p className="text-[13px] text-slate-600">
                     Phương thức: <strong className="text-slate-900">{paymentMethodName(invoice.paymentMethod)}</strong>
                     {invoice.paidAt && <> · {formatDateTime(invoice.paidAt)}</>}
                   </p>
+                  {/* #085 — REFUNDED: hiện thêm vết hoàn tiền, KHÔNG còn "Đánh dấu chưa thu" (đã đóng sổ). */}
+                  {invoice.status === 'REFUNDED' && (
+                    <p className="rounded-md border border-violet-200 bg-violet-50 px-3 py-2.5 text-[13px] text-violet-800">
+                      Đã hoàn {formatVnd(invoice.totalAmount)}
+                      {invoice.refundedAt && <> · {formatDateTime(invoice.refundedAt)}</>}
+                      {invoice.refundReason && (
+                        <>
+                          <br />
+                          Lý do: {invoice.refundReason}
+                        </>
+                      )}
+                    </p>
+                  )}
                   <Button type="button" onClick={() => void handlePrintAgain()} loading={printMutation.isPending}>
                     <Printer size={16} weight="bold" aria-hidden="true" />
                     In lại phiếu thu
                   </Button>
-                  <button type="button" onClick={() => setRevertOpen(true)} className="text-xs font-semibold text-slate-500 underline hover:text-rose-600">
-                    Đánh dấu chưa thu
-                  </button>
+                  {/* #085 — "Hoàn tiền" chỉ hiện khi ĐỦ điều kiện (PAID + lượt khám đã huỷ) VÀ vai
+                      trò có quyền `invoice.refund` (mặc định chỉ clinic_admin). */}
+                  {invoice.needsRefund && canRefund && (
+                    <Button type="button" variant="danger" onClick={() => setRefundOpen(true)}>
+                      Hoàn tiền
+                    </Button>
+                  )}
+                  {invoice.status === 'PAID' && !invoice.encounterCancelled && (
+                    <button type="button" onClick={() => setRevertOpen(true)} className="text-xs font-semibold text-slate-500 underline hover:text-rose-600">
+                      Đánh dấu chưa thu
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -336,6 +413,46 @@ export function InvoiceDetailPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {refundOpen && invoice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4">
+          <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-2xl">
+            <h3 className="text-base font-bold text-slate-900">Hoàn tiền?</h3>
+            <p className="mt-1.5 text-sm text-slate-600">
+              Trả lại <strong className="text-slate-900">{formatVnd(invoice.totalAmount)}</strong> cho khách (lượt khám đã huỷ). Chỉ hoàn TOÀN PHẦN, không sửa
+              lại được. Bắt buộc nhập lý do.
+            </p>
+            <label htmlFor="refund-reason" className="mt-3 block text-sm font-semibold text-slate-800">
+              Lý do
+            </label>
+            <textarea
+              id="refund-reason"
+              rows={3}
+              value={refundReason}
+              onChange={(e) => setRefundReason(e.target.value)}
+              className="mt-1.5 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              placeholder="Ví dụ: khách bỏ về, chưa dùng dịch vụ nào"
+            />
+            <div className="mt-4 flex justify-end gap-2.5">
+              <Button type="button" variant="secondary" onClick={() => setRefundOpen(false)}>
+                Đóng
+              </Button>
+              <Button type="button" variant="danger" onClick={() => void handleRefund()} disabled={refundReason.trim() === ''} loading={refundMutation.isPending}>
+                Xác nhận hoàn tiền
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {cancelOpen && invoice && (
+        <CancelEncounterDialog
+          encounterId={invoice.encounterId}
+          version={invoice.encounterVersion}
+          onCancelled={() => setCancelOpen(false)}
+          onClose={() => setCancelOpen(false)}
+        />
       )}
     </div>
   );
