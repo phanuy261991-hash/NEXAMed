@@ -386,11 +386,15 @@ export function UserAccountFormDialog({
                   <div>
                     {/* Nhãn vô hình cùng chiều cao `labelClassName` — đảm bảo nút thẳng hàng
                         pixel-perfect với ô "Tên đăng nhập" cạnh bên (có nhãn thật), không dựa vào
-                        `items-end` (từng lệch khi 2 cột co giãn khác chiều cao). */}
+                        `items-end` (từng lệch khi 2 cột co giãn khác chiều cao). Nút giữ kích
+                        thước tự nhiên (không kéo full-width) + căn giữa trong ô — full-width nhìn
+                        to lệch hẳn so với ô trống bên cạnh. */}
                     <span className={`${labelClassName} invisible`}>Đặt lại mật khẩu</span>
-                    <Button type="button" variant="secondary" className="w-full" onClick={onResetPassword}>
-                      Đặt lại mật khẩu
-                    </Button>
+                    <div className="flex h-[42px] items-center">
+                      <Button type="button" variant="secondary" className="px-3 py-1.5 text-xs" onClick={onResetPassword}>
+                        Đặt lại mật khẩu
+                      </Button>
+                    </div>
                   </div>
                 )}
 
