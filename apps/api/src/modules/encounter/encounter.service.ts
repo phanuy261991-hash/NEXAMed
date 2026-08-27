@@ -1,10 +1,12 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
+  CLINIC_CONFIG_READER_PORT,
   ConcurrentModificationError,
   DiagnosisPrimaryRequiredError,
   DOCTOR_DIRECTORY_PORT,
   EncounterAlreadyClaimedError,
   EncounterNotInConsultationError,
+  EncounterPaymentRequiredError,
   PrescriptionAlreadySignedError,
   PrescriptionEmptyError,
   PrescriptionRequiresDiagnosisError,
@@ -13,6 +15,7 @@ import {
   evaluateVitalSignWarnings,
   findAllergyMatches,
   findDuplicateActiveIngredients,
+  type ClinicConfigReaderPort,
   type DoctorDirectoryPort,
   type PrescriptionDrugLine,
   type SignaturePort,
@@ -76,6 +79,7 @@ export class EncounterService {
     private readonly patientFamilyHistoryRepository: PatientFamilyHistoryRepository,
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
     @Inject(SIGNATURE_PORT) private readonly signaturePort: SignaturePort,
+    @Inject(CLINIC_CONFIG_READER_PORT) private readonly clinicConfigReader: ClinicConfigReaderPort,
   ) {}
 
   /**
@@ -101,18 +105,31 @@ export class EncounterService {
     // nguyên tắc port không dùng chung tx với thao tác cần atomic, xem docs/DECISIONS.md). Chỉ cần
     // cho bác sĩ (scope `personal`) — actor khác không bao giờ "Nhận ca" được (nhánh else dưới).
     const actorDepartmentId = dataScope === 'personal' ? await this.doctorDirectory.getDoctorDepartmentId(tenantId, actorId) : null;
+    // Thu ngân cơ bản (Sprint 5/6) — cấu hình cấp phòng khám, đọc TRƯỚC transaction chính cùng lý
+    // do actorDepartmentId ở trên (port tự mở transaction riêng).
+    const deferredPaymentEnabled = await this.clinicConfigReader.getDeferredPaymentEnabled(tenantId);
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.encounterRepository.findById(tx, tenantId, id);
+      const existing = await this.encounterRepository.findByIdWithInvoiceStatus(tx, tenantId, id);
       if (!existing) {
         throw new NotFoundException();
       }
+
+      // Ý nghĩa thật checkbox "Thanh toán sau" (docs/DECISIONS.md #080) — chặn "Bắt đầu khám"/"Nhận
+      // ca" khi còn phiếu thu UNPAID và không được phép nợ. Tắt tính năng ở cấp phòng khám thì
+      // `allowsDeferredPayment` đã lưu bị BỎ QUA hoàn toàn (luôn coi như false), không chỉ đọc cột).
+      // Kiểm SAU nhánh 404 scope (không phải trước) — tránh lộ trạng thái thanh toán của lượt khám
+      // ngoài phạm vi actor (personal) qua mã lỗi trả về, cùng triết lý multi-tenancy.md "404 not 403".
+      const paymentRequired = existing.status === 'CHECKED_IN' && existing.invoice?.status === 'UNPAID' && !(deferredPaymentEnabled && existing.allowsDeferredPayment);
 
       if (existing.doctorId !== null) {
         // Cùng triết lý 404 (không 403) khi ngoài scope personal — .claude/docs/multi-tenancy.md,
         // đúng mẫu AppointmentService.getAppointment().
         if (dataScope === 'personal' && existing.doctorId !== actorId) {
           throw new NotFoundException();
+        }
+        if (paymentRequired) {
+          throw new EncounterPaymentRequiredError();
         }
         assertEncounterTransition(existing.status, 'IN_CONSULTATION');
         const count = await this.encounterRepository.startConsultation(tx, tenantId, id, dto.version, actorId);
@@ -123,6 +140,9 @@ export class EncounterService {
         // "Nhận ca" — chỉ bác sĩ (personal), và chỉ khi Khoa của actor khớp Khoa của ticket.
         if (dataScope !== 'personal' || actorDepartmentId === null || actorDepartmentId !== existing.departmentId) {
           throw new NotFoundException();
+        }
+        if (paymentRequired) {
+          throw new EncounterPaymentRequiredError();
         }
         assertEncounterTransition(existing.status, 'IN_CONSULTATION');
         const count = await this.encounterRepository.claimFromPool(tx, tenantId, id, dto.version, actorId);

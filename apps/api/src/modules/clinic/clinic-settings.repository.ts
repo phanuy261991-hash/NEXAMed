@@ -6,6 +6,11 @@ import { businessHoursSchema, DEFAULT_SLOT_DURATION_MINUTES, type BusinessHours 
 const BUSINESS_HOURS_KEY = 'business_hours';
 const SLOT_DURATION_KEY = 'slot_duration_minutes';
 const slotDurationSchema = z.number().int().min(5).max(240);
+// Thu ngân cơ bản (Sprint 5/6) — bật/tắt "Thanh toán sau" cấp phòng khám. Mặc định false khi chưa
+// cấu hình (chưa từng lưu vào tenant_setting) — an toàn: mọi phòng khám mới bắt buộc thu tiền
+// trước khi vào Hàng đợi khám cho tới khi chủ động bật.
+const DEFERRED_PAYMENT_ENABLED_KEY = 'deferred_payment_enabled';
+const deferredPaymentEnabledSchema = z.boolean();
 
 /**
  * Đọc/ghi `tenant_setting` cho hai key cấu hình phòng khám (S2-07, ADM-02) — cùng mẫu
@@ -33,12 +38,25 @@ export class ClinicSettingsRepository {
     return parsed.success ? parsed.data : DEFAULT_SLOT_DURATION_MINUTES;
   }
 
+  async getDeferredPaymentEnabled(tx: Prisma.TransactionClient, tenantId: string): Promise<boolean> {
+    const setting = await tx.tenantSetting.findFirst({ where: { tenantId, key: DEFERRED_PAYMENT_ENABLED_KEY } });
+    if (!setting) {
+      return false;
+    }
+    const parsed = deferredPaymentEnabledSchema.safeParse(setting.valueJson);
+    return parsed.success ? parsed.data : false;
+  }
+
   upsertBusinessHours(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: BusinessHours) {
     return this.upsert(tx, tenantId, actorId, BUSINESS_HOURS_KEY, value);
   }
 
   upsertSlotDurationMinutes(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: number) {
     return this.upsert(tx, tenantId, actorId, SLOT_DURATION_KEY, value);
+  }
+
+  upsertDeferredPaymentEnabled(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
+    return this.upsert(tx, tenantId, actorId, DEFERRED_PAYMENT_ENABLED_KEY, value);
   }
 
   private upsert(tx: Prisma.TransactionClient, tenantId: string, actorId: string, key: string, value: unknown) {

@@ -10,3 +10,4 @@ export * from './clinic-errors';
 export * from './encounter-errors';
 export * from './allergen-errors';
 export * from './prescription-errors';
+export * from './billing-errors';

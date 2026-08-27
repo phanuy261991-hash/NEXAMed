@@ -67,6 +67,19 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
     return drug.id as string;
   }
 
+  /**
+   * Thu ngân cơ bản (Sprint 5/6) — "Bắt đầu khám" nay bị chặn (409 ENCOUNTER_PAYMENT_REQUIRED) khi
+   * còn phiếu thu UNPAID (mọi check-in ở đây có dịch vụ có giá `examTypePrice`, luôn tự sinh phiếu
+   * thu). File này không kiểm billing — thu tiền ngay sau check-in để không chặn test kê đơn.
+   * Version=1 vì phiếu thu vừa tạo trong cùng transaction check-in, chưa từng sửa.
+   */
+  async function payInvoice(encounterId: string) {
+    await request(app.getHttpServer())
+      .post(`/api/v1/billing/invoices/${encounterId}/pay`)
+      .set(authed(receptionistToken))
+      .send({ method: 'CASH', version: 1 });
+  }
+
   async function createAllergen(tenantId: string, name: string) {
     const group = await privileged.allergenGroup.create({ data: { code: `AGRP-${randomUUID().slice(0, 8)}`, name: `Nhóm ${name}` } });
     const allergen = await privileged.allergen.create({ data: { allergenGroupId: group.id, code: `ALG-${randomUUID().slice(0, 8)}`, name } });
@@ -101,6 +114,7 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
         examFormCode: 'EF_NORMAL',
       });
     const encounterId = checkInRes.body.data.id as string;
+    await payInvoice(encounterId);
 
     await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/start`).set(authed(doctorAToken)).send({ version: 1 });
 
@@ -174,6 +188,7 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
         examFormCode: 'EF_NORMAL',
       });
     const encounterId = checkInRes.body.data.id as string;
+    await payInvoice(encounterId);
     await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/start`).set(authed(doctorAToken)).send({ version: 1 });
 
     const drugId = await createDrug(fixture.tenantA.id, 'Thuốc A', 'Hoạt chất A');

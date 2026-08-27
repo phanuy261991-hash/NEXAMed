@@ -15,6 +15,7 @@ import { EncounterModule } from './modules/encounter/encounter.module';
 import { ReceptionModule } from './modules/reception/reception.module';
 import { AllergenModule } from './modules/allergen/allergen.module';
 import { DrugModule } from './modules/drug/drug.module';
+import { BillingModule } from './modules/billing/billing.module';
 import { TenantContextMiddleware } from './common/tenant-context.middleware';
 
 @Module({
@@ -34,6 +35,7 @@ import { TenantContextMiddleware } from './common/tenant-context.middleware';
     AllergenModule,
     DrugModule,
     EncounterModule,
+    BillingModule,
     ReceptionModule,
   ],
 })

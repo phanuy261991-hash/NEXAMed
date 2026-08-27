@@ -2,6 +2,18 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-27 (4)
+
+Thu ngân cơ bản (Sprint 5/6, BIL-01→04) hoàn tất verify từ phiên trước + danh mục "Hình thức thanh toán" thay enum cố định + 3 chỉnh sửa UI trực tiếp (xem `docs/DECISIONS.md` #084):
+
+- **Hoàn tất verify Thu ngân cơ bản** (code đã xong từ phiên trước): chu trình gate "Hàng đợi khám" theo thanh toán xác nhận đúng qua cả API (`409 ENCOUNTER_PAYMENT_REQUIRED`) lẫn UI (`/billing` → "Chờ thu"/"Đã thu", thu tiền/"Đánh dấu chưa thu", tổng kết cuối ngày), bật/tắt "Cho phép Thanh toán sau" ẩn/hiện đúng checkbox ở Tiếp nhận.
+- **Menu "Thu ngân"** đổi từ mục phẳng sang nhóm cha/con (`Sidebar.tsx`, đúng khuôn "Khám bệnh") — icon nhóm đổi `Receipt`→`Wallet`, mục con "Danh sách cần thu" (`/billing`).
+- **"Cấu hình thanh toán"** (`PaymentConfigPane.tsx`) — bỏ giới hạn `max-w-2xl` (full-width), gộp 2 đoạn giải thích trùng lặp thành 1 đoạn ngắn gọn.
+- **Thanh pill "Danh mục dùng chung"** (và mọi trang dùng `ConfigScreenShell`) thiếu class `.scroll-hover` — thanh cuộn ngang hiện mặc định trình duyệt (xám đậm) khi tràn. Thêm đúng 1 class.
+- **Danh mục "Hình thức thanh toán" (`PAYMENT_METHOD`) mới** — `payment.method`/`invoice.pending_payment_method` đổi từ Postgres enum cố định (`CASH`/`BANK_TRANSFER`) sang TEXT tham chiếu `reference_catalog` (2 migration: đổi kiểu cột + seed 2 mã mặc định). Pill mới trong "Danh mục dùng chung" (Mã tự sinh/Tên/Mô tả/Trạng thái/Thứ tự, đúng khuôn "Đơn vị tính"). `InvoiceDetailPage.tsx`/`InvoicePrintView.tsx` đổi từ 2 nút cứng sang render động theo danh mục.
+- **Đã xác minh thật**: `billing-http.spec.ts` 18/18, 451/451 test `apps/api` khi chạy đủ, `pnpm -w typecheck/lint/build` sạch (chunk web 448.63 kB), Playwright qua Chrome thật (CRUD danh mục, 3 phương thức hiện đúng ở màn thu tiền, chu trình gate đầy đủ). Dữ liệu test đã xoá cứng.
+- Cập nhật `docs/ERD.md` (v1.31/v1.32), `docs/DECISIONS.md` (#084), `docs/TASK.md` (Sprint 5/6, S5-08).
+
 ## 2026-08-27 (3)
 
 `displayName` (#082) được thêm cột + form nhập nhưng chưa từng được đọc ra ở bất kỳ nơi hiển thị tên tài khoản nào — chủ dự án phát hiện lúc dùng thử (TopBar vẫn hiện Họ tên), vá xuyên suốt toàn app (xem `docs/DECISIONS.md` #083):

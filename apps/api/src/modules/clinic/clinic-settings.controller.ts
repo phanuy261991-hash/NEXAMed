@@ -19,6 +19,18 @@ export class ClinicSettingsController {
     return this.clinicSettingsService.getSettings(tenantId);
   }
 
+  /**
+   * Thu ngân cơ bản (Sprint 5/6) — tự-phục vụ, KHÔNG gắn `@RequirePermission` (đúng khuôn
+   * `GET /appointments/doctors`, docs/DECISIONS.md #030): mọi user đã đăng nhập đọc được, không lộ
+   * `businessHours`. Đặt TRƯỚC `@Get()` không cần thiết vì khác path cố định, không phải `:id`.
+   */
+  @Get('deferred-payment-enabled')
+  async getDeferredPaymentEnabled(@Req() req: Request) {
+    const { tenantId } = req.user!;
+    const enabled = await this.clinicSettingsService.getDeferredPaymentEnabled(tenantId);
+    return { enabled };
+  }
+
   @Patch()
   @RequirePermission('clinic_config', 'update')
   async update(@Body() body: unknown, @Req() req: Request) {

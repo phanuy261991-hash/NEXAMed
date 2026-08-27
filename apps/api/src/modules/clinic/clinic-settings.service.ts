@@ -24,11 +24,12 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
 
   async getSettings(tenantId: string): Promise<ClinicSettings> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const [businessHours, slotDurationMinutes] = await Promise.all([
+      const [businessHours, slotDurationMinutes, deferredPaymentEnabled] = await Promise.all([
         this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
         this.clinicSettingsRepository.getSlotDurationMinutes(tx, tenantId),
+        this.clinicSettingsRepository.getDeferredPaymentEnabled(tx, tenantId),
       ]);
-      return { businessHours, slotDurationMinutes };
+      return { businessHours, slotDurationMinutes, deferredPaymentEnabled };
     });
   }
 
@@ -40,6 +41,11 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
   /** `ClinicConfigReaderPort` (#054) — xem comment ở khai báo class. */
   getTodayDoctorRoomAssignments(tenantId: string): ReturnType<ClinicConfigReaderPort['getTodayDoctorRoomAssignments']> {
     return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.doctorRoomSessionRepository.listActiveForTenantToday(tx, tenantId));
+  }
+
+  /** `ClinicConfigReaderPort` (Thu ngân cơ bản, Sprint 5/6) — xem comment ở khai báo class. */
+  getDeferredPaymentEnabled(tenantId: string): ReturnType<ClinicConfigReaderPort['getDeferredPaymentEnabled']> {
+    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getDeferredPaymentEnabled(tx, tenantId));
   }
 
   async updateSettings(
@@ -55,8 +61,11 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
       if (dto.slotDurationMinutes !== undefined) {
         await this.clinicSettingsRepository.upsertSlotDurationMinutes(tx, tenantId, actorId, dto.slotDurationMinutes);
       }
+      if (dto.deferredPaymentEnabled !== undefined) {
+        await this.clinicSettingsRepository.upsertDeferredPaymentEnabled(tx, tenantId, actorId, dto.deferredPaymentEnabled);
+      }
 
-      if (dto.businessHours !== undefined || dto.slotDurationMinutes !== undefined) {
+      if (dto.businessHours !== undefined || dto.slotDurationMinutes !== undefined || dto.deferredPaymentEnabled !== undefined) {
         await writeAuditLog(tx, tenantId, {
           actorId,
           action: 'clinic_settings.updated',
@@ -68,11 +77,12 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         });
       }
 
-      const [businessHours, slotDurationMinutes] = await Promise.all([
+      const [businessHours, slotDurationMinutes, deferredPaymentEnabled] = await Promise.all([
         this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
         this.clinicSettingsRepository.getSlotDurationMinutes(tx, tenantId),
+        this.clinicSettingsRepository.getDeferredPaymentEnabled(tx, tenantId),
       ]);
-      return { businessHours, slotDurationMinutes };
+      return { businessHours, slotDurationMinutes, deferredPaymentEnabled };
     });
   }
 }

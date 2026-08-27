@@ -45,6 +45,14 @@ const intakeExtendedFieldsSchema = z.object({
   examFormCode: z.string().min(1),
   isPriority: z.boolean().default(false),
   priorityReasonCode: z.string().optional(),
+  /**
+   * "Thanh toán sau" (Thu ngân cơ bản, Sprint 5/6) — ý nghĩa thật đã ghi nhận từ #080: `true` =
+   * lượt khám được PHÉP vào Hàng đợi khám dù phiếu thu chưa "Đã thu". Chỉ có hiệu lực khi
+   * `tenant_setting.deferred_payment_enabled=true` (server tự AND lại 2 điều kiện lúc gate — xem
+   * `EncounterService.startConsultation`); web tự ẩn hẳn checkbox này khi tính năng tắt ở cấp
+   * phòng khám, luôn gửi `false`. Mặc định `false` (không phải mặc định cho nợ).
+   */
+  allowsDeferredPayment: z.boolean().default(false),
 });
 
 /**
@@ -288,6 +296,18 @@ export const receptionListQuerySchema = z.object({
    * sách tiếp nhận" (lễ tân) giữ nguyên hành vi cũ.
    */
   includeDepartmentPool: z
+    .union([z.boolean(), z.enum(['true', 'false'])])
+    .optional()
+    .default(false)
+    .transform((v) => (typeof v === 'string' ? v === 'true' : v)),
+  /**
+   * Thu ngân cơ bản (Sprint 5/6) — cờ TƯỜNG MINH riêng cho "Hàng đợi khám" (bác sĩ), cùng tinh
+   * thần `includeDepartmentPool`: khi `true`, server loại khỏi kết quả các lượt khám `CHECKED_IN`
+   * chưa thu tiền và không được phép nợ (`EncounterRepository.listForDay({requirePaymentCleared})`).
+   * "Danh sách tiếp nhận" (lễ tân) KHÔNG set cờ này — vẫn phải thấy đủ mọi lượt khám kể cả chưa
+   * thu tiền để xử lý ở Thu ngân. Mặc định `false`.
+   */
+  queueView: z
     .union([z.boolean(), z.enum(['true', 'false'])])
     .optional()
     .default(false)

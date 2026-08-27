@@ -1800,6 +1800,7 @@ export interface paths {
                                     } | null;
                                 } | null;
                                 slotDurationMinutes: number;
+                                deferredPaymentEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -2484,6 +2485,8 @@ export interface paths {
                         /** @default false */
                         isPriority?: boolean;
                         priorityReasonCode?: string;
+                        /** @default false */
+                        allowsDeferredPayment?: boolean;
                         services: {
                             examTypeCode: string;
                             examTypeName: string;
@@ -2641,6 +2644,8 @@ export interface paths {
                         /** @default false */
                         isPriority?: boolean;
                         priorityReasonCode?: string;
+                        /** @default false */
+                        allowsDeferredPayment?: boolean;
                         services: {
                             examTypeCode: string;
                             examTypeName: string;
@@ -2759,6 +2764,7 @@ export interface paths {
                     date?: string;
                     doctorId?: string;
                     includeDepartmentPool?: boolean | ("true" | "false");
+                    queueView?: boolean | ("true" | "false");
                 };
                 header?: never;
                 path?: never;
@@ -4505,6 +4511,765 @@ export interface paths {
                 };
                 /** @description Danh sách dòng thuốc rỗng (PRESCRIPTION_EMPTY) */
                 422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/invoices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** "Thu ngân" — danh sách phiếu thu trong ngày + tổng kết cuối ngày (BIL-04) */
+        get: {
+            parameters: {
+                query?: {
+                    date?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    invoiceId: string;
+                                    invoiceNo: string;
+                                    /** Format: uuid */
+                                    encounterId: string;
+                                    encounterNo: string;
+                                    checkedInAt: string;
+                                    /** Format: uuid */
+                                    patientId: string;
+                                    patientCode: string;
+                                    fullName: string;
+                                    /** Format: uuid */
+                                    departmentId: string;
+                                    departmentName: string;
+                                    totalAmount: number;
+                                    /** @enum {string} */
+                                    status: "UNPAID" | "PAID";
+                                    paymentMethod: string | null;
+                                    paidAt: string | null;
+                                }[];
+                                paidCount: number;
+                                paidTotalAmount: number;
+                                unpaidCount: number;
+                                unpaidTotalAmount: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền invoice.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/invoices/{encounterId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Chi tiết phiếu thu của 1 lượt khám — null nếu không có dòng dịch vụ nào có giá (không có gì để thu) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    encounterId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                encounterId: string;
+                                invoiceNo: string;
+                                /** @enum {string} */
+                                status: "UNPAID" | "PAID";
+                                totalAmount: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    examTypeCode: string;
+                                    examTypeName: string;
+                                    priceTypeCode: string | null;
+                                    unitCode: string | null;
+                                    unitPrice: number;
+                                    quantity: number;
+                                    lineTotal: number;
+                                }[];
+                                encounterNo: string;
+                                checkedInAt: string;
+                                /** Format: uuid */
+                                patientId: string;
+                                patientCode: string;
+                                fullName: string;
+                                departmentName: string;
+                                printedAt: string | null;
+                                pendingPaymentMethod: string | null;
+                                pendingCashReceivedAmount: number | null;
+                                paymentMethod: string | null;
+                                paidAt: string | null;
+                                version: number;
+                            } | null;
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền invoice.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/invoices/{encounterId}/pay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** "Thu tiền" (BIL-03) — đánh dấu Đã thu + phương thức thanh toán */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    encounterId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        method: string;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                encounterId: string;
+                                invoiceNo: string;
+                                /** @enum {string} */
+                                status: "UNPAID" | "PAID";
+                                totalAmount: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    examTypeCode: string;
+                                    examTypeName: string;
+                                    priceTypeCode: string | null;
+                                    unitCode: string | null;
+                                    unitPrice: number;
+                                    quantity: number;
+                                    lineTotal: number;
+                                }[];
+                                encounterNo: string;
+                                checkedInAt: string;
+                                /** Format: uuid */
+                                patientId: string;
+                                patientCode: string;
+                                fullName: string;
+                                departmentName: string;
+                                printedAt: string | null;
+                                pendingPaymentMethod: string | null;
+                                pendingCashReceivedAmount: number | null;
+                                paymentMethod: string | null;
+                                paidAt: string | null;
+                                version: number;
+                            } | null;
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền invoice.update */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có phiếu thu cho lượt khám này (không tồn tại hoặc thuộc tenant khác) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION) hoặc đã đánh dấu Đã thu trước đó (INVOICE_ALREADY_PAID) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/invoices/{encounterId}/revert-payment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** "Đánh dấu chưa thu" (huỷ nhầm) — bắt buộc lý do */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    encounterId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        reason: string;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                encounterId: string;
+                                invoiceNo: string;
+                                /** @enum {string} */
+                                status: "UNPAID" | "PAID";
+                                totalAmount: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    examTypeCode: string;
+                                    examTypeName: string;
+                                    priceTypeCode: string | null;
+                                    unitCode: string | null;
+                                    unitPrice: number;
+                                    quantity: number;
+                                    lineTotal: number;
+                                }[];
+                                encounterNo: string;
+                                checkedInAt: string;
+                                /** Format: uuid */
+                                patientId: string;
+                                patientCode: string;
+                                fullName: string;
+                                departmentName: string;
+                                printedAt: string | null;
+                                pendingPaymentMethod: string | null;
+                                pendingCashReceivedAmount: number | null;
+                                paymentMethod: string | null;
+                                paidAt: string | null;
+                                version: number;
+                            } | null;
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu lý do */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền invoice.update */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có phiếu thu cho lượt khám này */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION) hoặc chưa từng đánh dấu Đã thu (INVOICE_NOT_PAID) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/invoices/{encounterId}/save-draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** "Lưu tạm" (F8) — lưu phương thức/tiền khách đưa đang nhập dở, chưa đánh dấu Đã thu */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    encounterId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        pendingPaymentMethod: string | null;
+                        pendingCashReceivedAmount: number | null;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                encounterId: string;
+                                invoiceNo: string;
+                                /** @enum {string} */
+                                status: "UNPAID" | "PAID";
+                                totalAmount: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    examTypeCode: string;
+                                    examTypeName: string;
+                                    priceTypeCode: string | null;
+                                    unitCode: string | null;
+                                    unitPrice: number;
+                                    quantity: number;
+                                    lineTotal: number;
+                                }[];
+                                encounterNo: string;
+                                checkedInAt: string;
+                                /** Format: uuid */
+                                patientId: string;
+                                patientCode: string;
+                                fullName: string;
+                                departmentName: string;
+                                printedAt: string | null;
+                                pendingPaymentMethod: string | null;
+                                pendingCashReceivedAmount: number | null;
+                                paymentMethod: string | null;
+                                paidAt: string | null;
+                                version: number;
+                            } | null;
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền invoice.update */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có phiếu thu cho lượt khám này */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/invoices/{encounterId}/print": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** In phiếu thu (BIL-02, dùng chung hạ tầng in với PRE-04) — ghi nhận printedAt, idempotent */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    encounterId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                encounterId: string;
+                                invoiceNo: string;
+                                /** @enum {string} */
+                                status: "UNPAID" | "PAID";
+                                totalAmount: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    examTypeCode: string;
+                                    examTypeName: string;
+                                    priceTypeCode: string | null;
+                                    unitCode: string | null;
+                                    unitPrice: number;
+                                    quantity: number;
+                                    lineTotal: number;
+                                }[];
+                                encounterNo: string;
+                                checkedInAt: string;
+                                /** Format: uuid */
+                                patientId: string;
+                                patientCode: string;
+                                fullName: string;
+                                departmentName: string;
+                                printedAt: string | null;
+                                pendingPaymentMethod: string | null;
+                                pendingCashReceivedAmount: number | null;
+                                paymentMethod: string | null;
+                                paidAt: string | null;
+                                version: number;
+                            } | null;
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền invoice.print */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có phiếu thu cho lượt khám này */
+                404: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -7765,6 +8530,7 @@ export interface paths {
                                     } | null;
                                 } | null;
                                 slotDurationMinutes: number;
+                                deferredPaymentEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -7849,6 +8615,7 @@ export interface paths {
                             } | null;
                         };
                         slotDurationMinutes?: number;
+                        deferredPaymentEnabled?: boolean;
                     };
                 };
             };
@@ -7892,6 +8659,7 @@ export interface paths {
                                     } | null;
                                 } | null;
                                 slotDurationMinutes: number;
+                                deferredPaymentEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -7929,6 +8697,62 @@ export interface paths {
                 };
             };
         };
+        trace?: never;
+    };
+    "/api/v1/clinic-settings/deferred-payment-enabled": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Thu ngân cơ bản (Sprint 5/6) — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /appointments/doctors #030) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                enabled: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/clinic-profile": {
@@ -8108,6 +8932,65 @@ export interface paths {
                 };
             };
         };
+        trace?: never;
+    };
+    "/api/v1/clinic-profile/print-header": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Thu ngân cơ bản/Kê đơn — chiếu tối thiểu tự-phục vụ cho tiêu đề bản in (tên/địa chỉ/SĐT/logo in), mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /appointments/doctors #030) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                name: string;
+                                address: string | null;
+                                phone: string | null;
+                                printLogoUrl: string | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/clinic-profile/logo": {
@@ -8371,7 +9254,7 @@ export interface paths {
                 };
                 header?: never;
                 path: {
-                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT";
+                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD";
                 };
                 cookie?: never;
             };
@@ -8389,7 +9272,7 @@ export interface paths {
                                     /** Format: uuid */
                                     id: string;
                                     /** @enum {string} */
-                                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT";
+                                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD";
                                     code: string;
                                     name: string;
                                     sortOrder: number;
@@ -8490,7 +9373,7 @@ export interface paths {
                 content: {
                     "application/json": {
                         /** @enum {string} */
-                        category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT";
+                        category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD";
                         code?: string;
                         name: string;
                         /** @default 0 */
@@ -8522,7 +9405,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
@@ -8632,7 +9515,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
@@ -8748,7 +9631,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
@@ -8868,7 +9751,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD";
                                 code: string;
                                 name: string;
                                 sortOrder: number;

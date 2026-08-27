@@ -4,14 +4,17 @@ import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { ConfigScreenShell, type ConfigScreenPill } from '../../shared/ui/ConfigScreenShell';
 import { ClinicHoursPane } from './ClinicHoursPane';
 import { ClinicInfoPane } from './ClinicInfoPane';
+import { PaymentConfigPane } from './PaymentConfigPane';
 import { RoomPane } from './RoomPane';
 
 /**
- * 1 pill, 3 mục — "Thông tin phòng khám" (2026-08-13, mặc định mở đầu tiên) đặt TRƯỚC "Giờ làm
- * việc & Slot" theo yêu cầu chủ dự án. "Phòng khám" (docs/DECISIONS.md #054) — CRUD `room` chưa
- * từng có UI web trước đây (chỉ backend từ S2-07), thêm ở đây để bật được luồng "phòng làm việc
- * hôm nay". Không dựng thêm pill/mục "Sắp có" (.claude/docs/ui-guidelines.md mục 10), thêm khi có
- * module thật đứng sau.
+ * Pill "Cấu hình phòng khám" (3 mục con) — "Thông tin phòng khám" (2026-08-13, mặc định mở đầu
+ * tiên) đặt TRƯỚC "Giờ làm việc & Slot" theo yêu cầu chủ dự án. "Phòng khám" (docs/DECISIONS.md
+ * #054) — CRUD `room` chưa từng có UI web trước đây (chỉ backend từ S2-07), thêm ở đây để bật được
+ * luồng "phòng làm việc hôm nay". Pill "Cấu hình thanh toán" (Thu ngân cơ bản, Sprint 5/6, chủ dự
+ * án yêu cầu trực tiếp) — KHÔNG khai `items` (chế độ "pill phẳng", mục 10 điểm 8 — bản thân pill
+ * đã là 1 màn hình lá, chỉ có đúng 1 cấu hình). Không dựng thêm pill/mục "Sắp có"
+ * (.claude/docs/ui-guidelines.md mục 10), thêm khi có module thật đứng sau.
  */
 const PILLS: ConfigScreenPill[] = [
   {
@@ -23,6 +26,7 @@ const PILLS: ConfigScreenPill[] = [
       { key: 'rooms', label: 'Tầng phòng', icon: MapPinLine },
     ],
   },
+  { key: 'payment', label: 'Cấu hình thanh toán' },
 ];
 const FIRST_PILL = PILLS[0]!;
 
@@ -37,9 +41,11 @@ export function ClinicConfigPage() {
   const [activePillKey, setActivePillKey] = useState(FIRST_PILL.key);
   const [activeItemKey, setActiveItemKey] = useState(FIRST_PILL.items![0]!.key);
 
-  const activeItemLabel =
-    PILLS.find((p) => p.key === activePillKey)?.items?.find((i) => i.key === activeItemKey)?.label ??
-    'Cấu hình hệ thống';
+  const activePill = PILLS.find((p) => p.key === activePillKey);
+  // Pill phẳng (không `items`, ví dụ "Cấu hình thanh toán") thì đoạn cuối lấy đúng nhãn của pill.
+  const activeItemLabel = activePill?.items
+    ? (activePill.items.find((i) => i.key === activeItemKey)?.label ?? activePill.label)
+    : (activePill?.label ?? 'Cấu hình hệ thống');
 
   // Đoạn cuối breadcrumb phải đổi theo mục đang chọn ở cột trái — cùng lỗi đã sửa ở
   // `CatalogAdminPage` (docs/DECISIONS.md #045): breadcrumb tĩnh không phản ánh đúng vị trí thật
@@ -50,7 +56,7 @@ export function ClinicConfigPage() {
     const pill = PILLS.find((p) => p.key === pillKey);
     if (!pill) return;
     setActivePillKey(pillKey);
-    setActiveItemKey(pill.items![0]!.key);
+    setActiveItemKey(pill.items?.[0]?.key ?? '');
   }
 
   return (
@@ -62,9 +68,10 @@ export function ClinicConfigPage() {
       onSelectPill={selectPill}
       onSelectItem={setActiveItemKey}
     >
-      {activeItemKey === 'info' && <ClinicInfoPane />}
-      {activeItemKey === 'hours' && <ClinicHoursPane />}
-      {activeItemKey === 'rooms' && <RoomPane />}
+      {activePillKey === 'clinic' && activeItemKey === 'info' && <ClinicInfoPane />}
+      {activePillKey === 'clinic' && activeItemKey === 'hours' && <ClinicHoursPane />}
+      {activePillKey === 'clinic' && activeItemKey === 'rooms' && <RoomPane />}
+      {activePillKey === 'payment' && <PaymentConfigPane />}
     </ConfigScreenShell>
   );
 }

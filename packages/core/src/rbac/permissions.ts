@@ -63,6 +63,11 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   // chỉ clinic_admin, cùng khuôn reference_catalog.*.
   { module: 'drug', action: 'read', description: 'Xem danh mục thuốc' },
   { module: 'drug', action: 'manage', description: 'Thêm/sửa/ẩn thuốc trong danh mục' },
+  // Thu ngân cơ bản (Sprint 5/6, BIL-01→04) — không có `invoice.create` riêng: phiếu thu luôn tạo
+  // tự động kèm `encounter.create` (check-in/tiếp nhận trực tiếp), không có endpoint tạo riêng.
+  { module: 'invoice', action: 'read', description: 'Xem phiếu thu' },
+  { module: 'invoice', action: 'update', description: 'Đánh dấu đã thu/chưa thu, chọn phương thức thanh toán' },
+  { module: 'invoice', action: 'print', description: 'In phiếu thu' },
 ] as const;
 
 export function permissionKey(p: Pick<PermissionDefinition, 'module' | 'action'>): string {
@@ -96,6 +101,10 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'allergen_catalog.read': 'global',
     'allergen_catalog.create': 'global',
     'drug.read': 'global',
+    // Thu ngân cơ bản — lễ tân là người thu tiền chính (PRD mục 4.7 "Là lễ tân...").
+    'invoice.read': 'global',
+    'invoice.update': 'global',
+    'invoice.print': 'global',
   },
   nurse: {
     'patient.read': 'global',
@@ -165,6 +174,10 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'allergen_catalog.manage': 'global',
     'drug.read': 'global',
     'drug.manage': 'global',
+    // Thu ngân cơ bản — clinic_admin giám sát/xử lý được như lễ tân, cùng mức encounter.*.
+    'invoice.read': 'global',
+    'invoice.update': 'global',
+    'invoice.print': 'global',
   },
   system_admin: {
     'user_account.read': 'global',

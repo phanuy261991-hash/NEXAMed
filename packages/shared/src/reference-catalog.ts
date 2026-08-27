@@ -36,6 +36,10 @@ export const referenceCatalogCategorySchema = z.enum([
   // Đơn vị tính (ví dụ "Viên", "Lọ", "Chai") — chủ dự án yêu cầu trực tiếp 2026-08-26. Mã tự
   // sinh (giống 4 category nhân sự ở trên), có thêm `description` (chỉ category này dùng).
   'UNIT',
+  // Hình thức thanh toán (Thu ngân, chủ dự án yêu cầu trực tiếp 2026-08-27) — thay Postgres enum
+  // cố định trước đây trên `payment.method`/`invoice.pendingPaymentMethod`. Mã tự sinh, seed sẵn
+  // 2 dòng mặc định (CASH/BANK_TRANSFER, xem migration `20260827121000_seed_payment_method_catalog`).
+  'PAYMENT_METHOD',
 ]);
 export type ReferenceCatalogCategory = z.infer<typeof referenceCatalogCategorySchema>;
 

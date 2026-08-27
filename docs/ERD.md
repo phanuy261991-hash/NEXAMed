@@ -551,6 +551,20 @@ Bản ghi từ CẢ HAI luồng cùng xuất hiện trong "Danh sách tiếp nh�
 | `drug` | Theo tenant | **Đã hiện thực (Sprint 4, S4-03)** — v1 phòng khám tự nhập danh mục thuốc của mình (theo PRD mục 8), không tồn kho/giá bán ("Trường hợp A" đã chốt, `docs/DECISIONS.md` 2026-08-25 — xem `docs/product/future-modules-reference.md` §2.2.1 cho hướng có kho ở v2.1). Khi có danh mục thuốc quốc gia dùng chung, thêm bảng `drug_catalog` toàn hệ thống và cho `drug.catalog_code` tham chiếu tới |
 | `exam_type_price` | Theo tenant | **Mới (v1.28, `docs/DECISIONS.md` #079, 2026-08-26)** — "Đơn giá dịch vụ": nhiều dòng đơn giá cho một mục `reference_catalog` category `EXAM_TYPE`, khác Loại giá dịch vụ (`price_type_code`) và/hoặc khoảng ngày hiệu lực. TÁCH THEO TENANT (khác `reference_catalog` cha — toàn hệ thống) vì giá dịch vụ khác nhau thật giữa các phòng khám dù cùng tên dịch vụ. `exam_type_code`/`price_type_code`/`unit_code` lưu thẳng mã, không FK composite thật (cùng cách mọi cột khác tham chiếu `reference_catalog`). Sửa/xoá tự do (không phải `SignableEntity`, không giữ lịch sử giá) — quản lý bằng bulk-replace (đúng khuôn `diagnosis`). C20 chặn chồng lấn ngày hiệu lực cùng (dịch vụ, Loại giá dịch vụ) ở tầng DB |
 
+### 3.6 Thu ngân (Sprint 5/6, BIL-01→04)
+
+**Đã hiện thực (v1.31, `docs/DECISIONS.md` #084)** — module `billing`, phạm vi "mức 1" đã chốt ở #072: 1 phiếu thu/lượt khám, in phiếu, đánh dấu đã thu/chưa thu + phương thức, tổng kết cuối ngày. KHÔNG có bảng giá đa đối tượng/công nợ/trả góp/BHYT/báo cáo doanh thu.
+
+| Bảng | Vai trò | Đặc thù |
+|---|---|---|
+| `invoice` | Phiếu thu | Đúng 1/lượt khám (C21). Tự động tạo trong CÙNG transaction check-in/tiếp nhận trực tiếp, ngay sau khi có `encounter_service_item` — chỉ tạo nếu tổng (dòng có giá) `> 0` (không có gì để thu thì không tạo). `status` (`UNPAID`/`PAID`), `total_amount` snapshot lúc tạo. `pending_payment_method`/`pending_cash_received_amount` — "Lưu tạm" (F8), KHÔNG phải trạng thái nghiệp vụ, xoá sạch khi đánh dấu Đã thu. KHÔNG dùng `SignableEntity`/trigger C8 — khoá sửa chỉ ở tầng service |
+| `invoice_line` | Dòng dịch vụ đã tính tiền | Snapshot 1-1 từ `encounter_service_item` có giá (`docs/DECISIONS.md` #080 — SUM nhiều dòng, bỏ qua dòng chưa cấu hình giá). `source_service_item_id` biết nguồn gốc dòng |
+| `payment` | Lịch sử thu tiền | v1 luôn tối đa 1 dòng HIỆU LỰC/invoice (đủ cho "đã thu/chưa thu" nhị phân) — tách bảng riêng để không đổi schema nếu v2 cần nhiều đợt thanh toán. "Đánh dấu chưa thu" = soft-delete dòng này (`deleted_reason` bắt buộc) + `invoice.status` quay lại `UNPAID` |
+
+**`payment.method`/`invoice.pending_payment_method` (v1.32, `docs/DECISIONS.md` #084)** — TEXT, mã tham chiếu `reference_catalog` category `PAYMENT_METHOD` mới (KHÔNG FK cứng, đúng khuôn `exam_type_code`/`price_type_code`/`unit_code`), không còn Postgres enum `payment_method` cố định như thiết kế ban đầu — `clinic_admin` quản lý (thêm/sửa/ẩn) hình thức thanh toán qua "Danh mục dùng chung". Seed sẵn 2 mã mặc định `CASH`/`BANK_TRANSFER` (migration `20260827121000_seed_payment_method_catalog`).
+
+`encounter` thêm `allows_deferred_payment` (boolean, mặc định `false`) — ý nghĩa thật checkbox "Thanh toán sau" đã ghi nhận ở #080: gate "Bắt đầu khám"/"Nhận ca" khi còn phiếu thu `UNPAID` (chỉ có hiệu lực khi `tenant_setting.deferred_payment_enabled=true`, cấu hình cấp phòng khám tại `/admin/system-config` → pill "Cấu hình thanh toán").
+
 ---
 
 ## 4. Ràng buộc ở tầng cơ sở dữ liệu
@@ -579,6 +593,7 @@ Những ràng buộc này đặt ở DB, không chỉ ở tầng ứng dụng.
 | C18 | `UNIQUE (tenant_id, patient_id, allergen_id) WHERE deleted_at IS NULL` | `patient_allergen` | Sprint 4 — gỡ rồi gán lại đúng dị nguyên đã từng gỡ không vi phạm unique, cùng khuôn C3/C14 |
 | C19 | `UNIQUE (tenant_id, patient_id, icd10_code) WHERE deleted_at IS NULL` | `patient_condition` | Sprint 5 — gỡ rồi gán lại đúng bệnh lý nền đã từng gỡ không vi phạm unique, cùng khuôn C18 |
 | C20 | `EXCLUDE USING gist (tenant_id WITH =, exam_type_code WITH =, price_type_code WITH =, daterange(effective_from, COALESCE(effective_to,'infinity'),'[]') WITH &&) WHERE (deleted_at IS NULL)` | `exam_type_price` | "Đơn giá dịch vụ" (v1.28, `docs/DECISIONS.md` #079) — chặn 2 dòng đơn giá cùng dịch vụ + cùng Loại giá dịch vụ có khoảng ngày hiệu lực chồng lấn, kể cả ghi đồng thời, cùng tinh thần C2 |
+| C21 | `UNIQUE (tenant_id, encounter_id)` | `invoice` | Thu ngân cơ bản (v1.31, `docs/DECISIONS.md` #084) — đúng 1 phiếu thu/lượt khám (BIL-01) |
 
 ---
 
@@ -598,6 +613,8 @@ Những ràng buộc này đặt ở DB, không chỉ ở tầng ứng dụng.
 | `user_session (tenant_id, user_id, expires_at DESC) WHERE deleted_at IS NULL` | Tra phiên còn hiệu lực của một user (thu hồi hàng loạt) |
 | `ward (province_code)` | Cascading Tỉnh → Phường/Xã trong form địa chỉ bệnh nhân (`docs/DECISIONS.md` #038) |
 | `encounter_service_item (tenant_id, encounter_id)` | Tra danh sách "Chỉ định dịch vụ khám" theo lượt khám (`docs/DECISIONS.md` #080) |
+| `invoice_line (tenant_id, invoice_id)` | Tra danh sách dòng theo phiếu thu — xem chi tiết/in phiếu (v1.31) |
+| `payment (tenant_id, invoice_id)` | Tra lịch sử thu theo phiếu thu — revert/audit (v1.31) |
 
 `patient.search_key` là cột dẫn xuất (tên đã bỏ dấu, viết thường), cập nhật bằng trigger hoặc generated column — không tính lại trong câu truy vấn.
 
@@ -615,7 +632,7 @@ Khớp với `docs/product/plan.md`.
 | S2 (tuần 3-4) | `patient`, `insurance_card`, `appointment` |
 | S3 (tuần 5-6) | `icd10_catalog`, `encounter`, `vital_sign`, `diagnosis`, `clinical_note` |
 | S4 (tuần 7-8) | `drug`, `prescription`, `prescription_item`, `patient_allergen` (mới, ngoài đặc tả gốc — liên kết `allergen_catalog` #069 với `patient`, `docs/DECISIONS.md` 2026-08-25) |
-| S5-S6 | `patient_condition`, `patient_family_history` (Tiền sử có cấu trúc, 25/08/2026); `invoice`, `invoice_line`, `payment` (thu ngân cơ bản — mở rộng phạm vi v1 chốt 2026-08-22, `docs/DECISIONS.md` #072); thêm cột `supersedes_id`, `amendment_reason` nếu chưa tạo, và trigger C8 |
+| S5-S6 | `patient_condition`, `patient_family_history` (Tiền sử có cấu trúc, 25/08/2026); `invoice`, `invoice_line`, `payment` — **ĐÃ HIỆN THỰC (v1.31, 27/08/2026, `docs/DECISIONS.md` #084)**, xem mục 3.6; thêm cột `supersedes_id`, `amendment_reason` nếu chưa tạo, và trigger C8 |
 | Ngoài kế hoạch, sau S4 (2026-08-26) | `encounter_service_item` — "Chỉ định dịch vụ khám" đổi từ 1 dịch vụ/lượt khám sang danh sách nhiều dịch vụ + cascade giá thật theo `exam_type_price` (`docs/DECISIONS.md` #080) |
 
 Khuyến nghị: tạo đủ 8 cột bắt buộc **ngay từ migration đầu tiên của mỗi bảng**, kể cả khi tính năng dùng tới chúng ở sprint sau. Thêm cột vào bảng đã có dữ liệu thật tốn hơn nhiều.
@@ -629,7 +646,6 @@ Ghi ra đây để không ai vô tình tạo sớm, và để thiết kế v1 kh
 | Bảng dự kiến | Phase | Điểm neo vào v1 |
 |---|---|---|
 | `service`, `service_order` | v2 | `encounter_id` |
-| ~~`invoice`, `invoice_line`, `payment`~~ → **chuyển vào v1** (Sprint 5/6, `docs/DECISIONS.md` #072) | ~~v2~~ **v1** | `encounter_id` — chỉ phạm vi **thu ngân cơ bản** (1 phiếu thu/lượt khám; in phiếu; đã thu/chưa thu + phương thức; tổng kết cuối ngày). **Cập nhật (v1.29, `docs/DECISIONS.md` #080)**: tính tiền lượt khám giờ phải **SUM nhiều dòng `encounter_service_item`** (`exam_type_price × quantity`, bỏ qua dòng chưa cấu hình đơn giá), KHÔNG còn đọc 1 giá trị đơn `encounter.exam_type_price × service_quantity` (2 cột này đã deprecated) — đọc lại #080 trước khi thiết kế `invoice_line`. Bảng giá đa đối tượng (`price_book`), công nợ/trả góp theo lộ trình vẫn ở v2. Chưa thiết kế cột chi tiết — làm khi tới Sprint 5, tiền dùng `bigint` đồng như mọi cột tiền khác |
 | `inventory_batch`, `stock_movement` | v2.1 | `drug_id`, `prescription_item_id` |
 | `insurance_claim` | v3 | `encounter_id`, `insurance_card_id` |
 | `drug_catalog` (toàn hệ thống) | v2.1 | `drug.catalog_code` |
@@ -685,3 +701,5 @@ Khi thêm, các bảng này vẫn phải đủ 8 cột bắt buộc và tuân th
 | v1.28 | 26/08/2026 | "Đơn giá dịch vụ" cho Dịch vụ khám — MỞ RỘNG phạm vi v1 có giới hạn (`docs/DECISIONS.md` #079, chủ dự án yêu cầu trực tiếp, đã hỏi qua `AskUserQuestion` vì xung đột với "Price Book" từng loại khỏi v1). Thêm bảng MỚI `exam_type_price` (migration `20260826100000_exam_type_price`, thêm C20) — TÁCH THEO TENANT (khác `reference_catalog` cha), nhiều dòng đơn giá/dịch vụ theo Loại giá dịch vụ × Đơn vị tính × khoảng ngày hiệu lực, sửa/xoá tự do (không giữ lịch sử), C20 (`EXCLUDE USING gist`) chặn chồng lấn ngày hiệu lực cùng (dịch vụ, Loại giá dịch vụ) ở tầng DB. `EXAM_TYPE` thêm vào nhóm mã tự sinh (không đổi schema, chỉ hành vi web). Xem `docs/DECISIONS.md` #079. |
 | v1.29 | 26/08/2026 | "Chỉ định dịch vụ khám" ở Tiếp nhận đổi từ 1 dịch vụ/lượt khám sang DANH SÁCH nhiều dịch vụ + cascade giá thật theo `exam_type_price` (`docs/DECISIONS.md` #080, chủ dự án yêu cầu trực tiếp, xác nhận qua `AskUserQuestion`). Thêm bảng MỚI `encounter_service_item` (migration `20260826110000_encounter_service_item`, sở hữu bởi module `reception` cùng `vital_sign`, không thêm C mới — cấu trúc như `vital_sign`, không có exclusion/check đặc biệt). 6 cột `exam_type_code/name/price`/`price_type_code`/`exam_type_unit`/`service_quantity` trên `encounter` chuyển DEPRECATED (giữ nguyên trong DB, ngừng ghi từ Tiếp nhận mới). `priceTypeCode`/`unitCode`/`examTypePrice` trên dòng mới nullable — dịch vụ chưa có đơn giá hiệu lực ở `exam_type_price` vẫn thêm được. Ảnh hưởng trực tiếp thiết kế Thu ngân cơ bản (#072, Sprint 5/6, chưa code) — xem mục 7. Xem `docs/DECISIONS.md` #080. |
 | v1.30 | 27/08/2026 | Redesign form "Thêm tài khoản" sang 3-tab (`docs/DECISIONS.md` #082, chủ dự án yêu cầu trực tiếp). Migration `20260827100000_user_account_profile_tabs` (viết tay — RENAME COLUMN `personal_email`→`email` giữ nguyên dữ liệu cũ thay vì để Prisma tự suy DROP+ADD, `company_email` xoá hẳn — không backfill, chưa có tenant production). `user_account` thêm 7 cột: `dob`/`gender` (2 giá trị), `license_issued_at`/`license_issued_place` (đi cùng `license_no` có sẵn từ ADM-01 nhưng chưa từng có UI), `display_name` (bắt buộc lúc tạo mới), `signature_key` (ảnh chữ ký PNG, cùng khuôn `patient.photo_key`), `default_room_id` (composite FK tuỳ chọn → `room`, ON DELETE RESTRICT — "Phòng khám mặc định" THUẦN gợi ý hiển thị, không đụng `doctor_room_session` #054). Không thêm bảng/C mới. Xem `docs/DECISIONS.md` #082. |
+| v1.31 | 27/08/2026 | Thu ngân cơ bản (Sprint 5/6, BIL-01→04) — **ĐÃ HIỆN THỰC**, không còn ở dạng đặc tả treo như mục 7 bản trước (`docs/DECISIONS.md` #072/#080). Migration `20260827110000_billing_invoice`: `encounter` thêm `allows_deferred_payment` (boolean, mặc định `false`); 3 bảng MỚI `invoice`/`invoice_line`/`payment` (C21 — đúng 1 phiếu thu/lượt khám), tự động tạo trong cùng transaction check-in/tiếp nhận trực tiếp, chỉ khi tổng dòng có giá `> 0`. Đồng thời chốt và hiện thực ý nghĩa thật checkbox "Thanh toán sau" (#080): gate "Bắt đầu khám"/"Nhận ca" theo `invoice.status` + `encounter.allows_deferred_payment`, chỉ có hiệu lực khi bật `tenant_setting.deferred_payment_enabled` (cấu hình mới, đọc/ghi qua `GET/PATCH /clinic-settings` có sẵn, không bảng/permission riêng). Xem `docs/DECISIONS.md` #084, mục 3.6. |
+| v1.32 | 27/08/2026 | `payment.method`/`invoice.pending_payment_method` đổi từ Postgres enum cố định `payment_method` (`CASH`/`BANK_TRANSFER`) sang TEXT — mã tham chiếu `reference_catalog` category `PAYMENT_METHOD` mới (không FK cứng, đúng khuôn `exam_type_code`), quản lý được qua UI (chủ dự án yêu cầu trực tiếp). 2 migration: `20260827120000_reference_catalog_payment_method` (thêm giá trị enum `PAYMENT_METHOD`, đổi kiểu cột, `DROP TYPE payment_method`) → `20260827121000_seed_payment_method_catalog` (seed 2 mã mặc định `CASH`/`BANK_TRANSFER` sau khi enum đã commit). Không thêm bảng/C mới. Xem `docs/DECISIONS.md` #084. |

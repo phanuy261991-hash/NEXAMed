@@ -8,7 +8,7 @@ import {
   sniffImageExtension,
   type StoragePort,
 } from '@nexamed/core';
-import type { ClinicProfile, UpdateClinicProfileRequest } from '@nexamed/shared';
+import type { ClinicPrintHeader, ClinicProfile, UpdateClinicProfileRequest } from '@nexamed/shared';
 import { randomUUID } from 'node:crypto';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
@@ -43,6 +43,12 @@ export class ClinicProfileService {
       }
       return this.toProfile(tenant);
     });
+  }
+
+  /** Tự-phục vụ (Thu ngân/Kê đơn) — xem comment `clinicPrintHeaderSchema` (`packages/shared`). */
+  async getPrintHeader(tenantId: string): Promise<ClinicPrintHeader> {
+    const profile = await this.getProfile(tenantId);
+    return { name: profile.name, address: profile.address, phone: profile.phone, printLogoUrl: profile.printLogoUrl };
   }
 
   async updateProfile(

@@ -27,8 +27,9 @@ Tên module trùng nhau giữa web và api.
 | `iam` | Tài khoản, vai trò, phiên đăng nhập, audit log |
 | `clinic` | Tenant, cấu hình phòng khám, phòng, danh mục nội bộ |
 | `reference-catalog` | Danh mục dùng chung toàn hệ thống (Dân tộc, Quốc tịch — không tenant_id, khác "danh mục nội bộ" của `clinic`), quản lý được qua API bởi `clinic_admin` (`docs/DECISIONS.md` #037) |
+| `billing` | Thu ngân cơ bản (Sprint 5/6, BIL-01→04, `docs/DECISIONS.md` #072/#084) — phiếu thu (`invoice`/`invoice_line`/`payment`), tự động tạo lúc tiếp nhận, đánh dấu đã thu/chưa thu, tổng kết cuối ngày. KHÔNG phải "Price Book"/công nợ/BHYT — xem `CLAUDE.md` ranh giới v1 |
 
-**Ngoài v1 (không tạo module, không viết code):** `pharmacy`, `billing`, `insurance`, `report`.
+**Ngoài v1 (không tạo module, không viết code):** `pharmacy`, `insurance`, `report`.
 
 ## Tầng trong API (bắt buộc theo thứ tự)
 

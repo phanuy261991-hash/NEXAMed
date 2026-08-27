@@ -28,6 +28,17 @@ export class ClinicProfileController {
     return this.clinicProfileService.getProfile(tenantId);
   }
 
+  /**
+   * Tự-phục vụ (Thu ngân cơ bản/Kê đơn) — KHÔNG gắn `@RequirePermission`, đúng khuôn
+   * `GET /clinic-settings/deferred-payment-enabled`/`GET /appointments/doctors` (#030): lễ tân/bác
+   * sĩ cần tên/logo phòng khám để in phiếu thu/đơn thuốc nhưng không có `clinic_config.read`.
+   */
+  @Get('print-header')
+  async getPrintHeader(@Req() req: Request) {
+    const { tenantId } = req.user!;
+    return this.clinicProfileService.getPrintHeader(tenantId);
+  }
+
   @Patch()
   @RequirePermission('clinic_config', 'update')
   async update(@Body() body: unknown, @Req() req: Request) {

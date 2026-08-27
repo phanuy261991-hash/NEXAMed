@@ -92,11 +92,27 @@ describe('HTTP e2e — /api/v1/encounters', () => {
         receptionTypeCode: 'RT_NEW',
         examFormCode: 'EF_NORMAL',
       });
-    return res.body.data as { id: string; doctorId: string | null; departmentId: string };
+    const created = res.body.data as { id: string; doctorId: string | null; departmentId: string };
+    await payInvoice(created.id);
+    return created;
   }
 
   function randomNationalId(): string {
     return '079' + Math.floor(100000000 + Math.random() * 899999999).toString();
+  }
+
+  /**
+   * Thu ngân cơ bản (Sprint 5/6) — "Bắt đầu khám"/"Nhận ca" nay bị chặn (409
+   * ENCOUNTER_PAYMENT_REQUIRED) khi còn phiếu thu UNPAID (mọi lượt khám check-in ở đây đều có dịch
+   * vụ có giá `examTypePrice`, luôn tự sinh phiếu thu). Test file này không kiểm billing — thu tiền
+   * ngay sau check-in để không chặn các test transition/lâm sàng không liên quan. Version=1 vì
+   * phiếu thu vừa tạo trong cùng transaction check-in, chưa từng sửa.
+   */
+  async function payInvoice(encounterId: string) {
+    await request(app.getHttpServer())
+      .post(`/api/v1/billing/invoices/${encounterId}/pay`)
+      .set(authed(receptionistToken))
+      .send({ method: 'CASH', version: 1 });
   }
 
   /** Tạo appointment + patient + check-in — trả về encounterId CHECKED_IN sẵn sàng cho test transition. */
@@ -128,7 +144,54 @@ describe('HTTP e2e — /api/v1/encounters', () => {
         receptionTypeCode: 'RT_NEW',
         examFormCode: 'EF_NORMAL',
       });
+    const encounterId = checkInRes.body.data.id as string;
+    await payInvoice(encounterId);
+    return encounterId;
+  }
+
+  /**
+   * Thu ngân cơ bản (Sprint 5/6) — check-in KHÔNG trả tiền (khác `checkInFreshEncounter()`), dùng
+   * riêng cho test gate "Bắt đầu khám". `services` bỏ trống thì không có giá → không sinh phiếu
+   * thu (không bị gate — dùng để kiểm nhánh "không có gì để thu thì không chặn").
+   */
+  async function checkInUnpaidEncounter(hour: number, options: { allowsDeferredPayment?: boolean; priced?: boolean } = {}) {
+    const appointmentRes = await request(app.getHttpServer())
+      .post('/api/v1/appointments')
+      .set(authed(receptionistToken))
+      .send({ doctorId: doctorAUserId, fullName: 'Khách e2e chưa thu', phone: '0911222666', scheduledAt: isoAt(hour, 0), source: 'phone' as const });
+    const appointment = appointmentRes.body.data as { id: string; version: number };
+
+    const patientRes = await request(app.getHttpServer())
+      .post('/api/v1/patients')
+      .set(authed(receptionistToken))
+      .send({ fullName: 'Bệnh nhân e2e chưa thu', dob: '1990-01-01', gender: 'female', phone: '0933444777', nationalId: randomNationalId() });
+    const patient = patientRes.body.data as { id: string };
+
+    const priced = options.priced ?? true;
+    const checkInRes = await request(app.getHttpServer())
+      .post('/api/v1/reception/check-in')
+      .set(authed(receptionistToken))
+      .send({
+        appointmentId: appointment.id,
+        patientId: patient.id,
+        version: appointment.version,
+        doctorId: doctorAUserId,
+        services: priced
+          ? [{ examTypeCode: 'KT', examTypeName: 'Khám thường', examTypePrice: 150_000, quantity: 1 }]
+          : [{ examTypeCode: 'XN', examTypeName: 'Chưa có giá', quantity: 1 }],
+        receptionTypeCode: 'RT_NEW',
+        examFormCode: 'EF_NORMAL',
+        allowsDeferredPayment: options.allowsDeferredPayment ?? false,
+      });
     return checkInRes.body.data.id as string;
+  }
+
+  async function setDeferredPaymentEnabled(tenantId: string, enabled: boolean) {
+    await privileged.tenantSetting.upsert({
+      where: { tenantId_key: { tenantId, key: 'deferred_payment_enabled' } },
+      create: { tenantId, key: 'deferred_payment_enabled', valueJson: enabled, createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR },
+      update: { valueJson: enabled, updatedBy: SYSTEM_TEST_ACTOR },
+    });
   }
 
   beforeAll(async () => {
@@ -410,7 +473,9 @@ describe('HTTP e2e — /api/v1/encounters', () => {
             receptionTypeCode: 'RT_NEW',
             examFormCode: 'EF_NORMAL',
           });
-        return res.body.data.id as string;
+        const encounterId = res.body.data.id as string;
+        await payInvoice(encounterId);
+        return encounterId;
       }
 
       const firstEncounterId = await directEncounter(8);
@@ -453,7 +518,9 @@ describe('HTTP e2e — /api/v1/encounters', () => {
             receptionTypeCode: 'RT_NEW',
             examFormCode: 'EF_NORMAL',
           });
-        return res.body.data.id as string;
+        const encounterId = res.body.data.id as string;
+        await payInvoice(encounterId);
+        return encounterId;
       }
 
       const firstEncounterId = await directEncounter(13);
@@ -917,6 +984,82 @@ describe('HTTP e2e — /api/v1/encounters', () => {
 
       expect(res.status).toBe(409);
       expect(res.body.error.code).toBe('ENCOUNTER_NOT_IN_CONSULTATION');
+    });
+  });
+
+  describe('Thu ngân cơ bản — gate "Bắt đầu khám" theo trạng thái thanh toán (Sprint 5/6)', () => {
+    it('tenant tắt "Thanh toán sau" (mặc định) + chưa thu tiền → 409 ENCOUNTER_PAYMENT_REQUIRED', async () => {
+      await setDeferredPaymentEnabled(fixture.tenantA.id, false);
+      const encounterId = await checkInUnpaidEncounter(6);
+
+      const res = await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/start`).set(authed(doctorAToken)).send({ version: 1 });
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('ENCOUNTER_PAYMENT_REQUIRED');
+    });
+
+    it('tenant tắt "Thanh toán sau" + đã thu tiền → 200, cho vào IN_CONSULTATION', async () => {
+      await setDeferredPaymentEnabled(fixture.tenantA.id, false);
+      const encounterId = await checkInUnpaidEncounter(7);
+      await payInvoice(encounterId);
+
+      const res = await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/start`).set(authed(doctorAToken)).send({ version: 1 });
+      expect(res.status).toBe(200);
+      expect(res.body.data.status).toBe('IN_CONSULTATION');
+    });
+
+    it('tenant BẬT "Thanh toán sau" nhưng lượt khám không tích cho nợ (allowsDeferredPayment=false) → vẫn 409', async () => {
+      await setDeferredPaymentEnabled(fixture.tenantA.id, true);
+      const encounterId = await checkInUnpaidEncounter(8, { allowsDeferredPayment: false });
+
+      const res = await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/start`).set(authed(doctorAToken)).send({ version: 1 });
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('ENCOUNTER_PAYMENT_REQUIRED');
+    });
+
+    it('tenant BẬT "Thanh toán sau" + lượt khám tích cho nợ (allowsDeferredPayment=true) → 200, vào được dù chưa thu', async () => {
+      await setDeferredPaymentEnabled(fixture.tenantA.id, true);
+      const encounterId = await checkInUnpaidEncounter(9, { allowsDeferredPayment: true });
+
+      const res = await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/start`).set(authed(doctorAToken)).send({ version: 1 });
+      expect(res.status).toBe(200);
+      expect(res.body.data.status).toBe('IN_CONSULTATION');
+      await setDeferredPaymentEnabled(fixture.tenantA.id, false);
+    });
+
+    it('dịch vụ chưa cấu hình giá (không sinh phiếu thu) → không bị chặn dù tenant tắt "Thanh toán sau"', async () => {
+      await setDeferredPaymentEnabled(fixture.tenantA.id, false);
+      const encounterId = await checkInUnpaidEncounter(10, { priced: false });
+
+      const res = await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/start`).set(authed(doctorAToken)).send({ version: 1 });
+      expect(res.status).toBe(200);
+      expect(res.body.data.status).toBe('IN_CONSULTATION');
+    });
+
+    it('"Nhận ca" (hàng chờ chung Khoa, doctorId=NULL) cũng bị chặn như "Bắt đầu khám" khi chưa thu tiền', async () => {
+      await setDeferredPaymentEnabled(fixture.tenantA.id, false);
+      const department = await createDepartment(fixture.tenantA.id, 'Khoa Thu ngân e2e');
+      await assignDepartment(doctorAUserId, department);
+
+      const patientRes = await request(app.getHttpServer())
+        .post('/api/v1/patients')
+        .set(authed(receptionistToken))
+        .send({ fullName: 'Bệnh nhân hàng chờ chung', dob: '1990-01-01', gender: 'male', phone: '0911222888', nationalId: randomNationalId() });
+      const directRes = await request(app.getHttpServer())
+        .post('/api/v1/reception/direct')
+        .set(authed(receptionistToken))
+        .send({
+          patientId: patientRes.body.data.id,
+          departmentId: department,
+          checkedInAt: isoAt(11, 0),
+          services: [{ examTypeCode: 'KT', examTypeName: 'Khám thường', examTypePrice: 150_000, quantity: 1 }],
+          receptionTypeCode: 'RT_NEW',
+          examFormCode: 'EF_NORMAL',
+        });
+      const encounterId = directRes.body.data.id as string;
+
+      const res = await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/start`).set(authed(doctorAToken)).send({ version: 1 });
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('ENCOUNTER_PAYMENT_REQUIRED');
     });
   });
 });

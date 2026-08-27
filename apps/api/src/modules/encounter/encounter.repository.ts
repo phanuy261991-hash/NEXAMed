@@ -26,6 +26,8 @@ export interface CreateEncounterData {
   priceTypeCode?: string | null;
   examTypeUnit?: string | null;
   serviceQuantity?: number;
+  /** Thu ngân cơ bản (Sprint 5/6) — ý nghĩa thật checkbox "Thanh toán sau" (#080). Mặc định `false`. */
+  allowsDeferredPayment?: boolean;
 }
 
 export interface EncounterWithPatientContact extends Encounter {
@@ -34,6 +36,10 @@ export interface EncounterWithPatientContact extends Encounter {
 
 export interface EncounterWithPatientDob extends Encounter {
   patient: { dob: Date };
+}
+
+export interface EncounterWithInvoiceStatus extends Encounter {
+  invoice: { status: 'UNPAID' | 'PAID' } | null;
 }
 
 export interface ConsultationPatientFields {
@@ -99,6 +105,7 @@ export class EncounterRepository {
         priceTypeCode: data.priceTypeCode ?? null,
         examTypeUnit: data.examTypeUnit ?? null,
         serviceQuantity: data.serviceQuantity ?? 1,
+        allowsDeferredPayment: data.allowsDeferredPayment ?? false,
         createdBy: actorId,
         updatedBy: actorId,
       },
@@ -107,6 +114,21 @@ export class EncounterRepository {
 
   findById(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<Encounter | null> {
     return tx.encounter.findFirst({ where: { tenantId, id, deletedAt: null } });
+  }
+
+  /**
+   * Thu ngân cơ bản (Sprint 5/6) — kèm trạng thái phiếu thu (nếu có) qua quan hệ sẵn có của chính
+   * `Encounter` (không gọi thẳng `tx.invoice...` — bảng đó do `InvoiceRepository`/module `billing`
+   * sở hữu ghi, đọc qua include của aggregate root tránh import vòng `EncounterModule` ↔
+   * `BillingModule`, cùng lý do đã áp dụng cho `vitalSigns` ở `EncounterWithConsultationPatient`).
+   * Dùng riêng cho gate `startConsultation()` — không đổi shape trả về của `findById()` gốc (nhiều
+   * caller khác không cần trường này).
+   */
+  findByIdWithInvoiceStatus(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<EncounterWithInvoiceStatus | null> {
+    return tx.encounter.findFirst({
+      where: { tenantId, id, deletedAt: null },
+      include: { invoice: { select: { status: true } } },
+    }) as Promise<EncounterWithInvoiceStatus | null>;
   }
 
   /** Kèm `dob` bệnh nhân — phục vụ `evaluateVitalSignWarnings()` (ReceptionService.recordVitalSigns()). */
@@ -127,11 +149,16 @@ export class EncounterRepository {
    * đi CÙNG `doctorId`: đổi từ lọc đơn `doctorId` sang `OR` "của tôi ∪ hàng chờ chung Khoa" (không
    * set `where.doctorId` trực tiếp nữa). Không đổi hành vi khi chỉ có `doctorId` hoặc không có gì
    * (giữ nguyên "Danh sách tiếp nhận" của lễ tân).
+   *
+   * `requirePaymentCleared` (Thu ngân cơ bản, Sprint 5/6) — cờ TƯỜNG MINH riêng cho "Hàng đợi
+   * khám": khi `true`, loại khỏi kết quả các lượt khám còn phiếu thu `UNPAID` và không được phép
+   * nợ (`allowsDeferredPayment=false`). "Danh sách tiếp nhận" (lễ tân) KHÔNG set cờ này — vẫn thấy
+   * đủ mọi lượt khám kể cả chưa thu tiền để xử lý ở Thu ngân.
    */
   listForDay(
     tx: Prisma.TransactionClient,
     tenantId: string,
-    params: { dayStart: Date; dayEnd: Date; doctorId?: string; poolDepartmentId?: string },
+    params: { dayStart: Date; dayEnd: Date; doctorId?: string; poolDepartmentId?: string; requirePaymentCleared?: boolean },
   ): Promise<EncounterWithPatientContact[]> {
     const where: Prisma.EncounterWhereInput = {
       tenantId,
@@ -143,6 +170,9 @@ export class EncounterRepository {
       where.OR = [{ doctorId: params.doctorId }, { departmentId: params.poolDepartmentId, doctorId: null }];
     } else if (params.doctorId) {
       where.doctorId = params.doctorId;
+    }
+    if (params.requirePaymentCleared) {
+      where.AND = [{ OR: [{ allowsDeferredPayment: true }, { invoice: null }, { invoice: { status: 'PAID' } }] }];
     }
     return tx.encounter.findMany({
       where,

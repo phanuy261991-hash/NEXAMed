@@ -20,9 +20,9 @@ import { ExamTypeFormModal } from './ExamTypeFormModal';
 const MANAGE_ROLES = ['clinic_admin'];
 
 /**
- * 4 danh mục nhân sự (mở rộng ADM-01, yêu cầu chủ dự án 2026-08-20) + "Đơn vị tính" (UNIT,
- * 2026-08-26, cùng lý do — không có nguồn dữ liệu chính thức để nhập mã tay) — server tự sinh
- * `code` khi tạo mới nên ẩn ô nhập "Mã" trong modal Thêm/Sửa. Cột "Mã" trong bảng danh sách vẫn
+ * 4 danh mục nhân sự (mở rộng ADM-01, 2026-08-20) + "Đơn vị tính" (UNIT, 2026-08-26) + "Hình thức
+ * thanh toán" (PAYMENT_METHOD, 2026-08-27) — không có nguồn dữ liệu chính thức để nhập mã tay nên
+ * server tự sinh `code`, ẩn ô nhập "Mã" trong modal Thêm/Sửa. Cột "Mã" trong bảng danh sách vẫn
  * hiện (yêu cầu chủ dự án 2026-08-21) — chỉ đọc, không sửa được.
  */
 const AUTO_CODE_CATEGORIES: ReferenceCatalogCategory[] = [
@@ -31,15 +31,17 @@ const AUTO_CODE_CATEGORIES: ReferenceCatalogCategory[] = [
   'EMPLOYMENT_STATUS',
   'EMPLOYMENT_TYPE',
   'UNIT',
+  'PAYMENT_METHOD',
 ];
 
 /**
  * Category có Mô tả + Trạng thái (Đang sử dụng/Ngưng sử dụng) ngay trong form Thêm/Sửa, không chỉ
  * qua action Xoá/Khôi phục — ban đầu chỉ UNIT (2026-08-26, #078), mở rộng sang "Chức danh"/"Học
- * hàm học vị" (2026-08-27, yêu cầu chủ dự án). `description`/`isActive` đã là cột dùng chung toàn
- * bảng `reference_catalog` (không migration riêng) — chỉ cần bật hiển thị/gửi field ở đây.
+ * hàm học vị" rồi "Hình thức thanh toán" (2026-08-27, yêu cầu chủ dự án). `description`/`isActive`
+ * đã là cột dùng chung toàn bảng `reference_catalog` (không migration riêng) — chỉ cần bật hiển
+ * thị/gửi field ở đây.
  */
-const DESCRIPTION_STATUS_CATEGORIES: ReferenceCatalogCategory[] = ['UNIT', 'ACADEMIC_TITLE', 'STAFF_POSITION'];
+const DESCRIPTION_STATUS_CATEGORIES: ReferenceCatalogCategory[] = ['UNIT', 'ACADEMIC_TITLE', 'STAFF_POSITION', 'PAYMENT_METHOD'];
 
 const inputClassName =
   'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';

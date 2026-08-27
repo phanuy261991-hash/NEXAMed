@@ -15,6 +15,14 @@ import {
   appointmentSummarySchema,
   breakGlassRequestSchema,
   breakGlassResponseSchema,
+  clinicPrintHeaderSchema,
+  deferredPaymentStatusSchema,
+  invoiceResponseSchema,
+  listBillingInvoicesQuerySchema,
+  listBillingInvoicesResponseSchema,
+  markInvoicePaidRequestSchema,
+  revertInvoicePaymentRequestSchema,
+  saveInvoiceDraftRequestSchema,
   cancelAppointmentRequestSchema,
   cancelEncounterRequestSchema,
   createDrugRequestSchema,
@@ -775,6 +783,109 @@ registry.registerPath({
   },
 });
 
+const billingEncounterIdParams = z.object({ encounterId: z.string().uuid() });
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/billing/invoices',
+  tags: ['billing'],
+  summary: '"Thu ngân" — danh sách phiếu thu trong ngày + tổng kết cuối ngày (BIL-04)',
+  security: [{ bearerAuth: [] }],
+  request: { query: listBillingInvoicesQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listBillingInvoicesResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền invoice.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/billing/invoices/{encounterId}',
+  tags: ['billing'],
+  summary: 'Chi tiết phiếu thu của 1 lượt khám — null nếu không có dòng dịch vụ nào có giá (không có gì để thu)',
+  security: [{ bearerAuth: [] }],
+  request: { params: billingEncounterIdParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(invoiceResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền invoice.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/billing/invoices/{encounterId}/pay',
+  tags: ['billing'],
+  summary: '"Thu tiền" (BIL-03) — đánh dấu Đã thu + phương thức thanh toán',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: billingEncounterIdParams,
+    body: { content: { 'application/json': { schema: markInvoicePaidRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Thành công', envelope(invoiceResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền invoice.update'),
+    404: errorResponse('Không có phiếu thu cho lượt khám này (không tồn tại hoặc thuộc tenant khác)'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION) hoặc đã đánh dấu Đã thu trước đó (INVOICE_ALREADY_PAID)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/billing/invoices/{encounterId}/revert-payment',
+  tags: ['billing'],
+  summary: '"Đánh dấu chưa thu" (huỷ nhầm) — bắt buộc lý do',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: billingEncounterIdParams,
+    body: { content: { 'application/json': { schema: revertInvoicePaymentRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Thành công', envelope(invoiceResponseSchema)),
+    400: errorResponse('Thiếu lý do'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền invoice.update'),
+    404: errorResponse('Không có phiếu thu cho lượt khám này'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION) hoặc chưa từng đánh dấu Đã thu (INVOICE_NOT_PAID)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/billing/invoices/{encounterId}/save-draft',
+  tags: ['billing'],
+  summary: '"Lưu tạm" (F8) — lưu phương thức/tiền khách đưa đang nhập dở, chưa đánh dấu Đã thu',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: billingEncounterIdParams,
+    body: { content: { 'application/json': { schema: saveInvoiceDraftRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Thành công', envelope(invoiceResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền invoice.update'),
+    404: errorResponse('Không có phiếu thu cho lượt khám này'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/billing/invoices/{encounterId}/print',
+  tags: ['billing'],
+  summary: 'In phiếu thu (BIL-02, dùng chung hạ tầng in với PRE-04) — ghi nhận printedAt, idempotent',
+  security: [{ bearerAuth: [] }],
+  request: { params: billingEncounterIdParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(invoiceResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền invoice.print'),
+    404: errorResponse('Không có phiếu thu cho lượt khám này'),
+  },
+});
+
 const userIdParams = z.object({ id: z.string().uuid() });
 
 registry.registerPath({
@@ -1308,6 +1419,18 @@ registry.registerPath({
 });
 
 registry.registerPath({
+  method: 'get',
+  path: '/api/v1/clinic-settings/deferred-payment-enabled',
+  tags: ['clinic'],
+  summary: 'Thu ngân cơ bản (Sprint 5/6) — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /appointments/doctors #030)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(deferredPaymentStatusSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+  },
+});
+
+registry.registerPath({
   method: 'patch',
   path: '/api/v1/clinic-settings',
   tags: ['clinic'],
@@ -1331,6 +1454,18 @@ registry.registerPath({
     200: jsonResponse('Thành công', envelope(clinicProfileSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền clinic_config.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/clinic-profile/print-header',
+  tags: ['clinic'],
+  summary: 'Thu ngân cơ bản/Kê đơn — chiếu tối thiểu tự-phục vụ cho tiêu đề bản in (tên/địa chỉ/SĐT/logo in), mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /appointments/doctors #030)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(clinicPrintHeaderSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
   },
 });
 

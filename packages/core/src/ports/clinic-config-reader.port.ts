@@ -31,6 +31,15 @@ export interface ClinicConfigReaderPort {
    * tenant chưa có ≥2 phòng active, thì không có key tương ứng trong kết quả.
    */
   getTodayDoctorRoomAssignments(tenantId: string): Promise<Record<string, { roomId: string; roomName: string }>>;
+
+  /**
+   * Thu ngân cơ bản (Sprint 5/6) — bật/tắt tính năng "Thanh toán sau" CẤP PHÒNG KHÁM (`tenant_setting`
+   * key `deferred_payment_enabled`). `encounter`/`reception` đọc qua port này (không import thẳng
+   * module `clinic`) để gate "Hàng đợi khám" (`EncounterService.startConsultation`,
+   * `EncounterRepository.listForDay`) — tắt thì mọi `Encounter.allowsDeferredPayment` bị coi như
+   * `false`, không phân biệt giá trị đã lưu.
+   */
+  getDeferredPaymentEnabled(tenantId: string): Promise<boolean>;
 }
 
 export const CLINIC_CONFIG_READER_PORT = Symbol('CLINIC_CONFIG_READER_PORT');

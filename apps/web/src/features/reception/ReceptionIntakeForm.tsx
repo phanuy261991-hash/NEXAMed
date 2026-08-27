@@ -11,7 +11,7 @@ import { Combobox, withLegacyValueOption } from '../../shared/ui/Combobox';
 import { TimeInput } from '../../shared/ui/TimeInput';
 import { useDoctorsQuery } from '../appointment/appointment.queries';
 import { getVietnamTodayDateString, minutesToLabel, vietnamNowMinutes, vnDateTimeToIso } from '../appointment/schedule-grid.utils';
-import { useRoomOptionsQuery } from '../clinic/clinic.queries';
+import { useDeferredPaymentEnabledQuery, useRoomOptionsQuery } from '../clinic/clinic.queries';
 import { useDepartmentOptionsQuery } from '../department/department.queries';
 import { checkPatientDuplicate } from '../patient/patient.api';
 import {
@@ -144,7 +144,11 @@ export function ReceptionIntakeForm({
   const [draftPriceTypeCode, setDraftPriceTypeCode] = useState('');
   const [draftQuantity, setDraftQuantity] = useState(1);
   const [serviceError, setServiceError] = useState<string | null>(null);
-  const [payLater, setPayLater] = useState(true);
+  // Thu ngân cơ bản (Sprint 5/6) — ý nghĩa thật đã ghi nhận từ #080: true = lượt khám được PHÉP
+  // vào Hàng đợi khám dù chưa thu tiền. Chỉ hiện khi tenant đã bật "Cấu hình thanh toán" (xem
+  // `deferredPaymentEnabledQuery` bên dưới); mặc định KHÔNG check — lễ tân chủ động tích nếu muốn
+  // cho nợ, không phải hành vi ngầm định.
+  const [allowsDeferredPayment, setAllowsDeferredPayment] = useState(false);
   // Điều phối Bác sĩ/Khoa ("Hàng đợi ảo", docs/DECISIONS.md #064) — mặc định "theo bác sĩ", giữ
   // đúng bác sĩ đã đặt lịch cho mode='checkin' (vẫn sửa được, khác hành vi cũ khoá cứng).
   const [routingMode, setRoutingMode] = useState<'doctor' | 'department'>('doctor');
@@ -163,6 +167,8 @@ export function ReceptionIntakeForm({
   const doctorsQuery = useDoctorsQuery();
   const departmentsQuery = useDepartmentOptionsQuery();
   const roomOptionsQuery = useRoomOptionsQuery();
+  const deferredPaymentStatusQuery = useDeferredPaymentEnabledQuery();
+  const deferredPaymentFeatureEnabled = deferredPaymentStatusQuery.data?.enabled ?? false;
   // "Đang chờ: N" theo bác sĩ/Khoa cho danh sách thẻ điều phối (mockup
   // docs/design/doctor-queue-virtual-queue-mockup.html) — tái dùng nguyên `GET /reception/list`
   // của "Hàng đợi khám" thay vì thêm endpoint đếm riêng, lễ tân đã có `encounter.read=global` nên
@@ -239,7 +245,7 @@ export function ReceptionIntakeForm({
     setDraftPriceTypeCode('');
     setDraftQuantity(1);
     setServiceError(null);
-    setPayLater(true);
+    setAllowsDeferredPayment(false);
     setRoutingMode('doctor');
     setDoctorId(checkin?.doctorId ?? '');
     setDepartmentId('');
@@ -441,6 +447,9 @@ export function ReceptionIntakeForm({
         examFormCode,
         isPriority,
         priorityReasonCode: isPriority && priorityReasonCode !== '' ? priorityReasonCode : undefined,
+        // Tắt tính năng ở cấp phòng khám thì LUÔN gửi false, bất kể state cục bộ còn giữ gì (checkbox
+        // đã ẩn khỏi giao diện lúc đó — xem khối "Chỉ định dịch vụ khám" bên dưới).
+        allowsDeferredPayment: deferredPaymentFeatureEnabled && allowsDeferredPayment,
         ...buildVitalsPayload(),
       };
 
@@ -874,13 +883,24 @@ export function ReceptionIntakeForm({
               className={inputClassName}
             />
           </div>
-          <div className="w-40 flex-none">
-            <span className={labelClassName}>Thanh toán</span>
-            <label htmlFor="intake-pay-later" className="flex h-[38px] cursor-pointer items-center gap-2 rounded-md border border-slate-300 px-3 text-[14px] font-semibold text-slate-800">
-              <input id="intake-pay-later" type="checkbox" checked={payLater} onChange={(e) => setPayLater(e.target.checked)} className="h-4 w-4 accent-blue-600" />
-              Thanh toán sau
-            </label>
-          </div>
+          {deferredPaymentFeatureEnabled && (
+            <div className="w-40 flex-none">
+              <span className={labelClassName}>Thanh toán</span>
+              <label
+                htmlFor="intake-allows-deferred-payment"
+                className="flex h-[38px] cursor-pointer items-center gap-2 rounded-md border border-slate-300 px-3 text-[14px] font-semibold text-slate-800"
+              >
+                <input
+                  id="intake-allows-deferred-payment"
+                  type="checkbox"
+                  checked={allowsDeferredPayment}
+                  onChange={(e) => setAllowsDeferredPayment(e.target.checked)}
+                  className="h-4 w-4 accent-blue-600"
+                />
+                Thanh toán sau
+              </label>
+            </div>
+          )}
           <Button id="intake-service-add" type="button" variant="add" onClick={addServiceLine} disabled={!draftExamTypeCode}>
             <Plus size={14} weight="bold" aria-hidden="true" />
             Thêm dịch vụ

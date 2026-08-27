@@ -89,3 +89,17 @@ export class DiagnosisPrimaryRequiredError extends DomainError {
     super('Phải có đúng một chẩn đoán chính trước khi hoàn tất lượt khám.');
   }
 }
+
+/**
+ * Thu ngân cơ bản (Sprint 5/6) — "Nhận ca"/"Bắt đầu khám" (`startConsultation()`) bị chặn vì lượt
+ * khám còn phiếu thu `UNPAID` và không được phép nợ (tenant tắt "Thanh toán sau", hoặc
+ * `allowsDeferredPayment=false`) — ý nghĩa thật của checkbox "Thanh toán sau" đã ghi nhận ở
+ * `docs/DECISIONS.md` #080. Chỉ áp dụng cho `status=CHECKED_IN` (chưa từng vào IN_CONSULTATION).
+ */
+export class EncounterPaymentRequiredError extends DomainError {
+  readonly code = 'ENCOUNTER_PAYMENT_REQUIRED';
+
+  constructor() {
+    super('Lượt khám này chưa thu tiền — thu tiền ở Thu ngân trước khi vào Hàng đợi khám.');
+  }
+}

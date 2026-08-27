@@ -33,6 +33,7 @@ import type { RequestMeta } from '../../common/request-meta';
 import { AppointmentRepository } from '../appointment/appointment.repository';
 import { EncounterRepository } from '../encounter/encounter.repository';
 import { toEncounterSummary } from '../encounter/encounter.mapper';
+import { InvoiceRepository } from '../billing/invoice.repository';
 import { VitalSignRepository } from './vital-sign.repository';
 import { EncounterServiceItemRepository, type CreateEncounterServiceItemData } from './encounter-service-item.repository';
 
@@ -99,6 +100,7 @@ export class ReceptionService {
     private readonly encounterRepository: EncounterRepository,
     private readonly vitalSignRepository: VitalSignRepository,
     private readonly encounterServiceItemRepository: EncounterServiceItemRepository,
+    private readonly invoiceRepository: InvoiceRepository,
     private readonly codeSequenceRepository: CodeSequenceRepository,
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
   ) {}
@@ -157,9 +159,11 @@ export class ReceptionService {
         examFormCode: dto.examFormCode,
         isPriority: dto.isPriority,
         priorityReasonCode: dto.priorityReasonCode ?? null,
+        allowsDeferredPayment: dto.allowsDeferredPayment,
         meta,
       });
       await this.encounterServiceItemRepository.createMany(tx, tenantId, actorId, created.id, mapServiceItems(dto.services));
+      await this.createInvoiceForEncounter(tx, tenantId, actorId, created.id, meta);
       if (hasAnyVitalSign(dto)) {
         await this.createIntakeVitalSign(tx, tenantId, actorId, created.id, dto, meta);
       }
@@ -198,6 +202,7 @@ export class ReceptionService {
           examFormCode: dto.examFormCode,
           isPriority: dto.isPriority,
           priorityReasonCode: dto.priorityReasonCode ?? null,
+          allowsDeferredPayment: dto.allowsDeferredPayment,
         });
       } catch (err) {
         if (isForeignKeyViolation(err)) {
@@ -208,6 +213,7 @@ export class ReceptionService {
       }
 
       await this.encounterServiceItemRepository.createMany(tx, tenantId, actorId, created.id, mapServiceItems(dto.services));
+      await this.createInvoiceForEncounter(tx, tenantId, actorId, created.id, meta);
 
       await writeAuditLog(tx, tenantId, {
         actorId,
@@ -263,6 +269,30 @@ export class ReceptionService {
   }
 
   /**
+   * Thu ngân cơ bản (Sprint 5/6, BIL-01) — tự động tạo phiếu thu ngay lúc tiếp nhận, dùng chung
+   * cho cả `checkIn()`/`registerDirect()`. Đọc lại các dòng `encounter_service_item` VỪA tạo
+   * (`createMany()` không trả về bản ghi) rồi giao cho `InvoiceRepository` tính tổng + snapshot
+   * (`docs/DECISIONS.md` #080 — chỉ tính dòng có giá). Không tạo gì nếu không có dòng nào có giá
+   * (không có gì để thu, không chặn hàng đợi khám).
+   */
+  private async createInvoiceForEncounter(tx: Prisma.TransactionClient, tenantId: string, actorId: string, encounterId: string, meta: RequestMeta): Promise<void> {
+    const serviceItems = await this.encounterServiceItemRepository.findByEncounterId(tx, tenantId, encounterId);
+    const invoice = await this.invoiceRepository.createFromServiceItems(tx, tenantId, actorId, encounterId, serviceItems);
+    if (!invoice) {
+      return;
+    }
+    await writeAuditLog(tx, tenantId, {
+      actorId,
+      action: 'invoice.created',
+      entityType: 'invoice',
+      entityId: invoice.id,
+      afterJson: { invoiceNo: invoice.invoiceNo, totalAmount: invoice.totalAmount.toString() },
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+  }
+
+  /**
    * Phần dùng chung giữa `checkIn()` (từ lịch hẹn có sẵn) và `walkIn()` (vừa tạo lịch xong) — tạo
    * `encounter` rồi chuyển `appointment` sang `CONVERTED`, ghi 2 dòng audit. Cả hai caller đều đã
    * mở transaction riêng và biết chắc `appointment` đang `SCHEDULED` (walkIn: vừa tạo, luôn đúng;
@@ -284,6 +314,7 @@ export class ReceptionService {
       examFormCode: string;
       isPriority: boolean;
       priorityReasonCode: string | null;
+      allowsDeferredPayment: boolean;
       meta: RequestMeta;
     },
   ): Promise<Encounter> {
@@ -311,6 +342,7 @@ export class ReceptionService {
         examFormCode: params.examFormCode,
         isPriority: params.isPriority,
         priorityReasonCode: params.priorityReasonCode,
+        allowsDeferredPayment: params.allowsDeferredPayment,
       });
     } catch (err) {
       if (isUniqueConstraintViolation(err)) {
@@ -374,6 +406,7 @@ export class ReceptionService {
     date?: string,
     doctorIdFilter?: string,
     includeDepartmentPool?: boolean,
+    queueView?: boolean,
   ): Promise<ReceptionListResponse> {
     const targetDate = date ?? getVietnamDateString();
     const dayRange = vietnamDayRange(targetDate);
@@ -390,6 +423,7 @@ export class ReceptionService {
         dayEnd: dayRange.endUtc,
         doctorId,
         poolDepartmentId,
+        requirePaymentCleared: queueView,
       }),
     );
 

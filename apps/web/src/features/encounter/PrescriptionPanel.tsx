@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { CheckCircle, PencilSimple, Plus, Printer, Warning, X } from '@phosphor-icons/react';
 import type { PrescriptionItem, PrescriptionResponse } from '@nexamed/shared';
 import { useAuthStore } from '../auth/auth.store';
-import { useClinicProfileQuery } from '../clinic/clinic.queries';
+import { useClinicPrintHeaderQuery } from '../clinic/clinic.queries';
 import { Button } from '../../shared/ui/Button';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { DrugPicker } from './DrugPicker';
@@ -70,7 +70,7 @@ export function PrescriptionPanel({
   patientGender: string;
 }) {
   const doctorName = useAuthStore((s) => s.user?.displayName ?? s.user?.fullName) ?? '';
-  const clinicQuery = useClinicProfileQuery();
+  const clinicQuery = useClinicPrintHeaderQuery();
 
   const saveMutation = useSavePrescriptionItemsMutation(encounterId);
   const signMutation = useSignPrescriptionMutation(encounterId);

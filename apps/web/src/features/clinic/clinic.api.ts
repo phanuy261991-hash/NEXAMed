@@ -1,7 +1,9 @@
 import type {
+  ClinicPrintHeader,
   ClinicProfile,
   ClinicSettings,
   CreateExamStationRequest,
+  DeferredPaymentStatus,
   CreateFloorRequest,
   CreateRoomRequest,
   ExamStationSummary,
@@ -29,6 +31,11 @@ export async function updateClinicSettings(body: UpdateClinicSettingsRequest): P
   return unwrap(await getApiClient().PATCH('/api/v1/clinic-settings', { body })) as ClinicSettings;
 }
 
+/** Thu ngân cơ bản (Sprint 5/6) — tự-phục vụ, không cần `clinic_config.read` (đúng khuôn `GET /appointments/doctors`). */
+export async function getDeferredPaymentStatus(): Promise<DeferredPaymentStatus> {
+  return unwrap(await getApiClient().GET('/api/v1/clinic-settings/deferred-payment-enabled')) as DeferredPaymentStatus;
+}
+
 /** Trang "Thông tin phòng khám" (2026-08-13) — GET/PATCH cùng contract `clinic-settings` phía trên. */
 export async function getClinicProfile(): Promise<ClinicProfile> {
   return unwrap(await getApiClient().GET('/api/v1/clinic-profile')) as ClinicProfile;
@@ -36,6 +43,11 @@ export async function getClinicProfile(): Promise<ClinicProfile> {
 
 export async function updateClinicProfile(body: UpdateClinicProfileRequest): Promise<ClinicProfile> {
   return unwrap(await getApiClient().PATCH('/api/v1/clinic-profile', { body })) as ClinicProfile;
+}
+
+/** Tự-phục vụ (Thu ngân/Kê đơn) — không cần `clinic_config.read` (đúng khuôn `getDeferredPaymentStatus`). */
+export async function getClinicPrintHeader(): Promise<ClinicPrintHeader> {
+  return unwrap(await getApiClient().GET('/api/v1/clinic-profile/print-header')) as ClinicPrintHeader;
 }
 
 /** Upload logo — multipart, xem shared/api/client.ts#uploadFile (cùng mẫu uploadPatientPhoto). */

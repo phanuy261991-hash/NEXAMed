@@ -10,11 +10,13 @@ import {
   House,
   ListChecks,
   Pill,
+  Receipt,
   SidebarSimple,
   SlidersHorizontal,
   Stethoscope,
   UserPlus,
   Users,
+  Wallet,
   type Icon,
 } from '@phosphor-icons/react';
 import { NavLink, useLocation } from 'react-router-dom';
@@ -31,6 +33,8 @@ const APPOINTMENT_ROLES = ['receptionist', 'doctor', 'clinic_admin'];
 const RECEPTION_ROLES = ['receptionist', 'nurse', 'doctor', 'clinic_admin'];
 /** "Hàng đợi khám" — khu vực RIÊNG cho bác sĩ (đã chốt lại với chủ dự án), không cần cho lễ tân/điều dưỡng. */
 const DOCTOR_QUEUE_ROLES = ['doctor', 'clinic_admin'];
+/** Thu ngân cơ bản (Sprint 5/6) — khớp `invoice.read` trong ma trận mặc định: receptionist/clinic_admin=global, không có bác sĩ/điều dưỡng. */
+const BILLING_ROLES = ['receptionist', 'clinic_admin'];
 
 /** Route của "Hàng đợi khám" — giữ nguyên dưới `features/reception/` (chưa có module `encounter`/
  * `examination` thật ở web), chỉ đổi vị trí hiển thị sang nhóm "Khám bệnh" trong sidebar. */
@@ -38,6 +42,9 @@ const EXAMINATION_GROUP_PATH = '/reception/doctor-queue';
 /** Đường dẫn thuộc nhóm "Tiếp nhận và Đặt lịch" — dùng để tự mở nhóm khi route đang active nằm trong
  * đó. Loại trừ `EXAMINATION_GROUP_PATH` vì cùng tiền tố `/reception` nhưng nay thuộc nhóm khác. */
 const RECEPTION_GROUP_PATHS = ['/patients', '/appointments', '/reception'];
+/** Đường dẫn thuộc nhóm "Thu ngân" — hiện chỉ có "Danh sách cần thu" (`/billing`), tách nhóm cha/con
+ * cùng khuôn "Khám bệnh" để sau này thêm mục con (vd tổng kết ca) không phải đổi lại cấu trúc. */
+const BILLING_GROUP_PATHS = ['/billing'];
 /** Đường dẫn thuộc nhóm "Quản trị" — có 2 mục con thật (Danh mục dùng chung, Cấu hình hệ thống) và
  * 4 mục "Sắp ra mắt" đặt chỗ theo yêu cầu chủ dự án (docs/DECISIONS.md #046, ComingSoonPage — vẫn
  * KHÔNG viết logic/schema nghiệp vụ, không mở rộng phạm vi v1). Thêm ADM-01/03 vào đây khi có UI
@@ -97,15 +104,20 @@ export function Sidebar() {
   const [adminGroupOpen, setAdminGroupOpen] = useState(
     ADMIN_GROUP_PATHS.some((path) => location.pathname.startsWith(path)),
   );
+  const [billingGroupOpen, setBillingGroupOpen] = useState(
+    BILLING_GROUP_PATHS.some((path) => location.pathname.startsWith(path)),
+  );
 
   const isAdmin = user?.roles.some((role) => ADMIN_ROLES.includes(role)) ?? false;
   const canSeePatients = user?.roles.some((role) => PATIENT_ROLES.includes(role)) ?? false;
   const canSeeAppointments = user?.roles.some((role) => APPOINTMENT_ROLES.includes(role)) ?? false;
   const canSeeReception = user?.roles.some((role) => RECEPTION_ROLES.includes(role)) ?? false;
   const canSeeDoctorQueue = user?.roles.some((role) => DOCTOR_QUEUE_ROLES.includes(role)) ?? false;
+  const canSeeBilling = user?.roles.some((role) => BILLING_ROLES.includes(role)) ?? false;
   const receptionGroupExpanded = receptionGroupOpen && !collapsed;
   const examinationGroupExpanded = examinationGroupOpen && !collapsed;
   const adminGroupExpanded = adminGroupOpen && !collapsed;
+  const billingGroupExpanded = billingGroupOpen && !collapsed;
 
   return (
     <aside
@@ -204,6 +216,47 @@ export function Sidebar() {
               {examinationGroupExpanded && (
                 <ul className="mt-0.5 flex flex-col gap-0.5 border-l border-slate-800 pl-3.5">
                   <NavItem to={EXAMINATION_GROUP_PATH} label="Hàng đợi khám" icon={ListChecks} collapsed={false} indent />
+                </ul>
+              )}
+            </li>
+          )}
+
+          {canSeeBilling && (
+            <li>
+              <button
+                type="button"
+                title={collapsed ? 'Thu ngân' : undefined}
+                onClick={() => {
+                  if (collapsed) {
+                    // Cùng quy tắc bắt buộc ở nhóm "Tiếp nhận và Đặt lịch" (.claude/docs/
+                    // ui-guidelines.md mục 8.1/8.3): bấm icon lúc thu gọn phải mở lại sidebar.
+                    setCollapsed(false);
+                    setBillingGroupOpen(true);
+                  } else {
+                    setBillingGroupOpen((v) => !v);
+                  }
+                }}
+                aria-expanded={billingGroupExpanded}
+                className={`flex w-full items-center gap-3 rounded-md py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800/60 hover:text-white ${
+                  collapsed ? 'justify-center px-2' : 'px-3'
+                }`}
+              >
+                <Wallet size={collapsed ? 20 : 18} weight="regular" aria-hidden="true" className="flex-shrink-0" />
+                {!collapsed && (
+                  <>
+                    <span className="truncate text-left">Thu ngân</span>
+                    <CaretRight
+                      size={13}
+                      weight="bold"
+                      aria-hidden="true"
+                      className={`ml-auto flex-shrink-0 transition-transform ${billingGroupExpanded ? 'rotate-90' : ''}`}
+                    />
+                  </>
+                )}
+              </button>
+              {billingGroupExpanded && (
+                <ul className="mt-0.5 flex flex-col gap-0.5 border-l border-slate-800 pl-3.5">
+                  <NavItem to="/billing" label="Danh sách cần thu" icon={Receipt} collapsed={false} indent />
                 </ul>
               )}
             </li>

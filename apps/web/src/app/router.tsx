@@ -40,6 +40,9 @@ const ReceptionDoctorQueuePage = lazy(() =>
 const EncounterConsultationPage = lazy(() =>
   import('../features/encounter/EncounterConsultationPage').then((m) => ({ default: m.EncounterConsultationPage })),
 );
+// Thu ngân cơ bản (Sprint 5/6, BIL-01→04).
+const InvoiceListPage = lazy(() => import('../features/billing/InvoiceListPage').then((m) => ({ default: m.InvoiceListPage })));
+const InvoiceDetailPage = lazy(() => import('../features/billing/InvoiceDetailPage').then((m) => ({ default: m.InvoiceDetailPage })));
 // Nhóm Quản trị — chỉ `clinic_admin` dùng tới; lễ tân/điều dưỡng/bác sĩ không bao giờ tải các
 // chunk này (gồm cả trang tra cứu ICD-10 và toàn bộ màn hình danh mục).
 const CatalogAdminPage = lazy(() => import('../features/catalog/CatalogAdminPage').then((m) => ({ default: m.CatalogAdminPage })));
@@ -82,6 +85,10 @@ export const router = createBrowserRouter([
       // Màn hình khám bệnh (S3-06/07) — vào từ "Hàng đợi khám", không có mục sidebar riêng (cùng
       // cách patient/appointment detail không có mục sidebar riêng).
       { path: 'encounters/:id', element: <EncounterConsultationPage /> },
+      // Thu ngân cơ bản (Sprint 5/6) — không có mục sidebar riêng cho chi tiết (cùng cách
+      // patient/appointment/encounter detail không có mục sidebar riêng).
+      { path: 'billing', element: <InvoiceListPage /> },
+      { path: 'billing/:encounterId', element: <InvoiceDetailPage /> },
       // Trình duyệt hay gợi ý gõ tắt "/admin" (rút gọn từ lịch sử "/admin/catalog") — chưa từng
       // là route thật, trước đây báo lỗi 404 mặc định của react-router (docs/DECISIONS.md #048).
       { path: 'admin', element: <Navigate to="/admin/catalog" replace /> },

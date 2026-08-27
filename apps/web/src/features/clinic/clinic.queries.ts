@@ -19,8 +19,10 @@ import {
   createExamStation,
   createFloor,
   createRoom,
+  getClinicPrintHeader,
   getClinicProfile,
   getClinicSettings,
+  getDeferredPaymentStatus,
   getMyRoomSession,
   getRoomOptions,
   listExamStations,
@@ -44,6 +46,19 @@ export function useClinicSettingsQuery() {
   });
 }
 
+/**
+ * Thu ngân cơ bản (Sprint 5/6) — `ReceptionIntakeForm.tsx` dùng riêng hook này (KHÔNG dùng
+ * `useClinicSettingsQuery()`): lễ tân không có `clinic_config.read` (chỉ `clinic_admin`), phát
+ * hiện thật lúc kiểm bằng trình duyệt (403) — cùng lớp lỗ hổng đã gặp ở #030.
+ */
+export function useDeferredPaymentEnabledQuery() {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'clinic', 'deferred-payment-enabled'),
+    queryFn: getDeferredPaymentStatus,
+  });
+}
+
 export function useUpdateClinicSettingsMutation() {
   const { tenantId } = useAppConfig();
   const queryClient = useQueryClient();
@@ -54,6 +69,8 @@ export function useUpdateClinicSettingsMutation() {
       // Lưới lịch hẹn đọc cùng dữ liệu qua GET /appointments/schedule-config (S2-09) — làm mới
       // luôn để đổi giờ làm việc/slot ở đây phản ánh ngay, không cần F5 thủ công.
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'appointment', 'schedule-config') });
+      // Thu ngân cơ bản — ReceptionIntakeForm.tsx đọc qua hook tự-phục vụ riêng (useDeferredPaymentEnabledQuery), làm mới luôn.
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'deferred-payment-enabled') });
     },
   });
 }
@@ -64,6 +81,20 @@ export function useClinicProfileQuery() {
   return useQuery({
     queryKey: queryKey(tenantId, 'clinic', 'profile'),
     queryFn: getClinicProfile,
+  });
+}
+
+/**
+ * Tự-phục vụ (Thu ngân/Kê đơn) — `InvoiceDetailPage.tsx`/`PrescriptionPanel.tsx` dùng riêng hook
+ * này (KHÔNG dùng `useClinicProfileQuery()`): lễ tân/bác sĩ không có `clinic_config.read` (chỉ
+ * `clinic_admin`), phát hiện thật lúc kiểm bằng trình duyệt (403) cho màn Thu ngân — cùng lỗ hổng
+ * đã có sẵn ở `PrescriptionPanel.tsx` (chưa từng lộ ra vì luôn kiểm bằng tài khoản admin), vá luôn.
+ */
+export function useClinicPrintHeaderQuery() {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'clinic', 'print-header'),
+    queryFn: getClinicPrintHeader,
   });
 }
 

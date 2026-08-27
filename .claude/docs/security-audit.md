@@ -63,6 +63,8 @@ Lý do `doctor.encounter.read = global` (không phải `personal`+break-glass nh
 
 **`reference_catalog.*` (`docs/DECISIONS.md` #037)**: danh mục dùng chung Dân tộc/Quốc tịch — toàn hệ thống, không `tenant_id`, không cách ly theo tenant (chấp nhận có ý thức ở v1 on-premise một tenant/instance, xem ghi chú trong `data-model.md`). `PermissionGuard` áp dụng bình thường (không lệch pattern) nhưng **không** gắn `entityIdParam` cho `PATCH`/`DELETE` — break-glass không có ý nghĩa với dữ liệu không có chủ sở hữu/không nhạy cảm lâm sàng, `none` bị chặn hẳn.
 
+**Thu ngân cơ bản (Sprint 5/6, BIL-01→04) — 3 permission mới `invoice.read`/`invoice.update`/`invoice.print`, cả 3 chỉ `global` cho `receptionist`/`clinic_admin`** (không có bác sĩ/điều dưỡng — đúng khung PRD mục 4.7 "Là lễ tân..."). **Không có `invoice.create` riêng** — phiếu thu luôn tạo tự động kèm `encounter.create` (check-in/tiếp nhận trực tiếp, cùng transaction), không có endpoint tạo riêng nên không cần permission riêng. Tenant cũ tự vá qua `syncRolePermissionsForAllTenants()` (chỉ thêm dòng thiếu, 3 dòng này đều MỚI nên tự vá được, không rơi vào trường hợp phải vá tay như nurse ở trên).
+
 ### Break-glass (phá kính — vượt quyền tạm thời)
 
 Áp dụng khi một request bị chặn bởi scope `personal`/`department` (ví dụ điều dưỡng cần xem ghi chú của một lượt khám không do mình phụ trách trong ca trực đột xuất).

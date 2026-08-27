@@ -24,6 +24,7 @@ const PILLS: ConfigScreenPill[] = [
   { key: 'priority-reason', label: 'Lý do ưu tiên' },
   { key: 'price-type', label: 'Loại giá dịch vụ' },
   { key: 'unit', label: 'Đơn vị tính' },
+  { key: 'payment-method', label: 'Hình thức thanh toán' },
 ];
 const FIRST_PILL = PILLS[0]!;
 
@@ -63,6 +64,7 @@ export function CatalogAdminPage() {
       {activePillKey === 'priority-reason' && <ReferenceCatalogPane category="PRIORITY_REASON" categoryLabel="Lý do ưu tiên" />}
       {activePillKey === 'price-type' && <ReferenceCatalogPane category="PRICE_TYPE" categoryLabel="Loại giá dịch vụ" />}
       {activePillKey === 'unit' && <ReferenceCatalogPane category="UNIT" categoryLabel="Đơn vị tính" />}
+      {activePillKey === 'payment-method' && <ReferenceCatalogPane category="PAYMENT_METHOD" categoryLabel="Hình thức thanh toán" />}
       {activePillKey === 'province' && <GeoPane mode="province" />}
       {activePillKey === 'ward' && <GeoPane mode="ward" />}
     </ConfigScreenShell>

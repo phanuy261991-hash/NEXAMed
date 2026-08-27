@@ -4506,11 +4506,15 @@
                           "type": "integer",
                           "minimum": 5,
                           "maximum": 240
+                        },
+                        "deferredPaymentEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
                         "businessHours",
-                        "slotDurationMinutes"
+                        "slotDurationMinutes",
+                        "deferredPaymentEnabled"
                       ]
                     },
                     "meta": {
@@ -6001,6 +6005,10 @@
                   "priorityReasonCode": {
                     "type": "string"
                   },
+                  "allowsDeferredPayment": {
+                    "type": "boolean",
+                    "default": false
+                  },
                   "services": {
                     "type": "array",
                     "items": {
@@ -6392,6 +6400,10 @@
                   "priorityReasonCode": {
                     "type": "string"
                   },
+                  "allowsDeferredPayment": {
+                    "type": "boolean",
+                    "default": false
+                  },
                   "services": {
                     "type": "array",
                     "items": {
@@ -6714,6 +6726,26 @@
             },
             "required": false,
             "name": "includeDepartmentPool",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "true",
+                    "false"
+                  ]
+                }
+              ],
+              "default": false
+            },
+            "required": false,
+            "name": "queueView",
             "in": "query"
           }
         ],
@@ -11130,6 +11162,1844 @@
           },
           "422": {
             "description": "Danh sách dòng thuốc rỗng (PRESCRIPTION_EMPTY)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/billing/invoices": {
+      "get": {
+        "tags": [
+          "billing"
+        ],
+        "summary": "\"Thu ngân\" — danh sách phiếu thu trong ngày + tổng kết cuối ngày (BIL-04)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": false,
+            "name": "date",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "invoiceId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "invoiceNo": {
+                                "type": "string"
+                              },
+                              "encounterId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "encounterNo": {
+                                "type": "string"
+                              },
+                              "checkedInAt": {
+                                "type": "string"
+                              },
+                              "patientId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "patientCode": {
+                                "type": "string"
+                              },
+                              "fullName": {
+                                "type": "string"
+                              },
+                              "departmentId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "departmentName": {
+                                "type": "string"
+                              },
+                              "totalAmount": {
+                                "type": "integer"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "UNPAID",
+                                  "PAID"
+                                ]
+                              },
+                              "paymentMethod": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "minLength": 1
+                              },
+                              "paidAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "invoiceId",
+                              "invoiceNo",
+                              "encounterId",
+                              "encounterNo",
+                              "checkedInAt",
+                              "patientId",
+                              "patientCode",
+                              "fullName",
+                              "departmentId",
+                              "departmentName",
+                              "totalAmount",
+                              "status",
+                              "paymentMethod",
+                              "paidAt"
+                            ]
+                          }
+                        },
+                        "paidCount": {
+                          "type": "integer"
+                        },
+                        "paidTotalAmount": {
+                          "type": "integer"
+                        },
+                        "unpaidCount": {
+                          "type": "integer"
+                        },
+                        "unpaidTotalAmount": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "paidCount",
+                        "paidTotalAmount",
+                        "unpaidCount",
+                        "unpaidTotalAmount"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền invoice.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/billing/invoices/{encounterId}": {
+      "get": {
+        "tags": [
+          "billing"
+        ],
+        "summary": "Chi tiết phiếu thu của 1 lượt khám — null nếu không có dòng dịch vụ nào có giá (không có gì để thu)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "encounterId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "encounterId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "invoiceNo": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "UNPAID",
+                            "PAID"
+                          ]
+                        },
+                        "totalAmount": {
+                          "type": "integer"
+                        },
+                        "lines": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "examTypeCode": {
+                                "type": "string"
+                              },
+                              "examTypeName": {
+                                "type": "string"
+                              },
+                              "priceTypeCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "unitCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "unitPrice": {
+                                "type": "integer"
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "lineTotal": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "examTypeCode",
+                              "examTypeName",
+                              "priceTypeCode",
+                              "unitCode",
+                              "unitPrice",
+                              "quantity",
+                              "lineTotal"
+                            ]
+                          }
+                        },
+                        "encounterNo": {
+                          "type": "string"
+                        },
+                        "checkedInAt": {
+                          "type": "string"
+                        },
+                        "patientId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "patientCode": {
+                          "type": "string"
+                        },
+                        "fullName": {
+                          "type": "string"
+                        },
+                        "departmentName": {
+                          "type": "string"
+                        },
+                        "printedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "pendingPaymentMethod": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "minLength": 1
+                        },
+                        "pendingCashReceivedAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "paymentMethod": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "minLength": 1
+                        },
+                        "paidAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "encounterId",
+                        "invoiceNo",
+                        "status",
+                        "totalAmount",
+                        "lines",
+                        "encounterNo",
+                        "checkedInAt",
+                        "patientId",
+                        "patientCode",
+                        "fullName",
+                        "departmentName",
+                        "printedAt",
+                        "pendingPaymentMethod",
+                        "pendingCashReceivedAmount",
+                        "paymentMethod",
+                        "paidAt",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền invoice.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/billing/invoices/{encounterId}/pay": {
+      "post": {
+        "tags": [
+          "billing"
+        ],
+        "summary": "\"Thu tiền\" (BIL-03) — đánh dấu Đã thu + phương thức thanh toán",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "encounterId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "method": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "version": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "method",
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "encounterId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "invoiceNo": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "UNPAID",
+                            "PAID"
+                          ]
+                        },
+                        "totalAmount": {
+                          "type": "integer"
+                        },
+                        "lines": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "examTypeCode": {
+                                "type": "string"
+                              },
+                              "examTypeName": {
+                                "type": "string"
+                              },
+                              "priceTypeCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "unitCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "unitPrice": {
+                                "type": "integer"
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "lineTotal": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "examTypeCode",
+                              "examTypeName",
+                              "priceTypeCode",
+                              "unitCode",
+                              "unitPrice",
+                              "quantity",
+                              "lineTotal"
+                            ]
+                          }
+                        },
+                        "encounterNo": {
+                          "type": "string"
+                        },
+                        "checkedInAt": {
+                          "type": "string"
+                        },
+                        "patientId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "patientCode": {
+                          "type": "string"
+                        },
+                        "fullName": {
+                          "type": "string"
+                        },
+                        "departmentName": {
+                          "type": "string"
+                        },
+                        "printedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "pendingPaymentMethod": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "minLength": 1
+                        },
+                        "pendingCashReceivedAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "paymentMethod": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "minLength": 1
+                        },
+                        "paidAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "encounterId",
+                        "invoiceNo",
+                        "status",
+                        "totalAmount",
+                        "lines",
+                        "encounterNo",
+                        "checkedInAt",
+                        "patientId",
+                        "patientCode",
+                        "fullName",
+                        "departmentName",
+                        "printedAt",
+                        "pendingPaymentMethod",
+                        "pendingCashReceivedAmount",
+                        "paymentMethod",
+                        "paidAt",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền invoice.update",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không có phiếu thu cho lượt khám này (không tồn tại hoặc thuộc tenant khác)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp (CONCURRENT_MODIFICATION) hoặc đã đánh dấu Đã thu trước đó (INVOICE_ALREADY_PAID)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/billing/invoices/{encounterId}/revert-payment": {
+      "post": {
+        "tags": [
+          "billing"
+        ],
+        "summary": "\"Đánh dấu chưa thu\" (huỷ nhầm) — bắt buộc lý do",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "encounterId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "version": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "reason",
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "encounterId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "invoiceNo": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "UNPAID",
+                            "PAID"
+                          ]
+                        },
+                        "totalAmount": {
+                          "type": "integer"
+                        },
+                        "lines": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "examTypeCode": {
+                                "type": "string"
+                              },
+                              "examTypeName": {
+                                "type": "string"
+                              },
+                              "priceTypeCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "unitCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "unitPrice": {
+                                "type": "integer"
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "lineTotal": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "examTypeCode",
+                              "examTypeName",
+                              "priceTypeCode",
+                              "unitCode",
+                              "unitPrice",
+                              "quantity",
+                              "lineTotal"
+                            ]
+                          }
+                        },
+                        "encounterNo": {
+                          "type": "string"
+                        },
+                        "checkedInAt": {
+                          "type": "string"
+                        },
+                        "patientId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "patientCode": {
+                          "type": "string"
+                        },
+                        "fullName": {
+                          "type": "string"
+                        },
+                        "departmentName": {
+                          "type": "string"
+                        },
+                        "printedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "pendingPaymentMethod": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "minLength": 1
+                        },
+                        "pendingCashReceivedAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "paymentMethod": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "minLength": 1
+                        },
+                        "paidAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "encounterId",
+                        "invoiceNo",
+                        "status",
+                        "totalAmount",
+                        "lines",
+                        "encounterNo",
+                        "checkedInAt",
+                        "patientId",
+                        "patientCode",
+                        "fullName",
+                        "departmentName",
+                        "printedAt",
+                        "pendingPaymentMethod",
+                        "pendingCashReceivedAmount",
+                        "paymentMethod",
+                        "paidAt",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Thiếu lý do",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền invoice.update",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không có phiếu thu cho lượt khám này",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp (CONCURRENT_MODIFICATION) hoặc chưa từng đánh dấu Đã thu (INVOICE_NOT_PAID)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/billing/invoices/{encounterId}/save-draft": {
+      "post": {
+        "tags": [
+          "billing"
+        ],
+        "summary": "\"Lưu tạm\" (F8) — lưu phương thức/tiền khách đưa đang nhập dở, chưa đánh dấu Đã thu",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "encounterId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "pendingPaymentMethod": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1
+                  },
+                  "pendingCashReceivedAmount": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": 0
+                  },
+                  "version": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "pendingPaymentMethod",
+                  "pendingCashReceivedAmount",
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "encounterId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "invoiceNo": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "UNPAID",
+                            "PAID"
+                          ]
+                        },
+                        "totalAmount": {
+                          "type": "integer"
+                        },
+                        "lines": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "examTypeCode": {
+                                "type": "string"
+                              },
+                              "examTypeName": {
+                                "type": "string"
+                              },
+                              "priceTypeCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "unitCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "unitPrice": {
+                                "type": "integer"
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "lineTotal": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "examTypeCode",
+                              "examTypeName",
+                              "priceTypeCode",
+                              "unitCode",
+                              "unitPrice",
+                              "quantity",
+                              "lineTotal"
+                            ]
+                          }
+                        },
+                        "encounterNo": {
+                          "type": "string"
+                        },
+                        "checkedInAt": {
+                          "type": "string"
+                        },
+                        "patientId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "patientCode": {
+                          "type": "string"
+                        },
+                        "fullName": {
+                          "type": "string"
+                        },
+                        "departmentName": {
+                          "type": "string"
+                        },
+                        "printedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "pendingPaymentMethod": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "minLength": 1
+                        },
+                        "pendingCashReceivedAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "paymentMethod": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "minLength": 1
+                        },
+                        "paidAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "encounterId",
+                        "invoiceNo",
+                        "status",
+                        "totalAmount",
+                        "lines",
+                        "encounterNo",
+                        "checkedInAt",
+                        "patientId",
+                        "patientCode",
+                        "fullName",
+                        "departmentName",
+                        "printedAt",
+                        "pendingPaymentMethod",
+                        "pendingCashReceivedAmount",
+                        "paymentMethod",
+                        "paidAt",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền invoice.update",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không có phiếu thu cho lượt khám này",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp (CONCURRENT_MODIFICATION)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/billing/invoices/{encounterId}/print": {
+      "post": {
+        "tags": [
+          "billing"
+        ],
+        "summary": "In phiếu thu (BIL-02, dùng chung hạ tầng in với PRE-04) — ghi nhận printedAt, idempotent",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "encounterId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "encounterId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "invoiceNo": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "UNPAID",
+                            "PAID"
+                          ]
+                        },
+                        "totalAmount": {
+                          "type": "integer"
+                        },
+                        "lines": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "examTypeCode": {
+                                "type": "string"
+                              },
+                              "examTypeName": {
+                                "type": "string"
+                              },
+                              "priceTypeCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "unitCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "unitPrice": {
+                                "type": "integer"
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "lineTotal": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "examTypeCode",
+                              "examTypeName",
+                              "priceTypeCode",
+                              "unitCode",
+                              "unitPrice",
+                              "quantity",
+                              "lineTotal"
+                            ]
+                          }
+                        },
+                        "encounterNo": {
+                          "type": "string"
+                        },
+                        "checkedInAt": {
+                          "type": "string"
+                        },
+                        "patientId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "patientCode": {
+                          "type": "string"
+                        },
+                        "fullName": {
+                          "type": "string"
+                        },
+                        "departmentName": {
+                          "type": "string"
+                        },
+                        "printedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "pendingPaymentMethod": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "minLength": 1
+                        },
+                        "pendingCashReceivedAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "paymentMethod": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "minLength": 1
+                        },
+                        "paidAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "encounterId",
+                        "invoiceNo",
+                        "status",
+                        "totalAmount",
+                        "lines",
+                        "encounterNo",
+                        "checkedInAt",
+                        "patientId",
+                        "patientCode",
+                        "fullName",
+                        "departmentName",
+                        "printedAt",
+                        "pendingPaymentMethod",
+                        "pendingCashReceivedAmount",
+                        "paymentMethod",
+                        "paidAt",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền invoice.print",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không có phiếu thu cho lượt khám này",
             "content": {
               "application/json": {
                 "schema": {
@@ -18227,11 +20097,15 @@
                           "type": "integer",
                           "minimum": 5,
                           "maximum": 240
+                        },
+                        "deferredPaymentEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
                         "businessHours",
-                        "slotDurationMinutes"
+                        "slotDurationMinutes",
+                        "deferredPaymentEnabled"
                       ]
                     },
                     "meta": {
@@ -18485,6 +20359,9 @@
                     "type": "integer",
                     "minimum": 5,
                     "maximum": 240
+                  },
+                  "deferredPaymentEnabled": {
+                    "type": "boolean"
                   }
                 }
               }
@@ -18663,11 +20540,15 @@
                           "type": "integer",
                           "minimum": 5,
                           "maximum": 240
+                        },
+                        "deferredPaymentEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
                         "businessHours",
-                        "slotDurationMinutes"
+                        "slotDurationMinutes",
+                        "deferredPaymentEnabled"
                       ]
                     },
                     "meta": {
@@ -18716,6 +20597,83 @@
           },
           "403": {
             "description": "Không có quyền clinic_config.update",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clinic-settings/deferred-payment-enabled": {
+      "get": {
+        "tags": [
+          "clinic"
+        ],
+        "summary": "Thu ngân cơ bản (Sprint 5/6) — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /appointments/doctors #030)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "enabled"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
             "content": {
               "application/json": {
                 "schema": {
@@ -19194,6 +21152,104 @@
           },
           "409": {
             "description": "version không khớp (CONCURRENT_MODIFICATION)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clinic-profile/print-header": {
+      "get": {
+        "tags": [
+          "clinic"
+        ],
+        "summary": "Thu ngân cơ bản/Kê đơn — chiếu tối thiểu tự-phục vụ cho tiêu đề bản in (tên/địa chỉ/SĐT/logo in), mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /appointments/doctors #030)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "address": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "phone": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "printLogoUrl": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "address",
+                        "phone",
+                        "printLogoUrl"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
             "content": {
               "application/json": {
                 "schema": {
@@ -19799,7 +21855,8 @@
                 "STAFF_POSITION",
                 "EMPLOYMENT_STATUS",
                 "EMPLOYMENT_TYPE",
-                "UNIT"
+                "UNIT",
+                "PAYMENT_METHOD"
               ]
             },
             "required": true,
@@ -19855,7 +21912,8 @@
                                   "STAFF_POSITION",
                                   "EMPLOYMENT_STATUS",
                                   "EMPLOYMENT_TYPE",
-                                  "UNIT"
+                                  "UNIT",
+                                  "PAYMENT_METHOD"
                                 ]
                               },
                               "code": {
@@ -20104,7 +22162,8 @@
                       "STAFF_POSITION",
                       "EMPLOYMENT_STATUS",
                       "EMPLOYMENT_TYPE",
-                      "UNIT"
+                      "UNIT",
+                      "PAYMENT_METHOD"
                     ]
                   },
                   "code": {
@@ -20211,7 +22270,8 @@
                             "STAFF_POSITION",
                             "EMPLOYMENT_STATUS",
                             "EMPLOYMENT_TYPE",
-                            "UNIT"
+                            "UNIT",
+                            "PAYMENT_METHOD"
                           ]
                         },
                         "code": {
@@ -20548,7 +22608,8 @@
                             "STAFF_POSITION",
                             "EMPLOYMENT_STATUS",
                             "EMPLOYMENT_TYPE",
-                            "UNIT"
+                            "UNIT",
+                            "PAYMENT_METHOD"
                           ]
                         },
                         "code": {
@@ -20840,7 +22901,8 @@
                             "STAFF_POSITION",
                             "EMPLOYMENT_STATUS",
                             "EMPLOYMENT_TYPE",
-                            "UNIT"
+                            "UNIT",
+                            "PAYMENT_METHOD"
                           ]
                         },
                         "code": {
@@ -21103,7 +23165,8 @@
                             "STAFF_POSITION",
                             "EMPLOYMENT_STATUS",
                             "EMPLOYMENT_TYPE",
-                            "UNIT"
+                            "UNIT",
+                            "PAYMENT_METHOD"
                           ]
                         },
                         "code": {

@@ -816,6 +816,44 @@ describe('HTTP e2e — /api/v1/reception', () => {
       const ids = (res.body.data.items as Array<{ encounterId: string }>).map((i) => i.encounterId);
       expect(ids).toContain(pool.body.data.id);
     });
+
+    it('Thu ngân cơ bản (Sprint 5/6) — queueView=true ("Hàng đợi khám") ẩn ticket chưa thu tiền và không được phép nợ; "Danh sách tiếp nhận" (queueView bỏ trống) vẫn thấy đủ', async () => {
+      const dept = await createDepartment(fixture.tenantA.id, 'Khoa Nội — queueView');
+      await assignDepartment(doctorAUserId, dept);
+      const patient = await createPatient(receptionistToken, { phone: '0933444620' });
+      const unpaid = await request(app.getHttpServer())
+        .post('/api/v1/reception/direct')
+        .set(authed(receptionistToken))
+        .send({
+          patientId: patient.id,
+          doctorId: doctorAUserId,
+          checkedInAt: new Date().toISOString(),
+          services: defaultServices(),
+          receptionTypeCode: 'RT_NEW',
+          examFormCode: 'EF_NORMAL',
+        });
+      const encounterId = unpaid.body.data.id as string;
+
+      const queueRes = await request(app.getHttpServer())
+        .get('/api/v1/reception/list')
+        .query({ doctorId: doctorAUserId, queueView: 'true' })
+        .set(authed(doctorAToken));
+      expect((queueRes.body.data.items as Array<{ encounterId: string }>).map((i) => i.encounterId)).not.toContain(encounterId);
+
+      const listRes = await request(app.getHttpServer()).get('/api/v1/reception/list').set(authed(receptionistToken));
+      expect((listRes.body.data.items as Array<{ encounterId: string }>).map((i) => i.encounterId)).toContain(encounterId);
+
+      // Thu tiền xong → xuất hiện lại trong "Hàng đợi khám" ngay (không cần thao tác gì khác).
+      await request(app.getHttpServer())
+        .post(`/api/v1/billing/invoices/${encounterId}/pay`)
+        .set(authed(receptionistToken))
+        .send({ method: 'CASH', version: 1 });
+      const queueAfterPay = await request(app.getHttpServer())
+        .get('/api/v1/reception/list')
+        .query({ doctorId: doctorAUserId, queueView: 'true' })
+        .set(authed(doctorAToken));
+      expect((queueAfterPay.body.data.items as Array<{ encounterId: string }>).map((i) => i.encounterId)).toContain(encounterId);
+    });
   });
 
   describe('POST /api/v1/reception/encounters/:encounterId/vital-signs', () => {

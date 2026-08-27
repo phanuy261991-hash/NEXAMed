@@ -53,34 +53,37 @@ model Tenant {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenantSettings    TenantSetting[]
-  floors            Floor[]
-  rooms             Room[]
-  examStations      ExamStation[]
-  departmentTypes   DepartmentType[]
-  departments       Department[]
-  userAccounts      UserAccount[]
-  roles             Role[]
-  rolePermissions   RolePermission[]
-  codeSequences     CodeSequence[]
-  auditLogs         AuditLog[]
-  breakGlassSessions BreakGlassSession[]
-  doctorRoomSessions DoctorRoomSession[]
-  userSessions      UserSession[]
-  patients          Patient[]
-  appointments      Appointment[]
-  encounters        Encounter[]
-  vitalSigns        VitalSign[]
-  encounterServiceItems EncounterServiceItem[]
-  diagnoses         Diagnosis[]
-  clinicalNotes     ClinicalNote[]
-  drugs             Drug[]
-  prescriptions     Prescription[]
-  prescriptionItems PrescriptionItem[]
-  patientAllergens  PatientAllergen[]
+  tenantSettings         TenantSetting[]
+  floors                 Floor[]
+  rooms                  Room[]
+  examStations           ExamStation[]
+  departmentTypes        DepartmentType[]
+  departments            Department[]
+  userAccounts           UserAccount[]
+  roles                  Role[]
+  rolePermissions        RolePermission[]
+  codeSequences          CodeSequence[]
+  auditLogs              AuditLog[]
+  breakGlassSessions     BreakGlassSession[]
+  doctorRoomSessions     DoctorRoomSession[]
+  userSessions           UserSession[]
+  patients               Patient[]
+  appointments           Appointment[]
+  encounters             Encounter[]
+  vitalSigns             VitalSign[]
+  encounterServiceItems  EncounterServiceItem[]
+  diagnoses              Diagnosis[]
+  clinicalNotes          ClinicalNote[]
+  drugs                  Drug[]
+  prescriptions          Prescription[]
+  prescriptionItems      PrescriptionItem[]
+  patientAllergens       PatientAllergen[]
   patientConditions      PatientCondition[]
   patientFamilyHistories PatientFamilyHistory[]
   examTypePrices         ExamTypePrice[]
+  invoices               Invoice[]
+  invoiceLines           InvoiceLine[]
+  payments               Payment[]
 
   @@map("tenant")
 }
@@ -149,13 +152,13 @@ model Room {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant             Tenant              @relation(fields: [tenantId], references: [id])
+  tenant               Tenant              @relation(fields: [tenantId], references: [id])
   // floor_id nullable — FK chỉ áp khi có giá trị (Postgres MATCH SIMPLE, cùng mẫu
   // user_account.department ở trên).
-  floor              Floor?              @relation(fields: [tenantId, floorId], references: [tenantId, id])
-  appointments       Appointment[]
-  doctorRoomSessions DoctorRoomSession[]
-  examStations       ExamStation[]
+  floor                Floor?              @relation(fields: [tenantId, floorId], references: [tenantId, id])
+  appointments         Appointment[]
+  doctorRoomSessions   DoctorRoomSession[]
+  examStations         ExamStation[]
   // Đích ngược của user_account.default_room_id (redesign 3-tab #082) — "Phòng khám mặc định".
   usersWithDefaultRoom UserAccount[]
 
@@ -252,18 +255,18 @@ model Department {
   departmentTypeId String? @map("department_type_id") @db.Uuid
   // Mã hiển thị tự sinh qua CodeSequenceRepository (prefix "KP"), đúng khuôn patient_code/
   // employee_code — KHÔNG nhập tay. Nullable: phòng ban tạo trước tính năng này không backfill.
-  code     String?
-  name     String
+  code             String?
+  name             String
   // Mở rộng ADM-01 (2026-08-20) — danh mục Khoa/Phòng quản lý được qua UI (Thêm/Sửa/Ẩn), cùng
   // khuôn Room (isActive, không phải soft-delete deletedAt — giữ nguyên lịch sử gán trên
   // user_account.department_id, chỉ ẩn khỏi Combobox chọn mới).
-  isActive Boolean @default(true) @map("is_active")
+  isActive         Boolean @default(true) @map("is_active")
   // "Hàng đợi ảo" (#064) — đánh dấu "Khoa chung" tự sinh mỗi tenant lúc seed
   // (`seedDefaultRolesForTenant`), dùng làm fallback `encounter.department_id` khi bác sĩ chưa gán
   // Khoa hoặc lúc Tiếp nhận chọn thẳng "Khoa chung". Đúng 1 dòng/tenant — ép bằng partial unique
   // index raw SQL trong migration (`(tenant_id) WHERE is_default`), không khai `@@unique` ở Prisma
   // (không biểu diễn được unique có điều kiện, cùng lý do patient.nationalIdHash).
-  isDefault Boolean @default(false) @map("is_default")
+  isDefault        Boolean @default(false) @map("is_default")
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -274,13 +277,13 @@ model Department {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant       Tenant          @relation(fields: [tenantId], references: [id])
+  tenant         Tenant          @relation(fields: [tenantId], references: [id])
   // department_type_id nullable — FK chỉ áp khi có giá trị (Postgres MATCH SIMPLE, cùng mẫu room.floor).
   departmentType DepartmentType? @relation(fields: [tenantId, departmentTypeId], references: [tenantId, id])
-  userAccounts UserAccount[]
+  userAccounts   UserAccount[]
   // "Hàng đợi ảo" (#064) — mọi encounter thuộc một Khoa cụ thể (bắt buộc), dù đã gán bác sĩ hay
   // còn trong hàng chờ chung.
-  encounters   Encounter[]
+  encounters     Encounter[]
 
   // Đích của composite FK (tenant_id, id) từ user_account/encounter.
   @@unique([tenantId, id])
@@ -306,32 +309,32 @@ model UserAccount {
   // không backfill (chưa có tenant production). employeeCode sinh tự động qua code_sequence
   // (prefix "NV") CHỈ cho tài khoản tạo mới, không unique cứng ở DB (tài khoản cũ đều NULL, có
   // thể trùng NULL — Postgres không tính NULL trùng NULL trong UNIQUE thường).
-  employeeCode          String?   @map("employee_code")
-  phone                 String?
+  employeeCode         String?   @map("employee_code")
+  phone                String?
   // Gộp personal_email/company_email cũ thành 1 cột (redesign 3-tab, #082) — đảo ngược thiết kế
   // ADM-01 ban đầu, chốt qua AskUserQuestion (không backfill company_email cũ, chưa có tenant
   // production).
-  email                 String?   @map("email")
-  dob                   DateTime? @map("dob") @db.Date
-  gender                String?   @map("gender")
-  licenseIssuedAt        DateTime? @map("license_issued_at") @db.Date
-  licenseIssuedPlace     String?   @map("license_issued_place")
+  email                String?   @map("email")
+  dob                  DateTime? @map("dob") @db.Date
+  gender               String?   @map("gender")
+  licenseIssuedAt      DateTime? @map("license_issued_at") @db.Date
+  licenseIssuedPlace   String?   @map("license_issued_place")
   // Ảnh chữ ký (PNG, redesign 3-tab #082) — khoá lưu trên StoragePort, cùng mẫu patient.photoKey/
   // clinic.logoKey. Chỉ upload được SAU khi tài khoản đã tồn tại (endpoint riêng, cần `id` để đặt
   // tên key) — đúng ràng buộc đã áp dụng cho patient.photoKey.
-  signatureKey           String?   @map("signature_key")
+  signatureKey         String?   @map("signature_key")
   // 4 cột dưới lưu `code` của reference_catalog (category tương ứng) — không FK cứng, cùng khuôn
   // patient.ethnicity/occupation (xem comment model ReferenceCatalog).
-  academicTitleCode     String?  @map("academic_title_code")
-  positionCode          String?  @map("position_code")
-  employmentStatusCode  String?  @map("employment_status_code")
-  employmentTypeCode    String?  @map("employment_type_code")
+  academicTitleCode    String?   @map("academic_title_code")
+  positionCode         String?   @map("position_code")
+  employmentStatusCode String?   @map("employment_status_code")
+  employmentTypeCode   String?   @map("employment_type_code")
   // Được ký HSBA — CHỈ lưu metadata ở v1, chưa gắn logic chặn nào (chữ ký số/chữ ký logic thật là
   // Sprint 5, ENC-04 — đúng tinh thần CLAUDE.md "chữ ký số chưa triển khai ở v1").
-  canSignMedicalRecord  Boolean  @default(false) @map("can_sign_medical_record")
+  canSignMedicalRecord Boolean   @default(false) @map("can_sign_medical_record")
   // Bắt tài khoản đổi mật khẩu ở lần đăng nhập kế tiếp — enforce thật qua `POST /auth/change-
   // password` + chặn điều hướng ở web (`RequireAuth`), xem auth.service.ts.
-  mustChangePassword    Boolean  @default(false) @map("must_change_password")
+  mustChangePassword   Boolean   @default(false) @map("must_change_password")
 
   // Khoá tài khoản tạm sau 5 lần đăng nhập sai trong 15 phút — xem
   // .claude/docs/security-audit.md mục Xác thực, packages/core/src/iam/lockout.ts.
@@ -348,18 +351,18 @@ model UserAccount {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant     Tenant      @relation(fields: [tenantId], references: [id])
+  tenant               Tenant              @relation(fields: [tenantId], references: [id])
   // Composite FK (tenant_id, department_id) -> department(tenant_id, id): department_id
   // nullable nên FK chỉ áp khi có giá trị (Postgres MATCH SIMPLE — xem docs/DECISIONS.md).
-  department  Department? @relation(fields: [tenantId, departmentId], references: [tenantId, id])
+  department           Department?         @relation(fields: [tenantId, departmentId], references: [tenantId, id])
   // "Phòng khám mặc định" (redesign 3-tab #082) — cùng mẫu department ở trên, FK chỉ áp khi có
   // giá trị. Chỉ là gợi ý mặc định hiển thị, KHÔNG đổi cơ chế "Phòng làm việc hôm nay"
   // (doctor_room_session, #054) — hai khái niệm tách biệt.
-  defaultRoom Room?       @relation(fields: [tenantId, defaultRoomId], references: [tenantId, id])
-  userRoles  UserRole[]
-  sessions   UserSession[]
-  appointmentsAsDoctor Appointment[] @relation("AppointmentDoctor")
-  encountersAsDoctor   Encounter[]   @relation("EncounterDoctor")
+  defaultRoom          Room?               @relation(fields: [tenantId, defaultRoomId], references: [tenantId, id])
+  userRoles            UserRole[]
+  sessions             UserSession[]
+  appointmentsAsDoctor Appointment[]       @relation("AppointmentDoctor")
+  encountersAsDoctor   Encounter[]         @relation("EncounterDoctor")
   roomSessionsAsDoctor DoctorRoomSession[]
 
   // Đích của composite FK (tenant_id, id) từ user_role — chống trỏ chéo tenant (C5 trong ERD.md).
@@ -376,18 +379,18 @@ model UserAccount {
 // trong hệ thống, không cần cột "revoked" riêng. Xem .claude/docs/security-audit.md mục Xác
 // thực, docs/DECISIONS.md #019.
 model UserSession {
-  id               String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId         String  @map("tenant_id") @db.Uuid
-  userId           String  @map("user_id") @db.Uuid
-  refreshTokenHash String  @unique @map("refresh_token_hash")
-  issuedAt         DateTime @default(now()) @map("issued_at") @db.Timestamptz(6)
-  expiresAt        DateTime @map("expires_at") @db.Timestamptz(6)
+  id                  String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId            String   @map("tenant_id") @db.Uuid
+  userId              String   @map("user_id") @db.Uuid
+  refreshTokenHash    String   @unique @map("refresh_token_hash")
+  issuedAt            DateTime @default(now()) @map("issued_at") @db.Timestamptz(6)
+  expiresAt           DateTime @map("expires_at") @db.Timestamptz(6)
   // Composite FK (tenant_id, replaced_by_session_id) -> user_session(tenant_id, id): phiên kế
   // tiếp trong chuỗi rotation, null nếu đây vẫn là phiên hiện hành hoặc đã bị thu hồi thẳng
   // (logout/reuse_detected/role_changed) chứ không phải rotate.
-  replacedBySessionId String? @map("replaced_by_session_id") @db.Uuid
-  ip                   String? @db.Text
-  userAgent            String? @map("user_agent") @db.Text
+  replacedBySessionId String?  @map("replaced_by_session_id") @db.Uuid
+  ip                  String?  @db.Text
+  userAgent           String?  @map("user_agent") @db.Text
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -398,11 +401,11 @@ model UserSession {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant Tenant @relation(fields: [tenantId], references: [id])
+  tenant     Tenant        @relation(fields: [tenantId], references: [id])
   // Composite FK (tenant_id, user_id) -> user_account(tenant_id, id): chống trỏ chéo tenant.
-  user        UserAccount   @relation(fields: [tenantId, userId], references: [tenantId, id])
-  replacedBy  UserSession?  @relation("SessionRotation", fields: [tenantId, replacedBySessionId], references: [tenantId, id])
-  previousOf  UserSession[] @relation("SessionRotation")
+  user       UserAccount   @relation(fields: [tenantId, userId], references: [tenantId, id])
+  replacedBy UserSession?  @relation("SessionRotation", fields: [tenantId, replacedBySessionId], references: [tenantId, id])
+  previousOf UserSession[] @relation("SessionRotation")
 
   @@unique([tenantId, id])
   @@map("user_session")
@@ -483,6 +486,11 @@ enum ReferenceCatalogCategory {
   // Đơn vị tính (ví dụ "Viên", "Lọ", "Chai") — chủ dự án yêu cầu trực tiếp 2026-08-26. Không có
   // nguồn dữ liệu chính thức, không seed cứng, quản lý qua UI như OCCUPATION.
   UNIT
+  // Hình thức thanh toán (Thu ngân, chủ dự án yêu cầu trực tiếp 2026-08-27) — thay Postgres enum
+  // `payment_method` cố định (CASH/BANK_TRANSFER) trước đây trên Payment.method/
+  // Invoice.pendingPaymentMethod. Seed đúng 2 code cũ (migration kế tiếp, sau khi giá trị enum
+  // này commit) để dữ liệu hiện có resolve đúng tên, quản lý thêm/sửa/ẩn qua UI như UNIT.
+  PAYMENT_METHOD
 
   @@map("reference_catalog_category")
 }
@@ -498,25 +506,25 @@ enum ReferenceCatalogCategory {
 // patient.ethnicity/patient.nationality/patient.occupation (docs/DECISIONS.md, đảo ngược #034
 // phần ethnicity/nationality; occupation đảo ngược tiếp sau đó — xem entry OCCUPATION).
 model ReferenceCatalog {
-  id        String                    @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  category  ReferenceCatalogCategory
-  code      String
-  name      String
-  sortOrder Int                       @default(0) @map("sort_order")
-  isActive  Boolean                   @default(true) @map("is_active")
+  id                 String                   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  category           ReferenceCatalogCategory
+  code               String
+  name               String
+  sortOrder          Int                      @default(0) @map("sort_order")
+  isActive           Boolean                  @default(true) @map("is_active")
   // Giá tham khảo (đồng) — CHỈ có ý nghĩa với category EXAM_TYPE, NULL với category khác. v1 chỉ
   // lưu để hiển thị, không tính toán/xuất hoá đơn (viện phí ngoài phạm vi CLAUDE.md).
-  price     BigInt?
+  price              BigInt?
   // Đơn vị (ví dụ "Lượt", "Buổi") — cùng bản chất `price`, chỉ có ý nghĩa với category EXAM_TYPE.
-  unit      String?
+  unit               String?
   // Tự động vô hiệu hoá tài khoản khi được chọn làm Trạng thái làm việc của một nhân viên — CHỈ
   // có ý nghĩa với category EMPLOYMENT_STATUS (giống price/unit chỉ có ý nghĩa với EXAM_TYPE).
   // Tách thành cột riêng thay vì so khớp `code` cố định ("NGHI_VIEC"...) vì `code` sửa được qua
   // UI (ReferenceCatalogPane) — so khớp chuỗi sẽ hỏng ngầm khi admin đổi mã.
-  deactivatesAccount Boolean @default(false) @map("deactivates_account")
+  deactivatesAccount Boolean                  @default(false) @map("deactivates_account")
   // Mô tả tự do — CHỈ có ý nghĩa với category UNIT (Đơn vị tính, chủ dự án yêu cầu trực tiếp
   // 2026-08-26), NULL với category khác (cùng bản chất price/unit/deactivatesAccount ở trên).
-  description String?
+  description        String?
 
   @@unique([category, code])
   @@map("reference_catalog")
@@ -584,12 +592,12 @@ model AllergenGroup {
 // `allergenGroupId` BẮT BUỘC (không nullable) — khác `department.departmentTypeId` (tuỳ chọn):
 // mỗi Dị nguyên luôn thuộc đúng 1 Nhóm dị nguyên, không có trạng thái "chưa phân loại".
 model Allergen {
-  id              String        @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  allergenGroupId String        @map("allergen_group_id") @db.Uuid
-  code            String        @unique
-  name            String
-  isActive        Boolean       @default(true) @map("is_active")
-  allergenGroup   AllergenGroup @relation(fields: [allergenGroupId], references: [id])
+  id               String            @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  allergenGroupId  String            @map("allergen_group_id") @db.Uuid
+  code             String            @unique
+  name             String
+  isActive         Boolean           @default(true) @map("is_active")
+  allergenGroup    AllergenGroup     @relation(fields: [allergenGroupId], references: [id])
   // Bệnh nhân đã gán dị nguyên này (Sprint 4, chốt 2026-08-25) — xem model PatientAllergen.
   patientAllergens PatientAllergen[]
 
@@ -660,12 +668,12 @@ model Icd10Catalog {
   groupCode   String @map("group_code")
   groupName   String @map("group_name")
 
-  isBillable        Boolean                  @default(true) @map("is_billable")
-  genderRestriction Icd10GenderRestriction?  @map("gender_restriction")
-  usageRestriction  Icd10UsageRestriction?   @map("usage_restriction")
-  whoNote           String?                  @map("who_note")
+  isBillable        Boolean                 @default(true) @map("is_billable")
+  genderRestriction Icd10GenderRestriction? @map("gender_restriction")
+  usageRestriction  Icd10UsageRestriction?  @map("usage_restriction")
+  whoNote           String?                 @map("who_note")
 
-  diagnoses Diagnosis[]
+  diagnoses              Diagnosis[]
   patientConditions      PatientCondition[]
   patientFamilyHistories PatientFamilyHistory[]
 
@@ -701,7 +709,7 @@ model RolePermission {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant Tenant @relation(fields: [tenantId], references: [id])
+  tenant     Tenant     @relation(fields: [tenantId], references: [id])
   // Composite FK (tenant_id, role_id) -> role(tenant_id, id): chống trỏ chéo tenant.
   role       Role       @relation(fields: [tenantId, roleId], references: [tenantId, id])
   permission Permission @relation(fields: [permissionId], references: [id])
@@ -786,43 +794,43 @@ model CodeSequence {
 // cùng `globalPatientRef`. Unique `(tenantId, nationalIdHash)` WHERE NOT NULL không biểu diễn
 // được bằng Prisma schema (partial unique index) — thêm bằng raw SQL trong migration.
 model Patient {
-  id                 String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId           String    @map("tenant_id") @db.Uuid
-  patientCode        String    @map("patient_code")
-  fullName           String    @map("full_name")
-  dob                DateTime  @db.Date
-  gender             String
-  phone              String
-  nationalIdEnc      Bytes?    @map("national_id_enc")
-  nationalIdHash     String?   @map("national_id_hash")
-  addressJson        Json?     @map("address_json") @db.JsonB
-  allergyNote        String?   @map("allergy_note")
+  id                    String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId              String    @map("tenant_id") @db.Uuid
+  patientCode           String    @map("patient_code")
+  fullName              String    @map("full_name")
+  dob                   DateTime  @db.Date
+  gender                String
+  phone                 String
+  nationalIdEnc         Bytes?    @map("national_id_enc")
+  nationalIdHash        String?   @map("national_id_hash")
+  addressJson           Json?     @map("address_json") @db.JsonB
+  allergyNote           String?   @map("allergy_note")
   // Tiền sử bản thân/gia đình (docs/DECISIONS.md #068) — chuyển từ `clinical_note` (gắn từng lượt
   // khám) sang đây, đúng khuôn `allergyNote`: dữ liệu chung, ít đổi, sửa tại chỗ qua
   // `PATCH /patients/:id`, không nhập lại từ đầu mỗi lượt khám mới.
-  personalHistory    String?   @map("personal_history")
-  familyHistory      String?   @map("family_history")
-  mergedIntoId       String?   @map("merged_into_id") @db.Uuid
-  globalPatientRef   String?   @map("global_patient_ref") @db.Uuid
-  identityVerifiedAt DateTime? @map("identity_verified_at") @db.Timestamptz(6)
+  personalHistory       String?   @map("personal_history")
+  familyHistory         String?   @map("family_history")
+  mergedIntoId          String?   @map("merged_into_id") @db.Uuid
+  globalPatientRef      String?   @map("global_patient_ref") @db.Uuid
+  identityVerifiedAt    DateTime? @map("identity_verified_at") @db.Timestamptz(6)
   // Mở rộng hồ sơ hành chính (docs/DECISIONS.md #034) — tất cả nullable, không backfill, không
   // ràng buộc DB mới. `insuranceNumber` độc lập với module `insurance_card` (S2-04, chưa làm) —
   // chỉ lưu/hiển thị.
-  photoKey                String?   @map("photo_key")
-  nationalIdIssuedAt      DateTime? @map("national_id_issued_at") @db.Date
-  nationalIdIssuedPlace   String?   @map("national_id_issued_place")
+  photoKey              String?   @map("photo_key")
+  nationalIdIssuedAt    DateTime? @map("national_id_issued_at") @db.Date
+  nationalIdIssuedPlace String?   @map("national_id_issued_place")
   // `ethnicity`/`nationality`/`occupation` lưu CODE tham chiếu `reference_catalog` (category
   // ETHNICITY/NATIONALITY/OCCUPATION) — không FK cứng (cùng lý do reference_catalog không có
   // tenant_id, xem comment model ReferenceCatalog). Vẫn String? thuần để không chặn hồ sơ cũ có
   // giá trị text tự do trước khi danh mục hoá (web tự chèn "legacy value" vào Combobox).
-  ethnicity               String?
-  nationality             String?
-  occupation              String?
-  insuranceNumber         String?   @map("insurance_number")
-  relativeFullName        String?   @map("relative_full_name")
-  relativeRelationship    String?   @map("relative_relationship")
-  relativePhone           String?   @map("relative_phone")
-  relativeAddress         String?   @map("relative_address")
+  ethnicity             String?
+  nationality           String?
+  occupation            String?
+  insuranceNumber       String?   @map("insurance_number")
+  relativeFullName      String?   @map("relative_full_name")
+  relativeRelationship  String?   @map("relative_relationship")
+  relativePhone         String?   @map("relative_phone")
+  relativeAddress       String?   @map("relative_address")
   // Cột dẫn xuất (S2-02, PAT-02) — Postgres GENERATED ALWAYS AS (...) STORED từ full_name (bỏ
   // dấu + viết thường qua hàm nexamed_unaccent_lower(), xem migration `*_patient_search`).
   // KHÔNG bao giờ ghi trực tiếp field này từ Prisma (DB tự tính, ghi vào sẽ lỗi) —
@@ -831,7 +839,7 @@ model Patient {
   // để Prisma không bắt buộc field này trong `PatientCreateInput`/`PatientUncheckedCreateInput`
   // (Prisma không có khái niệm "generated column, chỉ đọc" nên coi mọi field NOT NULL là bắt
   // buộc phải truyền lúc tạo).
-  searchKey          String?   @map("search_key")
+  searchKey             String?   @map("search_key")
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -842,15 +850,15 @@ model Patient {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant Tenant @relation(fields: [tenantId], references: [id])
+  tenant            Tenant                 @relation(fields: [tenantId], references: [id])
   // Composite FK (tenant_id, merged_into_id) -> patient(tenant_id, id): luồng gộp hồ sơ trùng
   // (PAT-04, chưa hiện thực ở S2-01) — bản ghi nguồn không xoá, chỉ trỏ sang bản ghi đích.
-  mergedInto Patient?  @relation("PatientMerge", fields: [tenantId, mergedIntoId], references: [tenantId, id])
-  mergedFrom Patient[] @relation("PatientMerge")
-  appointments Appointment[]
-  encounters   Encounter[]
+  mergedInto        Patient?               @relation("PatientMerge", fields: [tenantId, mergedIntoId], references: [tenantId, id])
+  mergedFrom        Patient[]              @relation("PatientMerge")
+  appointments      Appointment[]
+  encounters        Encounter[]
   // Dị nguyên đã biết (Sprint 4, chốt 2026-08-25) — xem model PatientAllergen.
-  allergens    PatientAllergen[]
+  allergens         PatientAllergen[]
   // Bệnh lý nền + thói quen/lối sống, tiền sử gia đình có cấu trúc (Sprint 5) — xem model
   // PatientCondition/PatientFamilyHistory.
   conditions        PatientCondition[]
@@ -895,25 +903,25 @@ enum AppointmentSource {
 // khách trình lúc đến. `patientId` chuyển thành nullable — để sẵn cho Tiếp nhận (Sprint 3) gắn
 // hồ sơ `patient` thật lúc check-in, chưa có luồng nào ghi giá trị này ở v1 hiện tại.
 model Appointment {
-  id              String            @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId        String            @map("tenant_id") @db.Uuid
-  patientId       String?           @map("patient_id") @db.Uuid
-  doctorId        String            @map("doctor_id") @db.Uuid
-  roomId          String?           @map("room_id") @db.Uuid
-  bookingCode     String            @map("booking_code")
-  fullName        String            @map("full_name")
-  phone           String
-  reason          String?
-  scheduledAt     DateTime          @map("scheduled_at") @db.Timestamptz(6)
-  durationMinutes Int               @map("duration_minutes")
-  status          AppointmentStatus @default(SCHEDULED)
-  source          AppointmentSource
-  cancelReason    String?           @map("cancel_reason")
+  id                String            @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId          String            @map("tenant_id") @db.Uuid
+  patientId         String?           @map("patient_id") @db.Uuid
+  doctorId          String            @map("doctor_id") @db.Uuid
+  roomId            String?           @map("room_id") @db.Uuid
+  bookingCode       String            @map("booking_code")
+  fullName          String            @map("full_name")
+  phone             String
+  reason            String?
+  scheduledAt       DateTime          @map("scheduled_at") @db.Timestamptz(6)
+  durationMinutes   Int               @map("duration_minutes")
+  status            AppointmentStatus @default(SCHEDULED)
+  source            AppointmentSource
+  cancelReason      String?           @map("cancel_reason")
   // Dời lịch (2026-08-18): lịch MỚI trỏ về lịch CŨ đã bị đánh dấu RESCHEDULED — cùng hướng trỏ
   // với `prescription.supersedesId`/`patient.mergedIntoId` (bản mới/đích trỏ về bản cũ/nguồn,
   // không phải ngược lại). Không có unique constraint (kể cả partial) — cùng lựa chọn đã có ở
   // `patient.mergedIntoId`, chấp nhận rủi ro lý thuyết vì service là nơi duy nhất ghi cột này.
-  rescheduledFromId String? @map("rescheduled_from_id") @db.Uuid
+  rescheduledFromId String?           @map("rescheduled_from_id") @db.Uuid
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -924,12 +932,12 @@ model Appointment {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant Tenant @relation(fields: [tenantId], references: [id])
+  tenant          Tenant        @relation(fields: [tenantId], references: [id])
   // Composite FK (tenant_id, patient_id/doctor_id/room_id) -> ...(tenant_id, id): chống trỏ chéo
   // tenant (C5, docs/ERD.md mục 4), room_id/patient_id nullable nên FK chỉ áp khi có giá trị.
-  patient Patient?    @relation(fields: [tenantId, patientId], references: [tenantId, id])
-  doctor  UserAccount @relation("AppointmentDoctor", fields: [tenantId, doctorId], references: [tenantId, id])
-  room    Room?       @relation(fields: [tenantId, roomId], references: [tenantId, id])
+  patient         Patient?      @relation(fields: [tenantId, patientId], references: [tenantId, id])
+  doctor          UserAccount   @relation("AppointmentDoctor", fields: [tenantId, doctorId], references: [tenantId, id])
+  room            Room?         @relation(fields: [tenantId, roomId], references: [tenantId, id])
   // Composite FK (tenant_id, rescheduled_from_id) -> appointment(tenant_id, id) — cùng khuôn
   // Patient.mergedInto/mergedFrom (self-relation, phía "nhiều" khai List vì Prisma không biết đây
   // thực ra là 1-1 khi không có unique constraint).
@@ -941,7 +949,7 @@ model Appointment {
   // cùng lý do `patient.nationalIdHash` không khai `@unique`). Prisma không biết đây thực ra là
   // quan hệ một-một; DB tự ép đúng ngữ nghĩa đó. Không có nơi nào cần điều hướng qua field này —
   // ReceptionRepository/EncounterRepository tự truy vấn theo `appointmentId`.
-  encounters Encounter[]
+  encounters      Encounter[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, bookingCode])
@@ -997,58 +1005,65 @@ enum ClinicalNoteSection {
 // 6 giá trị theo state machine đã chốt (packages/core/src/encounter/encounter-state-machine.ts)
 // dù SCHEDULED/NO_SHOW hiện chưa có luồng nào ghi tới cho riêng bảng này.
 model Encounter {
-  id             String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId       String          @map("tenant_id") @db.Uuid
-  patientId      String          @map("patient_id") @db.Uuid
+  id                    String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId              String          @map("tenant_id") @db.Uuid
+  patientId             String          @map("patient_id") @db.Uuid
   // "Hàng đợi ảo" (#064) — nullable: lượt khám còn trong hàng chờ chung Khoa (`departmentId`,
   // dưới) chưa được bác sĩ nào nhận thì `doctorId=NULL`. "Của tôi" = `doctorId=actor`; "Nhận ca"
   // (`POST /encounters/:id/start`) set `doctorId` lúc pull từ hàng chờ chung.
-  doctorId       String?         @map("doctor_id") @db.Uuid
+  doctorId              String?         @map("doctor_id") @db.Uuid
   // "Hàng đợi ảo" (#064) — BẮT BUỘC, khác doctorId (nullable). Suy từ Khoa của bác sĩ đã chọn lúc
   // Tiếp nhận, hoặc là Khoa client chọn thẳng khi routing "theo Khoa (chưa rõ bác sĩ)". Mọi tenant
   // luôn có sẵn ít nhất 1 Khoa mặc định ("Khoa chung", seed lúc tạo tenant) nên cột này không bao
   // giờ thiếu giá trị hợp lệ để gán.
-  departmentId   String          @map("department_id") @db.Uuid
+  departmentId          String          @map("department_id") @db.Uuid
   // Không @unique ở đây — constraint thật là partial unique index raw SQL (WHERE appointment_id
   // IS NOT NULL AND deleted_at IS NULL, xem migration), Prisma không biểu diễn được unique có điều
   // kiện WHERE (cùng lý do patient.nationalIdHash không khai @unique).
-  appointmentId  String?         @map("appointment_id") @db.Uuid
-  encounterNo    String          @map("encounter_no")
-  status         EncounterStatus
-  specialty      String          @default("general")
-  checkedInAt    DateTime        @map("checked_in_at") @db.Timestamptz(6)
-  startedAt      DateTime?       @map("started_at") @db.Timestamptz(6)
-  completedAt    DateTime?       @map("completed_at") @db.Timestamptz(6)
-  chiefComplaint String?         @map("chief_complaint")
+  appointmentId         String?         @map("appointment_id") @db.Uuid
+  encounterNo           String          @map("encounter_no")
+  status                EncounterStatus
+  specialty             String          @default("general")
+  checkedInAt           DateTime        @map("checked_in_at") @db.Timestamptz(6)
+  startedAt             DateTime?       @map("started_at") @db.Timestamptz(6)
+  completedAt           DateTime?       @map("completed_at") @db.Timestamptz(6)
+  chiefComplaint        String?         @map("chief_complaint")
   // Bản chụp thẻ BHYT tại thời điểm check-in — v1 luôn { selfPay: true } (module insurance_card/
   // S2-04 chưa làm, xem docs/DECISIONS.md #032/mới). Đúng tên cột theo docs/ERD.md.
-  insuranceSnapshot Json          @map("insurance_snapshot") @db.JsonB
+  insuranceSnapshot     Json            @map("insurance_snapshot") @db.JsonB
   // "Bỏ về" (CHECKED_IN→CANCELLED, bắt buộc lý do) — không soft-delete, cùng khuôn
   // appointment.cancelReason. Bổ sung ngoài docs/ERD.md gốc, xem migration + docs/DECISIONS.md.
-  cancelReason      String?       @map("cancel_reason")
+  cancelReason          String?         @map("cancel_reason")
   // "Tiếp nhận bệnh nhân" (tạo encounter trực tiếp, appointmentId=null) — mã danh mục
   // PATIENT_SOURCE đã chọn, tuỳ chọn. Cùng convention patient.ethnicity: lưu code, không lưu tên.
-  patientSourceCode String?       @map("patient_source_code")
+  patientSourceCode     String?         @map("patient_source_code")
   // DEPRECATED (docs/DECISIONS.md #080) — "Chỉ định dịch vụ khám" chuyển từ 1 dịch vụ/lượt khám
   // sang danh sách nhiều dòng ở bảng con `EncounterServiceItem` bên dưới. 6 cột này GIỮ NGUYÊN
   // trong DB (dữ liệu cũ trước #080 vẫn đọc được) nhưng luồng Tiếp nhận mới NGỪNG ghi — cùng cách
   // đã làm với patient.familyHistory/allergyNote (#065/#068). Không xoá cột, không migration.
-  examTypeCode      String?       @map("exam_type_code")
-  examTypeName      String?       @map("exam_type_name")
-  examTypePrice     BigInt?       @map("exam_type_price")
+  examTypeCode          String?         @map("exam_type_code")
+  examTypeName          String?         @map("exam_type_name")
+  examTypePrice         BigInt?         @map("exam_type_price")
   // Thiết kế lại "Tiếp nhận bệnh nhân" (mockup đã duyệt) — Loại tiếp nhận/Hình thức khám (mã danh
   // mục RECEPTION_TYPE/EXAM_FORM), Ưu tiên khám + lý do (PRIORITY_REASON, bắt buộc kèm khi có ưu
   // tiên — ràng buộc ở packages/shared, không phải DB). Tất cả nullable ở DB (áp dụng dần cho
   // encounter mới, không phá dữ liệu cũ).
-  receptionTypeCode String?       @map("reception_type_code")
-  examFormCode      String?       @map("exam_form_code")
-  isPriority        Boolean       @default(false) @map("is_priority")
-  priorityReasonCode String?      @map("priority_reason_code")
+  receptionTypeCode     String?         @map("reception_type_code")
+  examFormCode          String?         @map("exam_form_code")
+  isPriority            Boolean         @default(false) @map("is_priority")
+  priorityReasonCode    String?         @map("priority_reason_code")
   // DEPRECATED (docs/DECISIONS.md #080) — cùng lý do 3 cột exam_type_* ở trên, thay bằng
   // EncounterServiceItem.priceTypeCode/unitCode/quantity (nhiều dòng).
-  priceTypeCode     String?       @map("price_type_code")
-  examTypeUnit      String?       @map("exam_type_unit")
-  serviceQuantity   Int           @default(1) @map("service_quantity")
+  priceTypeCode         String?         @map("price_type_code")
+  examTypeUnit          String?         @map("exam_type_unit")
+  serviceQuantity       Int             @default(1) @map("service_quantity")
+  // Thu ngân cơ bản (Sprint 5/6, BIL-01→04) — ý nghĩa checkbox "Thanh toán sau" ở Tiếp nhận đã ghi
+  // nhận từ #080, nay có nghĩa thật: true = lượt khám được PHÉP vào Hàng đợi khám dù invoice chưa
+  // PAID. Chỉ có hiệu lực khi tenant_setting `deferred_payment_enabled=true` (EncounterService đọc
+  // qua ClinicConfigReaderPort, AND lại 2 điều kiện lúc gate — tắt tính năng ở cấp phòng khám thì
+  // cột này bị bỏ qua, luôn coi như false). Mặc định false — an toàn cho dữ liệu cũ (encounter tạo
+  // trước tính năng này chưa từng có invoice nên gate không áp hồi tố).
+  allowsDeferredPayment Boolean         @default(false) @map("allows_deferred_payment")
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -1059,19 +1074,22 @@ model Encounter {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant Tenant @relation(fields: [tenantId], references: [id])
+  tenant        Tenant                 @relation(fields: [tenantId], references: [id])
   // Composite FK (tenant_id, patient_id/doctor_id/appointment_id) -> ...(tenant_id, id): chống trỏ
   // chéo tenant (C5, docs/ERD.md mục 4), appointment_id nullable nên FK chỉ áp khi có giá trị.
-  patient     Patient      @relation(fields: [tenantId, patientId], references: [tenantId, id])
+  patient       Patient                @relation(fields: [tenantId, patientId], references: [tenantId, id])
   // doctorId nullable — FK chỉ áp khi có giá trị (Postgres MATCH SIMPLE, cùng mẫu room.floorId).
-  doctor      UserAccount? @relation("EncounterDoctor", fields: [tenantId, doctorId], references: [tenantId, id])
-  department  Department   @relation(fields: [tenantId, departmentId], references: [tenantId, id])
-  appointment Appointment? @relation(fields: [tenantId, appointmentId], references: [tenantId, id])
-  vitalSigns  VitalSign[]
+  doctor        UserAccount?           @relation("EncounterDoctor", fields: [tenantId, doctorId], references: [tenantId, id])
+  department    Department             @relation(fields: [tenantId, departmentId], references: [tenantId, id])
+  appointment   Appointment?           @relation(fields: [tenantId, appointmentId], references: [tenantId, id])
+  vitalSigns    VitalSign[]
   serviceItems  EncounterServiceItem[]
   diagnoses     Diagnosis[]
   clinicalNotes ClinicalNote[]
   prescriptions Prescription[]
+  // Thu ngân cơ bản — tối đa 1 phiếu thu/lượt khám (BIL-01, PRD mục 4.7), @@unique([tenantId,
+  // encounterId]) khai ở model Invoice bên dưới.
+  invoice       Invoice?
 
   @@unique([tenantId, id])
   @@unique([tenantId, encounterNo])
@@ -1105,9 +1123,11 @@ model EncounterServiceItem {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant Tenant @relation(fields: [tenantId], references: [id])
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
   // Composite FK (tenant_id, encounter_id) -> encounter(tenant_id, id): chống trỏ chéo tenant.
-  encounter Encounter @relation(fields: [tenantId, encounterId], references: [tenantId, id])
+  encounter    Encounter     @relation(fields: [tenantId, encounterId], references: [tenantId, id])
+  // Thu ngân cơ bản — InvoiceLine.sourceServiceItem trỏ ngược lại đây (biết nguồn gốc dòng tiền).
+  invoiceLines InvoiceLine[]
 
   @@unique([tenantId, id])
   @@map("encounter_service_item")
@@ -1120,18 +1140,18 @@ model EncounterServiceItem {
 // lệch của data-model.md, không có trong ERD.md chi tiết — dùng `created_by` sẵn có, xem
 // docs/DECISIONS.md).
 model VitalSign {
-  id                String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId          String   @map("tenant_id") @db.Uuid
-  encounterId       String   @map("encounter_id") @db.Uuid
-  pulse             Int?     @db.SmallInt
-  temperatureDeciC  Int?     @map("temperature_deci_c") @db.SmallInt
-  bpSystolic        Int?     @map("bp_systolic") @db.SmallInt
-  bpDiastolic       Int?     @map("bp_diastolic") @db.SmallInt
-  respiratoryRate   Int?     @map("respiratory_rate") @db.SmallInt
-  spo2              Int?     @db.SmallInt
-  weightGram        Int?     @map("weight_gram")
-  heightMm          Int?     @map("height_mm")
-  measuredAt        DateTime @map("measured_at") @db.Timestamptz(6)
+  id               String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String   @map("tenant_id") @db.Uuid
+  encounterId      String   @map("encounter_id") @db.Uuid
+  pulse            Int?     @db.SmallInt
+  temperatureDeciC Int?     @map("temperature_deci_c") @db.SmallInt
+  bpSystolic       Int?     @map("bp_systolic") @db.SmallInt
+  bpDiastolic      Int?     @map("bp_diastolic") @db.SmallInt
+  respiratoryRate  Int?     @map("respiratory_rate") @db.SmallInt
+  spo2             Int?     @db.SmallInt
+  weightGram       Int?     @map("weight_gram")
+  heightMm         Int?     @map("height_mm")
+  measuredAt       DateTime @map("measured_at") @db.Timestamptz(6)
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -1142,7 +1162,7 @@ model VitalSign {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant Tenant @relation(fields: [tenantId], references: [id])
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
   // Composite FK (tenant_id, encounter_id) -> encounter(tenant_id, id): chống trỏ chéo tenant.
   encounter Encounter @relation(fields: [tenantId, encounterId], references: [tenantId, id])
 
@@ -1172,9 +1192,9 @@ model Diagnosis {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant    Tenant      @relation(fields: [tenantId], references: [id])
+  tenant    Tenant       @relation(fields: [tenantId], references: [id])
   // Composite FK (tenant_id, encounter_id) -> encounter(tenant_id, id): chống trỏ chéo tenant.
-  encounter Encounter   @relation(fields: [tenantId, encounterId], references: [tenantId, id])
+  encounter Encounter    @relation(fields: [tenantId, encounterId], references: [tenantId, id])
   icd10     Icd10Catalog @relation(fields: [icd10Code], references: [code])
 
   @@unique([tenantId, id])
@@ -1254,15 +1274,15 @@ model Drug {
 // mới supersedesId trỏ về bản cũ, bản cũ soft-delete). signaturePayload luôn NULL ở v1 (chữ ký
 // logic qua SignaturePort no-op).
 model Prescription {
-  id              String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId        String    @map("tenant_id") @db.Uuid
-  encounterId     String    @map("encounter_id") @db.Uuid
-  signedAt        DateTime? @map("signed_at") @db.Timestamptz(6)
-  signedBy        String?   @map("signed_by") @db.Uuid
-  signaturePayload Bytes?   @map("signature_payload")
-  printedAt       DateTime? @map("printed_at") @db.Timestamptz(6)
-  supersedesId    String?   @map("supersedes_id") @db.Uuid
-  amendmentReason String?   @map("amendment_reason")
+  id               String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String    @map("tenant_id") @db.Uuid
+  encounterId      String    @map("encounter_id") @db.Uuid
+  signedAt         DateTime? @map("signed_at") @db.Timestamptz(6)
+  signedBy         String?   @map("signed_by") @db.Uuid
+  signaturePayload Bytes?    @map("signature_payload")
+  printedAt        DateTime? @map("printed_at") @db.Timestamptz(6)
+  supersedesId     String?   @map("supersedes_id") @db.Uuid
+  amendmentReason  String?   @map("amendment_reason")
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -1273,14 +1293,14 @@ model Prescription {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant    Tenant             @relation(fields: [tenantId], references: [id])
+  tenant       Tenant             @relation(fields: [tenantId], references: [id])
   // Composite FK (tenant_id, encounter_id) -> encounter(tenant_id, id): chống trỏ chéo tenant.
-  encounter Encounter          @relation(fields: [tenantId, encounterId], references: [tenantId, id])
-  items     PrescriptionItem[]
+  encounter    Encounter          @relation(fields: [tenantId, encounterId], references: [tenantId, id])
+  items        PrescriptionItem[]
   // Self-relation đính chính — cùng khuôn patient.mergedInto/mergedFrom, appointment.rescheduledFrom.
   // Không @unique ở supersedesId (chấp nhận rủi ro lý thuyết, cùng lựa chọn patient.mergedIntoId).
-  supersedes   Prescription?  @relation("PrescriptionAmendment", fields: [tenantId, supersedesId], references: [tenantId, id])
-  supersededBy Prescription[] @relation("PrescriptionAmendment")
+  supersedes   Prescription?      @relation("PrescriptionAmendment", fields: [tenantId, supersedesId], references: [tenantId, id])
+  supersededBy Prescription[]     @relation("PrescriptionAmendment")
 
   @@unique([tenantId, id])
   @@map("prescription")
@@ -1315,17 +1335,111 @@ model PrescriptionItem {
   @@map("prescription_item")
 }
 
-// Dị nguyên đã biết của bệnh nhân (Sprint 4, chốt 2026-08-25) — liên kết `patient` với danh mục
-// "Dị nguyên" có sẵn (allergen_catalog, docs/DECISIONS.md #069) thay vì chỉ đọc `allergyNote` tự
-// do, phục vụ PRE-03 chính xác hơn. Bảng NỐI có đủ 8 cột bắt buộc (đây LÀ dữ liệu nghiệp vụ chạm
-// bệnh nhân, không phải danh mục hệ thống) — allergyNote KHÔNG đổi/xoá, vẫn là ghi chú bổ sung.
-model PatientAllergen {
-  id          String @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId    String @map("tenant_id") @db.Uuid
-  patientId   String @map("patient_id") @db.Uuid
-  // FK thường (không composite) tới allergen.id — danh mục toàn hệ thống, không có tenant_id, cùng
-  // khuôn diagnosis.icd10Code -> icd10_catalog.
-  allergenId  String @map("allergen_id") @db.Uuid
+enum InvoiceStatus {
+  UNPAID
+  PAID
+
+  @@map("invoice_status")
+}
+
+// Phiếu thu (Sprint 5/6, Thu ngân cơ bản, BIL-01→04) — .claude/docs/clinical-workflow.md mục
+// "Tiếp nhận": ĐÚNG 1 phiếu thu/lượt khám, tự động tạo trong CÙNG transaction với check-in/tiếp
+// nhận trực tiếp (ReceptionService), snapshot từ EncounterServiceItem có giá tại thời điểm đó —
+// KHÔNG tạo nếu không có dòng dịch vụ nào có giá (không có gì để thu). "Đã thu"/"Chưa thu"
+// (status) là NGUỒN SỰ THẬT cho gating "Hàng đợi khám" theo thanh toán (kết hợp
+// Encounter.allowsDeferredPayment + tenant_setting `deferred_payment_enabled`, xem
+// EncounterService.startConsultation). KHÔNG dùng SignableEntity/trigger C8 kiểu Prescription —
+// phạm vi "mức 1" của #072 không có amendment, khoá sửa invoice_line khi status=PAID chỉ ở tầng
+// service (không phải hồ sơ lâm sàng, không bắt buộc theo Thông tư 46/2018/TT-BYT).
+// pendingPaymentMethod/pendingCashReceivedAmount = "Lưu tạm" (F8) trên màn Chi tiết thanh toán —
+// lễ tân đang nhập dở (chọn phương thức/gõ tiền khách đưa) mà chưa bấm "Thu tiền", lưu lại để mở
+// tiếp đúng chỗ (kể cả người/máy khác) — KHÔNG phải trạng thái nghiệp vụ (status vẫn UNPAID), xoá
+// sạch khi markPaid() thành công.
+model Invoice {
+  id                        String        @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId                  String        @map("tenant_id") @db.Uuid
+  encounterId               String        @map("encounter_id") @db.Uuid
+  invoiceNo                 String        @map("invoice_no")
+  status                    InvoiceStatus @default(UNPAID)
+  totalAmount               BigInt        @map("total_amount")
+  printedAt                 DateTime?     @map("printed_at") @db.Timestamptz(6)
+  // Mã tham chiếu reference_catalog category PAYMENT_METHOD (text, KHÔNG FK cứng — cùng khuôn
+  // examTypeCode/priceTypeCode/unitCode, đổi từ Postgres enum cố định sang danh mục quản lý được
+  // qua UI, chủ dự án yêu cầu trực tiếp 2026-08-27).
+  pendingPaymentMethod      String?       @map("pending_payment_method")
+  pendingCashReceivedAmount BigInt?       @map("pending_cash_received_amount")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant    Tenant        @relation(fields: [tenantId], references: [id])
+  // Composite FK (tenant_id, encounter_id) -> encounter(tenant_id, id): chống trỏ chéo tenant.
+  // UNIQUE(tenant_id, encounter_id) (không phải @unique kép — chỉ 1 index duy nhất) ép đúng 1
+  // phiếu thu/lượt khám (BIL-01), cũng là FK phía ngược Encounter.invoice ở model trên.
+  encounter Encounter     @relation(fields: [tenantId, encounterId], references: [tenantId, id])
+  lines     InvoiceLine[]
+  payments  Payment[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, encounterId])
+  @@map("invoice")
+}
+
+// Snapshot 1 dòng dịch vụ đã tính tiền — sinh tự động từ EncounterServiceItem có
+// exam_type_price != NULL lúc tạo Invoice (docs/DECISIONS.md #080: SUM nhiều dòng, bỏ qua dòng
+// chưa cấu hình giá). unitPrice/lineTotal snapshot tại thời điểm tạo, KHÔNG JOIN lại exam_type_price
+// lúc đọc — cùng tinh thần EncounterServiceItem/insuranceSnapshot.
+model InvoiceLine {
+  id                  String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId            String  @map("tenant_id") @db.Uuid
+  invoiceId           String  @map("invoice_id") @db.Uuid
+  sourceServiceItemId String  @map("source_service_item_id") @db.Uuid
+  examTypeCode        String  @map("exam_type_code")
+  examTypeName        String  @map("exam_type_name")
+  priceTypeCode       String? @map("price_type_code")
+  unitCode            String? @map("unit_code")
+  unitPrice           BigInt  @map("unit_price")
+  quantity            Int
+  lineTotal           BigInt  @map("line_total")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant            Tenant               @relation(fields: [tenantId], references: [id])
+  // Composite FK (tenant_id, invoice_id) -> invoice(tenant_id, id): chống trỏ chéo tenant.
+  invoice           Invoice              @relation(fields: [tenantId, invoiceId], references: [tenantId, id])
+  // Composite FK (tenant_id, source_service_item_id) -> encounter_service_item(tenant_id, id):
+  // biết nguồn gốc dòng, chống trỏ chéo tenant cùng nguyên tắc mọi FK khác trong file này.
+  sourceServiceItem EncounterServiceItem @relation(fields: [tenantId, sourceServiceItemId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@map("invoice_line")
+}
+
+// Lịch sử thu tiền của 1 phiếu thu — tách khỏi Invoice (dù v1 luôn tối đa 1 dòng HIỆU LỰC/invoice,
+// PRD BIL-03 chỉ cần "đã thu/chưa thu" nhị phân) để không phải đổi schema nếu v2 cần nhiều đợt
+// thanh toán/công nợ. "Đánh dấu chưa thu" (huỷ nhầm) = soft-delete dòng payment (deletedReason bắt
+// buộc) + Invoice.status quay lại UNPAID — không xoá cứng theo CLAUDE.md.
+model Payment {
+  id        String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  invoiceId String   @map("invoice_id") @db.Uuid
+  // Mã tham chiếu reference_catalog category PAYMENT_METHOD (text, không FK — xem comment Invoice.pendingPaymentMethod).
+  method    String
+  amount    BigInt
+  paidAt    DateTime @map("paid_at") @db.Timestamptz(6)
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -1337,8 +1451,37 @@ model PatientAllergen {
   updatedBy     String    @map("updated_by") @db.Uuid
 
   tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  // Composite FK (tenant_id, invoice_id) -> invoice(tenant_id, id): chống trỏ chéo tenant.
+  invoice Invoice @relation(fields: [tenantId, invoiceId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@map("payment")
+}
+
+// Dị nguyên đã biết của bệnh nhân (Sprint 4, chốt 2026-08-25) — liên kết `patient` với danh mục
+// "Dị nguyên" có sẵn (allergen_catalog, docs/DECISIONS.md #069) thay vì chỉ đọc `allergyNote` tự
+// do, phục vụ PRE-03 chính xác hơn. Bảng NỐI có đủ 8 cột bắt buộc (đây LÀ dữ liệu nghiệp vụ chạm
+// bệnh nhân, không phải danh mục hệ thống) — allergyNote KHÔNG đổi/xoá, vẫn là ghi chú bổ sung.
+model PatientAllergen {
+  id         String @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId   String @map("tenant_id") @db.Uuid
+  patientId  String @map("patient_id") @db.Uuid
+  // FK thường (không composite) tới allergen.id — danh mục toàn hệ thống, không có tenant_id, cùng
+  // khuôn diagnosis.icd10Code -> icd10_catalog.
+  allergenId String @map("allergen_id") @db.Uuid
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
   // Composite FK (tenant_id, patient_id) -> patient(tenant_id, id): chống trỏ chéo tenant.
-  patient Patient @relation(fields: [tenantId, patientId], references: [tenantId, id])
+  patient  Patient  @relation(fields: [tenantId, patientId], references: [tenantId, id])
   allergen Allergen @relation(fields: [allergenId], references: [id])
 
   @@unique([tenantId, id])

@@ -127,10 +127,17 @@ export const businessHoursSchema = z.object({
 });
 export type BusinessHours = z.infer<typeof businessHoursSchema>;
 
-/** `businessHours: null` = chưa cấu hình (chưa từng lưu vào `tenant_setting`). */
+/**
+ * `businessHours: null` = chưa cấu hình (chưa từng lưu vào `tenant_setting`).
+ * `deferredPaymentEnabled` (Thu ngân cơ bản, Sprint 5/6, pill "Cấu hình thanh toán" ở
+ * `/admin/system-config`) — bật/tắt tính năng "Thanh toán sau" CẤP PHÒNG KHÁM, mặc định `false`
+ * khi chưa cấu hình (mọi phòng khám mới bắt buộc thu tiền trước khi vào Hàng đợi khám). Tắt thì
+ * `ReceptionIntakeForm.tsx` tự ẩn hẳn checkbox "Thanh toán sau", không riêng disable.
+ */
 export const clinicSettingsSchema = z.object({
   businessHours: businessHoursSchema.nullable(),
   slotDurationMinutes: z.number().int().min(5).max(240),
+  deferredPaymentEnabled: z.boolean(),
 });
 export type ClinicSettings = z.infer<typeof clinicSettingsSchema>;
 
@@ -143,10 +150,22 @@ export type ClinicSettings = z.infer<typeof clinicSettingsSchema>;
 export const updateClinicSettingsRequestSchema = z.object({
   businessHours: businessHoursSchema.optional(),
   slotDurationMinutes: z.number().int().min(5).max(240).optional(),
+  deferredPaymentEnabled: z.boolean().optional(),
 });
 export type UpdateClinicSettingsRequest = z.infer<typeof updateClinicSettingsRequestSchema>;
 
 export const DEFAULT_SLOT_DURATION_MINUTES = DEFAULT_APPOINTMENT_DURATION_MINUTES;
+
+/**
+ * `GET /clinic-settings/deferred-payment-enabled` — chiếu tối thiểu tự-phục vụ (Thu ngân cơ bản,
+ * Sprint 5/6), đúng khuôn `GET /appointments/doctors`/`roomOptionSchema` (docs/DECISIONS.md #030):
+ * lễ tân (`ReceptionIntakeForm.tsx`) cần biết tính năng "Thanh toán sau" đã bật hay chưa để hiện/ẩn
+ * checkbox, nhưng KHÔNG có `clinic_config.read` (chỉ `clinic_admin` mới có) — phát hiện thật lúc
+ * kiểm bằng trình duyệt (403), cùng lỗ hổng lớp đã gặp ở #030. Không dùng `GET /clinic-settings`
+ * đầy đủ (không lộ `businessHours` không cần thiết cho lễ tân).
+ */
+export const deferredPaymentStatusSchema = z.object({ enabled: z.boolean() });
+export type DeferredPaymentStatus = z.infer<typeof deferredPaymentStatusSchema>;
 
 /**
  * Trang "Thông tin phòng khám" (2026-08-13, `/admin/system-config`) — mở rộng `tenant`
@@ -167,6 +186,22 @@ export const clinicProfileSchema = z.object({
   version: z.number().int(),
 });
 export type ClinicProfile = z.infer<typeof clinicProfileSchema>;
+
+/**
+ * `GET /clinic-profile/print-header` — chiếu tối thiểu tự-phục vụ cho tiêu đề bản in (tên/địa chỉ/
+ * SĐT/logo in), đúng khuôn `deferredPaymentStatusSchema`/`GET /appointments/doctors` (#030): lễ
+ * tân (Thu ngân, in phiếu thu) và bác sĩ (kê đơn, in đơn thuốc) đều KHÔNG có `clinic_config.read`
+ * (chỉ `clinic_admin`) — phát hiện thật lúc kiểm bằng trình duyệt cho màn Thu ngân, tiện vá luôn
+ * `PrescriptionPanel.tsx` (cùng lỗ hổng, trước đó chỉ chưa lộ ra vì luôn kiểm bằng tài khoản admin).
+ * Không lộ `taxCode`/`currency`/`timezone`/`version` (không cần cho tiêu đề in).
+ */
+export const clinicPrintHeaderSchema = z.object({
+  name: z.string(),
+  address: z.string().nullable(),
+  phone: z.string().nullable(),
+  printLogoUrl: z.string().nullable(),
+});
+export type ClinicPrintHeader = z.infer<typeof clinicPrintHeaderSchema>;
 
 /** PATCH từng phần, `version` bắt buộc cho optimistic locking (cùng mẫu `updateRoomRequestSchema`). */
 export const updateClinicProfileRequestSchema = z.object({

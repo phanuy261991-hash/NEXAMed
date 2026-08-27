@@ -52,7 +52,7 @@ export function ConfigScreenShell({
     <div className="flex h-full flex-col">
       <h1 className="sr-only">{pageLabel}</h1>
 
-      <div className="flex flex-shrink-0 gap-2 overflow-x-auto border-b border-slate-200 bg-slate-50 px-6 py-3">
+      <div className="scroll-hover flex flex-shrink-0 gap-2 overflow-x-auto border-b border-slate-200 bg-slate-50 px-6 py-3">
         {pills.map((pill) => (
           <button
             key={pill.key}
