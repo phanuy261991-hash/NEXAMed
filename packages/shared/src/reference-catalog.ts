@@ -83,7 +83,7 @@ export const referenceCatalogItemSchema = z.object({
   unit: z.string().nullable(),
   /** Chỉ có ý nghĩa với category EMPLOYMENT_STATUS — xem docs/DECISIONS.md (mở rộng ADM-01). */
   deactivatesAccount: z.boolean(),
-  /** Chỉ có ý nghĩa với category UNIT (Đơn vị tính) — xem docs/DECISIONS.md. */
+  /** Chỉ có ý nghĩa với category UNIT/ACADEMIC_TITLE/STAFF_POSITION — xem docs/DECISIONS.md. */
   description: z.string().nullable(),
   /** Chỉ có ý nghĩa với category EXAM_TYPE — danh sách đơn giá còn hiệu lực (docs/DECISIONS.md #079). */
   prices: z.array(examTypePriceItemSchema).optional(),
@@ -110,9 +110,10 @@ export const createReferenceCatalogRequestSchema = z.object({
   unit: z.string().min(1).optional(),
   deactivatesAccount: z.boolean().optional(),
   description: z.string().min(1).optional(),
-  /** Chỉ ItemFormModal của category UNIT gửi field này (checkbox "Đang sử dụng" ngay trong form,
-   * cùng mẫu RoomPane/DepartmentPane) — category khác vẫn quản lý trạng thái qua action Xoá/Khôi
-   * phục riêng (deactivate/reactivate), không đổi hành vi cũ. */
+  /** Chỉ ItemFormModal của category UNIT/ACADEMIC_TITLE/STAFF_POSITION gửi field này (select "Đang
+   * sử dụng"/"Ngưng sử dụng" ngay trong form, cùng mẫu RoomPane/DepartmentPane) — category khác
+   * vẫn quản lý trạng thái qua action Xoá/Khôi phục riêng (deactivate/reactivate), không đổi hành
+   * vi cũ. */
   isActive: z.boolean().optional(),
   /**
    * Chỉ category EXAM_TYPE gửi field này (docs/DECISIONS.md #079) — TOÀN BỘ danh sách đơn giá

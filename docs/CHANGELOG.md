@@ -2,6 +2,16 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-27
+
+"Chức danh"/"Học vị-Học hàm" — thêm Mô tả + Trạng thái ngay trong form, đúng khuôn "Đơn vị tính" (chủ dự án yêu cầu trực tiếp, xem `docs/DECISIONS.md` #081):
+
+- Rà soát trước khi code phát hiện 2 category `STAFF_POSITION`/`ACADEMIC_TITLE` **đã tồn tại từ #063**, đã có pill đúng vị trí yêu cầu (`/admin/catalog-organization`), đã tự sinh mã — chỉ thiếu Mô tả + Trạng thái-trong-form (trước đó chỉ đổi được qua action Xoá/Khôi phục). Cột `description`/`is_active` đã dùng chung toàn bảng `reference_catalog` từ #078 — **không migration**, chỉ mở lại điều kiện hiển thị ở web.
+- `ReferenceCatalogPane.tsx`: hằng số `DESCRIPTION_STATUS_CATEGORIES` (`UNIT`/`ACADEMIC_TITLE`/`STAFF_POSITION`) thay điều kiện `category === 'UNIT'` cũ ở cột bảng + field form Mô tả/Trạng thái. Không đụng `EMPLOYMENT_STATUS`/`EMPLOYMENT_TYPE`.
+- **Xác nhận phần chủ dự án hỏi thêm giữa chừng đã làm xong từ #063**: form Thêm tài khoản (`UserAccountFormDialog.tsx`) đã load đúng 2 Combobox "Học vị/học hàm"/"Chức danh" từ 2 danh mục này, tự ẩn mục "Ngưng sử dụng" khỏi dropdown — không cần sửa thêm.
+- **Đã xác minh thật**: `pnpm -w typecheck/lint/build` sạch toàn workspace, chunk web không đổi (440.93 kB). Playwright qua Chrome thật (`dev.admin`): CRUD đầy đủ 2 pill, đổi Trạng thái → mục tự ẩn khỏi danh sách/dropdown tài khoản đúng hành vi. Dữ liệu test tạo qua UI đã xoá cứng qua script sau khi xác minh.
+- Cập nhật `docs/DECISIONS.md` (#081), `docs/CURRENT.md`.
+
 ## 2026-08-26 (4)
 
 "Chỉ định dịch vụ khám" ở Tiếp nhận — đổi từ 1 dịch vụ/lượt khám sang danh sách nhiều dịch vụ + cascade giá thật theo `exam_type_price` (chủ dự án yêu cầu trực tiếp, chốt qua `AskUserQuestion`, xem `docs/DECISIONS.md` #080):

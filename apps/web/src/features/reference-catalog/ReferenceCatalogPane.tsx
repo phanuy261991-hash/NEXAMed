@@ -33,6 +33,14 @@ const AUTO_CODE_CATEGORIES: ReferenceCatalogCategory[] = [
   'UNIT',
 ];
 
+/**
+ * Category có Mô tả + Trạng thái (Đang sử dụng/Ngưng sử dụng) ngay trong form Thêm/Sửa, không chỉ
+ * qua action Xoá/Khôi phục — ban đầu chỉ UNIT (2026-08-26, #078), mở rộng sang "Chức danh"/"Học
+ * hàm học vị" (2026-08-27, yêu cầu chủ dự án). `description`/`isActive` đã là cột dùng chung toàn
+ * bảng `reference_catalog` (không migration riêng) — chỉ cần bật hiển thị/gửi field ở đây.
+ */
+const DESCRIPTION_STATUS_CATEGORIES: ReferenceCatalogCategory[] = ['UNIT', 'ACADEMIC_TITLE', 'STAFF_POSITION'];
+
 const inputClassName =
   'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 
@@ -138,8 +146,8 @@ export function ReferenceCatalogPane({
                   <th className="w-24 px-4 py-2.5 text-center">Mã</th>
                   <th className="px-4 py-2.5 text-left">Tên hiển thị</th>
                   {category === 'EXAM_TYPE' && <th className="w-32 px-4 py-2.5 text-center">Đơn giá</th>}
-                  {category === 'UNIT' && <th className="px-4 py-2.5 text-left">Mô tả</th>}
-                  {category === 'UNIT' && <th className="w-32 px-4 py-2.5 text-center">Trạng thái</th>}
+                  {DESCRIPTION_STATUS_CATEGORIES.includes(category) && <th className="px-4 py-2.5 text-left">Mô tả</th>}
+                  {DESCRIPTION_STATUS_CATEGORIES.includes(category) && <th className="w-32 px-4 py-2.5 text-center">Trạng thái</th>}
                   <th className="w-24 px-4 py-2.5 text-center">Thứ tự</th>
                   {canManage && <th className="w-32 px-4 py-2.5 text-center">Thao tác</th>}
                 </tr>
@@ -150,8 +158,8 @@ export function ReferenceCatalogPane({
                     <td className="px-4 py-2 text-center text-sm font-bold text-slate-800">{item.code}</td>
                     <td className="px-4 py-2 text-left font-medium text-slate-900">
                       {item.name}
-                      {/* UNIT có cột "Trạng thái" riêng (Đang sử dụng/Ngưng sử dụng) — badge "Đã ẩn" ở đây sẽ trùng lặp thông tin. */}
-                      {!item.isActive && category !== 'UNIT' && (
+                      {/* Category có cột "Trạng thái" riêng (Đang sử dụng/Ngưng sử dụng) — badge "Đã ẩn" ở đây sẽ trùng lặp thông tin. */}
+                      {!item.isActive && !DESCRIPTION_STATUS_CATEGORIES.includes(category) && (
                         <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">Đã ẩn</span>
                       )}
                     </td>
@@ -164,12 +172,12 @@ export function ReferenceCatalogPane({
                         )}
                       </td>
                     )}
-                    {category === 'UNIT' && (
+                    {DESCRIPTION_STATUS_CATEGORIES.includes(category) && (
                       <td className="max-w-xs truncate px-4 py-2 text-left font-medium text-slate-600" title={item.description ?? undefined}>
                         {item.description ?? '—'}
                       </td>
                     )}
-                    {category === 'UNIT' && (
+                    {DESCRIPTION_STATUS_CATEGORIES.includes(category) && (
                       <td className="px-4 py-2 text-center">
                         <span
                           className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
@@ -323,8 +331,10 @@ function ItemFormModal({
   const [isActive, setIsActive] = useState(item?.isActive ?? true);
   // Mở rộng ADM-01 — chỉ EMPLOYMENT_STATUS có ý nghĩa với deactivatesAccount.
   const isEmploymentStatus = category === 'EMPLOYMENT_STATUS';
-  // "Đơn vị tính" (2026-08-26) — chỉ category này có Mô tả, cùng khuôn isEmploymentStatus.
+  // "Đơn vị tính" (2026-08-26) — chỉ category này đổi nhãn trường Tên.
   const isUnit = category === 'UNIT';
+  // Mô tả + Trạng thái ngay trong form — UNIT (#078) + "Chức danh"/"Học hàm học vị" (2026-08-27).
+  const hasDescriptionAndStatus = DESCRIPTION_STATUS_CATEGORIES.includes(category);
   const isInvalid = (!hideCode && code.trim() === '') || name.trim() === '';
 
   // Bọc `<form>` để Enter trong ô nhập tự submit (chuẩn HTML, không cần tự bắt phím) — mọi form
@@ -338,8 +348,8 @@ function ItemFormModal({
       name: name.trim(),
       sortOrder,
       deactivatesAccount: isEmploymentStatus ? deactivatesAccount : undefined,
-      description: isUnit && description.trim() !== '' ? description.trim() : undefined,
-      isActive: isUnit ? isActive : undefined,
+      description: hasDescriptionAndStatus && description.trim() !== '' ? description.trim() : undefined,
+      isActive: hasDescriptionAndStatus ? isActive : undefined,
     });
   }
 
@@ -365,7 +375,7 @@ function ItemFormModal({
           <input id="rc-name" value={name} onChange={(e) => setName(e.target.value)} className={inputClassName} />
         </div>
 
-        {isUnit && (
+        {hasDescriptionAndStatus && (
           <div className="mb-3.5 flex flex-col gap-1.5">
             <label htmlFor="rc-description" className="text-sm font-semibold text-slate-800">
               Mô tả
@@ -394,7 +404,7 @@ function ItemFormModal({
           />
         </div>
 
-        {isUnit && (
+        {hasDescriptionAndStatus && (
           <div className="mb-4 flex flex-col gap-1.5">
             <label htmlFor="rc-is-active" className="text-sm font-semibold text-slate-800">
               Trạng thái
