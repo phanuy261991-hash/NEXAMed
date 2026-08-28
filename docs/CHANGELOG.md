@@ -14,6 +14,18 @@ Ký hồ sơ khám + đính chính (Sprint 5, S5-02/03, ENC-04/05) — xem `docs
 - **Đã xác minh**: `packages/core` 123/123, `apps/api` 476/476 (viết lại toàn bộ test cũ của #066 + thêm test ký/đính chính/trigger C8/break-glass/tenant isolation), `pnpm -w typecheck/lint/build` sạch toàn workspace. Playwright qua Chrome thật (dữ liệu tạo qua HTTP API bằng `dev.admin`, đúng bài học #087/#088): toàn bộ luồng ký tự động + đính chính đúng, không lỗi console ngoài 2 dòng đã biết/vô hại.
 - Cập nhật `.claude/docs/clinical-workflow.md`, `.claude/docs/data-model.md`, `docs/ERD.md` (v1.34, cũng bổ sung entry v1.33 còn thiếu), `docs/DECISIONS.md` (#089), `docs/CURRENT.md`, `docs/TASK.md`.
 
+## 2026-08-29 (2)
+
+"Xem chi tiết đợt khám cũ" + chuỗi chỉnh sửa trực tiếp trên 4 tab màn khám — chuỗi phản hồi trực tiếp trên bản chạy thật, xem `docs/DECISIONS.md` #090:
+
+- 4 tab neo cuộn ("Khám & Chẩn đoán"/"Chỉ định cận lâm sàng"/"Kê đơn thuốc"/"Lời dặn & hẹn tái khám"): sửa hover quá mờ (nền xám + chữ đậm), sau đó đổi tab **đang chọn** sang dạng pill xanh `bg-blue-600 rounded-full`, đúng khuôn pill `ConfigScreenShell.tsx`.
+- Thêm scroll-spy thật (`activeTabId` theo đúng section đang ở đỉnh khung nhìn) — sửa 2 bug thật chủ dự án phát hiện lúc tự test: chọn nhầm tab liền kề (đổi từ `IntersectionObserver` sang tính trực tiếp theo vị trí cuộn), và giật/nhảy qua tab kề khi bấm (khoá scroll-spy trong lúc cuộn mượt do bấm tab, mở lại khi `scrollend`).
+- **Tính năng mới "Xem chi tiết đợt khám cũ"**: bấm thẻ trong panel "Lịch sử khám" (trước đây chỉ tĩnh) mở dialog chỉ đọc `EncounterHistoryDetailDialog.tsx` — sinh hiệu/ghi chú khám 6 mục/toàn bộ chẩn đoán (không chỉ chính)/đơn thuốc đã kê, tái dùng nguyên `GET /encounters/:id/consultation` có sẵn, không thêm API/schema mới. Mockup Artifact tương tác duyệt trước khi code (chốt qua `AskUserQuestion`: Modal giữa màn hình, nội dung "Đầy đủ"). Trích `clinical-display.tsx` (mới) + export `PrescriptionItemsTable` từ `PrescriptionPanel.tsx` — dùng chung với màn khám đang chỉnh sửa, không tạo ngôn ngữ thị giác mới.
+- Gộp nút "Trả về hàng chờ"/"Hủy khám" thành 1 nút "Xử lý" xổ menu — `shared/ui/ActionMenu.tsx` (mới, trích từ dropdown "Đăng xuất" ở `TopBar.tsx`), hiện thực thật đầu tiên cho quy tắc ">3 nút gộp menu" đã ghi ở `ui-guidelines.md` mục 4.5.
+- Sửa 1 lỗi độ đậm: dòng ngày giờ tiêu đề dialog lịch sử khám lỡ `font-extrabold`, đổi về `font-bold` đúng khuôn tiêu đề định danh khác trong màn khám.
+- **Đã xác minh**: `pnpm -w typecheck/lint/build` sạch toàn workspace, chunk web không đổi bất thường (449.71 kB). Không đổi backend/schema — thuần frontend. Playwright qua Chrome thật (dữ liệu có sẵn trên dev DB, không tạo mới): tab pill đúng mọi trạng thái, dialog mở đúng dữ liệu thật, chuyển tab không còn giật, menu "Xử lý" xổ đúng vị trí.
+- Cập nhật `.claude/docs/ui-guidelines.md` (mục 4.5b mới), `docs/DECISIONS.md` (#090), `docs/CURRENT.md`, `docs/TASK.md`.
+
 ## 2026-08-28 (4)
 
 "Hàng chờ tại màn khám" — bác sĩ xem/chuyển ca ngay tại trang khám, không cần quay ra "Hàng đợi khám" + "Trả về hàng chờ" thêm ở màn khám — xem `docs/DECISIONS.md` #088:

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowCounterClockwise,
   CalendarBlank,
+  CaretRight,
   CheckCircle,
   ClipboardText,
   ClockCounterClockwise,
@@ -13,11 +14,13 @@ import {
   Stethoscope,
   Warning,
   X,
+  XCircle,
 } from '@phosphor-icons/react';
 import type { ClinicalNoteSection, ConsultationDetailResponse, DiagnosisType, EncounterHistoryItem, PatientAllergenItem, SaveClinicalNoteRequest } from '@nexamed/shared';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { useAutoCollapseSidebar } from '../../shared/layout/sidebar.context';
 import { ApiError } from '../../shared/api/client';
+import { ActionMenu } from '../../shared/ui/ActionMenu';
 import { Button } from '../../shared/ui/Button';
 import { BreakGlassDialog } from '../../shared/ui/BreakGlassDialog';
 import { CancelEncounterDialog } from '../../shared/ui/CancelEncounterDialog';
@@ -28,6 +31,8 @@ import { Skeleton } from '../../shared/ui/Skeleton';
 import { Textarea } from '../../shared/ui/Textarea';
 import { computeAgeLabel, buildHistoryUpdatePayload, consultationPatientToHistoryFormValues } from '../patient/patient-form.utils';
 import { PatientHistoryDialog } from '../patient/PatientHistoryDialog';
+import { CLINICAL_SECTION_LABEL, DIAGNOSIS_TYPE_LABEL, VitalChip, classifyBmi, type ClinicalKey } from './clinical-display';
+import { EncounterHistoryDetailDialog } from './EncounterHistoryDetailDialog';
 import type { PatientFormValues } from '../patient/PatientFormFields';
 import { formatDobDisplay } from '../../shared/format/date';
 import { useUpdatePatientMutation } from '../patient/patient.queries';
@@ -46,7 +51,6 @@ import {
 } from './encounter.queries';
 
 const GENDER_LABEL: Record<string, string> = { male: 'Nam', female: 'Nữ', other: 'Khác' };
-const DIAGNOSIS_TYPE_LABEL: Record<DiagnosisType, string> = { PRIMARY: 'Bệnh chính', SECONDARY: 'Bệnh kèm theo' };
 /** Ký hồ sơ khám (Sprint 5, S5-02/03) — ghép field form (`ClinicalKey`) sang mã section thật gửi lên `.../clinical-note/amend`. */
 const CLINICAL_SECTION_CODE: Record<ClinicalKey, ClinicalNoteSection> = {
   reasonForVisit: 'REASON_FOR_VISIT',
@@ -56,16 +60,7 @@ const CLINICAL_SECTION_CODE: Record<ClinicalKey, ClinicalNoteSection> = {
   regionalExam: 'REGIONAL_EXAM',
   plan: 'PLAN',
 };
-const CLINICAL_SECTION_LABEL: Record<ClinicalKey, string> = {
-  reasonForVisit: 'Lý do khám',
-  illnessProgress: 'Quá trình bệnh lý',
-  preliminaryDiagnosis: 'Chẩn đoán',
-  generalExam: 'Kết quả khám toàn thân',
-  regionalExam: 'Kết quả khám bộ phận',
-  plan: 'Kế hoạch',
-};
 
-type ClinicalKey = keyof SaveClinicalNoteRequest;
 type ClinicalDraft = Record<ClinicalKey, string>;
 const EMPTY_CLINICAL_DRAFT: ClinicalDraft = {
   reasonForVisit: '',
@@ -113,6 +108,9 @@ const TABS = [
   { id: 'section-hen', label: '4. Lời dặn & hẹn tái khám', icon: CalendarBlank, comingSoon: true },
 ] as const;
 
+/** Thứ tự THẬT của các section trong DOM (khác thứ tự `TABS` — "Kê đơn thuốc" render trước 2 mục "Sắp ra mắt", xem JSX phía dưới `EncounterConsultationPage`), dùng để chọn đúng section đang xem khi nhiều section cùng lọt vào dải phát hiện của scroll-spy. */
+const SECTION_SCROLL_ORDER = ['section-kham', 'section-donthuoc', 'section-cls', 'section-hen'] as const;
+
 /**
  * Màn hình khám bệnh (S3-06/07) — bố cục theo mockup đã duyệt
  * (`docs/design/encounter-consultation-mockup.html`), sau đó tách khối ghi chú từ 4 mục SOAP sang
@@ -154,6 +152,8 @@ export function EncounterConsultationPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [draftSaved, setDraftSaved] = useState(false);
   const [vitalsDialogOpen, setVitalsDialogOpen] = useState(false);
+  /** "Xem chi tiết đợt khám cũ" (mockup đã duyệt 2026-08-29) — thẻ đã bấm trong panel "Lịch sử khám", `null` = dialog đóng. */
+  const [openHistoryItem, setOpenHistoryItem] = useState<EncounterHistoryItem | null>(null);
   /** Dialog "Tiền sử bệnh nhân" (Dị ứng/Bản thân/Gia đình) — dùng lại `PatientHistoryDialog` đã có sẵn, mở từ nút "+ Thêm" ở panel Tiền sử bên trái. */
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   // "Xem lại" một lượt khám đã "Hoàn tất khám" — mặc định chỉ xem, bấm "Chỉnh sửa thông tin" mới mở
@@ -235,6 +235,12 @@ export function EncounterConsultationPage() {
     'section-donthuoc': useRef<HTMLDivElement>(null),
     'section-hen': useRef<HTMLDivElement>(null),
   };
+  const [activeTabId, setActiveTabId] = useState<keyof typeof sectionRefs>('section-kham');
+  const workspaceScrollRef = useRef<HTMLDivElement>(null);
+  /** `true` trong lúc `scrollIntoView({behavior:'smooth'})` do bấm tab đang chạy — scroll-spy tạm ngưng tính lại theo từng khung hình cuộn để tránh giật/nhấp nháy qua các tab liền kề (xem effect scroll-spy bên dưới). */
+  const isProgrammaticScrollRef = useRef(false);
+  /** Timeout dự phòng bật lại scroll-spy nếu sự kiện `scrollend` không bắn (một số trình duyệt/tình huống). */
+  const programmaticScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /** Đổ dữ liệu server vào form — dùng lúc nạp lần đầu MỖI lượt khám (effect dưới) và lúc bấm "Huỷ" giữa chừng sửa (`handleCancelEdit`). */
   function populateFromServer(data: ConsultationDetailResponse) {
@@ -353,8 +359,91 @@ export function EncounterConsultationPage() {
   }, [encounterId]);
 
   function scrollToTab(sectionId: keyof typeof sectionRefs) {
+    setActiveTabId(sectionId); // phản hồi ngay lúc bấm, không đợi cuộn xong scroll-spy mới xác nhận lại
+    // Chặn scroll-spy tính lại theo từng khung hình TRONG LÚC cuộn mượt — bug thật đã gặp: cuộn
+    // qua section dài (ví dụ "Thông tin khám lâm sàng") khiến scroll-spy liên tục đổi tab theo
+    // đúng vị trí TỨC THỜI của từng khung hình, nhìn như nhảy qua tab liền kề rồi mới về đúng tab
+    // vừa bấm — giật/lag rõ. Coi tab vừa bấm là chính xác NGAY, chỉ bật lại scroll-spy sau khi
+    // `scrollend` báo cuộn xong (kèm timeout dự phòng — `scrollend` không phải mọi trình duyệt đều
+    // bắn đúng lúc cho `scrollIntoView` lập trình, xem MDN).
+    isProgrammaticScrollRef.current = true;
+    if (programmaticScrollTimeoutRef.current !== null) clearTimeout(programmaticScrollTimeoutRef.current);
+    programmaticScrollTimeoutRef.current = setTimeout(() => {
+      isProgrammaticScrollRef.current = false;
+    }, 700);
     sectionRefs[sectionId].current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
+
+  /**
+   * Scroll-spy: tab "đang chọn" theo đúng section đang nằm ở đỉnh khung nhìn của khu vực làm việc —
+   * không chỉ đổi lúc bấm, người dùng cuộn tay cũng phải thấy đúng tab tương ứng được tô sáng.
+   * Tính TRỰC TIẾP theo vị trí cuộn thật (không dùng `IntersectionObserver` — bug thật đã gặp:
+   * trong lúc `scrollIntoView({behavior:'smooth'})` đang chạy, nhiều section cùng cắt ngưỡng gần
+   * như đồng thời, thứ tự các lần bắn callback không khớp thứ tự thật trên màn hình → chọn nhầm
+   * section liền sau). Thuật toán: section CUỐI CÙNG (theo `SECTION_SCROLL_ORDER`) đã cuộn qua khỏi
+   * mép trên (cộng biên `TOP_OFFSET_PX`) là section đang xem. Bỏ qua tính lại khi đang cuộn do BẤM
+   * TAB (`isProgrammaticScrollRef`, xem `scrollToTab`) — tránh giật/nhảy qua tab liền kề giữa lúc
+   * cuộn; cuộn TAY (rê chuột/lăn chuột) vẫn tính lại bình thường, có `requestAnimationFrame` chặn
+   * bớt tần suất tính lại (sự kiện `scroll` có thể bắn hàng chục lần/giây).
+   */
+  useEffect(() => {
+    const root = workspaceScrollRef.current;
+    if (!root || !query.data) return;
+
+    const TOP_OFFSET_PX = 24;
+
+    function computeActiveTab() {
+      if (!root) return;
+      // Đã cuộn hết đáy — section cuối có thể quá ngắn để mép trên của nó vượt qua `TOP_OFFSET_PX`
+      // (không còn chỗ cuộn thêm), vòng lặp bên dưới sẽ không bao giờ chọn được nó nếu chỉ xét vị
+      // trí. Ép chọn thẳng section cuối cùng trong trường hợp này.
+      if (root.scrollTop + root.clientHeight >= root.scrollHeight - 1) {
+        setActiveTabId(SECTION_SCROLL_ORDER[SECTION_SCROLL_ORDER.length - 1]!);
+        return;
+      }
+      let current: keyof typeof sectionRefs = SECTION_SCROLL_ORDER[0];
+      for (const id of SECTION_SCROLL_ORDER) {
+        const el = sectionRefs[id].current;
+        if (!el) continue;
+        const offsetWithinRoot = el.getBoundingClientRect().top - root.getBoundingClientRect().top + root.scrollTop;
+        if (offsetWithinRoot <= root.scrollTop + TOP_OFFSET_PX) {
+          current = id;
+        } else {
+          break;
+        }
+      }
+      setActiveTabId(current);
+    }
+
+    let rafId: number | null = null;
+    function onScroll() {
+      if (isProgrammaticScrollRef.current) return;
+      if (rafId !== null) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        computeActiveTab();
+      });
+    }
+
+    function onScrollEnd() {
+      isProgrammaticScrollRef.current = false;
+      if (programmaticScrollTimeoutRef.current !== null) {
+        clearTimeout(programmaticScrollTimeoutRef.current);
+        programmaticScrollTimeoutRef.current = null;
+      }
+      computeActiveTab(); // tự sửa lại nếu vị trí cuộn cuối cùng lệch nhẹ so với tab vừa bấm
+    }
+
+    computeActiveTab();
+    root.addEventListener('scroll', onScroll, { passive: true });
+    root.addEventListener('scrollend', onScrollEnd, { passive: true });
+    return () => {
+      root.removeEventListener('scroll', onScroll);
+      root.removeEventListener('scrollend', onScrollEnd);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `sectionRefs` là object bọc các `useRef` ổn định qua mọi lần render (chỉ object bọc đổi identity, không phải các ref bên trong) — chỉ cần chạy lại khi dữ liệu vừa nạp xong (refs mới có element thật để đọc vị trí).
+  }, [query.data]);
 
   function setField(key: ClinicalKey, value: string) {
     setClinical((c) => ({ ...c, [key]: value }));
@@ -720,6 +809,14 @@ export function EncounterConsultationPage() {
         <VitalSignsDialog encounterId={encounterId} current={vitalSigns} onClose={() => setVitalsDialogOpen(false)} />
       )}
 
+      {openHistoryItem && (
+        <EncounterHistoryDetailDialog
+          encounterId={openHistoryItem.encounterId}
+          doctorName={openHistoryItem.doctorName}
+          onClose={() => setOpenHistoryItem(null)}
+        />
+      )}
+
       {/* Không gian làm việc chính — chia đôi */}
       <div className="flex min-h-0 flex-1 bg-slate-50">
         {/* Panel trái — 2 tab riêng biệt "Tiền sử bệnh"/"Lịch sử khám" (thay cột cuộn chung 1 khối
@@ -826,7 +923,7 @@ export function EncounterConsultationPage() {
               {history.length > 0 && (
                 <>
                   <SectionLabel>Lần khám gần nhất</SectionLabel>
-                  <HistoryCard item={history[0]!} highlighted />
+                  <HistoryCard item={history[0]!} highlighted onOpen={() => setOpenHistoryItem(history[0]!)} />
                 </>
               )}
               {history.length > 1 && (
@@ -834,7 +931,7 @@ export function EncounterConsultationPage() {
                   <SectionLabel className="mt-3">Lịch sử cũ hơn</SectionLabel>
                   <div className="flex flex-col gap-2">
                     {history.slice(1).map((item) => (
-                      <HistoryCard key={item.encounterId} item={item} />
+                      <HistoryCard key={item.encounterId} item={item} onOpen={() => setOpenHistoryItem(item)} />
                     ))}
                   </div>
                 </>
@@ -845,24 +942,33 @@ export function EncounterConsultationPage() {
 
         {/* Panel phải — khu vực làm việc */}
         <main className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <div className="flex h-11 flex-shrink-0 gap-1 border-b border-slate-200 bg-white px-4">
+          <div className="flex h-11 flex-shrink-0 items-center gap-1.5 border-b border-slate-200 bg-white px-4">
             {TABS.map((tab) => (
               <button
                 key={tab.id}
                 type="button"
                 onClick={() => scrollToTab(tab.id)}
-                className="flex h-full items-center gap-1.5 border-b-2 border-transparent px-3 text-sm font-semibold text-slate-500 hover:text-blue-700"
+                aria-current={activeTabId === tab.id ? 'true' : undefined}
+                className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors ${
+                  activeTabId === tab.id ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                }`}
               >
-                <tab.icon size={15} weight="bold" aria-hidden="true" />
+                <tab.icon size={15} weight={activeTabId === tab.id ? 'fill' : 'bold'} aria-hidden="true" />
                 {tab.label}
                 {tab.comingSoon && (
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">Sắp ra mắt</span>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                      activeTabId === tab.id ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-500'
+                    }`}
+                  >
+                    Sắp ra mắt
+                  </span>
                 )}
               </button>
             ))}
           </div>
 
-          <div className="scroll-hover flex-1 overflow-y-auto p-4">
+          <div ref={workspaceScrollRef} className="scroll-hover flex-1 overflow-y-auto p-4">
             <div className="flex flex-col gap-6" ref={sectionRefs['section-kham']}>
               {/* "THÔNG TIN KHÁM LÂM SÀNG" — MỘT khung duy nhất (không tách 3 khung riêng như bản
                   trước), gộp Tiền sử/Thăm khám/Chẩn đoán bằng tiêu đề phụ nhẹ bên trong; ô nhập rút
@@ -1048,19 +1154,33 @@ export function EncounterConsultationPage() {
           {/* Đang khám (chưa hoàn tất) — luồng gốc, không đổi. */}
           {!isCompleted && (
             <>
-              {/* Trả về hàng chờ ngay tại màn khám — trước đây bác sĩ phải quay ra "Hàng đợi
-                  khám" mới trả được ca (lỗ hổng thao tác thật). Không đóng ca, chỉ nhả `doctorId`
-                  về NULL cho bác sĩ khác nhận, cùng hành vi/API với `ReceptionDoctorQueuePage.tsx`. */}
-              <Button type="button" variant="secondary" onClick={() => setReleaseDialogOpen(true)}>
-                <ArrowCounterClockwise size={14} weight="bold" aria-hidden="true" />
-                Trả về hàng chờ
-              </Button>
-              {/* #085 — khách bỏ về giữa chừng, đóng ca hẳn ngay tại đây thay vì phải chạy ra
-                  quầy/Hàng đợi khám. COMPLETED là trạng thái cuối nên nút này không hiện khi đã
-                  hoàn tất (state machine không cho phép huỷ ca đã xong). */}
-              <Button type="button" variant="danger" onClick={() => setCancelDialogOpen(true)}>
-                Hủy khám
-              </Button>
+              {/* Gộp "Trả về hàng chờ" + "Hủy khám" vào 1 nút "Xử lý" xổ menu (chốt 2026-08-29,
+                  yêu cầu chủ dự án) — đúng khuôn `ActionMenu` mới trích xuất từ dropdown tài khoản
+                  ở `TopBar.tsx`, quy tắc ">3 nút gộp menu" mục 4.5 áp dụng sớm cho 2 nút phụ (không
+                  phải hành động chính "Lưu"/"Hoàn tất khám") để thanh hành động gọn hơn.
+                  "Trả về hàng chờ": không đóng ca, chỉ nhả `doctorId` về NULL cho bác sĩ khác nhận
+                  — trước đây phải quay ra "Hàng đợi khám" mới trả được (lỗ hổng thao tác thật).
+                  "Hủy khám" (#085): khách bỏ về giữa chừng, đóng ca hẳn ngay tại đây. COMPLETED là
+                  trạng thái cuối nên cả 2 không hiện khi đã hoàn tất (state machine không cho lùi). */}
+              <ActionMenu
+                label="Xử lý"
+                openDirection="up"
+                items={[
+                  {
+                    key: 'release',
+                    label: 'Trả về hàng chờ',
+                    icon: <ArrowCounterClockwise size={15} weight="bold" aria-hidden="true" />,
+                    onClick: () => setReleaseDialogOpen(true),
+                  },
+                  {
+                    key: 'cancel',
+                    label: 'Hủy khám',
+                    icon: <XCircle size={15} weight="bold" aria-hidden="true" />,
+                    danger: true,
+                    onClick: () => setCancelDialogOpen(true),
+                  },
+                ]}
+              />
               <Button
                 type="button"
                 variant="secondary"
@@ -1375,9 +1495,16 @@ function HistoryBoxCard({ title, onAdd, children }: { title: string; onAdd: () =
  * quả cận lâm sàng CHƯA hiện được — module Kê đơn (Sprint 4) và Cận lâm sàng (ngoài phạm vi v1)
  * chưa xây, không có dữ liệu.
  */
-function HistoryCard({ item, highlighted = false }: { item: EncounterHistoryItem; highlighted?: boolean }) {
+/** Bấm mở `EncounterHistoryDetailDialog` xem đầy đủ đợt khám đó (chỉ đọc) — mockup đã duyệt 2026-08-29. */
+function HistoryCard({ item, highlighted = false, onOpen }: { item: EncounterHistoryItem; highlighted?: boolean; onOpen: () => void }) {
   return (
-    <div className={`rounded-lg border p-3 ${highlighted ? 'border-blue-300 bg-blue-50/70 shadow-sm' : 'border-slate-200 bg-white'}`}>
+    <button
+      type="button"
+      onClick={onOpen}
+      className={`group relative w-full rounded-lg border p-3 pr-16 text-left transition-colors ${
+        highlighted ? 'border-blue-300 bg-blue-50/70 shadow-sm hover:border-blue-400 hover:bg-blue-50' : 'border-slate-200 bg-white hover:border-blue-400 hover:bg-blue-50/60'
+      }`}
+    >
       {/* Panel chỉ rộng 280px — ngày + tên bác sĩ KHÔNG đủ chỗ chung 1 hàng (vỡ dòng xấu khi tên
           bác sĩ dài), xuống 2 dòng riêng thay vì `justify-between` trên cùng 1 hàng. */}
       <div className="mb-1.5">
@@ -1397,75 +1524,10 @@ function HistoryCard({ item, highlighted = false }: { item: EncounterHistoryItem
           {item.chiefComplaint}
         </p>
       )}
-    </div>
-  );
-}
-
-type VitalTier = 'normal' | 'caution' | 'danger';
-
-const TIER_TEXT_CLASS: Record<VitalTier, string> = {
-  normal: 'text-slate-900',
-  caution: 'text-amber-600',
-  danger: 'text-rose-600',
-};
-
-/** Chấm trạng thái cạnh nhãn — khôi phục theo yêu cầu chủ dự án (đã bỏ nhầm lúc gộp bố cục 1 dòng
- * ở #060, chỉ nên bỏ dòng phân loại thứ 3 gây lệch hàng, không phải bỏ luôn tín hiệu màu chấm). */
-const TIER_DOT_CLASS: Record<VitalTier, string> = {
-  normal: 'bg-emerald-500',
-  caution: 'bg-amber-500',
-  danger: 'bg-rose-600',
-};
-
-/**
- * Phân loại BMI (chuẩn WHO khu vực Châu Á - Thái Bình Dương, chốt 2026-08-20 theo yêu cầu chủ dự
- * án): <18.5 Thiếu cân, 18.5–22.9 Bình thường, 23–24.9 Thừa cân, 25–29.9 Béo phì độ I, ≥30 Béo phì
- * độ II. Chỉ "Bình thường" là `normal` — thiếu cân/thừa cân ở mức `caution` (amber), 2 mức béo phì
- * ở `danger` (rose), đúng "Tín hiệu Y tế" mục 2.1 ui-guidelines.md.
- */
-function classifyBmi(bmi: number): { label: string; tier: VitalTier } {
-  if (bmi < 18.5) return { label: 'Thiếu cân', tier: 'caution' };
-  if (bmi < 23.0) return { label: 'Bình thường', tier: 'normal' };
-  if (bmi < 25.0) return { label: 'Thừa cân', tier: 'caution' };
-  if (bmi < 30.0) return { label: 'Béo phì độ I', tier: 'danger' };
-  return { label: 'Béo phì độ II', tier: 'danger' };
-}
-
-/**
- * Nhãn + giá trị (kèm đơn vị/phân loại BMI) trên CÙNG một dòng — theo mẫu tham khảo chủ dự án gửi
- * (gọn hơn bản 3 dòng trước, mọi ô tự nhiên cùng chiều cao nên không còn lệch hàng). Giá trị bất
- * thường đổi màu (đúng "Tín hiệu Y tế" mục 2.1 ui-guidelines.md), kèm chấm trạng thái cạnh nhãn
- * (`TIER_DOT_CLASS`) — không chỉ dựa màu chữ (quy tắc "Color Only" trong bộ UX checklist).
- * Container cha (nơi gọi component này) dùng `divide-x` để vẽ đường kẻ dọc phân cách RÕ giữa từng
- * ô — chủ dự án gửi ảnh tham khảo yêu cầu tách bạch rõ ràng hơn bản cũ (chỉ có khoảng cách `gap`,
- * không có đường kẻ). `px-3 py-2` ở đây tạo khoảng đệm đều hai bên mỗi ô cho đường kẻ có chỗ thở.
- */
-function VitalChip({
-  label,
-  value,
-  unit,
-  tier = 'normal',
-  sublabel,
-}: {
-  label: string;
-  value: string | number | null | undefined;
-  unit: string;
-  tier?: VitalTier;
-  sublabel?: string;
-}) {
-  const hasValue = value != null;
-  const effectiveTier = hasValue ? tier : 'normal';
-  return (
-    <div className="flex flex-col items-center justify-center gap-0.5 px-3 py-2 text-center">
-      <span className="flex items-center gap-1">
-        <span className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${TIER_DOT_CLASS[effectiveTier]}`} aria-hidden="true" />
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{label}</span>
+      <span className="pointer-events-none absolute bottom-2.5 right-3 flex items-center gap-0.5 text-[10px] font-bold text-blue-600 opacity-0 transition-opacity group-hover:opacity-100">
+        Xem chi tiết
+        <CaretRight size={9} weight="bold" aria-hidden="true" />
       </span>
-      <span className={`whitespace-nowrap text-sm font-bold ${TIER_TEXT_CLASS[effectiveTier]}`}>
-        {value ?? '—'}
-        {hasValue && unit && <span className="ml-1 text-xs font-normal text-slate-500">{unit}</span>}
-        {hasValue && sublabel && <span className="ml-1.5 text-xs font-semibold">{sublabel}</span>}
-      </span>
-    </div>
+    </button>
   );
 }

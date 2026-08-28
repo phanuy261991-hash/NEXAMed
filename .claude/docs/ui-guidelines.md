@@ -146,6 +146,12 @@ Ví dụ đã áp dụng: "Đơn vị tính" trong khối "Đơn giá dịch v�
 
 **Lý do chốt**: chủ dự án phát hiện trực tiếp nhiều nút "Khách bỏ về/Hủy" ở `ReceptionDoctorQueuePage.tsx`/`ReceptionListPage.tsx` được viết tay với viền/màu nhạt tuỳ tiện thay vì dùng `variant="danger"` có sẵn — giao diện không nhất quán, nhợt nhạt. Chỉ viết `<button>` tay khi thực sự KHÔNG phải "nút hành động" theo nghĩa `Button` (ví dụ toggle mở/đóng sidebar, link điều hướng dạng icon thuần UI, không phải submit/thao tác dữ liệu).
 
+### 4.5b. `ActionMenu` — nút gộp nhiều hành động phụ (chốt 2026-08-29)
+
+`shared/ui/ActionMenu.tsx` — hiện thực thật cho quy tắc ">3 nút gộp menu" đã nêu ở mục 4.5 (trước đó mới là quy tắc, chưa có component). Nút trigger dùng `Button variant="secondary"` + label tuỳ ý (ví dụ "Xử lý") + icon `CaretDown` tự xoay khi mở; panel `role="menu"` xổ xuống dưới (`openDirection="down"`, mặc định) hoặc lên trên (`openDirection="up"` — dùng khi trigger nằm sát đáy màn hình, ví dụ thanh hành động cố định của màn khám, để menu không tràn khỏi viewport), tự đóng khi click ra ngoài/`Escape`. Mỗi mục nhận `icon?`/`label`/`onClick`, cờ `danger?` cho hành động cảnh báo (chữ `text-rose-600`) — không tự thêm màu khác ngoài 2 trạng thái này. Trích xuất từ dropdown "Đăng xuất" có sẵn ở `TopBar.tsx` (cùng cấu trúc: `relative` wrapper + click-outside) khi có nơi dùng thứ hai — gộp "Trả về hàng chờ"/"Hủy khám" thành nút "Xử lý" ở thanh hành động màn khám (`EncounterConsultationPage.tsx`).
+
+Dùng `ActionMenu` cho MỌI trường hợp cần gộp ≥2 hành động phụ (không phải hành động chính/duy nhất của form) sau này — không viết dropdown tay mới.
+
 ### 4.6. Checkbox chọn dòng hàng loạt (Selection scaffolding, chốt 2026-08-28)
 
 `shared/ui/SelectionCheckbox.tsx` — checkbox DÙNG CHUNG cho mọi bảng danh sách khi cần chọn dòng cho hành động hàng loạt sau này. **Không dùng checkbox mặc định của trình duyệt** (`<input type="checkbox">` trần) — checkbox hiện đại (Chromium/Windows) tự vẽ thêm bóng/độ nổi quanh ô đã chọn, chủ dự án phản hồi "nhìn không đẹp". `SelectionCheckbox` dùng class `.selection-checkbox` (`apps/web/src/app/index.css`, `appearance: none` rồi tự vẽ lại — cùng kỹ thuật `.round-checkbox` có sẵn từ #082), hỗ trợ cả trạng thái `indeterminate` (gán qua ref, không phải prop JSX).

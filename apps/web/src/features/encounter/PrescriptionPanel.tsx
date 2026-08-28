@@ -350,7 +350,8 @@ function LineInput({
   );
 }
 
-function PrescriptionItemsTable({ items }: { items: PrescriptionItem[] }) {
+/** Xuất dùng chung — `EncounterHistoryDetailDialog.tsx` (xem chi tiết đợt khám cũ, chỉ đọc) tái dùng nguyên bảng này cho đơn thuốc đã ký, không dựng bảng riêng. */
+export function PrescriptionItemsTable({ items }: { items: PrescriptionItem[] }) {
   return (
     <table className="w-full border-collapse text-sm">
       <thead>
