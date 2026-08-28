@@ -11,7 +11,7 @@ import { cancelEncounter, checkIn, getReceptionList, registerReception, releaseE
  * `receptionListQuerySchema` ở `@nexamed/shared`) — cùng nguồn dữ liệu, chỉ khác tham số lọc. 1
  * ngày/tenant nhỏ (không cursor) — cùng lý do `useAppointmentsByDateQuery` (chế độ Lưới).
  */
-export function useReceptionListQuery(date?: string, doctorId?: string, includeDepartmentPool?: boolean, queueView?: boolean) {
+export function useReceptionListQuery(date?: string, doctorId?: string, includeDepartmentPool?: boolean, queueView?: boolean, enabled = true) {
   const { tenantId } = useAppConfig();
   return useQuery({
     queryKey: queryKey(tenantId, 'reception', 'list', date, doctorId, includeDepartmentPool ? 'pool' : undefined, queueView ? 'queueView' : undefined),
@@ -19,6 +19,9 @@ export function useReceptionListQuery(date?: string, doctorId?: string, includeD
     // Danh sách cần cập nhật khá liên tục trong giờ làm việc (khách vừa tiếp nhận xong, bác sĩ vừa
     // bắt đầu khám) — tự làm mới định kỳ thay vì chỉ dựa vào invalidate thủ công sau mutation.
     refetchInterval: 30_000,
+    // `enabled` (mặc định true, không đổi hành vi nơi gọi cũ) — nút "Hàng chờ" ở Topbar
+    // (`DoctorQueueButton.tsx`) render ở MỌI trang nhưng chỉ nên poll khi đúng vai trò bác sĩ.
+    enabled,
   });
 }
 

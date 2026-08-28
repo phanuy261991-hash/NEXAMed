@@ -4,28 +4,24 @@ import {
   ArrowCounterClockwise,
   ArrowRight,
   ArrowsClockwise,
-  CalendarCheck,
   CheckCircle,
   ClipboardText,
   Clock,
   MagnifyingGlass,
   MapPinLine,
-  Play,
-  PlusCircle,
-  Star,
   Stethoscope,
   User,
   UsersThree,
   Warning,
   X,
   XCircle,
-  type Icon,
 } from '@phosphor-icons/react';
 import type { ReceptionListItem } from '@nexamed/shared';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
 import { CancelEncounterDialog } from '../../shared/ui/CancelEncounterDialog';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
+import { ReleaseEncounterDialog } from '../../shared/ui/ReleaseEncounterDialog';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { ApiError } from '../../shared/api/client';
 import { useAuthStore } from '../auth/auth.store';
@@ -34,7 +30,8 @@ import { getVietnamTodayDateString } from '../appointment/schedule-grid.utils';
 import { useDepartmentOptionsQuery } from '../department/department.queries';
 import { RoomSessionDialog } from '../clinic/RoomSessionDialog';
 import { useMyRoomSessionQuery, useRoomOptionsQuery } from '../clinic/clinic.queries';
-import { useReceptionListQuery, useReleaseEncounterMutation, useStartConsultationMutation } from './reception.queries';
+import { ColumnEmpty, GroupLabel, WaitingCard, formatTime, matchesQueueSearch, waitMinutes } from './queue-card';
+import { useReceptionListQuery, useStartConsultationMutation } from './reception.queries';
 
 /**
  * Fallback trước khi `useScheduleConfigQuery()` tải xong — khớp `DEFAULT_OVERDUE_WAIT_WARNING_MINUTES`
@@ -44,33 +41,6 @@ import { useReceptionListQuery, useReleaseEncounterMutation, useStartConsultatio
  * `APPOINTMENT_SPAM_CANCELLED_THRESHOLD`, xem `docs/DECISIONS.md` #032.
  */
 const DEFAULT_OVERDUE_WAIT_WARNING_MINUTES = 30;
-
-function formatTime(iso: string): string {
-  const d = new Date(iso);
-  const vn = new Date(d.getTime() + 7 * 60 * 60_000);
-  return `${String(vn.getUTCHours()).padStart(2, '0')}:${String(vn.getUTCMinutes()).padStart(2, '0')}`;
-}
-
-function waitMinutes(checkedInAt: string): number {
-  return Math.max(0, Math.floor((Date.now() - new Date(checkedInAt).getTime()) / 60_000));
-}
-
-/**
- * Tìm theo tên hoặc mã bệnh nhân — bệnh nhân quá nhiều trong 1 cột thì cần tìm lại nhanh (yêu cầu
- * chủ dự án 2026-08-21). Lọc thuần phía client trên dữ liệu đã tải, không gọi API mới.
- *
- * KHÔNG bỏ dấu tiếng Việt (khác PAT-02 `stripVietnameseDiacritics`) — thử tái dùng hàm đó từ
- * `@nexamed/core` nhưng vỡ Rollup production build thật (`vite build` báo lỗi named export
- * `stripVietnameseDiacritics` không phân giải được qua chuỗi `__exportStar` nhiều tầng của
- * package này, khác `@nexamed/shared` hoạt động bình thường) — đây là lần đầu `apps/web` import
- * `@nexamed/core`, chưa từng có tiền lệ. So khớp chữ thường đơn giản đủ dùng cho việc lọc trong 1
- * cột đã tải sẵn (khác PAT-02 tìm toàn bộ CSDL), không đáng đổi lấy rủi ro build vỡ.
- */
-function matchesQueueSearch(item: { fullName: string; patientCode: string }, query: string): boolean {
-  const q = query.trim().toLowerCase();
-  if (q === '') return true;
-  return item.fullName.toLowerCase().includes(q) || item.patientCode.toLowerCase().includes(q);
-}
 
 /**
  * "Hàng đợi khám" — board 3 cột (Đang chờ / Đang khám / Đã khám hôm nay) đúng state machine
@@ -91,7 +61,6 @@ export function ReceptionDoctorQueuePage() {
   // #085 — "Khách bỏ về"/"Trả về hàng chờ" ngay trên thẻ, không cần chạy sang trang khác.
   const [cancellingItem, setCancellingItem] = useState<ReceptionListItem | null>(null);
   const [releasingItem, setReleasingItem] = useState<ReceptionListItem | null>(null);
-  const releaseMutation = useReleaseEncounterMutation();
   // Tìm trong từng cột riêng (yêu cầu chủ dự án 2026-08-21) — 3 ô độc lập, không ảnh hưởng lẫn nhau.
   const [waitingSearch, setWaitingSearch] = useState({ open: false, query: '' });
   const [examSearch, setExamSearch] = useState({ open: false, query: '' });
@@ -403,56 +372,14 @@ export function ReceptionDoctorQueuePage() {
       )}
 
       {releasingItem && (
-        <ReleaseEncounterConfirm
-          item={releasingItem}
-          loading={releaseMutation.isPending}
-          onConfirm={async () => {
-            try {
-              await releaseMutation.mutateAsync({ id: releasingItem.encounterId, body: { version: releasingItem.version } });
-              setReleasingItem(null);
-            } catch (err) {
-              setRowError(err instanceof ApiError ? err.message : 'Không trả về hàng chờ được, vui lòng thử lại.');
-              setReleasingItem(null);
-            }
-          }}
+        <ReleaseEncounterDialog
+          encounterId={releasingItem.encounterId}
+          patientFullName={releasingItem.fullName}
+          version={releasingItem.version}
+          onReleased={() => setReleasingItem(null)}
           onClose={() => setReleasingItem(null)}
         />
       )}
-    </div>
-  );
-}
-
-/**
- * #085 "Trả về hàng chờ" — xác nhận đơn giản, KHÔNG cần lý do (khác "Khách bỏ về") vì đây là thao
- * tác điều phối nội bộ, không đóng ca, không đụng tiền — vết đã đủ ở `audit_log`.
- */
-function ReleaseEncounterConfirm({
-  item,
-  loading,
-  onConfirm,
-  onClose,
-}: {
-  item: ReceptionListItem;
-  loading: boolean;
-  onConfirm: () => void;
-  onClose: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4">
-      <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-2xl">
-        <h3 className="text-base font-bold text-slate-900">Trả về hàng chờ?</h3>
-        <p className="mt-1.5 text-sm text-slate-600">
-          <span className="font-semibold text-slate-800">{item.fullName}</span> sẽ quay lại hàng chờ chung Khoa cho bác sĩ khác nhận, không huỷ lượt khám.
-        </p>
-        <div className="mt-4 flex justify-end gap-2.5">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            Đóng
-          </Button>
-          <Button type="button" loading={loading} onClick={onConfirm}>
-            Xác nhận
-          </Button>
-        </div>
-      </div>
     </div>
   );
 }
@@ -527,124 +454,5 @@ function QueueColumn({
       )}
       <div className="scroll-hover flex-1 space-y-2 overflow-y-auto p-2.5">{children}</div>
     </section>
-  );
-}
-
-/**
- * Thanh tiêu đề nhóm nền màu đặc (thay dòng chữ nhạt + gạch ngang trước đây) — phản hồi chủ dự án
- * 2026-08-21: ranh giới "Bệnh nhân của tôi" / "Hàng chờ chung" không nổi bật. Mỗi nhóm một màu
- * riêng (xanh dương = của tôi, tím = hàng chờ chung) để phân biệt ngay từ xa, không cần đọc chữ.
- */
-function GroupLabel({ icon: IconComponent, variant, count, children }: { icon: Icon; variant: 'personal' | 'pool'; count: number; children: React.ReactNode }) {
-  const styles = variant === 'personal' ? 'bg-blue-600' : 'bg-violet-600';
-  return (
-    <div className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wide text-white shadow-sm ${styles}`}>
-      <IconComponent size={13} weight="bold" aria-hidden="true" />
-      {children}
-      <span className="ml-auto rounded-full bg-white/25 px-1.5 py-0.5 text-[10px]">{count}</span>
-    </div>
-  );
-}
-
-function ColumnEmpty({ icon: IconComponent, text }: { icon: Icon; text: string }) {
-  return (
-    <div className="flex flex-col items-center gap-2 px-2 py-8 text-center text-slate-400">
-      <IconComponent size={26} weight="light" className="opacity-60" aria-hidden="true" />
-      <p className="text-xs">{text}</p>
-    </div>
-  );
-}
-
-/**
- * Viết lại theo đúng mockup (`docs/design/doctor-queue-virtual-queue-mockup.html` `.card`) — bản
- * trước chỉ tô viền/nền cảnh báo "chờ lâu" khi VỪA hàng chờ chung VỪA quá ngưỡng (`overdue && pool`),
- * nên thẻ "của tôi" chờ lâu không có điểm nhấn gì (phát hiện thật qua ảnh chụp chủ dự án gửi,
- * 2026-08-21) — sửa để `overdue` áp dụng cho MỌI thẻ, không phân biệt của tôi/hàng chờ chung. Ưu
- * tiên hiển thị badge "Chờ lâu" (khẩn cấp hơn) khi vừa ưu tiên vừa chờ lâu cùng lúc.
- */
-function WaitingCard({
-  item,
-  pool,
-  loading,
-  warningMinutes,
-  onStart,
-  onCancel,
-}: {
-  item: ReceptionListItem;
-  pool: boolean;
-  loading: boolean;
-  warningMinutes: number;
-  onStart: () => void;
-  onCancel: () => void;
-}) {
-  const minutes = waitMinutes(item.checkedInAt);
-  const overdue = minutes >= warningMinutes;
-  const criticalState = overdue ? 'overdue' : item.isPriority ? 'priority' : null;
-
-  const borderLeftClass =
-    criticalState === 'overdue' ? 'border-l-rose-600' : criticalState === 'priority' ? 'border-l-amber-500' : pool ? 'border-l-blue-400' : 'border-l-slate-300';
-  const bgClass = criticalState === 'overdue' ? 'bg-rose-50/60' : criticalState === 'priority' ? 'bg-amber-50/50' : 'bg-white';
-
-  // Nét đứt chỉ phân biệt "hàng chờ chung" khi thẻ CHƯA chờ lâu — thẻ chờ lâu ưu tiên rõ ràng/khẩn
-  // cấp bằng nét liền, phản hồi chủ dự án "nét đứt + đỏ nhìn thô" (2026-08-28).
-  const dashed = pool && criticalState !== 'overdue';
-
-  return (
-    <article
-      className={`rounded-lg border-2 border-l-4 p-3 shadow-sm ${borderLeftClass} ${bgClass} border-slate-200 ${
-        dashed ? 'border-dashed' : ''
-      }`}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <span className="truncate text-[15px] font-bold text-slate-900">{item.fullName}</span>
-          <span className="ml-1.5 text-[11px] font-bold text-slate-500">{item.patientCode}</span>
-        </div>
-        {criticalState === 'overdue' && (
-          <span className="badge-urgent-pulse flex flex-shrink-0 items-center gap-1 rounded-full bg-rose-600 px-2.5 py-1 text-[11px] font-semibold text-white">
-            <Warning size={12} weight="fill" aria-hidden="true" />
-            Chờ lâu
-          </span>
-        )}
-        {criticalState === 'priority' && (
-          <span className="flex flex-shrink-0 items-center gap-1 rounded-full bg-amber-500 px-2.5 py-1 text-[10.5px] font-bold text-white">
-            <Star size={12} weight="fill" aria-hidden="true" />
-            Ưu tiên
-          </span>
-        )}
-      </div>
-      {item.chiefComplaint && (
-        <p className="mt-1 truncate text-[12.5px] text-slate-700">
-          <span className="font-bold text-slate-900">Lý do: </span>
-          {item.chiefComplaint}
-        </p>
-      )}
-      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[11px]">
-        {item.appointmentId && (
-          <span className="flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 font-bold text-blue-700">
-            <CalendarCheck size={11} weight="bold" aria-hidden="true" />
-            Đặt lịch trước
-          </span>
-        )}
-        <span className={`rounded-full px-2 py-0.5 font-bold ${pool ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-700'}`}>
-          {pool ? 'Chưa gán bác sĩ' : 'Của tôi'}
-        </span>
-        <span className="flex items-center gap-1 font-semibold text-slate-600">
-          <Clock size={11} weight="bold" aria-hidden="true" />
-          Tiếp nhận {formatTime(item.checkedInAt)}
-        </span>
-        <span className={`font-semibold ${overdue ? 'text-rose-600' : 'text-slate-700'}`}>Chờ {minutes} phút</span>
-      </div>
-      <div className="mt-2.5 flex items-center justify-between gap-1.5">
-        <Button type="button" variant={pool ? 'secondary' : 'primary'} className="px-3" loading={loading} onClick={onStart}>
-          {pool ? <PlusCircle size={13} weight="bold" aria-hidden="true" /> : <Play size={13} weight="bold" aria-hidden="true" />}
-          {pool ? 'Gọi khám — nhận ca này' : 'Bắt đầu khám'}
-        </Button>
-        {/* #085 — khách bỏ về trước khi bác sĩ kịp gọi khám, khỏi phải chạy ra quầy nhờ lễ tân. */}
-        <Button type="button" variant="danger" className="flex-shrink-0 px-2.5" onClick={onCancel} aria-label="Hủy khám" title="Hủy khám">
-          <XCircle size={15} weight="bold" aria-hidden="true" />
-        </Button>
-      </div>
-    </article>
   );
 }

@@ -1,9 +1,21 @@
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { CaretRight, House, SignOut } from '@phosphor-icons/react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useMatch, useNavigate } from 'react-router-dom';
 import { logout } from '../../features/auth/auth.api';
 import { useAuthStore } from '../../features/auth/auth.store';
 import { useBreadcrumbItems } from './breadcrumb.context';
+
+/**
+ * Lazy-load — dù chỉ hiện đúng ở màn hình khám (`/encounters/:id`), `TopBar` vẫn render trên MỌI
+ * trang (không tự lazy như route ở `router.tsx`), nên phải tự lazy import `DoctorQueueButton`
+ * (kéo theo toàn bộ phụ thuộc module `reception` — queries/API/queue-card...) để không đẩy các
+ * phụ thuộc đó vào chunk khởi động. Đã đo thật: main chunk tăng từ 448.98 kB lên 499.58 kB nếu
+ * import tĩnh, vi phạm ngưỡng ≤500 kB đã chốt (`.claude/docs/coding-standards.md` mục "Hiệu suất",
+ * #073).
+ */
+const DoctorQueueButton = lazy(() =>
+  import('../../features/reception/DoctorQueueButton').then((m) => ({ default: m.DoctorQueueButton })),
+);
 
 /** Bỏ từ không bắt đầu bằng chữ cái (ví dụ hậu tố "(dev)" của tài khoản seed) trước khi lấy viết tắt. */
 function getInitials(fullName: string): string {
@@ -25,6 +37,10 @@ export function TopBar() {
   const user = useAuthStore((s) => s.user);
   const clear = useAuthStore((s) => s.clear);
   const navigate = useNavigate();
+  // "Hàng chờ" CHỈ hiện ở màn hình khám (`/encounters/:id`), CHỈ vai trò "Bác sĩ" (không cả
+  // `clinic_admin`) — theo yêu cầu chủ dự án, không phải mọi trang/mọi vai trò quản lý được.
+  const isOnEncounterPage = useMatch('/encounters/:id') !== null;
+  const isDoctor = user?.roles.includes('doctor') ?? false;
 
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -94,6 +110,11 @@ export function TopBar() {
       </nav>
 
       <div className="relative flex items-center gap-3" ref={menuRef}>
+        {isOnEncounterPage && isDoctor && (
+          <Suspense fallback={null}>
+            <DoctorQueueButton />
+          </Suspense>
+        )}
         <span className="text-sm text-slate-500">
           Xin chào, <strong className="font-semibold text-slate-900">{user.displayName ?? user.fullName}</strong>
         </span>

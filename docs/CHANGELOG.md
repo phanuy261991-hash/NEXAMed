@@ -2,6 +2,19 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-28 (4)
+
+"Hàng chờ tại màn khám" — bác sĩ xem/chuyển ca ngay tại trang khám, không cần quay ra "Hàng đợi khám" + "Trả về hàng chờ" thêm ở màn khám — xem `docs/DECISIONS.md` #088:
+
+- Mockup Artifact tương tác duyệt nhiều vòng trước khi code (vị trí nút, hình thức trigger, phạm vi hiển thị).
+- Nút "Hàng chờ" mới trong `TopBar.tsx` (dùng chung toàn app), CHỈ hiện ở `/encounters/:id` + vai trò "Bác sĩ" — bấm mở panel trượt 3 nhóm "Đang khám dở"/"Bệnh nhân của tôi"/"Hàng chờ chung · Khoa", dùng lại đúng dữ liệu "Hàng đợi khám".
+- **Xác nhận qua code**: hệ thống không giới hạn 1 bác sĩ chỉ `IN_CONSULTATION` 1 ca cùng lúc — hành vi có chủ đích, không phải bug (dòng chữ sai ở `ReceptionDoctorQueuePage.tsx` chưa sửa).
+- Trích xuất dùng chung: `queue-card.tsx` (`WaitingCard`/`GroupLabel`/`ColumnEmpty`...), `shared/ui/ReleaseEncounterDialog.tsx` (mới) — "Trả về hàng chờ" giờ dùng được ở CẢ 3 nơi: Hàng đợi khám, footer màn khám, panel Hàng chờ.
+- Lazy-load `DoctorQueueButton` từ `TopBar.tsx` để không đẩy phụ thuộc module `reception` vào chunk khởi động (đo thật: 448.98 kB → 499.58 kB nếu import tĩnh, sau lazy về ~449.6 kB).
+- 2 bug tràn khung thật (`truncate` trên `<span>` rời không có tác dụng) phát hiện qua ảnh chụp chủ dự án gửi — đã sửa, ghi quy tắc mới vào `.claude/docs/ui-guidelines.md` mục 11.
+- **Đã xác minh**: `pnpm -w typecheck/lint/build` sạch toàn workspace. Chưa chạy Playwright tự động — verify thủ công qua chủ dự án dùng thử.
+- Cập nhật `.claude/docs/ui-guidelines.md` (mục 11 mới), `docs/DECISIONS.md` (#088), `docs/TASK.md`.
+
 ## 2026-08-28 (3)
 
 Verify Playwright #085 hoàn tất + cấu hình "Ngưỡng chờ lâu" mới + loạt tinh chỉnh UI trực tiếp + 2 sự cố vận hành đã xử lý — xem `docs/DECISIONS.md` #087:

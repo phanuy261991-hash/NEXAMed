@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
+  ArrowCounterClockwise,
   CalendarBlank,
   CheckCircle,
   ClipboardText,
@@ -22,6 +23,7 @@ import { BreakGlassDialog } from '../../shared/ui/BreakGlassDialog';
 import { CancelEncounterDialog } from '../../shared/ui/CancelEncounterDialog';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
+import { ReleaseEncounterDialog } from '../../shared/ui/ReleaseEncounterDialog';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { Textarea } from '../../shared/ui/Textarea';
 import { computeAgeLabel, buildHistoryUpdatePayload, consultationPatientToHistoryFormValues } from '../patient/patient-form.utils';
@@ -143,6 +145,9 @@ export function EncounterConsultationPage() {
   const [showCompleteSuccessDialog, setShowCompleteSuccessDialog] = useState(false);
   /** #085 "Khách bỏ về" ngay tại màn khám — bác sĩ đang khám dở phát hiện khách đã rời đi. */
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  /** "Trả về hàng chờ" ngay tại màn khám — trước đây phải quay ra "Hàng đợi khám" mới trả được,
+   * theo yêu cầu chủ dự án (lỗ hổng thao tác thật phát hiện lúc dùng thử). */
+  const [releaseDialogOpen, setReleaseDialogOpen] = useState(false);
 
   // Cho phép bấm Enter để xác nhận popup "Hoàn tất khám thành công" (yêu cầu chủ dự án) — nghe
   // phím ở `window` thay vì chỉ `autoFocus` nút, vì Enter cần hoạt động dù focus đang ở đâu (ví dụ
@@ -899,6 +904,13 @@ export function EncounterConsultationPage() {
           {/* Đang khám (chưa hoàn tất) — luồng gốc, không đổi. */}
           {!isCompleted && (
             <>
+              {/* Trả về hàng chờ ngay tại màn khám — trước đây bác sĩ phải quay ra "Hàng đợi
+                  khám" mới trả được ca (lỗ hổng thao tác thật). Không đóng ca, chỉ nhả `doctorId`
+                  về NULL cho bác sĩ khác nhận, cùng hành vi/API với `ReceptionDoctorQueuePage.tsx`. */}
+              <Button type="button" variant="secondary" onClick={() => setReleaseDialogOpen(true)}>
+                <ArrowCounterClockwise size={14} weight="bold" aria-hidden="true" />
+                Trả về hàng chờ
+              </Button>
               {/* #085 — khách bỏ về giữa chừng, đóng ca hẳn ngay tại đây thay vì phải chạy ra
                   quầy/Hàng đợi khám. COMPLETED là trạng thái cuối nên nút này không hiện khi đã
                   hoàn tất (state machine không cho phép huỷ ca đã xong). */}
@@ -984,6 +996,16 @@ export function EncounterConsultationPage() {
           version={query.data.encounter.version}
           onCancelled={() => navigate('/reception/doctor-queue')}
           onClose={() => setCancelDialogOpen(false)}
+        />
+      )}
+
+      {releaseDialogOpen && query.data && (
+        <ReleaseEncounterDialog
+          encounterId={encounterId}
+          patientFullName={patient.fullName}
+          version={query.data.encounter.version}
+          onReleased={() => navigate('/reception/doctor-queue')}
+          onClose={() => setReleaseDialogOpen(false)}
         />
       )}
     </div>
