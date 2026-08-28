@@ -12,9 +12,12 @@ import { useRowSelection } from '../../shared/hooks/useRowSelection';
 import { APPOINTMENT_SOURCE_LABEL, APPOINTMENT_STATUS_META } from './appointment-status';
 import { useAppointmentsListQuery } from './appointment.queries';
 
-/** Cột đầu (chọn dòng) để sẵn cho hành động hàng loạt sau này, chưa có hành động nào dùng tới. */
-const GRID_COLUMNS = '40px 130px 140px 1.4fr 1.1fr 110px 130px';
-const ROW_HEIGHT_PX = 52;
+/**
+ * Cột đầu tiên (4px) là vạch màu trạng thái (`APPOINTMENT_STATUS_META.accent`) — nhận diện nhanh
+ * trạng thái mà không cần đọc chữ, theo yêu cầu chủ dự án. Cột "chọn dòng" đứng sau đó.
+ */
+const GRID_COLUMNS = '4px 40px 130px 140px 1.4fr 1.1fr 110px 130px';
+const ROW_HEIGHT_PX = 60;
 
 /** Quy đổi UTC+7 cố định — cùng kỹ thuật `vietnam-day-range.ts`/`format-display-code.ts`. */
 function toVietnamDate(iso: string): Date {
@@ -111,8 +114,9 @@ export function AppointmentListView({
         <div
           role="row"
           style={{ gridTemplateColumns: GRID_COLUMNS }}
-          className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-bold uppercase tracking-wide text-slate-800"
+          className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 pl-0 pr-4 text-xs font-bold uppercase tracking-wide text-slate-800"
         >
+          <div role="columnheader" aria-hidden="true" />
           <div role="columnheader" className="flex items-center justify-center py-2.5">
             <SelectionCheckbox
               checked={rowSelection.allLoadedSelected}
@@ -159,8 +163,9 @@ export function AppointmentListView({
                   tabIndex={0}
                   onKeyDown={(e) => e.key === 'Enter' && onOpenAppointment(a)}
                   style={{ ...rowStyle, gridTemplateColumns: GRID_COLUMNS }}
-                  className="grid items-center border-b border-slate-100 px-4 text-sm hover:bg-slate-50 focus:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500/40"
+                  className="grid items-center border-b border-slate-100 pl-0 pr-4 text-sm hover:bg-slate-50 focus:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500/40"
                 >
+                  <div role="cell" aria-hidden="true" className={`h-full ${meta.accent}`} />
                   <div role="cell" className="flex items-center justify-center">
                     <SelectionCheckbox checked={rowSelection.isSelected(a.id)} onChange={() => rowSelection.toggle(a.id)} ariaLabel={`Chọn ${a.fullName}`} />
                   </div>

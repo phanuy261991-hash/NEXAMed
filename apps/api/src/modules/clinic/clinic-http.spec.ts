@@ -184,11 +184,36 @@ describe('HTTP e2e — /api/v1/rooms và /api/v1/clinic-settings', () => {
       expect(res.body.error.code).toBe('PERMISSION_DENIED');
     });
 
-    it('GET lúc chưa cấu hình → slotDurationMinutes mặc định 15, businessHours null', async () => {
+    it('GET lúc chưa cấu hình → slotDurationMinutes mặc định 15, businessHours null, overdueWaitWarningMinutes mặc định 30', async () => {
       const res = await request(app.getHttpServer()).get('/api/v1/clinic-settings').set(authed(tenantBAdminToken));
       expect(res.status).toBe(200);
       expect(res.body.data.slotDurationMinutes).toBe(15);
       expect(res.body.data.businessHours).toBeNull();
+      expect(res.body.data.overdueWaitWarningMinutes).toBe(30);
+    });
+
+    it('PATCH overdueWaitWarningMinutes → 200, GET phản ánh đúng giá trị mới, độc lập với tenant khác', async () => {
+      const patch = await request(app.getHttpServer())
+        .patch('/api/v1/clinic-settings')
+        .set(authed(clinicAdminToken))
+        .send({ overdueWaitWarningMinutes: 45 });
+      expect(patch.status).toBe(200);
+      expect(patch.body.data.overdueWaitWarningMinutes).toBe(45);
+
+      const get = await request(app.getHttpServer()).get('/api/v1/clinic-settings').set(authed(clinicAdminToken));
+      expect(get.body.data.overdueWaitWarningMinutes).toBe(45);
+
+      const tenantBGet = await request(app.getHttpServer()).get('/api/v1/clinic-settings').set(authed(tenantBAdminToken));
+      expect(tenantBGet.body.data.overdueWaitWarningMinutes).toBe(30);
+    });
+
+    it('overdueWaitWarningMinutes ngoài khoảng 1-240 → 400 VALIDATION_ERROR', async () => {
+      const res = await request(app.getHttpServer())
+        .patch('/api/v1/clinic-settings')
+        .set(authed(clinicAdminToken))
+        .send({ overdueWaitWarningMinutes: 0 });
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
     });
 
     it('PATCH slotDurationMinutes → 200, GET phản ánh đúng giá trị mới', async () => {

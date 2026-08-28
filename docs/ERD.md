@@ -461,7 +461,7 @@ erDiagram
 | Bảng | Vai trò | Ghi chú |
 |---|---|---|
 | `tenant` | Một phòng khám | Bảng gốc; `tenant_id` của chính nó là `id`. Trang "Thông tin phòng khám" (2026-08-13) thêm `phone`/`email`/`currency`/`timezone`/`logo_key`/`print_logo_key` — xem `docs/DECISIONS.md` #041 |
-| `tenant_setting` | Cấu hình theo phòng khám | Giờ làm việc, `slot_duration_minutes`, ngưỡng no-show, ngưỡng sinh hiệu, mẫu in. Unique `(tenant_id, key)` |
+| `tenant_setting` | Cấu hình theo phòng khám | Giờ làm việc, `slot_duration_minutes`, `overdue_wait_warning_minutes` (ngưỡng "chờ lâu" Hàng đợi khám, mặc định 30, #087), ngưỡng no-show, ngưỡng sinh hiệu, mẫu in. Unique `(tenant_id, key)` |
 | `room` | Phòng khám vật lý | |
 | `department_type` | "Loại Khoa/Phòng" (mở rộng ADM-01, 2026-08-20) | Cấp cha tùy chọn của `department`, cùng khuôn `floor`/`room`. Chỉ tổ chức/phân loại, không ảnh hưởng logic nghiệp vụ |
 | `department` | Khoa/phòng trong tenant | Phục vụ Data Scope `department`; v1 phần lớn phòng khám không dùng nhưng bảng luôn tồn tại. `code` tự sinh (prefix `KP`), `department_type_id` tuỳ chọn, `is_active` quản lý qua UI (2026-08-20). **`is_default`** (v1.23, `docs/DECISIONS.md` #064) — đúng 1 Khoa "mặc định" ("Khoa chung") mỗi tenant, tự seed lúc tạo tenant (`seedDefaultRolesForTenant`), dùng làm fallback `encounter.department_id` khi bác sĩ chưa gán Khoa hoặc lúc Tiếp nhận chọn thẳng "Khoa chung" — ép đúng 1 dòng/tenant bằng partial unique index (C16) |

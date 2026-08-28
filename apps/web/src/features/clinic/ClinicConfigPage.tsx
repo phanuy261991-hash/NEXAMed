@@ -4,16 +4,18 @@ import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { ConfigScreenShell, type ConfigScreenPill } from '../../shared/ui/ConfigScreenShell';
 import { ClinicHoursPane } from './ClinicHoursPane';
 import { ClinicInfoPane } from './ClinicInfoPane';
+import { ExamConfigPane } from './ExamConfigPane';
 import { PaymentConfigPane } from './PaymentConfigPane';
 import { RoomPane } from './RoomPane';
 
 /**
  * Pill "Cấu hình phòng khám" (3 mục con) — "Thông tin phòng khám" (2026-08-13, mặc định mở đầu
- * tiên) đặt TRƯỚC "Giờ làm việc & Slot" theo yêu cầu chủ dự án. "Phòng khám" (docs/DECISIONS.md
+ * tiên) đặt TRƯỚC "Giờ làm việc" theo yêu cầu chủ dự án. "Phòng khám" (docs/DECISIONS.md
  * #054) — CRUD `room` chưa từng có UI web trước đây (chỉ backend từ S2-07), thêm ở đây để bật được
  * luồng "phòng làm việc hôm nay". Pill "Cấu hình thanh toán" (Thu ngân cơ bản, Sprint 5/6, chủ dự
- * án yêu cầu trực tiếp) — KHÔNG khai `items` (chế độ "pill phẳng", mục 10 điểm 8 — bản thân pill
- * đã là 1 màn hình lá, chỉ có đúng 1 cấu hình). Không dựng thêm pill/mục "Sắp có"
+ * án yêu cầu trực tiếp) và "Cấu hình khám" (ngưỡng cảnh báo "chờ lâu" ở Hàng đợi khám, 2026-08-28,
+ * chủ dự án yêu cầu trực tiếp) — cả hai KHÔNG khai `items` (chế độ "pill phẳng", mục 10 điểm 8 —
+ * bản thân pill đã là 1 màn hình lá, chỉ có đúng 1 cấu hình). Không dựng thêm pill/mục "Sắp có"
  * (.claude/docs/ui-guidelines.md mục 10), thêm khi có module thật đứng sau.
  */
 const PILLS: ConfigScreenPill[] = [
@@ -22,11 +24,12 @@ const PILLS: ConfigScreenPill[] = [
     label: 'Cấu hình phòng khám',
     items: [
       { key: 'info', label: 'Thông tin phòng khám', icon: Buildings },
-      { key: 'hours', label: 'Giờ làm việc & Slot', icon: Clock },
+      { key: 'hours', label: 'Giờ làm việc', icon: Clock },
       { key: 'rooms', label: 'Tầng phòng', icon: MapPinLine },
     ],
   },
   { key: 'payment', label: 'Cấu hình thanh toán' },
+  { key: 'exam', label: 'Cấu hình khám' },
 ];
 const FIRST_PILL = PILLS[0]!;
 
@@ -49,7 +52,7 @@ export function ClinicConfigPage() {
 
   // Đoạn cuối breadcrumb phải đổi theo mục đang chọn ở cột trái — cùng lỗi đã sửa ở
   // `CatalogAdminPage` (docs/DECISIONS.md #045): breadcrumb tĩnh không phản ánh đúng vị trí thật
-  // đang xem khi đổi mục (ví dụ đứng ở "Giờ làm việc & Slot" vẫn hiện "Cấu hình hệ thống").
+  // đang xem khi đổi mục (ví dụ đứng ở "Giờ làm việc" vẫn hiện "Cấu hình hệ thống").
   useBreadcrumb([{ label: 'Quản trị' }, { label: 'Cấu hình hệ thống', to: '/admin/system-config' }, { label: activeItemLabel }]);
 
   function selectPill(pillKey: string) {
@@ -72,6 +75,7 @@ export function ClinicConfigPage() {
       {activePillKey === 'clinic' && activeItemKey === 'hours' && <ClinicHoursPane />}
       {activePillKey === 'clinic' && activeItemKey === 'rooms' && <RoomPane />}
       {activePillKey === 'payment' && <PaymentConfigPane />}
+      {activePillKey === 'exam' && <ExamConfigPane />}
     </ConfigScreenShell>
   );
 }

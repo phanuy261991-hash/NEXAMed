@@ -99,7 +99,7 @@ export function ClinicHoursPane() {
   return (
     <div>
       <div className="mb-5 flex items-start justify-between gap-3">
-        <p className="text-xs text-slate-500">Áp dụng cho lưới lịch hẹn và cảnh báo trễ hẹn (APP-05).</p>
+        <p className="text-xs text-slate-500">Áp dụng cho lưới lịch hẹn và cảnh báo trễ hẹn.</p>
         {canManage && !editing && !query.isLoading && (
           <Button type="button" variant="secondary" onClick={() => setEditing(true)}>
             Sửa
@@ -162,16 +162,19 @@ export function ClinicHoursPane() {
             </div>
           </div>
 
-          <div className="relative rounded-lg border border-slate-200 p-6 pt-8">
-            <span className={SECTION_BADGE_CLASS}>Độ dài Slot</span>
+          <div className="relative rounded-lg border border-slate-200 p-4 pt-6">
+            <span className={SECTION_BADGE_CLASS}>Độ dài khung giờ</span>
+            <p className="mb-2 text-xs text-slate-500">
+              Khoảng cách giữa các mốc giờ hiển thị trên lưới đặt lịch hẹn (ví dụ 15 phút/ô).
+            </p>
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-slate-700">Độ dài mỗi slot</span>
+              <span className="text-sm font-medium text-slate-700">Độ dài mỗi khung giờ</span>
               {editing ? (
                 <div className="w-36">
                   <Combobox id="slot-duration" value={slotDuration} onChange={setSlotDuration} options={SLOT_DURATION_OPTIONS} />
                 </div>
               ) : (
-                <span className="rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600">
+                <span className="rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-base font-bold text-blue-700">
                   {query.data.slotDurationMinutes} phút
                 </span>
               )}

@@ -18,7 +18,7 @@ import { useBillingInvoiceListQuery } from './invoice.queries';
  * Cột đầu (chọn dòng) để sẵn cho hành động hàng loạt sau này, chưa có hành động nào dùng tới. */
 const GRID_COLUMNS = '40px 170px 1.4fr 190px 170px 150px 130px 120px';
 const TABLE_MIN_WIDTH_PX = 1170;
-const ROW_HEIGHT_PX = 52;
+const ROW_HEIGHT_PX = 60;
 
 type StatusTab = 'UNPAID' | 'PAID' | 'ALL';
 

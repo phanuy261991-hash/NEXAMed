@@ -4509,12 +4509,18 @@
                         },
                         "deferredPaymentEnabled": {
                           "type": "boolean"
+                        },
+                        "overdueWaitWarningMinutes": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 240
                         }
                       },
                       "required": [
                         "businessHours",
                         "slotDurationMinutes",
-                        "deferredPaymentEnabled"
+                        "deferredPaymentEnabled",
+                        "overdueWaitWarningMinutes"
                       ]
                     },
                     "meta": {
@@ -20949,12 +20955,18 @@
                         },
                         "deferredPaymentEnabled": {
                           "type": "boolean"
+                        },
+                        "overdueWaitWarningMinutes": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 240
                         }
                       },
                       "required": [
                         "businessHours",
                         "slotDurationMinutes",
-                        "deferredPaymentEnabled"
+                        "deferredPaymentEnabled",
+                        "overdueWaitWarningMinutes"
                       ]
                     },
                     "meta": {
@@ -21211,6 +21223,11 @@
                   },
                   "deferredPaymentEnabled": {
                     "type": "boolean"
+                  },
+                  "overdueWaitWarningMinutes": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 240
                   }
                 }
               }
@@ -21392,12 +21409,18 @@
                         },
                         "deferredPaymentEnabled": {
                           "type": "boolean"
+                        },
+                        "overdueWaitWarningMinutes": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 240
                         }
                       },
                       "required": [
                         "businessHours",
                         "slotDurationMinutes",
-                        "deferredPaymentEnabled"
+                        "deferredPaymentEnabled",
+                        "overdueWaitWarningMinutes"
                       ]
                     },
                     "meta": {

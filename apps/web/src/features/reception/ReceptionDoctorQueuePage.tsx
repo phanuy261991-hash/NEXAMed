@@ -29,17 +29,21 @@ import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { ApiError } from '../../shared/api/client';
 import { useAuthStore } from '../auth/auth.store';
-import { useDoctorsQuery } from '../appointment/appointment.queries';
+import { useDoctorsQuery, useScheduleConfigQuery } from '../appointment/appointment.queries';
 import { getVietnamTodayDateString } from '../appointment/schedule-grid.utils';
 import { useDepartmentOptionsQuery } from '../department/department.queries';
 import { RoomSessionDialog } from '../clinic/RoomSessionDialog';
 import { useMyRoomSessionQuery, useRoomOptionsQuery } from '../clinic/clinic.queries';
 import { useReceptionListQuery, useReleaseEncounterMutation, useStartConsultationMutation } from './reception.queries';
 
-/** Ngưỡng "chờ lâu" — THUẦN hiển thị (không chặn, không lưu DB), cùng tinh thần
- * `APPOINTMENT_SPAM_CANCELLED_THRESHOLD` (docs/DECISIONS.md #032): ngưỡng cảnh báo mềm sống ở
- * `apps/web`, không phải quy tắc nghiệp vụ cần đồng bộ server. */
-const WAIT_WARNING_MINUTES = 30;
+/**
+ * Fallback trước khi `useScheduleConfigQuery()` tải xong — khớp `DEFAULT_OVERDUE_WAIT_WARNING_MINUTES`
+ * ở `@nexamed/shared`, khai riêng ở đây (không import thẳng): hằng số giá trị thuần từ
+ * `packages/shared` không export được qua `vite build` (Rollup không dò được named export qua
+ * `__exportStar`, dù `tsc`/Vitest/Node `require()` đều thấy đúng) — cùng lỗi bundler đã gặp ở
+ * `APPOINTMENT_SPAM_CANCELLED_THRESHOLD`, xem `docs/DECISIONS.md` #032.
+ */
+const DEFAULT_OVERDUE_WAIT_WARNING_MINUTES = 30;
 
 function formatTime(iso: string): string {
   const d = new Date(iso);
@@ -96,8 +100,10 @@ export function ReceptionDoctorQueuePage() {
   const listQuery = useReceptionListQuery(today, currentUser?.id, true, true);
   const departmentsQuery = useDepartmentOptionsQuery();
   const doctorsQuery = useDoctorsQuery();
+  const scheduleConfigQuery = useScheduleConfigQuery();
   const startConsultationMutation = useStartConsultationMutation();
   const items = listQuery.data?.items ?? [];
+  const warningMinutes = scheduleConfigQuery.data?.overdueWaitWarningMinutes ?? DEFAULT_OVERDUE_WAIT_WARNING_MINUTES;
 
   useEffect(() => {
     if (!claimToast) return;
@@ -247,6 +253,7 @@ export function ReceptionDoctorQueuePage() {
                     item={item}
                     pool={false}
                     loading={startConsultationMutation.isPending}
+                    warningMinutes={warningMinutes}
                     onStart={() => void handleStart(item)}
                     onCancel={() => setCancellingItem(item)}
                   />
@@ -265,6 +272,7 @@ export function ReceptionDoctorQueuePage() {
                     item={item}
                     pool
                     loading={startConsultationMutation.isPending}
+                    warningMinutes={warningMinutes}
                     onStart={() => void handleStart(item)}
                     onCancel={() => setCancellingItem(item)}
                   />
@@ -312,31 +320,33 @@ export function ReceptionDoctorQueuePage() {
                     mẫu WaitingCard bên trên (thu ngắn thẻ, tránh 2 dòng nút). "Trả về hàng chờ"
                     (bác sĩ nhận nhầm ca/bận đột xuất) và "Hủy khám" (khách bỏ về giữa chừng) là 2
                     tình huống khác nhau, xem docs/DECISIONS.md #085. */}
-                <div className="mt-2.5 flex gap-1.5">
-                  <Button type="button" variant="secondary" className="flex-1" onClick={() => navigate(`/encounters/${item.encounterId}`)}>
+                <div className="mt-2.5 flex items-center justify-between gap-1.5">
+                  <Button type="button" variant="amber" className="px-3" onClick={() => navigate(`/encounters/${item.encounterId}`)}>
                     Tiếp tục khám
                     <ArrowRight size={13} weight="bold" aria-hidden="true" />
                   </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="flex-shrink-0 px-2.5"
-                    onClick={() => setReleasingItem(item)}
-                    aria-label="Trả về hàng chờ"
-                    title="Trả về hàng chờ"
-                  >
-                    <ArrowCounterClockwise size={15} weight="bold" aria-hidden="true" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="danger"
-                    className="flex-shrink-0 px-2.5"
-                    onClick={() => setCancellingItem(item)}
-                    aria-label="Hủy khám"
-                    title="Hủy khám"
-                  >
-                    <XCircle size={15} weight="bold" aria-hidden="true" />
-                  </Button>
+                  <div className="flex flex-shrink-0 gap-1.5">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="px-2.5"
+                      onClick={() => setReleasingItem(item)}
+                      aria-label="Trả về hàng chờ"
+                      title="Trả về hàng chờ"
+                    >
+                      <ArrowCounterClockwise size={15} weight="bold" aria-hidden="true" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="danger"
+                      className="px-2.5"
+                      onClick={() => setCancellingItem(item)}
+                      aria-label="Hủy khám"
+                      title="Hủy khám"
+                    >
+                      <XCircle size={15} weight="bold" aria-hidden="true" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -556,27 +566,33 @@ function WaitingCard({
   item,
   pool,
   loading,
+  warningMinutes,
   onStart,
   onCancel,
 }: {
   item: ReceptionListItem;
   pool: boolean;
   loading: boolean;
+  warningMinutes: number;
   onStart: () => void;
   onCancel: () => void;
 }) {
   const minutes = waitMinutes(item.checkedInAt);
-  const overdue = minutes >= WAIT_WARNING_MINUTES;
+  const overdue = minutes >= warningMinutes;
   const criticalState = overdue ? 'overdue' : item.isPriority ? 'priority' : null;
 
   const borderLeftClass =
     criticalState === 'overdue' ? 'border-l-rose-600' : criticalState === 'priority' ? 'border-l-amber-500' : pool ? 'border-l-blue-400' : 'border-l-slate-300';
   const bgClass = criticalState === 'overdue' ? 'bg-rose-50/60' : criticalState === 'priority' ? 'bg-amber-50/50' : 'bg-white';
 
+  // Nét đứt chỉ phân biệt "hàng chờ chung" khi thẻ CHƯA chờ lâu — thẻ chờ lâu ưu tiên rõ ràng/khẩn
+  // cấp bằng nét liền, phản hồi chủ dự án "nét đứt + đỏ nhìn thô" (2026-08-28).
+  const dashed = pool && criticalState !== 'overdue';
+
   return (
     <article
-      className={`rounded-lg border-2 border-l-4 p-3 shadow-sm ${borderLeftClass} ${bgClass} ${
-        pool ? 'border-slate-200 border-dashed' : 'border-slate-200'
+      className={`rounded-lg border-2 border-l-4 p-3 shadow-sm ${borderLeftClass} ${bgClass} border-slate-200 ${
+        dashed ? 'border-dashed' : ''
       }`}
     >
       <div className="flex items-start justify-between gap-2">
@@ -585,7 +601,7 @@ function WaitingCard({
           <span className="ml-1.5 text-[11px] font-bold text-slate-500">{item.patientCode}</span>
         </div>
         {criticalState === 'overdue' && (
-          <span className="flex flex-shrink-0 items-center gap-1 rounded-full bg-rose-600 px-2.5 py-1 text-[10.5px] font-bold text-white">
+          <span className="badge-urgent-pulse flex flex-shrink-0 items-center gap-1 rounded-full bg-rose-600 px-2.5 py-1 text-[11px] font-semibold text-white">
             <Warning size={12} weight="fill" aria-hidden="true" />
             Chờ lâu
           </span>
@@ -617,10 +633,10 @@ function WaitingCard({
           <Clock size={11} weight="bold" aria-hidden="true" />
           Tiếp nhận {formatTime(item.checkedInAt)}
         </span>
-        <span className={`font-extrabold ${overdue ? 'text-rose-600' : 'text-slate-700'}`}>Chờ {minutes} phút</span>
+        <span className={`font-semibold ${overdue ? 'text-rose-600' : 'text-slate-700'}`}>Chờ {minutes} phút</span>
       </div>
-      <div className="mt-2.5 flex gap-1.5">
-        <Button type="button" variant={pool ? 'secondary' : 'primary'} className="flex-1" loading={loading} onClick={onStart}>
+      <div className="mt-2.5 flex items-center justify-between gap-1.5">
+        <Button type="button" variant={pool ? 'secondary' : 'primary'} className="px-3" loading={loading} onClick={onStart}>
           {pool ? <PlusCircle size={13} weight="bold" aria-hidden="true" /> : <Play size={13} weight="bold" aria-hidden="true" />}
           {pool ? 'Gọi khám — nhận ca này' : 'Bắt đầu khám'}
         </Button>

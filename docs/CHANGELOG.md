@@ -2,6 +2,17 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-28 (3)
+
+Verify Playwright #085 hoàn tất + cấu hình "Ngưỡng chờ lâu" mới + loạt tinh chỉnh UI trực tiếp + 2 sự cố vận hành đã xử lý — xem `docs/DECISIONS.md` #087:
+
+- **Verify #085 ĐẠT** — cả 3 kịch bản (Hủy CHECKED_IN, Hủy khám IN_CONSULTATION có hoàn tiền, Trả về hàng chờ) đúng qua Chrome thật; luồng hoàn tiền xác nhận cả UI lẫn API (`status=REFUNDED`, `needsRefund=false`).
+- **Cấu hình "Ngưỡng chờ lâu" mới**: `clinicSettingsSchema` thêm `overdueWaitWarningMinutes` (mặc định 30), `tenant_setting` key `overdue_wait_warning_minutes`, pill "Cấu hình khám" mới (`/admin/system-config`), `ReceptionDoctorQueuePage.tsx` đọc qua `useScheduleConfigQuery()` thay hardcode.
+- **2 sự cố vận hành phát hiện + xử lý**: (1) permission `invoice.refund` thiếu trên Postgres dev do quên chạy lại `db:seed` sau khi thêm permission mới vào code; (2) dữ liệu 2 tenant khác bị sửa nhầm do lọc SQL qua role superuser theo `encounter_no` (không duy nhất toàn hệ thống) — đã khôi phục đầy đủ từ `audit_log`, ghi quy tắc mới vào bộ nhớ (không dùng role superuser cho mutation nghiệp vụ).
+- **Loạt tinh chỉnh UI trực tiếp**: nút Hàng đợi khám thu gọn + variant `amber` mới cho `Button`; viền pool bỏ nét đứt khi "chờ lâu"; badge/chữ "chờ lâu" giảm độ đậm + thêm hiệu ứng nhấp nháy tuỳ chỉnh (`.badge-urgent-pulse`); vạch màu trạng thái đầu dòng ở Danh sách lịch hẹn; chuẩn hoá `ROW_HEIGHT_PX=60` cho 4 bảng danh sách chính; đổi tên "Giờ làm việc & Slot"→"Giờ làm việc", "Slot"→"khung giờ"; thu gọn + làm nổi bật giá trị ở 3 khung cấu hình (Độ dài khung giờ/Cấu hình khám/Cấu hình thanh toán).
+- **Đã xác minh thật**: `apps/api` 470/470, `packages/core` 118/118, `pnpm -w typecheck/lint/build` sạch toàn workspace.
+- Cập nhật `docs/ERD.md`, `.claude/docs/ui-guidelines.md` (mục 4.5, 9), `docs/CURRENT.md`, `docs/TASK.md`, `docs/DECISIONS.md` (#087).
+
 ## 2026-08-28 (2)
 
 Đổi tên "Khách bỏ về" → "Hủy"/"Hủy khám"/"Hủy lượt khám" theo trạng thái + redesign popup xác nhận + chuẩn hoá dùng chung `Button` + checkbox chọn dòng hàng loạt (scaffolding) — chuỗi phản hồi trực tiếp trên bản chạy thật, xem `docs/DECISIONS.md` #086:

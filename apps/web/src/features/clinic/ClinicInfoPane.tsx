@@ -128,7 +128,7 @@ function LogoUploadBox({ label, hint, imageUrl, version, aspectClassName, disabl
 
 /**
  * Trang "Thông tin phòng khám" (2026-08-13) — mục con MỚI trong pill "Cấu hình phòng khám"
- * (`ClinicConfigPage.tsx`), đặt trước "Giờ làm việc & Slot" theo yêu cầu chủ dự án. Cùng khuôn
+ * (`ClinicConfigPage.tsx`), đặt trước "Giờ làm việc" theo yêu cầu chủ dự án. Cùng khuôn
  * `ClinicHoursPane.tsx`: toggle Sửa/Lưu/Huỷ cho trường văn bản, Boxed Section Form Pattern (mục
  * 9b) cho từng khối. Upload logo CHỈ bấm được khi đang ở chế độ Sửa (đã hỏi và chốt, nhất quán
  * với các trường văn bản khác).

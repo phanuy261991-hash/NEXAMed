@@ -24,7 +24,7 @@ const GENDER_LABEL: Record<string, string> = { male: 'Nam', female: 'Nữ', othe
  * sẵn cho hành động hàng loạt sau này, chưa có hành động nào dùng tới.
  */
 const GRID_COLUMNS = '40px 130px minmax(0,1.3fr) 120px 90px 90px 130px minmax(0,1.6fr)';
-const ROW_HEIGHT_PX = 44;
+const ROW_HEIGHT_PX = 60;
 
 /**
  * Danh sách + tìm kiếm bệnh nhân (PAT-02) — List Screen Pattern (.claude/docs/ui-guidelines.md

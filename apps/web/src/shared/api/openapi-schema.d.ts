@@ -1801,6 +1801,7 @@ export interface paths {
                                 } | null;
                                 slotDurationMinutes: number;
                                 deferredPaymentEnabled: boolean;
+                                overdueWaitWarningMinutes: number;
                             };
                             meta: Record<string, never>;
                         };
@@ -8850,6 +8851,7 @@ export interface paths {
                                 } | null;
                                 slotDurationMinutes: number;
                                 deferredPaymentEnabled: boolean;
+                                overdueWaitWarningMinutes: number;
                             };
                             meta: Record<string, never>;
                         };
@@ -8935,6 +8937,7 @@ export interface paths {
                         };
                         slotDurationMinutes?: number;
                         deferredPaymentEnabled?: boolean;
+                        overdueWaitWarningMinutes?: number;
                     };
                 };
             };
@@ -8979,6 +8982,7 @@ export interface paths {
                                 } | null;
                                 slotDurationMinutes: number;
                                 deferredPaymentEnabled: boolean;
+                                overdueWaitWarningMinutes: number;
                             };
                             meta: Record<string, never>;
                         };

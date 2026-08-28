@@ -163,3 +163,24 @@ html {
     width: 100%;
   }
 }
+
+/**
+ * Badge "Chờ lâu" ở Hàng đợi khám (`ReceptionDoctorQueuePage.tsx`) — `animate-pulse` mặc định của
+ * Tailwind (chu kỳ 2s, chỉ đổi opacity) chủ dự án phản hồi "nhẹ quá không chú ý" (2026-08-28). Tự
+ * viết keyframe nhanh hơn (1.1s) kết hợp phóng nhẹ (scale) + opacity, KHÔNG dùng shadow/glow (tránh
+ * đúng lỗi "nhìn AI look" đã sửa ở #086) — chỉ phóng to/thu nhỏ + đổi độ mờ, dễ nhận ra hơn hẳn.
+ */
+@keyframes urgent-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 0.75;
+  }
+}
+.badge-urgent-pulse {
+  animation: urgent-pulse 1.1s ease-in-out infinite;
+}

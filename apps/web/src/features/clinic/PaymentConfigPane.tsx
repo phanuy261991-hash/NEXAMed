@@ -4,7 +4,7 @@ import { Skeleton } from '../../shared/ui/Skeleton';
 import { useClinicSettingsQuery, useUpdateClinicSettingsMutation } from './clinic.queries';
 
 /** Boxed Section Form Pattern — .claude/docs/ui-guidelines.md mục 9b. */
-const sectionBoxClassName = 'relative rounded-lg border border-slate-200 p-5 pt-7';
+const sectionBoxClassName = 'relative rounded-lg border border-slate-200 p-4 pt-6';
 const sectionBadgeClassName =
   'absolute -top-3 left-4 rounded-md bg-blue-600 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white';
 
@@ -40,10 +40,9 @@ export function PaymentConfigPane() {
       <div className="flex items-start justify-between gap-5">
         <div>
           <p className="text-[14.5px] font-bold text-slate-900">Bật cho phép &quot;Thanh toán sau&quot;</p>
-          <p className="mt-1.5 max-w-2xl text-[13px] leading-relaxed text-slate-500">
-            Khi bật, form Tiếp nhận tự tích sẵn &quot;Thanh toán sau&quot; — lễ tân có thể bỏ tích nếu ca đó cần thu
-            tiền ngay. Lượt khám tích &quot;Thanh toán sau&quot; vào Hàng đợi khám ngay, chưa cần thu tiền. Mặc định
-            tắt: mọi lượt khám phải thu tiền trước khi vào hàng đợi.
+          <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
+            Bật để cho phép thực hiện dịch vụ trước khi thanh toán. Lễ tân có thể bỏ chọn để thu tiền ngay. Tắt để
+            bắt buộc thanh toán trước khi thực hiện dịch vụ.
           </p>
         </div>
         <label className="relative mt-0.5 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center">

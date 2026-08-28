@@ -138,6 +138,13 @@ export const clinicSettingsSchema = z.object({
   businessHours: businessHoursSchema.nullable(),
   slotDurationMinutes: z.number().int().min(5).max(240),
   deferredPaymentEnabled: z.boolean(),
+  /**
+   * Ngưỡng "chờ lâu" ở Hàng đợi khám (`ReceptionDoctorQueuePage.tsx`) — khách chờ (tính từ
+   * `checkedInAt`) vượt số phút này thì hiện cảnh báo (viền/nền đỏ, badge "Chờ lâu"). Trước đây
+   * hardcode `WAIT_WARNING_MINUTES=30` ở web, chuyển thành cấu hình được theo yêu cầu chủ dự án
+   * (2026-08-28) — pill "Cấu hình khám" ở `/admin/system-config`.
+   */
+  overdueWaitWarningMinutes: z.number().int().min(1).max(240),
 });
 export type ClinicSettings = z.infer<typeof clinicSettingsSchema>;
 
@@ -151,10 +158,13 @@ export const updateClinicSettingsRequestSchema = z.object({
   businessHours: businessHoursSchema.optional(),
   slotDurationMinutes: z.number().int().min(5).max(240).optional(),
   deferredPaymentEnabled: z.boolean().optional(),
+  overdueWaitWarningMinutes: z.number().int().min(1).max(240).optional(),
 });
 export type UpdateClinicSettingsRequest = z.infer<typeof updateClinicSettingsRequestSchema>;
 
 export const DEFAULT_SLOT_DURATION_MINUTES = DEFAULT_APPOINTMENT_DURATION_MINUTES;
+/** Giữ đúng ngưỡng hardcode cũ (`WAIT_WARNING_MINUTES`) làm mặc định khi tenant chưa cấu hình. */
+export const DEFAULT_OVERDUE_WAIT_WARNING_MINUTES = 30;
 
 /**
  * `GET /clinic-settings/deferred-payment-enabled` — chiếu tối thiểu tự-phục vụ (Thu ngân cơ bản,

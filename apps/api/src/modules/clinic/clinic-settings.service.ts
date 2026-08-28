@@ -24,12 +24,13 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
 
   async getSettings(tenantId: string): Promise<ClinicSettings> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const [businessHours, slotDurationMinutes, deferredPaymentEnabled] = await Promise.all([
+      const [businessHours, slotDurationMinutes, deferredPaymentEnabled, overdueWaitWarningMinutes] = await Promise.all([
         this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
         this.clinicSettingsRepository.getSlotDurationMinutes(tx, tenantId),
         this.clinicSettingsRepository.getDeferredPaymentEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getOverdueWaitWarningMinutes(tx, tenantId),
       ]);
-      return { businessHours, slotDurationMinutes, deferredPaymentEnabled };
+      return { businessHours, slotDurationMinutes, deferredPaymentEnabled, overdueWaitWarningMinutes };
     });
   }
 
@@ -64,8 +65,16 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
       if (dto.deferredPaymentEnabled !== undefined) {
         await this.clinicSettingsRepository.upsertDeferredPaymentEnabled(tx, tenantId, actorId, dto.deferredPaymentEnabled);
       }
+      if (dto.overdueWaitWarningMinutes !== undefined) {
+        await this.clinicSettingsRepository.upsertOverdueWaitWarningMinutes(tx, tenantId, actorId, dto.overdueWaitWarningMinutes);
+      }
 
-      if (dto.businessHours !== undefined || dto.slotDurationMinutes !== undefined || dto.deferredPaymentEnabled !== undefined) {
+      const hasChanges =
+        dto.businessHours !== undefined ||
+        dto.slotDurationMinutes !== undefined ||
+        dto.deferredPaymentEnabled !== undefined ||
+        dto.overdueWaitWarningMinutes !== undefined;
+      if (hasChanges) {
         await writeAuditLog(tx, tenantId, {
           actorId,
           action: 'clinic_settings.updated',
@@ -77,12 +86,13 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         });
       }
 
-      const [businessHours, slotDurationMinutes, deferredPaymentEnabled] = await Promise.all([
+      const [businessHours, slotDurationMinutes, deferredPaymentEnabled, overdueWaitWarningMinutes] = await Promise.all([
         this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
         this.clinicSettingsRepository.getSlotDurationMinutes(tx, tenantId),
         this.clinicSettingsRepository.getDeferredPaymentEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getOverdueWaitWarningMinutes(tx, tenantId),
       ]);
-      return { businessHours, slotDurationMinutes, deferredPaymentEnabled };
+      return { businessHours, slotDurationMinutes, deferredPaymentEnabled, overdueWaitWarningMinutes };
     });
   }
 }

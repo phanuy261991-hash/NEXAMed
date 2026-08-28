@@ -25,7 +25,7 @@ import { useReceptionListQuery } from './reception.queries';
  * dòng) để sẵn cho hành động hàng loạt sau này, chưa có hành động nào dùng tới. */
 const GRID_COLUMNS = '40px 140px 200px 100px 140px 240px 170px 130px 170px 110px';
 const TABLE_MIN_WIDTH_PX = 1440;
-const ROW_HEIGHT_PX = 48;
+const ROW_HEIGHT_PX = 60;
 
 /** Chỉ huỷ được khi còn "sống" — đã COMPLETED/CANCELLED thì không còn thao tác nào ở đây. */
 const CANCELLABLE_STATUSES: EncounterStatus[] = ['CHECKED_IN', 'IN_CONSULTATION'];
