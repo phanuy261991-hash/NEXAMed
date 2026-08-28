@@ -40,7 +40,7 @@ Seed cụ thể nằm trong `apps/api/prisma/seed/permissions.seed.ts` (nguồn 
 | `encounter.update` | none | none | personal | none | none |
 | `encounter.cancel` | global | none | personal | global | none |
 | `vital_sign.create` | none | global | personal | none | none |
-| `diagnosis.create` | none | none | personal | none | none |
+| `diagnosis.create/sign` | none | none | personal | none | none |
 | `clinical_note.create/update/sign` | none | none | personal | none | none |
 | `prescription.create/sign/print` | none | none | personal | none | none |
 | `clinic_config.read/update` | none | none | none | global | none |
@@ -64,6 +64,8 @@ Lý do `doctor.encounter.read = global` (không phải `personal`+break-glass nh
 **`reference_catalog.*` (`docs/DECISIONS.md` #037)**: danh mục dùng chung Dân tộc/Quốc tịch — toàn hệ thống, không `tenant_id`, không cách ly theo tenant (chấp nhận có ý thức ở v1 on-premise một tenant/instance, xem ghi chú trong `data-model.md`). `PermissionGuard` áp dụng bình thường (không lệch pattern) nhưng **không** gắn `entityIdParam` cho `PATCH`/`DELETE` — break-glass không có ý nghĩa với dữ liệu không có chủ sở hữu/không nhạy cảm lâm sàng, `none` bị chặn hẳn.
 
 **Thu ngân cơ bản (Sprint 5/6, BIL-01→04) — 3 permission mới `invoice.read`/`invoice.update`/`invoice.print`, cả 3 chỉ `global` cho `receptionist`/`clinic_admin`** (không có bác sĩ/điều dưỡng — đúng khung PRD mục 4.7 "Là lễ tân..."). **Không có `invoice.create` riêng** — phiếu thu luôn tạo tự động kèm `encounter.create` (check-in/tiếp nhận trực tiếp, cùng transaction), không có endpoint tạo riêng nên không cần permission riêng. Tenant cũ tự vá qua `syncRolePermissionsForAllTenants()` (chỉ thêm dòng thiếu, 3 dòng này đều MỚI nên tự vá được, không rơi vào trường hợp phải vá tay như nurse ở trên).
+
+**Ký hồ sơ khám (Sprint 5, S5-02/03, `docs/DECISIONS.md` #089) — thêm permission mới `diagnosis.sign` (`personal`, chỉ `doctor`)**, đối xứng `clinical_note.sign` đã seed sẵn từ S1-04b nhưng chưa từng dùng tới cho lượt tính năng này. Dùng làm quyền gác cho `POST .../diagnoses/amend` (đính chính) — mirror cách `prescription.sign` tái dùng cho cả hành động ký lẫn đính chính, không tách permission riêng cho "amend". Bản thân việc KÝ (side-effect của "Hoàn tất khám") không kiểm riêng permission này — vẫn gác bởi `encounter.update` sẵn có. Tenant cũ tự vá qua `syncRolePermissionsForAllTenants()` (dòng mới, tự vá được).
 
 ### Break-glass (phá kính — vượt quyền tạm thời)
 

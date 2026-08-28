@@ -2,6 +2,18 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-29
+
+Ký hồ sơ khám + đính chính (Sprint 5, S5-02/03, ENC-04/05) — xem `docs/DECISIONS.md` #089:
+
+- "Hoàn tất khám" nay **tự động ký NGAY** mọi `diagnosis`/`clinical_note` đang hiệu lực (1 transaction, dùng chung `signed_at`/`signed_by`) — thay hẳn cơ chế "sửa tại chỗ sau hoàn tất" cũ (#066). `diagnosis` thêm 4 cột SignableEntity mới; `clinical_note` thêm trigger C8 (cột đã có sẵn từ Sprint 3). Migration `20260829090000_diagnosis_clinical_note_signing` kèm backfill cho encounter `COMPLETED` có sẵn từ trước.
+- 2 endpoint đính chính mới: `POST .../diagnoses/amend` (thay toàn bộ danh sách, `supersedesId` ghép theo `(icd10Code, type)` qua `pairDiagnosisAmendment` — `packages/core`, có unit test), `POST .../clinical-note/amend` (chỉ đính chính đúng section thực sự đổi nội dung). Permission mới `diagnosis.sign` (đối xứng `clinical_note.sign` đã seed sẵn từ trước nhưng chưa từng dùng).
+- Web: "Chỉnh sửa thông tin" sau hoàn tất giờ chỉ hiện nút "Đính chính" (2 dialog riêng, bắt buộc lý do) thay vì mở khoá sửa trực tiếp — Kê đơn không đổi (vẫn sửa tại chỗ, module riêng).
+- **Verify Playwright qua Chrome thật hoàn tất cùng ngày** — phát hiện + sửa 2 bug thật: (1) `BreakGlassDialog` (z-50) bị dialog "Đính chính" (cùng z-50) che khuất khi break-glass kích hoạt từ bên trong — đổi sang z-60, áp dụng chung mọi dialog trong app; (2) state cục bộ (`diagnoses`/`clinical`) không đồng bộ sau khi đính chính thành công — dialog báo xong nhưng màn hình vẫn hiện nội dung cũ tới khi F5, đã sửa cả 2 hàm + bổ sung badge "(đã đính chính)" cho từng dòng chẩn đoán (bỏ sót lúc code lần đầu). Tiện phát hiện sự cố vận hành giống #087: `db:seed` chạy trước khi rebuild `packages/core` nên thiếu `diagnosis.sign` trong catalog — đã chạy lại.
+- Tiện sửa 2 chi tiết UI nhỏ theo phản hồi trực tiếp: nút "Gọi khám — nhận ca này" → "Gọi khám" (`queue-card.tsx`), bỏ dòng chú thích "có tìm/huỷ ca đầy đủ" ở panel Hàng chờ (`DoctorQueueButton.tsx`).
+- **Đã xác minh**: `packages/core` 123/123, `apps/api` 476/476 (viết lại toàn bộ test cũ của #066 + thêm test ký/đính chính/trigger C8/break-glass/tenant isolation), `pnpm -w typecheck/lint/build` sạch toàn workspace. Playwright qua Chrome thật (dữ liệu tạo qua HTTP API bằng `dev.admin`, đúng bài học #087/#088): toàn bộ luồng ký tự động + đính chính đúng, không lỗi console ngoài 2 dòng đã biết/vô hại.
+- Cập nhật `.claude/docs/clinical-workflow.md`, `.claude/docs/data-model.md`, `docs/ERD.md` (v1.34, cũng bổ sung entry v1.33 còn thiếu), `docs/DECISIONS.md` (#089), `docs/CURRENT.md`, `docs/TASK.md`.
+
 ## 2026-08-28 (4)
 
 "Hàng chờ tại màn khám" — bác sĩ xem/chuyển ca ngay tại trang khám, không cần quay ra "Hàng đợi khám" + "Trả về hàng chờ" thêm ở màn khám — xem `docs/DECISIONS.md` #088:

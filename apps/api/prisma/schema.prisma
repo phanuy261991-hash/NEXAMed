@@ -1182,6 +1182,12 @@ model Diagnosis {
   icd10Code   String        @map("icd10_code")
   type        DiagnosisType
   note        String?
+  // Ký hồ sơ khám (Sprint 5, S5-02/03) — "Hoàn tất khám" tự động ký, đúng khuôn `Prescription`.
+  // Đính chính ghép supersedesId theo (icd10Code, type) không đổi — xem `pairDiagnosisAmendment`.
+  signedAt        DateTime? @map("signed_at") @db.Timestamptz(6)
+  signedBy        String?   @map("signed_by") @db.Uuid
+  supersedesId    String?   @map("supersedes_id") @db.Uuid
+  amendmentReason String?   @map("amendment_reason")
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -1192,10 +1198,12 @@ model Diagnosis {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant    Tenant       @relation(fields: [tenantId], references: [id])
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
   // Composite FK (tenant_id, encounter_id) -> encounter(tenant_id, id): chống trỏ chéo tenant.
-  encounter Encounter    @relation(fields: [tenantId, encounterId], references: [tenantId, id])
-  icd10     Icd10Catalog @relation(fields: [icd10Code], references: [code])
+  encounter    Encounter    @relation(fields: [tenantId, encounterId], references: [tenantId, id])
+  icd10        Icd10Catalog @relation(fields: [icd10Code], references: [code])
+  supersedes   Diagnosis?   @relation("DiagnosisAmendment", fields: [tenantId, supersedesId], references: [tenantId, id])
+  supersededBy Diagnosis[]  @relation("DiagnosisAmendment")
 
   @@unique([tenantId, id])
   @@map("diagnosis")
@@ -1205,8 +1213,9 @@ model Diagnosis {
 // ClinicalNoteSection) — docs/ERD.md mục 3.4 (khối CLINICAL_NOTE), .claude/docs/
 // clinical-workflow.md mục "Amendment hồ sơ". MỘT DÒNG/section/encounter (unique partial WHERE
 // deleted_at IS NULL trong migration — cơ sở cho upsert tìm-hoặc-tạo). `signedAt`/`signedBy`/
-// `supersedesId`/`amendmentReason` để sẵn theo `SignableEntity` (packages/core) — LUÔN NULL ở vòng
-// này, ký hồ sơ (ENC-04) và luồng đính chính là việc của Sprint 5 (S5-02/03), chưa viết logic.
+// `supersedesId`/`amendmentReason` (Sprint 5, S5-02/03) — "Hoàn tất khám" tự động ký TẤT CẢ section
+// đang hiệu lực; sửa sau khi ký phải qua `POST .../clinical-note/amend` (đính chính, bắt buộc lý
+// do, đúng 1-1 theo section — khác `Diagnosis` là danh sách không có "slot" cố định).
 model ClinicalNote {
   id              String              @id @default(dbgenerated("uuidv7()")) @db.Uuid
   tenantId        String              @map("tenant_id") @db.Uuid
@@ -1227,9 +1236,11 @@ model ClinicalNote {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  tenant       Tenant         @relation(fields: [tenantId], references: [id])
   // Composite FK (tenant_id, encounter_id) -> encounter(tenant_id, id): chống trỏ chéo tenant.
-  encounter Encounter @relation(fields: [tenantId, encounterId], references: [tenantId, id])
+  encounter    Encounter      @relation(fields: [tenantId, encounterId], references: [tenantId, id])
+  supersedes   ClinicalNote?  @relation("ClinicalNoteAmendment", fields: [tenantId, supersedesId], references: [tenantId, id])
+  supersededBy ClinicalNote[] @relation("ClinicalNoteAmendment")
 
   @@unique([tenantId, id])
   @@map("clinical_note")

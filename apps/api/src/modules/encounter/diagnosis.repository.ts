@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { pairDiagnosisAmendment, type DiagnosisAmendmentNewItem } from '@nexamed/core';
 import type { Diagnosis, Prisma } from '@prisma/client';
 
 export interface DiagnosisWithIcd10Name extends Diagnosis {
@@ -54,5 +55,55 @@ export class DiagnosisRepository {
         })),
       });
     }
+  }
+
+  /**
+   * Ký hồ sơ khám (Sprint 5, S5-02/03) — "Hoàn tất khám" gọi hàm này TRONG CÙNG transaction đổi
+   * `encounter.status`. `WHERE signed_at IS NULL` chống ký trùng, cùng khuôn `PrescriptionRepository.sign()`.
+   */
+  async signAllForEncounter(tx: Prisma.TransactionClient, tenantId: string, encounterId: string, actorId: string, signedAt: Date, signedBy: string): Promise<void> {
+    await tx.diagnosis.updateMany({
+      where: { tenantId, encounterId, deletedAt: null, signedAt: null },
+      data: { signedAt, signedBy, updatedBy: actorId, version: { increment: 1 } },
+    });
+  }
+
+  /**
+   * Đính chính (Sprint 5, S5-02/03) — soft-delete TOÀN BỘ dòng active cũ, tạo lại full list mới ĐÃ
+   * KÝ NGAY (đính chính là một hành động xác nhận trọn vẹn, cùng triết lý `PrescriptionRepository.
+   * createAmendment()`). `supersedesId` ghép theo `(icd10Code, type)` qua `pairDiagnosisAmendment`
+   * (packages/core, thuần) — mã không đổi giữ chuỗi lịch sử, mã mới `supersedesId=null`.
+   */
+  async amendForEncounter(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    encounterId: string,
+    actorId: string,
+    newItems: DiagnosisAmendmentNewItem[],
+    signedAt: Date,
+    signedBy: string,
+    amendmentReason: string,
+  ): Promise<void> {
+    const oldRows = await tx.diagnosis.findMany({ where: { tenantId, encounterId, deletedAt: null }, select: { id: true, icd10Code: true, type: true } });
+    await tx.diagnosis.updateMany({
+      where: { tenantId, encounterId, deletedAt: null },
+      data: { deletedAt: new Date(), deletedReason: 'amended', updatedBy: actorId },
+    });
+    const paired = pairDiagnosisAmendment(oldRows, newItems);
+    await tx.diagnosis.createMany({
+      data: paired.map((item) => ({
+        tenantId,
+        encounterId,
+        icd10Code: item.icd10Code,
+        type: item.type,
+        note: item.note,
+        signedAt,
+        signedBy,
+        supersedesId: item.supersedesId,
+        amendmentReason,
+        createdBy: actorId,
+        updatedBy: actorId,
+      })),
+    });
   }
 }

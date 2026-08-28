@@ -36,4 +36,47 @@ export class ClinicalNoteRepository {
     });
     return result.count;
   }
+
+  /**
+   * Ký hồ sơ khám (Sprint 5, S5-02/03) — "Hoàn tất khám" gọi hàm này TRONG CÙNG transaction đổi
+   * `encounter.status`, ký TẤT CẢ section đang hiệu lực cùng lúc (`WHERE signed_at IS NULL` chống
+   * ký trùng, cùng khuôn `DiagnosisRepository.signAllForEncounter()`).
+   */
+  async signAllForEncounter(tx: Prisma.TransactionClient, tenantId: string, encounterId: string, actorId: string, signedAt: Date, signedBy: string): Promise<void> {
+    await tx.clinicalNote.updateMany({
+      where: { tenantId, encounterId, deletedAt: null, signedAt: null },
+      data: { signedAt, signedBy, updatedBy: actorId, version: { increment: 1 } },
+    });
+  }
+
+  /**
+   * Đính chính MỘT section (Sprint 5, S5-02/03) — khác `diagnosis` (danh sách không "slot" cố
+   * định), mỗi section là 1 slot cố định nên `supersedesId` ghép 1-1 trực tiếp: soft-delete đúng
+   * dòng cũ (`WHERE version=?` — optimistic lock, đọc lại `id` TRƯỚC để gắn `supersedesId`), tạo
+   * dòng mới ĐÃ KÝ NGAY trỏ về dòng cũ. Trả `null` nếu version lệch hoặc dòng không còn tồn tại
+   * (service tự ném `ConcurrentModificationError`, đúng khuôn `PrescriptionRepository.supersede()`).
+   */
+  async amendSection(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    encounterId: string,
+    section: ClinicalNoteSection,
+    content: string,
+    expectedVersion: number,
+    actorId: string,
+    signedAt: Date,
+    signedBy: string,
+    amendmentReason: string,
+  ): Promise<ClinicalNote | null> {
+    const old = await tx.clinicalNote.findFirst({ where: { tenantId, encounterId, section, version: expectedVersion, deletedAt: null } });
+    if (!old) return null;
+    const result = await tx.clinicalNote.updateMany({
+      where: { tenantId, id: old.id, version: expectedVersion, deletedAt: null },
+      data: { deletedAt: new Date(), deletedReason: 'amended', updatedBy: actorId },
+    });
+    if (result.count === 0) return null;
+    return tx.clinicalNote.create({
+      data: { tenantId, encounterId, section, content, signedAt, signedBy, supersedesId: old.id, amendmentReason, createdBy: actorId, updatedBy: actorId },
+    });
+  }
 }

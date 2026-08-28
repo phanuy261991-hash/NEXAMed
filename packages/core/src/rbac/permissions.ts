@@ -34,6 +34,12 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   { module: 'encounter', action: 'cancel', description: 'Huỷ lượt khám ("bỏ về")' },
   { module: 'vital_sign', action: 'create', description: 'Ghi sinh hiệu' },
   { module: 'diagnosis', action: 'create', description: 'Ghi chẩn đoán' },
+  // Ký hồ sơ khám (Sprint 5, S5-02/03) — dùng làm quyền cho "Đính chính chẩn đoán" (mirror
+  // `prescription.sign` tái dùng cho cả sign lẫn amend). Bản thân việc KÝ là side-effect của
+  // "Hoàn tất khám" (`encounter.update`), không cần kiểm riêng — permission này chỉ gác đúng lúc
+  // sửa hồ sơ ĐÃ KÝ. `clinical_note.sign` đã seed sẵn từ trước (dòng dưới), diagnosis thiếu nên
+  // thêm ở đây cho đối xứng.
+  { module: 'diagnosis', action: 'sign', description: 'Đính chính chẩn đoán đã ký' },
   { module: 'clinical_note', action: 'create', description: 'Ghi chú SOAP' },
   { module: 'clinical_note', action: 'update', description: 'Sửa ghi chú SOAP (trước khi ký)' },
   { module: 'clinical_note', action: 'sign', description: 'Ký ghi chú khám' },
@@ -141,6 +147,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'encounter.cancel': 'personal',
     'vital_sign.create': 'personal',
     'diagnosis.create': 'personal',
+    'diagnosis.sign': 'personal',
     'clinical_note.create': 'personal',
     'clinical_note.update': 'personal',
     'clinical_note.sign': 'personal',

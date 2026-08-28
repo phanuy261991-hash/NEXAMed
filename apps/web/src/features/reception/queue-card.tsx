@@ -156,7 +156,7 @@ export function WaitingCard({
       <div className="mt-2.5 flex items-center justify-between gap-1.5">
         <Button type="button" variant={pool ? 'secondary' : 'primary'} className="px-3" loading={loading} onClick={onStart}>
           {pool ? <PlusCircle size={13} weight="bold" aria-hidden="true" /> : <Play size={13} weight="bold" aria-hidden="true" />}
-          {pool ? 'Gọi khám — nhận ca này' : 'Bắt đầu khám'}
+          {pool ? 'Gọi khám' : 'Bắt đầu khám'}
         </Button>
         {onCancel && (
           <Button type="button" variant="danger" className="flex-shrink-0 px-2.5" onClick={onCancel} aria-label="Hủy khám" title="Hủy khám">

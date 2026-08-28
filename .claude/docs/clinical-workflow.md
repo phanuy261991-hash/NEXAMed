@@ -46,7 +46,7 @@ Quy tắc:
 - Bắt buộc có ít nhất một `diagnosis` với `type = primary` trước khi chuyển `COMPLETED`.
 - Mã chẩn đoán chọn từ `icd10_catalog`. Không cho nhập mã tự do, không tự suy mã từ mô tả bệnh.
 - `clinical_note` theo 6 mục nhóm "Thăm khám" (đổi từ 4 mục SOAP, `docs/DECISIONS.md` #060). Ký ghi chú (`signed_at`) đóng băng nội dung. "Tiền sử bản thân"/"gia đình"/"dị ứng" KHÔNG thuộc `clinical_note` — dùng chung mọi lượt khám của bệnh nhân, không nhập lại mỗi lần khám (`docs/DECISIONS.md` #068). Từ Sprint 5 (25/08/2026): "Tiền sử bản thân" (bệnh lý nền + thói quen) và "Tiền sử gia đình" đã chuyển sang dữ liệu có cấu trúc — bảng `patient_condition`/`patient_family_history` (mã ICD-10), KHÔNG còn đọc/ghi `patient.family_history` (cột text cũ, vẫn còn trong DB nhưng không dùng). `patient.personal_history` giữ nguyên làm ghi chú bổ sung tự do cạnh chip; `patient.allergy_note` giữ nguyên trong DB nhưng UI không còn field riêng cho nó — dị ứng nay chỉ qua danh mục có cấu trúc (`patient_allergen`). Màn Khám bệnh chỉ XEM tóm tắt "Tiền sử gia đình" (không sửa tại đó), sửa qua hồ sơ bệnh nhân/Tiếp nhận.
-- **Sửa `diagnosis`/`clinical_note` SAU khi `encounter.status=COMPLETED` được phép** (`docs/DECISIONS.md` #066) — chỉ khi CHƯA ký (`signed_at IS NULL`, đúng thực tế v1 vì ký chưa triển khai). Mở khoá sửa TẠI CHỖ (không tạo bản ghi mới) + ghi `audit_log` action riêng (`*_amended_after_completion`) kèm `beforeJson`/`afterJson`. Quyền: đúng bác sĩ ca đó (`data_scope=personal`) hoặc tài khoản khác qua break-glass — không phải mô hình đính chính ở mục dưới đây (đó chỉ áp dụng khi đã ký).
+- **Ký hồ sơ khám (Sprint 5, S5-02/03, ENC-04)** — "Hoàn tất khám" TỰ ĐỘNG ký NGAY mọi `diagnosis`/`clinical_note` đang hiệu lực của lượt khám, trong CÙNG transaction với `encounter.status→COMPLETED` (1 lần gọi `SignaturePort.sign()`, dùng chung `signed_at`/`signed_by` cho cả hai bảng — "Ký hồ sơ khám" là một hành động duy nhất, không tách theo bảng/không thêm nút riêng). Từ đây 2 bảng bất biến (trigger C8, cùng khuôn `prescription`) — **cơ chế "sửa tại chỗ sau hoàn tất" cũ (#066) đã bị thay thế hẳn**: `PUT .../diagnoses`/`PUT .../clinical-note` trên encounter đã `COMPLETED` trả `409 CLINICAL_RECORD_ALREADY_SIGNED`. Sửa phải qua đính chính (mục "Amendment hồ sơ" bên dưới): `POST .../diagnoses/amend`, `POST .../clinical-note/amend` — cùng quyền `diagnosis.sign`/`clinical_note.sign` (personal), break-glass áp dụng như mọi thao tác khác nếu tài khoản khác cần sửa hộ.
 
 ## Huỷ lượt khám + hoàn tiền (v1.33, `docs/DECISIONS.md` #085)
 
@@ -67,6 +67,10 @@ Quy tắc:
 ## Amendment hồ sơ (Thông tư 46/2018/TT-BYT)
 
 Sửa dữ liệu lâm sàng đã ký luôn theo mô hình: bản ghi mới (`supersedes_id` = bản cũ, `amendment_reason` bắt buộc, `created_by` = người sửa) + bản cũ đặt `deleted_at` + `deleted_reason`. Truy vấn hiển thị mặc định lọc `deleted_at IS NULL`; màn hình lịch sử hiển thị đủ chuỗi kèm người sửa và thời điểm.
+
+**Áp dụng cho `diagnosis`/`clinical_note` (Sprint 5, S5-02/03)** — bản mới ĐÃ KÝ NGAY (đính chính là hành động xác nhận trọn vẹn, không qua lại bước nháp), giống hệt `prescription`:
+- `clinical_note` (mỗi section là 1 "slot" cố định, 1-1 giữa cũ/mới): `POST .../clinical-note/amend` nhận danh sách CÁC SECTION THỰC SỰ đổi nội dung (web tự tính diff) — `supersedes_id` của dòng mới trỏ thẳng dòng cũ CÙNG section, không cần thuật toán ghép cặp. Section không đổi giữ nguyên bản đã ký, không tạo lịch sử vô ích.
+- `diagnosis` (danh sách nhiều dòng, KHÔNG có "slot"/"header" cố định — khác `clinical_note`/`prescription`): `POST .../diagnoses/amend` thay TOÀN BỘ danh sách; `supersedes_id` từng dòng mới do server tự ghép theo `(icd10_code, type)` không đổi so với danh sách cũ (`pairDiagnosisAmendment`, `packages/core`, thuần) — mã không đổi giữ chuỗi lịch sử, mã thực sự mới thì `supersedes_id=null`.
 
 ## Edge case cần xử lý đúng
 

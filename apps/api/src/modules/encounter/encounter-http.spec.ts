@@ -789,8 +789,10 @@ describe('HTTP e2e — /api/v1/encounters', () => {
         .send(clinicalNotePayload());
 
       expect(res.status).toBe(200);
-      expect(res.body.data.reasonForVisit).toEqual({ content: 'Sốt 2 ngày', version: 1 });
-      expect(res.body.data.plan).toEqual({ content: 'Kê kháng sinh, tái khám sau 3 ngày', version: 1 });
+      // Ký hồ sơ khám (Sprint 5, S5-02/03) — thêm signedAt/signedBy/supersedesId/amendmentReason
+      // vào response, LUÔN null cho tới khi "Hoàn tất khám".
+      expect(res.body.data.reasonForVisit).toEqual({ content: 'Sốt 2 ngày', version: 1, signedAt: null, signedBy: null, supersedesId: null, amendmentReason: null });
+      expect(res.body.data.plan).toEqual({ content: 'Kê kháng sinh, tái khám sau 3 ngày', version: 1, signedAt: null, signedBy: null, supersedesId: null, amendmentReason: null });
     });
 
     it('lưu lại đúng version → update thành công, version tăng lên 2', async () => {
@@ -812,7 +814,7 @@ describe('HTTP e2e — /api/v1/encounters', () => {
         );
 
       expect(res.status).toBe(200);
-      expect(res.body.data.reasonForVisit).toEqual({ content: 'Sốt 3 ngày, ho thêm', version: 2 });
+      expect(res.body.data.reasonForVisit).toEqual({ content: 'Sốt 3 ngày, ho thêm', version: 2, signedAt: null, signedBy: null, supersedesId: null, amendmentReason: null });
     });
 
     it('version cũ → 409 CONCURRENT_MODIFICATION', async () => {
@@ -955,12 +957,12 @@ describe('HTTP e2e — /api/v1/encounters', () => {
   });
 
   /**
-   * Lỗi vận hành thật chủ dự án báo cáo: "Xem lại" một lượt khám đã "Hoàn tất khám" trước đây vẫn bị
-   * chặn cứng mọi lần lưu (`ENCOUNTER_NOT_IN_CONSULTATION`), không có đường nào sửa sai sót phát
-   * hiện sau đó. Quyết định: mở khoá sửa tại chỗ + ghi audit log trước/sau (không phải mô hình đính
-   * chính Thông tư 46 — đó là Sprint 5). Xem `docs/DECISIONS.md`.
+   * Ký hồ sơ khám (Sprint 5, S5-02/03, ENC-04/05) — "Hoàn tất khám" tự động KÝ NGAY `diagnosis`/
+   * `clinical_note`, thay thế hẳn cơ chế "sửa tại chỗ sau hoàn tất" cũ (#066). Từ đây, sửa sau khi
+   * hoàn tất PHẢI qua "Đính chính" (bắt buộc lý do) — xem .claude/docs/clinical-workflow.md mục
+   * "Amendment hồ sơ".
    */
-  describe('Sửa hồ sơ khám sau khi "Hoàn tất khám" (lỗi vận hành thật, chủ dự án báo cáo)', () => {
+  describe('Ký hồ sơ khám sau khi "Hoàn tất khám" + Đính chính (Sprint 5, S5-02/03)', () => {
     async function completedEncounter(hour: number) {
       const encounterId = await startedEncounter(hour);
       await request(app.getHttpServer())
@@ -982,85 +984,163 @@ describe('HTTP e2e — /api/v1/encounters', () => {
       return encounterId;
     }
 
-    it('bác sĩ đã khám ca đó sửa chẩn đoán sau khi hoàn tất → 200, ghi audit_log trước/sau bằng action riêng', async () => {
+    it('"Hoàn tất khám" ký NGAY mọi diagnosis/clinical_note đang hiệu lực — signedAt/signedBy khớp actor', async () => {
       const encounterId = await completedEncounter(11);
+
+      const diagnosisRow = await privileged.diagnosis.findFirstOrThrow({ where: { tenantId: fixture.tenantA.id, encounterId } });
+      expect(diagnosisRow.signedAt).not.toBeNull();
+      expect(diagnosisRow.signedBy).toBe(doctorAUserId);
+
+      const noteRows = await privileged.clinicalNote.findMany({ where: { tenantId: fixture.tenantA.id, encounterId } });
+      expect(noteRows.length).toBeGreaterThan(0);
+      for (const row of noteRows) {
+        expect(row.signedAt).not.toBeNull();
+        expect(row.signedBy).toBe(doctorAUserId);
+      }
+    });
+
+    it('PUT .../diagnoses trên encounter đã ký → 409 CLINICAL_RECORD_ALREADY_SIGNED (khác hành vi cũ #066)', async () => {
+      const encounterId = await completedEncounter(12);
 
       const res = await request(app.getHttpServer())
         .put(`/api/v1/encounters/${encounterId}/diagnoses`)
         .set(authed(doctorAToken))
-        .send({
-          diagnoses: [
-            { icd10Code: 'A00.0', type: 'PRIMARY' as const },
-            { icd10Code: 'A00.1', type: 'SECONDARY' as const, note: 'Bổ sung sau khi xem lại' },
-          ],
-        });
+        .send({ diagnoses: [{ icd10Code: 'A00.0', type: 'PRIMARY' as const }] });
 
-      expect(res.status).toBe(200);
-      expect(res.body.data.items).toHaveLength(2);
-
-      const auditRow = await privileged.auditLog.findFirstOrThrow({
-        where: { tenantId: fixture.tenantA.id, entityId: encounterId, action: 'encounter.diagnosis_amended_after_completion' },
-      });
-      expect(auditRow.beforeJson).toEqual([{ icd10Code: 'A00.0', type: 'PRIMARY', note: null }]);
-      expect((auditRow.afterJson as { icd10Code: string }[]).map((d) => d.icd10Code).sort()).toEqual(['A00.0', 'A00.1']);
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('CLINICAL_RECORD_ALREADY_SIGNED');
     });
 
-    it('bác sĩ đã khám ca đó sửa ghi chú lâm sàng sau khi hoàn tất → 200, nội dung mới lưu đúng, audit_log ghi trước/sau', async () => {
-      const encounterId = await completedEncounter(12);
-      const detail = await request(app.getHttpServer()).get(`/api/v1/encounters/${encounterId}/consultation`).set(authed(doctorAToken));
-      interface ClinicalNoteSectionValue {
-        content: string;
-        version: number;
-      }
-      const note = detail.body.data.clinicalNote as {
-        reasonForVisit: ClinicalNoteSectionValue;
-        illnessProgress: ClinicalNoteSectionValue;
-        preliminaryDiagnosis: ClinicalNoteSectionValue;
-        generalExam: ClinicalNoteSectionValue;
-        regionalExam: ClinicalNoteSectionValue;
-        plan: ClinicalNoteSectionValue;
-      };
+    it('PUT .../clinical-note trên encounter đã ký → 409 CLINICAL_RECORD_ALREADY_SIGNED', async () => {
+      const encounterId = await completedEncounter(13);
 
       const res = await request(app.getHttpServer())
         .put(`/api/v1/encounters/${encounterId}/clinical-note`)
         .set(authed(doctorAToken))
         .send({
-          reasonForVisit: { content: 'Đau đầu — sửa lại: kèm chóng mặt', version: note.reasonForVisit.version },
-          illnessProgress: { content: note.illnessProgress.content, version: note.illnessProgress.version },
-          preliminaryDiagnosis: { content: note.preliminaryDiagnosis.content, version: note.preliminaryDiagnosis.version },
-          generalExam: { content: note.generalExam.content, version: note.generalExam.version },
-          regionalExam: { content: note.regionalExam.content, version: note.regionalExam.version },
-          plan: { content: note.plan.content, version: note.plan.version },
+          reasonForVisit: { content: 'x', version: 1 },
+          illnessProgress: { content: '' },
+          preliminaryDiagnosis: { content: 'y', version: 1 },
+          generalExam: { content: '' },
+          regionalExam: { content: '' },
+          plan: { content: '' },
         });
 
-      expect(res.status).toBe(200);
-      expect(res.body.data.reasonForVisit.content).toBe('Đau đầu — sửa lại: kèm chóng mặt');
-
-      const auditRow = await privileged.auditLog.findFirstOrThrow({
-        where: { tenantId: fixture.tenantA.id, entityId: encounterId, action: 'encounter.clinical_note_amended_after_completion' },
-      });
-      expect((auditRow.beforeJson as Record<string, string>).REASON_FOR_VISIT).toBe('Đau đầu');
-      expect((auditRow.afterJson as Record<string, string>).REASON_FOR_VISIT).toBe('Đau đầu — sửa lại: kèm chóng mặt');
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('CLINICAL_RECORD_ALREADY_SIGNED');
     });
 
-    it('bác sĩ KHÁC (không phải người khám ca đó, scope personal) sửa sau khi hoàn tất → vẫn 404', async () => {
-      const encounterId = await completedEncounter(13);
+    it('DB trigger C8 chặn UPDATE trực tiếp lên nội dung diagnosis/clinical_note đã ký (kể cả gọi thẳng SQL)', async () => {
+      const encounterId = await completedEncounter(14);
+      const diagnosisRow = await privileged.diagnosis.findFirstOrThrow({ where: { tenantId: fixture.tenantA.id, encounterId } });
+      const noteRow = await privileged.clinicalNote.findFirstOrThrow({ where: { tenantId: fixture.tenantA.id, encounterId, section: 'REASON_FOR_VISIT' } });
+
+      await expect(privileged.$executeRawUnsafe(`UPDATE diagnosis SET note = 'hack' WHERE id = '${diagnosisRow.id}'`)).rejects.toThrow();
+      await expect(privileged.$executeRawUnsafe(`UPDATE clinical_note SET content = 'hack' WHERE id = '${noteRow.id}'`)).rejects.toThrow();
+    });
+
+    it('"Đính chính chẩn đoán" — mã không đổi giữ supersedesId, mã mới supersedesId=null, thiếu lý do → 400', async () => {
+      const encounterId = await completedEncounter(15);
+      const oldRow = await privileged.diagnosis.findFirstOrThrow({ where: { tenantId: fixture.tenantA.id, encounterId } });
+
+      const missingReason = await request(app.getHttpServer())
+        .post(`/api/v1/encounters/${encounterId}/diagnoses/amend`)
+        .set(authed(doctorAToken))
+        .send({ diagnoses: [{ icd10Code: 'A00.0', type: 'PRIMARY' as const }] });
+      expect(missingReason.status).toBe(400);
 
       const res = await request(app.getHttpServer())
-        .put(`/api/v1/encounters/${encounterId}/diagnoses`)
+        .post(`/api/v1/encounters/${encounterId}/diagnoses/amend`)
+        .set(authed(doctorAToken))
+        .send({
+          amendmentReason: 'Sửa lại sau khi xem lại hồ sơ',
+          diagnoses: [
+            { icd10Code: 'A00.0', type: 'PRIMARY' as const },
+            { icd10Code: 'A00.1', type: 'SECONDARY' as const, note: 'Bổ sung' },
+          ],
+        });
+      expect(res.status).toBe(200);
+      const items = res.body.data.items as { icd10Code: string; supersedesId: string | null; signedAt: string | null }[];
+      expect(items.every((i) => i.signedAt !== null)).toBe(true);
+      expect(items.find((i) => i.icd10Code === 'A00.0')!.supersedesId).toBe(oldRow.id);
+      expect(items.find((i) => i.icd10Code === 'A00.1')!.supersedesId).toBeNull();
+
+      const auditRow = await privileged.auditLog.findFirstOrThrow({ where: { tenantId: fixture.tenantA.id, entityId: encounterId, action: 'diagnosis.amended' } });
+      expect(auditRow.beforeJson).toEqual([{ icd10Code: 'A00.0', type: 'PRIMARY', note: null }]);
+    });
+
+    it('"Đính chính ghi chú khám" — chỉ section thực sự đổi mới tạo bản mới, section không đổi giữ nguyên', async () => {
+      const encounterId = await completedEncounter(16);
+      const before = await privileged.clinicalNote.findMany({ where: { tenantId: fixture.tenantA.id, encounterId } });
+      const reasonRow = before.find((r) => r.section === 'REASON_FOR_VISIT')!;
+      const planRow = before.find((r) => r.section === 'PLAN')!;
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/encounters/${encounterId}/clinical-note/amend`)
+        .set(authed(doctorAToken))
+        .send({
+          amendmentReason: 'Sửa lại lý do khám cho chính xác hơn',
+          sections: [{ section: 'REASON_FOR_VISIT', content: 'Đau đầu kèm chóng mặt', version: reasonRow.version }],
+        });
+      expect(res.status).toBe(200);
+      expect(res.body.data.reasonForVisit.content).toBe('Đau đầu kèm chóng mặt');
+      expect(res.body.data.reasonForVisit.supersedesId).toBe(reasonRow.id);
+      // PLAN không nằm trong `sections` gửi lên → vẫn đúng dòng CŨ (không tạo bản mới), version giữ nguyên.
+      expect(res.body.data.plan.version).toBe(planRow.version);
+      expect(res.body.data.plan.supersedesId).toBeNull();
+
+      const versionMismatch = await request(app.getHttpServer())
+        .post(`/api/v1/encounters/${encounterId}/clinical-note/amend`)
+        .set(authed(doctorAToken))
+        .send({ amendmentReason: 'Thử version cũ', sections: [{ section: 'REASON_FOR_VISIT', content: 'z', version: reasonRow.version }] });
+      expect(versionMismatch.status).toBe(409);
+      expect(versionMismatch.body.error.code).toBe('CONCURRENT_MODIFICATION');
+    });
+
+    it('bác sĩ KHÁC (không phải người khám ca đó, scope personal) đính chính → 404', async () => {
+      const encounterId = await completedEncounter(17);
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/encounters/${encounterId}/diagnoses/amend`)
         .set(authed(doctorBToken))
-        .send({ diagnoses: [{ icd10Code: 'A00.0', type: 'PRIMARY' as const }] });
+        .send({ amendmentReason: 'thử', diagnoses: [{ icd10Code: 'A00.0', type: 'PRIMARY' as const }] });
 
       expect(res.status).toBe(404);
     });
 
-    it('clinic_admin (không có quyền clinical_note/diagnosis nào) → 403 breakGlassAvailable; sau khi break-glass thành công → sửa được, ghi thêm audit break_glass.access', async () => {
-      const encounterId = await completedEncounter(14);
+    it('tenant B đính chính encounter tenant A → 404', async () => {
+      const encounterId = await completedEncounter(18);
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/encounters/${encounterId}/diagnoses/amend`)
+        .set(authed(tenantBDoctorToken))
+        .send({ amendmentReason: 'thử', diagnoses: [{ icd10Code: 'A00.0', type: 'PRIMARY' as const }] });
+
+      expect(res.status).toBe(404);
+    });
+
+    it('đính chính khi CHƯA hoàn tất (chưa ký) → 404', async () => {
+      const encounterId = await startedEncounter(19);
+      await request(app.getHttpServer())
+        .put(`/api/v1/encounters/${encounterId}/diagnoses`)
+        .set(authed(doctorAToken))
+        .send({ diagnoses: [{ icd10Code: 'A00.0', type: 'PRIMARY' as const }] });
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/encounters/${encounterId}/diagnoses/amend`)
+        .set(authed(doctorAToken))
+        .send({ amendmentReason: 'thử', diagnoses: [{ icd10Code: 'A00.0', type: 'PRIMARY' as const }] });
+
+      expect(res.status).toBe(404);
+    });
+
+    it('clinic_admin (không có quyền diagnosis.sign) đính chính → 403 breakGlassAvailable; sau khi break-glass thành công → đính chính được', async () => {
+      const encounterId = await completedEncounter(20);
 
       const blocked = await request(app.getHttpServer())
-        .put(`/api/v1/encounters/${encounterId}/diagnoses`)
+        .post(`/api/v1/encounters/${encounterId}/diagnoses/amend`)
         .set(authed(clinicAdminToken))
-        .send({ diagnoses: [{ icd10Code: 'A00.0', type: 'PRIMARY' as const }] });
+        .send({ amendmentReason: 'Sửa nhầm mã bệnh lúc khám, chủ dự án yêu cầu vá lại', diagnoses: [{ icd10Code: 'A00.0', type: 'PRIMARY' as const }] });
       expect(blocked.status).toBe(403);
       expect(blocked.body.error.details?.breakGlassAvailable).toBe(true);
 
@@ -1071,9 +1151,10 @@ describe('HTTP e2e — /api/v1/encounters', () => {
       expect(breakGlassRes.status).toBe(200);
 
       const res = await request(app.getHttpServer())
-        .put(`/api/v1/encounters/${encounterId}/diagnoses`)
+        .post(`/api/v1/encounters/${encounterId}/diagnoses/amend`)
         .set(authed(clinicAdminToken))
         .send({
+          amendmentReason: 'Sửa nhầm mã bệnh lúc khám, chủ dự án yêu cầu vá lại',
           diagnoses: [
             { icd10Code: 'A00.0', type: 'PRIMARY' as const },
             { icd10Code: 'A00.1', type: 'SECONDARY' as const },
@@ -1088,7 +1169,7 @@ describe('HTTP e2e — /api/v1/encounters', () => {
     });
 
     it('lượt khám CHƯA hoàn tất và cũng không đang khám (CHECKED_IN) → vẫn 409 ENCOUNTER_NOT_IN_CONSULTATION (không đổi hành vi cũ)', async () => {
-      const encounterId = await checkInFreshEncounter(15);
+      const encounterId = await checkInFreshEncounter(21);
 
       const res = await request(app.getHttpServer())
         .put(`/api/v1/encounters/${encounterId}/diagnoses`)

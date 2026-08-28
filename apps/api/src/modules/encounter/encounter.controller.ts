@@ -1,6 +1,8 @@
 import { Body, Controller, Get, HttpCode, Param, Post, Put, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import {
+  amendClinicalNoteRequestSchema,
+  amendDiagnosesRequestSchema,
   amendPrescriptionRequestSchema,
   cancelEncounterRequestSchema,
   completeConsultationRequestSchema,
@@ -75,7 +77,27 @@ export class EncounterController {
     return this.encounterService.saveClinicalNote(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 
-  /** "Hoàn tất khám" — IN_CONSULTATION → COMPLETED, chỉ yêu cầu đúng một chẩn đoán chính. */
+  /** "Đính chính chẩn đoán" (Sprint 5, S5-02/03) — chỉ khi đã ký (`status=COMPLETED`), bắt buộc lý do. */
+  @Post(':id/diagnoses/amend')
+  @RequirePermission('diagnosis', 'sign', { entityIdParam: 'id' })
+  @HttpCode(200)
+  async amendDiagnoses(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
+    const dto = amendDiagnosesRequestSchema.parse(body);
+    const { userId, tenantId } = req.user!;
+    return this.encounterService.amendDiagnoses(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+  }
+
+  /** "Đính chính ghi chú khám" (Sprint 5, S5-02/03) — chỉ khi đã ký, chỉ sửa đúng section đổi nội dung. */
+  @Post(':id/clinical-note/amend')
+  @RequirePermission('clinical_note', 'sign', { entityIdParam: 'id' })
+  @HttpCode(200)
+  async amendClinicalNote(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
+    const dto = amendClinicalNoteRequestSchema.parse(body);
+    const { userId, tenantId } = req.user!;
+    return this.encounterService.amendClinicalNote(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+  }
+
+  /** "Hoàn tất khám" — IN_CONSULTATION → COMPLETED, chỉ yêu cầu đúng một chẩn đoán chính. Ký hồ sơ khám ngay trong cùng transaction (Sprint 5, S5-02/03). */
   @Post(':id/complete')
   @RequirePermission('encounter', 'update', { entityIdParam: 'id' })
   @HttpCode(200)

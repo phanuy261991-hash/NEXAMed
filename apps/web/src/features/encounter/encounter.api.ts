@@ -1,4 +1,6 @@
 import type {
+  AmendClinicalNoteRequest,
+  AmendDiagnosesRequest,
   AmendPrescriptionRequest,
   ClinicalNoteResponse,
   CompleteConsultationRequest,
@@ -30,6 +32,20 @@ export async function saveDiagnoses(id: string, body: SaveDiagnosesRequest): Pro
 export async function saveClinicalNote(id: string, body: SaveClinicalNoteRequest): Promise<ClinicalNoteResponse> {
   return unwrap(
     await getApiClient().PUT('/api/v1/encounters/{id}/clinical-note', { params: { path: { id } }, body }),
+  ) as ClinicalNoteResponse;
+}
+
+/** "Đính chính chẩn đoán" (Sprint 5, S5-02/03) — chỉ khi đã ký (`status=COMPLETED`), bắt buộc lý do. */
+export async function amendDiagnoses(id: string, body: AmendDiagnosesRequest): Promise<SaveDiagnosesResponse> {
+  return unwrap(
+    await getApiClient().POST('/api/v1/encounters/{id}/diagnoses/amend', { params: { path: { id } }, body }),
+  ) as SaveDiagnosesResponse;
+}
+
+/** "Đính chính ghi chú khám" (Sprint 5, S5-02/03) — chỉ sửa đúng section đổi nội dung. */
+export async function amendClinicalNote(id: string, body: AmendClinicalNoteRequest): Promise<ClinicalNoteResponse> {
+  return unwrap(
+    await getApiClient().POST('/api/v1/encounters/{id}/clinical-note/amend', { params: { path: { id } }, body }),
   ) as ClinicalNoteResponse;
 }
 

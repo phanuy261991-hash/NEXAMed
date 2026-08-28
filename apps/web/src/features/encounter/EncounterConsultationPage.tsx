@@ -14,7 +14,7 @@ import {
   Warning,
   X,
 } from '@phosphor-icons/react';
-import type { ConsultationDetailResponse, DiagnosisType, EncounterHistoryItem, PatientAllergenItem, SaveClinicalNoteRequest } from '@nexamed/shared';
+import type { ClinicalNoteSection, ConsultationDetailResponse, DiagnosisType, EncounterHistoryItem, PatientAllergenItem, SaveClinicalNoteRequest } from '@nexamed/shared';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { useAutoCollapseSidebar } from '../../shared/layout/sidebar.context';
 import { ApiError } from '../../shared/api/client';
@@ -37,6 +37,8 @@ import { PrescriptionPanel } from './PrescriptionPanel';
 import { VitalSignsDialog } from './VitalSignsDialog';
 import { saveClinicalNote as saveClinicalNoteRaw } from './encounter.api';
 import {
+  useAmendClinicalNoteMutation,
+  useAmendDiagnosesMutation,
   useCompleteConsultationMutation,
   useConsultationDetailQuery,
   useSaveClinicalNoteMutation,
@@ -45,6 +47,23 @@ import {
 
 const GENDER_LABEL: Record<string, string> = { male: 'Nam', female: 'Nữ', other: 'Khác' };
 const DIAGNOSIS_TYPE_LABEL: Record<DiagnosisType, string> = { PRIMARY: 'Bệnh chính', SECONDARY: 'Bệnh kèm theo' };
+/** Ký hồ sơ khám (Sprint 5, S5-02/03) — ghép field form (`ClinicalKey`) sang mã section thật gửi lên `.../clinical-note/amend`. */
+const CLINICAL_SECTION_CODE: Record<ClinicalKey, ClinicalNoteSection> = {
+  reasonForVisit: 'REASON_FOR_VISIT',
+  illnessProgress: 'ILLNESS_PROGRESS',
+  preliminaryDiagnosis: 'PRELIMINARY_DIAGNOSIS',
+  generalExam: 'GENERAL_EXAM',
+  regionalExam: 'REGIONAL_EXAM',
+  plan: 'PLAN',
+};
+const CLINICAL_SECTION_LABEL: Record<ClinicalKey, string> = {
+  reasonForVisit: 'Lý do khám',
+  illnessProgress: 'Quá trình bệnh lý',
+  preliminaryDiagnosis: 'Chẩn đoán',
+  generalExam: 'Kết quả khám toàn thân',
+  regionalExam: 'Kết quả khám bộ phận',
+  plan: 'Kế hoạch',
+};
 
 type ClinicalKey = keyof SaveClinicalNoteRequest;
 type ClinicalDraft = Record<ClinicalKey, string>;
@@ -62,6 +81,8 @@ interface DiagnosisDraft {
   icd10Name: string;
   type: DiagnosisType;
   note?: string;
+  /** Ký hồ sơ khám (Sprint 5, S5-02/03) — có giá trị = dòng này vừa được đính chính, hiện badge. */
+  amendmentReason?: string | null;
 }
 
 function formatHistoryDate(iso: string): string {
@@ -148,6 +169,18 @@ export function EncounterConsultationPage() {
   /** "Trả về hàng chờ" ngay tại màn khám — trước đây phải quay ra "Hàng đợi khám" mới trả được,
    * theo yêu cầu chủ dự án (lỗ hổng thao tác thật phát hiện lúc dùng thử). */
   const [releaseDialogOpen, setReleaseDialogOpen] = useState(false);
+  /**
+   * "Đính chính" (Sprint 5, S5-02/03) — hồ sơ đã ký (`isCompleted`) không sửa tại chỗ được nữa, chỉ
+   * qua 2 dialog này (bắt buộc lý do). Chẩn đoán: list-editor đầy đủ (đúng khuôn `PrescriptionPanel`
+   * "Sửa đơn"). Ghi chú khám: 1 dialog gộp cả 6 mục — chỉ mục THỰC SỰ đổi nội dung mới gửi lên
+   * (`buildClinicalNoteAmendSections`), tránh tạo lịch sử đính chính vô ích cho mục không đổi.
+   */
+  const [diagnosisAmendOpen, setDiagnosisAmendOpen] = useState(false);
+  const [diagnosisAmendItems, setDiagnosisAmendItems] = useState<DiagnosisDraft[]>([]);
+  const [diagnosisAmendReason, setDiagnosisAmendReason] = useState('');
+  const [clinicalAmendOpen, setClinicalAmendOpen] = useState(false);
+  const [clinicalAmendDraft, setClinicalAmendDraft] = useState<ClinicalDraft>(EMPTY_CLINICAL_DRAFT);
+  const [clinicalAmendReason, setClinicalAmendReason] = useState('');
 
   // Cho phép bấm Enter để xác nhận popup "Hoàn tất khám thành công" (yêu cầu chủ dự án) — nghe
   // phím ở `window` thay vì chỉ `autoFocus` nút, vì Enter cần hoạt động dù focus đang ở đâu (ví dụ
@@ -168,12 +201,20 @@ export function EncounterConsultationPage() {
   const receptionTypeCatalogQuery = useReferenceCatalogQuery('RECEPTION_TYPE');
   const saveDiagnosesMutation = useSaveDiagnosesMutation(encounterId);
   const saveClinicalNoteMutation = useSaveClinicalNoteMutation(encounterId);
+  const amendDiagnosesMutation = useAmendDiagnosesMutation(encounterId);
+  const amendClinicalNoteMutation = useAmendClinicalNoteMutation(encounterId);
   const completeMutation = useCompleteConsultationMutation(encounterId);
   const updatePatientMutation = useUpdatePatientMutation(query.data?.patient.id ?? '');
 
   const isCompleted = query.data?.encounter.status === 'COMPLETED';
-  /** Các ô nhập/nút thao tác được phép sửa ngay bây giờ — đang khám (chưa hoàn tất) HOẶC đã bấm "Chỉnh sửa thông tin" trên lượt khám đã hoàn tất. */
+  /** Kê đơn (Sprint 4) vẫn giữ nguyên "mở khoá sửa tại chỗ" sau hoàn tất — module riêng, chưa ký tự động. */
   const canEditNow = !isCompleted || editingCompleted;
+  /**
+   * Chẩn đoán/ghi chú khám (Sprint 5, S5-02/03) — "Hoàn tất khám" ký NGAY cả hai, nên KHÔNG còn sửa
+   * tại chỗ được sau khi hoàn tất (khác `canEditNow` ở trên, dành cho Kê đơn). Sau khi hoàn tất, sửa
+   * phải qua "Đính chính" (2 dialog riêng), không mở khoá input trực tiếp nữa.
+   */
+  const canEditDraft = !isCompleted;
 
   // Luôn giữ bản mới nhất trong ref — dùng cho autosave debounce/flush lúc rời trang (effect cleanup
   // đóng gói giá trị lúc effect được TẠO, không phải lúc effect CHẠY, nên phải đọc qua ref để luôn
@@ -217,7 +258,7 @@ export function EncounterConsultationPage() {
       regionalExam: note.regionalExam?.version,
       plan: note.plan?.version,
     });
-    setDiagnoses(data.diagnoses.map((d) => ({ icd10Code: d.icd10Code, icd10Name: d.icd10Name, type: d.type, note: d.note ?? undefined })));
+    setDiagnoses(data.diagnoses.map((d) => ({ icd10Code: d.icd10Code, icd10Name: d.icd10Name, type: d.type, note: d.note ?? undefined, amendmentReason: d.amendmentReason })));
     dirtyRef.current = false;
   }
 
@@ -351,7 +392,7 @@ export function EncounterConsultationPage() {
         diagnoses: next.map((d) => ({ icd10Code: d.icd10Code, type: d.type, note: d.note })),
       });
       setDiagnoses(
-        result.items.map((d) => ({ icd10Code: d.icd10Code, icd10Name: d.icd10Name, type: d.type, note: d.note ?? undefined })),
+        result.items.map((d) => ({ icd10Code: d.icd10Code, icd10Name: d.icd10Name, type: d.type, note: d.note ?? undefined, amendmentReason: d.amendmentReason })),
       );
     } catch (err) {
       handleSaveError(err, 'diagnosis', () => void persistDiagnoses(next), 'Không lưu được chẩn đoán, vui lòng thử lại.');
@@ -374,6 +415,85 @@ export function EncounterConsultationPage() {
       remaining[0] = { ...remaining[0]!, type: 'PRIMARY' };
     }
     void persistDiagnoses(remaining);
+  }
+
+  /** "Đính chính chẩn đoán" (Sprint 5, S5-02/03) — chỉ mở được sau khi đã ký (`isCompleted`). */
+  function openDiagnosisAmend() {
+    setDiagnosisAmendItems(diagnoses);
+    setDiagnosisAmendReason('');
+    setDiagnosisAmendOpen(true);
+  }
+
+  function handleAddAmendDiagnosis(item: { icd10Code: string; icd10Name: string }) {
+    const type: DiagnosisType = diagnosisAmendItems.length === 0 ? 'PRIMARY' : 'SECONDARY';
+    setDiagnosisAmendItems((prev) => [...prev, { icd10Code: item.icd10Code, icd10Name: item.icd10Name, type }]);
+  }
+
+  function handleSetAmendPrimary(code: string) {
+    setDiagnosisAmendItems((prev) => prev.map((d) => ({ ...d, type: d.icd10Code === code ? 'PRIMARY' : 'SECONDARY' })));
+  }
+
+  function handleRemoveAmendDiagnosis(code: string) {
+    setDiagnosisAmendItems((prev) => {
+      const removed = prev.find((d) => d.icd10Code === code);
+      const remaining = prev.filter((d) => d.icd10Code !== code);
+      if (removed?.type === 'PRIMARY' && remaining.length > 0 && !remaining.some((d) => d.type === 'PRIMARY')) {
+        remaining[0] = { ...remaining[0]!, type: 'PRIMARY' };
+      }
+      return remaining;
+    });
+  }
+
+  async function handleDiagnosisAmendSubmit() {
+    if (diagnosisAmendReason.trim() === '' || diagnosisAmendItems.length === 0) return;
+    try {
+      const result = await amendDiagnosesMutation.mutateAsync({
+        diagnoses: diagnosisAmendItems.map((d) => ({ icd10Code: d.icd10Code, type: d.type, note: d.note })),
+        amendmentReason: diagnosisAmendReason.trim(),
+      });
+      // Đồng bộ NGAY state cục bộ từ bản đính chính vừa lưu — cùng khuôn `persistDiagnoses()`, vì
+      // `diagnoses` không tự đồng bộ lại từ `query.data` sau lần nạp đầu (xem `loadedForId`).
+      setDiagnoses(result.items.map((d) => ({ icd10Code: d.icd10Code, icd10Name: d.icd10Name, type: d.type, note: d.note ?? undefined, amendmentReason: d.amendmentReason })));
+      setDiagnosisAmendOpen(false);
+    } catch (err) {
+      handleSaveError(err, 'diagnosis', () => void handleDiagnosisAmendSubmit(), 'Không lưu được bản đính chính, vui lòng thử lại.');
+    }
+  }
+
+  /** "Đính chính ghi chú khám" (Sprint 5, S5-02/03) — chỉ gửi lên MỤC THỰC SỰ đổi nội dung so với bản đã ký, tránh tạo lịch sử vô ích cho mục không đổi. */
+  function openClinicalAmend() {
+    setClinicalAmendDraft(clinical);
+    setClinicalAmendReason('');
+    setClinicalAmendOpen(true);
+  }
+
+  async function handleClinicalAmendSubmit() {
+    if (clinicalAmendReason.trim() === '') return;
+    const changedKeys = (Object.keys(clinicalAmendDraft) as ClinicalKey[]).filter((key) => clinicalAmendDraft[key] !== clinical[key]);
+    if (changedKeys.length === 0) return;
+    try {
+      const result = await amendClinicalNoteMutation.mutateAsync({
+        amendmentReason: clinicalAmendReason.trim(),
+        sections: changedKeys.map((key) => ({
+          section: CLINICAL_SECTION_CODE[key],
+          content: clinicalAmendDraft[key],
+          version: clinicalVersions[key]!,
+        })),
+      });
+      // Đồng bộ NGAY state cục bộ từ bản đính chính vừa lưu — cùng lý do `handleDiagnosisAmendSubmit()`.
+      setClinical(clinicalAmendDraft);
+      setClinicalVersions({
+        reasonForVisit: result.reasonForVisit?.version,
+        illnessProgress: result.illnessProgress?.version,
+        preliminaryDiagnosis: result.preliminaryDiagnosis?.version,
+        generalExam: result.generalExam?.version,
+        regionalExam: result.regionalExam?.version,
+        plan: result.plan?.version,
+      });
+      setClinicalAmendOpen(false);
+    } catch (err) {
+      handleSaveError(err, 'clinical_note', () => void handleClinicalAmendSubmit(), 'Không lưu được bản đính chính, vui lòng thử lại.');
+    }
   }
 
   /** "Lưu nháp" (đang khám) HOẶC "Lưu thay đổi" (đang sửa lại sau khi đã "Hoàn tất khám", `editingCompleted=true`) — cùng 1 hàm, tự thoát chế độ sửa sau khi lưu xong nếu đang ở nhánh sau. */
@@ -756,7 +876,22 @@ export function EncounterConsultationPage() {
                 {/* "Tiền sử" (dị ứng/bệnh lý nền/thói quen/gia đình) đã chuyển sang panel trái
                     (3 khung riêng, có nút "+ Thêm" mở `PatientHistoryDialog`) — không còn hiện ở
                     đây, tránh trùng lặp 2 nơi cùng đọc chung một dữ liệu (theo yêu cầu chủ dự án). */}
-                <h3 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-700">Thăm khám</h3>
+                <div className="mb-2 flex items-center justify-between">
+                  <h3 className="text-[11px] font-bold uppercase tracking-wide text-slate-700">Thăm khám</h3>
+                  {isCompleted && editingCompleted && (
+                    <button type="button" onClick={openClinicalAmend} className="flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700">
+                      <PencilSimple size={13} weight="bold" aria-hidden="true" />
+                      Đính chính ghi chú khám
+                    </button>
+                  )}
+                </div>
+                {isCompleted && query.data!.clinicalNote.reasonForVisit?.signedAt && (
+                  <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
+                    <CheckCircle size={13} weight="fill" aria-hidden="true" />
+                    Đã ký lúc {new Date(query.data!.clinicalNote.reasonForVisit.signedAt).toLocaleString('vi-VN')}
+                    {query.data!.clinicalNote.reasonForVisit.amendmentReason && ' (bản đính chính)'}
+                  </p>
+                )}
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                   <Textarea
                     id="clinical-reason"
@@ -766,7 +901,7 @@ export function EncounterConsultationPage() {
                     rows={2}
                     value={clinical.reasonForVisit}
                     onChange={(e) => setField('reasonForVisit', e.target.value)}
-                    readOnly={!canEditNow}
+                    readOnly={!canEditDraft}
                   />
                   <Textarea
                     id="clinical-illness-progress"
@@ -775,7 +910,7 @@ export function EncounterConsultationPage() {
                     rows={2}
                     value={clinical.illnessProgress}
                     onChange={(e) => setField('illnessProgress', e.target.value)}
-                    readOnly={!canEditNow}
+                    readOnly={!canEditDraft}
                   />
                   <Textarea
                     id="clinical-preliminary-diagnosis"
@@ -785,7 +920,7 @@ export function EncounterConsultationPage() {
                     rows={2}
                     value={clinical.preliminaryDiagnosis}
                     onChange={(e) => setField('preliminaryDiagnosis', e.target.value)}
-                    readOnly={!canEditNow}
+                    readOnly={!canEditDraft}
                   />
                   <Textarea
                     id="clinical-general-exam"
@@ -794,7 +929,7 @@ export function EncounterConsultationPage() {
                     rows={2}
                     value={clinical.generalExam}
                     onChange={(e) => setField('generalExam', e.target.value)}
-                    readOnly={!canEditNow}
+                    readOnly={!canEditDraft}
                   />
                   <Textarea
                     id="clinical-regional-exam"
@@ -803,15 +938,23 @@ export function EncounterConsultationPage() {
                     rows={2}
                     value={clinical.regionalExam}
                     onChange={(e) => setField('regionalExam', e.target.value)}
-                    readOnly={!canEditNow}
+                    readOnly={!canEditDraft}
                   />
                 </div>
 
-                <h3 className="mb-2 mt-4 border-t border-dashed border-slate-200 pt-3 text-[11px] font-bold uppercase tracking-wide text-slate-700">
-                  Chẩn đoán bệnh (ICD-10) <span className="text-rose-500">*</span>
-                </h3>
-                {/* "Xem lại" một lượt khám đã hoàn tất — ẩn ô thêm chẩn đoán tới khi bấm "Chỉnh sửa thông tin". */}
-                {canEditNow && <Icd10SearchPicker excludeCodes={diagnoses.map((d) => d.icd10Code)} onSelect={handleAddDiagnosis} />}
+                <div className="mb-2 mt-4 flex items-center justify-between border-t border-dashed border-slate-200 pt-3">
+                  <h3 className="text-[11px] font-bold uppercase tracking-wide text-slate-700">
+                    Chẩn đoán bệnh (ICD-10) <span className="text-rose-500">*</span>
+                  </h3>
+                  {isCompleted && editingCompleted && (
+                    <button type="button" onClick={openDiagnosisAmend} className="flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700">
+                      <PencilSimple size={13} weight="bold" aria-hidden="true" />
+                      Đính chính chẩn đoán
+                    </button>
+                  )}
+                </div>
+                {/* "Xem lại" một lượt khám đã hoàn tất (đã ký, Sprint 5) — sửa phải qua "Đính chính" ở trên, không mở lại ô thêm chẩn đoán trực tiếp. */}
+                {canEditDraft && <Icd10SearchPicker excludeCodes={diagnoses.map((d) => d.icd10Code)} onSelect={handleAddDiagnosis} />}
 
                 <div className="mt-2.5 flex flex-col gap-1.5">
                   {diagnoses.length === 0 && <p className="text-xs text-slate-400">Chưa chọn chẩn đoán nào.</p>}
@@ -831,8 +974,9 @@ export function EncounterConsultationPage() {
                           {DIAGNOSIS_TYPE_LABEL[d.type]}
                         </span>
                         <strong>{d.icd10Code}</strong> — {d.icd10Name}
+                        {d.amendmentReason && <span className="ml-1.5 text-[11px] font-medium text-blue-600">(đã đính chính)</span>}
                       </div>
-                      {canEditNow && (
+                      {canEditDraft && (
                         <div className="flex items-center gap-2">
                           {d.type !== 'PRIMARY' && (
                             <button
@@ -939,20 +1083,13 @@ export function EncounterConsultationPage() {
               Chỉnh sửa thông tin
             </Button>
           )}
-          {/* Đang sửa lại sau khi đã hoàn tất — Huỷ bỏ mọi thay đổi chưa lưu, quay về chỉ xem. */}
+          {/* Đang hiện các nút "Đính chính" (Sprint 5) — chẩn đoán/ghi chú khám đã ký không còn sửa
+              tại chỗ được (khác Kê đơn, vẫn "Lưu thay đổi" trực tiếp qua `PrescriptionPanel`), nên
+              chỉ còn "Đóng" để ẩn các nút Đính chính đi, không có gì phải Huỷ/Lưu ở đây nữa. */}
           {isCompleted && editingCompleted && (
-            <>
-              <Button type="button" variant="secondary" onClick={() => void handleCancelEdit()}>
-                Huỷ
-              </Button>
-              <Button
-                type="button"
-                loading={saveClinicalNoteMutation.isPending || updatePatientMutation.isPending}
-                onClick={() => void handleSaveDraft()}
-              >
-                Lưu thay đổi
-              </Button>
-            </>
+            <Button type="button" variant="secondary" onClick={() => void handleCancelEdit()}>
+              Đóng
+            </Button>
           )}
         </div>
       </footer>
@@ -1007,6 +1144,124 @@ export function EncounterConsultationPage() {
           onReleased={() => navigate('/reception/doctor-queue')}
           onClose={() => setReleaseDialogOpen(false)}
         />
+      )}
+
+      {/* "Đính chính chẩn đoán" (Sprint 5, S5-02/03) — cùng UX dialog "Sửa đơn" của `PrescriptionPanel.tsx`. */}
+      {diagnosisAmendOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
+          <div className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-lg bg-white p-5 shadow-xl">
+            <h2 className="text-[15px] font-semibold text-slate-900">Đính chính chẩn đoán</h2>
+            <p className="mt-1 text-xs text-slate-500">Tạo bản chẩn đoán mới thay thế bản đã ký — bản cũ vẫn lưu lại trong lịch sử, không mất.</p>
+
+            <div className="scroll-hover mt-3 flex-1 space-y-1.5 overflow-y-auto">
+              {diagnosisAmendItems.length === 0 && <p className="text-xs text-slate-400">Chưa chọn chẩn đoán nào.</p>}
+              {diagnosisAmendItems.map((d) => (
+                <div
+                  key={d.icd10Code}
+                  className={`flex items-center justify-between rounded-md border px-3 py-2 ${
+                    d.type === 'PRIMARY' ? 'border-l-4 border-l-blue-600 border-y-slate-200 border-r-slate-200 bg-blue-50' : 'border-slate-200 bg-slate-50'
+                  }`}
+                >
+                  <div className="text-sm text-slate-900">
+                    <span className={`mr-2 rounded-full px-2 py-0.5 text-[11px] font-semibold ${d.type === 'PRIMARY' ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-600'}`}>
+                      {DIAGNOSIS_TYPE_LABEL[d.type]}
+                    </span>
+                    <strong>{d.icd10Code}</strong> — {d.icd10Name}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {d.type !== 'PRIMARY' && (
+                      <button type="button" onClick={() => handleSetAmendPrimary(d.icd10Code)} className="text-xs font-semibold text-blue-600 hover:text-blue-700">
+                        Đặt làm bệnh chính
+                      </button>
+                    )}
+                    <button type="button" onClick={() => handleRemoveAmendDiagnosis(d.icd10Code)} className="text-slate-400 hover:text-rose-600" aria-label={`Bỏ chẩn đoán ${d.icd10Code}`}>
+                      <X size={15} weight="bold" aria-hidden="true" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              <Icd10SearchPicker excludeCodes={diagnosisAmendItems.map((d) => d.icd10Code)} onSelect={handleAddAmendDiagnosis} />
+            </div>
+
+            <div className="mt-3 flex flex-col gap-1.5">
+              <label htmlFor="diagnosis-amend-reason" className="text-sm font-semibold text-slate-800">
+                Lý do đính chính
+              </label>
+              <textarea
+                id="diagnosis-amend-reason"
+                rows={2}
+                value={diagnosisAmendReason}
+                onChange={(e) => setDiagnosisAmendReason(e.target.value)}
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              />
+            </div>
+
+            <div className="mt-4 flex justify-end gap-2">
+              <Button type="button" variant="secondary" onClick={() => setDiagnosisAmendOpen(false)}>
+                Huỷ
+              </Button>
+              <Button
+                type="button"
+                onClick={() => void handleDiagnosisAmendSubmit()}
+                loading={amendDiagnosesMutation.isPending}
+                disabled={diagnosisAmendReason.trim() === '' || diagnosisAmendItems.length === 0}
+              >
+                Lưu bản đính chính
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* "Đính chính ghi chú khám" (Sprint 5, S5-02/03) — 1 dialog gộp cả 6 mục, chỉ mục THỰC SỰ đổi nội dung mới gửi lên (`handleClinicalAmendSubmit`). */}
+      {clinicalAmendOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
+          <div className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-lg bg-white p-5 shadow-xl">
+            <h2 className="text-[15px] font-semibold text-slate-900">Đính chính ghi chú khám</h2>
+            <p className="mt-1 text-xs text-slate-500">Chỉ mục nào sửa nội dung mới tạo bản đính chính — mục không đổi giữ nguyên bản đã ký.</p>
+
+            <div className="scroll-hover mt-3 flex-1 space-y-2 overflow-y-auto">
+              {(Object.keys(CLINICAL_SECTION_CODE) as ClinicalKey[]).map((key) => (
+                <Textarea
+                  key={key}
+                  id={`clinical-amend-${key}`}
+                  label={CLINICAL_SECTION_LABEL[key]}
+                  dense
+                  rows={2}
+                  value={clinicalAmendDraft[key]}
+                  onChange={(e) => setClinicalAmendDraft((prev) => ({ ...prev, [key]: e.target.value }))}
+                />
+              ))}
+            </div>
+
+            <div className="mt-3 flex flex-col gap-1.5">
+              <label htmlFor="clinical-amend-reason" className="text-sm font-semibold text-slate-800">
+                Lý do đính chính
+              </label>
+              <textarea
+                id="clinical-amend-reason"
+                rows={2}
+                value={clinicalAmendReason}
+                onChange={(e) => setClinicalAmendReason(e.target.value)}
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              />
+            </div>
+
+            <div className="mt-4 flex justify-end gap-2">
+              <Button type="button" variant="secondary" onClick={() => setClinicalAmendOpen(false)}>
+                Huỷ
+              </Button>
+              <Button
+                type="button"
+                onClick={() => void handleClinicalAmendSubmit()}
+                loading={amendClinicalNoteMutation.isPending}
+                disabled={clinicalAmendReason.trim() === '' || (Object.keys(CLINICAL_SECTION_CODE) as ClinicalKey[]).every((key) => clinicalAmendDraft[key] === clinical[key])}
+              >
+                Lưu bản đính chính
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -58,6 +58,9 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   // nghiệp vụ, không phải xung đột trạng thái đồng thời).
   PRESCRIPTION_ALREADY_SIGNED: HttpStatus.CONFLICT,
   DRUG_DUPLICATE_CODE: HttpStatus.CONFLICT,
+  // Ký hồ sơ khám (Sprint 5, S5-02/03) — sửa diagnosis/clinical_note đã ký phải qua đính chính,
+  // cùng nhóm PRESCRIPTION_ALREADY_SIGNED ở trên.
+  CLINICAL_RECORD_ALREADY_SIGNED: HttpStatus.CONFLICT,
   // Thu ngân cơ bản (Sprint 5/6) — chặn "Nhận ca"/"Bắt đầu khám" khi lượt khám chưa thu tiền và
   // không được phép nợ, cùng nhóm ENCOUNTER_NOT_CHECKED_IN ở trên (xung đột trạng thái, không phải
   // lỗi input). INVOICE_ALREADY_PAID/INVOICE_NOT_FOUND cùng nhóm CONFLICT (thao tác lại trên phiếu

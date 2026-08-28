@@ -91,6 +91,22 @@ export class DiagnosisPrimaryRequiredError extends DomainError {
 }
 
 /**
+ * Sửa `diagnosis`/`clinical_note` khi lượt khám đã "Hoàn tất khám" (`COMPLETED`) — từ Sprint 5
+ * (S5-02/03, ENC-04/05) "Hoàn tất khám" tự động KÝ hồ sơ (`signed_at`/`signed_by`), thay thế hẳn cơ
+ * chế "sửa tại chỗ" cũ (#066) cho trường hợp này. Sửa sau khi ký phải qua đính chính
+ * (`POST .../diagnoses/amend`, `POST .../clinical-note/amend`), bắt buộc lý do — xem
+ * .claude/docs/clinical-workflow.md mục "Amendment hồ sơ". 409 — xung đột với trạng thái đã khoá,
+ * không phải lỗi input.
+ */
+export class ClinicalRecordAlreadySignedError extends DomainError {
+  readonly code = 'CLINICAL_RECORD_ALREADY_SIGNED';
+
+  constructor() {
+    super('Hồ sơ khám đã ký (lượt khám đã hoàn tất) — dùng chức năng "Đính chính" để sửa, không sửa trực tiếp.');
+  }
+}
+
+/**
  * Thu ngân cơ bản (Sprint 5/6) — "Nhận ca"/"Bắt đầu khám" (`startConsultation()`) bị chặn vì lượt
  * khám còn phiếu thu `UNPAID` và không được phép nợ (tenant tắt "Thanh toán sau", hoặc
  * `allowsDeferredPayment=false`) — ý nghĩa thật của checkbox "Thanh toán sau" đã ghi nhận ở

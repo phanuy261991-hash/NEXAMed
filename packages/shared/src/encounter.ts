@@ -332,9 +332,11 @@ export const receptionListQuerySchema = z.object({
 export type ReceptionListQuery = z.infer<typeof receptionListQuerySchema>;
 
 /**
- * Khám bệnh (S3-05→07) — xem .claude/docs/clinical-workflow.md mục "Khám bệnh". Ký hồ sơ (ENC-04)
- * và luồng đính chính là việc của Sprint 5 — mọi ghi chú/chẩn đoán ở đây đều là bản nháp
- * (`signedAt=null`), chưa có ràng buộc bất biến.
+ * Khám bệnh (S3-05→07) — xem .claude/docs/clinical-workflow.md mục "Khám bệnh". Ký hồ sơ (ENC-04,
+ * Sprint 5 S5-02/03): "Hoàn tất khám" (`completeConsultationRequestSchema`) tự động ký NGAY mọi
+ * `diagnosis`/`clinical_note` đang hiệu lực của lượt khám (1 giao dịch, không thêm nút riêng) — sau
+ * đó bất biến (trigger C8), sửa phải qua `amendDiagnosesRequestSchema`/`amendClinicalNoteRequestSchema`
+ * (đính chính, bắt buộc lý do).
  */
 export const DIAGNOSIS_TYPES = ['PRIMARY', 'SECONDARY'] as const;
 export const diagnosisTypeSchema = z.enum(DIAGNOSIS_TYPES);
@@ -347,9 +349,39 @@ export const diagnosisItemSchema = z.object({
   icd10Name: z.string(),
   type: diagnosisTypeSchema,
   note: z.string().nullable(),
+  /** Ký hồ sơ khám (Sprint 5, S5-02/03) — `null` cho tới khi "Hoàn tất khám". */
+  signedAt: z.string().nullable(),
+  signedBy: z.string().uuid().nullable(),
+  supersedesId: z.string().uuid().nullable(),
+  amendmentReason: z.string().nullable(),
   version: z.number().int(),
 });
 export type DiagnosisItem = z.infer<typeof diagnosisItemSchema>;
+
+/**
+ * "Đính chính chẩn đoán" (`POST /encounters/:id/diagnoses/amend`, Sprint 5, S5-02/03) — CHỈ gọi
+ * được khi `encounter.status=COMPLETED` (tức đã ký). Thay thế TOÀN BỘ danh sách (cùng khuôn
+ * `saveDiagnosesRequestSchema`) — `supersedesId` từng dòng do server tự ghép theo `(icd10Code,
+ * type)` không đổi (xem `pairDiagnosisAmendment`, `packages/core`), không nhận từ client.
+ */
+export const amendDiagnosesRequestSchema = z
+  .object({
+    diagnoses: z
+      .array(
+        z.object({
+          icd10Code: z.string().min(1),
+          type: diagnosisTypeSchema,
+          note: z.string().optional(),
+        }),
+      )
+      .min(1, 'Phải có ít nhất một chẩn đoán.'),
+    amendmentReason: z.string().min(1, 'Phải nhập lý do đính chính.'),
+  })
+  .refine((data) => data.diagnoses.filter((d) => d.type === 'PRIMARY').length === 1, {
+    message: 'Phải có đúng một chẩn đoán chính (PRIMARY).',
+    path: ['diagnoses'],
+  });
+export type AmendDiagnosesRequest = z.infer<typeof amendDiagnosesRequestSchema>;
 
 /**
  * `PUT /encounters/:id/diagnoses` — thay thế TOÀN BỘ danh sách chẩn đoán của lượt khám (đơn giản
@@ -422,7 +454,38 @@ export const saveClinicalNoteRequestSchema = z.object({
 });
 export type SaveClinicalNoteRequest = z.infer<typeof saveClinicalNoteRequestSchema>;
 
-const clinicalNoteSectionValueSchema = z.object({ content: z.string(), version: z.number().int() }).nullable();
+const clinicalNoteSectionValueSchema = z
+  .object({
+    content: z.string(),
+    version: z.number().int(),
+    /** Ký hồ sơ khám (Sprint 5, S5-02/03) — `null` cho tới khi "Hoàn tất khám". */
+    signedAt: z.string().nullable(),
+    signedBy: z.string().uuid().nullable(),
+    supersedesId: z.string().uuid().nullable(),
+    amendmentReason: z.string().nullable(),
+  })
+  .nullable();
+
+/**
+ * "Đính chính ghi chú khám" (`POST /encounters/:id/clinical-note/amend`, Sprint 5, S5-02/03) — CHỈ
+ * gọi được khi `encounter.status=COMPLETED`. Khác `diagnosis` (danh sách không "slot" cố định),
+ * mỗi section là 1 "slot" cố định nên `supersedesId` ghép 1-1 trực tiếp ở tầng service/repository,
+ * không cần thuật toán ghép cặp. `sections` chỉ gồm NHỮNG mục thực sự đổi nội dung (web tự tính
+ * diff trước khi gửi) — mục không đổi giữ nguyên bản đã ký, không tạo thêm lịch sử vô ích.
+ */
+export const amendClinicalNoteRequestSchema = z.object({
+  amendmentReason: z.string().min(1, 'Phải nhập lý do đính chính.'),
+  sections: z
+    .array(
+      z.object({
+        section: clinicalNoteSectionSchema,
+        content: z.string(),
+        version: z.number().int(),
+      }),
+    )
+    .min(1, 'Phải sửa ít nhất một mục.'),
+});
+export type AmendClinicalNoteRequest = z.infer<typeof amendClinicalNoteRequestSchema>;
 
 export const clinicalNoteResponseSchema = z.object({
   reasonForVisit: clinicalNoteSectionValueSchema,

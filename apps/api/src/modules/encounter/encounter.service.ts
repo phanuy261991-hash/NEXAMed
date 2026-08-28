@@ -1,6 +1,7 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
   CLINIC_CONFIG_READER_PORT,
+  ClinicalRecordAlreadySignedError,
   ConcurrentModificationError,
   DiagnosisPrimaryRequiredError,
   DOCTOR_DIRECTORY_PORT,
@@ -22,6 +23,8 @@ import {
 } from '@nexamed/core';
 import { FAMILY_RELATION_LABELS, calculateAgeYears } from '@nexamed/shared';
 import type {
+  AmendClinicalNoteRequest,
+  AmendDiagnosesRequest,
   AmendPrescriptionRequest,
   CancelEncounterRequest,
   ClinicalNoteResponse,
@@ -44,7 +47,7 @@ import type {
   StartConsultationRequest,
   VitalSignResponse,
 } from '@nexamed/shared';
-import type { Prisma, VitalSign } from '@prisma/client';
+import type { ClinicalNote, Prisma, VitalSign } from '@prisma/client';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
 import type { RequestMeta } from '../../common/request-meta';
@@ -373,14 +376,9 @@ export class EncounterService {
    * sai (không có/nhiều hơn 1 PRIMARY) — kiểm lại ở đây là lớp phòng thủ thứ hai, không phải kiểm
    * dư thừa (service không tin tưởng input đã qua Zod là bất biến nghiệp vụ đúng tuyệt đối).
    *
-   * **Sửa sau khi đã "Hoàn tất khám" (`status=COMPLETED`) được phép** — lỗi vận hành thật chủ dự án
-   * báo cáo: trước đây "Xem lại" một lượt khám đã hoàn tất vẫn hiện y hệt giao diện đang khám nhưng
-   * MỌI lần lưu đều bị chặn cứng (`EncounterNotInConsultationError`), không có đường nào sửa sai sót
-   * phát hiện sau đó. Quyết định (xem `docs/DECISIONS.md`): mở khoá sửa TẠI CHỖ (không tạo bản ghi
-   * mới kiểu đính chính — đó là ENC-04/05/Sprint 5, áp dụng cho bản ghi đã `signed_at`; `diagnosis`
-   * v1 chưa có khái niệm ký) + ghi đầy đủ `audit_log` trước/sau bằng action riêng để tra được ai sửa
-   * gì lúc nào. Quyền vẫn y nguyên cơ chế đã có: đúng bác sĩ ca đó (`personal`, ownership check ở
-   * trên) hoặc tài khoản khác qua break-glass (permission.guard.ts, không đổi gì thêm ở đây).
+   * **`status=COMPLETED` (đã ký, Sprint 5 S5-02/03) không còn sửa được qua đây** — thay thế cơ chế
+   * "sửa tại chỗ" cũ (#066, khi `diagnosis` v1 chưa có khái niệm ký): `ClinicalRecordAlreadySignedError`
+   * (409), chỉ dẫn dùng `POST .../diagnoses/amend` (đính chính, bắt buộc lý do).
    */
   async saveDiagnoses(
     tenantId: string,
@@ -395,16 +393,16 @@ export class EncounterService {
       if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId)) {
         throw new NotFoundException();
       }
-      const isPostCompletionEdit = existing.status === 'COMPLETED';
-      if (existing.status !== 'IN_CONSULTATION' && !isPostCompletionEdit) {
+      if (existing.status === 'COMPLETED') {
+        throw new ClinicalRecordAlreadySignedError();
+      }
+      if (existing.status !== 'IN_CONSULTATION') {
         throw new EncounterNotInConsultationError();
       }
       const primaryCount = dto.diagnoses.filter((d) => d.type === 'PRIMARY').length;
       if (primaryCount !== 1) {
         throw new DiagnosisPrimaryRequiredError();
       }
-
-      const beforeRows = isPostCompletionEdit ? await this.diagnosisRepository.listForEncounter(tx, tenantId, id) : null;
 
       await this.diagnosisRepository.replaceForEncounter(
         tx,
@@ -418,11 +416,9 @@ export class EncounterService {
 
       await writeAuditLog(tx, tenantId, {
         actorId,
-        action: isPostCompletionEdit ? 'encounter.diagnosis_amended_after_completion' : 'encounter.diagnosis_saved',
+        action: 'encounter.diagnosis_saved',
         entityType: 'encounter',
         entityId: id,
-        beforeJson: beforeRows ? (beforeRows.map((r) => ({ icd10Code: r.icd10Code, type: r.type, note: r.note })) as Prisma.InputJsonValue) : undefined,
-        afterJson: beforeRows ? (rows.map((r) => ({ icd10Code: r.icd10Code, type: r.type, note: r.note })) as Prisma.InputJsonValue) : undefined,
         ip: meta.ip,
         userAgent: meta.userAgent,
       });
@@ -432,13 +428,61 @@ export class EncounterService {
   }
 
   /**
-   * Lưu cả 8 mục ghi chú lâm sàng trong một request (khớp form 1 lần bấm "Lưu nháp" HOẶC autosave
-   * định kỳ từ web — xem `docs/DECISIONS.md`, đảo ngược ghi chú "không autosave" ban đầu). Bản
-   * nháp — `signedAt` luôn null, không có logic bất biến/đính chính ở vòng này (ENC-04/Sprint 5).
+   * "Đính chính chẩn đoán" (Sprint 5, S5-02/03) — CHỈ gọi được khi `status=COMPLETED` (đã ký, đúng
+   * khuôn `amendPrescription()`: coi "chưa ký" là 404, không phải lỗi domain riêng). Đính chính là
+   * hành động xác nhận trọn vẹn — bản mới ĐÃ KÝ NGAY, không qua lại bước nháp.
+   */
+  async amendDiagnoses(
+    tenantId: string,
+    actorId: string,
+    dataScope: DataScope,
+    id: string,
+    dto: AmendDiagnosesRequest,
+    meta: RequestMeta,
+  ): Promise<SaveDiagnosesResponse> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const existing = await this.encounterRepository.findById(tx, tenantId, id);
+      if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId) || existing.status !== 'COMPLETED') {
+        throw new NotFoundException();
+      }
+
+      const beforeRows = await this.diagnosisRepository.listForEncounter(tx, tenantId, id);
+      const signature = await this.signaturePort.sign(tenantId, actorId, { entityType: 'diagnosis', entityId: id });
+      await this.diagnosisRepository.amendForEncounter(
+        tx,
+        tenantId,
+        id,
+        actorId,
+        dto.diagnoses.map((d) => ({ icd10Code: d.icd10Code, type: d.type, note: d.note ?? null })),
+        signature.signedAt,
+        signature.signedBy,
+        dto.amendmentReason,
+      );
+      const rows = await this.diagnosisRepository.listForEncounter(tx, tenantId, id);
+
+      await writeAuditLog(tx, tenantId, {
+        actorId,
+        action: 'diagnosis.amended',
+        entityType: 'encounter',
+        entityId: id,
+        beforeJson: beforeRows.map((r) => ({ icd10Code: r.icd10Code, type: r.type, note: r.note })) as unknown as Prisma.InputJsonValue,
+        afterJson: { amendmentReason: dto.amendmentReason, diagnoses: dto.diagnoses } as unknown as Prisma.InputJsonValue,
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
+
+      return { items: rows.map((row) => this.toDiagnosisItem(row)) };
+    });
+  }
+
+  /**
+   * Lưu cả 6 mục ghi chú lâm sàng trong một request (khớp form 1 lần bấm "Lưu" HOẶC autosave định
+   * kỳ từ web). Bản nháp — `signedAt` null tới khi "Hoàn tất khám" (ký tự động, xem
+   * `completeConsultation()`).
    *
-   * **Sửa sau khi đã "Hoàn tất khám" được phép** — cùng quyết định + lý do như `saveDiagnoses()` ở
-   * trên (đọc docstring đó trước). Ghi trước/sau đầy đủ nội dung 8 mục vào `audit_log` khi sửa sau
-   * hoàn tất, vì đây chính là mục "phải lưu log lại" chủ dự án yêu cầu.
+   * **`status=COMPLETED` (đã ký, Sprint 5 S5-02/03) không còn sửa được qua đây** — thay thế cơ chế
+   * "sửa tại chỗ" cũ (#066): `ClinicalRecordAlreadySignedError` (409), chỉ dẫn dùng
+   * `POST .../clinical-note/amend` (đính chính, bắt buộc lý do).
    */
   async saveClinicalNote(
     tenantId: string,
@@ -453,12 +497,12 @@ export class EncounterService {
       if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId)) {
         throw new NotFoundException();
       }
-      const isPostCompletionEdit = existing.status === 'COMPLETED';
-      if (existing.status !== 'IN_CONSULTATION' && !isPostCompletionEdit) {
+      if (existing.status === 'COMPLETED') {
+        throw new ClinicalRecordAlreadySignedError();
+      }
+      if (existing.status !== 'IN_CONSULTATION') {
         throw new EncounterNotInConsultationError();
       }
-
-      const beforeRows = isPostCompletionEdit ? await this.clinicalNoteRepository.listForEncounter(tx, tenantId, id) : null;
 
       const sections: { section: ClinicalNoteSection; input: SaveClinicalNoteRequest['reasonForVisit'] }[] = [
         { section: 'REASON_FOR_VISIT', input: dto.reasonForVisit },
@@ -479,11 +523,64 @@ export class EncounterService {
 
       await writeAuditLog(tx, tenantId, {
         actorId,
-        action: isPostCompletionEdit ? 'encounter.clinical_note_amended_after_completion' : 'encounter.clinical_note_saved',
+        action: 'encounter.clinical_note_saved',
         entityType: 'encounter',
         entityId: id,
-        beforeJson: beforeRows ? (Object.fromEntries(beforeRows.map((r) => [r.section, r.content])) as Prisma.InputJsonValue) : undefined,
-        afterJson: beforeRows ? (Object.fromEntries(rows.map((r) => [r.section, r.content])) as Prisma.InputJsonValue) : undefined,
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
+
+      return this.toClinicalNoteResponse(rows);
+    });
+  }
+
+  /**
+   * "Đính chính ghi chú khám" (Sprint 5, S5-02/03) — CHỈ gọi được khi `status=COMPLETED`. Khác
+   * `amendDiagnoses()` (danh sách không "slot" cố định), mỗi section là 1-1 nên chỉ đính chính
+   * ĐÚNG những section web gửi lên (đã tự tính diff) — section không đổi giữ nguyên bản đã ký.
+   */
+  async amendClinicalNote(
+    tenantId: string,
+    actorId: string,
+    dataScope: DataScope,
+    id: string,
+    dto: AmendClinicalNoteRequest,
+    meta: RequestMeta,
+  ): Promise<ClinicalNoteResponse> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const existing = await this.encounterRepository.findById(tx, tenantId, id);
+      if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId) || existing.status !== 'COMPLETED') {
+        throw new NotFoundException();
+      }
+
+      const beforeRows = await this.clinicalNoteRepository.listForEncounter(tx, tenantId, id);
+      const signature = await this.signaturePort.sign(tenantId, actorId, { entityType: 'clinical_note', entityId: id });
+      for (const item of dto.sections) {
+        const result = await this.clinicalNoteRepository.amendSection(
+          tx,
+          tenantId,
+          id,
+          item.section,
+          item.content,
+          item.version,
+          actorId,
+          signature.signedAt,
+          signature.signedBy,
+          dto.amendmentReason,
+        );
+        if (result === null) {
+          throw new ConcurrentModificationError();
+        }
+      }
+      const rows = await this.clinicalNoteRepository.listForEncounter(tx, tenantId, id);
+
+      await writeAuditLog(tx, tenantId, {
+        actorId,
+        action: 'clinical_note.amended',
+        entityType: 'encounter',
+        entityId: id,
+        beforeJson: Object.fromEntries(beforeRows.map((r) => [r.section, r.content])) as Prisma.InputJsonValue,
+        afterJson: { amendmentReason: dto.amendmentReason, sections: dto.sections } as unknown as Prisma.InputJsonValue,
         ip: meta.ip,
         userAgent: meta.userAgent,
       });
@@ -494,10 +591,15 @@ export class EncounterService {
 
   /**
    * "Hoàn tất khám" — `IN_CONSULTATION → COMPLETED`. Chỉ yêu cầu đúng một chẩn đoán chính
-   * (.claude/docs/clinical-workflow.md) — KHÔNG phụ thuộc Kê đơn (module `prescription`, Sprint 4,
-   * chưa xây) theo xác nhận của chủ dự án. Tái dùng permission `encounter.update` (đã dùng cho
-   * "bắt đầu khám") — coi đây là một dạng chuyển trạng thái khác của cùng hành động, không thêm
-   * permission mới.
+   * (.claude/docs/clinical-workflow.md) — KHÔNG phụ thuộc Kê đơn (module `prescription`, Sprint 4)
+   * theo xác nhận của chủ dự án. Tái dùng permission `encounter.update` (đã dùng cho "bắt đầu
+   * khám") — coi đây là một dạng chuyển trạng thái khác của cùng hành động, không thêm permission
+   * mới.
+   *
+   * **Ký hồ sơ khám (Sprint 5, S5-02/03, ENC-04)** — TRONG CÙNG transaction, ký NGAY mọi `diagnosis`/
+   * `clinical_note` đang hiệu lực (1 lần gọi `SignaturePort.sign()`, dùng chung `signedAt/signedBy`
+   * cho cả hai — "Ký hồ sơ khám" là một hành động duy nhất, không tách theo bảng). Từ đây trở đi 2
+   * bảng đó bất biến (trigger C8) — sửa phải qua đính chính (`amendDiagnoses()`/`amendClinicalNote()`).
    */
   async completeConsultation(
     tenantId: string,
@@ -523,6 +625,10 @@ export class EncounterService {
       if (count === 0) {
         throw new ConcurrentModificationError();
       }
+
+      const signature = await this.signaturePort.sign(tenantId, actorId, { entityType: 'clinical_record', entityId: id });
+      await this.diagnosisRepository.signAllForEncounter(tx, tenantId, id, actorId, signature.signedAt, signature.signedBy);
+      await this.clinicalNoteRepository.signAllForEncounter(tx, tenantId, id, actorId, signature.signedAt, signature.signedBy);
 
       await writeAuditLog(tx, tenantId, {
         actorId,
@@ -854,12 +960,28 @@ export class EncounterService {
       icd10Name: row.icd10.nameVi,
       type: row.type,
       note: row.note,
+      signedAt: row.signedAt ? row.signedAt.toISOString() : null,
+      signedBy: row.signedBy,
+      supersedesId: row.supersedesId,
+      amendmentReason: row.amendmentReason,
       version: row.version,
     };
   }
 
-  private toClinicalNoteResponse(rows: { section: string; content: string; version: number }[]): ClinicalNoteResponse {
-    const bySection = new Map(rows.map((row) => [row.section, { content: row.content, version: row.version }]));
+  private toClinicalNoteResponse(rows: ClinicalNote[]): ClinicalNoteResponse {
+    const bySection = new Map(
+      rows.map((row) => [
+        row.section,
+        {
+          content: row.content,
+          version: row.version,
+          signedAt: row.signedAt ? row.signedAt.toISOString() : null,
+          signedBy: row.signedBy,
+          supersedesId: row.supersedesId,
+          amendmentReason: row.amendmentReason,
+        },
+      ]),
+    );
     return {
       reasonForVisit: bySection.get('REASON_FOR_VISIT') ?? null,
       illnessProgress: bySection.get('ILLNESS_PROGRESS') ?? null,

@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
+  AmendClinicalNoteRequest,
+  AmendDiagnosesRequest,
   AmendPrescriptionRequest,
   CompleteConsultationRequest,
   RecordVitalSignRequest,
@@ -11,6 +13,8 @@ import type {
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
 import {
+  amendClinicalNote,
+  amendDiagnoses,
   amendPrescription,
   completeConsultation,
   getConsultationDetail,
@@ -44,6 +48,15 @@ export function useSaveDiagnosesMutation(id: string) {
   });
 }
 
+/** "Đính chính chẩn đoán" (Sprint 5, S5-02/03) — chỉ khi đã ký. */
+export function useAmendDiagnosesMutation(id: string) {
+  const invalidate = useInvalidateConsultation(id);
+  return useMutation({
+    mutationFn: (body: AmendDiagnosesRequest) => amendDiagnoses(id, body),
+    onSuccess: () => void invalidate(),
+  });
+}
+
 /** Bổ sung/đo lại sinh hiệu ngay trong màn khám (REC-02/03) — dùng khi lễ tân chưa nhập lúc tiếp nhận hoặc cần cập nhật lần đo mới. */
 export function useRecordVitalSignsMutation(id: string) {
   const invalidate = useInvalidateConsultation(id);
@@ -57,6 +70,15 @@ export function useSaveClinicalNoteMutation(id: string) {
   const invalidate = useInvalidateConsultation(id);
   return useMutation({
     mutationFn: (body: SaveClinicalNoteRequest) => saveClinicalNote(id, body),
+    onSuccess: () => void invalidate(),
+  });
+}
+
+/** "Đính chính ghi chú khám" (Sprint 5, S5-02/03) — chỉ sửa đúng section đổi nội dung. */
+export function useAmendClinicalNoteMutation(id: string) {
+  const invalidate = useInvalidateConsultation(id);
+  return useMutation({
+    mutationFn: (body: AmendClinicalNoteRequest) => amendClinicalNote(id, body),
     onSuccess: () => void invalidate(),
   });
 }

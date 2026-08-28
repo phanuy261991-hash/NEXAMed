@@ -47,7 +47,12 @@ export function BreakGlassDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 p-4" role="dialog" aria-modal="true" aria-labelledby="break-glass-title">
+    // z-60 (không phải z-50 mặc định) — break-glass luôn là một bước LEO THANG xin quyền, có thể
+    // xảy ra khi một dialog z-50 khác (ví dụ "Đính chính") đang mở sẵn; cùng z-50 thì DOM order
+    // quyết định lớp trên/dưới, dialog sau cùng che mất popup này khiến không thao tác được (lỗi
+    // thật chủ dự án phát hiện lúc kiểm "Đính chính chẩn đoán", Sprint 5 S5-02/03). z-60 đã là quy
+    // ước có sẵn cho "lớp trên dialog" ở nơi khác trong app (ví dụ popup "Hoàn tất khám thành công").
+    <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/55 p-4" role="dialog" aria-modal="true" aria-labelledby="break-glass-title">
       <div className="w-full max-w-md overflow-hidden rounded-xl bg-white shadow-2xl">
         <div className="px-6 pb-5 pt-6">
           <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-amber-100 ring-8 ring-amber-100/60">

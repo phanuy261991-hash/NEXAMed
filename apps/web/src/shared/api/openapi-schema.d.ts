@@ -3491,32 +3491,74 @@ export interface paths {
                                     /** @enum {string} */
                                     type: "PRIMARY" | "SECONDARY";
                                     note: string | null;
+                                    signedAt: string | null;
+                                    /** Format: uuid */
+                                    signedBy: string | null;
+                                    /** Format: uuid */
+                                    supersedesId: string | null;
+                                    amendmentReason: string | null;
                                     version: number;
                                 }[];
                                 clinicalNote: {
                                     reasonForVisit: {
                                         content: string;
                                         version: number;
+                                        signedAt: string | null;
+                                        /** Format: uuid */
+                                        signedBy: string | null;
+                                        /** Format: uuid */
+                                        supersedesId: string | null;
+                                        amendmentReason: string | null;
                                     } | null;
                                     illnessProgress: {
                                         content: string;
                                         version: number;
+                                        signedAt: string | null;
+                                        /** Format: uuid */
+                                        signedBy: string | null;
+                                        /** Format: uuid */
+                                        supersedesId: string | null;
+                                        amendmentReason: string | null;
                                     } | null;
                                     preliminaryDiagnosis: {
                                         content: string;
                                         version: number;
+                                        signedAt: string | null;
+                                        /** Format: uuid */
+                                        signedBy: string | null;
+                                        /** Format: uuid */
+                                        supersedesId: string | null;
+                                        amendmentReason: string | null;
                                     } | null;
                                     generalExam: {
                                         content: string;
                                         version: number;
+                                        signedAt: string | null;
+                                        /** Format: uuid */
+                                        signedBy: string | null;
+                                        /** Format: uuid */
+                                        supersedesId: string | null;
+                                        amendmentReason: string | null;
                                     } | null;
                                     regionalExam: {
                                         content: string;
                                         version: number;
+                                        signedAt: string | null;
+                                        /** Format: uuid */
+                                        signedBy: string | null;
+                                        /** Format: uuid */
+                                        supersedesId: string | null;
+                                        amendmentReason: string | null;
                                     } | null;
                                     plan: {
                                         content: string;
                                         version: number;
+                                        signedAt: string | null;
+                                        /** Format: uuid */
+                                        signedBy: string | null;
+                                        /** Format: uuid */
+                                        supersedesId: string | null;
+                                        amendmentReason: string | null;
                                     } | null;
                                 };
                                 prescription: {
@@ -3659,6 +3701,12 @@ export interface paths {
                                     /** @enum {string} */
                                     type: "PRIMARY" | "SECONDARY";
                                     note: string | null;
+                                    signedAt: string | null;
+                                    /** Format: uuid */
+                                    signedBy: string | null;
+                                    /** Format: uuid */
+                                    supersedesId: string | null;
+                                    amendmentReason: string | null;
                                     version: number;
                                 }[];
                             };
@@ -3726,7 +3774,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Lượt khám không ở trạng thái đang khám (ENCOUNTER_NOT_IN_CONSULTATION) */
+                /** @description Lượt khám không ở trạng thái đang khám (ENCOUNTER_NOT_IN_CONSULTATION), hoặc đã ký (CLINICAL_RECORD_ALREADY_SIGNED — dùng .../diagnoses/amend) */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -3773,7 +3821,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Lưu cả 4 mục ghi chú SOAP trong một request — bản nháp, chưa ký (ENC-04/Sprint 5) */
+        /** Lưu cả 6 mục ghi chú khám trong một request — bản nháp, chưa ký (ENC-04, Sprint 5) */
         put: {
             parameters: {
                 query?: never;
@@ -3825,26 +3873,62 @@ export interface paths {
                                 reasonForVisit: {
                                     content: string;
                                     version: number;
+                                    signedAt: string | null;
+                                    /** Format: uuid */
+                                    signedBy: string | null;
+                                    /** Format: uuid */
+                                    supersedesId: string | null;
+                                    amendmentReason: string | null;
                                 } | null;
                                 illnessProgress: {
                                     content: string;
                                     version: number;
+                                    signedAt: string | null;
+                                    /** Format: uuid */
+                                    signedBy: string | null;
+                                    /** Format: uuid */
+                                    supersedesId: string | null;
+                                    amendmentReason: string | null;
                                 } | null;
                                 preliminaryDiagnosis: {
                                     content: string;
                                     version: number;
+                                    signedAt: string | null;
+                                    /** Format: uuid */
+                                    signedBy: string | null;
+                                    /** Format: uuid */
+                                    supersedesId: string | null;
+                                    amendmentReason: string | null;
                                 } | null;
                                 generalExam: {
                                     content: string;
                                     version: number;
+                                    signedAt: string | null;
+                                    /** Format: uuid */
+                                    signedBy: string | null;
+                                    /** Format: uuid */
+                                    supersedesId: string | null;
+                                    amendmentReason: string | null;
                                 } | null;
                                 regionalExam: {
                                     content: string;
                                     version: number;
+                                    signedAt: string | null;
+                                    /** Format: uuid */
+                                    signedBy: string | null;
+                                    /** Format: uuid */
+                                    supersedesId: string | null;
+                                    amendmentReason: string | null;
                                 } | null;
                                 plan: {
                                     content: string;
                                     version: number;
+                                    signedAt: string | null;
+                                    /** Format: uuid */
+                                    signedBy: string | null;
+                                    /** Format: uuid */
+                                    supersedesId: string | null;
+                                    amendmentReason: string | null;
                                 } | null;
                             };
                             meta: Record<string, never>;
@@ -3896,7 +3980,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Lượt khám không ở trạng thái đang khám, hoặc version một mục SOAP không khớp (CONCURRENT_MODIFICATION) */
+                /** @description Lượt khám không ở trạng thái đang khám, version một mục không khớp (CONCURRENT_MODIFICATION), hoặc đã ký (CLINICAL_RECORD_ALREADY_SIGNED — dùng .../clinical-note/amend) */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -3920,6 +4004,325 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/encounters/{id}/diagnoses/amend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** "Đính chính chẩn đoán" (Sprint 5, S5-02/03) — chỉ khi đã ký (status=COMPLETED), bắt buộc lý do */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        diagnoses: {
+                            icd10Code: string;
+                            /** @enum {string} */
+                            type: "PRIMARY" | "SECONDARY";
+                            note?: string;
+                        }[];
+                        amendmentReason: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    icd10Code: string;
+                                    icd10Name: string;
+                                    /** @enum {string} */
+                                    type: "PRIMARY" | "SECONDARY";
+                                    note: string | null;
+                                    signedAt: string | null;
+                                    /** Format: uuid */
+                                    signedBy: string | null;
+                                    /** Format: uuid */
+                                    supersedesId: string | null;
+                                    amendmentReason: string | null;
+                                    version: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Dữ liệu gửi lên không hợp lệ (ví dụ thiếu lý do đính chính, không đúng một PRIMARY) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền diagnosis.sign */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy, hoặc lượt khám chưa hoàn tất (chưa ký) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/encounters/{id}/clinical-note/amend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** "Đính chính ghi chú khám" (Sprint 5, S5-02/03) — chỉ khi đã ký, chỉ sửa đúng section đổi nội dung */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        amendmentReason: string;
+                        sections: {
+                            /** @enum {string} */
+                            section: "REASON_FOR_VISIT" | "ILLNESS_PROGRESS" | "PRELIMINARY_DIAGNOSIS" | "GENERAL_EXAM" | "REGIONAL_EXAM" | "PLAN";
+                            content: string;
+                            version: number;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                reasonForVisit: {
+                                    content: string;
+                                    version: number;
+                                    signedAt: string | null;
+                                    /** Format: uuid */
+                                    signedBy: string | null;
+                                    /** Format: uuid */
+                                    supersedesId: string | null;
+                                    amendmentReason: string | null;
+                                } | null;
+                                illnessProgress: {
+                                    content: string;
+                                    version: number;
+                                    signedAt: string | null;
+                                    /** Format: uuid */
+                                    signedBy: string | null;
+                                    /** Format: uuid */
+                                    supersedesId: string | null;
+                                    amendmentReason: string | null;
+                                } | null;
+                                preliminaryDiagnosis: {
+                                    content: string;
+                                    version: number;
+                                    signedAt: string | null;
+                                    /** Format: uuid */
+                                    signedBy: string | null;
+                                    /** Format: uuid */
+                                    supersedesId: string | null;
+                                    amendmentReason: string | null;
+                                } | null;
+                                generalExam: {
+                                    content: string;
+                                    version: number;
+                                    signedAt: string | null;
+                                    /** Format: uuid */
+                                    signedBy: string | null;
+                                    /** Format: uuid */
+                                    supersedesId: string | null;
+                                    amendmentReason: string | null;
+                                } | null;
+                                regionalExam: {
+                                    content: string;
+                                    version: number;
+                                    signedAt: string | null;
+                                    /** Format: uuid */
+                                    signedBy: string | null;
+                                    /** Format: uuid */
+                                    supersedesId: string | null;
+                                    amendmentReason: string | null;
+                                } | null;
+                                plan: {
+                                    content: string;
+                                    version: number;
+                                    signedAt: string | null;
+                                    /** Format: uuid */
+                                    signedBy: string | null;
+                                    /** Format: uuid */
+                                    supersedesId: string | null;
+                                    amendmentReason: string | null;
+                                } | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Dữ liệu gửi lên không hợp lệ (ví dụ thiếu lý do đính chính) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền clinical_note.sign */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy, hoặc lượt khám chưa hoàn tất (chưa ký) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version một section không khớp (CONCURRENT_MODIFICATION) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/encounters/{id}/complete": {
         parameters: {
             query?: never;
@@ -3929,7 +4332,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** "Hoàn tất khám" — IN_CONSULTATION → COMPLETED, chỉ yêu cầu đúng một chẩn đoán chính */
+        /** "Hoàn tất khám" — IN_CONSULTATION → COMPLETED, chỉ yêu cầu đúng một chẩn đoán chính. Ký hồ sơ khám (chẩn đoán + ghi chú) ngay trong cùng transaction (Sprint 5, S5-02/03) */
         post: {
             parameters: {
                 query?: never;

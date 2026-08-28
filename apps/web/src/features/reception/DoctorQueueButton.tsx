@@ -197,7 +197,7 @@ export function DoctorQueueButton() {
               )}
             </div>
 
-            <div className="flex flex-shrink-0 items-center justify-between border-t border-slate-200 px-4 py-2.5">
+            <div className="flex flex-shrink-0 items-center border-t border-slate-200 px-4 py-2.5">
               <a
                 href="/reception/doctor-queue"
                 onClick={(e) => {
@@ -210,7 +210,6 @@ export function DoctorQueueButton() {
                 Xem đầy đủ Hàng đợi khám
                 <ArrowRight size={11} weight="bold" aria-hidden="true" />
               </a>
-              <span className="text-[10.5px] text-slate-400">có tìm/huỷ ca đầy đủ</span>
             </div>
           </div>
         </>

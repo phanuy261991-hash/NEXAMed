@@ -9,6 +9,8 @@ extendZodWithOpenApi(z);
 import {
   allergenGroupSummarySchema,
   allergenItemSchema,
+  amendClinicalNoteRequestSchema,
+  amendDiagnosesRequestSchema,
   amendPrescriptionRequestSchema,
   appointmentPhoneLookupQuerySchema,
   appointmentPhoneLookupResponseSchema,
@@ -685,7 +687,7 @@ registry.registerPath({
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền diagnosis.create'),
     404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal)'),
-    409: errorResponse('Lượt khám không ở trạng thái đang khám (ENCOUNTER_NOT_IN_CONSULTATION)'),
+    409: errorResponse('Lượt khám không ở trạng thái đang khám (ENCOUNTER_NOT_IN_CONSULTATION), hoặc đã ký (CLINICAL_RECORD_ALREADY_SIGNED — dùng .../diagnoses/amend)'),
     422: errorResponse('Không đúng một chẩn đoán chính (DIAGNOSIS_PRIMARY_REQUIRED)'),
   },
 });
@@ -694,7 +696,7 @@ registry.registerPath({
   method: 'put',
   path: '/api/v1/encounters/{id}/clinical-note',
   tags: ['encounter'],
-  summary: 'Lưu cả 4 mục ghi chú SOAP trong một request — bản nháp, chưa ký (ENC-04/Sprint 5)',
+  summary: 'Lưu cả 6 mục ghi chú khám trong một request — bản nháp, chưa ký (ENC-04, Sprint 5)',
   security: [{ bearerAuth: [] }],
   request: {
     params: encounterActionIdParams,
@@ -705,7 +707,46 @@ registry.registerPath({
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền clinical_note.create'),
     404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal)'),
-    409: errorResponse('Lượt khám không ở trạng thái đang khám, hoặc version một mục SOAP không khớp (CONCURRENT_MODIFICATION)'),
+    409: errorResponse('Lượt khám không ở trạng thái đang khám, version một mục không khớp (CONCURRENT_MODIFICATION), hoặc đã ký (CLINICAL_RECORD_ALREADY_SIGNED — dùng .../clinical-note/amend)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/encounters/{id}/diagnoses/amend',
+  tags: ['encounter'],
+  summary: '"Đính chính chẩn đoán" (Sprint 5, S5-02/03) — chỉ khi đã ký (status=COMPLETED), bắt buộc lý do',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: encounterActionIdParams,
+    body: { content: { 'application/json': { schema: amendDiagnosesRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Thành công', envelope(saveDiagnosesResponseSchema)),
+    400: errorResponse('Dữ liệu gửi lên không hợp lệ (ví dụ thiếu lý do đính chính, không đúng một PRIMARY)'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền diagnosis.sign'),
+    404: errorResponse('Không tìm thấy, hoặc lượt khám chưa hoàn tất (chưa ký)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/encounters/{id}/clinical-note/amend',
+  tags: ['encounter'],
+  summary: '"Đính chính ghi chú khám" (Sprint 5, S5-02/03) — chỉ khi đã ký, chỉ sửa đúng section đổi nội dung',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: encounterActionIdParams,
+    body: { content: { 'application/json': { schema: amendClinicalNoteRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Thành công', envelope(clinicalNoteResponseSchema)),
+    400: errorResponse('Dữ liệu gửi lên không hợp lệ (ví dụ thiếu lý do đính chính)'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinical_note.sign'),
+    404: errorResponse('Không tìm thấy, hoặc lượt khám chưa hoàn tất (chưa ký)'),
+    409: errorResponse('version một section không khớp (CONCURRENT_MODIFICATION)'),
   },
 });
 
@@ -713,7 +754,7 @@ registry.registerPath({
   method: 'post',
   path: '/api/v1/encounters/{id}/complete',
   tags: ['encounter'],
-  summary: '"Hoàn tất khám" — IN_CONSULTATION → COMPLETED, chỉ yêu cầu đúng một chẩn đoán chính',
+  summary: '"Hoàn tất khám" — IN_CONSULTATION → COMPLETED, chỉ yêu cầu đúng một chẩn đoán chính. Ký hồ sơ khám (chẩn đoán + ghi chú) ngay trong cùng transaction (Sprint 5, S5-02/03)',
   security: [{ bearerAuth: [] }],
   request: {
     params: encounterActionIdParams,
