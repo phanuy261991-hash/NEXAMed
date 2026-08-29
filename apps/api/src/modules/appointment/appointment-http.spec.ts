@@ -616,6 +616,109 @@ describe('HTTP e2e — /api/v1/appointments', () => {
     });
   });
 
+  describe('POST /api/v1/appointments/:id/no-show — đánh dấu Không đến thủ công (S5-07, APP-05)', () => {
+    it('receptionist đánh dấu đúng lịch, đúng version → 200, status NO_SHOW', async () => {
+      const created = await request(app.getHttpServer())
+        .post('/api/v1/appointments')
+        .set(authed(receptionistToken))
+        .send(bookingPayload(doctorAUserId, isoAt(1, 0)));
+      const id = created.body.data.id as string;
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/appointments/${id}/no-show`)
+        .set(authed(receptionistToken))
+        .send({ version: 1 });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.status).toBe('NO_SHOW');
+      expect(res.body.data.version).toBe(2);
+    });
+
+    it('vai trò không có appointment.cancel (nurse) → 403 PERMISSION_DENIED', async () => {
+      const created = await request(app.getHttpServer())
+        .post('/api/v1/appointments')
+        .set(authed(receptionistToken))
+        .send(bookingPayload(doctorAUserId, isoAt(1, 15)));
+      const id = created.body.data.id as string;
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/appointments/${id}/no-show`)
+        .set(authed(nurseToken))
+        .send({ version: 1 });
+
+      expect(res.status).toBe(403);
+      expect(res.body.error.code).toBe('PERMISSION_DENIED');
+    });
+
+    it('version cũ (đã bị đổi) → 409 CONCURRENT_MODIFICATION', async () => {
+      const created = await request(app.getHttpServer())
+        .post('/api/v1/appointments')
+        .set(authed(receptionistToken))
+        .send(bookingPayload(doctorAUserId, isoAt(1, 30)));
+      const id = created.body.data.id as string;
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/appointments/${id}/no-show`)
+        .set(authed(receptionistToken))
+        .send({ version: 999 });
+
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('CONCURRENT_MODIFICATION');
+    });
+
+    it('đánh dấu lịch đã CANCELLED → 409 APPOINTMENT_NOT_CANCELLABLE', async () => {
+      const created = await request(app.getHttpServer())
+        .post('/api/v1/appointments')
+        .set(authed(receptionistToken))
+        .send(bookingPayload(doctorAUserId, isoAt(1, 45)));
+      const id = created.body.data.id as string;
+
+      const cancelled = await request(app.getHttpServer())
+        .post(`/api/v1/appointments/${id}/cancel`)
+        .set(authed(receptionistToken))
+        .send({ cancelReason: 'Đã huỷ', version: 1 });
+      expect(cancelled.status).toBe(200);
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/appointments/${id}/no-show`)
+        .set(authed(receptionistToken))
+        .send({ version: 2 });
+
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('APPOINTMENT_NOT_CANCELLABLE');
+    });
+
+    it('bác sĩ (scope personal) không đánh dấu được lịch của bác sĩ khác → 404', async () => {
+      const created = await request(app.getHttpServer())
+        .post('/api/v1/appointments')
+        .set(authed(receptionistToken))
+        .send(bookingPayload(doctorBUserId, isoAt(2, 0)));
+      const id = created.body.data.id as string;
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/appointments/${id}/no-show`)
+        .set(authed(doctorAToken))
+        .send({ version: 1 });
+
+      expect(res.status).toBe(404);
+    });
+
+    it('tenant B không đánh dấu được lịch hẹn của tenant A → 404', async () => {
+      const created = await request(app.getHttpServer())
+        .post('/api/v1/appointments')
+        .set(authed(receptionistToken))
+        .send(bookingPayload(doctorAUserId, isoAt(2, 15)));
+      const id = created.body.data.id as string;
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/appointments/${id}/no-show`)
+        .set(authed(tenantBReceptionistToken))
+        .send({ version: 1 });
+
+      expect(res.status).toBe(404);
+    });
+  });
+
   describe('PATCH /api/v1/appointments/:id — sửa lịch TRONG NGÀY (khôi phục 2026-08-18, song song với "Dời lịch")', () => {
     it('receptionist sửa giờ/thời lượng hợp lệ → 200, CÙNG id, scheduledAt/durationMinutes/version cập nhật đúng, status vẫn SCHEDULED', async () => {
       const created = await request(app.getHttpServer())

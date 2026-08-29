@@ -2,6 +2,26 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-29 (5)
+
+Verify Playwright cho S5-06/S5-07 + cảnh báo đếm ngược/thông báo tự động Không đến — xem `docs/DECISIONS.md` #093:
+
+- Playwright qua Chrome thật xác nhận gộp hồ sơ (2 điểm vào) và cấu hình "Lịch hẹn" hoạt động đúng.
+- Chuỗi chỉnh UI trực tiếp: gộp 2 khung cấu hình Không đến, nút "Sửa" chữ → icon (`shared/ui/EditIconButton.tsx` mới, dùng chung 5 nơi), nút "Gộp hồ sơ" đổi màu xanh nổi bật, đổi 2 câu mô tả.
+- **Bổ sung theo câu hỏi trực tiếp của chủ dự án**: cảnh báo đếm ngược 3 mức (≤15/≤10/≤5 phút) trước khi tự động chuyển "Không đến" (Lưới + panel Chi tiết, chỉ khi đã bật tự động); nhãn "(tự động)" trên badge trạng thái phân biệt job tự động vs lễ tân tự bấm (`AppointmentSummary.noShowAutoMarked` mới); tự làm mới mỗi 30 giây thay vì Toast (giữ đúng quy tắc #066).
+- **Đã xác minh**: `apps/api` 136/136 (5 file liên quan), `pnpm -w typecheck/lint/build` sạch, chunk web không đổi (452.75 kB).
+- Cập nhật `docs/CURRENT.md`, `docs/TASK.md`, `docs/DECISIONS.md` (#093).
+
+## 2026-08-29 (4)
+
+S5-06 (Gộp hồ sơ trùng, PAT-04) + S5-07 (Tự đánh dấu Không đến, APP-05) — xem `docs/DECISIONS.md` #092:
+
+- `POST /patients/merge` (chỉ `clinic_admin`) — chuyển `encounter` + tiền sử có cấu trúc (dị ứng/bệnh lý nền/tiền sử gia đình) từ hồ sơ nguồn sang đích, không xoá nguồn; 2 điểm vào (Danh sách bệnh nhân chọn 2 dòng, nút ở Chi tiết bệnh nhân). Chặn tạo lượt khám mới cho hồ sơ đã gộp.
+- Tự động đánh dấu "Không đến": bật/tắt + ngưỡng phút cấu hình được (pill "Lịch hẹn" mới), job nền mỗi 5 phút; tắt thì đánh dấu thủ công qua `POST /appointments/:id/no-show`.
+- Không migration mới — dùng lại `patient.merged_into_id`/`patient.merge` (đã seed) và enum `NO_SHOW` có sẵn.
+- **Đã xác minh**: `apps/api` 495/502 (7 skip, 1 flake race đã biết không liên quan), `pnpm -w typecheck/lint/build` sạch. Chưa verify Playwright.
+- Cập nhật `docs/CURRENT.md`, `docs/TASK.md`, `docs/DECISIONS.md` (#092).
+
 ## 2026-08-29 (3)
 
 S5-05 (ADM-03) — "Nhật ký hoạt động" + phát hiện lỗ hổng compliance + chính sách lưu trữ audit_log 2 tầng — xem `docs/DECISIONS.md` #091:

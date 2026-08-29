@@ -186,6 +186,7 @@ export function AppointmentListView({
                   <div role="cell" className="text-center">
                     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${meta.bg} ${meta.text}`}>
                       {meta.label}
+                      {a.status === 'NO_SHOW' && a.noShowAutoMarked && <span className="ml-1 font-normal">(tự động)</span>}
                     </span>
                   </div>
                 </div>

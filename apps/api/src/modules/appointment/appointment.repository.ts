@@ -133,6 +133,38 @@ export class AppointmentRepository {
   }
 
   /**
+   * Đánh dấu "Không đến" THỦ CÔNG (S5-07, APP-05) — 1 lịch, kiểm `version` cho optimistic locking,
+   * cùng khuôn `cancel()`. Dùng khi tenant tắt tự động đánh dấu.
+   */
+  async markNoShowManual(tx: Prisma.TransactionClient, tenantId: string, id: string, expectedVersion: number, actorId: string): Promise<number> {
+    const result = await tx.appointment.updateMany({
+      where: { tenantId, id, version: expectedVersion, deletedAt: null, status: 'SCHEDULED' },
+      data: { status: 'NO_SHOW', updatedBy: actorId, version: { increment: 1 } },
+    });
+    return result.count;
+  }
+
+  /**
+   * Job nền tự động đánh dấu "Không đến" (S5-07) — `findScheduledPastThreshold()` chọn đúng các
+   * lịch còn `SCHEDULED` đã quá `scheduledAt + ngưỡng` (không cộng `durationMinutes`, đúng
+   * `.claude/docs/clinical-workflow.md`), `markNoShow()` cập nhật hàng loạt theo đúng danh sách id
+   * đã chọn (không lặp lại điều kiện thời gian — tránh race giữa lúc SELECT và UPDATE kéo thêm
+   * dòng mới đủ điều kiện). Không kiểm `version` — job hệ thống, không có client nào giữ version cũ.
+   */
+  findScheduledPastThreshold(tx: Prisma.TransactionClient, tenantId: string, cutoff: Date): Promise<Appointment[]> {
+    return tx.appointment.findMany({ where: { tenantId, status: 'SCHEDULED', deletedAt: null, scheduledAt: { lt: cutoff } } });
+  }
+
+  async markNoShow(tx: Prisma.TransactionClient, tenantId: string, ids: string[], actorId: string): Promise<number> {
+    if (ids.length === 0) return 0;
+    const result = await tx.appointment.updateMany({
+      where: { tenantId, id: { in: ids }, status: 'SCHEDULED', deletedAt: null },
+      data: { status: 'NO_SHOW', updatedBy: actorId, version: { increment: 1 } },
+    });
+    return result.count;
+  }
+
+  /**
    * Sửa lịch hẹn TRONG NGÀY (khôi phục 2026-08-18, tồn tại song song với `markRescheduled()`) —
    * cùng khuôn `cancel()`: `updateMany` ghép `version`/`status='SCHEDULED'` vào `WHERE` cho atomic.
    * Đổi `scheduledAt`/`durationMinutes`/`doctorId`/`roomId` TẠI CHỖ (không tạo bản ghi mới, không

@@ -6,6 +6,7 @@ import { EncounterServiceItemRepository } from './encounter-service-item.reposit
 import { AppointmentModule } from '../appointment/appointment.module';
 import { EncounterModule } from '../encounter/encounter.module';
 import { BillingModule } from '../billing/billing.module';
+import { PatientModule } from '../patient/patient.module';
 
 /**
  * Module điều phối (Sprint 3, Tiếp nhận) — không sở hữu bảng nghiệp vụ nào của riêng nó trừ
@@ -16,9 +17,11 @@ import { BillingModule } from '../billing/billing.module';
  * port (port tự mở transaction riêng — xem docs/DECISIONS.md quyết định kiến trúc).
  * `imports: [..., BillingModule]` (Sprint 5/6, Thu ngân cơ bản) — dùng `InvoiceRepository` để tự
  * động tạo phiếu thu trong CÙNG transaction check-in/tiếp nhận trực tiếp, cùng lý do trên.
+ * `imports: [..., PatientModule]` (S5-06, PAT-04) — dùng `PatientRepository` để chặn tạo `encounter`
+ * mới cho hồ sơ đã bị gộp (`merged_into_id` khác null), cùng lý do trên.
  */
 @Module({
-  imports: [AppointmentModule, EncounterModule, BillingModule],
+  imports: [AppointmentModule, EncounterModule, BillingModule, PatientModule],
   controllers: [ReceptionController],
   providers: [ReceptionService, VitalSignRepository, EncounterServiceItemRepository],
 })

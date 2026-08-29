@@ -216,6 +216,40 @@ describe('HTTP e2e — /api/v1/rooms và /api/v1/clinic-settings', () => {
       expect(res.body.error.code).toBe('VALIDATION_ERROR');
     });
 
+    it('GET lúc chưa cấu hình → noShowAutoEnabled mặc định false, noShowThresholdMinutes mặc định 60 (S5-07, APP-05)', async () => {
+      const res = await request(app.getHttpServer()).get('/api/v1/clinic-settings').set(authed(tenantBAdminToken));
+      expect(res.status).toBe(200);
+      expect(res.body.data.noShowAutoEnabled).toBe(false);
+      expect(res.body.data.noShowThresholdMinutes).toBe(60);
+    });
+
+    it('PATCH noShowAutoEnabled + noShowThresholdMinutes → 200, GET phản ánh đúng giá trị mới, độc lập với tenant khác', async () => {
+      const patch = await request(app.getHttpServer())
+        .patch('/api/v1/clinic-settings')
+        .set(authed(clinicAdminToken))
+        .send({ noShowAutoEnabled: true, noShowThresholdMinutes: 90 });
+      expect(patch.status).toBe(200);
+      expect(patch.body.data.noShowAutoEnabled).toBe(true);
+      expect(patch.body.data.noShowThresholdMinutes).toBe(90);
+
+      const get = await request(app.getHttpServer()).get('/api/v1/clinic-settings').set(authed(clinicAdminToken));
+      expect(get.body.data.noShowAutoEnabled).toBe(true);
+      expect(get.body.data.noShowThresholdMinutes).toBe(90);
+
+      const tenantBGet = await request(app.getHttpServer()).get('/api/v1/clinic-settings').set(authed(tenantBAdminToken));
+      expect(tenantBGet.body.data.noShowAutoEnabled).toBe(false);
+      expect(tenantBGet.body.data.noShowThresholdMinutes).toBe(60);
+    });
+
+    it('noShowThresholdMinutes ngoài khoảng 1-1440 → 400 VALIDATION_ERROR', async () => {
+      const res = await request(app.getHttpServer())
+        .patch('/api/v1/clinic-settings')
+        .set(authed(clinicAdminToken))
+        .send({ noShowThresholdMinutes: 0 });
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
+    });
+
     it('PATCH slotDurationMinutes → 200, GET phản ánh đúng giá trị mới', async () => {
       const patch = await request(app.getHttpServer())
         .patch('/api/v1/clinic-settings')

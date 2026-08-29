@@ -40,6 +40,14 @@ export interface ClinicConfigReaderPort {
    * `false`, không phân biệt giá trị đã lưu.
    */
   getDeferredPaymentEnabled(tenantId: string): Promise<boolean>;
+
+  /**
+   * Tự động đánh dấu "Không đến" (S5-07, APP-05) — job nền (`apps/api/src/modules/appointment/
+   * no-show.ts`) đọc qua port này thay vì import thẳng `ClinicSettingsRepository`, cùng lý do
+   * `getDeferredPaymentEnabled` ở trên. `enabled=false` (mặc định) — job bỏ qua tenant này hoàn
+   * toàn, lễ tân/bác sĩ tự đánh dấu thủ công.
+   */
+  getNoShowConfig(tenantId: string): Promise<{ enabled: boolean; thresholdMinutes: number }>;
 }
 
 export const CLINIC_CONFIG_READER_PORT = Symbol('CLINIC_CONFIG_READER_PORT');

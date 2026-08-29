@@ -4,6 +4,7 @@ import type { BusinessHours } from '@nexamed/shared';
 import { useAuthStore } from '../auth/auth.store';
 import { Button } from '../../shared/ui/Button';
 import { Combobox } from '../../shared/ui/Combobox';
+import { EditIconButton } from '../../shared/ui/EditIconButton';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { TimeInput } from '../../shared/ui/TimeInput';
@@ -54,7 +55,10 @@ export function ClinicHoursPane() {
   const query = useClinicSettingsQuery();
   const mutation = useUpdateClinicSettingsMutation();
 
-  const [editing, setEditing] = useState(false);
+  // 2 khung độc lập (Boxed Section) — mỗi khung tự Sửa/Lưu/Huỷ riêng, không còn 1 nút "Sửa" chung
+  // cho cả trang (yêu cầu chủ dự án trực tiếp, xem AppointmentConfigPane.tsx cùng mẫu).
+  const [editingHours, setEditingHours] = useState(false);
+  const [editingSlot, setEditingSlot] = useState(false);
   const [hours, setHours] = useState<BusinessHours>(DEFAULT_HOURS);
   const [slotDuration, setSlotDuration] = useState('15');
   const [savedNotice, setSavedNotice] = useState(false);
@@ -77,18 +81,35 @@ export function ClinicHoursPane() {
     });
   }
 
-  function handleCancel() {
+  function handleCancelHours() {
     setHours(query.data?.businessHours ?? DEFAULT_HOURS);
-    setSlotDuration(String(query.data?.slotDurationMinutes ?? 15));
-    setEditing(false);
+    setEditingHours(false);
   }
 
-  function handleSave() {
+  function handleSaveHours() {
     mutation.mutate(
-      { businessHours: hours, slotDurationMinutes: Number(slotDuration) },
+      { businessHours: hours },
       {
         onSuccess: () => {
-          setEditing(false);
+          setEditingHours(false);
+          setSavedNotice(true);
+          setTimeout(() => setSavedNotice(false), 3000);
+        },
+      },
+    );
+  }
+
+  function handleCancelSlot() {
+    setSlotDuration(String(query.data?.slotDurationMinutes ?? 15));
+    setEditingSlot(false);
+  }
+
+  function handleSaveSlot() {
+    mutation.mutate(
+      { slotDurationMinutes: Number(slotDuration) },
+      {
+        onSuccess: () => {
+          setEditingSlot(false);
           setSavedNotice(true);
           setTimeout(() => setSavedNotice(false), 3000);
         },
@@ -98,14 +119,7 @@ export function ClinicHoursPane() {
 
   return (
     <div>
-      <div className="mb-5 flex items-start justify-between gap-3">
-        <p className="text-xs text-slate-500">Áp dụng cho lưới lịch hẹn và cảnh báo trễ hẹn.</p>
-        {canManage && !editing && !query.isLoading && (
-          <Button type="button" variant="secondary" onClick={() => setEditing(true)}>
-            Sửa
-          </Button>
-        )}
-      </div>
+      <p className="mb-5 text-xs text-slate-500">Áp dụng cho lưới lịch hẹn và cảnh báo trễ hẹn.</p>
 
       {query.isError && <ErrorBanner message="Không tải được cấu hình phòng khám." onRetry={() => query.refetch()} />}
 
@@ -119,13 +133,18 @@ export function ClinicHoursPane() {
         <div className="space-y-6">
           <div className="relative rounded-lg border border-slate-200 p-6 pt-8">
             <span className={SECTION_BADGE_CLASS}>Giờ làm việc theo tuần</span>
+            {canManage && !editingHours && (
+              <div className="absolute right-4 top-4">
+                <EditIconButton onClick={() => setEditingHours(true)} />
+              </div>
+            )}
             <div className="grid grid-cols-1 gap-x-10 sm:grid-cols-2">
               {DAY_ORDER.map((day) => {
                 const dayHours = hours[day];
                 return (
                   <div key={day} className="flex items-center gap-3 border-b border-slate-100 py-2.5 text-sm">
                     <span className="w-20 flex-shrink-0 font-medium text-slate-700">{DAY_LABEL[day]}</span>
-                    {editing ? (
+                    {editingHours ? (
                       <>
                         <label className="flex flex-shrink-0 items-center gap-1.5 text-xs text-slate-500">
                           <input type="checkbox" checked={dayHours !== null} onChange={(e) => toggleDay(day, e.target.checked)} />
@@ -160,6 +179,17 @@ export function ClinicHoursPane() {
                 );
               })}
             </div>
+
+            {editingHours && (
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <Button type="button" variant="secondary" onClick={handleCancelHours} disabled={mutation.isPending}>
+                  Huỷ
+                </Button>
+                <Button type="button" loading={mutation.isPending} onClick={handleSaveHours}>
+                  Lưu
+                </Button>
+              </div>
+            )}
           </div>
 
           <div className="relative rounded-lg border border-slate-200 p-4 pt-6">
@@ -169,28 +199,31 @@ export function ClinicHoursPane() {
             </p>
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-slate-700">Độ dài mỗi khung giờ</span>
-              {editing ? (
-                <div className="w-36">
-                  <Combobox id="slot-duration" value={slotDuration} onChange={setSlotDuration} options={SLOT_DURATION_OPTIONS} />
-                </div>
-              ) : (
-                <span className="rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-base font-bold text-blue-700">
-                  {query.data.slotDurationMinutes} phút
-                </span>
-              )}
+              <div className="flex flex-shrink-0 items-center gap-2">
+                {editingSlot ? (
+                  <div className="w-36">
+                    <Combobox id="slot-duration" value={slotDuration} onChange={setSlotDuration} options={SLOT_DURATION_OPTIONS} />
+                  </div>
+                ) : (
+                  <span className="rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-base font-bold text-blue-700">
+                    {query.data.slotDurationMinutes} phút
+                  </span>
+                )}
+                {canManage && !editingSlot && <EditIconButton onClick={() => setEditingSlot(true)} />}
+              </div>
             </div>
-          </div>
 
-          {editing && (
-            <div className="flex items-center justify-end gap-2">
-              <Button type="button" variant="secondary" onClick={handleCancel} disabled={mutation.isPending}>
-                Huỷ
-              </Button>
-              <Button type="button" loading={mutation.isPending} onClick={handleSave}>
-                Lưu
-              </Button>
-            </div>
-          )}
+            {editingSlot && (
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <Button type="button" variant="secondary" onClick={handleCancelSlot} disabled={mutation.isPending}>
+                  Huỷ
+                </Button>
+                <Button type="button" loading={mutation.isPending} onClick={handleSaveSlot}>
+                  Lưu
+                </Button>
+              </div>
+            )}
+          </div>
 
           {mutation.isError && <ErrorBanner message="Không lưu được cấu hình. Thử lại." />}
         </div>

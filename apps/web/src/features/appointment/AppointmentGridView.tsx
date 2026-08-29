@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Clock } from '@phosphor-icons/react';
 import type { AppointmentSummary, BusinessHours, DoctorOption } from '@nexamed/shared';
 import { EmptyState } from '../../shared/ui/EmptyState';
-import { APPOINTMENT_SOURCE_LABEL, APPOINTMENT_STATUS_META, isAppointmentLate } from './appointment-status';
+import { APPOINTMENT_SOURCE_LABEL, APPOINTMENT_STATUS_META, getNoShowCountdownTier, isAppointmentLate, noShowCountdownTierMeta } from './appointment-status';
 import {
   GRID_STEP_MINUTES,
   ROW_HEIGHT_PX,
@@ -39,6 +39,8 @@ export function AppointmentGridView({
   appointments,
   doctors,
   businessHours,
+  noShowThresholdMinutes,
+  noShowAutoEnabled,
   onSlotClick,
   onCardClick,
 }: {
@@ -46,6 +48,8 @@ export function AppointmentGridView({
   appointments: AppointmentSummary[];
   doctors: DoctorOption[];
   businessHours: BusinessHours | null;
+  noShowThresholdMinutes: number;
+  noShowAutoEnabled: boolean;
   onSlotClick: (doctorId: string, time: string) => void;
   onCardClick: (appointment: AppointmentSummary) => void;
 }) {
@@ -189,7 +193,9 @@ export function AppointmentGridView({
               })}
 
               {occupied.map(({ start, appointment: a }) => {
-                const late = isAppointmentLate(a.status, a.scheduledAt);
+                const late = isAppointmentLate(a.status, a.scheduledAt, noShowThresholdMinutes);
+                const countdownTier = getNoShowCountdownTier(a.status, a.scheduledAt, noShowThresholdMinutes, noShowAutoEnabled);
+                const countdown = countdownTier ? noShowCountdownTierMeta(countdownTier) : null;
                 const meta = APPOINTMENT_STATUS_META[a.status];
                 const showSource = a.durationMinutes >= GRID_STEP_MINUTES;
                 return (
@@ -198,16 +204,20 @@ export function AppointmentGridView({
                     type="button"
                     onClick={() => onCardClick(a)}
                     className={`absolute left-0.5 right-0.5 overflow-hidden rounded-md border-l-[3px] px-1.5 py-1 text-left shadow-sm hover:shadow-md ${
-                      late ? 'border-amber-500 bg-amber-50' : `${meta.border} ${meta.bg}`
+                      late ? 'border-amber-500 bg-amber-50' : countdown ? `${countdown.border} ${countdown.bg}` : `${meta.border} ${meta.bg}`
                     } ${a.status === 'CANCELLED' || a.status === 'RESCHEDULED' ? 'opacity-60 line-through' : ''}`}
                     style={{ top: start * ROW_HEIGHT_PX + 2, height: (a.durationMinutes / GRID_STEP_MINUTES) * ROW_HEIGHT_PX - 4 }}
                   >
-                    <div className={`flex items-center gap-1 text-[10.5px] font-bold tabular-nums ${late ? 'text-amber-700' : meta.text}`}>
+                    <div className={`flex items-center gap-1 text-[10.5px] font-bold tabular-nums ${late ? 'text-amber-700' : countdown ? countdown.text : meta.text}`}>
                       {late && <Clock size={10} weight="bold" aria-hidden="true" />}
                       {minutesToLabel(vnTimeOfDayMinutes(a.scheduledAt))}–{minutesToLabel(vnTimeOfDayMinutes(a.scheduledAt) + a.durationMinutes)}
                     </div>
-                    <div className="truncate text-xs font-semibold text-slate-900">{a.fullName}</div>
-                    {showSource && <div className="truncate text-[10px] text-slate-500">{APPOINTMENT_SOURCE_LABEL[a.source]}</div>}
+                    <div className="truncate text-xs font-semibold text-slate-900">
+                      {a.fullName}
+                      {a.status === 'NO_SHOW' && a.noShowAutoMarked && <span className="ml-1 font-normal text-slate-500">(tự động)</span>}
+                    </div>
+                    {countdown && <div className={`truncate text-[10px] font-semibold ${countdown.text}`}>{countdown.label}</div>}
+                    {!countdown && showSource && <div className="truncate text-[10px] text-slate-500">{APPOINTMENT_SOURCE_LABEL[a.source]}</div>}
                   </button>
                 );
               })}

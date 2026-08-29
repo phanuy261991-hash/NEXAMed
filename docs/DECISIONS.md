@@ -1451,3 +1451,45 @@ Cập nhật `.claude/docs/ui-guidelines.md` (mục 4.5b mới), `docs/CURRENT.m
 
 Cập nhật `docs/CURRENT.md`, `docs/TASK.md`, `docs/CHANGELOG.md`.
 
+## 093 — Verify Playwright cho #092 + cảnh báo đếm ngược/thông báo tự động Không đến
+
+**Ngày**: 2026-08-29
+**Bối cảnh**: Verify qua Chrome thật cho S5-06/S5-07 (#092) theo yêu cầu chủ dự án, xen kẽ nhiều lượt chỉnh sửa trực tiếp trên bản chạy thật + 1 câu hỏi lộ ra thiếu sót thật.
+
+**Chuỗi chỉnh sửa UI trực tiếp (không đổi logic)**:
+- Gộp 2 khung "Bật tự động"/"Ngưỡng thời gian" ở pill "Lịch hẹn" thành 1 khung, đổi nút "Sửa" chữ sang icon bút chì — trích `shared/ui/EditIconButton.tsx` (dùng chung, áp lại cho `ExamConfigPane.tsx`/`ClinicInfoPane.tsx`/2 khung `ClinicHoursPane.tsx` tách riêng Sửa/Lưu/Huỷ độc lập cho "Giờ làm việc theo tuần" và "Độ dài khung giờ" — trước đây dùng chung 1 nút Sửa cho cả hai).
+- Đổi 2 câu mô tả trong pill "Lịch hẹn" theo đúng nội dung chủ dự án gửi.
+- Nút "Gộp hồ sơ" ở `SelectionToolbar` đổi từ `variant="secondary"` sang mặc định (primary, xanh) cho nổi bật.
+- Câu mô tả dialog "Chọn hồ sơ giữ lại" đổi nội dung + đậm chữ hơn (`font-medium text-slate-700`).
+
+**Phát hiện lỗ hổng thật qua câu hỏi trực tiếp của chủ dự án**: hệ thống chưa có (1) cảnh báo đếm ngược trước khi job tự động chuyển "Không đến", (2) cách nào để lễ tân biết lịch VỪA bị tự động chuyển — job nền chạy hoàn toàn im lặng, `AppointmentGridView`/`AppointmentListView` không tự làm mới. Đã hỏi và chốt qua `AskUserQuestion` (giữ đúng quy tắc "không dùng Toast" đã chốt ở #066):
+- `AppointmentSummary` thêm `noShowAutoMarked: boolean` (`status==='NO_SHOW' && updatedBy===SYSTEM_ACTOR_ID`) — phân biệt job tự động vs lễ tân tự bấm, hiện thêm chữ "(tự động)" cạnh badge trạng thái ở cả Lưới/Danh sách/panel Chi tiết.
+- `getNoShowCountdownTier()` mới (`appointment-status.ts`) — 3 mức theo số phút CÒN LẠI tới ngưỡng (≤15/≤10/≤5), chỉ có ý nghĩa khi `noShowAutoEnabled=true`. Hiện ở thẻ `AppointmentGridView` (đổi màu viền/nền theo mức) và banner cảnh báo mới ở `AppointmentDetailPanel` (trước "trễ hẹn", không chồng lấn khoảng thời gian với nhau).
+- `useAppointmentsByDateQuery`/`useAppointmentsListQuery` thêm `refetchInterval: 30_000` — tự làm mới, lễ tân thấy ngay lịch vừa bị job chuyển mà không cần F5.
+- Xác nhận qua code + trả lời chủ dự án: "Sửa lịch"/"Dời lịch" không cần xử lý đặc biệt gì thêm — job và cảnh báo đều tính TRỰC TIẾP từ cột `scheduledAt` hiện tại mỗi lần chạy/hiển thị, không lưu trạng thái đếm ngược riêng nên tự đúng theo giờ mới ngay khi lễ tân sửa.
+
+**Đã xác minh thật**: `apps/api` 136/136 (5 file liên quan chạy lại sau khi thêm `noShowAutoMarked`), `pnpm -w typecheck/lint/build` sạch toàn workspace, chunk web không đổi bất thường (452.75 kB). **Playwright qua Chrome thật đầy đủ** (tài khoản test do chủ dự án tạo, dữ liệu demo có sẵn trên dev DB + 1 lịch hẹn test tạo qua HTTP API để mô phỏng còn 10 phút tới ngưỡng): gộp hồ sơ cả 2 điểm vào (chọn 2 dòng ở danh sách, nút ở chi tiết), banner "đã gộp" + chặn tạo lượt khám mới trên hồ sơ nguồn (test riêng ở `reception-http.spec.ts`), bật/tắt + sửa ngưỡng "Lịch hẹn" lưu đúng, banner đếm ngược "Còn ≤10 phút..." hiện đúng, "Đánh dấu Không đến" thủ công chuyển đúng trạng thái và KHÔNG gắn nhãn "(tự động)" (đúng phân biệt actor). Sự cố vận hành phát sinh giữa phiên (không phải bug code): dev server bị treo module cache (đã restart sạch, xác nhận qua `netstat`/`curl` trước khi verify).
+
+Cập nhật `docs/CURRENT.md`, `docs/TASK.md`, `docs/CHANGELOG.md`.
+
+## 092 — S5-06 (Gộp hồ sơ trùng, PAT-04) + S5-07 (Tự đánh dấu Không đến, APP-05)
+
+**Ngày**: 2026-08-29
+**Bối cảnh**: Quay lại nốt 2 việc P1 còn treo của Sprint 5/6. Trước khi code, chủ dự án hỏi thẳng "chức năng gộp này dùng khi nào, đã có chống trùng CCCD/SĐT rồi mà" — đã giải thích PAT-04 là công cụ khắc phục hậu kỳ (trẻ em không CCCD chỉ cảnh báo mềm, CCCD gõ sai không bắt được, hồ sơ tạo trước ràng buộc CCCD bắt buộc #036, SĐT không còn dùng chống trùng từ #052), không phải cơ chế chống trùng chính — chủ dự án xác nhận làm tiếp.
+
+**Chốt qua nhiều lượt `AskUserQuestion`**:
+1. Gộp hồ sơ: **2 điểm vào** — chọn đúng 2 dòng ở Danh sách bệnh nhân (dùng lại `SelectionToolbar`/`useRowSelection` từ #086 — hành động hàng loạt thật đầu tiên) VÀ nút "Gộp vào hồ sơ khác" ở Chi tiết bệnh nhân (tái dùng `PatientSearchDialog`, thêm prop `excludeId`).
+2. Phạm vi merge: **chỉ chuyển `encounter`** (không đụng field nào khác của hồ sơ đích) + **3 bảng tiền sử có cấu trúc** (`patient_condition`/`patient_family_history`/`patient_allergen`) chuyển hết sang đích, bỏ trùng — KHÔNG đụng `appointment.patientId` (không màn hình nào hiển thị lịch sử đặt lịch theo bệnh nhân).
+3. Tự động Không đến: chuyển từ "chỉ ngưỡng" sang **bật/tắt** (tắt = đánh dấu thủ công, bật = job tự động) theo yêu cầu trực tiếp — mục cấu hình mới "Lịch hẹn" trong "Cấu hình phòng khám" (không nhét vào "Giờ làm việc"/"Cấu hình khám" có sẵn).
+4. Job quét mỗi 5 phút.
+
+**Không migration mới** — cả hai đã có sẵn chỗ chốt từ trước: `patient.merged_into_id` (S2-01) + permission `patient.merge` (chỉ `clinic_admin`, đã seed sẵn trong `DEFAULT_ROLE_PERMISSIONS`), `appointment.status` đã có `NO_SHOW` (S2-05). `patient.module.ts`/`audit.module.ts` (commit #091) đã để sẵn comment nhắc `patient-merge.module.ts` — dùng đúng tên này.
+
+**S5-06**: module mới `apps/api/src/modules/patient/patient-merge.{module,controller,service}.ts` (imports `PatientModule`+`EncounterModule`, chia sẻ Repository trong 1 transaction đúng khuôn `ReceptionModule`). `EncounterRepository.reassignPatientId()` mới. Merge 3 bảng tiền sử bằng `listForPatient()`+dedupe (theo `allergenId`/`icd10Code`/cặp `(relation,icd10Code)`)+`replaceForPatient()` có sẵn, không thêm SQL mới. Lỗi mới `PatientAlreadyMergedError` (409) — dùng cả cho "gộp lại hồ sơ đã gộp" LẪN guard "ngừng cho tạo mới" (`ReceptionService.checkIn()`/`registerDirect()` thêm bước `assertPatientNotMerged()` trước khi tạo `encounter`).
+
+**S5-07**: `ClinicSettings` thêm `noShowAutoEnabled`/`noShowThresholdMinutes` (qua `GET/PATCH /clinic-settings` có sẵn, không endpoint mới, cùng khuôn `overdueWaitWarningMinutes`). `ClinicConfigReaderPort` thêm `getNoShowConfig()` (đúng khuôn `getDeferredPaymentEnabled`) để `AppointmentModule` đọc không import thẳng `clinic`. `NoShowJob` (`@Cron('*/5 * * * *')`, cùng khuôn `SystemLogPurgeJob`) — bỏ qua tenant tắt, ghi 1 dòng `audit_log` action `appointment.no_show` cho mỗi lịch tự động chuyển (đúng quy tắc "mỗi lần chuyển trạng thái ghi audit_log"). Thêm luôn `POST /appointments/:id/no-show` (thủ công, tái dùng quyền `appointment.cancel`) cho trường hợp tắt tự động. Trích `SYSTEM_ACTOR_ID` (từng hardcode trong `main.ts`) ra `packages/core/src/system-actor.ts` — dùng lần 2 cho actor của job. Đồng bộ luôn cảnh báo trễ hẹn có sẵn ở lưới lịch hẹn (`isAppointmentLate`) đọc ngưỡng thật thay vì hardcode 60 phút cũ, tránh lệch với ngưỡng job nền.
+
+**Đã xác minh thật**: `apps/api` 502/502 (495 pass + 7 skip; 1 file `geo-http.spec.ts` dính flake race `role_permission` đã biết từ nhiều phiên trước khi chạy chung nhiều spec, pass 100% khi chạy riêng) — gồm `patient-merge-http.spec.ts` (7/7, mới), `no-show.spec.ts` (2/2, mới, kiểm cả tenant bật lẫn tắt qua reader giả để tránh đụng dữ liệu tenant khác trong DB test dùng chung), test mới trong `appointment-http.spec.ts`/`clinic-http.spec.ts`/`reception-http.spec.ts`. `pnpm -w typecheck/lint/build` sạch toàn workspace, chunk web khởi động không tăng bất thường (452.75 kB). **Chưa chạy Playwright/verify qua trình duyệt thật** — việc kế tiếp khi chủ dự án dùng thử.
+
+Cập nhật `docs/CURRENT.md`, `docs/TASK.md`, `docs/CHANGELOG.md`.
+

@@ -3612,6 +3612,240 @@
         }
       }
     },
+    "/api/v1/patients/merge": {
+      "post": {
+        "tags": [
+          "patient"
+        ],
+        "summary": "Gộp hồ sơ trùng (S5-06, PAT-04) — chuyển encounter + tiền sử có cấu trúc từ sourceId sang targetId, không xoá sourceId",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "sourceId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "targetId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "sourceId",
+                  "targetId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Gộp thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "sourceId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "targetId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "movedEncounterCount": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "sourceId",
+                        "targetId",
+                        "movedEncounterCount"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu gửi lên không hợp lệ (ví dụ tự gộp chính nó)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền patient.merge (chỉ clinic_admin)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy hồ sơ nguồn/đích (không tồn tại hoặc thuộc tenant khác)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Hồ sơ nguồn hoặc đích đã bị gộp trước đó (PATIENT_ALREADY_MERGED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/appointments": {
       "post": {
         "tags": [
@@ -3764,6 +3998,9 @@
                           ],
                           "format": "uuid"
                         },
+                        "noShowAutoMarked": {
+                          "type": "boolean"
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -3783,6 +4020,7 @@
                         "source",
                         "cancelReason",
                         "rescheduledFromId",
+                        "noShowAutoMarked",
                         "version"
                       ]
                     },
@@ -4065,6 +4303,9 @@
                                 ],
                                 "format": "uuid"
                               },
+                              "noShowAutoMarked": {
+                                "type": "boolean"
+                              },
                               "version": {
                                 "type": "integer"
                               }
@@ -4084,6 +4325,7 @@
                               "source",
                               "cancelReason",
                               "rescheduledFromId",
+                              "noShowAutoMarked",
                               "version"
                             ]
                           }
@@ -4514,13 +4756,23 @@
                           "type": "integer",
                           "minimum": 1,
                           "maximum": 240
+                        },
+                        "noShowAutoEnabled": {
+                          "type": "boolean"
+                        },
+                        "noShowThresholdMinutes": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 1440
                         }
                       },
                       "required": [
                         "businessHours",
                         "slotDurationMinutes",
                         "deferredPaymentEnabled",
-                        "overdueWaitWarningMinutes"
+                        "overdueWaitWarningMinutes",
+                        "noShowAutoEnabled",
+                        "noShowThresholdMinutes"
                       ]
                     },
                     "meta": {
@@ -4835,6 +5087,9 @@
                           ],
                           "format": "uuid"
                         },
+                        "noShowAutoMarked": {
+                          "type": "boolean"
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -4854,6 +5109,7 @@
                         "source",
                         "cancelReason",
                         "rescheduledFromId",
+                        "noShowAutoMarked",
                         "version"
                       ]
                     },
@@ -5109,6 +5365,9 @@
                           ],
                           "format": "uuid"
                         },
+                        "noShowAutoMarked": {
+                          "type": "boolean"
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -5128,6 +5387,7 @@
                         "source",
                         "cancelReason",
                         "rescheduledFromId",
+                        "noShowAutoMarked",
                         "version"
                       ]
                     },
@@ -5432,6 +5692,9 @@
                           ],
                           "format": "uuid"
                         },
+                        "noShowAutoMarked": {
+                          "type": "boolean"
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -5451,6 +5714,298 @@
                         "source",
                         "cancelReason",
                         "rescheduledFromId",
+                        "noShowAutoMarked",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền appointment.cancel",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal của bác sĩ)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp (CONCURRENT_MODIFICATION), hoặc lịch không còn ở trạng thái SCHEDULED (APPOINTMENT_NOT_CANCELLABLE)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/appointments/{id}/no-show": {
+      "post": {
+        "tags": [
+          "appointment"
+        ],
+        "summary": "Đánh dấu \"Không đến\" thủ công (S5-07, APP-05) — dùng khi tenant tắt tự động đánh dấu (noShowAutoEnabled=false)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Đánh dấu thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "bookingCode": {
+                          "type": "string"
+                        },
+                        "patientId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "fullName": {
+                          "type": "string"
+                        },
+                        "phone": {
+                          "type": "string"
+                        },
+                        "reason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "doctorId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "roomId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "scheduledAt": {
+                          "type": "string"
+                        },
+                        "durationMinutes": {
+                          "type": "integer"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "SCHEDULED",
+                            "CANCELLED",
+                            "NO_SHOW",
+                            "CONVERTED",
+                            "RESCHEDULED"
+                          ]
+                        },
+                        "source": {
+                          "type": "string",
+                          "enum": [
+                            "walk_in",
+                            "phone",
+                            "online"
+                          ]
+                        },
+                        "cancelReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rescheduledFromId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "noShowAutoMarked": {
+                          "type": "boolean"
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "bookingCode",
+                        "patientId",
+                        "fullName",
+                        "phone",
+                        "reason",
+                        "doctorId",
+                        "roomId",
+                        "scheduledAt",
+                        "durationMinutes",
+                        "status",
+                        "source",
+                        "cancelReason",
+                        "rescheduledFromId",
+                        "noShowAutoMarked",
                         "version"
                       ]
                     },
@@ -5729,6 +6284,9 @@
                           ],
                           "format": "uuid"
                         },
+                        "noShowAutoMarked": {
+                          "type": "boolean"
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -5748,6 +6306,7 @@
                         "source",
                         "cancelReason",
                         "rescheduledFromId",
+                        "noShowAutoMarked",
                         "version"
                       ]
                     },
@@ -22228,13 +22787,23 @@
                           "type": "integer",
                           "minimum": 1,
                           "maximum": 240
+                        },
+                        "noShowAutoEnabled": {
+                          "type": "boolean"
+                        },
+                        "noShowThresholdMinutes": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 1440
                         }
                       },
                       "required": [
                         "businessHours",
                         "slotDurationMinutes",
                         "deferredPaymentEnabled",
-                        "overdueWaitWarningMinutes"
+                        "overdueWaitWarningMinutes",
+                        "noShowAutoEnabled",
+                        "noShowThresholdMinutes"
                       ]
                     },
                     "meta": {
@@ -22496,6 +23065,14 @@
                     "type": "integer",
                     "minimum": 1,
                     "maximum": 240
+                  },
+                  "noShowAutoEnabled": {
+                    "type": "boolean"
+                  },
+                  "noShowThresholdMinutes": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1440
                   }
                 }
               }
@@ -22682,13 +23259,23 @@
                           "type": "integer",
                           "minimum": 1,
                           "maximum": 240
+                        },
+                        "noShowAutoEnabled": {
+                          "type": "boolean"
+                        },
+                        "noShowThresholdMinutes": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 1440
                         }
                       },
                       "required": [
                         "businessHours",
                         "slotDurationMinutes",
                         "deferredPaymentEnabled",
-                        "overdueWaitWarningMinutes"
+                        "overdueWaitWarningMinutes",
+                        "noShowAutoEnabled",
+                        "noShowThresholdMinutes"
                       ]
                     },
                     "meta": {
@@ -28412,10 +28999,10 @@
                                 "format": "uuid"
                               },
                               "entityLabel": {
-                                "type": [
-                                  "string",
-                                  "null"
-                                ]
+                                "type": "string"
+                              },
+                              "isBreakGlass": {
+                                "type": "boolean"
                               },
                               "beforeJson": {},
                               "afterJson": {}
@@ -28429,7 +29016,8 @@
                               "actionLabel",
                               "entityType",
                               "entityId",
-                              "entityLabel"
+                              "entityLabel",
+                              "isBreakGlass"
                             ]
                           }
                         },

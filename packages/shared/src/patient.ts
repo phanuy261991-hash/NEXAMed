@@ -284,3 +284,23 @@ export const patientByNationalIdResponseSchema = z.object({
   items: z.array(patientSummarySchema),
 });
 export type PatientByNationalIdResponse = z.infer<typeof patientByNationalIdResponseSchema>;
+
+/**
+ * Gộp hồ sơ trùng (S5-06, PAT-04) — `sourceId` bị gộp VÀO `targetId` (giữ lại). Không xoá `sourceId`,
+ * chỉ đặt `merged_into_id`, chuyển toàn bộ `encounter` + 3 bảng tiền sử có cấu trúc (dị nguyên/bệnh
+ * lý nền/tiền sử gia đình) sang `targetId`. `.refine` chặn tự gộp chính nó ngay ở tầng validate.
+ */
+export const mergePatientsRequestSchema = z
+  .object({
+    sourceId: z.string().uuid(),
+    targetId: z.string().uuid(),
+  })
+  .refine((d) => d.sourceId !== d.targetId, { message: 'Không thể gộp một hồ sơ với chính nó.', path: ['targetId'] });
+export type MergePatientsRequest = z.infer<typeof mergePatientsRequestSchema>;
+
+export const mergePatientsResponseSchema = z.object({
+  sourceId: z.string().uuid(),
+  targetId: z.string().uuid(),
+  movedEncounterCount: z.number().int(),
+});
+export type MergePatientsResponse = z.infer<typeof mergePatientsResponseSchema>;

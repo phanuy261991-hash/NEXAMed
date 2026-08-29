@@ -84,7 +84,10 @@ import {
   loginRequestSchema,
   loginResponseSchema,
   logoutResponseSchema,
+  markNoShowRequestSchema,
   meResponseSchema,
+  mergePatientsRequestSchema,
+  mergePatientsResponseSchema,
   patientByNationalIdQuerySchema,
   patientByNationalIdResponseSchema,
   patientByPhoneQuerySchema,
@@ -388,6 +391,23 @@ registry.registerPath({
 
 registry.registerPath({
   method: 'post',
+  path: '/api/v1/patients/merge',
+  tags: ['patient'],
+  summary: 'Gộp hồ sơ trùng (S5-06, PAT-04) — chuyển encounter + tiền sử có cấu trúc từ sourceId sang targetId, không xoá sourceId',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: mergePatientsRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Gộp thành công', envelope(mergePatientsResponseSchema)),
+    400: errorResponse('Dữ liệu gửi lên không hợp lệ (ví dụ tự gộp chính nó)'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền patient.merge (chỉ clinic_admin)'),
+    404: errorResponse('Không tìm thấy hồ sơ nguồn/đích (không tồn tại hoặc thuộc tenant khác)'),
+    409: errorResponse('Hồ sơ nguồn hoặc đích đã bị gộp trước đó (PATIENT_ALREADY_MERGED)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
   path: '/api/v1/appointments',
   tags: ['appointment'],
   summary: 'Đặt lịch hẹn (APP-02) — chặn trùng khung giờ cùng bác sĩ ở tầng DB (APP-03)',
@@ -485,6 +505,25 @@ registry.registerPath({
   },
   responses: {
     200: jsonResponse('Huỷ thành công', envelope(appointmentSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền appointment.cancel'),
+    404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal của bác sĩ)'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION), hoặc lịch không còn ở trạng thái SCHEDULED (APPOINTMENT_NOT_CANCELLABLE)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/appointments/{id}/no-show',
+  tags: ['appointment'],
+  summary: 'Đánh dấu "Không đến" thủ công (S5-07, APP-05) — dùng khi tenant tắt tự động đánh dấu (noShowAutoEnabled=false)',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: appointmentIdParams,
+    body: { content: { 'application/json': { schema: markNoShowRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Đánh dấu thành công', envelope(appointmentSummarySchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền appointment.cancel'),
     404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal của bác sĩ)'),

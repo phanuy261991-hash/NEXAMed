@@ -13,6 +13,12 @@ import { AppointmentQuickCreatePanel } from './AppointmentQuickCreatePanel';
 import { useAppointmentsByDateQuery, useDoctorsQuery, useScheduleConfigQuery } from './appointment.queries';
 import { addDays, formatDateLabel, getVietnamTodayDateString } from './schedule-grid.utils';
 
+/**
+ * Khớp `DEFAULT_NO_SHOW_THRESHOLD_MINUTES` ở `@nexamed/shared` — khai riêng ở đây thay vì import
+ * thẳng (hằng số giá trị thuần không export được qua `vite build`, cùng lỗi bundler #032/#091).
+ */
+const DEFAULT_NO_SHOW_THRESHOLD_MINUTES = 60;
+
 const LEGEND = [
   { label: 'Đã đặt', className: 'bg-blue-600' },
   { label: 'Đã chuyển khám', className: 'bg-emerald-500' },
@@ -45,6 +51,8 @@ export function AppointmentSchedulePage() {
   const doctors = doctorsQuery.data?.items ?? [];
   const dayAppointments = dayQuery.data?.items ?? [];
   const defaultDuration = scheduleConfigQuery.data?.slotDurationMinutes ?? 15;
+  const noShowThresholdMinutes = scheduleConfigQuery.data?.noShowThresholdMinutes ?? DEFAULT_NO_SHOW_THRESHOLD_MINUTES;
+  const noShowAutoEnabled = scheduleConfigQuery.data?.noShowAutoEnabled ?? false;
 
   function openQuickCreate(doctorId: string | null, time: string) {
     setDetailAppointment(null);
@@ -204,6 +212,8 @@ export function AppointmentSchedulePage() {
               appointments={dayAppointments}
               doctors={doctors}
               businessHours={scheduleConfigQuery.data?.businessHours ?? null}
+              noShowThresholdMinutes={noShowThresholdMinutes}
+              noShowAutoEnabled={noShowAutoEnabled}
               onSlotClick={(doctorId, time) => openQuickCreate(doctorId, time)}
               onCardClick={openDetail}
             />
@@ -223,7 +233,13 @@ export function AppointmentSchedulePage() {
         defaultDurationMinutes={defaultDuration}
       />
 
-      <AppointmentDetailPanel appointment={detailAppointment} onClose={() => setDetailAppointment(null)} doctors={doctors} />
+      <AppointmentDetailPanel
+        appointment={detailAppointment}
+        onClose={() => setDetailAppointment(null)}
+        doctors={doctors}
+        noShowThresholdMinutes={noShowThresholdMinutes}
+        noShowAutoEnabled={noShowAutoEnabled}
+      />
 
       {doctors.length === 0 && !loadingBase && !baseError && (
         <p className="flex flex-shrink-0 items-center gap-1.5 px-1 text-xs text-slate-400">

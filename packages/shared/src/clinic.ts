@@ -145,6 +145,15 @@ export const clinicSettingsSchema = z.object({
    * (2026-08-28) — pill "Cấu hình khám" ở `/admin/system-config`.
    */
   overdueWaitWarningMinutes: z.number().int().min(1).max(240),
+  /**
+   * Tự động đánh dấu "Không đến" (S5-07, APP-05) — pill "Lịch hẹn" trong "Cấu hình phòng khám".
+   * Tắt (mặc định — an toàn, giữ hành vi trước khi có job này): job nền KHÔNG tự chuyển trạng thái
+   * cho tenant này, lễ tân/bác sĩ tự đánh dấu qua `POST /appointments/:id/no-show`. Bật:
+   * `noShowThresholdMinutes` mới có ý nghĩa, job nền (mỗi 5 phút) tự chuyển `SCHEDULED` quá giờ
+   * hẹn cộng ngưỡng này sang `NO_SHOW`.
+   */
+  noShowAutoEnabled: z.boolean(),
+  noShowThresholdMinutes: z.number().int().min(1).max(1440),
 });
 export type ClinicSettings = z.infer<typeof clinicSettingsSchema>;
 
@@ -159,12 +168,18 @@ export const updateClinicSettingsRequestSchema = z.object({
   slotDurationMinutes: z.number().int().min(5).max(240).optional(),
   deferredPaymentEnabled: z.boolean().optional(),
   overdueWaitWarningMinutes: z.number().int().min(1).max(240).optional(),
+  noShowAutoEnabled: z.boolean().optional(),
+  noShowThresholdMinutes: z.number().int().min(1).max(1440).optional(),
 });
 export type UpdateClinicSettingsRequest = z.infer<typeof updateClinicSettingsRequestSchema>;
 
 export const DEFAULT_SLOT_DURATION_MINUTES = DEFAULT_APPOINTMENT_DURATION_MINUTES;
 /** Giữ đúng ngưỡng hardcode cũ (`WAIT_WARNING_MINUTES`) làm mặc định khi tenant chưa cấu hình. */
 export const DEFAULT_OVERDUE_WAIT_WARNING_MINUTES = 30;
+/** Tắt theo mặc định (an toàn — giữ đúng hành vi "chưa từng có job này" cho tenant chưa cấu hình). */
+export const DEFAULT_NO_SHOW_AUTO_ENABLED = false;
+/** Khớp PRD APP-05 ("ngưỡng cấu hình, mặc định 60 phút") + hardcode cũ ở FE (`LATE_APPOINTMENT_THRESHOLD_MINUTES`). */
+export const DEFAULT_NO_SHOW_THRESHOLD_MINUTES = 60;
 
 /**
  * `GET /clinic-settings/deferred-payment-enabled` — chiếu tối thiểu tự-phục vụ (Thu ngân cơ bản,

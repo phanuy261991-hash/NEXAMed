@@ -1,5 +1,5 @@
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { CancelAppointmentRequest, CreateAppointmentRequest, EditAppointmentRequest, RescheduleAppointmentRequest } from '@nexamed/shared';
+import type { CancelAppointmentRequest, CreateAppointmentRequest, EditAppointmentRequest, MarkNoShowRequest, RescheduleAppointmentRequest } from '@nexamed/shared';
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
@@ -11,6 +11,7 @@ import {
   listAppointments,
   listDoctors,
   lookupAppointmentByPhone,
+  markNoShow,
   rescheduleAppointment,
 } from './appointment.api';
 
@@ -18,12 +19,17 @@ import {
  * Trần 100 khớp đúng `listAppointmentsQuerySchema.limit.max(100)` (dùng chung mọi chế độ). */
 const DAY_VIEW_LIMIT = 100;
 const APPOINTMENT_LIST_LIMIT = 50;
+/** Tự tải lại mỗi 30 giây (S5-07, chủ dự án yêu cầu trực tiếp) — để lễ tân thấy ngay lịch vừa bị
+ * job nền tự động chuyển "Không đến" mà không phải tự F5. Chỉ áp cho 2 query hiển thị bảng/lưới
+ * theo ngày, không áp cho các query một-lần khác trong file này (danh sách bác sĩ, tra cứu SĐT...). */
+const AUTO_REFRESH_INTERVAL_MS = 30_000;
 
 export function useAppointmentsByDateQuery(date: string) {
   const { tenantId } = useAppConfig();
   return useQuery({
     queryKey: queryKey(tenantId, 'appointment', 'day', date),
     queryFn: () => listAppointments({ date, limit: DAY_VIEW_LIMIT }),
+    refetchInterval: AUTO_REFRESH_INTERVAL_MS,
   });
 }
 
@@ -41,6 +47,7 @@ export function useAppointmentsListQuery(date: string) {
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     placeholderData: keepPreviousData,
+    refetchInterval: AUTO_REFRESH_INTERVAL_MS,
   });
 }
 
@@ -112,6 +119,15 @@ export function useEditAppointmentMutation() {
   const invalidate = useInvalidateAppointments();
   return useMutation({
     mutationFn: ({ id, body }: { id: string; body: EditAppointmentRequest }) => editAppointment(id, body),
+    onSuccess: () => void invalidate(),
+  });
+}
+
+/** S5-07, APP-05 — đánh dấu "Không đến" thủ công. */
+export function useMarkNoShowMutation() {
+  const invalidate = useInvalidateAppointments();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: MarkNoShowRequest }) => markNoShow(id, body),
     onSuccess: () => void invalidate(),
   });
 }

@@ -6,6 +6,7 @@ import {
   DOCTOR_DIRECTORY_PORT,
   EncounterAlreadyExistsError,
   EncounterNotCheckedInError,
+  PatientAlreadyMergedError,
   evaluateVitalSignWarnings,
   formatDisplayCode,
   getVietnamDateString,
@@ -34,6 +35,7 @@ import { AppointmentRepository } from '../appointment/appointment.repository';
 import { EncounterRepository } from '../encounter/encounter.repository';
 import { toEncounterSummary } from '../encounter/encounter.mapper';
 import { InvoiceRepository } from '../billing/invoice.repository';
+import { PatientRepository } from '../patient/patient.repository';
 import { VitalSignRepository } from './vital-sign.repository';
 import { EncounterServiceItemRepository, type CreateEncounterServiceItemData } from './encounter-service-item.repository';
 
@@ -102,8 +104,21 @@ export class ReceptionService {
     private readonly encounterServiceItemRepository: EncounterServiceItemRepository,
     private readonly invoiceRepository: InvoiceRepository,
     private readonly codeSequenceRepository: CodeSequenceRepository,
+    private readonly patientRepository: PatientRepository,
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
   ) {}
+
+  /**
+   * "Ngừng cho tạo mới" cho hồ sơ đã gộp (S5-06, PAT-04, `.claude/docs/clinical-workflow.md` mục
+   * Edge case) — gọi TRƯỚC khi tạo `encounter` ở cả `checkIn()`/`registerDirect()`. Không tồn tại
+   * thì để FK violation ở bước tạo `encounter` xử lý tiếp (giữ nguyên hành vi cũ, 404 xuyên tenant).
+   */
+  private async assertPatientNotMerged(tx: Prisma.TransactionClient, tenantId: string, patientId: string): Promise<void> {
+    const patient = await this.patientRepository.findById(tx, tenantId, patientId);
+    if (patient?.mergedIntoId) {
+      throw new PatientAlreadyMergedError();
+    }
+  }
 
   /**
    * Điều phối Bác sĩ/Khoa lúc Tiếp nhận ("Hàng đợi ảo", #064) — dùng chung cho `checkIn()` VÀ
@@ -146,6 +161,7 @@ export class ReceptionService {
       if (appointment.status !== 'SCHEDULED') {
         throw new AppointmentNotCancellableError();
       }
+      await this.assertPatientNotMerged(tx, tenantId, dto.patientId);
 
       const created = await this.createEncounterAndConvert(tx, tenantId, actorId, {
         appointmentId: appointment.id,
@@ -182,6 +198,8 @@ export class ReceptionService {
     const routing = await this.resolveRouting(tenantId, dto);
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      await this.assertPatientNotMerged(tx, tenantId, dto.patientId);
+
       const seq = await this.codeSequenceRepository.next(tx, tenantId, ENCOUNTER_NO_PREFIX, actorId);
       const encounterNo = formatDisplayCode(ENCOUNTER_NO_PREFIX, new Date(), seq);
 

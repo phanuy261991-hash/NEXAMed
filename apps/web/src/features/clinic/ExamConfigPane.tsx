@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { CheckCircle } from '@phosphor-icons/react';
 import { Button } from '../../shared/ui/Button';
+import { EditIconButton } from '../../shared/ui/EditIconButton';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { useClinicSettingsQuery, useUpdateClinicSettingsMutation } from './clinic.queries';
@@ -76,11 +77,7 @@ export function ExamConfigPane() {
     <div>
       <div className="mb-3 flex items-start justify-between gap-3">
         <p className="text-xs text-slate-500">Áp dụng cho cảnh báo &quot;chờ lâu&quot; ở Hàng đợi khám.</p>
-        {!editing && (
-          <Button type="button" variant="secondary" onClick={() => setEditing(true)}>
-            Sửa
-          </Button>
-        )}
+        {!editing && <EditIconButton onClick={() => setEditing(true)} />}
       </div>
 
       <div className={sectionBoxClassName}>

@@ -6,6 +6,7 @@ import {
   createAppointmentRequestSchema,
   editAppointmentRequestSchema,
   listAppointmentsQuerySchema,
+  markNoShowRequestSchema,
   rescheduleAppointmentRequestSchema,
 } from '@nexamed/shared';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
@@ -83,6 +84,19 @@ export class AppointmentController {
     const dto = cancelAppointmentRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
     return this.appointmentService.cancelAppointment(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+  }
+
+  /**
+   * Đánh dấu "Không đến" thủ công (S5-07, APP-05) — dùng khi tenant tắt tự động đánh dấu. Tái dùng
+   * `appointment.cancel` (cùng nhóm thao tác terminal trên lịch `SCHEDULED`, không thêm permission mới).
+   */
+  @Post(':id/no-show')
+  @RequirePermission('appointment', 'cancel', { entityIdParam: 'id' })
+  @HttpCode(200)
+  async markNoShow(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
+    const dto = markNoShowRequestSchema.parse(body);
+    const { userId, tenantId } = req.user!;
+    return this.appointmentService.markNoShow(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 
   @Post(':id/reschedule')

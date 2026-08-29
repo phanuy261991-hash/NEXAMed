@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { IdentificationCard } from '@phosphor-icons/react';
+import { IdentificationCard, Warning } from '@phosphor-icons/react';
+import type { PatientSummary } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useAuthStore } from '../auth/auth.store';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
@@ -8,13 +9,17 @@ import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { Skeleton } from '../../shared/ui/Skeleton';
+import { PatientSearchDialog } from '../reception/PatientSearchDialog';
 import { usePatientQuery, useUpdatePatientMutation } from './patient.queries';
 import { PatientFormFields, type PatientFormValues } from './PatientFormFields';
+import { MergePatientsDialog } from './MergePatientsDialog';
 import { patientDetailToFormValues, toUpdatePatientRequest } from './patient-form.utils';
 
 const GENDER_LABEL: Record<string, string> = { male: 'Nam', female: 'Nữ', other: 'Khác' };
 /** Khớp `patient.update` trong ma trận mặc định (.claude/docs/security-audit.md) — chỉ 2 vai trò. */
 const PATIENT_EDIT_ROLES = ['receptionist', 'clinic_admin'];
+/** Khớp `patient.merge` (chỉ `clinic_admin`, global — packages/core/src/rbac/permissions.ts). */
+const PATIENT_MERGE_ROLES = ['clinic_admin'];
 
 /** Chi tiết + sửa TẠI CHỖ (không modal, đã chốt với chủ dự án) — cùng bố cục PatientFormFields cho cả xem/sửa. */
 export function PatientDetailPage() {
@@ -24,6 +29,9 @@ export function PatientDetailPage() {
   const updateMutation = useUpdatePatientMutation(patientId);
   const user = useAuthStore((s) => s.user);
   const canEdit = user?.roles.some((role) => PATIENT_EDIT_ROLES.includes(role)) ?? false;
+  const canMerge = user?.roles.some((role) => PATIENT_MERGE_ROLES.includes(role)) ?? false;
+  const [searchingMergeTarget, setSearchingMergeTarget] = useState(false);
+  const [mergeTarget, setMergeTarget] = useState<PatientSummary | null>(null);
 
   useBreadcrumb([
     { label: 'Tiếp nhận và Đặt lịch' },
@@ -99,6 +107,8 @@ export function PatientDetailPage() {
     }
   }
 
+  const merged = patient.mergedIntoId !== null;
+
   return (
     <div className="p-6">
       <div className="mb-6 flex items-center justify-between">
@@ -108,8 +118,27 @@ export function PatientDetailPage() {
             Mã BN {patient.patientCode} · {GENDER_LABEL[patient.gender]}
           </p>
         </div>
-        {!editing && canEdit && <Button onClick={startEditing}>Sửa hồ sơ</Button>}
+        <div className="flex gap-2.5">
+          {!editing && !merged && canMerge && (
+            <Button type="button" variant="secondary" onClick={() => setSearchingMergeTarget(true)}>
+              Gộp vào hồ sơ khác
+            </Button>
+          )}
+          {!editing && !merged && canEdit && <Button onClick={startEditing}>Sửa hồ sơ</Button>}
+        </div>
       </div>
+
+      {merged && (
+        <div className="mb-6 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <Warning size={18} weight="fill" className="mt-0.5 flex-shrink-0" aria-hidden="true" />
+          <span>
+            Hồ sơ này đã được gộp vào hồ sơ khác, không còn tạo được lượt khám mới.{' '}
+            <Link to={`/patients/${patient.mergedIntoId}`} className="font-semibold underline">
+              Xem hồ sơ đích
+            </Link>
+          </span>
+        </div>
+      )}
 
       {apiError && (
         <p role="alert" className="mb-6 text-sm text-rose-600">
@@ -139,6 +168,27 @@ export function PatientDetailPage() {
           </div>
         )}
       </div>
+
+      {searchingMergeTarget && (
+        <PatientSearchDialog
+          excludeId={patient.id}
+          onClose={() => setSearchingMergeTarget(false)}
+          onPick={(target) => {
+            setSearchingMergeTarget(false);
+            setMergeTarget(target);
+          }}
+        />
+      )}
+
+      {mergeTarget && (
+        <MergePatientsDialog
+          mode="confirm"
+          source={patient}
+          target={mergeTarget}
+          onClose={() => setMergeTarget(null)}
+          onSuccess={() => setMergeTarget(null)}
+        />
+      )}
     </div>
   );
 }

@@ -7,6 +7,7 @@ import {
   CLINIC_CONFIG_READER_PORT,
   ConcurrentModificationError,
   DOCTOR_DIRECTORY_PORT,
+  SYSTEM_ACTOR_ID,
   formatDisplayCode,
   vietnamDayRange,
   type ClinicConfigReaderPort,
@@ -24,6 +25,7 @@ import {
   type ListAppointmentsQuery,
   type ListAppointmentsResponse,
   type ListDoctorsResponse,
+  type MarkNoShowRequest,
   type RescheduleAppointmentRequest,
 } from '@nexamed/shared';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
@@ -251,6 +253,42 @@ export class AppointmentService {
   }
 
   /**
+   * Đánh dấu "Không đến" THỦ CÔNG (S5-07, APP-05) — dùng khi tenant tắt tự động đánh dấu
+   * (`noShowAutoEnabled=false`). Cùng triết lý 404/409 với `cancelAppointment()`.
+   */
+  async markNoShow(tenantId: string, actorId: string, dataScope: DataScope, id: string, dto: MarkNoShowRequest, meta: RequestMeta): Promise<AppointmentSummary> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const existing = await this.appointmentRepository.findById(tx, tenantId, id);
+      if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId)) {
+        throw new NotFoundException();
+      }
+      if (existing.status !== 'SCHEDULED') {
+        throw new AppointmentNotCancellableError();
+      }
+
+      const count = await this.appointmentRepository.markNoShowManual(tx, tenantId, id, dto.version, actorId);
+      if (count === 0) {
+        throw new ConcurrentModificationError();
+      }
+
+      await writeAuditLog(tx, tenantId, {
+        actorId,
+        action: 'appointment.no_show',
+        entityType: 'appointment',
+        entityId: id,
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
+
+      const updated = await this.appointmentRepository.findById(tx, tenantId, id);
+      if (!updated) {
+        throw new NotFoundException();
+      }
+      return this.toSummary(updated);
+    });
+  }
+
+  /**
    * Sửa lịch hẹn TRONG NGÀY (khôi phục 2026-08-18, tồn tại song song với `rescheduleAppointment()`
    * bên dưới — chủ dự án yêu cầu 2 thao tác tách biệt: "Sửa lịch" đổi giờ/bác sĩ/phòng/thời lượng
    * TẠI CHỖ, cùng id, không đổi ngày; "Dời lịch" tạo lịch mới cho ngày khác). Cùng khuôn
@@ -425,6 +463,7 @@ export class AppointmentService {
       source: appointment.source,
       cancelReason: appointment.cancelReason,
       rescheduledFromId: appointment.rescheduledFromId,
+      noShowAutoMarked: appointment.status === 'NO_SHOW' && appointment.updatedBy === SYSTEM_ACTOR_ID,
       version: appointment.version,
     };
   }

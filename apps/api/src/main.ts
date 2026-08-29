@@ -5,11 +5,10 @@ import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 import { ResponseInterceptor } from './common/response.interceptor';
 import { DomainExceptionFilter } from './common/domain-exception.filter';
+import { SYSTEM_ACTOR_ID } from '@nexamed/core';
 import { PrismaService } from './infrastructure/persistence/prisma.service';
 import { UnitOfWorkService } from './infrastructure/persistence/unit-of-work.service';
 import { syncRolePermissionsForAllTenants } from './infrastructure/persistence/sync-role-permissions';
-
-const SYSTEM_ACTOR = '00000000-0000-0000-0000-000000000000';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -27,7 +26,7 @@ async function bootstrap() {
   const added = await syncRolePermissionsForAllTenants(
     app.get(PrismaService),
     app.get(UnitOfWorkService),
-    SYSTEM_ACTOR,
+    SYSTEM_ACTOR_ID,
   );
   if (added.length > 0) {
     console.log(`[startup] Đồng bộ role_permission: thêm ${added.length} dòng còn thiếu (${added.join(', ')}).`);

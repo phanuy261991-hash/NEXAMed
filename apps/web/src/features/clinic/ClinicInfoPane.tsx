@@ -5,6 +5,7 @@ import { useAuthStore } from '../auth/auth.store';
 import { ApiError, resolveApiUrl } from '../../shared/api/client';
 import { Button } from '../../shared/ui/Button';
 import { Combobox, type ComboboxOption } from '../../shared/ui/Combobox';
+import { EditIconButton } from '../../shared/ui/EditIconButton';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import {
@@ -206,11 +207,7 @@ export function ClinicInfoPane() {
     <div>
       <div className="mb-5 flex items-start justify-between gap-3">
         <p className="text-xs text-slate-500">Hiển thị trên hệ thống và chuẩn bị cho mẫu in đơn thuốc sau này.</p>
-        {canManage && !editing && !query.isLoading && (
-          <Button type="button" variant="secondary" onClick={() => setEditing(true)}>
-            Sửa
-          </Button>
-        )}
+        {canManage && !editing && !query.isLoading && <EditIconButton onClick={() => setEditing(true)} />}
       </div>
 
       {query.isError && <ErrorBanner message="Không tải được thông tin phòng khám." onRetry={() => query.refetch()} />}

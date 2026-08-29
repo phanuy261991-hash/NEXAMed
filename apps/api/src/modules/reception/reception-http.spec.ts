@@ -369,6 +369,20 @@ describe('HTTP e2e — /api/v1/reception', () => {
       expect(serviceItem.examTypePrice).toBe(150_000n);
     });
 
+    it('hồ sơ đã bị gộp (mergedIntoId khác null, S5-06 PAT-04) → 409 PATIENT_ALREADY_MERGED, không tạo được lượt khám mới', async () => {
+      const source = await createPatient(receptionistToken);
+      const target = await createPatient(receptionistToken);
+      await privileged.patient.update({ where: { id: source.id }, data: { mergedIntoId: target.id } });
+
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/reception/direct')
+        .set(authed(receptionistToken))
+        .send(directPayload(source.id, doctorAUserId, isoAt(8, 3, 28)));
+
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('PATIENT_ALREADY_MERGED');
+    });
+
     it('services[] nhiều dòng — 200, mỗi dòng lưu đúng trong encounter_service_item, dòng chưa có đơn giá vẫn lưu được với priceTypeCode/unitCode/examTypePrice=null', async () => {
       const patient = await createPatient(receptionistToken);
 

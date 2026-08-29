@@ -36,7 +36,8 @@ export interface CreatePatientData {
  * không thuộc `CreatePatientData` (ảnh chỉ đổi qua endpoint upload riêng, `PatientService.
  * uploadPhoto()` — không tạo được lúc `POST /patients` vì chưa có `id` để đặt tên key).
  */
-export type UpdatePatientData = Partial<CreatePatientData> & { photoKey?: string | null };
+/** `mergedIntoId` chỉ ghi qua `PatientMergeService` (S5-06, PAT-04), không thuộc `CreatePatientData`. */
+export type UpdatePatientData = Partial<CreatePatientData> & { photoKey?: string | null; mergedIntoId?: string };
 
 /** Chỗ DUY NHẤT gọi Prisma cho bảng `patient` — theo .claude/docs/coding-standards.md. */
 @Injectable()

@@ -258,6 +258,24 @@ export class EncounterRepository {
   }
 
   /**
+   * Gộp hồ sơ trùng (S5-06, PAT-04) — chuyển toàn bộ `encounter` của hồ sơ nguồn sang hồ sơ đích.
+   * Không đụng `encounterNo`/trạng thái/nội dung lâm sàng nào, chỉ đổi `patientId`.
+   */
+  async reassignPatientId(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    sourcePatientId: string,
+    targetPatientId: string,
+    actorId: string,
+  ): Promise<number> {
+    const result = await tx.encounter.updateMany({
+      where: { tenantId, patientId: sourcePatientId, deletedAt: null },
+      data: { patientId: targetPatientId, updatedBy: actorId },
+    });
+    return result.count;
+  }
+
+  /**
    * "Bắt đầu khám" — `CHECKED_IN → IN_CONSULTATION`, set `started_at`. `updateMany` + kiểm
    * `count` (không phải `update`) — cần ghép `version`/`status` vào `WHERE` cho atomic, cùng
    * khuôn `AppointmentRepository.cancel()`.

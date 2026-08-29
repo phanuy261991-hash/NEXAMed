@@ -20,3 +20,12 @@ export class InvalidPhotoError extends DomainError {
     super(message);
   }
 }
+
+/** S5-06, PAT-04 — hồ sơ đã bị gộp vào hồ sơ khác (`merged_into_id` khác null): không gộp lại được, không tạo lượt khám mới được. */
+export class PatientAlreadyMergedError extends DomainError {
+  readonly code = 'PATIENT_ALREADY_MERGED';
+
+  constructor() {
+    super('Hồ sơ này đã được gộp vào hồ sơ khác, không thể thao tác.');
+  }
+}

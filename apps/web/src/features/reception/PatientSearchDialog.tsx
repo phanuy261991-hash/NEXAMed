@@ -31,7 +31,16 @@ const SKELETON_ROW_COUNT = 5;
  * theo hồ sơ mới nhất — `sort=created_desc`, `useRecentPatientsQuery`) — thay cho khung trống ban
  * đầu, đúng "Ideal State" luôn có gì đó để nhìn theo `.claude/docs/ui-guidelines.md` mục 3.
  */
-export function PatientSearchDialog({ onClose, onPick }: { onClose: () => void; onPick: (patient: PatientSummary) => void }) {
+export function PatientSearchDialog({
+  onClose,
+  onPick,
+  excludeId,
+}: {
+  onClose: () => void;
+  onPick: (patient: PatientSummary) => void;
+  /** Loại 1 hồ sơ khỏi kết quả (S5-06, PAT-04 — "Gộp vào hồ sơ khác" không cho tự chọn chính hồ sơ đang xem). */
+  excludeId?: string;
+}) {
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [nationalId, setNationalId] = useState('');
@@ -63,6 +72,9 @@ export function PatientSearchDialog({ onClose, onPick }: { onClose: () => void; 
   } else {
     results = recentQuery.data?.items ?? [];
     isLoading = recentQuery.isLoading;
+  }
+  if (excludeId) {
+    results = results.filter((p) => p.id !== excludeId);
   }
 
   return (

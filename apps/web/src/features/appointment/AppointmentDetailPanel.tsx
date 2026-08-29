@@ -8,11 +8,17 @@ import { Combobox } from '../../shared/ui/Combobox';
 import { TimeInput } from '../../shared/ui/TimeInput';
 import { useAuthStore } from '../auth/auth.store';
 import type { ReceptionIntakeCheckinContext } from '../reception/ReceptionIntakeForm';
-import { APPOINTMENT_SOURCE_LABEL, APPOINTMENT_STATUS_META, isAppointmentLate } from './appointment-status';
+import { APPOINTMENT_SOURCE_LABEL, APPOINTMENT_STATUS_META, getNoShowCountdownTier, isAppointmentLate, noShowCountdownTierMeta } from './appointment-status';
 /** Khớp `encounter.create` (packages/core/src/rbac/permissions.ts) — nút Tiếp nhận chỉ hiện đúng nơi có quyền, backend vẫn là lớp chặn thật. */
 const CHECK_IN_ROLES = ['receptionist', 'clinic_admin'];
 const DURATION_OPTIONS = [15, 30, 45, 60].map((m) => ({ value: String(m), label: `${m} phút` }));
-import { useAppointmentsByDateQuery, useCancelAppointmentMutation, useEditAppointmentMutation, useRescheduleAppointmentMutation } from './appointment.queries';
+import {
+  useAppointmentsByDateQuery,
+  useCancelAppointmentMutation,
+  useEditAppointmentMutation,
+  useMarkNoShowMutation,
+  useRescheduleAppointmentMutation,
+} from './appointment.queries';
 import { DoctorAvailabilityList } from './DoctorAvailabilityList';
 import { formatDateLabel, getVietnamTodayDateString, isoToVietnamDateString, minutesToLabel, vnDateTimeToIso, vnTimeOfDayMinutes } from './schedule-grid.utils';
 
@@ -28,13 +34,18 @@ export function AppointmentDetailPanel({
   appointment,
   onClose,
   doctors,
+  noShowThresholdMinutes,
+  noShowAutoEnabled,
 }: {
   appointment: AppointmentSummary | null;
   onClose: () => void;
   doctors: DoctorOption[];
+  noShowThresholdMinutes: number;
+  noShowAutoEnabled: boolean;
 }) {
   const [mode, setMode] = useState<'view' | 'edit' | 'reschedule'>('view');
   const [cancelReason, setCancelReason] = useState('');
+  const [confirmingNoShow, setConfirmingNoShow] = useState(false);
   const [editTime, setEditTime] = useState('');
   const [editDuration, setEditDuration] = useState(15);
   const [editDoctorId, setEditDoctorId] = useState('');
@@ -51,6 +62,7 @@ export function AppointmentDetailPanel({
   const cancelMutation = useCancelAppointmentMutation();
   const editMutation = useEditAppointmentMutation();
   const rescheduleMutation = useRescheduleAppointmentMutation();
+  const noShowMutation = useMarkNoShowMutation();
   // "Sửa lịch": bác sĩ trống/bận trong ĐÚNG ngày của lịch hẹn hiện có (không đổi ngày được ở đây).
   const editDayQuery = useAppointmentsByDateQuery(appointment ? isoToVietnamDateString(appointment.scheduledAt) : getVietnamTodayDateString());
   // "Dời lịch": bác sĩ trống/bận theo NGÀY ĐANG DỜI TỚI — có thể khác ngày lịch hẹn gốc, tải riêng.
@@ -62,6 +74,7 @@ export function AppointmentDetailPanel({
     if (!appointment) return;
     setMode('view');
     setCancelReason('');
+    setConfirmingNoShow(false);
     setError(null);
     setEditTime(minutesToLabel(vnTimeOfDayMinutes(appointment.scheduledAt)));
     setEditDuration(appointment.durationMinutes);
@@ -77,7 +90,9 @@ export function AppointmentDetailPanel({
   const open = appointment !== null;
   const meta = APPOINTMENT_STATUS_META[appointment.status];
   const editable = appointment.status === 'SCHEDULED';
-  const late = isAppointmentLate(appointment.status, appointment.scheduledAt);
+  const late = isAppointmentLate(appointment.status, appointment.scheduledAt, noShowThresholdMinutes);
+  const countdownTier = getNoShowCountdownTier(appointment.status, appointment.scheduledAt, noShowThresholdMinutes, noShowAutoEnabled);
+  const countdown = countdownTier ? noShowCountdownTierMeta(countdownTier) : null;
   const appointmentDate = isoToVietnamDateString(appointment.scheduledAt);
 
   async function handleCancel() {
@@ -85,6 +100,18 @@ export function AppointmentDetailPanel({
     setError(null);
     try {
       await cancelMutation.mutateAsync({ id: appointment.id, body: { cancelReason, version: appointment.version } });
+      onClose();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Có lỗi xảy ra, vui lòng thử lại.');
+    }
+  }
+
+  async function handleMarkNoShow() {
+    if (!appointment) return;
+    setError(null);
+    try {
+      await noShowMutation.mutateAsync({ id: appointment.id, body: { version: appointment.version } });
+      setConfirmingNoShow(false);
       onClose();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Có lỗi xảy ra, vui lòng thử lại.');
@@ -179,14 +206,26 @@ export function AppointmentDetailPanel({
                 <Row label="Nguồn" value={APPOINTMENT_SOURCE_LABEL[appointment.source]} />
                 <Row
                   label="Trạng thái"
-                  value={<span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${meta.bg} ${meta.text}`}>{meta.label}</span>}
+                  value={
+                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${meta.bg} ${meta.text}`}>
+                      {meta.label}
+                      {appointment.status === 'NO_SHOW' && appointment.noShowAutoMarked && <span className="font-normal"> (tự động)</span>}
+                    </span>
+                  }
                 />
               </div>
 
               {late && (
                 <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-800">
                   <Clock size={16} weight="bold" className="mt-0.5 flex-shrink-0" aria-hidden="true" />
-                  Bệnh nhân chưa đến, đã quá giờ hẹn hơn 60 phút — cân nhắc đổi lịch hoặc đánh dấu không đến.
+                  Bệnh nhân chưa đến, đã quá giờ hẹn hơn {noShowThresholdMinutes} phút — cân nhắc đổi lịch hoặc đánh dấu không đến.
+                </div>
+              )}
+
+              {!late && countdown && (
+                <div className={`flex items-start gap-2 rounded-lg border px-3 py-2.5 text-xs ${countdown.border} ${countdown.bg} ${countdown.text}`}>
+                  <Clock size={16} weight="bold" className="mt-0.5 flex-shrink-0" aria-hidden="true" />
+                  {countdown.label} sẽ tự động chuyển &quot;Không đến&quot; nếu bệnh nhân chưa tiếp nhận.
                 </div>
               )}
 
@@ -329,6 +368,9 @@ export function AppointmentDetailPanel({
                     Dời lịch
                   </Button>
                 </div>
+                <Button type="button" variant="secondary" className="w-full" onClick={() => setConfirmingNoShow(true)}>
+                  Đánh dấu Không đến
+                </Button>
                 <Button
                   type="button"
                   variant="danger"
@@ -388,6 +430,15 @@ export function AppointmentDetailPanel({
           }}
         />
       )}
+
+      {confirmingNoShow && (
+        <MarkNoShowConfirmDialog
+          fullName={appointment.fullName}
+          loading={noShowMutation.isPending}
+          onConfirm={() => void handleMarkNoShow()}
+          onClose={() => setConfirmingNoShow(false)}
+        />
+      )}
     </>
   );
 }
@@ -397,6 +448,45 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
     <div className="flex items-center justify-between py-2.5">
       <span className="text-slate-500">{label}</span>
       <span className="font-semibold text-slate-900">{value}</span>
+    </div>
+  );
+}
+
+/**
+ * Xác nhận đánh dấu "Không đến" thủ công (S5-07, APP-05) — không cần lý do (khác huỷ lịch), cùng
+ * khuôn `ReleaseEncounterDialog.tsx` (chỉ 1 nơi dùng, đặt cục bộ tại đây theo CLAUDE.md "trùng lần
+ * hai mới trích xuất").
+ */
+function MarkNoShowConfirmDialog({
+  fullName,
+  loading,
+  onConfirm,
+  onClose,
+}: {
+  fullName: string;
+  loading: boolean;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/50 px-4" role="dialog" aria-modal="true" aria-labelledby="mark-no-show-title">
+      <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-2xl">
+        <h3 id="mark-no-show-title" className="text-base font-bold text-slate-900">
+          Đánh dấu Không đến?
+        </h3>
+        <p className="mt-1.5 text-sm text-slate-600">
+          Lịch hẹn của <span className="font-semibold text-slate-800">{fullName}</span> sẽ chuyển sang trạng thái{' '}
+          <span className="font-semibold">Không đến</span>.
+        </p>
+        <div className="mt-4 flex justify-end gap-2.5">
+          <Button type="button" variant="secondary" onClick={onClose}>
+            Đóng
+          </Button>
+          <Button type="button" loading={loading} onClick={onConfirm}>
+            Xác nhận
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

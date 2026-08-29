@@ -1441,6 +1441,135 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/patients/merge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Gộp hồ sơ trùng (S5-06, PAT-04) — chuyển encounter + tiền sử có cấu trúc từ sourceId sang targetId, không xoá sourceId */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        sourceId: string;
+                        /** Format: uuid */
+                        targetId: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Gộp thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                sourceId: string;
+                                /** Format: uuid */
+                                targetId: string;
+                                movedEncounterCount: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Dữ liệu gửi lên không hợp lệ (ví dụ tự gộp chính nó) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền patient.merge (chỉ clinic_admin) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy hồ sơ nguồn/đích (không tồn tại hoặc thuộc tenant khác) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Hồ sơ nguồn hoặc đích đã bị gộp trước đó (PATIENT_ALREADY_MERGED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/appointments": {
         parameters: {
             query?: never;
@@ -1493,6 +1622,7 @@ export interface paths {
                                     cancelReason: string | null;
                                     /** Format: uuid */
                                     rescheduledFromId: string | null;
+                                    noShowAutoMarked: boolean;
                                     version: number;
                                 }[];
                                 nextCursor: string | null;
@@ -1591,6 +1721,7 @@ export interface paths {
                                 cancelReason: string | null;
                                 /** Format: uuid */
                                 rescheduledFromId: string | null;
+                                noShowAutoMarked: boolean;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -1802,6 +1933,8 @@ export interface paths {
                                 slotDurationMinutes: number;
                                 deferredPaymentEnabled: boolean;
                                 overdueWaitWarningMinutes: number;
+                                noShowAutoEnabled: boolean;
+                                noShowThresholdMinutes: number;
                             };
                             meta: Record<string, never>;
                         };
@@ -1969,6 +2102,7 @@ export interface paths {
                                 cancelReason: string | null;
                                 /** Format: uuid */
                                 rescheduledFromId: string | null;
+                                noShowAutoMarked: boolean;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -2081,6 +2215,7 @@ export interface paths {
                                 cancelReason: string | null;
                                 /** Format: uuid */
                                 rescheduledFromId: string | null;
+                                noShowAutoMarked: boolean;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -2223,6 +2358,138 @@ export interface paths {
                                 cancelReason: string | null;
                                 /** Format: uuid */
                                 rescheduledFromId: string | null;
+                                noShowAutoMarked: boolean;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền appointment.cancel */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal của bác sĩ) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION), hoặc lịch không còn ở trạng thái SCHEDULED (APPOINTMENT_NOT_CANCELLABLE) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/appointments/{id}/no-show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Đánh dấu "Không đến" thủ công (S5-07, APP-05) — dùng khi tenant tắt tự động đánh dấu (noShowAutoEnabled=false) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Đánh dấu thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                bookingCode: string;
+                                /** Format: uuid */
+                                patientId: string | null;
+                                fullName: string;
+                                phone: string;
+                                reason: string | null;
+                                /** Format: uuid */
+                                doctorId: string;
+                                /** Format: uuid */
+                                roomId: string | null;
+                                scheduledAt: string;
+                                durationMinutes: number;
+                                /** @enum {string} */
+                                status: "SCHEDULED" | "CANCELLED" | "NO_SHOW" | "CONVERTED" | "RESCHEDULED";
+                                /** @enum {string} */
+                                source: "walk_in" | "phone" | "online";
+                                cancelReason: string | null;
+                                /** Format: uuid */
+                                rescheduledFromId: string | null;
+                                noShowAutoMarked: boolean;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -2357,6 +2624,7 @@ export interface paths {
                                 cancelReason: string | null;
                                 /** Format: uuid */
                                 rescheduledFromId: string | null;
+                                noShowAutoMarked: boolean;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -9255,6 +9523,8 @@ export interface paths {
                                 slotDurationMinutes: number;
                                 deferredPaymentEnabled: boolean;
                                 overdueWaitWarningMinutes: number;
+                                noShowAutoEnabled: boolean;
+                                noShowThresholdMinutes: number;
                             };
                             meta: Record<string, never>;
                         };
@@ -9341,6 +9611,8 @@ export interface paths {
                         slotDurationMinutes?: number;
                         deferredPaymentEnabled?: boolean;
                         overdueWaitWarningMinutes?: number;
+                        noShowAutoEnabled?: boolean;
+                        noShowThresholdMinutes?: number;
                     };
                 };
             };
@@ -9386,6 +9658,8 @@ export interface paths {
                                 slotDurationMinutes: number;
                                 deferredPaymentEnabled: boolean;
                                 overdueWaitWarningMinutes: number;
+                                noShowAutoEnabled: boolean;
+                                noShowThresholdMinutes: number;
                             };
                             meta: Record<string, never>;
                         };
@@ -12027,7 +12301,8 @@ export interface paths {
                                     entityType: string;
                                     /** Format: uuid */
                                     entityId: string;
-                                    entityLabel: string | null;
+                                    entityLabel: string;
+                                    isBreakGlass: boolean;
                                     beforeJson?: unknown;
                                     afterJson?: unknown;
                                 }[];

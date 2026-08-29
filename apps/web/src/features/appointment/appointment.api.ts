@@ -7,6 +7,7 @@ import type {
   EditAppointmentRequest,
   ListAppointmentsResponse,
   ListDoctorsResponse,
+  MarkNoShowRequest,
   RescheduleAppointmentRequest,
 } from '@nexamed/shared';
 import { getApiClient, unwrap } from '../../shared/api/client';
@@ -35,6 +36,13 @@ export async function cancelAppointment(id: string, body: CancelAppointmentReque
 export async function rescheduleAppointment(id: string, body: RescheduleAppointmentRequest): Promise<AppointmentSummary> {
   return unwrap(
     await getApiClient().POST('/api/v1/appointments/{id}/reschedule', { params: { path: { id } }, body }),
+  ) as AppointmentSummary;
+}
+
+/** S5-07, APP-05 — đánh dấu "Không đến" thủ công (dùng khi tenant tắt tự động đánh dấu). */
+export async function markNoShow(id: string, body: MarkNoShowRequest): Promise<AppointmentSummary> {
+  return unwrap(
+    await getApiClient().POST('/api/v1/appointments/{id}/no-show', { params: { path: { id } }, body }),
   ) as AppointmentSummary;
 }
 

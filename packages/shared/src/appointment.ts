@@ -60,6 +60,12 @@ export const appointmentSummarySchema = z.object({
   /** Chỉ có giá trị khi lịch này SINH RA từ một lần dời lịch (2026-08-18) — trỏ về lịch cũ đã
    * chuyển `RESCHEDULED`, cùng hướng trỏ `prescription.supersedesId`. */
   rescheduledFromId: z.string().uuid().nullable(),
+  /**
+   * S5-07 (APP-05) — `true` khi lịch này bị job nền tự động chuyển `NO_SHOW` (không phải lễ tân/
+   * bác sĩ tự bấm "Đánh dấu Không đến"). Chỉ có ý nghĩa khi `status='NO_SHOW'`; các trạng thái khác
+   * luôn `false`. Web dùng để thêm nhãn "(tự động)" cạnh badge trạng thái.
+   */
+  noShowAutoMarked: z.boolean(),
   version: z.number().int(),
 });
 export type AppointmentSummary = z.infer<typeof appointmentSummarySchema>;
@@ -96,6 +102,16 @@ export const cancelAppointmentRequestSchema = z.object({
   version: z.number().int().positive(),
 });
 export type CancelAppointmentRequest = z.infer<typeof cancelAppointmentRequestSchema>;
+
+/**
+ * Đánh dấu "Không đến" THỦ CÔNG (S5-07, APP-05) — dùng khi tenant TẮT tự động đánh dấu
+ * (`clinicSettingsSchema.noShowAutoEnabled=false`, xem `clinic.ts`), lễ tân/bác sĩ tự bấm cho
+ * lịch quá giờ hẹn. Không cần lý do (khác huỷ lịch) — cùng khuôn `version` optimistic locking.
+ */
+export const markNoShowRequestSchema = z.object({
+  version: z.number().int().positive(),
+});
+export type MarkNoShowRequest = z.infer<typeof markNoShowRequestSchema>;
 
 /**
  * Dời lịch hẹn (thay thế mô hình S2-09 "sửa tại chỗ" theo yêu cầu chủ dự án 2026-08-18) — KHÔNG
