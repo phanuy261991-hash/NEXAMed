@@ -7,3 +7,5 @@ export * from './patient-identity.port';
 export * from './doctor-directory.port';
 export * from './clinic-config-reader.port';
 export * from './reference-catalog-reader.port';
+export * from './patient-reader.port';
+export * from './encounter-reader.port';

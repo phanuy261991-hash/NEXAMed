@@ -156,6 +156,25 @@ export class PatientRepository {
    * `WHERE` cho optimistic locking (.claude/docs/data-model.md) — `update()` của Prisma chỉ nhận
    * unique field làm điều kiện, không ghép thêm được `version`.
    */
+  /**
+   * Batch resolve tên/mã hồ sơ theo id — hạ tầng cho `PatientReaderPort` (S5-05, ADM-03). Không lọc
+   * `deletedAt` (patient không xoá cứng) và KHÔNG loại hồ sơ đã gộp (`mergedIntoId` khác null) — nhật
+   * ký hoạt động vẫn phải hiện đúng tên hồ sơ tại thời điểm thao tác xảy ra.
+   */
+  findSummariesByIds(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    ids: string[],
+  ): Promise<{ id: string; fullName: string; patientCode: string }[]> {
+    if (ids.length === 0) {
+      return Promise.resolve([]);
+    }
+    return tx.patient.findMany({
+      where: { tenantId, id: { in: ids } },
+      select: { id: true, fullName: true, patientCode: true },
+    });
+  }
+
   async updateIfVersionMatches(
     tx: Prisma.TransactionClient,
     tenantId: string,

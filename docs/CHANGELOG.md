@@ -2,6 +2,18 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-29 (3)
+
+S5-05 (ADM-03) — "Nhật ký hoạt động" + phát hiện lỗ hổng compliance + chính sách lưu trữ audit_log 2 tầng — xem `docs/DECISIONS.md` #091:
+
+- Màn hình mới `/admin/activity-log`: lọc theo bệnh nhân (đầy đủ hồ sơ bệnh án — gồm cả lượt khám thuộc bệnh nhân đó, không chỉ hồ sơ hành chính), theo người dùng, theo khoảng ngày; xem chi tiết before/after đệ quy, dịch tiếng Việt cả field lẫn giá trị dạng mã.
+- **Vá lỗ hổng compliance Thông tư 46/2018/TT-BYT**: `GET /encounters/:id/consultation` (xem hồ sơ khám) trước đây không được ghi audit "xem dữ liệu" — đã thêm `@AuditView('encounter')`.
+- **Chính sách lưu trữ audit_log 2 tầng** (chủ dự án chốt trực tiếp): "Log nghiệp vụ" giữ vĩnh viễn, "System Log" (tài khoản/vai trò/danh mục/cấu hình) chỉ giữ 90 ngày — job nền `SystemLogPurgeJob` (lần đầu dùng `@nestjs/schedule`), cần cấp `GRANT DELETE ON audit_log` cho `nexamed_app` (ngoại lệ duy nhất trong toàn schema đối với quy tắc "cấm DELETE").
+- Cảnh báo "phá kính" (dòng break-glass tô đỏ + icon), bỏ ghi `auth.refresh` (quá thường xuyên, vô nghĩa), cột "Đối tượng" hết hiện dạng kỹ thuật (UUID/tên bảng thô) sang thuần tiếng Việt.
+- Bug bundler thật (đúng lại #032): hàm dịch field/giá trị chuyển từ `packages/shared` sang khai trực tiếp tại `apps/web` do Vite dev không dò được named export hàm thuần qua `__exportStar`.
+- **Đã xác minh**: `packages/core`/`packages/shared` (lần đầu có test)/`apps/web` (lần đầu có test) pass đủ, `apps/api` 471/482 (11 skip, 1 flake đã biết không liên quan) gồm test xác nhận DELETE thật hoạt động qua migration mới. `pnpm -w typecheck/lint/build` sạch toàn workspace. Playwright qua Chrome thật nhiều vòng.
+- Cập nhật `docs/CURRENT.md`, `docs/TASK.md`, `docs/DECISIONS.md` (#091).
+
 ## 2026-08-29
 
 Ký hồ sơ khám + đính chính (Sprint 5, S5-02/03, ENC-04/05) — xem `docs/DECISIONS.md` #089:

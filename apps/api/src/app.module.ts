@@ -1,4 +1,5 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigModule } from './config/config.module';
 import { PersistenceModule } from './infrastructure/persistence/persistence.module';
 import { PortsModule } from './infrastructure/ports.module';
@@ -16,10 +17,12 @@ import { ReceptionModule } from './modules/reception/reception.module';
 import { AllergenModule } from './modules/allergen/allergen.module';
 import { DrugModule } from './modules/drug/drug.module';
 import { BillingModule } from './modules/billing/billing.module';
+import { AuditModule } from './modules/audit/audit.module';
 import { TenantContextMiddleware } from './common/tenant-context.middleware';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     ConfigModule,
     PersistenceModule,
     PortsModule,
@@ -37,6 +40,7 @@ import { TenantContextMiddleware } from './common/tenant-context.middleware';
     EncounterModule,
     BillingModule,
     ReceptionModule,
+    AuditModule,
   ],
 })
 export class AppModule implements NestModule {

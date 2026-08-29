@@ -621,8 +621,9 @@ Những ràng buộc này đặt ở DB, không chỉ ở tầng ứng dụng.
 | `appointment (tenant_id, status, scheduled_at) WHERE deleted_at IS NULL` | Job đánh dấu no-show (APP-05) |
 | `appointment (tenant_id, phone)` | Tra cứu lịch sử đặt lịch theo SĐT — tự điền tên, cảnh báo spam (v1.4, `docs/DECISIONS.md` #032) |
 | GIN trên `icd10_catalog (search_key)` dùng `pg_trgm` | Tìm mã ICD-10 theo tên tiếng Việt (ENC-03) |
-| `audit_log (tenant_id, entity_type, entity_id, occurred_at DESC)` | Tra vết sửa đổi hồ sơ (ADM-03) |
-| `audit_log (tenant_id, actor_id, occurred_at DESC)` | Tra nhật ký theo người dùng |
+| `audit_log (tenant_id, entity_type, entity_id, occurred_at DESC)` | Tra vết sửa đổi hồ sơ (ADM-03) — **đã tạo thật** (S5-05, migration `20260829100000_audit_log_encounter_indexes`) |
+| `audit_log (tenant_id, actor_id, occurred_at DESC)` | Tra nhật ký theo người dùng — **đã tạo thật** (cùng migration trên) |
+| `encounter (tenant_id, patient_id)` | Tra lượt khám thuộc 1 bệnh nhân — **đã tạo thật** (S5-05, cùng migration trên) — subset đơn giản của dòng `checked_in_at DESC` phía trên, dòng đó vẫn CHƯA tạo |
 | `user_session (tenant_id, user_id, expires_at DESC) WHERE deleted_at IS NULL` | Tra phiên còn hiệu lực của một user (thu hồi hàng loạt) |
 | `ward (province_code)` | Cascading Tỉnh → Phường/Xã trong form địa chỉ bệnh nhân (`docs/DECISIONS.md` #038) |
 | `encounter_service_item (tenant_id, encounter_id)` | Tra danh sách "Chỉ định dịch vụ khám" theo lượt khám (`docs/DECISIONS.md` #080) |

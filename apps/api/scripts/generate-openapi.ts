@@ -60,6 +60,8 @@ import {
   floorSummarySchema,
   listAppointmentsQuerySchema,
   listAppointmentsResponseSchema,
+  listAuditLogQuerySchema,
+  listAuditLogResponseSchema,
   listDoctorsResponseSchema,
   listExamStationsQuerySchema,
   listExamStationsResponseSchema,
@@ -1933,6 +1935,20 @@ registry.registerPath({
     400: errorResponse('Thiếu q'),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền patient.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/audit-log',
+  tags: ['audit'],
+  summary: '"Nhật ký hoạt động" (S5-05, ADM-03) — lọc theo bệnh nhân (gồm cả lượt khám của bệnh nhân đó), theo người dùng, theo khoảng ngày',
+  security: [{ bearerAuth: [] }],
+  request: { query: listAuditLogQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listAuditLogResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền audit_log.read'),
   },
 });
 

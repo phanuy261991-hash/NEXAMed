@@ -101,14 +101,15 @@ Nguyên tắc chung: quyền kiểm ở tầng service/repository (guard đọc 
 
 Ghi bắt buộc cho: đăng nhập/đăng xuất, **xem hồ sơ bệnh nhân**, tạo/sửa/soft-delete dữ liệu lâm sàng, ký ghi chú và đơn thuốc, chuyển trạng thái encounter, in đơn, gộp hồ sơ, đổi vai trò người dùng, sửa `role_permission`, dùng break-glass (`break_glass.request`, `break_glass.access`), export.
 
-Bảng `audit_log` append-only: không endpoint sửa/xoá; quyền DB của app user chỉ `INSERT` và `SELECT`. Ghi audit nằm cùng transaction với thao tác nghiệp vụ — ghi audit lỗi thì rollback thao tác.
+Bảng `audit_log` append-only: không endpoint nào sửa/xoá. Quyền DB của app user (`nexamed_app`) là `INSERT`+`SELECT`, cộng **duy nhất 1 ngoại lệ đã chốt** (S5-05, `docs/DECISIONS.md` #091): `GRANT DELETE` phục vụ job nền xoá "System Log" quá hạn (xem mục "Lưu trữ" dưới đây) — quyền này CHỈ được dùng qua đúng 1 chỗ code (`AuditLogRepository.purgeSystemLogsOlderThan()`, `WHERE` ép cứng theo entityType + cutoff), không controller/endpoint nào gọi tới. Ghi audit nằm cùng transaction với thao tác nghiệp vụ — ghi audit lỗi thì rollback thao tác.
 
 **Cách hiện thực (chốt ở S1-05, xem `docs/DECISIONS.md`)** — hai đường tuỳ loại thao tác, vì một interceptor HTTP không thể tham gia vào transaction Prisma mà service tự mở/đóng bên trong chính nó:
 
 - **Thao tác ghi** (login, break-glass, tạo/sửa/soft-delete dữ liệu lâm sàng...): gọi tường minh `writeAuditLog(tx, tenantId, {...})` (`apps/api/src/infrastructure/persistence/audit-log.helper.ts`) ngay bên trong transaction service đang mở qua `UnitOfWorkService` — cùng transaction, đúng yêu cầu "ghi audit lỗi thì rollback thao tác". Ví dụ: `apps/api/src/modules/iam/auth.service.ts`, `break-glass.service.ts`.
 - **Thao tác xem** (`GET`, không có transaction nghiệp vụ nào để đồng bộ cùng — bản thân việc xem không ghi gì): áp `@AuditView('entityType')` (`apps/api/src/common/audit-view.decorator.ts`) lên handler + `@UseInterceptors(AuditViewInterceptor)` (`apps/api/src/common/audit-view.interceptor.ts`). Interceptor tự mở transaction riêng của nó sau khi handler trả về thành công, ghi `<entityType>.viewed`; request lỗi thì không ghi; ghi audit tự nó lỗi thì lỗi đó nổi lên thành response lỗi, không nuốt.
 
-Lưu trữ tối thiểu theo thời hạn quy định với bệnh án; thời hạn cụ thể chưa chốt với nghiệp vụ, không tự đặt job xoá audit.
+**Lưu trữ 2 tầng (chốt S5-05, `docs/DECISIONS.md` #091, `packages/core/src/audit/log-retention.ts`)**: "Log nghiệp vụ" (gắn hồ sơ bệnh án — `entityType` `patient`/`encounter`/`appointment`/`invoice`/`vital_sign`, và mọi `entityType` chưa biết trong tương lai — mặc định AN TOÀN) giữ **VĨNH VIỄN**, thời hạn cụ thể theo quy định bệnh án vẫn CHƯA chốt với pháp lý (PRD Q1) nên chưa có job xoá nào đụng tới nhóm này. "System Log" (`user_account`/`role`/`reference_catalog`/`allergen`/`allergen_group`/`department`/`department_type`/`room`/`floor`/`exam_station`/`drug`/`doctor_room_session`/`tenant` — thuần vận hành hệ thống, không phải hồ sơ bệnh án) chỉ giữ 90 ngày, xoá qua `SystemLogPurgeJob` (`@Cron`, `apps/api/src/modules/audit/`). Thêm `entityType` mới cho domain business KHÔNG cần sửa gì (mặc định rơi vào nhóm giữ vĩnh viễn); muốn xếp vào "System Log" phải chủ động thêm vào danh sách trong `log-retention.ts`.
+`auth.refresh` (làm mới phiên thường) **không ghi audit_log** (quá thường xuyên, không phải một lượt truy cập mới có ý nghĩa) — `auth.refresh_reuse_detected` (sự cố bảo mật) vẫn ghi như cũ.
 
 ## Chữ ký số (chưa triển khai ở v1)
 

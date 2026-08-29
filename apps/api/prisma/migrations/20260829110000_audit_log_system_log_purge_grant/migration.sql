@@ -1,0 +1,15 @@
+-- Chính sách lưu trữ 2 tầng cho `audit_log` (chủ dự án chốt trực tiếp, S5-05 — xem
+-- packages/core/src/audit/log-retention.ts): "Log nghiệp vụ" (patient/encounter/appointment/
+-- invoice/vital_sign, gắn hồ sơ bệnh án) giữ VĨNH VIỄN; "System Log" (user_account/role/
+-- reference_catalog/danh mục/cấu hình...) chỉ giữ 90 ngày, xoá qua job nền định kỳ.
+--
+-- ĐÂY LÀ NGOẠI LỆ DUY NHẤT trong toàn bộ schema đối với quy tắc "cấm DELETE" đã áp dụng từ
+-- 20260807170922_tenant_context (`REVOKE DELETE ON ALL TABLES IN SCHEMA public FROM nexamed_app`,
+-- CLAUDE.md mục Cơ sở dữ liệu). Chỉ cấp cho ĐÚNG bảng `audit_log`, không đụng
+-- `ALTER DEFAULT PRIVILEGES` (bảng mới tạo sau này vẫn KHÔNG có DELETE mặc định).
+--
+-- Quyền này chỉ được dùng qua ĐÚNG 1 chỗ trong code: `AuditLogRepository.purgeSystemLogsOlderThan()`
+-- — luôn ép `WHERE entity_type IN (<SYSTEM_LOG_ENTITY_TYPES>) AND occurred_at < cutoff` cứng trong
+-- câu lệnh, KHÔNG có endpoint API/controller nào gọi tới (chỉ job nền `@Cron`, apps/api/src/modules/
+-- audit/system-log-purge.job.ts) — không mở rộng thành xoá tuỳ ý qua HTTP.
+GRANT DELETE ON audit_log TO nexamed_app;

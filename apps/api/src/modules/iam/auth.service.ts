@@ -220,15 +220,10 @@ export class AuthService {
         issued.session.id,
       );
 
-      await writeAuditLog(tx, payload.tenantId, {
-        actorId: session.userId,
-        action: 'auth.refresh',
-        entityType: 'user_account',
-        entityId: session.userId,
-        ip: meta.ip,
-        userAgent: meta.userAgent,
-      });
-
+      // KHÔNG ghi audit_log cho lượt làm mới phiên thường (S5-05, chủ dự án yêu cầu trực tiếp) —
+      // xảy ra mỗi 15 phút/phiên đang mở, thuần vận hành kỹ thuật, không phải một lượt truy cập mới
+      // theo nghĩa Thông tư 46 (đã có `auth.login_success` đánh dấu điểm bắt đầu phiên). Phát hiện
+      // dùng lại refresh token (`auth.refresh_reuse_detected`, sự cố bảo mật thật) VẪN ghi như cũ.
       const accessToken = this.tokenService.signAccessToken(session.userId, payload.tenantId);
 
       return {

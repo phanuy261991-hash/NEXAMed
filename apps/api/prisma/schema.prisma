@@ -1093,6 +1093,8 @@ model Encounter {
 
   @@unique([tenantId, id])
   @@unique([tenantId, encounterNo])
+  // S5-05/S5-06 — tra "các lượt khám thuộc bệnh nhân X" (nhật ký hoạt động theo bệnh nhân, gộp hồ sơ).
+  @@index([tenantId, patientId])
   @@map("encounter")
 }
 
@@ -1616,5 +1618,8 @@ model AuditLog {
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
 
+  // ADM-03 (S5-05) — tra vết theo entity cụ thể (đúng docs/ERD.md mục 5) và theo người dùng.
+  @@index([tenantId, entityType, entityId, occurredAt(sort: Desc)])
+  @@index([tenantId, actorId, occurredAt(sort: Desc)])
   @@map("audit_log")
 }

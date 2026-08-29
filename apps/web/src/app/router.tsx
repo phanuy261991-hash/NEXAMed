@@ -51,6 +51,7 @@ const CatalogClinicalPage = lazy(() =>
 );
 const RolePermissionPage = lazy(() => import('../features/role/RolePermissionPage').then((m) => ({ default: m.RolePermissionPage })));
 const ClinicConfigPage = lazy(() => import('../features/clinic/ClinicConfigPage').then((m) => ({ default: m.ClinicConfigPage })));
+const ActivityLogPage = lazy(() => import('../features/audit/ActivityLogPage').then((m) => ({ default: m.ActivityLogPage })));
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -111,6 +112,8 @@ export const router = createBrowserRouter([
       // quản lý vật tư y tế/kho — xem docs/product/future-modules-reference.md mục 2.2.1).
       { path: 'admin/catalog-pharmacy', element: <DrugCatalogPane /> },
       { path: 'admin/system-config', element: <ClinicConfigPage /> },
+      // S5-05 (ADM-03) — "Nhật ký hoạt động", lọc theo bệnh nhân/người dùng/khoảng ngày.
+      { path: 'admin/activity-log', element: <ActivityLogPage /> },
       // Bắt mọi đường dẫn con không khớp — thay trang trắng 404 mặc định của react-router bằng
       // trang thương hiệu (docs/DECISIONS.md #048). Route `*` ở đây đã phủ hầu hết trường hợp
       // thật (`RequireAuth` chặn lúc chưa đăng nhập, chuyển `/login` TRƯỚC khi Outlet render tới

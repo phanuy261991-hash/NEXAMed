@@ -26,3 +26,4 @@ export * from './prescription/warnings';
 export * from './diagnosis/pair-diagnosis-amendment';
 export * from './billing/compute-invoice-lines';
 export * from './billing/invoice-lifecycle';
+export * from './audit/log-retention';

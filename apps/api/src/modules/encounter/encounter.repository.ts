@@ -234,6 +234,30 @@ export class EncounterRepository {
   }
 
   /**
+   * Batch resolve mã lượt khám + bệnh nhân theo id — hạ tầng cho `EncounterReaderPort` (S5-05,
+   * ADM-03). Không lọc `deletedAt`/`status` — nhật ký hoạt động phải hiện đúng cả lượt khám đã huỷ.
+   */
+  findSummariesByIds(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    ids: string[],
+  ): Promise<{ id: string; encounterNo: string; patientId: string }[]> {
+    if (ids.length === 0) {
+      return Promise.resolve([]);
+    }
+    return tx.encounter.findMany({
+      where: { tenantId, id: { in: ids } },
+      select: { id: true, encounterNo: true, patientId: true },
+    });
+  }
+
+  /** Toàn bộ id lượt khám thuộc một bệnh nhân — hạ tầng cho `EncounterReaderPort.findIdsByPatientId()`. */
+  async findIdsByPatientId(tx: Prisma.TransactionClient, tenantId: string, patientId: string): Promise<string[]> {
+    const rows = await tx.encounter.findMany({ where: { tenantId, patientId }, select: { id: true } });
+    return rows.map((r) => r.id);
+  }
+
+  /**
    * "Bắt đầu khám" — `CHECKED_IN → IN_CONSULTATION`, set `started_at`. `updateMany` + kiểm
    * `count` (không phải `update`) — cần ghép `version`/`status` vào `WHERE` cho atomic, cùng
    * khuôn `AppointmentRepository.cancel()`.

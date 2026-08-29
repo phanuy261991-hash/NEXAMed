@@ -3,6 +3,7 @@ import {
   CalendarBlank,
   CaretRight,
   ClipboardText,
+  ClockCounterClockwise,
   Flask,
   FolderSimple,
   GearSix,
@@ -305,6 +306,8 @@ export function Sidebar() {
                   {/* Đổi nhãn từ "Danh mục Dược và Vật tư" (Sprint 4) — v1 chỉ quản lý danh mục thuốc, không vật tư/kho (docs/product/future-modules-reference.md mục 2.2.1). */}
                   <NavItem to="/admin/catalog-pharmacy" label="Danh mục thuốc" icon={Pill} collapsed={false} indent />
                   <NavItem to="/admin/system-config" label="Cấu hình hệ thống" icon={SlidersHorizontal} collapsed={false} indent />
+                  {/* S5-05 (ADM-03) — khớp quyền `audit_log.read` (clinic_admin/system_admin, đúng ADMIN_ROLES của cả nhóm). */}
+                  <NavItem to="/admin/activity-log" label="Nhật ký hoạt động" icon={ClockCounterClockwise} collapsed={false} indent />
                 </ul>
               )}
             </li>

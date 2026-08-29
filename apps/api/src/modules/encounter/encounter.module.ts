@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ENCOUNTER_READER_PORT } from '@nexamed/core';
 import { PatientModule } from '../patient/patient.module';
 import { ClinicModule } from '../clinic/clinic.module';
 import { BillingModule } from '../billing/billing.module';
@@ -8,6 +9,7 @@ import { EncounterRepository } from './encounter.repository';
 import { DiagnosisRepository } from './diagnosis.repository';
 import { ClinicalNoteRepository } from './clinical-note.repository';
 import { PrescriptionRepository } from './prescription.repository';
+import { EncounterReaderAdapter } from '../../infrastructure/encounter/encounter-reader.adapter';
 
 /**
  * `exports: [EncounterRepository]` — `ReceptionModule` dùng chung trong transaction check-in (xem
@@ -19,11 +21,20 @@ import { PrescriptionRepository } from './prescription.repository';
  * `imports: [..., BillingModule]` (#085, huỷ lượt khám + hoàn tiền) — dùng chung `InvoiceRepository`
  * trong CÙNG transaction huỷ lượt khám để đóng phiếu thu chưa thu đúng lúc, đúng "chia sẻ
  * Repository giữa module trong 1 transaction" (`docs/DECISIONS.md` #042).
+ * `ENCOUNTER_READER_PORT` (S5-05, ADM-03) — `AuditModule` inject để resolve mã lượt khám + bệnh
+ * nhân cho nhật ký hoạt động, đúng khuôn `PATIENT_READER_PORT` export từ `PatientModule`.
  */
 @Module({
   imports: [PatientModule, ClinicModule, BillingModule],
   controllers: [EncounterController],
-  providers: [EncounterService, EncounterRepository, DiagnosisRepository, ClinicalNoteRepository, PrescriptionRepository],
-  exports: [EncounterRepository],
+  providers: [
+    EncounterService,
+    EncounterRepository,
+    DiagnosisRepository,
+    ClinicalNoteRepository,
+    PrescriptionRepository,
+    { provide: ENCOUNTER_READER_PORT, useClass: EncounterReaderAdapter },
+  ],
+  exports: [EncounterRepository, ENCOUNTER_READER_PORT],
 })
 export class EncounterModule {}

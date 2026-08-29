@@ -1,5 +1,7 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Put, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Post, Put, Req, UseGuards, UseInterceptors } from '@nestjs/common';
 import type { Request } from 'express';
+import { AuditView } from '../../common/audit-view.decorator';
+import { AuditViewInterceptor } from '../../common/audit-view.interceptor';
 import {
   amendClinicalNoteRequestSchema,
   amendDiagnosesRequestSchema,
@@ -53,9 +55,18 @@ export class EncounterController {
     return this.encounterService.releaseEncounter(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 
-  /** Màn hình khám (S3-05) — gộp tiền sử + dị ứng + sinh hiệu trong một request. */
+  /**
+   * Màn hình khám (S3-05) — gộp tiền sử + dị ứng + sinh hiệu trong một request. `@AuditView` +
+   * `AuditViewInterceptor` (Thông tư 46/2018/TT-BYT — bắt buộc ghi "ngày, giờ xem dữ liệu" hồ sơ
+   * bệnh án, phát hiện lúc rà soát S5-05: trước đây CHỈ `GET /patients/:id` được ghi audit xem,
+   * endpoint xem hồ sơ khám thật (chẩn đoán/ghi chú khám/đơn thuốc/sinh hiệu) lại bỏ sót) — cùng
+   * khuôn `patient.controller.ts`. Bao gồm cả lượt truy cập qua "Xem chi tiết đợt khám cũ"
+   * (`EncounterHistoryDetailDialog.tsx`, #090) vì tái dùng đúng endpoint này.
+   */
   @Get(':id/consultation')
   @RequirePermission('encounter', 'read', { entityIdParam: 'id' })
+  @AuditView('encounter')
+  @UseInterceptors(AuditViewInterceptor)
   async getConsultation(@Param('id') id: string, @Req() req: Request) {
     const { userId, tenantId } = req.user!;
     return this.encounterService.getConsultationDetail(tenantId, userId, req.dataScope!, id);
