@@ -48,6 +48,16 @@ export interface ClinicConfigReaderPort {
    * toàn, lễ tân/bác sĩ tự đánh dấu thủ công.
    */
   getNoShowConfig(tenantId: string): Promise<{ enabled: boolean; thresholdMinutes: number }>;
+
+  /**
+   * "Tạm nghỉ / Đóng ca" của bác sĩ — 2 công tắc độc lập (`tenant_setting`):
+   * `allowEmergencyEndShift` (mặc định BẬT) gate riêng Trường hợp 1 "đóng đột xuất" (nút "Đóng ca
+   * hôm nay" bấm bất kỳ lúc nào) — KHÔNG ảnh hưởng Trường hợp 2 "hết giờ làm việc" (tự nhắc theo
+   * giờ đóng cửa phòng khám, luôn hoạt động). `allowReceptionistEndShift` (mặc định TẮT) gate lễ
+   * tân/clinic_admin thao tác hộ trạng thái của bác sĩ khác. Module `doctor-availability` đọc qua
+   * port này thay vì import thẳng `ClinicSettingsRepository`, cùng lý do `getNoShowConfig` ở trên.
+   */
+  getDoctorAvailabilityPolicy(tenantId: string): Promise<{ allowEmergencyEndShift: boolean; allowReceptionistEndShift: boolean }>;
 }
 
 export const CLINIC_CONFIG_READER_PORT = Symbol('CLINIC_CONFIG_READER_PORT');

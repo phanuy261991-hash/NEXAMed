@@ -4764,6 +4764,12 @@
                           "type": "integer",
                           "minimum": 1,
                           "maximum": 1440
+                        },
+                        "allowEmergencyEndShift": {
+                          "type": "boolean"
+                        },
+                        "allowReceptionistEndShift": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -4772,7 +4778,9 @@
                         "deferredPaymentEnabled",
                         "overdueWaitWarningMinutes",
                         "noShowAutoEnabled",
-                        "noShowThresholdMinutes"
+                        "noShowThresholdMinutes",
+                        "allowEmergencyEndShift",
+                        "allowReceptionistEndShift"
                       ]
                     },
                     "meta": {
@@ -22795,6 +22803,12 @@
                           "type": "integer",
                           "minimum": 1,
                           "maximum": 1440
+                        },
+                        "allowEmergencyEndShift": {
+                          "type": "boolean"
+                        },
+                        "allowReceptionistEndShift": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -22803,7 +22817,9 @@
                         "deferredPaymentEnabled",
                         "overdueWaitWarningMinutes",
                         "noShowAutoEnabled",
-                        "noShowThresholdMinutes"
+                        "noShowThresholdMinutes",
+                        "allowEmergencyEndShift",
+                        "allowReceptionistEndShift"
                       ]
                     },
                     "meta": {
@@ -23073,6 +23089,12 @@
                     "type": "integer",
                     "minimum": 1,
                     "maximum": 1440
+                  },
+                  "allowEmergencyEndShift": {
+                    "type": "boolean"
+                  },
+                  "allowReceptionistEndShift": {
+                    "type": "boolean"
                   }
                 }
               }
@@ -23267,6 +23289,12 @@
                           "type": "integer",
                           "minimum": 1,
                           "maximum": 1440
+                        },
+                        "allowEmergencyEndShift": {
+                          "type": "boolean"
+                        },
+                        "allowReceptionistEndShift": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -23275,7 +23303,9 @@
                         "deferredPaymentEnabled",
                         "overdueWaitWarningMinutes",
                         "noShowAutoEnabled",
-                        "noShowThresholdMinutes"
+                        "noShowThresholdMinutes",
+                        "allowEmergencyEndShift",
+                        "allowReceptionistEndShift"
                       ]
                     },
                     "meta": {
@@ -29079,6 +29109,444 @@
           },
           "403": {
             "description": "Không có quyền audit_log.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/doctor-availability/today": {
+      "get": {
+        "tags": [
+          "clinic"
+        ],
+        "summary": "\"Tạm nghỉ / Đóng ca\" — board điều phối hôm nay (chỉ liệt kê bác sĩ BREAK/ENDED; không có = ACTIVE ngầm định)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "doctorId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "ACTIVE",
+                                  "BREAK",
+                                  "ENDED"
+                                ]
+                              },
+                              "statusChangedAt": {
+                                "type": "string"
+                              },
+                              "reason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "releasedEncounterCount": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "doctorId",
+                              "status",
+                              "statusChangedAt",
+                              "reason",
+                              "releasedEncounterCount"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền encounter.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/doctor-availability/policy": {
+      "get": {
+        "tags": [
+          "clinic"
+        ],
+        "summary": "\"Tạm nghỉ / Đóng ca\" — 2 công tắc cấu hình, chiếu tối thiểu tự-phục vụ (không cần clinic_config.read)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "allowEmergencyEndShift": {
+                          "type": "boolean"
+                        },
+                        "allowReceptionistEndShift": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "allowEmergencyEndShift",
+                        "allowReceptionistEndShift"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/doctor-availability/{doctorId}": {
+      "put": {
+        "tags": [
+          "clinic"
+        ],
+        "summary": "\"Tạm nghỉ / Đóng ca\" — bác sĩ tự đổi trạng thái cho chính mình, hoặc lễ tân/clinic_admin đổi hộ (cần bật cấu hình tương ứng)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "doctorId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "ACTIVE",
+                      "BREAK",
+                      "ENDED"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 500
+                  },
+                  "trigger": {
+                    "type": "string",
+                    "enum": [
+                      "SCHEDULED_END"
+                    ]
+                  }
+                },
+                "required": [
+                  "status"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "doctorId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "ACTIVE",
+                            "BREAK",
+                            "ENDED"
+                          ]
+                        },
+                        "statusChangedAt": {
+                          "type": "string"
+                        },
+                        "reason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "releasedEncounterCount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "doctorId",
+                        "status",
+                        "statusChangedAt",
+                        "reason",
+                        "releasedEncounterCount"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền doctor_availability.update, hoặc cấu hình chặn (DOCTOR_AVAILABILITY_RECEPTION_DISABLED/DOCTOR_AVAILABILITY_EMERGENCY_DISABLED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy (bác sĩ khác scope personal, hoặc thuộc tenant khác)",
             "content": {
               "application/json": {
                 "schema": {

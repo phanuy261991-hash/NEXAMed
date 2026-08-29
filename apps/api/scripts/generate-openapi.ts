@@ -54,6 +54,9 @@ import {
   createRoleRequestSchema,
   createRoomRequestSchema,
   createUserAccountRequestSchema,
+  doctorAvailabilityBoardResponseSchema,
+  doctorAvailabilityPolicySchema,
+  doctorAvailabilitySchema,
   editAppointmentRequestSchema,
   encounterSummarySchema,
   examStationSummarySchema,
@@ -128,6 +131,7 @@ import {
   saveDiagnosesResponseSchema,
   searchIcd10QuerySchema,
   searchIcd10ResponseSchema,
+  setDoctorAvailabilityRequestSchema,
   setRoomSessionRequestSchema,
   startConsultationRequestSchema,
   updateClinicProfileRequestSchema,
@@ -1988,6 +1992,48 @@ registry.registerPath({
     200: jsonResponse('Thành công', envelope(listAuditLogResponseSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền audit_log.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/doctor-availability/today',
+  tags: ['clinic'],
+  summary: '"Tạm nghỉ / Đóng ca" — board điều phối hôm nay (chỉ liệt kê bác sĩ BREAK/ENDED; không có = ACTIVE ngầm định)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(doctorAvailabilityBoardResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền encounter.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/doctor-availability/policy',
+  tags: ['clinic'],
+  summary: '"Tạm nghỉ / Đóng ca" — 2 công tắc cấu hình, chiếu tối thiểu tự-phục vụ (không cần clinic_config.read)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(doctorAvailabilityPolicySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+  },
+});
+
+const doctorAvailabilityParams = z.object({ doctorId: z.string().uuid() });
+
+registry.registerPath({
+  method: 'put',
+  path: '/api/v1/doctor-availability/{doctorId}',
+  tags: ['clinic'],
+  summary: '"Tạm nghỉ / Đóng ca" — bác sĩ tự đổi trạng thái cho chính mình, hoặc lễ tân/clinic_admin đổi hộ (cần bật cấu hình tương ứng)',
+  security: [{ bearerAuth: [] }],
+  request: { params: doctorAvailabilityParams, body: { content: { 'application/json': { schema: setDoctorAvailabilityRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(doctorAvailabilitySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền doctor_availability.update, hoặc cấu hình chặn (DOCTOR_AVAILABILITY_RECEPTION_DISABLED/DOCTOR_AVAILABILITY_EMERGENCY_DISABLED)'),
+    404: errorResponse('Không tìm thấy (bác sĩ khác scope personal, hoặc thuộc tenant khác)'),
   },
 });
 

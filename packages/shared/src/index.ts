@@ -9,6 +9,7 @@ export * from './user-account';
 export * from './role';
 export * from './department';
 export * from './clinic';
+export * from './doctor-availability';
 export * from './reference-catalog';
 export * from './allergen';
 export * from './geo';

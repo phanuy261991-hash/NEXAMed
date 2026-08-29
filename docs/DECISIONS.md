@@ -1493,3 +1493,33 @@ Cập nhật `docs/CURRENT.md`, `docs/TASK.md`, `docs/CHANGELOG.md`.
 
 Cập nhật `docs/CURRENT.md`, `docs/TASK.md`, `docs/CHANGELOG.md`.
 
+
+## 094 — "Tạm nghỉ / Đóng ca" của bác sĩ
+
+**Ngày**: 2026-08-29
+**Bối cảnh**: Chủ dự án gửi đặc tả UX gốc "Tạm dừng / Kết thúc sớm ca khám" (nút nổi bật, hộp thoại xác nhận, thông báo lễ tân/bảng điện tử, cơ chế Undo, phân quyền cho lễ tân đóng hộ). Đã phân tích đối chiếu kiến trúc hiện có trước khi hỏi cắt phạm vi.
+
+**Cắt bỏ khỏi phạm vi v1 (chủ dự án đồng ý)**: SMS/Zalo tự động gửi bệnh nhân, WebSocket/SignalR thời gian thực (dự án đã chốt không dùng, chỉ polling — #064), bảng điện tử gọi số ở sảnh, voice-to-text, cơ chế "Undo" dạng Toast 3-5 giây (dự án đã chốt không dùng Toast cho luồng nghiệp vụ quan trọng — #066). Giữ nguyên tinh thần cho v2, giống `InsuranceGatewayPort` no-op.
+
+**Mô hình 3 trạng thái** (tách biệt hoàn toàn khỏi `encounter.status`, chỉ tác động routing — không sửa `encounter-state-machine.ts`):
+- **ACTIVE** (mặc định, không có dòng cho hôm nay = ACTIVE ngầm định).
+- **BREAK** ("Tạm nghỉ") — ca vẫn mở, chỉ dừng điều phối ca mới tạm thời, không đụng lượt khám đang có, không cần lý do bắt buộc.
+- **ENDED** ("Đóng ca") — bắt buộc bulk trả toàn bộ `CHECKED_IN`/`IN_CONSULTATION` của bác sĩ đó về hàng chờ chung Khoa (`doctorId=null`), không cần chọn bác sĩ thay thế cụ thể (đơn giản hơn nhiều so với đề xuất "chọn bác sĩ khác" trong đặc tả gốc, tái dùng nguyên cơ chế "Nhận ca"/pool đã kiểm chứng ở #064).
+
+**"Đóng ca" có 2 cách kích hoạt, CÙNG 1 dialog/1 API** (chốt qua thảo luận nhiều vòng):
+- **Trường hợp 1 — đóng đột xuất/khẩn cấp**: bác sĩ (hoặc lễ tân hộ) tự bấm bất kỳ lúc nào, lý do tự nhập.
+- **Trường hợp 2 — hết giờ làm việc**: so với giờ đóng cửa **chung của phòng khám** (`ClinicSettings.businessHours` có sẵn — KHÔNG làm lịch làm việc riêng từng bác sĩ, đã hỏi và chốt vì đó là tính năng lớn hơn hẳn). Không có push — client tự kiểm tra mỗi 30s (giống cảnh báo "Không đến" #093), tự bật dialog với lý do điền sẵn "Hết giờ làm việc" (`trigger='SCHEDULED_END'`). **Chỉ nhắc, không tự đóng ca hộ** — bấm "Để sau" thì dialog đóng nhưng chip đỏ nhấp nháy vẫn treo cạnh avatar tới khi bác sĩ tự xử lý.
+
+**2 công tắc cấu hình mới, pill "Cấu hình khám"** (`ExamConfigPane.tsx`, yêu cầu bổ sung sau khi chốt mockup):
+1. **"Cho phép bác sĩ đóng ca khẩn cấp"** (mặc định BẬT) — gate riêng Trường hợp 1. Tắt thì nút "Đóng ca hôm nay" biến mất khỏi dropdown bác sĩ (chỉ còn "Tạm nghỉ") — **Trường hợp 2 KHÔNG bị ảnh hưởng, luôn hoạt động** (đã hỏi và chốt riêng).
+2. **"Cho phép lễ tân đóng ca hộ"** (mặc định TẮT) — gate toàn bộ khả năng lễ tân/clinic_admin thao tác hộ trạng thái bác sĩ khác.
+
+Cả hai là `tenant_setting` đơn giản (đúng khuôn `deferredPaymentEnabled`/`noShowAutoEnabled`) — **không đi qua RBAC role-matrix** (bản nháp đầu định thêm permission riêng rồi để admin cấp qua "Vai trò & Phân quyền" ADM-07, đã bỏ hướng đó theo yêu cầu chủ dự án muốn 1 công tắc đơn giản). Quyền RBAC (`doctor_availability.update`, permission mới: `doctor` personal, `receptionist`/`clinic_admin` global) chỉ gác "ai được PHÉP THỬ" — 2 công tắc là lớp gate nghiệp vụ THÊM kiểm trong service, không phân biệt được ở tầng RBAC vì `data_scope` không tách được vai trò cụ thể (nhận ra khi code: `req.user` chỉ có `userId`/`tenantId`, không có `roles` — mọi phân biệt vai trò trong dự án đều đi qua `data_scope`, không role-string, nên bỏ hẳn ý định "clinic_admin bypass công tắc" ở bản nháp đầu, áp dụng đồng nhất cho mọi actor không phải chính chủ).
+
+**Kiến trúc**: bảng mới `doctor_availability` (không mở rộng `doctor_room_session` — giữ nguyên ý nghĩa "thuần vật lý phòng" đã chốt ở #054/#064). Module mới `apps/api/src/modules/doctor-availability/` (`imports: [EncounterModule, ClinicModule]`, dùng chung `EncounterRepository` trong transaction "Đóng ca" đúng tiền lệ #042). `EncounterRepository.releaseAllForDoctor()` mới — bulk update theo `doctorId`, không theo danh sách id (khác mọi bulk trước đó như `markNoShow()`). 2 domain error mới (`DoctorAvailabilityReceptionDisabledError`/`DoctorAvailabilityEmergencyDisabledError`, 403). `GET /doctor-availability/policy` tự-phục vụ (đúng khuôn `deferred-payment-enabled`, #030 — bác sĩ/lễ tân không có `clinic_config.read`).
+
+**Frontend**: `TopBar.tsx` dropdown avatar thêm "Tạm nghỉ"/"Đóng ca hôm nay"/"Quay lại làm việc" + chip nhắc quá giờ + chấm trạng thái trên avatar — 2 dialog (`DoctorBreakDialog.tsx`/`DoctorEndShiftDialog.tsx`, `shared/ui/`) **lazy-load** (đo thật: main chunk 452.75→477.79 kB nếu tĩnh, kéo theo toàn bộ `reception.queries.ts` — sau lazy còn 468.76 kB, vẫn cao hơn baseline ~16 kB do hook `useClosingTimeReminder` cần đọc `businessHours` ngay tại TopBar không-lazy qua `useScheduleConfigQuery` — chấp nhận được, vẫn dưới ngưỡng 500 kB đã chốt #073). `ReceptionIntakeForm.tsx` khu vực "Chuyển vào hàng đợi" thêm badge trạng thái + nút "…" thao tác hộ (chỉ hiện khi `allowReceptionistEndShift` bật). Mockup Artifact duyệt nhiều vòng qua `AskUserQuestion` trước khi code (2 lần bổ sung: badge lễ tân không hiển thị mặc định — thêm bộ chuyển nhanh; rồi thêm 2 công tắc cấu hình).
+
+**Đã xác minh thật**: `apps/api` `doctor-availability-http.spec.ts` mới (12/12) + `clinic-http.spec.ts` +2 test round-trip 2 công tắc mới — tổng test suite chạy đủ (509 pass thật, 7 skip là flake race `geo-http.spec.ts` đã biết từ nhiều phiên trước, xác nhận pass 100% khi chạy riêng). `pnpm -w typecheck/lint/build` sạch toàn workspace. Migration đã áp thật lên Postgres dev (`db:deploy` + `db:seed` để permission catalog có `doctor_availability.update`). **Chưa verify Playwright/trình duyệt thật** — việc kế tiếp khi chủ dự án dùng thử.
+
+Cập nhật `docs/CURRENT.md`, `docs/TASK.md`, `docs/CHANGELOG.md`, `docs/ERD.md` (v1.35).

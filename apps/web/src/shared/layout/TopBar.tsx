@@ -1,8 +1,11 @@
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
-import { CaretRight, House, SignOut } from '@phosphor-icons/react';
+import { CaretRight, Clock, House, Pause, Play, SignOut, WarningCircle } from '@phosphor-icons/react';
 import { Link, useMatch, useNavigate } from 'react-router-dom';
 import { logout } from '../../features/auth/auth.api';
 import { useAuthStore } from '../../features/auth/auth.store';
+import { useDoctorAvailabilityPolicyQuery, useDoctorAvailabilityTodayQuery, useSetDoctorAvailabilityMutation } from '../../features/clinic/clinic.queries';
+import { useClosingTimeReminder } from '../../features/clinic/useClosingTimeReminder';
+import { formatClockTime } from '../format/time';
 import { useBreadcrumbItems } from './breadcrumb.context';
 
 /**
@@ -17,6 +20,14 @@ const DoctorQueueButton = lazy(() =>
   import('../../features/reception/DoctorQueueButton').then((m) => ({ default: m.DoctorQueueButton })),
 );
 
+/**
+ * "Tạm nghỉ / Đóng ca" — cùng lý do lazy `DoctorQueueButton` ở trên: 2 dialog này kéo theo
+ * `useReceptionListQuery` (đếm "N lượt khám chưa xử lý") → toàn bộ phụ thuộc module `reception`.
+ * Đo thật: main chunk 452.75 → 477.79 kB nếu import tĩnh — lazy để giữ đúng baseline.
+ */
+const DoctorBreakDialog = lazy(() => import('../ui/DoctorBreakDialog').then((m) => ({ default: m.DoctorBreakDialog })));
+const DoctorEndShiftDialog = lazy(() => import('../ui/DoctorEndShiftDialog').then((m) => ({ default: m.DoctorEndShiftDialog })));
+
 /** Bỏ từ không bắt đầu bằng chữ cái (ví dụ hậu tố "(dev)" của tài khoản seed) trước khi lấy viết tắt. */
 function getInitials(fullName: string): string {
   const words = fullName.trim().split(/\s+/).filter((w) => /^\p{L}/u.test(w));
@@ -28,9 +39,10 @@ function getInitials(fullName: string): string {
 /**
  * Thanh trên cùng — thay thế user card ở chân sidebar (S1-08) và nút "← Quay lại" trên trang con
  * (.claude/docs/ui-guidelines.md mục 8.2, docs/DECISIONS.md #027). Trái: breadcrumb phân cấp.
- * Phải: lời chào + avatar mở dropdown đăng xuất. Không có chuông thông báo (v1 chưa có hệ thống
- * thông báo trong ứng dụng) và không hiện tên khoa (`/auth/me` chưa trả trường này) — cả hai đã
- * hỏi và chốt bỏ.
+ * Phải: lời chào + avatar mở dropdown đăng xuất — với vai trò bác sĩ, dropdown còn có "Tạm nghỉ /
+ * Đóng ca" (đặc tả gốc, cắt bỏ phần SMS/Zalo/WebSocket/bảng điện tử/voice-to-text ngoài phạm vi
+ * v1). Không có chuông thông báo (v1 chưa có hệ thống thông báo trong ứng dụng) và không hiện tên
+ * khoa (`/auth/me` chưa trả trường này) — cả hai đã hỏi và chốt bỏ.
  */
 export function TopBar() {
   const items = useBreadcrumbItems();
@@ -44,6 +56,28 @@ export function TopBar() {
 
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [endShiftDialog, setEndShiftDialog] = useState<{ trigger?: 'SCHEDULED_END' } | null>(null);
+  const [breakDialogOpen, setBreakDialogOpen] = useState(false);
+
+  // "Tạm nghỉ / Đóng ca" — board trả CHỈ bác sĩ BREAK/ENDED hôm nay, không có dòng = ACTIVE ngầm định.
+  const availabilityQuery = useDoctorAvailabilityTodayQuery(isDoctor);
+  const policyQuery = useDoctorAvailabilityPolicyQuery();
+  const setAvailability = useSetDoctorAvailabilityMutation();
+  const myAvailability = availabilityQuery.data?.items.find((i) => i.doctorId === user?.id);
+  const status = myAvailability?.status ?? 'ACTIVE';
+  const isEnded = status === 'ENDED';
+  const isBreak = status === 'BREAK';
+  // Mặc định true (khớp DEFAULT_ALLOW_EMERGENCY_END_SHIFT) lúc chưa tải xong — tránh nhấp nháy ẩn/hiện.
+  const allowEmergencyEndShift = policyQuery.data?.allowEmergencyEndShift ?? true;
+
+  // Trường hợp 2 "Hết giờ làm việc" — chỉ theo dõi khi đang ACTIVE/BREAK (đã ENDED thì hết cần nhắc).
+  const pastClosingTime = useClosingTimeReminder(isDoctor && !isEnded);
+
+  useEffect(() => {
+    if (pastClosingTime && !isEnded) {
+      setEndShiftDialog({ trigger: 'SCHEDULED_END' });
+    }
+  }, [pastClosingTime, isEnded]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -64,6 +98,11 @@ export function TopBar() {
       clear();
       navigate('/login', { replace: true });
     }
+  }
+
+  function handleResume() {
+    setMenuOpen(false);
+    void setAvailability.mutateAsync({ doctorId: user!.id, body: { status: 'ACTIVE' } });
   }
 
   if (!user) {
@@ -115,6 +154,31 @@ export function TopBar() {
             <DoctorQueueButton />
           </Suspense>
         )}
+
+        {isDoctor && pastClosingTime && !isEnded && (
+          <button
+            type="button"
+            onClick={() => setEndShiftDialog({ trigger: 'SCHEDULED_END' })}
+            className="flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-bold text-rose-700 hover:bg-rose-100"
+          >
+            <Clock size={12} weight="fill" aria-hidden="true" />
+            Đã quá giờ làm việc — Đóng ca
+          </button>
+        )}
+
+        {isDoctor && isBreak && myAvailability && (
+          <span className="flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700">
+            <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-amber-500" aria-hidden="true" />
+            Đang tạm nghỉ {formatClockTime(myAvailability.statusChangedAt)}
+          </span>
+        )}
+        {isDoctor && isEnded && myAvailability && (
+          <span className="flex items-center gap-1.5 rounded-full border border-slate-300 bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">
+            <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-slate-400" aria-hidden="true" />
+            Đã đóng ca {formatClockTime(myAvailability.statusChangedAt)}
+          </span>
+        )}
+
         <span className="text-sm text-slate-500">
           Xin chào, <strong className="font-semibold text-slate-900">{user.displayName ?? user.fullName}</strong>
         </span>
@@ -124,16 +188,75 @@ export function TopBar() {
           aria-haspopup="menu"
           aria-expanded={menuOpen}
           aria-label="Menu tài khoản"
-          className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-blue-50 text-xs font-bold text-blue-600 hover:bg-blue-100"
+          className="relative flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-blue-50 text-xs font-bold text-blue-600 hover:bg-blue-100"
         >
           {getInitials(user.displayName ?? user.fullName)}
+          {isDoctor && (isBreak || isEnded) && (
+            <span
+              className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white ${isBreak ? 'bg-amber-500' : 'bg-slate-400'}`}
+              aria-hidden="true"
+            />
+          )}
         </button>
 
         {menuOpen && (
           <div
             role="menu"
-            className="absolute right-0 top-11 w-48 rounded-md border border-slate-200 bg-white py-1 shadow-md"
+            className="absolute right-0 top-11 z-30 w-56 rounded-md border border-slate-200 bg-white py-1 shadow-md"
           >
+            {isDoctor && (
+              <>
+                {isBreak ? (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={handleResume}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                  >
+                    <Play size={16} weight="regular" aria-hidden="true" />
+                    Quay lại làm việc
+                  </button>
+                ) : isEnded ? (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={handleResume}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                  >
+                    <Play size={16} weight="regular" aria-hidden="true" />
+                    Mở lại ca làm việc
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setBreakDialogOpen(true);
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-amber-700 hover:bg-amber-50"
+                  >
+                    <Pause size={16} weight="regular" aria-hidden="true" />
+                    Tạm nghỉ
+                  </button>
+                )}
+                {!isEnded && allowEmergencyEndShift && (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setEndShiftDialog({});
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-rose-700 hover:bg-rose-50"
+                  >
+                    <WarningCircle size={16} weight="regular" aria-hidden="true" />
+                    Đóng ca hôm nay
+                  </button>
+                )}
+                <div className="my-1 h-px bg-slate-200" />
+              </>
+            )}
             <button
               type="button"
               role="menuitem"
@@ -146,6 +269,20 @@ export function TopBar() {
           </div>
         )}
       </div>
+
+      <Suspense fallback={null}>
+        {breakDialogOpen && user && (
+          <DoctorBreakDialog doctorId={user.id} onDone={() => setBreakDialogOpen(false)} onClose={() => setBreakDialogOpen(false)} />
+        )}
+        {endShiftDialog && user && (
+          <DoctorEndShiftDialog
+            doctorId={user.id}
+            trigger={endShiftDialog.trigger}
+            onDone={() => setEndShiftDialog(null)}
+            onClose={() => setEndShiftDialog(null)}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }

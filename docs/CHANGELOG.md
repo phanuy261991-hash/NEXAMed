@@ -2,6 +2,18 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-29 (6)
+
+"Tạm nghỉ / Đóng ca" của bác sĩ — xem `docs/DECISIONS.md` #094:
+
+- Bảng mới `doctor_availability` (3 trạng thái ACTIVE/BREAK/ENDED, tách biệt hoàn toàn khỏi `encounter.status`, chỉ tác động routing). "Tạm nghỉ" không đụng lượt khám đang có; "Đóng ca" bulk trả toàn bộ ca `CHECKED_IN`/`IN_CONSULTATION` của bác sĩ về hàng chờ chung Khoa.
+- "Đóng ca" có 2 cách kích hoạt cùng 1 dialog/1 API: bác sĩ tự bấm bất kỳ lúc nào (đột xuất), hoặc hệ thống tự nhắc đúng giờ đóng cửa phòng khám (client poll 30s so với `businessHours`, không tự đóng hộ — chỉ nhắc bằng chip treo tới khi bác sĩ tự xử lý).
+- 2 công tắc mới ở pill "Cấu hình khám": "Cho phép bác sĩ đóng ca khẩn cấp" (mặc định bật), "Cho phép lễ tân đóng ca hộ" (mặc định tắt) — `tenant_setting` đơn giản, không qua RBAC role-matrix.
+- `TopBar.tsx` dropdown avatar bác sĩ + 2 dialog lazy-load (`DoctorBreakDialog.tsx`/`DoctorEndShiftDialog.tsx`); `ReceptionIntakeForm.tsx` thêm badge trạng thái + nút thao tác hộ ở khu vực điều phối.
+- Cắt khỏi phạm vi v1: SMS/Zalo, WebSocket/SignalR, bảng điện tử gọi số, voice-to-text, Toast Undo — dành v2.
+- **Đã xác minh**: `apps/api` test mới (12/12) + `clinic-http.spec.ts` +2, tổng suite 509 pass thật (7 skip flake đã biết không liên quan). `pnpm -w typecheck/lint/build` sạch, chunk web 468.76 kB (dưới ngưỡng 500 kB). Chưa verify Playwright.
+- Cập nhật `docs/CURRENT.md`, `docs/TASK.md`, `docs/ERD.md` (v1.35), `docs/DECISIONS.md` (#094).
+
 ## 2026-08-29 (5)
 
 Verify Playwright cho S5-06/S5-07 + cảnh báo đếm ngược/thông báo tự động Không đến — xem `docs/DECISIONS.md` #093:

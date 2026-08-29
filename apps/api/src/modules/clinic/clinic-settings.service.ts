@@ -24,16 +24,35 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
 
   async getSettings(tenantId: string): Promise<ClinicSettings> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const [businessHours, slotDurationMinutes, deferredPaymentEnabled, overdueWaitWarningMinutes, noShowAutoEnabled, noShowThresholdMinutes] =
-        await Promise.all([
-          this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
-          this.clinicSettingsRepository.getSlotDurationMinutes(tx, tenantId),
-          this.clinicSettingsRepository.getDeferredPaymentEnabled(tx, tenantId),
-          this.clinicSettingsRepository.getOverdueWaitWarningMinutes(tx, tenantId),
-          this.clinicSettingsRepository.getNoShowAutoEnabled(tx, tenantId),
-          this.clinicSettingsRepository.getNoShowThresholdMinutes(tx, tenantId),
-        ]);
-      return { businessHours, slotDurationMinutes, deferredPaymentEnabled, overdueWaitWarningMinutes, noShowAutoEnabled, noShowThresholdMinutes };
+      const [
+        businessHours,
+        slotDurationMinutes,
+        deferredPaymentEnabled,
+        overdueWaitWarningMinutes,
+        noShowAutoEnabled,
+        noShowThresholdMinutes,
+        allowEmergencyEndShift,
+        allowReceptionistEndShift,
+      ] = await Promise.all([
+        this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
+        this.clinicSettingsRepository.getSlotDurationMinutes(tx, tenantId),
+        this.clinicSettingsRepository.getDeferredPaymentEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getOverdueWaitWarningMinutes(tx, tenantId),
+        this.clinicSettingsRepository.getNoShowAutoEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getNoShowThresholdMinutes(tx, tenantId),
+        this.clinicSettingsRepository.getAllowEmergencyEndShift(tx, tenantId),
+        this.clinicSettingsRepository.getAllowReceptionistEndShift(tx, tenantId),
+      ]);
+      return {
+        businessHours,
+        slotDurationMinutes,
+        deferredPaymentEnabled,
+        overdueWaitWarningMinutes,
+        noShowAutoEnabled,
+        noShowThresholdMinutes,
+        allowEmergencyEndShift,
+        allowReceptionistEndShift,
+      };
     });
   }
 
@@ -63,6 +82,17 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
     });
   }
 
+  /** `ClinicConfigReaderPort` ("Tạm nghỉ / Đóng ca") — xem comment ở khai báo class. */
+  getDoctorAvailabilityPolicy(tenantId: string): ReturnType<ClinicConfigReaderPort['getDoctorAvailabilityPolicy']> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const [allowEmergencyEndShift, allowReceptionistEndShift] = await Promise.all([
+        this.clinicSettingsRepository.getAllowEmergencyEndShift(tx, tenantId),
+        this.clinicSettingsRepository.getAllowReceptionistEndShift(tx, tenantId),
+      ]);
+      return { allowEmergencyEndShift, allowReceptionistEndShift };
+    });
+  }
+
   async updateSettings(
     tenantId: string,
     actorId: string,
@@ -88,6 +118,12 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
       if (dto.noShowThresholdMinutes !== undefined) {
         await this.clinicSettingsRepository.upsertNoShowThresholdMinutes(tx, tenantId, actorId, dto.noShowThresholdMinutes);
       }
+      if (dto.allowEmergencyEndShift !== undefined) {
+        await this.clinicSettingsRepository.upsertAllowEmergencyEndShift(tx, tenantId, actorId, dto.allowEmergencyEndShift);
+      }
+      if (dto.allowReceptionistEndShift !== undefined) {
+        await this.clinicSettingsRepository.upsertAllowReceptionistEndShift(tx, tenantId, actorId, dto.allowReceptionistEndShift);
+      }
 
       const hasChanges =
         dto.businessHours !== undefined ||
@@ -95,7 +131,9 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         dto.deferredPaymentEnabled !== undefined ||
         dto.overdueWaitWarningMinutes !== undefined ||
         dto.noShowAutoEnabled !== undefined ||
-        dto.noShowThresholdMinutes !== undefined;
+        dto.noShowThresholdMinutes !== undefined ||
+        dto.allowEmergencyEndShift !== undefined ||
+        dto.allowReceptionistEndShift !== undefined;
       if (hasChanges) {
         await writeAuditLog(tx, tenantId, {
           actorId,
@@ -108,16 +146,35 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         });
       }
 
-      const [businessHours, slotDurationMinutes, deferredPaymentEnabled, overdueWaitWarningMinutes, noShowAutoEnabled, noShowThresholdMinutes] =
-        await Promise.all([
-          this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
-          this.clinicSettingsRepository.getSlotDurationMinutes(tx, tenantId),
-          this.clinicSettingsRepository.getDeferredPaymentEnabled(tx, tenantId),
-          this.clinicSettingsRepository.getOverdueWaitWarningMinutes(tx, tenantId),
-          this.clinicSettingsRepository.getNoShowAutoEnabled(tx, tenantId),
-          this.clinicSettingsRepository.getNoShowThresholdMinutes(tx, tenantId),
-        ]);
-      return { businessHours, slotDurationMinutes, deferredPaymentEnabled, overdueWaitWarningMinutes, noShowAutoEnabled, noShowThresholdMinutes };
+      const [
+        businessHours,
+        slotDurationMinutes,
+        deferredPaymentEnabled,
+        overdueWaitWarningMinutes,
+        noShowAutoEnabled,
+        noShowThresholdMinutes,
+        allowEmergencyEndShift,
+        allowReceptionistEndShift,
+      ] = await Promise.all([
+        this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
+        this.clinicSettingsRepository.getSlotDurationMinutes(tx, tenantId),
+        this.clinicSettingsRepository.getDeferredPaymentEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getOverdueWaitWarningMinutes(tx, tenantId),
+        this.clinicSettingsRepository.getNoShowAutoEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getNoShowThresholdMinutes(tx, tenantId),
+        this.clinicSettingsRepository.getAllowEmergencyEndShift(tx, tenantId),
+        this.clinicSettingsRepository.getAllowReceptionistEndShift(tx, tenantId),
+      ]);
+      return {
+        businessHours,
+        slotDurationMinutes,
+        deferredPaymentEnabled,
+        overdueWaitWarningMinutes,
+        noShowAutoEnabled,
+        noShowThresholdMinutes,
+        allowEmergencyEndShift,
+        allowReceptionistEndShift,
+      };
     });
   }
 }

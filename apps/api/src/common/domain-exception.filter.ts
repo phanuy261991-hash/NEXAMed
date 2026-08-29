@@ -74,6 +74,10 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   // thu/lượt khám không cho phép thao tác này", không phải lỗi input.
   INVOICE_CLOSED: HttpStatus.CONFLICT,
   INVOICE_NOT_REFUNDABLE: HttpStatus.CONFLICT,
+  // "Tạm nghỉ / Đóng ca" — thao tác bị cấu hình phòng khám chặn (không phải thiếu permission RBAC,
+  // đã kiểm ở PermissionGuard trước đó), cùng ngữ nghĩa 403 với PERMISSION_DENIED.
+  DOCTOR_AVAILABILITY_RECEPTION_DISABLED: HttpStatus.FORBIDDEN,
+  DOCTOR_AVAILABILITY_EMERGENCY_DISABLED: HttpStatus.FORBIDDEN,
 };
 
 /**

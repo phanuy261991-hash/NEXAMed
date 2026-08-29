@@ -78,6 +78,11 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   // mức nhạy cảm khác hẳn nhau. Mặc định CHỈ `clinic_admin` có (lễ tân KHÔNG) — chủ phòng khám tự
   // cấp thêm cho lễ tân qua màn "Vai trò & Phân quyền" nếu tin tưởng/quy mô nhỏ.
   { module: 'invoice', action: 'refund', description: 'Hoàn tiền phiếu thu của lượt khám đã huỷ' },
+  // "Tạm nghỉ / Đóng ca" của bác sĩ — RBAC chỉ gác "ai được PHÉP THỬ" (giống mọi permission khác);
+  // bác sĩ tự thao tác cho chính mình luôn qua được (scope personal). Lễ tân/clinic_admin thao tác
+  // hộ CÒN CẦN THÊM 2 công tắc `ClinicSettings.allowEmergencyEndShift`/`allowReceptionistEndShift`
+  // (kiểm trong service, không phải ở đây) — RBAC không phân biệt được ĐANG BẬT/TẮT cấu hình.
+  { module: 'doctor_availability', action: 'update', description: 'Đổi trạng thái sẵn sàng nhận bệnh (Tạm nghỉ/Đóng ca) của bác sĩ' },
 ] as const;
 
 export function permissionKey(p: Pick<PermissionDefinition, 'module' | 'action'>): string {
@@ -115,6 +120,9 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'invoice.read': 'global',
     'invoice.update': 'global',
     'invoice.print': 'global',
+    // "Tạm nghỉ / Đóng ca" hộ bác sĩ — chỉ thật sự dùng được khi phòng khám bật thêm
+    // `allowReceptionistEndShift` (mặc định tắt), xem PERMISSIONS ở trên.
+    'doctor_availability.update': 'global',
   },
   nurse: {
     'patient.read': 'global',
@@ -158,6 +166,9 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'allergen_catalog.read': 'global',
     'allergen_catalog.create': 'global',
     'drug.read': 'global',
+    // Tự thao tác "Tạm nghỉ / Đóng ca" cho chính mình — luôn cho phép (personal), không phụ thuộc
+    // 2 công tắc cấu hình (2 công tắc đó chỉ gate nhánh "hộ" của receptionist/clinic_admin).
+    'doctor_availability.update': 'personal',
   },
   clinic_admin: {
     'patient.read': 'global',
@@ -193,6 +204,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     // PERMISSION_CATALOG). Tenant đã cài sẵn tự được vá dòng này lúc API khởi động qua
     // `syncRolePermissionsForAllTenants()`, không cần thao tác tay.
     'invoice.refund': 'global',
+    'doctor_availability.update': 'global',
   },
   system_admin: {
     'user_account.read': 'global',

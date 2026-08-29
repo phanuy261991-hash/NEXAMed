@@ -4,7 +4,9 @@ import type {
   CreateExamStationRequest,
   CreateFloorRequest,
   CreateRoomRequest,
+  DoctorAvailability,
   RoomSession,
+  SetDoctorAvailabilityRequest,
   SetRoomSessionRequest,
   UpdateClinicProfileRequest,
   UpdateClinicSettingsRequest,
@@ -23,11 +25,14 @@ import {
   getClinicProfile,
   getClinicSettings,
   getDeferredPaymentStatus,
+  getDoctorAvailabilityPolicy,
+  getDoctorAvailabilityToday,
   getMyRoomSession,
   getRoomOptions,
   listExamStations,
   listFloors,
   listRooms,
+  setDoctorAvailability,
   setMyRoomSession,
   updateClinicProfile,
   updateClinicSettings,
@@ -71,6 +76,8 @@ export function useUpdateClinicSettingsMutation() {
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'appointment', 'schedule-config') });
       // Thu ngân cơ bản — ReceptionIntakeForm.tsx đọc qua hook tự-phục vụ riêng (useDeferredPaymentEnabledQuery), làm mới luôn.
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'deferred-payment-enabled') });
+      // "Tạm nghỉ / Đóng ca" — TopBar/board đọc qua hook tự-phục vụ riêng (useDoctorAvailabilityPolicyQuery), làm mới luôn.
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'doctor-availability-policy') });
     },
   });
 }
@@ -249,6 +256,45 @@ export function useUpdateExamStationMutation() {
     onSuccess: (updated) => {
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'exam-stations', updated.roomId) });
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'rooms') });
+    },
+  });
+}
+
+/**
+ * "Tạm nghỉ / Đóng ca" — board điều phối lễ tân (chỉ liệt kê bác sĩ BREAK/ENDED hôm nay).
+ * `refetchInterval: 30_000` — đúng pattern polling chuẩn của dự án (không có WebSocket, cùng
+ * `useReceptionListQuery`/`useAppointmentsByDateQuery`), giữ badge cập nhật mà không cần F5.
+ */
+export function useDoctorAvailabilityTodayQuery(enabled = true) {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'clinic', 'doctor-availability-today'),
+    queryFn: getDoctorAvailabilityToday,
+    refetchInterval: 30_000,
+    enabled,
+  });
+}
+
+/** Tự-phục vụ — mọi vai trò đã đăng nhập gọi được (không cần `clinic_config.read`), đúng khuôn `useDeferredPaymentEnabledQuery`. */
+export function useDoctorAvailabilityPolicyQuery() {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'clinic', 'doctor-availability-policy'),
+    queryFn: getDoctorAvailabilityPolicy,
+  });
+}
+
+export function useSetDoctorAvailabilityMutation() {
+  const { tenantId } = useAppConfig();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ doctorId, body }: { doctorId: string; body: SetDoctorAvailabilityRequest }) => setDoctorAvailability(doctorId, body),
+    onSuccess: (updated: DoctorAvailability) => {
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'doctor-availability-today') });
+      // "Đóng ca" trả nhiều lượt khám về hàng chờ chung Khoa — làm mới danh sách điều phối ngay.
+      if (updated.status === 'ENDED') {
+        void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'reception') });
+      }
     },
   });
 }

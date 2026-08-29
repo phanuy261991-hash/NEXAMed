@@ -6,6 +6,9 @@ import type {
   DeferredPaymentStatus,
   CreateFloorRequest,
   CreateRoomRequest,
+  DoctorAvailability,
+  DoctorAvailabilityBoardResponse,
+  DoctorAvailabilityPolicy,
   ExamStationSummary,
   FloorSummary,
   ListExamStationsResponse,
@@ -14,6 +17,7 @@ import type {
   ListRoomsResponse,
   RoomSession,
   RoomSummary,
+  SetDoctorAvailabilityRequest,
   SetRoomSessionRequest,
   UpdateClinicProfileRequest,
   UpdateClinicSettingsRequest,
@@ -115,4 +119,20 @@ export async function createExamStation(body: CreateExamStationRequest): Promise
 
 export async function updateExamStation(id: string, body: UpdateExamStationRequest): Promise<ExamStationSummary> {
   return unwrap(await getApiClient().PATCH('/api/v1/exam-stations/{id}', { params: { path: { id } }, body })) as ExamStationSummary;
+}
+
+/** "Tạm nghỉ / Đóng ca" — board điều phối hôm nay (chỉ liệt kê bác sĩ BREAK/ENDED; không có = ACTIVE ngầm định). */
+export async function getDoctorAvailabilityToday(): Promise<DoctorAvailabilityBoardResponse> {
+  return unwrap(await getApiClient().GET('/api/v1/doctor-availability/today')) as DoctorAvailabilityBoardResponse;
+}
+
+/** Tự-phục vụ — không cần `clinic_config.read` (đúng khuôn `getDeferredPaymentStatus`). */
+export async function getDoctorAvailabilityPolicy(): Promise<DoctorAvailabilityPolicy> {
+  return unwrap(await getApiClient().GET('/api/v1/doctor-availability/policy')) as DoctorAvailabilityPolicy;
+}
+
+export async function setDoctorAvailability(doctorId: string, body: SetDoctorAvailabilityRequest): Promise<DoctorAvailability> {
+  return unwrap(
+    await getApiClient().PUT('/api/v1/doctor-availability/{doctorId}', { params: { path: { doctorId } }, body }),
+  ) as DoctorAvailability;
 }

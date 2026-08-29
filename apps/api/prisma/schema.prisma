@@ -66,6 +66,7 @@ model Tenant {
   auditLogs              AuditLog[]
   breakGlassSessions     BreakGlassSession[]
   doctorRoomSessions     DoctorRoomSession[]
+  doctorAvailabilities   DoctorAvailability[]
   userSessions           UserSession[]
   patients               Patient[]
   appointments           Appointment[]
@@ -222,6 +223,41 @@ model DoctorRoomSession {
   @@map("doctor_room_session")
 }
 
+enum DoctorAvailabilityStatus {
+  ACTIVE
+  BREAK
+  ENDED
+}
+
+// "Tạm nghỉ / Đóng ca" của bác sĩ — trạng thái sẵn sàng nhận bệnh, TÁCH BIỆT khỏi `encounter.status`
+// và khỏi `doctor_room_session` (bảng đó THUẦN chọn phòng ngồi vật lý, không phải khoá điều phối —
+// giữ nguyên ý nghĩa đã chốt). Chỉ tác động routing: bác sĩ BREAK/ENDED không được điều phối ca mới
+// (theo bác sĩ cụ thể lẫn theo Khoa qua pool). 1 dòng/bác sĩ/ngày lịch Việt Nam (workDate), cùng
+// khuôn `doctor_room_session` — không có dòng cho hôm nay = ACTIVE ngầm định.
+model DoctorAvailability {
+  id              String                   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId        String                   @map("tenant_id") @db.Uuid
+  doctorId        String                   @map("doctor_id") @db.Uuid
+  workDate        DateTime                 @map("work_date") @db.Date
+  status          DoctorAvailabilityStatus
+  statusChangedAt DateTime                 @map("status_changed_at") @db.Timestamptz(6)
+  reason          String?
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant Tenant      @relation(fields: [tenantId], references: [id])
+  doctor UserAccount @relation(fields: [tenantId, doctorId], references: [tenantId, id])
+
+  @@map("doctor_availability")
+}
+
 // Khoa/phòng trong 1 tenant — phục vụ Data Scope `department` (security-audit.md).
 // v1 phần lớn phòng khám không dùng (1-3 bác sĩ, không chia khoa) nhưng bảng luôn tồn tại.
 // "Loại Khoa/Phòng" (mở rộng ADM-01, yêu cầu chủ dự án 2026-08-20) — cấp cha TÙY CHỌN của
@@ -364,6 +400,7 @@ model UserAccount {
   appointmentsAsDoctor Appointment[]       @relation("AppointmentDoctor")
   encountersAsDoctor   Encounter[]         @relation("EncounterDoctor")
   roomSessionsAsDoctor DoctorRoomSession[]
+  availabilityAsDoctor DoctorAvailability[]
 
   // Đích của composite FK (tenant_id, id) từ user_role — chống trỏ chéo tenant (C5 trong ERD.md).
   @@unique([tenantId, id])

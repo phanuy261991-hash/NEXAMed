@@ -1,17 +1,26 @@
 import { useEffect, useState } from 'react';
-import { CheckCircle, Plus, Trash, UserPlus } from '@phosphor-icons/react';
+import { CheckCircle, DotsThreeVertical, Plus, Trash, UserPlus } from '@phosphor-icons/react';
 import type { EncounterServiceItemInput, PatientDetail, PatientSummary } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { formatVnd } from '../../shared/format/currency';
 import { computeBmi } from '../../shared/format/bmi';
 import { isDateRangeActiveToday } from '../../shared/format/date';
+import { formatClockTime } from '../../shared/format/time';
 import { makeDraftId } from '../../shared/make-draft-id';
 import { Button } from '../../shared/ui/Button';
 import { Combobox, withLegacyValueOption } from '../../shared/ui/Combobox';
+import { DoctorBreakDialog } from '../../shared/ui/DoctorBreakDialog';
+import { DoctorEndShiftDialog } from '../../shared/ui/DoctorEndShiftDialog';
 import { TimeInput } from '../../shared/ui/TimeInput';
 import { useDoctorsQuery } from '../appointment/appointment.queries';
 import { getVietnamTodayDateString, minutesToLabel, vietnamNowMinutes, vnDateTimeToIso } from '../appointment/schedule-grid.utils';
-import { useDeferredPaymentEnabledQuery, useRoomOptionsQuery } from '../clinic/clinic.queries';
+import {
+  useDeferredPaymentEnabledQuery,
+  useDoctorAvailabilityPolicyQuery,
+  useDoctorAvailabilityTodayQuery,
+  useRoomOptionsQuery,
+  useSetDoctorAvailabilityMutation,
+} from '../clinic/clinic.queries';
 import { useDepartmentOptionsQuery } from '../department/department.queries';
 import { checkPatientDuplicate } from '../patient/patient.api';
 import {
@@ -180,6 +189,14 @@ export function ReceptionIntakeForm({
   // của "Hàng đợi khám" thay vì thêm endpoint đếm riêng, lễ tân đã có `encounter.read=global` nên
   // không cần lọc theo actor.
   const todayQueueQuery = useReceptionListQuery(getVietnamTodayDateString());
+  // "Tạm nghỉ / Đóng ca" (đặc tả gốc) — badge trạng thái + thao tác hộ trên thẻ bác sĩ điều phối.
+  const availabilityQuery = useDoctorAvailabilityTodayQuery();
+  const availabilityPolicyQuery = useDoctorAvailabilityPolicyQuery();
+  const allowReceptionistEndShift = availabilityPolicyQuery.data?.allowReceptionistEndShift ?? false;
+  const allowEmergencyEndShift = availabilityPolicyQuery.data?.allowEmergencyEndShift ?? true;
+  const setAvailabilityMutation = useSetDoctorAvailabilityMutation();
+  const [availabilityMenuDoctorId, setAvailabilityMenuDoctorId] = useState<string | null>(null);
+  const [availabilityDialog, setAvailabilityDialog] = useState<{ doctorId: string; kind: 'break' | 'end' } | null>(null);
   const patientSourceQuery = useReferenceCatalogQuery('PATIENT_SOURCE');
   const receptionTypeQuery = useReferenceCatalogQuery('RECEPTION_TYPE');
   const examFormQuery = useReferenceCatalogQuery('EXAM_FORM');
@@ -277,6 +294,7 @@ export function ReceptionIntakeForm({
     }
   }
 
+  const availabilityByDoctor = new Map((availabilityQuery.data?.items ?? []).map((a) => [a.doctorId, a]));
   const doctorCards = (doctorsQuery.data?.items ?? []).map((d) => ({
     id: d.id,
     fullName: d.displayName ?? d.fullName,
@@ -284,6 +302,7 @@ export function ReceptionIntakeForm({
     departmentName: d.departmentId ? (departmentsQuery.data?.items.find((dep) => dep.id === d.departmentId)?.name ?? null) : null,
     roomName: d.currentRoomName ?? null,
     waitingCount: waitingCountByDoctor.get(d.id) ?? 0,
+    availability: availabilityByDoctor.get(d.id) ?? null,
   }));
   // Điều phối theo Khoa ("Hàng đợi ảo", #064) — hiện thẻ "(chung)" cho MỌI Khoa active, kể cả Khoa
   // chưa có bác sĩ nào gán vào (lễ tân vẫn cần đẩy bệnh nhân vào hàng chờ của Khoa mới tạo trước
@@ -694,35 +713,112 @@ export function ReceptionIntakeForm({
                     {doctorCards.length === 0 ? 'Chưa có bác sĩ nào đang hoạt động để chọn.' : 'Không có bác sĩ nào thuộc Khoa đã lọc.'}
                   </p>
                 )}
+                {availabilityMenuDoctorId && <div className="fixed inset-0 z-10" onClick={() => setAvailabilityMenuDoctorId(null)} />}
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
                 {filteredDoctorCards.map((doctor) => {
                   const active = routingMode === 'doctor' && doctorId === doctor.id;
+                  const availabilityStatus = doctor.availability?.status ?? 'ACTIVE';
+                  const menuOpenHere = availabilityMenuDoctorId === doctor.id;
                   return (
-                    <button
-                      key={doctor.id}
-                      type="button"
-                      onClick={() => setDoctorId(doctor.id)}
-                      className={`flex w-full items-center justify-between gap-3 rounded-lg border-2 px-3.5 py-2.5 text-left shadow-sm transition-colors ${
-                        active ? 'border-brand-teal bg-brand-teal' : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50'
-                      }`}
-                    >
-                      <div className="flex min-w-0 items-center gap-2">
-                        {active && <CheckCircle size={18} weight="fill" className="flex-shrink-0 text-white" aria-hidden="true" />}
-                        <div className="min-w-0">
-                          <div className={`truncate text-[13.5px] font-bold ${active ? 'text-white' : 'text-slate-900'}`}>{doctor.fullName}</div>
-                          <div className={`truncate text-xs ${active ? 'text-white/80' : 'text-slate-500'}`}>
-                            {[doctor.departmentName, doctor.roomName].filter(Boolean).join(' · ') || '—'}
-                          </div>
-                        </div>
-                      </div>
-                      <span
-                        className={`flex-shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${
-                          active ? 'bg-white text-brand-teal' : 'bg-slate-100 text-slate-700'
+                    <div key={doctor.id} className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setDoctorId(doctor.id)}
+                        className={`flex w-full items-center justify-between gap-3 rounded-lg border-2 px-3.5 py-2.5 text-left shadow-sm transition-colors ${
+                          availabilityStatus === 'BREAK'
+                            ? 'border-amber-300 bg-amber-50'
+                            : availabilityStatus === 'ENDED'
+                              ? 'border-slate-300 bg-slate-50 opacity-70'
+                              : active
+                                ? 'border-brand-teal bg-brand-teal'
+                                : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50'
                         }`}
                       >
-                        Đang chờ: {doctor.waitingCount}
-                      </span>
-                    </button>
+                        <div className="flex min-w-0 items-center gap-2">
+                          {active && availabilityStatus === 'ACTIVE' && (
+                            <CheckCircle size={18} weight="fill" className="flex-shrink-0 text-white" aria-hidden="true" />
+                          )}
+                          <div className="min-w-0">
+                            <div className={`truncate text-[13.5px] font-bold ${active && availabilityStatus === 'ACTIVE' ? 'text-white' : 'text-slate-900'}`}>
+                              {doctor.fullName}
+                            </div>
+                            <div className={`truncate text-xs ${active && availabilityStatus === 'ACTIVE' ? 'text-white/80' : 'text-slate-500'}`}>
+                              {[doctor.departmentName, doctor.roomName].filter(Boolean).join(' · ') || '—'}
+                            </div>
+                            {doctor.availability && availabilityStatus !== 'ACTIVE' && (
+                              <div
+                                className={`mt-1 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10.5px] font-bold ${
+                                  availabilityStatus === 'BREAK' ? 'border-amber-300 bg-white text-amber-700' : 'border-slate-300 bg-white text-slate-600'
+                                }`}
+                              >
+                                {availabilityStatus === 'BREAK' ? 'Tạm nghỉ từ' : 'Đã đóng ca lúc'} {formatClockTime(doctor.availability.statusChangedAt)}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <span
+                          className={`flex-shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${
+                            active && availabilityStatus === 'ACTIVE' ? 'bg-white text-brand-teal' : 'bg-slate-100 text-slate-700'
+                          }`}
+                        >
+                          Đang chờ: {doctor.waitingCount}
+                        </span>
+                      </button>
+
+                      {allowReceptionistEndShift && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setAvailabilityMenuDoctorId(menuOpenHere ? null : doctor.id);
+                          }}
+                          aria-label="Thao tác hộ trạng thái sẵn sàng nhận bệnh"
+                          className="absolute right-1.5 top-1.5 z-20 flex h-6 w-6 items-center justify-center rounded-md text-slate-400 hover:bg-black/5 hover:text-slate-600"
+                        >
+                          <DotsThreeVertical size={16} weight="bold" aria-hidden="true" />
+                        </button>
+                      )}
+                      {menuOpenHere && (
+                        <div className="absolute right-1.5 top-8 z-20 w-44 rounded-md border border-slate-200 bg-white py-1 shadow-md">
+                          {availabilityStatus === 'ACTIVE' && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAvailabilityMenuDoctorId(null);
+                                setAvailabilityDialog({ doctorId: doctor.id, kind: 'break' });
+                              }}
+                              className="flex w-full items-center px-3 py-1.5 text-left text-xs font-medium text-slate-700 hover:bg-slate-50"
+                            >
+                              Cho tạm nghỉ hộ
+                            </button>
+                          )}
+                          {availabilityStatus !== 'ACTIVE' && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAvailabilityMenuDoctorId(null);
+                                setAvailabilityMutation.mutate({ doctorId: doctor.id, body: { status: 'ACTIVE' } });
+                              }}
+                              className="flex w-full items-center px-3 py-1.5 text-left text-xs font-medium text-slate-700 hover:bg-slate-50"
+                            >
+                              {availabilityStatus === 'BREAK' ? 'Mở lại hộ' : 'Mở lại ca hộ'}
+                            </button>
+                          )}
+                          {availabilityStatus !== 'ENDED' && allowEmergencyEndShift && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAvailabilityMenuDoctorId(null);
+                                setAvailabilityDialog({ doctorId: doctor.id, kind: 'end' });
+                              }}
+                              className="flex w-full items-center px-3 py-1.5 text-left text-xs font-medium text-slate-700 hover:bg-slate-50"
+                            >
+                              Đóng ca hộ
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
                 </div>
@@ -1021,6 +1117,13 @@ export function ReceptionIntakeForm({
             </Button>
           </div>
         </div>
+      )}
+
+      {availabilityDialog?.kind === 'break' && (
+        <DoctorBreakDialog doctorId={availabilityDialog.doctorId} onDone={() => setAvailabilityDialog(null)} onClose={() => setAvailabilityDialog(null)} />
+      )}
+      {availabilityDialog?.kind === 'end' && (
+        <DoctorEndShiftDialog doctorId={availabilityDialog.doctorId} onDone={() => setAvailabilityDialog(null)} onClose={() => setAvailabilityDialog(null)} />
       )}
     </div>
   );

@@ -127,6 +127,55 @@ export function ExamConfigPane() {
         {mutation.isError && <ErrorBanner message="Không lưu được cấu hình. Thử lại." />}
       </div>
 
+      <div className={`mt-4 ${sectionBoxClassName}`}>
+        <span className={sectionBadgeClassName}>Tạm nghỉ / Đóng ca</span>
+
+        <div className="flex items-start justify-between gap-5">
+          <div>
+            <p className="text-[14.5px] font-bold text-slate-900">Cho phép bác sĩ đóng ca khẩn cấp</p>
+            <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
+              Bác sĩ tự bấm &quot;Đóng ca hôm nay&quot; bất kỳ lúc nào (đóng đột xuất, ngoài kế hoạch). Tắt thì bác sĩ
+              chỉ còn &quot;Tạm nghỉ&quot; — vẫn được nhắc đóng ca tự động đúng giờ đóng cửa phòng khám như bình
+              thường.
+            </p>
+          </div>
+          <label className="relative mt-0.5 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center">
+            <input
+              type="checkbox"
+              className="peer sr-only"
+              checked={query.data.allowEmergencyEndShift}
+              disabled={mutation.isPending}
+              onChange={(e) => mutation.mutate({ allowEmergencyEndShift: e.target.checked })}
+              aria-label="Cho phép bác sĩ đóng ca khẩn cấp"
+            />
+            <span className="absolute inset-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-brand-teal peer-disabled:opacity-60" />
+            <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
+          </label>
+        </div>
+
+        <div className="mt-4 flex items-start justify-between gap-5 border-t border-slate-100 pt-4">
+          <div>
+            <p className="text-[14.5px] font-bold text-slate-900">Cho phép lễ tân đóng ca hộ bác sĩ</p>
+            <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
+              Lễ tân thấy nút thao tác hộ ở khu vực điều phối, cho tạm nghỉ/đóng ca hộ khi bác sĩ rời đi gấp không
+              kịp thao tác. Tắt thì lễ tân chỉ xem được trạng thái, không thao tác được.
+            </p>
+          </div>
+          <label className="relative mt-0.5 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center">
+            <input
+              type="checkbox"
+              className="peer sr-only"
+              checked={query.data.allowReceptionistEndShift}
+              disabled={mutation.isPending}
+              onChange={(e) => mutation.mutate({ allowReceptionistEndShift: e.target.checked })}
+              aria-label="Cho phép lễ tân đóng ca hộ bác sĩ"
+            />
+            <span className="absolute inset-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-brand-teal peer-disabled:opacity-60" />
+            <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
+          </label>
+        </div>
+      </div>
+
       {savedNotice && (
         <div className="mt-4 flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
           <CheckCircle size={15} weight="fill" aria-hidden="true" />

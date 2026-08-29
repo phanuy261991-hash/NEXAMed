@@ -30,6 +30,7 @@ const SYSTEM_LOG_ENTITY_TYPES = new Set([
   'exam_station',
   'drug',
   'doctor_room_session',
+  'doctor_availability',
   'tenant',
 ]);
 

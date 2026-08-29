@@ -1935,6 +1935,8 @@ export interface paths {
                                 overdueWaitWarningMinutes: number;
                                 noShowAutoEnabled: boolean;
                                 noShowThresholdMinutes: number;
+                                allowEmergencyEndShift: boolean;
+                                allowReceptionistEndShift: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -9525,6 +9527,8 @@ export interface paths {
                                 overdueWaitWarningMinutes: number;
                                 noShowAutoEnabled: boolean;
                                 noShowThresholdMinutes: number;
+                                allowEmergencyEndShift: boolean;
+                                allowReceptionistEndShift: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -9613,6 +9617,8 @@ export interface paths {
                         overdueWaitWarningMinutes?: number;
                         noShowAutoEnabled?: boolean;
                         noShowThresholdMinutes?: number;
+                        allowEmergencyEndShift?: boolean;
+                        allowReceptionistEndShift?: boolean;
                     };
                 };
             };
@@ -9660,6 +9666,8 @@ export interface paths {
                                 overdueWaitWarningMinutes: number;
                                 noShowAutoEnabled: boolean;
                                 noShowThresholdMinutes: number;
+                                allowEmergencyEndShift: boolean;
+                                allowReceptionistEndShift: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -12345,6 +12353,246 @@ export interface paths {
             };
         };
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/doctor-availability/today": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** "Tạm nghỉ / Đóng ca" — board điều phối hôm nay (chỉ liệt kê bác sĩ BREAK/ENDED; không có = ACTIVE ngầm định) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    doctorId: string;
+                                    /** @enum {string} */
+                                    status: "ACTIVE" | "BREAK" | "ENDED";
+                                    statusChangedAt: string;
+                                    reason: string | null;
+                                    releasedEncounterCount: number | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền encounter.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/doctor-availability/policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** "Tạm nghỉ / Đóng ca" — 2 công tắc cấu hình, chiếu tối thiểu tự-phục vụ (không cần clinic_config.read) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                allowEmergencyEndShift: boolean;
+                                allowReceptionistEndShift: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/doctor-availability/{doctorId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** "Tạm nghỉ / Đóng ca" — bác sĩ tự đổi trạng thái cho chính mình, hoặc lễ tân/clinic_admin đổi hộ (cần bật cấu hình tương ứng) */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    doctorId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        status: "ACTIVE" | "BREAK" | "ENDED";
+                        reason?: string;
+                        /** @enum {string} */
+                        trigger?: "SCHEDULED_END";
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                doctorId: string;
+                                /** @enum {string} */
+                                status: "ACTIVE" | "BREAK" | "ENDED";
+                                statusChangedAt: string;
+                                reason: string | null;
+                                releasedEncounterCount: number | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền doctor_availability.update, hoặc cấu hình chặn (DOCTOR_AVAILABILITY_RECEPTION_DISABLED/DOCTOR_AVAILABILITY_EMERGENCY_DISABLED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (bác sĩ khác scope personal, hoặc thuộc tenant khác) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
         post?: never;
         delete?: never;
         options?: never;

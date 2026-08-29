@@ -154,6 +154,15 @@ export const clinicSettingsSchema = z.object({
    */
   noShowAutoEnabled: z.boolean(),
   noShowThresholdMinutes: z.number().int().min(1).max(1440),
+  /**
+   * "Tạm nghỉ / Đóng ca" của bác sĩ — pill "Cấu hình khám". `allowEmergencyEndShift` (mặc định
+   * BẬT) gate riêng nút "Đóng ca hôm nay" bấm thủ công bất kỳ lúc nào (Trường hợp 1, "đóng đột
+   * xuất") — KHÔNG ảnh hưởng nhắc tự động đúng giờ đóng cửa phòng khám (Trường hợp 2, luôn hoạt
+   * động, đã hỏi và chốt riêng). `allowReceptionistEndShift` (mặc định TẮT) gate lễ tân/clinic_admin
+   * thao tác hộ trạng thái của bác sĩ khác — tắt thì lễ tân chỉ xem badge, không thao tác được.
+   */
+  allowEmergencyEndShift: z.boolean(),
+  allowReceptionistEndShift: z.boolean(),
 });
 export type ClinicSettings = z.infer<typeof clinicSettingsSchema>;
 
@@ -170,6 +179,8 @@ export const updateClinicSettingsRequestSchema = z.object({
   overdueWaitWarningMinutes: z.number().int().min(1).max(240).optional(),
   noShowAutoEnabled: z.boolean().optional(),
   noShowThresholdMinutes: z.number().int().min(1).max(1440).optional(),
+  allowEmergencyEndShift: z.boolean().optional(),
+  allowReceptionistEndShift: z.boolean().optional(),
 });
 export type UpdateClinicSettingsRequest = z.infer<typeof updateClinicSettingsRequestSchema>;
 
@@ -180,6 +191,10 @@ export const DEFAULT_OVERDUE_WAIT_WARNING_MINUTES = 30;
 export const DEFAULT_NO_SHOW_AUTO_ENABLED = false;
 /** Khớp PRD APP-05 ("ngưỡng cấu hình, mặc định 60 phút") + hardcode cũ ở FE (`LATE_APPOINTMENT_THRESHOLD_MINUTES`). */
 export const DEFAULT_NO_SHOW_THRESHOLD_MINUTES = 60;
+/** "Tạm nghỉ / Đóng ca" — bật theo mặc định (tính năng chính, không phải ngoại lệ cần bật thủ công). */
+export const DEFAULT_ALLOW_EMERGENCY_END_SHIFT = true;
+/** Tắt theo mặc định (an toàn — lễ tân KHÔNG thao tác hộ trạng thái bác sĩ khác tới khi chủ động bật). */
+export const DEFAULT_ALLOW_RECEPTIONIST_END_SHIFT = false;
 
 /**
  * `GET /clinic-settings/deferred-payment-enabled` — chiếu tối thiểu tự-phục vụ (Thu ngân cơ bản,

@@ -349,4 +349,37 @@ export class EncounterRepository {
     });
     return result.count;
   }
+
+  /**
+   * "Đóng ca" (module `doctor-availability`) — thả HÀNG LOẠT mọi lượt khám `CHECKED_IN`/
+   * `IN_CONSULTATION` của một bác sĩ về hàng chờ chung Khoa (`doctorId=null`, giữ nguyên
+   * `departmentId`) trong CÙNG 1 câu lệnh, không theo từng id — khác `release()` (1 ca/lần, chỉ
+   * nhận từ `IN_CONSULTATION`). `CHECKED_IN` GIỮ NGUYÊN status (chỉ "nhả tay", không đổi trạng
+   * thái encounter — cùng khuôn `claimFromPool()` đảo ngược); `IN_CONSULTATION → CHECKED_IN` đúng
+   * cạnh `release()` đã có trong state machine (#085), áp dụng hàng loạt. Không kiểm `version` —
+   * đây là hành động của actor gọi 1 lần cho TOÀN BỘ hàng đợi của bác sĩ, không có client nào giữ
+   * version cũ của từng dòng riêng lẻ (cùng lý do `AppointmentRepository.markNoShow()` bỏ qua
+   * version cho job hệ thống). Trả về danh sách `{id, status}` TRƯỚC khi đổi (status cũ) để service
+   * ghi đúng 1 dòng `audit_log` `encounter.released` cho mỗi ca, đúng mẫu multi-write của
+   * `cancelEncounter()`.
+   */
+  async releaseAllForDoctor(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    doctorId: string,
+    actorId: string,
+  ): Promise<{ id: string; previousStatus: 'CHECKED_IN' | 'IN_CONSULTATION' }[]> {
+    const targets = await tx.encounter.findMany({
+      where: { tenantId, doctorId, deletedAt: null, status: { in: ['CHECKED_IN', 'IN_CONSULTATION'] } },
+      select: { id: true, status: true },
+    });
+    if (targets.length === 0) {
+      return [];
+    }
+    await tx.encounter.updateMany({
+      where: { tenantId, id: { in: targets.map((t) => t.id) } },
+      data: { doctorId: null, startedAt: null, status: 'CHECKED_IN', updatedBy: actorId, version: { increment: 1 } },
+    });
+    return targets.map((t) => ({ id: t.id, previousStatus: t.status as 'CHECKED_IN' | 'IN_CONSULTATION' }));
+  }
 }

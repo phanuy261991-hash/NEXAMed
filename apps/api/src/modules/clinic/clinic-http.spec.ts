@@ -250,6 +250,31 @@ describe('HTTP e2e — /api/v1/rooms và /api/v1/clinic-settings', () => {
       expect(res.body.error.code).toBe('VALIDATION_ERROR');
     });
 
+    it('GET lúc chưa cấu hình → allowEmergencyEndShift mặc định true, allowReceptionistEndShift mặc định false ("Tạm nghỉ / Đóng ca")', async () => {
+      const res = await request(app.getHttpServer()).get('/api/v1/clinic-settings').set(authed(tenantBAdminToken));
+      expect(res.status).toBe(200);
+      expect(res.body.data.allowEmergencyEndShift).toBe(true);
+      expect(res.body.data.allowReceptionistEndShift).toBe(false);
+    });
+
+    it('PATCH allowEmergencyEndShift + allowReceptionistEndShift → 200, GET phản ánh đúng giá trị mới, độc lập với tenant khác', async () => {
+      const patch = await request(app.getHttpServer())
+        .patch('/api/v1/clinic-settings')
+        .set(authed(clinicAdminToken))
+        .send({ allowEmergencyEndShift: false, allowReceptionistEndShift: true });
+      expect(patch.status).toBe(200);
+      expect(patch.body.data.allowEmergencyEndShift).toBe(false);
+      expect(patch.body.data.allowReceptionistEndShift).toBe(true);
+
+      const get = await request(app.getHttpServer()).get('/api/v1/clinic-settings').set(authed(clinicAdminToken));
+      expect(get.body.data.allowEmergencyEndShift).toBe(false);
+      expect(get.body.data.allowReceptionistEndShift).toBe(true);
+
+      const tenantBGet = await request(app.getHttpServer()).get('/api/v1/clinic-settings').set(authed(tenantBAdminToken));
+      expect(tenantBGet.body.data.allowEmergencyEndShift).toBe(true);
+      expect(tenantBGet.body.data.allowReceptionistEndShift).toBe(false);
+    });
+
     it('PATCH slotDurationMinutes → 200, GET phản ánh đúng giá trị mới', async () => {
       const patch = await request(app.getHttpServer())
         .patch('/api/v1/clinic-settings')

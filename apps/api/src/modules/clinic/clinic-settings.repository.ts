@@ -3,6 +3,8 @@ import type { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import {
   businessHoursSchema,
+  DEFAULT_ALLOW_EMERGENCY_END_SHIFT,
+  DEFAULT_ALLOW_RECEPTIONIST_END_SHIFT,
   DEFAULT_NO_SHOW_AUTO_ENABLED,
   DEFAULT_NO_SHOW_THRESHOLD_MINUTES,
   DEFAULT_OVERDUE_WAIT_WARNING_MINUTES,
@@ -28,6 +30,12 @@ const NO_SHOW_AUTO_ENABLED_KEY = 'no_show_auto_enabled';
 const noShowAutoEnabledSchema = z.boolean();
 const NO_SHOW_THRESHOLD_KEY = 'no_show_threshold_minutes';
 const noShowThresholdSchema = z.number().int().min(1).max(1440);
+// "Tạm nghỉ / Đóng ca" của bác sĩ — bật theo mặc định (tính năng chính, không phải ngoại lệ).
+const ALLOW_EMERGENCY_END_SHIFT_KEY = 'allow_emergency_end_shift';
+const allowEmergencyEndShiftSchema = z.boolean();
+// Tắt theo mặc định (an toàn) — lễ tân KHÔNG thao tác hộ trạng thái bác sĩ khác tới khi chủ động bật.
+const ALLOW_RECEPTIONIST_END_SHIFT_KEY = 'allow_receptionist_end_shift';
+const allowReceptionistEndShiftSchema = z.boolean();
 
 /**
  * Đọc/ghi `tenant_setting` cho hai key cấu hình phòng khám (S2-07, ADM-02) — cùng mẫu
@@ -89,6 +97,32 @@ export class ClinicSettingsRepository {
     }
     const parsed = noShowThresholdSchema.safeParse(setting.valueJson);
     return parsed.success ? parsed.data : DEFAULT_NO_SHOW_THRESHOLD_MINUTES;
+  }
+
+  async getAllowEmergencyEndShift(tx: Prisma.TransactionClient, tenantId: string): Promise<boolean> {
+    const setting = await tx.tenantSetting.findFirst({ where: { tenantId, key: ALLOW_EMERGENCY_END_SHIFT_KEY } });
+    if (!setting) {
+      return DEFAULT_ALLOW_EMERGENCY_END_SHIFT;
+    }
+    const parsed = allowEmergencyEndShiftSchema.safeParse(setting.valueJson);
+    return parsed.success ? parsed.data : DEFAULT_ALLOW_EMERGENCY_END_SHIFT;
+  }
+
+  async getAllowReceptionistEndShift(tx: Prisma.TransactionClient, tenantId: string): Promise<boolean> {
+    const setting = await tx.tenantSetting.findFirst({ where: { tenantId, key: ALLOW_RECEPTIONIST_END_SHIFT_KEY } });
+    if (!setting) {
+      return DEFAULT_ALLOW_RECEPTIONIST_END_SHIFT;
+    }
+    const parsed = allowReceptionistEndShiftSchema.safeParse(setting.valueJson);
+    return parsed.success ? parsed.data : DEFAULT_ALLOW_RECEPTIONIST_END_SHIFT;
+  }
+
+  upsertAllowEmergencyEndShift(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
+    return this.upsert(tx, tenantId, actorId, ALLOW_EMERGENCY_END_SHIFT_KEY, value);
+  }
+
+  upsertAllowReceptionistEndShift(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
+    return this.upsert(tx, tenantId, actorId, ALLOW_RECEPTIONIST_END_SHIFT_KEY, value);
   }
 
   upsertBusinessHours(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: BusinessHours) {
