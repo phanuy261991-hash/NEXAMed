@@ -2,6 +2,14 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-08-31
+
+Verify Playwright qua Chrome thật cho "Tạm nghỉ / Đóng ca" của bác sĩ (#094, code xong 29/08) — xem `docs/DECISIONS.md` #094:
+
+- Tài khoản test tạo riêng qua HTTP API bằng `dev.admin` (1 bác sĩ, 1 lễ tân — đã vô hiệu hoá lại sau khi kiểm), 1 lượt khám test (huỷ sạch sau khi kiểm).
+- Xác nhận đúng toàn bộ theo thiết kế, **không phát hiện bug nào mới**: 3 trạng thái ACTIVE/BREAK/ENDED trên dropdown avatar; "Đóng ca" khi có lượt khám `IN_CONSULTATION` — bulk trả về hàng chờ chung Khoa đúng (xác nhận qua query DB trực tiếp: `doctor_id=NULL`, `status=CHECKED_IN`), audit log ghi đủ; gate `allowEmergencyEndShift` đúng (403 khi tắt, nhưng `trigger=SCHEDULED_END` luôn bypass); lễ tân thao tác hộ đúng + gate kép ẩn đúng mục "Đóng ca hộ" khi tắt cấu hình khẩn cấp; Trường hợp 2 "Hết giờ làm việc" tự nhắc đúng khi hạ tạm giờ đóng cửa.
+- Đã khôi phục `businessHours`/2 công tắc cấu hình về mặc định sau khi kiểm xong.
+
 ## 2026-08-29 (6)
 
 "Tạm nghỉ / Đóng ca" của bác sĩ — xem `docs/DECISIONS.md` #094:
