@@ -20,6 +20,7 @@ import {
   createUserAccountRequestSchema,
   listUserAccountsQuerySchema,
   resetUserPasswordRequestSchema,
+  updateOwnProfileRequestSchema,
   updateUserAccountRequestSchema,
 } from '@nexamed/shared';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
@@ -52,6 +53,27 @@ export class UserAccountController {
     const dto = listUserAccountsQuerySchema.parse(query);
     const { tenantId } = req.user!;
     return this.userAccountService.listUserAccounts(tenantId, dto);
+  }
+
+  /**
+   * Hồ sơ CỦA CHÍNH MÌNH (menu avatar "Thông tin tài khoản") — id lấy thẳng từ token, không qua
+   * `PermissionGuard` (không gắn `@RequirePermission`, guard tự cho qua đúng thiết kế — xem
+   * docstring `permission.guard.ts`), vì mọi vai trò đều được xem hồ sơ chính mình, kể cả vai trò
+   * không có `user_account.read` (bác sĩ/điều dưỡng). Khai TRƯỚC `:id` — NestJS khớp route theo
+   * thứ tự khai báo, cùng bài học `check-duplicate` (S2-03).
+   */
+  @Get('me')
+  async getMyProfile(@Req() req: Request) {
+    const { userId, tenantId } = req.user!;
+    return this.userAccountService.getUserAccount(tenantId, userId);
+  }
+
+  /** Tự sửa 4 trường liên hệ của chính mình — xem docstring `updateOwnProfileRequestSchema`. */
+  @Patch('me')
+  async updateMyProfile(@Body() body: unknown, @Req() req: Request) {
+    const dto = updateOwnProfileRequestSchema.parse(body);
+    const { userId, tenantId } = req.user!;
+    return this.userAccountService.updateOwnProfile(tenantId, userId, dto, extractRequestMeta(req));
   }
 
   @Get(':id')

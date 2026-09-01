@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { CreateUserAccountRequest, ResetUserPasswordRequest, UpdateUserAccountRequest } from '@nexamed/shared';
+import type { CreateUserAccountRequest, ResetUserPasswordRequest, UpdateOwnProfileRequest, UpdateUserAccountRequest } from '@nexamed/shared';
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
 import {
   createUserAccount,
+  getMyProfile,
   listUserAccounts,
   resetUserPassword,
+  updateMyProfile,
   updateUserAccount,
   uploadUserAccountSignature,
 } from './user-account.api';
@@ -62,5 +64,26 @@ export function useUploadUserAccountSignatureMutation() {
   return useMutation({
     mutationFn: ({ id, file, version }: { id: string; file: File; version: number }) => uploadUserAccountSignature(id, file, version),
     onSuccess: invalidate,
+  });
+}
+
+/** Menu avatar "Thông tin tài khoản" (`MyAccountDialog.tsx`) — hồ sơ của chính mình, mọi vai trò dùng được. */
+export function useMyProfileQuery(enabled: boolean) {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'users', 'me'),
+    queryFn: getMyProfile,
+    enabled,
+  });
+}
+
+export function useUpdateMyProfileMutation() {
+  const { tenantId } = useAppConfig();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: UpdateOwnProfileRequest) => updateMyProfile(body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'users', 'me') });
+    },
   });
 }

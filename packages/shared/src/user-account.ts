@@ -80,6 +80,24 @@ export const updateUserAccountRequestSchema = z.object({
 });
 export type UpdateUserAccountRequest = z.infer<typeof updateUserAccountRequestSchema>;
 
+/**
+ * Tự sửa hồ sơ CÁ NHÂN của chính mình (menu avatar "Thông tin tài khoản", popup
+ * `MyAccountDialog.tsx`) — CHỈ 4 trường liên hệ thuần tuý, KHÔNG có `fullName`/`displayName`/vai
+ * trò/hồ sơ nhân sự-pháp lý (Chức danh, Học hàm, CCHN, Khoa/Phòng, Trạng thái làm việc...) — những
+ * trường đó vẫn do Quản trị kiểm soát qua `updateUserAccountRequestSchema`/`PATCH /users/:id`, vì
+ * dùng để ký HSBA/in đơn thuốc, tự sửa dễ gây lệch tên trên hồ sơ đã ký. Route riêng `PATCH
+ * /users/me` (không qua `PermissionGuard`, tự-phục vụ đúng mẫu `changePasswordRequestSchema`) —
+ * xem `user-account.controller.ts`.
+ */
+export const updateOwnProfileRequestSchema = z.object({
+  phone: z.string().nullable().optional(),
+  email: z.string().email().nullable().optional(),
+  dob: z.string().date().nullable().optional(),
+  gender: userAccountGenderSchema.nullable().optional(),
+  version: z.number().int().positive(),
+});
+export type UpdateOwnProfileRequest = z.infer<typeof updateOwnProfileRequestSchema>;
+
 export const resetUserPasswordRequestSchema = z.object({
   newPassword: z.string().min(8),
   /** Admin đặt lại mật khẩu kèm bắt đổi lại ở lần đăng nhập kế tiếp — mặc định giữ nguyên cờ cũ. */

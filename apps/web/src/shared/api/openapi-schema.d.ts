@@ -6533,6 +6533,184 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/users/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Hồ sơ của chính tài khoản đang đăng nhập — không cần quyền user_account.read */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                employeeCode: string | null;
+                                username: string;
+                                fullName: string;
+                                displayName: string | null;
+                                phone: string | null;
+                                email: string | null;
+                                dob: string | null;
+                                /** @enum {string|null} */
+                                gender: "male" | "female" | null;
+                                licenseNo: string | null;
+                                licenseIssuedAt: string | null;
+                                licenseIssuedPlace: string | null;
+                                academicTitleCode: string | null;
+                                positionCode: string | null;
+                                employmentStatusCode: string | null;
+                                employmentTypeCode: string | null;
+                                canSignMedicalRecord: boolean;
+                                mustChangePassword: boolean;
+                                /** Format: uuid */
+                                departmentId: string | null;
+                                /** Format: uuid */
+                                defaultRoomId: string | null;
+                                signatureUrl: string | null;
+                                isActive: boolean;
+                                roleNames: string[];
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Tự sửa 4 trường liên hệ (SĐT/Email/Ngày sinh/Giới tính) của chính mình */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        phone?: string | null;
+                        /** Format: email */
+                        email?: string | null;
+                        /** Format: date */
+                        dob?: string | null;
+                        /** @enum {string|null} */
+                        gender?: "male" | "female" | null;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Sửa thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                employeeCode: string | null;
+                                username: string;
+                                fullName: string;
+                                displayName: string | null;
+                                phone: string | null;
+                                email: string | null;
+                                dob: string | null;
+                                /** @enum {string|null} */
+                                gender: "male" | "female" | null;
+                                licenseNo: string | null;
+                                licenseIssuedAt: string | null;
+                                licenseIssuedPlace: string | null;
+                                academicTitleCode: string | null;
+                                positionCode: string | null;
+                                employmentStatusCode: string | null;
+                                employmentTypeCode: string | null;
+                                canSignMedicalRecord: boolean;
+                                mustChangePassword: boolean;
+                                /** Format: uuid */
+                                departmentId: string | null;
+                                /** Format: uuid */
+                                defaultRoomId: string | null;
+                                signatureUrl: string | null;
+                                isActive: boolean;
+                                roleNames: string[];
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
     "/api/v1/users/{id}": {
         parameters: {
             query?: never;

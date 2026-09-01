@@ -1524,5 +1524,37 @@ Cả hai là `tenant_setting` đơn giản (đúng khuôn `deferredPaymentEnable
 
 Cập nhật `docs/CURRENT.md`, `docs/TASK.md`, `docs/CHANGELOG.md`, `docs/ERD.md` (v1.35).
 
+## 095 — TopBar: tách "Tạm nghỉ/Đóng ca" ra bánh răng riêng, chỉ hiện ở Hàng đợi khám/Màn hình khám
+
+**Ngày**: 2026-09-01
+**Bối cảnh**: Chủ dự án phản hồi trực tiếp trên ảnh chụp dropdown avatar thật (#094): "Tạm nghỉ"/"Đóng ca hôm nay" đang nằm chung 1 menu với "Đăng xuất" — hai nhóm chức năng khác hẳn nhau (điều khiển ca trực vs. tài khoản). Dùng mockup Artifact duyệt nhiều vòng trước khi code (so sánh Trước/Sau, thử tương tác trực tiếp) theo đúng thói quen dự án.
+
+**Chốt qua nhiều vòng chỉnh sửa trực tiếp trên mockup**:
+1. Nút bánh răng (`GearSix`, Phosphor) mới đặt cạnh avatar (bên trái), chỉ chứa "Tạm nghỉ"/"Đóng ca hôm nay" (hoặc "Quay lại làm việc"/"Mở lại ca làm việc" tuỳ trạng thái) — y nguyên logic 3 trạng thái ACTIVE/BREAK/ENDED đã có từ #094, chỉ đổi *nơi chứa*.
+2. Avatar rút lại đúng 1 mục "Đăng xuất". Chấm trạng thái amber/xám (BREAK/ENDED) chuyển từ avatar sang bánh răng.
+3. **Bánh răng CHỈ hiện khi `isDoctor` VÀ đang ở 1 trong 2 route**: `/reception/doctor-queue` (Hàng đợi khám) hoặc `/encounters/:id` (Màn hình khám) — theo yêu cầu trực tiếp chủ dự án giữa lúc duyệt mockup. Ở mọi trang khác (Lịch hẹn, Danh mục...), bác sĩ tạm thời không thao tác Tạm nghỉ/Đóng ca được nữa (trước đây làm được ở mọi trang qua avatar) — đánh đổi có chủ đích, đã nêu rõ trong mockup trước khi code. 3 badge chip (quá giờ/tạm nghỉ/đóng ca) GIỮ NGUYÊN hiện ở mọi trang, không đổi.
+4. Kiểu chữ 2 menu (bánh răng lẫn avatar) nâng từ `text-[12.5px]` lên `text-sm`, icon 16px, `px-2.5 py-2 gap-2` — khớp độ đậm/thoáng theo ảnh chụp thật chủ dự án gửi, rồi thu nhỏ lại một nấc theo phản hồi tiếp theo ("chữ/khung to hơn ảnh gốc").
+
+**`apps/web/src/shared/layout/TopBar.tsx`**: tách `menuOpen`/`menuRef` cũ thành 2 cặp state/ref độc lập (`gearMenuOpen`/`gearRef`, `accountMenuOpen`/`accountRef`), mở 1 bên tự đóng bên kia. `getInitials()` tách ra `shared/format/initials.ts` (dùng chung lần 2 — cũng cần ở `MyAccountDialog.tsx`, xem #096).
+
+**Đã xác minh thật**: `pnpm -w typecheck/lint/build` sạch (chunk web không đổi bất thường, 469.60→469.60 kB trước khi thêm #096). Playwright qua Chrome thật (`hoang.tran`): bánh răng hiện đúng + đúng nội dung menu ở Hàng đợi khám, avatar chỉ còn Đăng xuất, bánh răng biến mất hoàn toàn ở `/appointments`. Không lỗi console mới.
+
+Cập nhật `docs/CURRENT.md`, `docs/TASK.md`, `docs/CHANGELOG.md`.
+
+## 096 — "Thông tin tài khoản" — popup tự xem/sửa hồ sơ cá nhân + đổi mật khẩu
+
+**Ngày**: 2026-09-01
+**Bối cảnh**: Chủ dự án yêu cầu trực tiếp thêm mục "Thông tin tài khoản" vào menu avatar (cùng phiên với #095) — mở popup cho tài khoản đang đăng nhập tự xem hồ sơ, sửa thông tin cá nhân, và đổi mật khẩu (bắt mật khẩu hiện tại + xác nhận mật khẩu mới trùng khớp). Mockup Artifact duyệt trước khi code — 1 vòng chỉnh từ "trang riêng" sang "popup" (chủ dự án không muốn thêm route/trang mới), 1 vòng mở rộng khung (660px→960px, khôi phục lưới 3 cột) vì cảm giác bị bóp so với thiết kế trang gốc, 1 vòng thiết kế lại khối tiêu đề (gộp avatar+tên+meta đang bị tách 2 tầng trùng lặp thành 1 khối, bớt đổ bóng/đường kẻ thừa).
+
+**Chốt qua `AskUserQuestion` trước khi code**: chỉ đúng 4 trường tự sửa được — **SĐT/Email/Ngày sinh/Giới tính**. Mọi trường hồ sơ nhân sự/pháp lý khác (Họ và tên, Tên đăng nhập, Mã nhân viên, Học hàm/học vị, Chức danh nội bộ, Khoa/Phòng, Vai trò, Trạng thái làm việc) khoá cứng, chỉ Quản trị sửa được qua `PATCH /users/:id` có sẵn — vì đây là dữ liệu dùng để ký HSBA/in đơn thuốc, tự sửa dễ gây lệch tên trên hồ sơ đã ký (cùng lý do đã cân nhắc ở #082).
+
+**Backend**: `updateOwnProfileRequestSchema` mới (`packages/shared/src/user-account.ts`) — CHỈ 4 trường + `version`, tách hẳn khỏi `updateUserAccountRequestSchema` (DTO rộng hơn nhiều) để không có cách nào tự nới quyền qua endpoint này dù sửa lại code gọi từ client. `UserAccountService.updateOwnProfile()` mới, ghi `audit_log` action riêng `user_account.self_updated` (phân biệt với `user_account.updated` do Quản trị làm). `UserAccountController` thêm `GET /users/me`/`PATCH /users/me` — khai TRƯỚC `:id` (bài học `check-duplicate` S2-03), KHÔNG gắn `@RequirePermission()` (route không có metadata thì `PermissionGuard` tự cho qua, đúng thiết kế đã ghi trong docstring guard — chỉ `JwtAuthGuard` chặn, mọi vai trò tự xem/sửa hồ sơ chính mình được, kể cả vai trò không có `user_account.read`). Đổi mật khẩu tái dùng nguyên `POST /auth/change-password` đã có từ S2-07 mở rộng, không sửa backend.
+
+**Frontend**: `apps/web/src/features/user-account/MyAccountDialog.tsx` mới (lazy-load từ `TopBar.tsx`, đúng lý do hiệu năng #073) — header gộp avatar+tên+dòng meta (username/vai trò/Khoa-Phòng/chip trạng thái) trong 1 khối; khung "Thông tin cá nhân" (Boxed Section Form Pattern mục 9b, `EDIT_INPUT_CLASS`/`LOCKED_VALUE_CLASS` phân biệt rõ trường khoá — icon ổ khoá cạnh nhãn — và trường tự sửa); khung "Đổi mật khẩu" (3 `PasswordInput`, so khớp "Xác nhận mật khẩu mới" tại chỗ ở FE, không gửi lên server, nút chỉ bật khi hợp lệ). `useMyProfileQuery()`/`useUpdateMyProfileMutation()` mới (`user-account.queries.ts`).
+
+**Đã xác minh thật**: `apps/api` — `user-account-me-http.spec.ts` mới (5/5, TÁCH FILE RIÊNG tránh vượt `ThrottlerGuard` cho `/auth/login`, đúng tiền lệ `user-account-hr-profile-http.spec.ts`) — gồm test "gửi kèm `roleIds`/`isActive` → bị bỏ qua hoàn toàn", "vai trò không có `user_account.read` (bác sĩ) vẫn GET được", "version lệch → 409". Tổng 80/80 test module `iam` pass, không regression. `pnpm -w typecheck/lint/build` sạch toàn workspace, chunk web 473.29 kB (dưới ngưỡng 500 kB, `MyAccountDialog` tách chunk riêng 13.73 kB). Playwright qua Chrome thật (`hoang.tran`, dữ liệu/mật khẩu khôi phục lại đúng giá trị gốc sau khi kiểm — SĐT `0975024847`, mật khẩu `12345678`): sửa SĐT → lưu → đóng/mở lại vẫn đúng; đổi mật khẩu thật (rồi đổi lại) → thành công, thu hồi phiên khác; xác nhận sai → báo đỏ, đúng → báo xanh + nút bật.
+
+Cập nhật `docs/CURRENT.md`, `docs/TASK.md`, `docs/CHANGELOG.md`.
+
 
 **Bổ sung 31/08/2026 — verify Playwright qua Chrome thật hoàn tất.** Tài khoản test tạo riêng qua HTTP API bằng `dev.admin` (1 bác sĩ thuộc Khoa Nội, 1 lễ tân — cả hai vô hiệu hoá lại sau khi kiểm), 1 lượt khám test (huỷ sạch sau khi kiểm). Xác nhận đúng toàn bộ thiết kế đã mô tả ở trên, **không phát hiện bug nào mới**: 3 trạng thái ACTIVE/BREAK/ENDED trên dropdown avatar đúng; "Đóng ca" khi có lượt khám `IN_CONSULTATION` — bulk trả về hàng chờ chung Khoa xác nhận đúng qua query DB trực tiếp (`doctor_id=NULL`, `started_at=NULL`, `status` quay về `CHECKED_IN`, giữ nguyên `department_id`), `audit_log` ghi đủ cặp `doctor_availability.ended`/`encounter.released`; test trực tiếp tầng API xác nhận đúng 2 nhánh gate `allowEmergencyEndShift` (403 khi tắt, nhưng `trigger=SCHEDULED_END` luôn bypass đúng thiết kế); lễ tân thao tác hộ đúng cả 3 hành động, gate kép ẩn đúng mục "Đóng ca hộ" khi tắt cấu hình khẩn cấp (chỉ còn "Cho tạm nghỉ hộ"); Trường hợp 2 "Hết giờ làm việc" tự nhắc đúng (chip + dialog tự bật, khung cảnh báo đúng, "Để sau" giữ chip treo) khi hạ tạm giờ đóng cửa hôm nay về quá khứ. Đã khôi phục `businessHours`/2 công tắc cấu hình về đúng giá trị mặc định sau khi kiểm xong. Cập nhật `docs/CURRENT.md`, `docs/TASK.md`, `docs/CHANGELOG.md`.

@@ -140,6 +140,7 @@ import {
   updateFloorRequestSchema,
   updatePatientRequestSchema,
   updateReferenceCatalogRequestSchema,
+  updateOwnProfileRequestSchema,
   updateRolePermissionsRequestSchema,
   updateRoomRequestSchema,
   updateUserAccountRequestSchema,
@@ -1030,6 +1031,32 @@ registry.registerPath({
     403: errorResponse('Không có quyền user_account.manage'),
     409: errorResponse('Trùng tên đăng nhập (USER_ACCOUNT_DUPLICATE_USERNAME)'),
     422: errorResponse('roleIds có giá trị không thuộc tenant này hoặc đã bị ẩn (ROLE_INVALID_REFERENCE)'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/users/me',
+  tags: ['user-account'],
+  summary: 'Hồ sơ của chính tài khoản đang đăng nhập — không cần quyền user_account.read',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(userAccountSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+  },
+});
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/users/me',
+  tags: ['user-account'],
+  summary: 'Tự sửa 4 trường liên hệ (SĐT/Email/Ngày sinh/Giới tính) của chính mình',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: updateOwnProfileRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Sửa thành công', envelope(userAccountSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION)'),
   },
 });
 

@@ -2,6 +2,20 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-01
+
+TopBar: tách "Tạm nghỉ/Đóng ca" ra bánh răng riêng + "Thông tin tài khoản" popup tự xem/sửa hồ sơ — xem `docs/DECISIONS.md` #095/#096:
+
+- Bánh răng (`GearSix`, Phosphor) mới cạnh avatar — chỉ hiện khi `isDoctor` VÀ đang ở `/reception/doctor-queue` hoặc `/encounters/:id`, chứa "Tạm nghỉ"/"Đóng ca hôm nay" (hoặc "Quay lại làm việc"/"Mở lại ca làm việc") — y nguyên logic 3 trạng thái từ #094, chỉ đổi nơi chứa. Avatar rút lại đúng 1 mục "Đăng xuất". Chấm trạng thái BREAK/ENDED chuyển từ avatar sang bánh răng. 3 badge chip (quá giờ/tạm nghỉ/đóng ca) giữ nguyên hiện mọi trang.
+- Mục "Thông tin tài khoản" mới trong menu avatar — mở popup (không phải trang riêng) cho tài khoản đang đăng nhập tự xem hồ sơ đầy đủ + sửa đúng 4 trường liên hệ (SĐT/Email/Ngày sinh/Giới tính) + đổi mật khẩu (bắt mật khẩu hiện tại + xác nhận mật khẩu mới trùng khớp ở FE, tái dùng nguyên `POST /auth/change-password` có sẵn). Mọi trường hồ sơ nhân sự/pháp lý khác khoá cứng, chỉ Quản trị sửa qua `PATCH /users/:id` có sẵn.
+- Backend mới: `GET/PATCH /api/v1/users/me` (tự-phục vụ, không qua `PermissionGuard`, mọi vai trò dùng được) + `updateOwnProfileRequestSchema` (`packages/shared`) giới hạn đúng 4 trường, tách hẳn khỏi DTO admin.
+- Cả 2 thay đổi đều duyệt qua mockup Artifact nhiều vòng (so sánh Trước/Sau, thử tương tác trực tiếp) trước khi code, theo yêu cầu trực tiếp của chủ dự án.
+- Tách `getInitials()` ra `apps/web/src/shared/format/initials.ts` (dùng chung lần 2 — `TopBar.tsx` + `MyAccountDialog.tsx` mới).
+- **Đã xác minh**: `user-account-me-http.spec.ts` mới (5/5, tách file riêng tránh vượt rate-limit login `/auth/login`), tổng 80/80 test module `iam` pass, không regression. `pnpm -w typecheck/lint/build` sạch toàn workspace, chunk web 473.29 kB (dưới ngưỡng 500 kB, `MyAccountDialog` tách chunk lazy riêng 13.73 kB). Playwright qua Chrome thật (`hoang.tran`, dữ liệu/mật khẩu khôi phục đúng giá trị gốc sau khi kiểm): bánh răng hiện/ẩn đúng theo trang, sửa SĐT lưu/đóng-mở lại đúng, đổi mật khẩu thật (rồi đổi lại) thành công, validate xác nhận mật khẩu đúng.
+- Cập nhật `docs/CURRENT.md`, `docs/TASK.md`, `docs/DECISIONS.md` (#095, #096).
+
+**Ngoài kế hoạch, cùng ngày** — thảo luận định nghĩa lại "ca khám" cho thông báo tự động hết giờ/Đóng ca (tránh nhắc bác sĩ chỉ đăng nhập làm việc khác) — **chủ động gác lại, chưa code**. Xem `docs/CURRENT.md` mục "Đang chờ".
+
 ## 2026-08-31
 
 Verify Playwright qua Chrome thật cho "Tạm nghỉ / Đóng ca" của bác sĩ (#094, code xong 29/08) — xem `docs/DECISIONS.md` #094:

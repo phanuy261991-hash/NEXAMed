@@ -2,6 +2,7 @@ import type {
   CreateUserAccountRequest,
   ListUserAccountsResponse,
   ResetUserPasswordRequest,
+  UpdateOwnProfileRequest,
   UpdateUserAccountRequest,
   UserAccountSummary,
 } from '@nexamed/shared';
@@ -9,6 +10,16 @@ import { getApiClient, unwrap, uploadFile } from '../../shared/api/client';
 
 export async function listUserAccounts(params: { cursor?: string; limit?: number }): Promise<ListUserAccountsResponse> {
   return unwrap(await getApiClient().GET('/api/v1/users', { params: { query: params } })) as ListUserAccountsResponse;
+}
+
+/** Hồ sơ của chính tài khoản đang đăng nhập — menu avatar "Thông tin tài khoản". */
+export async function getMyProfile(): Promise<UserAccountSummary> {
+  return unwrap(await getApiClient().GET('/api/v1/users/me')) as UserAccountSummary;
+}
+
+/** Tự sửa 4 trường liên hệ (SĐT/Email/Ngày sinh/Giới tính) của chính mình. */
+export async function updateMyProfile(body: UpdateOwnProfileRequest): Promise<UserAccountSummary> {
+  return unwrap(await getApiClient().PATCH('/api/v1/users/me', { body })) as UserAccountSummary;
 }
 
 export async function createUserAccount(body: CreateUserAccountRequest): Promise<UserAccountSummary> {

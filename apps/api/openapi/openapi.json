@@ -16437,6 +16437,537 @@
         }
       }
     },
+    "/api/v1/users/me": {
+      "get": {
+        "tags": [
+          "user-account"
+        ],
+        "summary": "Hồ sơ của chính tài khoản đang đăng nhập — không cần quyền user_account.read",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "employeeCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "username": {
+                          "type": "string"
+                        },
+                        "fullName": {
+                          "type": "string"
+                        },
+                        "displayName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "phone": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "email": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "dob": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "gender": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "male",
+                            "female"
+                          ]
+                        },
+                        "licenseNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "licenseIssuedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "licenseIssuedPlace": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "academicTitleCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "positionCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "employmentStatusCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "employmentTypeCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "canSignMedicalRecord": {
+                          "type": "boolean"
+                        },
+                        "mustChangePassword": {
+                          "type": "boolean"
+                        },
+                        "departmentId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "defaultRoomId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "signatureUrl": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "isActive": {
+                          "type": "boolean"
+                        },
+                        "roleNames": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "employeeCode",
+                        "username",
+                        "fullName",
+                        "displayName",
+                        "phone",
+                        "email",
+                        "dob",
+                        "gender",
+                        "licenseNo",
+                        "licenseIssuedAt",
+                        "licenseIssuedPlace",
+                        "academicTitleCode",
+                        "positionCode",
+                        "employmentStatusCode",
+                        "employmentTypeCode",
+                        "canSignMedicalRecord",
+                        "mustChangePassword",
+                        "departmentId",
+                        "defaultRoomId",
+                        "signatureUrl",
+                        "isActive",
+                        "roleNames",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "user-account"
+        ],
+        "summary": "Tự sửa 4 trường liên hệ (SĐT/Email/Ngày sinh/Giới tính) của chính mình",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "phone": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "email": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "email"
+                  },
+                  "dob": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "date"
+                  },
+                  "gender": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "enum": [
+                      "male",
+                      "female"
+                    ]
+                  },
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sửa thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "employeeCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "username": {
+                          "type": "string"
+                        },
+                        "fullName": {
+                          "type": "string"
+                        },
+                        "displayName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "phone": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "email": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "dob": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "gender": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "male",
+                            "female"
+                          ]
+                        },
+                        "licenseNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "licenseIssuedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "licenseIssuedPlace": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "academicTitleCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "positionCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "employmentStatusCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "employmentTypeCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "canSignMedicalRecord": {
+                          "type": "boolean"
+                        },
+                        "mustChangePassword": {
+                          "type": "boolean"
+                        },
+                        "departmentId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "defaultRoomId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "signatureUrl": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "isActive": {
+                          "type": "boolean"
+                        },
+                        "roleNames": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "employeeCode",
+                        "username",
+                        "fullName",
+                        "displayName",
+                        "phone",
+                        "email",
+                        "dob",
+                        "gender",
+                        "licenseNo",
+                        "licenseIssuedAt",
+                        "licenseIssuedPlace",
+                        "academicTitleCode",
+                        "positionCode",
+                        "employmentStatusCode",
+                        "employmentTypeCode",
+                        "canSignMedicalRecord",
+                        "mustChangePassword",
+                        "departmentId",
+                        "defaultRoomId",
+                        "signatureUrl",
+                        "isActive",
+                        "roleNames",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp (CONCURRENT_MODIFICATION)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/users/{id}": {
       "get": {
         "tags": [

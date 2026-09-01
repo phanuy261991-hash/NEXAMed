@@ -21,6 +21,7 @@ import type {
   ListUserAccountsQuery,
   ListUserAccountsResponse,
   ResetUserPasswordRequest,
+  UpdateOwnProfileRequest,
   UpdateUserAccountRequest,
   UserAccountGender,
   UserAccountSummary,
@@ -305,6 +306,47 @@ export class UserAccountService {
         throw new NotFoundException();
       }
       const roleNames = await this.userAccountAuthRepository.findRoleNamesForUser(tx, tenantId, id);
+      return this.toSummary(updated, roleNames);
+    });
+  }
+
+  /**
+   * Tự sửa hồ sơ CÁ NHÂN của chính mình (menu avatar "Thông tin tài khoản") — CHỈ nhận đúng 4
+   * trường liên hệ (`UpdateOwnProfileRequest`), không đi qua `updateUserAccount()` (nhận DTO rộng
+   * hơn nhiều, đủ để đổi vai trò/trạng thái làm việc/hồ sơ pháp lý) để không có cách nào tự nới
+   * quyền qua endpoint này dù có sửa lại code gọi từ client. `id === actorId` luôn đúng (route
+   * `PATCH /users/me` lấy id thẳng từ token, không nhận tham số) — không cần kiểm tra scope.
+   */
+  async updateOwnProfile(tenantId: string, actorId: string, dto: UpdateOwnProfileRequest, meta: RequestMeta): Promise<UserAccountSummary> {
+    const patch: UpdateUserAccountData = {};
+    if (dto.phone !== undefined) patch.phone = dto.phone;
+    if (dto.email !== undefined) patch.email = dto.email;
+    if (dto.dob !== undefined) patch.dob = dto.dob ? new Date(dto.dob) : null;
+    if (dto.gender !== undefined) patch.gender = dto.gender;
+
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const count = await this.userAccountRepository.updateIfVersionMatches(tx, tenantId, actorId, dto.version, actorId, patch);
+      if (count === 0) {
+        throw new ConcurrentModificationError();
+      }
+
+      if (Object.keys(patch).length > 0) {
+        await writeAuditLog(tx, tenantId, {
+          actorId,
+          action: 'user_account.self_updated',
+          entityType: 'user_account',
+          entityId: actorId,
+          afterJson: patch as Prisma.InputJsonObject,
+          ip: meta.ip,
+          userAgent: meta.userAgent,
+        });
+      }
+
+      const updated = await this.userAccountRepository.findById(tx, tenantId, actorId);
+      if (!updated) {
+        throw new NotFoundException();
+      }
+      const roleNames = await this.userAccountAuthRepository.findRoleNamesForUser(tx, tenantId, actorId);
       return this.toSummary(updated, roleNames);
     });
   }
