@@ -217,10 +217,116 @@ Linux/NAS: y hệt các bước trên, chỉ đổi `.\install.ps1` thành `./in
   4. Truy cập bằng địa chỉ có kèm cổng: `http://localhost:8080`.
 - **Đã lỡ chạy `docker compose up -d` trực tiếp (không qua `install.ps1`) để khắc phục sự cố ở trên, giờ không thấy `tenantId`/mật khẩu đâu cả** → bình thường, vì bước tạo tài khoản quản trị CHỈ nằm trong `install.ps1` (Bước 5), không nằm trong lệnh `docker compose up -d` thuần. Chạy lại `.\install.ps1` — vì `.env`/`config.json` đã có sẵn nên script tự bỏ qua phần tạo lại, chạy thẳng tới đúng bước hỏi tạo tài khoản.
 
-**Nâng cấp lên bản mới**: lặp lại PHẦN 1-2 với `-Version` mới ở máy dev, rồi ở máy khách chạy lại (thêm `-SkipTenantCreation` để khỏi hỏi lại tên phòng khám):
+### 2.3b. Cập nhật bản mới lên hệ thống đang chạy
+
+**Trên máy DEV**
+
+**Bước 1.** Đảm bảo code mới đã có trên máy dev (đã sửa/pull xong).
+
+**Bước 2.**
 ```powershell
-.\install.ps1 -SkipTenantCreation
+cd C:\Projects\NEXAMed\deploy\on-prem
+.\build-and-export.ps1 -Version 2026.09.05
 ```
+(đổi số ngày cho đúng — mỗi lần cập nhật nên đặt version mới, KHÔNG lặp lại version cũ, để tránh nhầm lẫn với bản đang chạy)
+
+**Bước 3.** Nén thư mục `package` mới thành `.zip`.
+
+**Chuyển sang máy KHÁCH** — chép `.zip` sang máy khách như lần đầu (USB/mạng nội bộ).
+
+**Trên máy KHÁCH — áp dụng bản mới**
+
+**Bước 1.** Giải nén file `.zip` mới **vào ĐÚNG thư mục đã cài lần trước** (nơi đang có sẵn `.env`/`config.json`), cho phép ghi đè khi được hỏi. **An toàn** — file mới KHÔNG đụng tới `.env`/`config.json` thật (2 file này không nằm trong gói, chỉ có `.env.example`/`config.example.json` làm mẫu), nên mật khẩu/`tenantId` hiện tại giữ nguyên.
+
+**Bước 2.** (Khuyên làm trước khi cập nhật, đề phòng) — sao lưu tay 1 bản trước khi đổi:
+```powershell
+docker compose exec postgres pg_dump -U nexamed -d nexamed -Fc -f /tmp/truoc-cap-nhat.dump
+docker compose cp postgres:/tmp/truoc-cap-nhat.dump .\truoc-cap-nhat.dump
+```
+
+**Bước 3.** Chạy lệnh cập nhật — **luôn chỉ định rõ `-Version`** (tránh máy tự đoán nhầm nếu còn giữ cả file ảnh phiên bản cũ):
+```powershell
+.\install.ps1 -Version 2026.09.05 -SkipTenantCreation
+```
+`-SkipTenantCreation` **bắt buộc** ở bước cập nhật — nếu quên, script sẽ hỏi tạo phòng khám mới, có thể tạo nhầm 1 tenant thứ hai.
+
+**Bước 4.** Script tự: nạp ảnh mới → khởi động lại → **`migrate` tự áp mọi thay đổi cấu trúc dữ liệu mới** (nếu có) → đợi `api` healthy. Xong là dùng được ngay, không mất dữ liệu cũ.
+
+**Bước 5.** Mở lại trình duyệt, F5 kiểm tra tính năng mới hoạt động đúng.
+
+**Lưu ý dọn dẹp**: sau vài lần cập nhật, thư mục `images\` trên máy khách có thể tồn đọng nhiều bản `.tar.gz` cũ — xoá bớt các file phiên bản cũ không dùng nữa (không ảnh hưởng gì, chỉ là file đã nạp xong rồi) để đỡ chiếm ổ đĩa.
+
+### 2.3c. Sao lưu & khôi phục (backup/restore) — đã diễn tập thật (S6-02, `docs/DECISIONS.md` #099)
+
+#### Cấu hình sao lưu tự động
+
+Mở `.env`:
+```
+BACKUP_HOUR=19
+BACKUP_RETENTION_DAYS=14
+BACKUP_HOST_DIR=./backup-data
+```
+- `BACKUP_HOUR`: giờ chạy backup mỗi ngày (0-23) — **là giờ UTC, không phải giờ Việt Nam**. Muốn 2h sáng giờ VN thì đặt `19` (lùi 7 tiếng).
+- `BACKUP_RETENTION_DAYS`: giữ bao nhiêu ngày trước khi tự xoá bản cũ.
+- `BACKUP_HOST_DIR`: **quan trọng nhất** — mặc định lưu ngay trên ổ đĩa của PC đó, CÙNG ổ với dữ liệu thật. Nếu ổ đĩa hỏng thì mất cả 2. Nên đổi trỏ sang ổ khác/ổ ngoài/máy khác trong mạng nội bộ, ví dụ `D:\NEXAMed-backup` hoặc `\\192.168.1.100\backup-nexamed`. Sửa xong: `docker compose restart backup`.
+
+Sửa xong `.env`, chạy lại:
+```powershell
+docker compose restart backup
+```
+
+#### Khôi phục từ 1 file backup — đã test thật (giả lập "PC hỏng hoàn toàn")
+
+Dùng khi: máy chủ hỏng phải cài lại từ đầu, hoặc lỡ tay xoá/hỏng dữ liệu cần khôi phục lại đúng thời điểm đã backup.
+
+**Bước 1.** Cài đặt máy (mới hoặc cài lại) bình thường theo mục 2.3 tới khi `api` báo healthy — **CHƯA cần tạo tenant** (bỏ qua bước 4 hỏi tạo phòng khám, hoặc cứ tạo rồi restore sẽ ghi đè lên).
+
+**Bước 2.** Tắt tạm `api`/`web` (tránh có kết nối đang ghi dữ liệu trong lúc khôi phục):
+```powershell
+docker compose stop api web
+```
+
+**Bước 3.** Xoá sạch dữ liệu hiện có trong database (schema trống, giữ nguyên vai trò/quyền hệ thống):
+```powershell
+docker compose exec postgres psql -U nexamed -d nexamed -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+```
+
+**Bước 4.** Copy file backup (`.dump`) vào container rồi khôi phục — thay đúng tên file backup của anh:
+```powershell
+docker compose cp .\ten-file-backup.dump postgres:/tmp/restore.dump
+docker compose exec postgres pg_restore -U nexamed -d nexamed --no-owner /tmp/restore.dump
+```
+Chạy xong không có dòng nào bắt đầu bằng `pg_restore: error:` là thành công.
+
+**Bước 5.** Bật lại và kiểm tra:
+```powershell
+docker compose start api web
+```
+Đăng nhập lại bằng tài khoản/mật khẩu đã có TRƯỚC lúc backup (không phải tài khoản mới) — dữ liệu đúng như thời điểm tạo file backup đó.
+
+**Nếu gặp lỗi `pg_restore: error: ... function unaccent(text) does not exist`** — chỉ xảy ra khi restore đúng 1 file backup được tạo TRƯỚC ngày 2026-09-01 (trước khi vá lỗi #099). Chạy thêm lệnh này 1 lần rồi thử lại Bước 4:
+```powershell
+docker compose exec postgres psql -U nexamed -d nexamed -c "CREATE OR REPLACE FUNCTION nexamed_unaccent_lower(input text) RETURNS text LANGUAGE sql IMMUTABLE PARALLEL SAFE AS $$ SELECT lower(replace(replace(public.unaccent(input), 'đ', 'd'), 'Đ', 'D')) $$;"
+```
+
+### 2.3d. Các lệnh Docker cần biết — tra cứu nhanh
+
+| Lệnh | Ý nghĩa | Khi nào dùng |
+|---|---|---|
+| `docker compose ps` | Liệt kê container đang chạy + trạng thái (`healthy`/`starting`/`exited`) | Kiểm tra nhanh hệ thống có đang chạy đúng không |
+| `docker compose logs <service>` | Xem log của 1 service (`api`/`web`/`postgres`/`migrate`/`backup`) | Có lỗi, cần xem chi tiết vì sao — ví dụ `docker compose logs api` |
+| `docker compose logs -f <service>` | Như trên nhưng xem log LIÊN TỤC (không tự thoát) | Theo dõi trực tiếp lúc đang thao tác, `Ctrl+C` để thoát |
+| `docker compose up -d` | Khởi động (hoặc khởi động lại nếu đã đổi cấu hình/ảnh) toàn bộ 5 service, chạy nền | Sau khi sửa `.env`/nạp ảnh mới, hoặc khởi động lần đầu trong ngày |
+| `docker compose down` | Dừng và XOÁ container (KHÔNG xoá dữ liệu — `postgres_data` là volume riêng, vẫn còn) | Muốn dừng hẳn hệ thống (bảo trì, chuyển máy) |
+| `docker compose down -v` | Như trên nhưng **XOÁ LUÔN CẢ DỮ LIỆU** (volume) | **CHỈ dùng khi cố ý xoá sạch để làm lại từ đầu** — không dùng nhầm, mất hết dữ liệu bệnh nhân |
+| `docker compose restart <service>` | Khởi động lại đúng 1 service (không đụng service khác) | Sau khi sửa `.env` chỉ ảnh hưởng 1 service — ví dụ sửa `BACKUP_HOUR` thì `docker compose restart backup` |
+| `docker compose stop <service>` / `start <service>` | Tắt/bật tạm 1 service, giữ nguyên container (không xoá) | Tắt `api`/`web` tạm thời lúc khôi phục dữ liệu (mục 2.3c) |
+| `docker compose exec <service> <lệnh>` | Chạy 1 lệnh BÊN TRONG container đang chạy | Chạy `psql`, `pg_dump`, `pg_restore` trực tiếp trong container `postgres` |
+| `docker compose cp <nguồn> <đích>` | Copy file giữa máy thật và container (2 chiều) | Đưa file backup vào container để restore, hoặc lấy file backup ra |
+| `docker load -i <file>.tar.gz` | Nạp 1 ảnh Docker đã build sẵn từ file `.tar.gz` | `install.ps1` tự làm — chỉ cần biết khi làm tay/gỡ lỗi |
+| `docker images` | Liệt kê mọi ảnh Docker đang có trên máy | Kiểm tra đã nạp đúng ảnh/đúng phiên bản chưa |
+| `docker image inspect <tên>:<version>` | Xem chi tiết 1 ảnh — dùng để xác nhận đã nạp đúng | Nghi ngờ nạp sai/thiếu ảnh |
+| `docker ps -a` | Liệt kê MỌI container (kể cả đã dừng) trên máy, không riêng dự án này | Tìm container nào đó đã tắt, hoặc kiểm tra cổng bị chiếm |
 
 ### 2.4. PC không có server nội bộ — tự chạy lại sau khi khởi động lại, không cần nhân viên thao tác
 
@@ -232,7 +338,7 @@ Container đều đặt `restart: unless-stopped` — MỘT KHI Docker Desktop �
 ### 2.5. Còn treo — chưa làm ở phiên S4-05 này (thuộc S6-01/S6-02/S6-03/S6-04/S6-07)
 
 - Sao lưu **tự động theo LỊCH thật + cảnh báo khi thất bại** — `deploy/on-prem/backup/` mới có lịch cố định hằng ngày + log thất bại ra `docker logs`, CHƯA có cơ chế cảnh báo chủ động (email/SMS) khi backup lỗi liên tục.
-- **Diễn tập phục hồi thật** (xoá sạch DB thử nghiệm, khôi phục từ bản `pg_dump`, đo thời gian) — chưa làm, làm trước khi pilot ngừng dùng sổ giấy (điều kiện GA).
+- **Diễn tập phục hồi thật — ĐÃ LÀM MỘT PHẦN** (01/09/2026, `docs/DECISIONS.md` #099): xác nhận restore hoạt động đúng, phát hiện + sửa 1 bug thật chặn hoàn toàn (xem mục 2.3c). Chưa làm: đo thời gian phục hồi thật trên máy chủ pilot thật (chỉ mới đo trên máy dev), chưa lặp lại diễn tập định kỳ (nên làm lại mỗi khi có thay đổi schema lớn).
 - Rà soát bảo mật theo checklist `.claude/docs/security-audit.md` đầy đủ (S6-03) — S4-05 chỉ đảm bảo các ràng buộc đã chốt từ trước (không superuser cho role app, không log PII...) không bị phá vỡ lúc đóng gói, chưa phải audit toàn diện.
 - Đo hiệu năng p95 API trên cấu hình máy chủ pilot THẬT (S6-04) — trước đó chỉ đo trên máy dev.
 - Tài liệu vận hành đầy đủ (S6-07: xử lý sự cố thường gặp cho người không rành IT) — tài liệu này (Phần 2) mới đủ cho người cài đặt kỹ thuật; `docs/pilot-onboarding.md` (S4-06) là tài liệu cho NHÂN VIÊN phòng khám (không phải người cài đặt).

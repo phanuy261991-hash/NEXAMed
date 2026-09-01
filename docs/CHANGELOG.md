@@ -4,6 +4,22 @@
 
 ## 2026-09-01
 
+### Diễn tập phục hồi thật (S6-02) — sửa bug thật chặn restore hoàn toàn — xem `docs/DECISIONS.md` #099
+
+Chủ dự án hỏi trực tiếp "làm sao restore" — lần đầu dự án thực sự kiểm chứng chiều khôi phục (trước chỉ có chiều tạo backup tự động, S6-02 vẫn "chưa làm" theo `docs/Deploy.md`).
+
+- Test thật: dựng stack riêng, tạo tenant, `pg_dump -Fc` (đúng lệnh `backup.sh` dùng), mô phỏng "máy hỏng" (`docker compose down -v`), thử `pg_restore` — **thất bại 29 lỗi**, `function unaccent(text) does not exist`.
+- Nguyên nhân thật: `nexamed_unaccent_lower()` (migration S2-02) gọi `unaccent(input)` không ghi rõ schema — bình thường chạy đúng (search_path mặc định có `public`), nhưng `pg_restore` cố ý đặt `search_path=''` (vá bảo mật CVE-2018-1058 của Postgres) khiến tên hàm không resolve được. Loại trừ nhiều hướng sai trước khi tìm ra (không phải `--clean`, không phải thiếu extension, không phải thứ tự TOC) — tìm bằng đọc trực tiếp script SQL thật (`pg_restore -f -`).
+- Sửa: migration mới `20260901120000_fix_unaccent_search_path` (`public.unaccent`, forward-only). Rà soát toàn bộ migration khác — chỉ đúng 1 chỗ dính lỗi này.
+- **Giới hạn đã biết**: backup tạo TRƯỚC khi máy cập nhật fix này vẫn "chụp" lại hàm lỗi cũ, restore vẫn cần 1 lệnh sửa tay (đã ghi vào `docs/Deploy.md` 2.3c).
+- **Đã xác minh thật**: áp fix → dump lại → xoá schema → restore 0 lỗi → dữ liệu đúng nguyên bản → đăng nhập thật qua nginx `200`; build lại ảnh `nexamed-api`, test cả 2 kịch bản (cài mới, cập nhật từ bản đang chạy có dữ liệu) qua đúng cơ chế tự động `prisma migrate deploy` — không cần can thiệp tay ở cả 2.
+- Thêm `docs/Deploy.md` mục 2.3c (hướng dẫn restore từng bước) + 2.3d (bảng tra cứu lệnh Docker cần biết).
+
+### Cải thiện tiếp on-prem sau phản hồi trực tiếp — xem `docs/DECISIONS.md` #098
+
+- `build-and-export.ps1` đổi sang tự động gom sẵn 1 thư mục `deploy/on-prem/package/` chứa đủ mọi file cần gửi máy khách — trước đó phải tự nhặt 5 file rải rác, dễ nhầm lẫn.
+- Viết lại toàn bộ `docs/Deploy.md` mục 2.3 theo phong cách numbered step-by-step sau phản hồi "file deploy viết rất khó hiểu, không làm theo được" — thêm mục "Xử lý sự cố thường gặp" ghi lại đúng 2 lỗi thật gặp khi tự làm theo (giải nén `.zip` lồng thêm 1 lớp thư mục, cổng 80 bị chiếm trên máy khách kèm hệ quả lỡ chạy `docker compose up -d` trực tiếp bỏ lỡ bước tạo tài khoản quản trị).
+
 ### Sửa mô hình phân phối on-prem: build ở máy dev/CI, máy khách chỉ nhận ảnh Docker đã build sẵn — xem `docs/DECISIONS.md` #098
 
 Chủ dự án phát hiện đúng vấn đề: cách S4-05 (#097) làm — copy toàn bộ source code sang máy khách rồi `docker compose build` tại chỗ — làm lộ mã nghiệp vụ `.ts`, `.git`, và tài liệu nội bộ (`.claude/docs/`, `docs/DECISIONS.md`, `docs/CURRENT.md`, kể cả 1 sự cố bảo mật thật đã ghi lại) cho bất kỳ ai truy cập máy khách. Không chấp nhận được với phần mềm thương mại.
