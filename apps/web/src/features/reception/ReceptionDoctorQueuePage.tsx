@@ -15,6 +15,7 @@ import {
   Warning,
   X,
   XCircle,
+  type Icon,
 } from '@phosphor-icons/react';
 import type { ReceptionListItem } from '@nexamed/shared';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
@@ -199,6 +200,8 @@ export function ReceptionDoctorQueuePage() {
         <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 md:grid-cols-3">
           <QueueColumn
             title="Đang chờ"
+            icon={Clock}
+            iconClassName="text-blue-500"
             count={waiting.length}
             accent="border-t-blue-500"
             search={waitingSearch}
@@ -252,6 +255,8 @@ export function ReceptionDoctorQueuePage() {
 
           <QueueColumn
             title="Đang khám"
+            icon={Stethoscope}
+            iconClassName="text-amber-500"
             count={inConsultation.length}
             accent="border-t-amber-500"
             search={examSearch}
@@ -323,6 +328,8 @@ export function ReceptionDoctorQueuePage() {
 
           <QueueColumn
             title="Đã khám hôm nay"
+            icon={CheckCircle}
+            iconClassName="text-emerald-600"
             count={doneToday.length}
             accent="border-t-emerald-500"
             search={doneSearch}
@@ -391,6 +398,8 @@ export function ReceptionDoctorQueuePage() {
  */
 function QueueColumn({
   title,
+  icon: IconComponent,
+  iconClassName,
   count,
   accent,
   search,
@@ -400,6 +409,8 @@ function QueueColumn({
   children,
 }: {
   title: string;
+  icon: Icon;
+  iconClassName: string;
   count: number;
   accent: string;
   search: { open: boolean; query: string };
@@ -411,7 +422,10 @@ function QueueColumn({
   return (
     <section className={`flex min-h-0 flex-col overflow-hidden rounded-lg border border-t-[3px] border-slate-200 bg-white shadow-sm ${accent}`}>
       <div className="flex flex-shrink-0 items-center justify-between border-b border-slate-200 px-3.5 py-2.5">
-        <span className="text-[11.5px] font-bold uppercase tracking-wide text-slate-800">{title}</span>
+        <span className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-slate-800">
+          <IconComponent size={18} weight="bold" className={iconClassName} aria-hidden="true" />
+          {title}
+        </span>
         <div className="flex items-center gap-2">
           <span className="rounded-full bg-slate-900 px-2 py-0.5 text-[11px] font-bold text-white">{count}</span>
           <button

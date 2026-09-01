@@ -158,7 +158,7 @@ export function MyAccountDialog({ onClose }: { onClose: () => void }) {
               {getInitials(currentUser.displayName ?? currentUser.fullName)}
             </div>
             <div className="min-w-0">
-              <h2 id="my-account-title" className="truncate text-lg font-extrabold text-slate-900">
+              <h2 id="my-account-title" className="truncate text-lg font-bold text-slate-900">
                 {currentUser.displayName ?? currentUser.fullName}
               </h2>
               <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[13px] text-slate-500">
@@ -330,7 +330,7 @@ export function MyAccountDialog({ onClose }: { onClose: () => void }) {
 
               <form onSubmit={(e) => void handleChangePassword(e)} className="relative rounded-lg border border-slate-200 p-6 pt-8">
                 <span className={SECTION_BADGE_CLASS}>Bảo mật</span>
-                <p className="mb-4 text-xs text-slate-500">Cần đúng mật khẩu hiện tại. Đổi xong, mọi phiên đăng nhập khác bị đăng xuất.</p>
+                <p className="mb-4 text-xs text-slate-500">Nhập đúng mật khẩu hiện tại. Sau khi đổi mật khẩu, tất cả phiên đăng nhập khác sẽ tự động đăng xuất.</p>
 
                 <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
                   <div className="sm:col-span-2">

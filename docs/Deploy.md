@@ -4,9 +4,9 @@
 
 NEXAMed v1 triển khai **on-premise duy nhất**, tại từng phòng khám (`docs/product/prd.md`, `CLAUDE.md`). Cloud **không phải mục tiêu triển khai của v1** — kiến trúc port/adapter đảm bảo không phải làm lại nền tảng khi cần chuyển sang cloud sau này, nhưng hiện **chưa có** nhà cung cấp, mô hình, hay quy trình cloud nào được chốt.
 
-Việc đóng gói on-premise chính thức (`S4-05` trong `docs/product/plan.md`) **chưa bắt đầu** — tính tới `docs/CURRENT.md` (2026-08-25), dự án đã xong Sprint 1-3, đang chuẩn bị Sprint 4 (Kê đơn). Thư mục `deploy/on-prem/` và `deploy/cloud/` mô tả trong `.claude/docs/project-structure.md` **chưa được tạo trong repo**. Tài liệu này gồm hai phần: (1) cách chạy môi trường hiện có (chỉ phục vụ dev/thử nghiệm, xem `docs/demo.md`), và (2) kiến trúc/kế hoạch đã chốt cho on-premise thật và cho khả năng lên cloud sau này — **không phải** hướng dẫn "làm theo là chạy được trên production".
+**S4-05 (đóng gói on-premise) đã xong** (2026-09-01) — `deploy/on-prem/` có đủ `docker-compose.yml`, Dockerfile cho `api`/`web`, script backup, script cài đặt `install.ps1` (Windows PC). Tài liệu này gồm hai phần: (1) cách chạy môi trường hiện có cho dev/thử nghiệm (xem `docs/demo.md`, khác hẳn Phần 2 dưới đây), và (2) hướng dẫn triển khai on-premise thật + kiến trúc cho khả năng lên cloud sau này.
 
-Cập nhật tài liệu này ngay khi S4-05 hoàn thành với hướng dẫn on-prem thật, hoặc khi có quyết định chính thức về cloud.
+Cập nhật tài liệu này ngay khi có thay đổi kiến trúc triển khai, hoặc khi có quyết định chính thức về cloud.
 
 ---
 
@@ -111,35 +111,88 @@ Xem `docs/demo.md` cho hướng dẫn đầy đủ (`pnpm install` → `docker c
 
 ## Phần 2 — On-premise (mục tiêu triển khai chính thức của v1)
 
-### Kiến trúc dự kiến
+### 2.0. Hai trường hợp phần cứng — CÙNG một `docker-compose.yml`
 
-Theo `.claude/docs/project-structure.md`, `deploy/on-prem/docker-compose.yml` (chưa tạo) sẽ gồm:
+Theo Phần 0.2: "on-prem" gồm 3 kiểu máy chủ vật lý khác nhau nhưng **giống nhau về code/hạ tầng** (đều single-tenant). Ở mức triển khai thực tế, dự án hỗ trợ tường minh 2 trường hợp:
 
-| Service | Vai trò |
-|---|---|
-| `api` | NestJS, build từ `apps/api` |
-| `web` | Build tĩnh `apps/web`, phục vụ qua nginx |
-| `postgres` | PostgreSQL 18, dữ liệu duy nhất tại chỗ |
-| `backup` | Chạy `pg_dump` theo lịch, ghi ra thư mục cấu hình được |
+| | **PC thường tại phòng khám** (chưa có server nội bộ) | **NAS/máy chủ chuyên dụng** |
+|---|---|---|
+| Hệ điều hành | Windows + Docker Desktop (WSL2 backend) | Linux (Container Manager Synology, Container Station QNAP, hoặc Docker Engine thuần) |
+| Script cài đặt | `deploy/on-prem/install.ps1` | `deploy/on-prem/install.sh` |
+| `docker-compose.yml`/Dockerfile | **Y hệt nhau** — không có bản riêng cho từng trường hợp | |
+| Tự chạy lại sau khi máy khởi động lại | Cần Docker Desktop tự khởi động — xem 2.4 (có đánh đổi bảo mật, KHÔNG tự động hoá bằng script) | Tự động hoàn toàn (Docker chạy như dịch vụ hệ thống) |
 
-Máy chủ đặt tại phòng khám, **không giả định có internet ổn định**. Không dùng dịch vụ cloud bắt buộc cho bất kỳ phần lõi nào (nhắc lịch SMS/Zalo phải chấp nhận thất bại khi mất mạng).
+Chọn theo phần cứng khách hàng thật đang có — không phải chọn kiến trúc code khác nhau.
 
-### Việc cần làm trước khi có bản triển khai on-prem thật (chưa làm — S4-05, S6-01, S6-02)
+### 2.1. Kiến trúc — 5 service
 
-- Viết `deploy/on-prem/docker-compose.yml` đầy đủ 4 service ở trên + script cài đặt tự động.
-- **Đổi mật khẩu role `nexamed_app`** khỏi giá trị hard-code trong migration (`docs/DECISIONS.md` #010) — bắt buộc bằng `ALTER ROLE ... PASSWORD` ngoài version control, không dùng giá trị mẫu.
-- Sao lưu tự động theo lịch (`pg_dump` ra ổ ngoài) + diễn tập phục hồi thật, đo thời gian (ADM-04, S6-01/S6-02).
-- Dùng đúng Node 20 LTS trên image build (khác Node đang chạy ở máy dev, xem `docs/CURRENT.md`).
-- Rà soát bảo mật theo checklist `.claude/docs/security-audit.md` (S6-03), kiểm tra không có PII/PHI lọt vào log.
-- Tài liệu vận hành: cài đặt, sao lưu, phục hồi, xử lý sự cố thường gặp cho người không rành IT (S6-07); giáo án đào tạo 2 giờ (S4-06).
-- Đo hiệu năng p95 API < 500ms với cấu hình máy chủ pilot thật (S6-04).
+`deploy/on-prem/docker-compose.yml`:
+
+| Service | Vai trò | Ảnh |
+|---|---|---|
+| `postgres` | PostgreSQL 18, dữ liệu duy nhất tại chỗ (named volume `postgres_data`) | `postgres:18` |
+| `migrate` | Chạy MỘT LẦN mỗi lúc `docker compose up` rồi thoát: `prisma migrate deploy` → đổi mật khẩu role `nexamed_app` → seed danh mục toàn cục. Idempotent — an toàn khi máy khởi động lại chạy lại từ đầu | build từ `apps/api/Dockerfile` |
+| `api` | NestJS, healthcheck `GET /health` | build từ `apps/api/Dockerfile` (dùng chung ảnh với `migrate`, khác `command:`) |
+| `web` | Build tĩnh `apps/web`, phục vụ qua nginx + reverse-proxy `/api/*` sang `api` (cùng origin, không cần CORS/mở thêm cổng) | build từ `apps/web/Dockerfile` |
+| `backup` | `pg_dump -Fc` hằng ngày (giờ cấu hình được) ra thư mục ngoài container, tự dọn bản quá hạn giữ | build từ `deploy/on-prem/backup/Dockerfile` |
+
+Máy chủ đặt tại phòng khám, **không giả định có internet ổn định** sau lúc build ảnh xong — build ảnh lần đầu CẦN internet (tải gói qua `apt`/`pnpm`), chạy hằng ngày thì không.
+
+`api`/`migrate` dùng CHUNG một Dockerfile (không tách ảnh riêng) — cố ý, để không phải build/đồng bộ 2 ảnh mỗi lần đổi code.
+
+### 2.2. Bí mật & mật khẩu — luồng thật
+
+1. Migration tạo role `nexamed_app` với mật khẩu HARD-CODE (`docs/DECISIONS.md` #010) — chỉ dùng được cho dev.
+2. `migrate` chạy `pnpm run db:rotate-app-password` (`apps/api/scripts/rotate-app-role-password.ts`) ngay sau `db:deploy` — đổi mật khẩu role đó sang giá trị ngẫu nhiên mạnh đọc từ `NEXAMED_APP_DB_PASSWORD` trong `.env`.
+3. `install.ps1`/`install.sh` tự sinh `POSTGRES_PASSWORD`/`NEXAMED_APP_DB_PASSWORD`/`JWT_SECRET`/`ENCRYPTION_KEY` (hex ngẫu nhiên mạnh, `RandomNumberGenerator`/`openssl rand`) vào `.env` nếu file đó chưa tồn tại — không cần tự nghĩ/gõ tay.
+4. Tạo phòng khám (tenant) + tài khoản quản trị đầu tiên: `apps/api/scripts/seed-pilot-tenant.ts` (`db:seed:pilot-tenant`) — script sản xuất, KHÁC `seed-dev-tenant.ts` (chỉ dev, tên/mật khẩu hard-code). Không truyền `ADMIN_PASSWORD` thì tự sinh mật khẩu mạnh, in ra ĐÚNG MỘT LẦN, bắt đổi ngay lần đăng nhập đầu (`mustChangePassword`, đã có từ #063).
+
+`.env`/`config.json` (2 file thật, không commit — xem `.gitignore`) nằm cạnh `docker-compose.yml` tại `deploy/on-prem/`.
+
+### 2.3. Cách chạy
+
+**PC Windows** (chưa có server nội bộ — ưu tiên trường hợp này trước, theo yêu cầu triển khai thật đầu tiên):
+```powershell
+cd deploy\on-prem
+.\install.ps1
+```
+Script hỏi: IP LAN (hoặc Enter để chỉ dùng `http://localhost` ngay trên máy đó), rồi Tên phòng khám/Tên đăng nhập/Họ tên quản trị viên đầu tiên. Chạy lại an toàn (`-SkipTenantCreation` nếu chỉ muốn khởi động lại stack, không tạo thêm tenant).
+
+**Linux/NAS**:
+```bash
+cd deploy/on-prem
+./install.sh
+```
+Tương đương, dùng `read`/tham số dòng lệnh (`--tenant-name`, `--admin-username`...) thay vì `-Param`.
+
+**Chạy tay (không qua script cài đặt)** — copy `.env.example`→`.env`, `config.example.json`→`config.json`, tự điền giá trị, rồi:
+```bash
+docker compose build
+docker compose up -d
+docker compose run --rm -e TENANT_NAME="..." -e ADMIN_USERNAME="..." -e ADMIN_FULL_NAME="..." migrate pnpm run db:seed:pilot-tenant
+```
+
+### 2.4. PC không có server nội bộ — tự chạy lại sau khi khởi động lại, không cần nhân viên thao tác
+
+Container đều đặt `restart: unless-stopped` — MỘT KHI Docker Desktop đã chạy, cả stack tự khởi động lại theo đúng thứ tự (`depends_on`/`condition: service_healthy`), không cần bấm gì. Vấn đề còn lại CHỈ là: **làm sao Docker Desktop tự chạy sau khi PC khởi động lại**, vì Docker Desktop (khác Docker Engine trên Linux) thường cần một phiên đăng nhập Windows đang mở mới tự khởi động được.
+
+- **Bước an toàn, nên làm luôn**: Docker Desktop → Settings → General → bật "Start Docker Desktop when you sign in". `install.ps1` nhắc bước này ở cuối, KHÔNG tự động sửa file cấu hình nội bộ của Docker Desktop (khác phiên bản lưu khác chỗ, tự sửa dễ hỏng).
+- **Muốn PC tự đăng nhập Windows sau khi mất điện/khởi động lại (không cần nhân viên gõ mật khẩu Windows)**: dùng tính năng đăng nhập tự động của Windows (tài khoản Windows cục bộ riêng, không phải tài khoản Microsoft — cấu hình qua `netplwiz` hoặc registry `AutoAdminLogon`). **Đánh đổi bảo mật thật**: ai bật được nguồn điện/khởi động lại PC đó sẽ vào thẳng được màn hình đã đăng nhập Windows (không phải đăng nhập NEXAMed — ứng dụng vẫn yêu cầu JWT như bình thường, nhưng PC mất lớp bảo vệ đăng nhập Windows). **KHÔNG script hoá bước này** — nếu phòng khám chấp nhận đánh đổi, cấu hình thủ công + xác nhận rõ với chủ phòng khám trước khi bật, ưu tiên: (a) đặt PC ở khu vực có kiểm soát ra vào, (b) dùng tài khoản Windows cục bộ RIÊNG chỉ để chạy Docker Desktop (không phải tài khoản làm việc hằng ngày của nhân viên), (c) vẫn khoá màn hình bằng mật khẩu Windows sau khi không dùng máy dù đã auto-login lúc khởi động.
+
+### 2.5. Còn treo — chưa làm ở phiên S4-05 này (thuộc S6-01/S6-02/S6-03/S6-04/S6-07)
+
+- Sao lưu **tự động theo LỊCH thật + cảnh báo khi thất bại** — `deploy/on-prem/backup/` mới có lịch cố định hằng ngày + log thất bại ra `docker logs`, CHƯA có cơ chế cảnh báo chủ động (email/SMS) khi backup lỗi liên tục.
+- **Diễn tập phục hồi thật** (xoá sạch DB thử nghiệm, khôi phục từ bản `pg_dump`, đo thời gian) — chưa làm, làm trước khi pilot ngừng dùng sổ giấy (điều kiện GA).
+- Rà soát bảo mật theo checklist `.claude/docs/security-audit.md` đầy đủ (S6-03) — S4-05 chỉ đảm bảo các ràng buộc đã chốt từ trước (không superuser cho role app, không log PII...) không bị phá vỡ lúc đóng gói, chưa phải audit toàn diện.
+- Đo hiệu năng p95 API trên cấu hình máy chủ pilot THẬT (S6-04) — trước đó chỉ đo trên máy dev.
+- Tài liệu vận hành đầy đủ (S6-07: xử lý sự cố thường gặp cho người không rành IT) — tài liệu này (Phần 2) mới đủ cho người cài đặt kỹ thuật; `docs/pilot-onboarding.md` (S4-06) là tài liệu cho NHÂN VIÊN phòng khám (không phải người cài đặt).
 
 ### Ràng buộc bắt buộc khi viết script/cấu hình on-prem (đã chốt, không tự đổi)
 
 - Toàn bộ cấu hình đọc từ biến môi trường, validate bằng Zod ở `apps/api/src/config` — không đọc `process.env` rải rác, không hard-code đường dẫn tuyệt đối/tên máy chủ/giá trị riêng của một phòng khám.
 - Giá trị riêng theo từng phòng khám (giờ làm việc, độ dài slot, mẫu in...) nằm ở bảng `tenant_setting`, không hard-code trong code hay compose file.
-- Backup ghi ra thư mục cấu hình được, không dùng dịch vụ cloud lưu trữ ở v1.
-- Không cấp `BYPASSRLS`/superuser cho role mà API runtime dùng (đã áp dụng từ S1-03, xem `docs/DECISIONS.md` #010 — giữ nguyên khi đóng gói on-prem).
+- Backup ghi ra thư mục cấu hình được (`BACKUP_HOST_DIR` trong `.env`, nên trỏ ổ đĩa khác ổ chứa `postgres_data`), không dùng dịch vụ cloud lưu trữ ở v1.
+- Không cấp `BYPASSRLS`/superuser cho role mà API runtime dùng (đã áp dụng từ S1-03, xem `docs/DECISIONS.md` #010 — giữ nguyên khi đóng gói on-prem, `migrate` chỉ dùng role đặc quyền `nexamed` cho ĐÚNG các bước cần, không phải role runtime).
 
 ---
 

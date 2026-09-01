@@ -124,4 +124,73 @@ describe('HTTP e2e — POST /api/v1/auth/login (cách ly tenant qua toàn bộ s
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
+
+  it('cookie refresh_token KHÔNG có cờ Secure ở môi trường test/dev mặc định (NODE_ENV !== production, COOKIE_SECURE chưa đặt)', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({ tenantId: fixture.tenantA.id, username, password });
+
+    const setCookie = res.headers['set-cookie'] as unknown as string[];
+    const refreshCookie = setCookie.find((c) => c.startsWith('refresh_token='));
+    expect(refreshCookie).toBeDefined();
+    expect(refreshCookie).not.toMatch(/;\s*Secure/i);
+  });
+});
+
+/**
+ * `COOKIE_SECURE` (docs/Deploy.md Phần 0.2, bug thật phát hiện lúc verify S4-05: cookie Secure bị
+ * trình duyệt âm thầm bỏ qua trên origin http:// — on-prem PC/NAS mặc định không TLS) — app riêng
+ * để đặt `process.env.COOKIE_SECURE` TRƯỚC lúc `ConfigModule` đọc, không đụng app dùng chung ở
+ * trên (đã compile với giá trị mặc định).
+ */
+describe('COOKIE_SECURE override — độc lập với NODE_ENV', () => {
+  let app: INestApplication;
+  let privileged: PrismaClient;
+  let fixture: TwoTenantFixture;
+  const password = 'Test@12345';
+  const username = `e2e-cookie-secure-${randomUUID()}`;
+
+  beforeAll(async () => {
+    process.env.COOKIE_SECURE = 'true';
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    app = moduleRef.createNestApplication();
+    app.setGlobalPrefix('api/v1');
+    app.use(cookieParser());
+    app.useGlobalInterceptors(new ResponseInterceptor());
+    app.useGlobalFilters(new DomainExceptionFilter());
+    await app.init();
+
+    privileged = new PrismaClient({ datasources: { db: { url: process.env.MIGRATE_DATABASE_URL } } });
+    await privileged.$connect();
+    fixture = await createTwoTenantFixture(privileged, 'COOKIE_SECURE override e2e');
+    const passwordHash = await argon2.hash(password, { type: argon2.argon2id });
+    await privileged.userAccount.create({
+      data: {
+        tenantId: fixture.tenantA.id,
+        username,
+        passwordHash,
+        fullName: 'User Cookie Secure',
+        createdBy: SYSTEM_TEST_ACTOR,
+        updatedBy: SYSTEM_TEST_ACTOR,
+      },
+    });
+  });
+
+  afterAll(async () => {
+    delete process.env.COOKIE_SECURE;
+    await fixture.cleanup();
+    await privileged.$disconnect();
+    await app.close();
+  });
+
+  it('COOKIE_SECURE=true bắt buộc cờ Secure dù NODE_ENV không phải production', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({ tenantId: fixture.tenantA.id, username, password });
+
+    expect(res.status).toBe(200);
+    const setCookie = res.headers['set-cookie'] as unknown as string[];
+    const refreshCookie = setCookie.find((c) => c.startsWith('refresh_token='));
+    expect(refreshCookie).toMatch(/;\s*Secure/i);
+  });
 });

@@ -14,3 +14,8 @@ apps/api/storage/
 # Cấu hình runtime của apps/web (tenantId/apiBaseUrl) — sửa trực tiếp lúc triển khai on-prem,
 # không commit giá trị thật. Xem apps/web/public/config.example.json.
 apps/web/public/config.json
+
+# Bản cài on-prem (S4-05) — bí mật + dữ liệu thật, không commit. Xem deploy/on-prem/.env.example.
+deploy/on-prem/.env
+deploy/on-prem/config.json
+deploy/on-prem/backup-data/

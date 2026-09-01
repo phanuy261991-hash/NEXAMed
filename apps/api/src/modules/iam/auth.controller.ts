@@ -86,11 +86,23 @@ export class AuthController {
   private setRefreshCookie(res: Response, token: string, expiresInSeconds: number): void {
     res.cookie(REFRESH_COOKIE_NAME, token, {
       httpOnly: true,
-      secure: this.configService.get<string>('NODE_ENV') === 'production',
+      secure: this.isCookieSecure(),
       sameSite: 'lax',
       path: REFRESH_COOKIE_PATH,
       maxAge: expiresInSeconds * 1000,
     });
+  }
+
+  /**
+   * Cờ `Secure` KHÔNG suy ra thẳng từ `NODE_ENV` — trình duyệt âm thầm bỏ qua cookie `Secure`
+   * trên origin `http://` (không báo lỗi), khiến refresh hỏng không dấu vết trên bản on-prem
+   * PC/NAS mặc định chạy HTTP thuần (`docs/Deploy.md` Phần 0.2). `COOKIE_SECURE` cho phép chỉnh
+   * tường minh độc lập với môi trường; không đặt thì giữ hành vi cũ (production → secure).
+   */
+  private isCookieSecure(): boolean {
+    const override = this.configService.get<'true' | 'false' | undefined>('COOKIE_SECURE');
+    if (override !== undefined) return override === 'true';
+    return this.configService.get<string>('NODE_ENV') === 'production';
   }
 
   private requestMeta(req: Request): RequestMeta {

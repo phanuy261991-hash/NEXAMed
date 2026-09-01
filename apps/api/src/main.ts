@@ -12,7 +12,7 @@ import { syncRolePermissionsForAllTenants } from './infrastructure/persistence/s
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.setGlobalPrefix('api/v1');
+  app.setGlobalPrefix('api/v1', { exclude: ['health'] });
 
   const configService = app.get(ConfigService);
   app.enableCors({ origin: configService.getOrThrow<string>('WEB_ORIGIN'), credentials: true });

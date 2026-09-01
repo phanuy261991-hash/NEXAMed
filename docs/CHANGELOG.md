@@ -16,6 +16,20 @@ TopBar: tách "Tạm nghỉ/Đóng ca" ra bánh răng riêng + "Thông tin tài 
 
 **Ngoài kế hoạch, cùng ngày** — thảo luận định nghĩa lại "ca khám" cho thông báo tự động hết giờ/Đóng ca (tránh nhắc bác sĩ chỉ đăng nhập làm việc khác) — **chủ động gác lại, chưa code**. Xem `docs/CURRENT.md` mục "Đang chờ".
 
+**Cùng ngày, chuỗi chỉnh sửa nhỏ trực tiếp trên bản chạy thật** — đổi câu mô tả khung "Đổi mật khẩu" ở popup "Thông tin tài khoản" cho rõ nghĩa hơn; đổi độ đậm tên tài khoản trong header cùng popup từ `font-extrabold`→`font-bold` (lặp lại đúng lỗi đã sửa ở #090, ghi thành quy tắc ghi nhớ để không lặp lại lần 3); thêm icon (`Clock`/`Stethoscope`/`CheckCircle`, màu khớp viền từng cột) trước tiêu đề 3 cột "Hàng đợi khám", tăng cỡ icon/chữ tiêu đề đó lên 1-2 bậc theo yêu cầu.
+
+### S4-05 (đóng gói on-premise) + phần code S4-06 — xem `docs/DECISIONS.md` #097
+
+Toàn bộ tính năng nghiệp vụ Sprint 5/6 đã xong nhưng chưa từng đóng gói/cài đặt on-prem thật (S4-05→08 treo từ Sprint 4) — pilot chưa từng chạy ngoài Playwright giả lập. Máy chủ pilot đầu tiên xác nhận là **PC thường tại phòng khám, chưa có server nội bộ** — ưu tiên trường hợp này, thiết kế dùng chung được cho NAS/máy chủ chuyên dụng sau này.
+
+- `deploy/on-prem/` mới: `docker-compose.yml` (5 service — `postgres`/`migrate`/`api`/`web`/`backup`), `apps/api/Dockerfile` + `apps/web/Dockerfile`, `backup/Dockerfile`+`backup.sh` (`pg_dump -Fc` hằng ngày + tự dọn quá hạn), `install.ps1` (Windows PC) + `install.sh` (Linux/NAS) — tự sinh bí mật, build+up, chờ `api` healthy, hướng dẫn/tạo tenant pilot đầu tiên.
+- `GET /health` mới (loại khỏi prefix `api/v1`) cho Docker healthcheck. Script sản xuất `apps/api/scripts/seed-pilot-tenant.ts` (khác `seed-dev-tenant.ts` chỉ dev) + `rotate-app-role-password.ts` (đổi mật khẩu role `nexamed_app` khỏi giá trị hard-code trong migration, #010).
+- `docs/pilot-onboarding.md` mới (S4-06 phần tài liệu) — hướng dẫn sử dụng + giáo án đào tạo 2 giờ theo vai trò (lễ tân/bác sĩ/quản trị), cho nhân viên phòng khám.
+- **1 bug thật phát hiện lúc verify container end-to-end**: cookie `refresh_token` gắn `Secure` theo `NODE_ENV==='production'`, bị trình duyệt âm thầm bỏ qua trên origin `http://` (on-prem PC/NAS mặc định không TLS) → refresh hỏng không báo lỗi, nhân viên bị đăng xuất mỗi 15 phút. Sửa bằng biến `COOKIE_SECURE` mới, tách khỏi `NODE_ENV`, mặc định `false` ở on-prem.
+- **Đã xác minh thật**: build + CHẠY cả 2 ảnh Docker thật (không dừng ở đọc Dockerfile) — dựng full stack thật trên network cô lập, đăng nhập thật qua nginx proxy, `GET /health` 200 qua HTTP thật, `docker inspect` xác nhận `healthy`. `apps/api` 518/525 pass + 7 skip (1 file flake `geo-http.spec.ts` đã biết, pass 100% khi chạy riêng), `pnpm -w typecheck` sạch.
+- Còn treo: S4-07 (cài đặt thật tại pilot)/S4-08 (đệm lỗi) — cần phòng khám pilot cụ thể; S6-01→04/S6-07 (cảnh báo backup, diễn tập phục hồi, audit bảo mật, đo hiệu năng, tài liệu vận hành đầy đủ) — thuộc Sprint 6.
+- Cập nhật `docs/CURRENT.md`, `docs/TASK.md`, `docs/DECISIONS.md` (#097), `docs/Deploy.md` (viết lại Phần 2).
+
 ## 2026-08-31
 
 Verify Playwright qua Chrome thật cho "Tạm nghỉ / Đóng ca" của bác sĩ (#094, code xong 29/08) — xem `docs/DECISIONS.md` #094:

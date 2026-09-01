@@ -2,6 +2,7 @@
   "name": "@nexamed/api",
   "private": true,
   "version": "0.0.0",
+  "files": ["dist"],
   "scripts": {
     "dev": "nest start --watch",
     "build": "nest build",
@@ -13,6 +14,8 @@
     "db:deploy": "node scripts/with-migrate-url.mjs migrate deploy",
     "db:seed": "tsx prisma/seed/index.ts",
     "db:seed:dev-tenant": "tsx scripts/seed-dev-tenant.ts",
+    "db:seed:pilot-tenant": "tsx scripts/seed-pilot-tenant.ts",
+    "db:rotate-app-password": "tsx scripts/rotate-app-role-password.ts",
     "openapi:generate": "tsx scripts/generate-openapi.ts",
     "perf:patient-search": "tsx scripts/perf-patient-search.ts",
     "perf:consultation": "tsx scripts/perf-consultation.ts"

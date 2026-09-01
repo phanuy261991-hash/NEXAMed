@@ -12,6 +12,12 @@ export const envSchema = z.object({
   // Thư mục gốc lưu file của StoragePort (adapter local-disk, S1-06) — đặt ngoài web root theo
   // .claude/docs/security-audit.md. Đường dẫn tương đối tính từ thư mục chạy tiến trình API.
   STORAGE_DIR: z.string().min(1).default('./storage'),
+  // Cờ `Secure` của cookie refresh token (S1-04) — KHÔNG suy ra từ NODE_ENV (phát hiện thật lúc
+  // verify S4-05: on-prem PC/NAS mặc định chạy HTTP thuần, trình duyệt âm thầm bỏ qua cookie
+  // Secure trên origin http:// khiến refresh hỏng không báo lỗi). Mặc định giữ hành vi cũ
+  // (NODE_ENV==='production' → secure) khi không đặt biến này; đặt "false" tường minh cho bản
+  // on-prem HTTP-only, "true" bắt buộc khi có TLS (VPS/cloud — xem docs/Deploy.md Phần 0.2).
+  COOKIE_SECURE: z.enum(['true', 'false']).optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

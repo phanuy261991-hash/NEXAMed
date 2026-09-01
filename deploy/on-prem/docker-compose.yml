@@ -1,0 +1,115 @@
+# Triển khai on-premise NEXAMed — S4-05 (docs/product/plan.md mục 7, docs/Deploy.md Phần 2).
+# Dùng đúng cho cả 2 trường hợp phần cứng: PC thường tại phòng khám (Docker Desktop) VÀ
+# NAS/máy chủ chuyên dụng (Docker Engine) — không đổi file này giữa 2 trường hợp, xem
+# docs/Deploy.md Phần 0.2 ("ranh giới thật không phải on-prem vs cloud mà là single-tenant vs
+# multi-tenant" — cả 2 trường hợp đều single-tenant, giống nhau về mọi mặt ảnh hưởng code/hạ
+# tầng). Không giả định máy chủ có internet sau lúc build ảnh xong.
+#
+# Chạy: xem deploy/on-prem/install.ps1 (Windows PC) hoặc deploy/on-prem/install.sh (Linux/NAS).
+
+services:
+  postgres:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      # PostgreSQL 18+ mount thẳng /var/lib/postgresql (không phải .../data), cùng quy ước
+      # docker-compose.yml gốc ở thư mục dev (xem ghi chú trong file đó).
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Chạy MỘT LẦN mỗi lúc `docker compose up` (kể cả sau khi PC khởi động lại) rồi thoát — KHÔNG
+  # phải service chạy dài hạn. Idempotent: `migrate deploy` bỏ qua migration đã áp, đổi mật khẩu
+  # role app dùng cùng giá trị không đổi gì, seed danh mục dùng upsert — an toàn khi chạy lại.
+  # KHÔNG tạo tenant/tài khoản pilot ở đây (cần Tên phòng khám/Tên đăng nhập cụ thể, việc một lần
+  # do người cài chủ động chạy tay — xem install.ps1 bước "Tạo phòng khám đầu tiên").
+  migrate:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://nexamed_app:${NEXAMED_APP_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      MIGRATE_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      NEXAMED_APP_DB_PASSWORD: ${NEXAMED_APP_DB_PASSWORD}
+    working_dir: /repo/apps/api
+    command: >
+      sh -c "pnpm run db:deploy &&
+             pnpm run db:rotate-app-password &&
+             pnpm run db:seed"
+    restart: 'no'
+
+  api:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://nexamed_app:${NEXAMED_APP_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      JWT_SECRET: ${JWT_SECRET}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      WEB_ORIGIN: ${WEB_ORIGIN}
+      STORAGE_DIR: /data/storage
+      # KHÔNG để trống — suy ra từ NODE_ENV=production sẽ đánh dấu cookie refresh token Secure,
+      # trình duyệt âm thầm bỏ qua cookie đó trên http:// (mặc định on-prem không TLS) → refresh
+      # hỏng không báo lỗi (bug thật phát hiện lúc verify S4-05). Đặt "true" trong .env CHỈ khi
+      # đã có TLS thật trước nginx.
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+    volumes:
+      - api_storage:/data/storage
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - '${WEB_HTTP_PORT:-80}:80'
+    volumes:
+      # Cấu hình runtime (tenantId/apiBaseUrl) — file thật do install.ps1 sinh ra cạnh compose
+      # này, sửa trực tiếp không cần build lại ảnh (docs/DECISIONS.md #020).
+      - ./config.json:/usr/share/nginx/html/config.json:ro
+    restart: unless-stopped
+
+  backup:
+    build:
+      context: ..
+      dockerfile: deploy/on-prem/backup/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      BACKUP_HOUR: ${BACKUP_HOUR:-2}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+    volumes:
+      # Mặc định ghi vào thư mục cạnh compose — ĐỔI sang ổ đĩa/ổ ngoài thật ở BACKUP_HOST_DIR
+      # trong .env trước khi dùng thật cho pilot (một thư mục cùng ổ với postgres_data không bảo
+      # vệ được khỏi hỏng ổ đĩa — xem docs/Deploy.md, cảnh báo đầy đủ ở S6-01/S6-02, chưa làm).
+      - ${BACKUP_HOST_DIR:-./backup-data}:/backups
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  api_storage:
