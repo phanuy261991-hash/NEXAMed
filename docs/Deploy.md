@@ -142,22 +142,10 @@ Máy chủ đặt tại phòng khám **KHÔNG BAO GIỜ cần internet, kể c�
 
 ### 2.1b. Hai giai đoạn — build ở máy dev/CI, chỉ nạp ảnh ở máy khách (`docs/DECISIONS.md` #098)
 
-Mã nguồn `.ts`, lịch sử `.git`, và tài liệu nội bộ (`.claude/docs/`, `docs/DECISIONS.md`, `docs/CURRENT.md` — chứa cả kiến trúc bảo mật chi tiết và mô tả sự cố thật đã xảy ra) là tài sản trí tuệ, **tuyệt đối không được lộ cho máy khách**. Vì vậy triển khai on-prem đi qua đúng 2 giai đoạn tách biệt:
+Mã nguồn `.ts`, lịch sử `.git`, và tài liệu nội bộ là tài sản trí tuệ, **tuyệt đối không được lộ cho máy khách**. Vì vậy triển khai on-prem đi qua đúng 2 giai đoạn tách biệt:
 
-- **Giai đoạn A — Build & export** (máy dev/CI, có source đầy đủ): `deploy/on-prem/build-and-export.ps1` build 3 ảnh (`nexamed-api`/`nexamed-web`/`nexamed-backup`) rồi `docker save` ra file `.tar.gz`. KHÔNG chạy bước này ở máy khách.
-- **Giai đoạn B — Cài đặt tại máy khách**: chỉ nhận đúng những file liệt kê ở bảng dưới — `install.ps1`/`install.sh` tự `docker load` các ảnh đó rồi `docker compose up -d`. Máy khách sau bước này **không có** bất kỳ file `.ts`/`.git`/`docs` nào trên đĩa.
-
-**File cần gửi sang máy khách** (đúng và chỉ đúng danh sách này — không copy cả repo):
-
-| File/thư mục | Vai trò |
-|---|---|
-| `docker-compose.yml` | Định nghĩa 5 service, tham chiếu `image:` (không còn `build:`) |
-| `.env.example` | Mẫu cấu hình — `install.ps1`/`install.sh` tự tạo `.env` từ đây |
-| `config.example.json` | Mẫu `config.json` (web runtime config) |
-| `install.ps1` / `install.sh` | Script cài đặt — nạp ảnh + khởi động |
-| `images/*.tar.gz` | 3 ảnh Docker đã build sẵn (từ Giai đoạn A) |
-
-**File CHỈ cần ở máy dev/build, KHÔNG gửi máy khách** (đã "nướng" (bake) sẵn vào ảnh lúc build, gửi thêm chỉ dư thừa — không phải rủi ro bảo mật riêng vì không chứa business logic, nhưng không có lý do gì để gửi): `nginx.conf` (COPY vào ảnh `web` lúc build), `deploy/on-prem/backup/Dockerfile` + `backup.sh` (COPY vào ảnh `backup` lúc build). Các file này vẫn giữ nguyên trong repo — `build-and-export.ps1` cần chúng lúc build.
+- **Giai đoạn A — Build & export** (máy dev/CI, có source đầy đủ): `deploy/on-prem/build-and-export.ps1` build 3 ảnh (`nexamed-api`/`nexamed-web`/`nexamed-backup`), `docker save` ra `.tar.gz`, rồi **tự gom sẵn mọi file cần thiết vào 1 thư mục duy nhất `deploy/on-prem/package/`** — không phải tự nhặt file nào cả. KHÔNG chạy bước này ở máy khách.
+- **Giai đoạn B — Cài đặt tại máy khách**: chỉ cần chép NGUYÊN thư mục `package/` đó sang — `install.ps1`/`install.sh` bên trong tự `docker load` các ảnh rồi `docker compose up -d`. Máy khách **không có** bất kỳ file `.ts`/`.git`/`docs` nào trên đĩa — làm theo hướng dẫn từng bước ở mục 2.3.
 
 ### 2.2. Bí mật & mật khẩu — luồng thật
 
@@ -168,41 +156,71 @@ Mã nguồn `.ts`, lịch sử `.git`, và tài liệu nội bộ (`.claude/docs
 
 `.env`/`config.json` (2 file thật, không commit — xem `.gitignore`) nằm cạnh `docker-compose.yml` tại `deploy/on-prem/`.
 
-### 2.3. Cách chạy
+### 2.3. Cách chạy — hướng dẫn từng bước (đã verify thật)
 
-**Giai đoạn A — Build & export (máy dev/CI, KHÔNG chạy ở máy khách):**
+#### PHẦN 1 — Trên máy DEV (đóng gói)
+
+**Bước 1.** Mở PowerShell, vào thư mục dự án:
 ```powershell
-cd deploy\on-prem
-.\build-and-export.ps1 -Version 2026.09.01
+cd C:\Projects\NEXAMed\deploy\on-prem
 ```
-Sinh ra `deploy\on-prem\images\nexamed-{api,web,backup}-2026.09.01.tar.gz`. Chép các file đó + đúng 5 file/thư mục liệt kê ở bảng 2.1b (KHÔNG chép gì khác — không copy cả repo) sang máy khách qua USB/mạng nội bộ.
 
-**Giai đoạn B — Cài đặt tại phòng khám.**
-
-PC Windows (chưa có server nội bộ — ưu tiên trường hợp này trước, theo yêu cầu triển khai thật đầu tiên):
+**Bước 2.** Chạy lệnh đóng gói (thay ngày hôm nay vào `-Version`):
 ```powershell
-cd deploy\on-prem
-.\install.ps1 -Version 2026.09.01
+.\build-and-export.ps1 -Version 2026.09.02
 ```
-`-Version` có thể bỏ qua nếu thư mục `images\` chỉ chứa đúng 1 phiên bản (script tự nhận diện). Script hỏi: IP LAN (hoặc Enter để chỉ dùng `http://localhost` ngay trên máy đó), rồi Tên phòng khám/Tên đăng nhập/Họ tên quản trị viên đầu tiên. Chạy lại an toàn (`-SkipTenantCreation` nếu chỉ muốn khởi động lại stack, không tạo thêm tenant).
+Đợi vài phút (build lần đầu lâu hơn, lần sau có cache Docker nên nhanh). Xong sẽ có thư mục **`deploy\on-prem\package\`** chứa ĐẦY ĐỦ mọi thứ cần thiết — không cần tự tìm/gom file gì thêm.
 
-Linux/NAS:
-```bash
-cd deploy/on-prem
-./install.sh --version 2026.09.01
+**Bước 3.** Nén thư mục đó lại: chuột phải vào `package` → **Send to → Compressed (zipped) folder**.
+
+#### PHẦN 2 — Chuyển sang máy KHÁCH
+
+Chép file `package.zip` sang máy khách bằng USB hoặc qua mạng nội bộ.
+
+#### PHẦN 3 — Trên máy KHÁCH (cài lần đầu)
+
+**Bước 1.** Cài **Docker Desktop** (nếu máy chưa có) — tải tại docker.com, cài xong mở lên, đợi chạy ổn định (icon cá voi ở khay hệ thống).
+
+**Bước 2.** Giải nén `package.zip`. **Lưu ý**: có thể Windows tạo thêm 1 thư mục con trùng tên khi giải nén (`package\package\...`) — sau khi giải nén, gõ `dir` kiểm tra có thấy `install.ps1` ngay trong thư mục đang đứng không; nếu không thấy mà thấy 1 thư mục con thì `cd` thêm vào đó.
+
+**Bước 3.** Mở PowerShell, vào đúng thư mục có `install.ps1` (xác nhận bằng `dir`), rồi chạy:
+```powershell
+.\install.ps1
 ```
-Tương đương, dùng `read`/tham số dòng lệnh (`--tenant-name`, `--admin-username`...) thay vì `-Param`.
 
-**Chạy tay (không qua script cài đặt)** — copy `.env.example`→`.env`, `config.example.json`→`config.json`, tự điền giá trị (gồm `NEXAMED_VERSION`), rồi:
-```bash
-docker load -i images/nexamed-api-2026.09.01.tar.gz
-docker load -i images/nexamed-web-2026.09.01.tar.gz
-docker load -i images/nexamed-backup-2026.09.01.tar.gz
-docker compose up -d
-docker compose run --rm -e TENANT_NAME="..." -e ADMIN_USERNAME="..." -e ADMIN_FULL_NAME="..." migrate pnpm run db:seed:pilot-tenant
+**Bước 4.** Script hỏi lần lượt — trả lời rồi Enter:
+- *IP LAN của máy này* → Enter để bỏ qua nếu chỉ dùng ngay trên máy đó, hoặc gõ IP nếu muốn máy khác trong phòng khám cùng truy cập được.
+- *Tên phòng khám*
+- *Tên đăng nhập quản trị* (ví dụ `quantri`)
+- *Họ tên quản trị viên*
+
+**Bước 5.** Script tự chạy xong hết (nạp ảnh, khởi động, tạo tài khoản). Cuối cùng in ra:
+- `tenantId` — 1 dãy mã
+- **Mật khẩu** — chỉ hiện đúng 1 lần, **chụp màn hình hoặc chép lại ngay**
+
+**Bước 6.** Mở file `config.json` (cùng thư mục) bằng Notepad, dán `tenantId` vừa in ra vào, lưu lại. Rồi chạy:
+```powershell
+docker compose restart web
 ```
 
-**Nâng cấp lên bản mới**: lặp lại Giai đoạn A với `-Version` mới ở máy dev, chép file `.tar.gz` mới sang máy khách (thư mục `images/` có thể giữ nhiều phiên bản cùng lúc — chỉ dọn khi muốn), rồi chạy lại `install.ps1 -Version <mới> -SkipTenantCreation` (tenant đã có sẵn, không hỏi lại) — script tự `docker load` bản mới, ghi `NEXAMED_VERSION` mới vào `.env`, và `docker compose up -d` sẽ tự thay container đang chạy sang ảnh mới.
+**Bước 7.** Mở trình duyệt, vào địa chỉ đã chọn ở Bước 4 (ví dụ `http://localhost`), đăng nhập bằng tài khoản + mật khẩu vừa tạo. Hệ thống bắt đổi mật khẩu ngay lần đầu.
+
+Linux/NAS: y hệt các bước trên, chỉ đổi `.\install.ps1` thành `./install.sh` (dùng `--tenant-name`/`--admin-username`... nếu muốn truyền sẵn, không cần trả lời tương tác).
+
+#### Xử lý sự cố thường gặp (đã gặp thật, không phải giả định)
+
+- **`.\install.ps1 : The term '.\install.ps1' is not recognized...`** → đang đứng sai thư mục, thường do giải nén `.zip` tạo thêm 1 lớp thư mục con trùng tên. Gõ `dir` xem có thư mục con nào không, `cd` vào đó rồi thử lại.
+- **`ports are not available: exposing port TCP 0.0.0.0:80 ... forbidden by its access permissions`** (lúc "Khởi động stack") → cổng 80 trên máy đó đang bị chương trình khác chiếm (rất phổ biến trên Windows, ví dụ IIS). Sửa:
+  1. Mở `.env` (Notepad), đổi `WEB_HTTP_PORT=80` thành `WEB_HTTP_PORT=8080`.
+  2. Mở `config.json` (Notepad), đổi `"apiBaseUrl"` thêm cổng mới, ví dụ `"http://localhost:8080"`.
+  3. **Chạy lại `.\install.ps1`** (KHÔNG chạy `docker compose up -d` trực tiếp — xem lý do ở mục ngay dưới).
+  4. Truy cập bằng địa chỉ có kèm cổng: `http://localhost:8080`.
+- **Đã lỡ chạy `docker compose up -d` trực tiếp (không qua `install.ps1`) để khắc phục sự cố ở trên, giờ không thấy `tenantId`/mật khẩu đâu cả** → bình thường, vì bước tạo tài khoản quản trị CHỈ nằm trong `install.ps1` (Bước 5), không nằm trong lệnh `docker compose up -d` thuần. Chạy lại `.\install.ps1` — vì `.env`/`config.json` đã có sẵn nên script tự bỏ qua phần tạo lại, chạy thẳng tới đúng bước hỏi tạo tài khoản.
+
+**Nâng cấp lên bản mới**: lặp lại PHẦN 1-2 với `-Version` mới ở máy dev, rồi ở máy khách chạy lại (thêm `-SkipTenantCreation` để khỏi hỏi lại tên phòng khám):
+```powershell
+.\install.ps1 -SkipTenantCreation
+```
 
 ### 2.4. PC không có server nội bộ — tự chạy lại sau khi khởi động lại, không cần nhân viên thao tác
 
