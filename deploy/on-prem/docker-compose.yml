@@ -3,9 +3,17 @@
 # NAS/máy chủ chuyên dụng (Docker Engine) — không đổi file này giữa 2 trường hợp, xem
 # docs/Deploy.md Phần 0.2 ("ranh giới thật không phải on-prem vs cloud mà là single-tenant vs
 # multi-tenant" — cả 2 trường hợp đều single-tenant, giống nhau về mọi mặt ảnh hưởng code/hạ
-# tầng). Không giả định máy chủ có internet sau lúc build ảnh xong.
+# tầng).
 #
-# Chạy: xem deploy/on-prem/install.ps1 (Windows PC) hoặc deploy/on-prem/install.sh (Linux/NAS).
+# HAI GIAI ĐOẠN (docs/DECISIONS.md #098) — máy khách KHÔNG BAO GIỜ build, KHÔNG BAO GIỜ nhận
+# source code/`.git`/`docs`, kể cả lần cài đầu tiên:
+#   A. Máy dev/CI (có source đầy đủ): deploy/on-prem/build-and-export.ps1 build 3 ảnh
+#      (nexamed-api/nexamed-web/nexamed-backup) rồi `docker save` ra file .tar.gz.
+#   B. Máy khách (chỉ nhận file .tar.gz + thư mục deploy/on-prem/ đã lọc): install.ps1/install.sh
+#      `docker load` các ảnh đó rồi `docker compose up -d` — không cần internet.
+#
+# Chạy ở máy khách: xem deploy/on-prem/install.ps1 (Windows PC) hoặc deploy/on-prem/install.sh
+# (Linux/NAS). Build ở máy dev: xem deploy/on-prem/build-and-export.ps1.
 
 services:
   postgres:
@@ -31,9 +39,7 @@ services:
   # KHÔNG tạo tenant/tài khoản pilot ở đây (cần Tên phòng khám/Tên đăng nhập cụ thể, việc một lần
   # do người cài chủ động chạy tay — xem install.ps1 bước "Tạo phòng khám đầu tiên").
   migrate:
-    build:
-      context: ..
-      dockerfile: apps/api/Dockerfile
+    image: nexamed-api:${NEXAMED_VERSION:?NEXAMED_VERSION chua dat trong .env - chay install.ps1/install.sh de nap anh Docker truoc}
     depends_on:
       postgres:
         condition: service_healthy
@@ -49,9 +55,7 @@ services:
     restart: 'no'
 
   api:
-    build:
-      context: ..
-      dockerfile: apps/api/Dockerfile
+    image: nexamed-api:${NEXAMED_VERSION:?NEXAMED_VERSION chua dat trong .env - chay install.ps1/install.sh de nap anh Docker truoc}
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -75,9 +79,7 @@ services:
     restart: unless-stopped
 
   web:
-    build:
-      context: ..
-      dockerfile: apps/web/Dockerfile
+    image: nexamed-web:${NEXAMED_VERSION:?NEXAMED_VERSION chua dat trong .env - chay install.ps1/install.sh de nap anh Docker truoc}
     depends_on:
       api:
         condition: service_healthy
@@ -90,9 +92,7 @@ services:
     restart: unless-stopped
 
   backup:
-    build:
-      context: ..
-      dockerfile: deploy/on-prem/backup/Dockerfile
+    image: nexamed-backup:${NEXAMED_VERSION:?NEXAMED_VERSION chua dat trong .env - chay install.ps1/install.sh de nap anh Docker truoc}
     depends_on:
       postgres:
         condition: service_healthy

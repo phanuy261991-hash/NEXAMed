@@ -1,17 +1,24 @@
-<#
+﻿<#
 .SYNOPSIS
   Cài đặt NEXAMed on-premise trên một PC/máy chủ Windows tại phòng khám (S4-05).
 
 .DESCRIPTION
-  Chạy trên máy Windows đã cài Docker Desktop (WSL2 backend). Script này:
+  Chạy trên máy Windows đã cài Docker Desktop (WSL2 backend). KHÔNG cần source code/internet —
+  chỉ cần thư mục này (deploy/on-prem/) + các file ảnh .tar.gz trong images/ (do
+  build-and-export.ps1 tạo sẵn ở máy dev/CI, xem docs/DECISIONS.md #098). Script này:
     1. Kiểm tra Docker đã cài + đang chạy.
     2. Tạo .env + config.json từ file mẫu nếu chưa có, tự sinh mật khẩu/khoá mạnh.
-    3. Build + khởi động toàn bộ stack (postgres, migrate, api, web, backup).
+    3. Nạp ảnh Docker đã build sẵn (docker load từ images/*.tar.gz) + khởi động toàn bộ stack
+       (postgres, migrate, api, web, backup).
     4. Chờ dịch vụ api sẵn sàng (GET /health).
     5. Hướng dẫn/tạo phòng khám (tenant) + tài khoản quản trị đầu tiên.
 
   Chạy lại được nhiều lần an toàn (idempotent) — không tạo lại tenant nếu đã có, không sinh lại
   bí mật nếu .env đã tồn tại. Xem docs/Deploy.md Phần 2 để biết chi tiết kiến trúc/ràng buộc.
+
+.PARAMETER Version
+  Phiên bản ảnh cần nạp, ví dụ "2026.09.01" — phải khớp đúng tên file trong images/. Bỏ qua thì
+  script tự dò trong images/ (chỉ tự dò được khi đúng 1 phiên bản tồn tại ở đó).
 
 .PARAMETER TenantName
   Tên phòng khám — dùng để tạo tenant đầu tiên. Bỏ qua thì script hỏi trực tiếp (trừ khi
@@ -41,6 +48,7 @@
 #>
 [CmdletBinding()]
 param(
+    [string]$Version,
     [string]$TenantName,
     [string]$AdminUsername,
     [string]$AdminFullName,
@@ -64,8 +72,17 @@ function Write-Warn2($text) {
 function New-RandomSecret([int]$bytes = 32) {
     # Hex — an toàn dùng trực tiếp trong URL kết nối DB / file .env, không cần escape ký tự đặc
     # biệt như base64 (+, /, =).
+    # Dùng .Create()/.GetBytes() (instance method, có từ .NET 1.1) thay vì ::Fill() (static, CHỈ có
+    # ở .NET Core/5+) — Windows PowerShell 5.1 chạy trên .NET Framework, không có ::Fill(), gây lỗi
+    # "does not contain a method named 'Fill'" (bug thật phát hiện lúc verify install.ps1 chạy thật
+    # trên PowerShell 5.1, docs/DECISIONS.md #098).
     $buffer = New-Object 'byte[]' $bytes
-    [System.Security.Cryptography.RandomNumberGenerator]::Fill($buffer)
+    $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+    try {
+        $rng.GetBytes($buffer)
+    } finally {
+        $rng.Dispose()
+    }
     -join ($buffer | ForEach-Object { $_.ToString('x2') })
 }
 
@@ -114,10 +131,48 @@ $configJson.apiBaseUrl = $WebOrigin
 $configJson | ConvertTo-Json | Set-Content "$here\config.json"
 Write-Host "apiBaseUrl trong config.json = $WebOrigin"
 
-# ---- 4. Build + khởi động ----
-Write-Step "Build ảnh Docker (lần đầu có thể mất 5-15 phút tuỳ máy)"
-& docker compose build
-if (-not $?) { Write-Error "Build ảnh thất bại — xem log phía trên." }
+# ---- 4. Nạp ảnh Docker đã build sẵn + khởi động ----
+Write-Step "Nạp ảnh Docker đã build sẵn"
+$imagesDir = "$here\images"
+if (-not (Test-Path $imagesDir)) {
+    Write-Error "Không tìm thấy thư mục $imagesDir — copy các file nexamed-api-*.tar.gz/nexamed-web-*.tar.gz/nexamed-backup-*.tar.gz (do build-and-export.ps1 tạo ở máy dev/CI) vào đó trước khi chạy script này."
+}
+
+if (-not $Version) {
+    # Bọc @() bắt buộc — nếu chỉ có đúng 1 kết quả, PowerShell tự "bung" pipeline thành chuỗi đơn
+    # (không phải mảng 1 phần tử), khiến $found[0] sau đó lấy nhầm KÝ TỰ ĐẦU của chuỗi thay vì cả
+    # chuỗi (bug thật phát hiện lúc verify: "0.0.1-test" bị đọc thành "0", docs/DECISIONS.md #098).
+    $found = @(Get-ChildItem "$imagesDir\nexamed-api-*.tar*" -ErrorAction SilentlyContinue |
+        ForEach-Object { $_.BaseName -replace '^nexamed-api-', '' -replace '\.tar$', '' } |
+        Select-Object -Unique)
+    if ($found.Count -eq 1) {
+        $Version = $found[0]
+        Write-Host "Tự nhận diện phiên bản: $Version"
+    } elseif ($found.Count -eq 0) {
+        Write-Error "Không tìm thấy file nexamed-api-*.tar(.gz) nào trong $imagesDir."
+    } else {
+        Write-Error "Tìm thấy nhiều phiên bản trong $imagesDir ($($found -join ', ')) — truyền rõ -Version <phiên bản> để chọn đúng."
+    }
+}
+
+$imageNames = @('nexamed-api', 'nexamed-web', 'nexamed-backup')
+foreach ($name in $imageNames) {
+    $gz = "$imagesDir\$name-$Version.tar.gz"
+    $tar = "$imagesDir\$name-$Version.tar"
+    $file = if (Test-Path $gz) { $gz } elseif (Test-Path $tar) { $tar } else { $null }
+    if (-not $file) {
+        Write-Error "Thiếu file ảnh: $gz (hoặc $tar) — kiểm tra lại -Version hoặc copy đủ 3 file .tar.gz vào $imagesDir."
+    }
+    Write-Host "Nạp $file ..."
+    & docker load -i $file
+    if (-not $?) { Write-Error "docker load thất bại: $file — file có thể bị hỏng lúc chép qua USB/mạng, thử chép lại." }
+
+    & docker image inspect "$name`:$Version" >$null 2>$null
+    if (-not $?) { Write-Error "Đã nạp $file nhưng không thấy ảnh $name`:$Version — kiểm tra lại -Version có khớp đúng lúc build không." }
+}
+
+(Get-Content "$here\.env") -replace 'NEXAMED_VERSION=.*', "NEXAMED_VERSION=$Version" | Set-Content "$here\.env"
+Write-Host "NEXAMED_VERSION = $Version (đã ghi vào .env)"
 
 Write-Step "Khởi động stack (postgres, migrate, api, web, backup)"
 & docker compose up -d

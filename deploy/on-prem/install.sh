@@ -3,13 +3,18 @@
 # Container Manager, QNAP Container Station...) — S4-05. Tương đương install.ps1 (Windows PC),
 # xem docs/Deploy.md Phần 2 để biết khi nào dùng file nào.
 #
-# Dùng: ./install.sh [--tenant-name "..."] [--admin-username "..."] [--admin-full-name "..."] \
-#                     [--web-origin "http://192.168.1.50"] [--skip-tenant-creation]
+# KHÔNG cần source code/internet — chỉ cần thư mục này (deploy/on-prem/) + các file ảnh .tar.gz
+# trong images/ (do build-and-export.ps1 tạo sẵn ở máy dev/CI, xem docs/DECISIONS.md #098).
+#
+# Dùng: ./install.sh [--version "2026.09.01"] [--tenant-name "..."] [--admin-username "..."] \
+#                     [--admin-full-name "..."] [--web-origin "http://192.168.1.50"] \
+#                     [--skip-tenant-creation]
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$HERE"
 
+VERSION_ARG=""
 TENANT_NAME=""
 ADMIN_USERNAME=""
 ADMIN_FULL_NAME=""
@@ -18,6 +23,7 @@ SKIP_TENANT=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
+    --version) VERSION_ARG="$2"; shift 2 ;;
     --tenant-name) TENANT_NAME="$2"; shift 2 ;;
     --admin-username) ADMIN_USERNAME="$2"; shift 2 ;;
     --admin-full-name) ADMIN_FULL_NAME="$2"; shift 2 ;;
@@ -81,9 +87,56 @@ fs.writeFileSync(p, JSON.stringify(c, null, 2) + '\n');
 }
 echo "apiBaseUrl trong config.json = $WEB_ORIGIN"
 
-# ---- 4. Build + khởi động ----
-step "Build ảnh Docker (lần đầu có thể mất 5-15 phút tuỳ máy)"
-docker compose build
+# ---- 4. Nạp ảnh Docker đã build sẵn + khởi động ----
+step "Nạp ảnh Docker đã build sẵn"
+IMAGES_DIR="$HERE/images"
+if [ ! -d "$IMAGES_DIR" ]; then
+  echo "Không tìm thấy thư mục $IMAGES_DIR — copy các file nexamed-api-*.tar.gz/nexamed-web-*.tar.gz/nexamed-backup-*.tar.gz (do build-and-export.ps1 tạo ở máy dev/CI) vào đó trước khi chạy script này." >&2
+  exit 1
+fi
+
+VERSION="$VERSION_ARG"
+if [ -z "$VERSION" ]; then
+  # Không dùng `mapfile` (Bash 4+, một số NAS/BusyBox chỉ có Bash cũ hơn) — dùng vòng lặp
+  # `while read` portable hơn.
+  found=""
+  found_count=0
+  while IFS= read -r v; do
+    [ -z "$v" ] && continue
+    found="$found $v"
+    found_count=$((found_count + 1))
+  done < <(find "$IMAGES_DIR" -maxdepth 1 -name 'nexamed-api-*.tar*' -exec basename {} \; \
+    | sed -E 's/^nexamed-api-//; s/\.tar(\.gz)?$//' | sort -u)
+
+  if [ "$found_count" -eq 1 ]; then
+    VERSION="$(echo "$found" | xargs)"
+    echo "Tự nhận diện phiên bản: $VERSION"
+  elif [ "$found_count" -eq 0 ]; then
+    echo "Không tìm thấy file nexamed-api-*.tar(.gz) nào trong $IMAGES_DIR." >&2
+    exit 1
+  else
+    echo "Tìm thấy nhiều phiên bản trong $IMAGES_DIR ($found) — truyền rõ --version <phiên bản> để chọn đúng." >&2
+    exit 1
+  fi
+fi
+
+for name in nexamed-api nexamed-web nexamed-backup; do
+  gz="$IMAGES_DIR/$name-$VERSION.tar.gz"
+  tar_file="$IMAGES_DIR/$name-$VERSION.tar"
+  if [ -f "$gz" ]; then file="$gz"; elif [ -f "$tar_file" ]; then file="$tar_file"; else
+    echo "Thiếu file ảnh: $gz (hoặc $tar_file) — kiểm tra lại --version hoặc copy đủ 3 file .tar.gz vào $IMAGES_DIR." >&2
+    exit 1
+  fi
+  echo "Nạp $file ..."
+  docker load -i "$file"
+  if ! docker image inspect "$name:$VERSION" >/dev/null 2>&1; then
+    echo "Đã nạp $file nhưng không thấy ảnh $name:$VERSION — kiểm tra lại --version có khớp đúng lúc build không." >&2
+    exit 1
+  fi
+done
+
+sed -i "s#^NEXAMED_VERSION=.*#NEXAMED_VERSION=$VERSION#" "$HERE/.env"
+echo "NEXAMED_VERSION = $VERSION (đã ghi vào .env)"
 
 step "Khởi động stack (postgres, migrate, api, web, backup)"
 docker compose up -d

@@ -19,3 +19,4 @@ apps/web/public/config.json
 .DS_Store
 deploy/on-prem/.env
 deploy/on-prem/backup-data
+deploy/on-prem/images

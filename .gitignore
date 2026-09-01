@@ -19,3 +19,6 @@ apps/web/public/config.json
 deploy/on-prem/.env
 deploy/on-prem/config.json
 deploy/on-prem/backup-data/
+# Ảnh Docker đã build+export (docs/DECISIONS.md #098) — artifact nhị phân, không phải source,
+# sinh ra bởi deploy/on-prem/build-and-export.ps1, có thể nặng nhiều GB — không commit.
+deploy/on-prem/images/

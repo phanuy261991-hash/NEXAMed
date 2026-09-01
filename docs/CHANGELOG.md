@@ -4,6 +4,18 @@
 
 ## 2026-09-01
 
+### Sửa mô hình phân phối on-prem: build ở máy dev/CI, máy khách chỉ nhận ảnh Docker đã build sẵn — xem `docs/DECISIONS.md` #098
+
+Chủ dự án phát hiện đúng vấn đề: cách S4-05 (#097) làm — copy toàn bộ source code sang máy khách rồi `docker compose build` tại chỗ — làm lộ mã nghiệp vụ `.ts`, `.git`, và tài liệu nội bộ (`.claude/docs/`, `docs/DECISIONS.md`, `docs/CURRENT.md`, kể cả 1 sự cố bảo mật thật đã ghi lại) cho bất kỳ ai truy cập máy khách. Không chấp nhận được với phần mềm thương mại.
+
+- Đã bàn 3 phương án qua thảo luận trực tiếp: `docker save`/`docker load` qua file `.tar`, private registry, lọc bớt file nhạy cảm nhưng vẫn build tại máy khách — chốt **`docker save`/`docker load`** (không cần internet/registry ở máy khách, đúng quy mô 1 pilot, mở rộng sang registry sau này không phải sửa lại Dockerfile/compose).
+- `deploy/on-prem/docker-compose.yml`: 4 service đổi `build:`→`image: nexamed-<tên>:${NEXAMED_VERSION:?...}`. `deploy/on-prem/build-and-export.ps1` mới (chạy ở máy dev/CI — build 3 ảnh + `docker save`/gzip). `install.ps1`/`install.sh`: bước build đổi thành nạp ảnh (`docker load` + xác minh bằng `docker image inspect`, tự nhận diện version nếu chỉ có 1 bộ trong `images/`).
+- **Dung lượng thật đo được**: `nexamed-api` 1.66GB raw → nén gzip chỉ 358.6MB; tổng cả 3 ảnh ~532MB — nhẹ hơn nhiều so với lo ngại ban đầu, đủ nhẹ để chuyển USB/mạng nội bộ. Đã hỏi có cần tối ưu multi-stage build (giảm thêm được) không — chốt **giữ nguyên**, chưa cần ở quy mô 1 pilot.
+- **4 bug thật phát hiện lúc khảo sát/verify** (không phải suy luận, TẤT CẢ chưa từng lộ ở #097 vì lần đó verify bằng Docker thủ công): (1) `context: ..` trong compose cũ resolve sai thành `deploy/` thay vì gốc repo — tự biến mất vì bỏ hẳn `build:`; (2) `install.ps1`/`build-and-export.ps1` fail parse trên Windows PowerShell 5.1 do thiếu BOM UTF-8 (file chứa tiếng Việt/dấu "—"); (3) `New-RandomSecret()` dùng `[RandomNumberGenerator]::Fill()` — static method chỉ có ở .NET Core/5+, không có ở .NET Framework mà PowerShell 5.1 chạy trên đó — sửa sang `.Create()`+`.GetBytes()`; (4) logic tự nhận diện version đọc nhầm "0.0.1-test" thành "0" do PowerShell tự bung mảng-1-phần-tử thành chuỗi — sửa bằng bọc `@(...)`.
+- Case NAS Synology DS423 (ARM Realtek RTD1619B, RAM 2GB — dưới ngưỡng tối thiểu 4GB đã chốt) nêu ra lúc bàn bạc — quyết định mặc định chỉ build `linux/amd64`, chưa đầu tư `arm64` (tham số `-Platform` sẵn sàng khi cần).
+- **Đã xác minh thật toàn bộ chu trình 2 giai đoạn** (không dừng ở đọc code): build thật 3 ảnh qua `build-and-export.ps1` → giả lập đúng máy khách (thư mục riêng ngoài repo, xác nhận không có file `.ts`/`.git`/`docs`) → `install.ps1` qua Windows PowerShell 5.1 thật (phát hiện+sửa 3 bug ngay lúc chạy) → `docker load`+`docker compose up -d` cả 5 container `healthy` → tạo tenant thật → **đăng nhập thật qua nginx proxy trả `200`+token đúng**. Đã dọn sạch container/volume/image/file test sau khi xong.
+- Cập nhật `docs/Deploy.md` (Phần 2 viết lại), `.dockerignore`/`.gitignore` gốc, `docs/CURRENT.md`, `docs/TASK.md`.
+
 TopBar: tách "Tạm nghỉ/Đóng ca" ra bánh răng riêng + "Thông tin tài khoản" popup tự xem/sửa hồ sơ — xem `docs/DECISIONS.md` #095/#096:
 
 - Bánh răng (`GearSix`, Phosphor) mới cạnh avatar — chỉ hiện khi `isDoctor` VÀ đang ở `/reception/doctor-queue` hoặc `/encounters/:id`, chứa "Tạm nghỉ"/"Đóng ca hôm nay" (hoặc "Quay lại làm việc"/"Mở lại ca làm việc") — y nguyên logic 3 trạng thái từ #094, chỉ đổi nơi chứa. Avatar rút lại đúng 1 mục "Đăng xuất". Chấm trạng thái BREAK/ENDED chuyển từ avatar sang bánh răng. 3 badge chip (quá giờ/tạm nghỉ/đóng ca) giữ nguyên hiện mọi trang.

@@ -4,7 +4,7 @@
 
 NEXAMed v1 triển khai **on-premise duy nhất**, tại từng phòng khám (`docs/product/prd.md`, `CLAUDE.md`). Cloud **không phải mục tiêu triển khai của v1** — kiến trúc port/adapter đảm bảo không phải làm lại nền tảng khi cần chuyển sang cloud sau này, nhưng hiện **chưa có** nhà cung cấp, mô hình, hay quy trình cloud nào được chốt.
 
-**S4-05 (đóng gói on-premise) đã xong** (2026-09-01) — `deploy/on-prem/` có đủ `docker-compose.yml`, Dockerfile cho `api`/`web`, script backup, script cài đặt `install.ps1` (Windows PC). Tài liệu này gồm hai phần: (1) cách chạy môi trường hiện có cho dev/thử nghiệm (xem `docs/demo.md`, khác hẳn Phần 2 dưới đây), và (2) hướng dẫn triển khai on-premise thật + kiến trúc cho khả năng lên cloud sau này.
+**S4-05 (đóng gói on-premise) đã xong** (2026-09-01, sửa lại mô hình phân phối ở `docs/DECISIONS.md` #098) — `deploy/on-prem/` có đủ `docker-compose.yml` (tham chiếu ảnh `image:`, không tự build), Dockerfile cho `api`/`web`/`backup`, script build+export `build-and-export.ps1` (chạy ở máy dev/CI), script cài đặt `install.ps1`/`install.sh` (chạy ở máy khách, chỉ nạp ảnh). Tài liệu này gồm hai phần: (1) cách chạy môi trường hiện có cho dev/thử nghiệm (xem `docs/demo.md`, khác hẳn Phần 2 dưới đây), và (2) hướng dẫn triển khai on-premise thật + kiến trúc cho khả năng lên cloud sau này.
 
 Cập nhật tài liệu này ngay khi có thay đổi kiến trúc triển khai, hoặc khi có quyết định chính thức về cloud.
 
@@ -131,14 +131,33 @@ Chọn theo phần cứng khách hàng thật đang có — không phải chọn
 | Service | Vai trò | Ảnh |
 |---|---|---|
 | `postgres` | PostgreSQL 18, dữ liệu duy nhất tại chỗ (named volume `postgres_data`) | `postgres:18` |
-| `migrate` | Chạy MỘT LẦN mỗi lúc `docker compose up` rồi thoát: `prisma migrate deploy` → đổi mật khẩu role `nexamed_app` → seed danh mục toàn cục. Idempotent — an toàn khi máy khởi động lại chạy lại từ đầu | build từ `apps/api/Dockerfile` |
-| `api` | NestJS, healthcheck `GET /health` | build từ `apps/api/Dockerfile` (dùng chung ảnh với `migrate`, khác `command:`) |
-| `web` | Build tĩnh `apps/web`, phục vụ qua nginx + reverse-proxy `/api/*` sang `api` (cùng origin, không cần CORS/mở thêm cổng) | build từ `apps/web/Dockerfile` |
-| `backup` | `pg_dump -Fc` hằng ngày (giờ cấu hình được) ra thư mục ngoài container, tự dọn bản quá hạn giữ | build từ `deploy/on-prem/backup/Dockerfile` |
+| `migrate` | Chạy MỘT LẦN mỗi lúc `docker compose up` rồi thoát: `prisma migrate deploy` → đổi mật khẩu role `nexamed_app` → seed danh mục toàn cục. Idempotent — an toàn khi máy khởi động lại chạy lại từ đầu | `nexamed-api:${NEXAMED_VERSION}` — build sẵn ở máy dev/CI từ `apps/api/Dockerfile`, nạp bằng `docker load` (xem 2.1b) |
+| `api` | NestJS, healthcheck `GET /health` | `nexamed-api:${NEXAMED_VERSION}` (dùng chung ảnh với `migrate`, khác `command:`) |
+| `web` | Build tĩnh `apps/web`, phục vụ qua nginx + reverse-proxy `/api/*` sang `api` (cùng origin, không cần CORS/mở thêm cổng) | `nexamed-web:${NEXAMED_VERSION}` — build sẵn ở máy dev/CI từ `apps/web/Dockerfile` |
+| `backup` | `pg_dump -Fc` hằng ngày (giờ cấu hình được) ra thư mục ngoài container, tự dọn bản quá hạn giữ | `nexamed-backup:${NEXAMED_VERSION}` — build sẵn ở máy dev/CI từ `deploy/on-prem/backup/Dockerfile` |
 
-Máy chủ đặt tại phòng khám, **không giả định có internet ổn định** sau lúc build ảnh xong — build ảnh lần đầu CẦN internet (tải gói qua `apt`/`pnpm`), chạy hằng ngày thì không.
+Máy chủ đặt tại phòng khám **KHÔNG BAO GIỜ cần internet, kể cả lần cài đầu tiên** — ảnh đã build sẵn ở máy khác, máy khách chỉ `docker load` (xem 2.1b). Đây cũng là cách duy nhất đảm bảo máy khách không bao giờ nhận được mã nguồn (`.ts`/`.git`/`docs` nội bộ) — chỉ nhận ảnh Docker đã build.
 
-`api`/`migrate` dùng CHUNG một Dockerfile (không tách ảnh riêng) — cố ý, để không phải build/đồng bộ 2 ảnh mỗi lần đổi code.
+`api`/`migrate` dùng CHUNG một Dockerfile lúc build → CHUNG một ảnh `nexamed-api` lúc chạy (không tách ảnh riêng) — cố ý, để không phải build/đồng bộ 2 ảnh mỗi lần đổi code.
+
+### 2.1b. Hai giai đoạn — build ở máy dev/CI, chỉ nạp ảnh ở máy khách (`docs/DECISIONS.md` #098)
+
+Mã nguồn `.ts`, lịch sử `.git`, và tài liệu nội bộ (`.claude/docs/`, `docs/DECISIONS.md`, `docs/CURRENT.md` — chứa cả kiến trúc bảo mật chi tiết và mô tả sự cố thật đã xảy ra) là tài sản trí tuệ, **tuyệt đối không được lộ cho máy khách**. Vì vậy triển khai on-prem đi qua đúng 2 giai đoạn tách biệt:
+
+- **Giai đoạn A — Build & export** (máy dev/CI, có source đầy đủ): `deploy/on-prem/build-and-export.ps1` build 3 ảnh (`nexamed-api`/`nexamed-web`/`nexamed-backup`) rồi `docker save` ra file `.tar.gz`. KHÔNG chạy bước này ở máy khách.
+- **Giai đoạn B — Cài đặt tại máy khách**: chỉ nhận đúng những file liệt kê ở bảng dưới — `install.ps1`/`install.sh` tự `docker load` các ảnh đó rồi `docker compose up -d`. Máy khách sau bước này **không có** bất kỳ file `.ts`/`.git`/`docs` nào trên đĩa.
+
+**File cần gửi sang máy khách** (đúng và chỉ đúng danh sách này — không copy cả repo):
+
+| File/thư mục | Vai trò |
+|---|---|
+| `docker-compose.yml` | Định nghĩa 5 service, tham chiếu `image:` (không còn `build:`) |
+| `.env.example` | Mẫu cấu hình — `install.ps1`/`install.sh` tự tạo `.env` từ đây |
+| `config.example.json` | Mẫu `config.json` (web runtime config) |
+| `install.ps1` / `install.sh` | Script cài đặt — nạp ảnh + khởi động |
+| `images/*.tar.gz` | 3 ảnh Docker đã build sẵn (từ Giai đoạn A) |
+
+**File CHỈ cần ở máy dev/build, KHÔNG gửi máy khách** (đã "nướng" (bake) sẵn vào ảnh lúc build, gửi thêm chỉ dư thừa — không phải rủi ro bảo mật riêng vì không chứa business logic, nhưng không có lý do gì để gửi): `nginx.conf` (COPY vào ảnh `web` lúc build), `deploy/on-prem/backup/Dockerfile` + `backup.sh` (COPY vào ảnh `backup` lúc build). Các file này vẫn giữ nguyên trong repo — `build-and-export.ps1` cần chúng lúc build.
 
 ### 2.2. Bí mật & mật khẩu — luồng thật
 
@@ -151,26 +170,39 @@ Máy chủ đặt tại phòng khám, **không giả định có internet ổn �
 
 ### 2.3. Cách chạy
 
-**PC Windows** (chưa có server nội bộ — ưu tiên trường hợp này trước, theo yêu cầu triển khai thật đầu tiên):
+**Giai đoạn A — Build & export (máy dev/CI, KHÔNG chạy ở máy khách):**
 ```powershell
 cd deploy\on-prem
-.\install.ps1
+.\build-and-export.ps1 -Version 2026.09.01
 ```
-Script hỏi: IP LAN (hoặc Enter để chỉ dùng `http://localhost` ngay trên máy đó), rồi Tên phòng khám/Tên đăng nhập/Họ tên quản trị viên đầu tiên. Chạy lại an toàn (`-SkipTenantCreation` nếu chỉ muốn khởi động lại stack, không tạo thêm tenant).
+Sinh ra `deploy\on-prem\images\nexamed-{api,web,backup}-2026.09.01.tar.gz`. Chép các file đó + đúng 5 file/thư mục liệt kê ở bảng 2.1b (KHÔNG chép gì khác — không copy cả repo) sang máy khách qua USB/mạng nội bộ.
 
-**Linux/NAS**:
+**Giai đoạn B — Cài đặt tại phòng khám.**
+
+PC Windows (chưa có server nội bộ — ưu tiên trường hợp này trước, theo yêu cầu triển khai thật đầu tiên):
+```powershell
+cd deploy\on-prem
+.\install.ps1 -Version 2026.09.01
+```
+`-Version` có thể bỏ qua nếu thư mục `images\` chỉ chứa đúng 1 phiên bản (script tự nhận diện). Script hỏi: IP LAN (hoặc Enter để chỉ dùng `http://localhost` ngay trên máy đó), rồi Tên phòng khám/Tên đăng nhập/Họ tên quản trị viên đầu tiên. Chạy lại an toàn (`-SkipTenantCreation` nếu chỉ muốn khởi động lại stack, không tạo thêm tenant).
+
+Linux/NAS:
 ```bash
 cd deploy/on-prem
-./install.sh
+./install.sh --version 2026.09.01
 ```
 Tương đương, dùng `read`/tham số dòng lệnh (`--tenant-name`, `--admin-username`...) thay vì `-Param`.
 
-**Chạy tay (không qua script cài đặt)** — copy `.env.example`→`.env`, `config.example.json`→`config.json`, tự điền giá trị, rồi:
+**Chạy tay (không qua script cài đặt)** — copy `.env.example`→`.env`, `config.example.json`→`config.json`, tự điền giá trị (gồm `NEXAMED_VERSION`), rồi:
 ```bash
-docker compose build
+docker load -i images/nexamed-api-2026.09.01.tar.gz
+docker load -i images/nexamed-web-2026.09.01.tar.gz
+docker load -i images/nexamed-backup-2026.09.01.tar.gz
 docker compose up -d
 docker compose run --rm -e TENANT_NAME="..." -e ADMIN_USERNAME="..." -e ADMIN_FULL_NAME="..." migrate pnpm run db:seed:pilot-tenant
 ```
+
+**Nâng cấp lên bản mới**: lặp lại Giai đoạn A với `-Version` mới ở máy dev, chép file `.tar.gz` mới sang máy khách (thư mục `images/` có thể giữ nhiều phiên bản cùng lúc — chỉ dọn khi muốn), rồi chạy lại `install.ps1 -Version <mới> -SkipTenantCreation` (tenant đã có sẵn, không hỏi lại) — script tự `docker load` bản mới, ghi `NEXAMED_VERSION` mới vào `.env`, và `docker compose up -d` sẽ tự thay container đang chạy sang ảnh mới.
 
 ### 2.4. PC không có server nội bộ — tự chạy lại sau khi khởi động lại, không cần nhân viên thao tác
 
@@ -193,6 +225,7 @@ Container đều đặt `restart: unless-stopped` — MỘT KHI Docker Desktop �
 - Giá trị riêng theo từng phòng khám (giờ làm việc, độ dài slot, mẫu in...) nằm ở bảng `tenant_setting`, không hard-code trong code hay compose file.
 - Backup ghi ra thư mục cấu hình được (`BACKUP_HOST_DIR` trong `.env`, nên trỏ ổ đĩa khác ổ chứa `postgres_data`), không dùng dịch vụ cloud lưu trữ ở v1.
 - Không cấp `BYPASSRLS`/superuser cho role mà API runtime dùng (đã áp dụng từ S1-03, xem `docs/DECISIONS.md` #010 — giữ nguyên khi đóng gói on-prem, `migrate` chỉ dùng role đặc quyền `nexamed` cho ĐÚNG các bước cần, không phải role runtime).
+- **Không chuyển source code/`.git`/tài liệu nội bộ (`.claude/docs/`, `docs/DECISIONS.md`, `docs/CURRENT.md`...) sang máy khách dưới bất kỳ hình thức nào** (`docs/DECISIONS.md` #098) — chỉ chuyển ảnh Docker đã build sẵn (`images/*.tar.gz`) + đúng danh sách file ở bảng 2.1b. Mọi thay đổi ở `deploy/on-prem/` sau này phải giữ nguyên ranh giới build (máy dev/CI) ⇸ chạy (máy khách) này.
 
 ---
 
