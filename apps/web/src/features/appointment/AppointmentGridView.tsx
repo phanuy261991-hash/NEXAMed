@@ -144,7 +144,7 @@ export function AppointmentGridView({
                 </div>
                 <div className="truncate text-[13.5px] font-semibold text-slate-900">{d.displayName ?? d.fullName}</div>
               </div>
-              {shifts.length > 0 && (
+              {shifts.length > 0 ? (
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 pl-[42px]">
                   {shifts.map((s, i) => (
                     <span key={i} className="flex items-center gap-1 text-[10.5px] font-semibold text-slate-500">
@@ -153,6 +153,8 @@ export function AppointmentGridView({
                     </span>
                   ))}
                 </div>
+              ) : (
+                <div className="pl-[42px] text-[10.5px] font-semibold text-slate-400">Chưa đăng ký ca — theo giờ chung</div>
               )}
             </div>
           );

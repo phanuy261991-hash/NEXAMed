@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { CaretLeft, CaretRight, Lock, X as XIcon } from '@phosphor-icons/react';
+import { CaretLeft, CaretRight, CheckSquare, Lock, X as XIcon } from '@phosphor-icons/react';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
-import { ActionMenu } from '../../shared/ui/ActionMenu';
 import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
@@ -47,10 +46,34 @@ function formatDDMM(dateStr: string): string {
   const [, m, d] = dateStr.split('-');
   return `${d}/${m}`;
 }
-function previousMonthOf(dateStr: string): string {
-  const [year, month] = dateStr.slice(0, 7).split('-').map(Number);
-  const d = new Date(Date.UTC(year ?? 1970, (month ?? 1) - 2, 1));
+function addMonths(monthStr: string, delta: number): string {
+  const [year, month] = monthStr.split('-').map(Number);
+  const d = new Date(Date.UTC(year ?? 1970, (month ?? 1) - 1 + delta, 1));
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+function formatMonthLabel(monthStr: string): string {
+  const [year, month] = monthStr.split('-');
+  return `Tháng ${Number(month)}/${year}`;
+}
+/** `[đầu tháng, cuối tháng]` — dùng làm khoảng ngày truy vấn cho chế độ Tháng. */
+function getMonthRange(monthStr: string): [string, string] {
+  const [year, month] = monthStr.split('-').map(Number);
+  const daysInMonth = new Date(Date.UTC(year ?? 1970, month ?? 1, 0)).getUTCDate();
+  return [`${monthStr}-01`, `${monthStr}-${String(daysInMonth).padStart(2, '0')}`];
+}
+/** Lưới tháng dạng lịch (bắt đầu Thứ 2), gồm cả ngày đệm mờ của tháng trước/sau cho đủ hàng. */
+function getMonthGridDays(monthStr: string): { date: string; inMonth: boolean }[] {
+  const firstOfMonth = `${monthStr}-01`;
+  const firstWeekday = toDateOnlyUtc(firstOfMonth).getUTCDay();
+  const leading = firstWeekday === 0 ? 6 : firstWeekday - 1;
+  const gridStart = addDays(firstOfMonth, -leading);
+  const [year, month] = monthStr.split('-').map(Number);
+  const daysInMonth = new Date(Date.UTC(year ?? 1970, month ?? 1, 0)).getUTCDate();
+  const totalCells = Math.ceil((leading + daysInMonth) / 7) * 7;
+  return Array.from({ length: totalCells }, (_, i) => {
+    const date = addDays(gridStart, i);
+    return { date, inMonth: date.slice(0, 7) === monthStr };
+  });
 }
 
 /**
@@ -65,12 +88,18 @@ export function MyWorkSchedulePage() {
   const [weekStart, setWeekStart] = useState(() => getWeekStart(today));
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
+  const [view, setView] = useState<'week' | 'month'>('week');
+  const [monthAnchor, setMonthAnchor] = useState(() => today.slice(0, 7));
+  const monthGridDays = getMonthGridDays(monthAnchor);
+  const [monthFrom, monthTo] = getMonthRange(monthAnchor);
+
+  const [bulkMode, setBulkMode] = useState(false);
   const [pickerFor, setPickerFor] = useState<string[] | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const selection = useRowSelection(days);
 
   const shiftsQuery = useWorkShiftsQuery();
-  const listQuery = useWorkShiftAssignmentsQuery(days[0]!, days[6]!);
+  const listQuery = useWorkShiftAssignmentsQuery(view === 'week' ? days[0]! : monthFrom, view === 'week' ? days[6]! : monthTo);
   const createMutation = useCreateWorkShiftAssignmentMutation();
   const bulkMutation = useBulkCreateWorkShiftAssignmentsMutation();
   const copyMutation = useCopyWorkShiftAssignmentsMutation();
@@ -103,13 +132,16 @@ export function MyWorkSchedulePage() {
     selection.clear();
   }
 
-  async function handleCopy(mode: 'week' | 'month') {
-    const result =
-      mode === 'week'
-        ? await copyMutation.mutateAsync({ mode: 'week', fromWeekStart: addDays(weekStart, -7), toWeekStart: weekStart })
-        : await copyMutation.mutateAsync({ mode: 'month', fromMonth: previousMonthOf(weekStart), toMonth: weekStart.slice(0, 7) });
+  function showCopyToast(result: { createdCount: number; skippedCount: number }) {
     setToast(`Đã sao chép ${result.createdCount} ca, bỏ qua ${result.skippedCount} ca đã có sẵn.`);
     setTimeout(() => setToast(null), 4000);
+  }
+  async function handleCopyWeek() {
+    showCopyToast(await copyMutation.mutateAsync({ mode: 'week', fromWeekStart: addDays(weekStart, -7), toWeekStart: weekStart }));
+  }
+  /** `targetMonth` — tháng ĐÍCH nhận ca sao chép (nguồn luôn là tháng liền trước). */
+  async function handleCopyMonth(targetMonth: string) {
+    showCopyToast(await copyMutation.mutateAsync({ mode: 'month', fromMonth: addMonths(targetMonth, -1), toMonth: targetMonth }));
   }
 
   return (
@@ -118,41 +150,109 @@ export function MyWorkSchedulePage() {
 
       <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-2.5 px-1">
         <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => setWeekStart((w) => addDays(w, -7))}
-            aria-label="Tuần trước"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-300 text-slate-500 hover:bg-slate-50 hover:text-slate-900"
-          >
-            <CaretLeft size={15} weight="bold" />
-          </button>
-          <span className="min-w-[168px] rounded-md border border-slate-300 px-3.5 py-1.5 text-center text-[13.5px] font-semibold text-slate-900">
-            {formatDDMM(days[0]!)} – {formatDDMM(days[6]!)}
-          </span>
-          <button
-            type="button"
-            onClick={() => setWeekStart((w) => addDays(w, 7))}
-            aria-label="Tuần sau"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-300 text-slate-500 hover:bg-slate-50 hover:text-slate-900"
-          >
-            <CaretRight size={15} weight="bold" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setWeekStart(getWeekStart(today))}
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-50 hover:text-slate-900"
-          >
-            Tuần này
-          </button>
+          <div className="flex overflow-hidden rounded-md border border-slate-300 shadow-sm">
+            <button
+              type="button"
+              aria-pressed={view === 'week'}
+              onClick={() => setView('week')}
+              className={`px-3.5 py-1.5 text-[13px] font-semibold ${view === 'week' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
+            >
+              Tuần
+            </button>
+            <button
+              type="button"
+              aria-pressed={view === 'month'}
+              onClick={() => setView('month')}
+              className={`border-l border-slate-300 px-3.5 py-1.5 text-[13px] font-semibold ${view === 'month' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
+            >
+              Tháng
+            </button>
+          </div>
+
+          {view === 'week' ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setWeekStart((w) => addDays(w, -7))}
+                aria-label="Tuần trước"
+                className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-600 shadow-sm hover:border-slate-400 hover:bg-slate-50 hover:text-slate-900"
+              >
+                <CaretLeft size={15} weight="bold" />
+              </button>
+              <span className="min-w-[168px] rounded-md border border-slate-300 bg-white px-3.5 py-1.5 text-center text-[13.5px] font-semibold text-slate-900 shadow-sm">
+                {formatDDMM(days[0]!)} – {formatDDMM(days[6]!)}
+              </span>
+              <button
+                type="button"
+                onClick={() => setWeekStart((w) => addDays(w, 7))}
+                aria-label="Tuần sau"
+                className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-600 shadow-sm hover:border-slate-400 hover:bg-slate-50 hover:text-slate-900"
+              >
+                <CaretRight size={15} weight="bold" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setWeekStart(getWeekStart(today))}
+                className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm hover:border-slate-400 hover:bg-slate-50 hover:text-slate-900"
+              >
+                Tuần này
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => setMonthAnchor((m) => addMonths(m, -1))}
+                aria-label="Tháng trước"
+                className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-600 shadow-sm hover:border-slate-400 hover:bg-slate-50 hover:text-slate-900"
+              >
+                <CaretLeft size={15} weight="bold" />
+              </button>
+              <span className="min-w-[128px] rounded-md border border-slate-300 bg-white px-3.5 py-1.5 text-center text-[13.5px] font-semibold text-slate-900 shadow-sm">
+                {formatMonthLabel(monthAnchor)}
+              </span>
+              <button
+                type="button"
+                onClick={() => setMonthAnchor((m) => addMonths(m, 1))}
+                aria-label="Tháng sau"
+                className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-600 shadow-sm hover:border-slate-400 hover:bg-slate-50 hover:text-slate-900"
+              >
+                <CaretRight size={15} weight="bold" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setMonthAnchor(today.slice(0, 7))}
+                className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm hover:border-slate-400 hover:bg-slate-50 hover:text-slate-900"
+              >
+                Tháng này
+              </button>
+            </>
+          )}
         </div>
 
-        <ActionMenu
-          label="Sao chép..."
-          items={[
-            { key: 'week', label: 'Sao chép tuần trước', onClick: () => void handleCopy('week') },
-            { key: 'month', label: 'Sao chép tháng trước', onClick: () => void handleCopy('month') },
-          ]}
-        />
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant={bulkMode ? 'primary' : 'secondary'}
+            className="px-3 py-1.5 text-xs"
+            onClick={() => {
+              setBulkMode((b) => !b);
+              selection.clear();
+            }}
+          >
+            <CheckSquare size={14} weight="bold" aria-hidden="true" />
+            {bulkMode ? 'Thoát chọn nhiều ngày' : 'Chọn nhiều ngày'}
+          </Button>
+          {view === 'week' ? (
+            <Button type="button" variant="secondary" className="px-3 py-1.5 text-xs" onClick={() => void handleCopyWeek()}>
+              Sao chép tuần trước
+            </Button>
+          ) : (
+            <Button type="button" variant="secondary" className="px-3 py-1.5 text-xs" onClick={() => void handleCopyMonth(monthAnchor)}>
+              Sao chép tháng trước
+            </Button>
+          )}
+        </div>
       </div>
 
       {toast && (
@@ -179,63 +279,138 @@ export function MyWorkSchedulePage() {
         />
       )}
 
-      {!loading && !error && (
-        <div className="grid flex-1 grid-cols-7 gap-2.5 overflow-y-auto scroll-hover">
-          {days.map((day, index) => {
-            const dayItems = itemsByDay.get(day) ?? [];
-            const isToday = day === today;
-            return (
-              <div
-                key={day}
-                className={`flex flex-col rounded-lg border bg-white ${isToday ? 'border-blue-400 ring-1 ring-blue-400' : 'border-slate-200'}`}
-              >
-                <div className="border-b border-slate-100 px-2.5 py-2 text-center">
-                  <div className={`text-[10.5px] font-bold uppercase tracking-wide ${isToday ? 'text-blue-600' : 'text-slate-400'}`}>
-                    {isToday ? 'Hôm nay' : WEEKDAY_LABELS[index]}
-                  </div>
-                  <div className={`text-[15px] font-bold ${isToday ? 'text-blue-600' : 'text-slate-900'}`}>{formatDDMM(day)}</div>
-                </div>
-                <div className="flex flex-1 flex-col gap-1.5 p-2">
-                  <label className="flex items-center justify-center gap-1.5 pb-0.5 text-[11px] text-slate-400">
-                    <input type="checkbox" checked={selection.isSelected(day)} onChange={() => selection.toggle(day)} className="h-3.5 w-3.5" />
-                    Chọn ngày
-                  </label>
-                  {dayItems.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center gap-1.5 rounded-md border-l-[3px] px-2 py-1.5 text-[11.5px] font-bold text-slate-900"
-                      style={{ borderLeftColor: WORK_SHIFT_COLOR_HEX[item.workShiftColor], background: `color-mix(in srgb, ${WORK_SHIFT_COLOR_HEX[item.workShiftColor]} 12%, white)` }}
-                    >
-                      {!item.canEdit && <Lock size={10} weight="bold" className="flex-shrink-0 opacity-60" aria-hidden="true" />}
-                      <span className="min-w-0 flex-1 truncate">
-                        {item.workShiftName}
-                        <span className="block text-[10px] font-medium text-slate-500">
-                          {item.startTime}–{item.endTime}
-                        </span>
-                      </span>
-                      {item.canEdit && (
-                        <button
-                          type="button"
-                          aria-label="Xoá ca"
-                          onClick={() => deleteMutation.mutate({ id: item.id, version: item.version })}
-                          className="flex-shrink-0 rounded p-0.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
-                        >
-                          <XIcon size={11} weight="bold" />
-                        </button>
-                      )}
+      {!loading && !error && view === 'week' && (
+        <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-slate-200 bg-white p-4 shadow-sm scroll-hover">
+          <div className="grid grid-cols-7 items-start gap-3">
+            {days.map((day, index) => {
+              const dayItems = itemsByDay.get(day) ?? [];
+              const isToday = day === today;
+              const isWeekend = index >= 5;
+              return (
+                <div
+                  key={day}
+                  className={`flex flex-col overflow-hidden rounded-lg border transition-shadow hover:shadow-md ${
+                    isToday ? 'border-blue-500 shadow-[0_0_0_3px_rgba(37,99,235,0.12)]' : 'border-slate-200'
+                  }`}
+                >
+                  <div className={`px-2.5 py-2.5 text-center ${isToday ? 'bg-blue-600' : isWeekend ? 'bg-slate-100' : 'bg-slate-50'}`}>
+                    <div className={`text-[10.5px] font-bold uppercase tracking-wide ${isToday ? 'text-blue-100' : 'text-slate-400'}`}>
+                      {isToday ? 'Hôm nay' : WEEKDAY_LABELS[index]}
                     </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => setPickerFor([day])}
-                    className="mt-auto rounded-md border border-dashed border-blue-400 bg-blue-50 px-2 py-1.5 text-[11px] font-bold text-blue-600 hover:bg-blue-100"
-                  >
-                    + Đăng ký ca
-                  </button>
+                    <div className={`text-[16px] font-extrabold ${isToday ? 'text-white' : 'text-slate-900'}`}>{formatDDMM(day)}</div>
+                  </div>
+                  <div className="flex flex-col gap-1.5 bg-white p-2">
+                    {bulkMode && (
+                      <label className="flex items-center justify-center gap-1.5 pb-0.5 text-[11px] text-slate-400">
+                        <input type="checkbox" checked={selection.isSelected(day)} onChange={() => selection.toggle(day)} className="h-3.5 w-3.5" />
+                        Chọn ngày
+                      </label>
+                    )}
+                    {dayItems.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center gap-1.5 rounded-md border-l-[3px] px-2 py-1.5 text-[11.5px] font-bold text-slate-900"
+                        style={{ borderLeftColor: WORK_SHIFT_COLOR_HEX[item.workShiftColor], background: `color-mix(in srgb, ${WORK_SHIFT_COLOR_HEX[item.workShiftColor]} 12%, white)` }}
+                      >
+                        {!item.canEdit && <Lock size={10} weight="bold" className="flex-shrink-0 opacity-60" aria-hidden="true" />}
+                        <span className="min-w-0 flex-1 truncate">
+                          {item.workShiftName}
+                          <span className="block text-[10px] font-medium text-slate-500">
+                            {item.startTime}–{item.endTime}
+                          </span>
+                        </span>
+                        {item.canEdit && (
+                          <button
+                            type="button"
+                            aria-label="Xoá ca"
+                            onClick={() => deleteMutation.mutate({ id: item.id, version: item.version })}
+                            className="flex-shrink-0 rounded p-0.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                          >
+                            <XIcon size={11} weight="bold" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    {!bulkMode && (
+                      <Button type="button" variant="add" className="w-full py-1.5 text-[11px]" onClick={() => setPickerFor([day])}>
+                        {dayItems.length > 0 ? '+ Thêm ca khác' : '+ Đăng ký ca'}
+                      </Button>
+                    )}
+                  </div>
                 </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {!loading && !error && view === 'month' && (
+        <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-slate-200 bg-white p-4 shadow-sm scroll-hover">
+          <div className="grid grid-cols-7 gap-2 pb-2 text-center text-[11px] font-bold uppercase tracking-wide text-slate-400">
+            {WEEKDAY_LABELS.map((label, i) => (
+              <div key={label} className={i >= 5 ? 'text-slate-300' : undefined}>
+                {label}
               </div>
-            );
-          })}
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-2">
+            {monthGridDays.map(({ date, inMonth }) => {
+              const dayItems = itemsByDay.get(date) ?? [];
+              const isToday = date === today;
+              const selected = bulkMode && selection.isSelected(date);
+              return (
+                <button
+                  type="button"
+                  key={date}
+                  disabled={bulkMode && !inMonth}
+                  onClick={() => {
+                    if (bulkMode) {
+                      selection.toggle(date);
+                      return;
+                    }
+                    setWeekStart(getWeekStart(date));
+                    setView('week');
+                  }}
+                  className={`relative flex min-h-16 flex-col items-start rounded-lg border p-2 text-left text-[13px] font-bold transition-shadow ${
+                    !inMonth
+                      ? 'border-slate-100 bg-slate-50 text-slate-300'
+                      : selected
+                        ? 'border-blue-500 bg-blue-50 text-blue-700 ring-2 ring-blue-100'
+                        : isToday
+                          ? 'border-blue-500 bg-blue-600 text-white shadow-[0_0_0_3px_rgba(37,99,235,0.12)]'
+                          : 'border-slate-200 bg-white text-slate-900 hover:border-slate-300 hover:shadow-md'
+                  }`}
+                >
+                  {bulkMode && inMonth && (
+                    <input
+                      type="checkbox"
+                      checked={selected}
+                      readOnly
+                      className="absolute right-1.5 top-1.5 h-3.5 w-3.5"
+                      aria-label={`Chọn ngày ${date}`}
+                    />
+                  )}
+                  <span>{Number(date.slice(8, 10))}</span>
+                  {dayItems.length > 0 && (
+                    <span className="mt-1.5 flex flex-wrap gap-1">
+                      {dayItems.map((item) => (
+                        <span
+                          key={item.id}
+                          className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${isToday ? 'ring-1 ring-white/60' : ''}`}
+                          style={{ background: WORK_SHIFT_COLOR_HEX[item.workShiftColor] }}
+                        />
+                      ))}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-3 text-[11.5px] text-slate-400">
+            {bulkMode
+              ? 'Đang ở chế độ chọn nhiều ngày — bấm vào các ngày cần đăng ký, rồi bấm "Áp dụng ca cho các ngày này" ở thanh dưới.'
+              : 'Chấm màu chỉ có/không có ca, không hiện chi tiết giờ. Bấm 1 ngày để xem chi tiết Tuần chứa ngày đó, hoặc bật "Chọn nhiều ngày" để đăng ký ca ngay tại đây.'}
+          </p>
         </div>
       )}
 

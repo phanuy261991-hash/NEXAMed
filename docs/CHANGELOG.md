@@ -4,6 +4,19 @@
 
 ## 2026-09-02
 
+### Verify Playwright #102, làm nốt "Tháng" (Month view), sự cố seed thiếu permission, badge "Có ca hôm nay" ở Tiếp nhận — xem `docs/DECISIONS.md` #103
+
+Quay lại việc treo đầu phiên (`docs/CURRENT.md` mục "Đang chờ"): verify Playwright cho "Ca làm việc" Giai đoạn 2.
+
+- **Phát hiện + sửa 2 vấn đề thật**: (1) nút "Chọn nhiều ngày" của mockup không tồn tại — checkbox hiện luôn thay vì ẩn theo chế độ; (2) permission `work_shift_assignment.*` chưa từng seed vào DB dev (bug vận hành lặp lại #087/#089) — rebuild `packages/core` + `db:seed` + sync role_permission, xác nhận qua API.
+- **Làm "Tháng" (Month view)** — hoãn ở #102, giờ làm theo yêu cầu trực tiếp, mở rộng hơn mockup gốc: chọn nhiều ngày + đăng ký ca + "Sao chép tháng trước" ngay trong Tháng (không cần quay về Tuần).
+- Bỏ dropdown `ActionMenu` cho "Sao chép..." — mỗi view giờ chỉ 1 hành động sao chép, hiện thẳng nút.
+- Redesign khung Tuần/Tháng qua 2 vòng phản hồi trực tiếp: bọc thẻ trắng bo góc + đổ bóng, "Hôm nay" tô nền xanh đậm, cuối tuần tông xám riêng, nút thêm ca dùng `Button variant="add"` thay viết tay.
+- Bổ sung 2 chỗ mockup có nhưng code #102 bỏ sót: bộ lọc Khoa + tìm bác sĩ ở "Lịch làm việc nhân viên"; dòng "Chưa đăng ký ca — theo giờ chung" ở lưới Lịch hẹn.
+- **Quyết định kiến trúc**: Tiếp nhận **không lọc, không chặn cứng** bác sĩ theo "có ca hôm nay" — chỉ **đánh dấu** badge + **xác nhận nhẹ** (không chặn) khi công tắc "Chặn đặt lịch ngoài ca" đang bật, đúng nhất quán với quy tắc đã chốt ở lưới Lịch hẹn (#102 điểm 5).
+- Đổi câu mô tả công tắc "Chặn đặt lịch ngoài ca đã đăng ký"; dời trường "Lý do tiếp nhận" lên trên "Chuyển vào hàng đợi".
+- **Đã xác minh**: `pnpm -w typecheck/lint/build` sạch toàn workspace, chunk web không đổi bất thường (476.57 kB), Playwright qua Chrome thật.
+
 ### Xác nhận lại bug CORS #100 đã vá thành công trên máy pilot thật
 
 Chủ dự án build lại + cập nhật đúng máy đã gặp lỗi — đăng nhập bình thường. Hết treo, xem `docs/DECISIONS.md` #100.

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CheckCircle, DotsThreeVertical, Plus, Trash, UserPlus } from '@phosphor-icons/react';
+import { CalendarCheck, CheckCircle, DotsThreeVertical, Plus, Trash, UserPlus } from '@phosphor-icons/react';
 import type { EncounterServiceItemInput, PatientDetail, PatientSummary } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { formatVnd } from '../../shared/format/currency';
@@ -12,7 +12,7 @@ import { Combobox, withLegacyValueOption } from '../../shared/ui/Combobox';
 import { DoctorBreakDialog } from '../../shared/ui/DoctorBreakDialog';
 import { DoctorEndShiftDialog } from '../../shared/ui/DoctorEndShiftDialog';
 import { TimeInput } from '../../shared/ui/TimeInput';
-import { useDoctorsQuery } from '../appointment/appointment.queries';
+import { useDoctorWorkShiftsQuery, useDoctorsQuery, useScheduleConfigQuery } from '../appointment/appointment.queries';
 import { getVietnamTodayDateString, minutesToLabel, vietnamNowMinutes, vnDateTimeToIso } from '../appointment/schedule-grid.utils';
 import {
   useDeferredPaymentEnabledQuery,
@@ -191,6 +191,26 @@ export function ReceptionIntakeForm({
   const todayQueueQuery = useReceptionListQuery(getVietnamTodayDateString());
   // "Tạm nghỉ / Đóng ca" (đặc tả gốc) — badge trạng thái + thao tác hộ trên thẻ bác sĩ điều phối.
   const availabilityQuery = useDoctorAvailabilityTodayQuery();
+  // "Ca làm việc" Giai đoạn 2 — CHỈ đánh dấu (badge) bác sĩ có ca đăng ký hôm nay trên thẻ điều
+  // phối, KHÔNG lọc bớt bác sĩ nào (đã hỏi và chốt trực tiếp với chủ dự án): tính năng đăng ký ca
+  // là tuỳ chọn (opt-in), lọc theo "có ca hôm đó" sẽ khiến danh sách rỗng cho mọi phòng khám không
+  // dùng tính năng này (đa số, đặc biệt quy mô 1-3 bác sĩ, thị trường chính PRD).
+  const doctorWorkShiftsQuery = useDoctorWorkShiftsQuery(getVietnamTodayDateString());
+  const scheduleConfigQuery = useScheduleConfigQuery();
+  const blockBookingOutsideWorkShift = scheduleConfigQuery.data?.blockBookingOutsideWorkShiftEnabled ?? false;
+  /** Bước xác nhận nhẹ — CHỈ khi phòng khám đã bật "Chặn đặt lịch ngoài ca" (họ chủ động muốn
+   * enforce ca), và CHỈ cảnh báo (không chặn cứng): đúng hành vi lưới Lịch hẹn cho trường hợp bác
+   * sĩ chưa đăng ký ca hôm đó (DECISIONS #102 điểm 5 — không giới hạn gì thêm dù công tắc bật) —
+   * chặn cứng ở đây sẽ nghiêm ngặt hơn cả Lịch hẹn, mâu thuẫn, và sập luồng Tiếp nhận cho mọi
+   * phòng khám không dùng tính năng đăng ký ca (mặc định tắt, đa số 1-2 bác sĩ). */
+  const [unregisteredShiftConfirmDoctorId, setUnregisteredShiftConfirmDoctorId] = useState<string | null>(null);
+  function selectDoctor(doctor: { id: string; hasShiftToday: boolean }) {
+    if (blockBookingOutsideWorkShift && !doctor.hasShiftToday) {
+      setUnregisteredShiftConfirmDoctorId(doctor.id);
+      return;
+    }
+    setDoctorId(doctor.id);
+  }
   const availabilityPolicyQuery = useDoctorAvailabilityPolicyQuery();
   const allowReceptionistEndShift = availabilityPolicyQuery.data?.allowReceptionistEndShift ?? false;
   const allowEmergencyEndShift = availabilityPolicyQuery.data?.allowEmergencyEndShift ?? true;
@@ -303,6 +323,7 @@ export function ReceptionIntakeForm({
     roomName: d.currentRoomName ?? null,
     waitingCount: waitingCountByDoctor.get(d.id) ?? 0,
     availability: availabilityByDoctor.get(d.id) ?? null,
+    hasShiftToday: (doctorWorkShiftsQuery.data?.byDoctorId[d.id]?.length ?? 0) > 0,
   }));
   // Điều phối theo Khoa ("Hàng đợi ảo", #064) — hiện thẻ "(chung)" cho MỌI Khoa active, kể cả Khoa
   // chưa có bác sĩ nào gán vào (lễ tân vẫn cần đẩy bệnh nhân vào hàng chờ của Khoa mới tạo trước
@@ -651,6 +672,23 @@ export function ReceptionIntakeForm({
           </div>
         </div>
 
+        <div className="mt-4">
+          <label htmlFor="intake-reason" className={labelClassName}>
+            Lý do tiếp nhận
+          </label>
+          <textarea
+            id="intake-reason"
+            rows={2}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Không bắt buộc"
+            className={inputClassName}
+          />
+          {mode === 'checkin' && checkin?.reason && (
+            <p className="mt-1 text-xs text-slate-400">Đã tự điền từ lý do khám ghi lúc đặt lịch — vẫn sửa được.</p>
+          )}
+        </div>
+
         {/*
          * "Chuyển vào hàng đợi" (trước đây "Điều phối") — danh sách thẻ bác sĩ kèm "Đang chờ: N"
          * thời gian thực + thẻ "Khoa X (chung)" viền nét đứt, đúng
@@ -723,7 +761,7 @@ export function ReceptionIntakeForm({
                     <div key={doctor.id} className="relative">
                       <button
                         type="button"
-                        onClick={() => setDoctorId(doctor.id)}
+                        onClick={() => selectDoctor(doctor)}
                         className={`flex w-full items-center justify-between gap-3 rounded-lg border-2 px-3.5 py-2.5 text-left shadow-sm transition-colors ${
                           availabilityStatus === 'BREAK'
                             ? 'border-amber-300 bg-amber-50'
@@ -745,6 +783,18 @@ export function ReceptionIntakeForm({
                             <div className={`truncate text-xs ${active && availabilityStatus === 'ACTIVE' ? 'text-white/80' : 'text-slate-500'}`}>
                               {[doctor.departmentName, doctor.roomName].filter(Boolean).join(' · ') || '—'}
                             </div>
+                            {doctor.hasShiftToday && (
+                              <div
+                                className={`mt-1 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10.5px] font-bold ${
+                                  active && availabilityStatus === 'ACTIVE'
+                                    ? 'border-white/40 bg-white/10 text-white'
+                                    : 'border-brand-teal/40 bg-brand-teal-tint text-brand-teal'
+                                }`}
+                              >
+                                <CalendarCheck size={11} weight="bold" aria-hidden="true" />
+                                Có ca hôm nay
+                              </div>
+                            )}
                             {doctor.availability && availabilityStatus !== 'ACTIVE' && (
                               <div
                                 className={`mt-1 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10.5px] font-bold ${
@@ -862,23 +912,6 @@ export function ReceptionIntakeForm({
           </div>
           {mode === 'checkin' && routingMode === 'doctor' && (
             <p className="mt-1.5 text-xs text-slate-400">Mặc định theo bác sĩ đã đặt lịch ({checkin?.doctorName}) — vẫn chọn được bác sĩ khác.</p>
-          )}
-        </div>
-
-        <div className="mt-4">
-          <label htmlFor="intake-reason" className={labelClassName}>
-            Lý do tiếp nhận
-          </label>
-          <textarea
-            id="intake-reason"
-            rows={2}
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder="Không bắt buộc"
-            className={inputClassName}
-          />
-          {mode === 'checkin' && checkin?.reason && (
-            <p className="mt-1 text-xs text-slate-400">Đã tự điền từ lý do khám ghi lúc đặt lịch — vẫn sửa được.</p>
           )}
         </div>
       </div>
@@ -1124,6 +1157,34 @@ export function ReceptionIntakeForm({
       )}
       {availabilityDialog?.kind === 'end' && (
         <DoctorEndShiftDialog doctorId={availabilityDialog.doctorId} onDone={() => setAvailabilityDialog(null)} onClose={() => setAvailabilityDialog(null)} />
+      )}
+
+      {unregisteredShiftConfirmDoctorId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
+          <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
+            <p className="text-sm font-semibold text-slate-900">
+              {doctorCards.find((d) => d.id === unregisteredShiftConfirmDoctorId)?.fullName ?? 'Bác sĩ này'} chưa đăng ký ca làm việc hôm
+              nay
+            </p>
+            <p className="mt-1.5 text-xs text-slate-500">
+              Vẫn chọn được nếu bác sĩ thực sự đang có mặt — chỉ là lời nhắc, không chặn thao tác của bạn.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button type="button" variant="secondary" onClick={() => setUnregisteredShiftConfirmDoctorId(null)}>
+                Huỷ
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  setDoctorId(unregisteredShiftConfirmDoctorId);
+                  setUnregisteredShiftConfirmDoctorId(null);
+                }}
+              >
+                Vẫn chọn
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

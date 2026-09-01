@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { CaretLeft, CaretRight, X as XIcon } from '@phosphor-icons/react';
+import { CaretLeft, CaretRight, MagnifyingGlass, X as XIcon } from '@phosphor-icons/react';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { useUserAccountsQuery } from '../user-account/user-account.queries';
+import { useDepartmentOptionsQuery } from '../department/department.queries';
 import { useWorkShiftsQuery } from '../clinic/clinic.queries';
 import { WORK_SHIFT_COLOR_HEX } from '../clinic/WorkShiftFormModal';
 import { WorkShiftPickerModal } from './WorkShiftPickerModal';
@@ -59,14 +60,22 @@ export function StaffWorkSchedulePage() {
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
   const [pickerTarget, setPickerTarget] = useState<{ userId: string; date: string } | null>(null);
+  const [departmentFilter, setDepartmentFilter] = useState('');
+  const [search, setSearch] = useState('');
 
   const usersQuery = useUserAccountsQuery();
+  const departmentsQuery = useDepartmentOptionsQuery();
   const shiftsQuery = useWorkShiftsQuery();
   const listQuery = useWorkShiftAssignmentsQuery(days[0]!, days[6]!);
   const createMutation = useCreateWorkShiftAssignmentMutation();
   const deleteMutation = useDeleteWorkShiftAssignmentMutation();
 
-  const staff = (usersQuery.data?.items ?? []).filter((u) => u.isActive && !u.roleNames.includes('system_admin'));
+  const departments = departmentsQuery.data?.items ?? [];
+  const trimmedSearch = search.trim().toLowerCase();
+  const staff = (usersQuery.data?.items ?? [])
+    .filter((u) => u.isActive && !u.roleNames.includes('system_admin'))
+    .filter((u) => !departmentFilter || u.departmentId === departmentFilter)
+    .filter((u) => !trimmedSearch || (u.displayName ?? u.fullName).toLowerCase().includes(trimmedSearch));
   const workShifts = shiftsQuery.data?.items ?? [];
   const items = listQuery.data?.items ?? [];
   const itemsByUserDay = new Map<string, typeof items>();
@@ -92,33 +101,57 @@ export function StaffWorkSchedulePage() {
     <div className="flex h-full flex-col gap-3 p-3">
       <h1 className="sr-only">Lịch làm việc nhân viên</h1>
 
-      <div className="flex flex-shrink-0 flex-wrap items-center gap-1.5 px-1">
-        <button
-          type="button"
-          onClick={() => setWeekStart((w) => addDays(w, -7))}
-          aria-label="Tuần trước"
-          className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-300 text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+      <div className="flex flex-shrink-0 flex-wrap items-center gap-2.5 px-1">
+        <select
+          value={departmentFilter}
+          onChange={(e) => setDepartmentFilter(e.target.value)}
+          className="rounded-md border border-slate-300 px-2.5 py-1.5 text-[13px] font-semibold text-slate-700"
         >
-          <CaretLeft size={15} weight="bold" />
-        </button>
-        <span className="min-w-[168px] rounded-md border border-slate-300 px-3.5 py-1.5 text-center text-[13.5px] font-semibold text-slate-900">
-          {formatDDMM(days[0]!)} – {formatDDMM(days[6]!)}
-        </span>
-        <button
-          type="button"
-          onClick={() => setWeekStart((w) => addDays(w, 7))}
-          aria-label="Tuần sau"
-          className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-300 text-slate-500 hover:bg-slate-50 hover:text-slate-900"
-        >
-          <CaretRight size={15} weight="bold" />
-        </button>
-        <button
-          type="button"
-          onClick={() => setWeekStart(getWeekStart(today))}
-          className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-50 hover:text-slate-900"
-        >
-          Tuần này
-        </button>
+          <option value="">Tất cả Khoa</option>
+          {departments.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.name}
+            </option>
+          ))}
+        </select>
+        <div className="relative">
+          <MagnifyingGlass size={14} weight="bold" className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Tìm bác sĩ..."
+            className="min-w-[200px] rounded-md border border-slate-300 py-1.5 pl-8 pr-2.5 text-[13px] font-medium text-slate-900 placeholder:text-slate-400"
+          />
+        </div>
+        <div className="ml-auto flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setWeekStart((w) => addDays(w, -7))}
+            aria-label="Tuần trước"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-300 text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+          >
+            <CaretLeft size={15} weight="bold" />
+          </button>
+          <span className="min-w-[168px] rounded-md border border-slate-300 px-3.5 py-1.5 text-center text-[13.5px] font-semibold text-slate-900">
+            {formatDDMM(days[0]!)} – {formatDDMM(days[6]!)}
+          </span>
+          <button
+            type="button"
+            onClick={() => setWeekStart((w) => addDays(w, 7))}
+            aria-label="Tuần sau"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-300 text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+          >
+            <CaretRight size={15} weight="bold" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setWeekStart(getWeekStart(today))}
+            className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+          >
+            Tuần này
+          </button>
+        </div>
       </div>
 
       {loading && (

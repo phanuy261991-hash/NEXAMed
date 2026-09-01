@@ -155,9 +155,8 @@ export function AppointmentConfigPane() {
           <div>
             <p className="text-[14.5px] font-bold text-slate-900">Chặn đặt lịch ngoài ca đã đăng ký</p>
             <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
-              Bật để chỉ cho đặt lịch hẹn cho bác sĩ vào đúng khung giờ họ đã đăng ký ca hôm đó (mục &quot;Lịch làm việc&quot;). Bác
-              sĩ chưa đăng ký ca cho ngày cụ thể đó thì không bị giới hạn gì thêm. Tắt (mặc định) — giữ nguyên hành vi hiện tại,
-              chỉ theo giờ làm việc chung phòng khám.
+              Bật: Chỉ cho phép đặt lịch theo ca làm việc bác sĩ đã đăng ký. Nếu chưa đăng ký ca, áp dụng giờ làm việc chung của
+              phòng khám. Tắt (mặc định): Áp dụng giờ làm việc chung của phòng khám.
             </p>
           </div>
           <label className="relative mt-0.5 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center">
