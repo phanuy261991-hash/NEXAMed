@@ -1,37 +1,33 @@
 ﻿<#
 .SYNOPSIS
-  Build 3 ảnh Docker NEXAMed (api/web/backup) từ source và xuất ra file .tar.gz — CHẠY Ở MÁY
-  DEV/CI, KHÔNG chạy ở máy khách (docs/DECISIONS.md #098).
+  Build 3 ảnh Docker NEXAMed (api/web/backup) và gom sẵn TOÀN BỘ file cần gửi máy khách vào 1
+  thư mục duy nhất — CHẠY Ở MÁY DEV/CI, KHÔNG chạy ở máy khách (docs/DECISIONS.md #098).
 
 .DESCRIPTION
-  Máy khách không bao giờ nhận source code/`.git`/`docs` nội bộ — chỉ nhận ảnh Docker đã build
-  sẵn (file .tar.gz) + thư mục deploy/on-prem/ đã lọc (docker-compose.yml, .env.example,
-  config.example.json, install.ps1, install.sh, images/*.tar.gz). Script này build ở máy có
-  source đầy đủ (dev/CI), KHÔNG chạy trên máy khách.
-
-  Sau khi chạy xong, chép các file .tar.gz sinh ra trong -OutputDir + 5 file kể trên (KHÔNG chép
-  gì khác) sang máy khách, rồi chạy install.ps1/install.sh tại đó (tự động `docker load`).
+  Sau khi chạy xong, thư mục -PackageDir (mặc định deploy/on-prem/package) chứa ĐẦY ĐỦ và CHỈ
+  đúng những gì máy khách cần — không có source code/`.git`/`docs` nội bộ nào trong đó. Chỉ cần
+  chép NGUYÊN thư mục này (zip lại hoặc copy cả thư mục) sang máy khách, không cần tự nhặt file.
 
 .PARAMETER Version
-  Bắt buộc — nhãn phiên bản gắn cho cả 3 ảnh, ví dụ "2026.09.01" (CalVer thủ công, thêm hậu tố
-  ".2" nếu build lại nhiều lần cùng ngày). Không dùng version trong package.json gốc ("0.0.0",
-  không phục vụ mục đích này).
+  Bắt buộc — nhãn phiên bản gắn cho cả 3 ảnh, ví dụ "2026.09.01" (ngày hôm nay, thêm hậu tố ".2"
+  nếu build lại nhiều lần cùng ngày).
 
-.PARAMETER OutputDir
-  Thư mục chứa file .tar.gz sinh ra. Mặc định deploy/on-prem/images (đã gitignore/dockerignore).
+.PARAMETER PackageDir
+  Thư mục gói cài đặt hoàn chỉnh, sẵn sàng chép sang máy khách. Mặc định deploy/on-prem/package
+  (đã gitignore/dockerignore).
 
 .PARAMETER Platform
   Kiến trúc CPU đích, mặc định linux/amd64 (đúng PC Windows/đa số NAS x86_64). Chỉ đổi sang
-  linux/arm64 khi có máy khách NAS ARM đã xác nhận đủ điều kiện (RAM ≥ 4GB — xem docs/Deploy.md
-  Phần 0.2; case Synology DS423/RTD1619B từng gặp chỉ có 2GB RAM, chưa đạt ngưỡng này).
+  linux/arm64 khi có máy khách NAS ARM đã xác nhận đủ điều kiện (RAM ≥ 4GB).
 
 .EXAMPLE
   .\build-and-export.ps1 -Version 2026.09.01
+  Xong thì chép nguyên thư mục deploy\on-prem\package sang máy khách.
 #>
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)][string]$Version,
-    [string]$OutputDir = "$PSScriptRoot\images",
+    [string]$PackageDir = "$PSScriptRoot\package",
     [string]$Platform = 'linux/amd64'
 )
 
@@ -51,7 +47,8 @@ Write-Step "Kiểm tra Docker"
 if (-not $?) { Write-Error "Không tìm thấy Docker đang chạy. Mở Docker Desktop rồi chạy lại." }
 Write-Host "OK — repo root: $repoRoot"
 
-New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
+$imagesDir = "$PackageDir\images"
+New-Item -ItemType Directory -Force -Path $imagesDir | Out-Null
 
 $images = @(
     @{ Name = 'nexamed-api'; Dockerfile = 'apps\api\Dockerfile' }
@@ -74,9 +71,9 @@ foreach ($img in $images) {
 
 foreach ($img in $images) {
     $tag = "$($img.Name):$Version"
-    $tarPath = "$OutputDir\$($img.Name)-$Version.tar"
+    $tarPath = "$imagesDir\$($img.Name)-$Version.tar"
     $gzPath = "$tarPath.gz"
-    Write-Step "Xuất $tag -> $gzPath"
+    Write-Step "Xuất $tag -> package\images\$($img.Name)-$Version.tar.gz"
 
     & docker save -o $tarPath $tag
     if (-not $?) { Write-Error "docker save thất bại: $tag" }
@@ -95,15 +92,19 @@ foreach ($img in $images) {
     Write-Host "$($img.Name)-$Version.tar.gz — $sizeMb MB"
 }
 
-Write-Step "Hoàn tất"
-Write-Host "File ảnh: $OutputDir\nexamed-{api,web,backup}-$Version.tar.gz" -ForegroundColor Green
+Write-Step "Gom file cài đặt vào $PackageDir"
+Copy-Item "$PSScriptRoot\docker-compose.yml" $PackageDir -Force
+Copy-Item "$PSScriptRoot\.env.example" $PackageDir -Force
+Copy-Item "$PSScriptRoot\config.example.json" $PackageDir -Force
+Copy-Item "$PSScriptRoot\install.ps1" $PackageDir -Force
+Copy-Item "$PSScriptRoot\install.sh" $PackageDir -Force
+Write-Host "Đã copy: docker-compose.yml, .env.example, config.example.json, install.ps1, install.sh"
+
+Write-Step "HOÀN TẤT"
+Write-Host "Thư mục sẵn sàng chép sang máy khách: $PackageDir" -ForegroundColor Green
+Write-Host "(chỉ chứa file cần thiết — KHÔNG có source code/.git/docs nội bộ nào)" -ForegroundColor Green
 Write-Host ""
-Write-Host "Chép sang máy khách (USB/mạng nội bộ) CHỈ các file sau — KHÔNG chép source/.git/docs:" -ForegroundColor Yellow
-Write-Host "  - deploy\on-prem\docker-compose.yml"
-Write-Host "  - deploy\on-prem\.env.example"
-Write-Host "  - deploy\on-prem\config.example.json"
-Write-Host "  - deploy\on-prem\install.ps1"
-Write-Host "  - deploy\on-prem\install.sh"
-Write-Host "  - $OutputDir\*.tar.gz  (đặt vào thư mục images\ cạnh docker-compose.yml ở máy khách)"
-Write-Host ""
-Write-Host "Tại máy khách, chạy: .\install.ps1 -Version $Version  (hoặc ./install.sh --version $Version)"
+Write-Host "Bước tiếp theo:" -ForegroundColor Yellow
+Write-Host "  1. Nén thư mục $PackageDir thành 1 file .zip (chuột phải -> Send to -> Compressed folder), hoặc copy nguyên thư mục."
+Write-Host "  2. Chép file .zip (hoặc thư mục) sang máy khách qua USB/mạng nội bộ."
+Write-Host "  3. Tại máy khách: giải nén, mở PowerShell trong thư mục đó, chạy .\install.ps1"
