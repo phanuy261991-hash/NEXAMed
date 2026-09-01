@@ -238,6 +238,8 @@ cd C:\Projects\NEXAMed\deploy\on-prem
 
 **Bước 1.** Giải nén file `.zip` mới **vào ĐÚNG thư mục đã cài lần trước** (nơi đang có sẵn `.env`/`config.json`), cho phép ghi đè khi được hỏi. **An toàn** — file mới KHÔNG đụng tới `.env`/`config.json` thật (2 file này không nằm trong gói, chỉ có `.env.example`/`config.example.json` làm mẫu), nên mật khẩu/`tenantId` hiện tại giữ nguyên.
 
+**Từ `docs/DECISIONS.md` #100**: trước đây `install.ps1`/`install.sh` vẫn hỏi lại "Địa chỉ IP LAN của máy này" và ghi đè `WEB_ORIGIN`/`config.json.apiBaseUrl` ở MỌI lần chạy (kể cả lần cập nhật này) — nếu máy đó từng phải đổi cổng thủ công để né xung đột cổng 80 (mục "Xử lý sự cố thường gặp" ngay dưới), lần cập nhật sẽ ghi đè mất giá trị đã sửa, gây lỗi CORS dù mọi container vẫn `healthy`. Đã sửa: **giữ nguyên `WEB_ORIGIN`/`apiBaseUrl` ở mọi lần chạy sau lần cài đầu**, chỉ đổi khi truyền rõ `-WebOrigin`/`--web-origin`. Không cần làm gì thêm nếu dùng bản cài từ commit chứa #100 trở đi.
+
 **Bước 2.** (Khuyên làm trước khi cập nhật, đề phòng) — sao lưu tay 1 bản trước khi đổi:
 ```powershell
 docker compose exec postgres pg_dump -U nexamed -d nexamed -Fc -f /tmp/truoc-cap-nhat.dump

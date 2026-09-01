@@ -14,7 +14,9 @@
     5. Hướng dẫn/tạo phòng khám (tenant) + tài khoản quản trị đầu tiên.
 
   Chạy lại được nhiều lần an toàn (idempotent) — không tạo lại tenant nếu đã có, không sinh lại
-  bí mật nếu .env đã tồn tại. Xem docs/Deploy.md Phần 2 để biết chi tiết kiến trúc/ràng buộc.
+  bí mật nếu .env đã tồn tại, KHÔNG hỏi lại/ghi đè WEB_ORIGIN + config.json.apiBaseUrl nếu đã có
+  sẵn (trừ khi truyền rõ -WebOrigin — xem docs/DECISIONS.md #100, sửa bug ghi đè mất cấu hình cổng
+  đã chỉnh tay để né xung đột cổng 80). Xem docs/Deploy.md Phần 2 để biết chi tiết kiến trúc/ràng buộc.
 
 .PARAMETER Version
   Phiên bản ảnh cần nạp, ví dụ "2026.09.01" — phải khớp đúng tên file trong images/. Bỏ qua thì
@@ -31,8 +33,10 @@
   Họ tên hiển thị của tài khoản quản trị đầu tiên.
 
 .PARAMETER WebOrigin
-  Địa chỉ trình duyệt nhân viên sẽ truy cập, ví dụ http://192.168.1.50 hoặc http://localhost nếu
-  chỉ dùng ngay trên máy này. Mặc định http://localhost.
+  Địa chỉ trình duyệt nhân viên sẽ truy cập, ví dụ http://192.168.1.50 hoặc http://localhost:8080
+  nếu cổng 80 bị chương trình khác chiếm. Chỉ hỏi trực tiếp ở lần cài ĐẦU TIÊN (mặc định
+  http://localhost) — các lần chạy lại sau giữ nguyên giá trị đã cấu hình trừ khi truyền rõ tham số
+  này (dùng khi CHỦ ĐỘNG muốn đổi địa chỉ/cổng).
 
 .PARAMETER SkipTenantCreation
   Chỉ dựng stack, không hỏi/tạo phòng khám — dùng khi chạy lại script sau lần cài đầu (tenant đã
@@ -101,7 +105,8 @@ if (-not $?) {
 
 # ---- 2. .env ----
 Write-Step "Cấu hình .env"
-if (-not (Test-Path "$here\.env")) {
+$envIsNew = -not (Test-Path "$here\.env")
+if ($envIsNew) {
     Copy-Item "$here\.env.example" "$here\.env"
     (Get-Content "$here\.env") `
         -replace 'POSTGRES_PASSWORD=.*', "POSTGRES_PASSWORD=$(New-RandomSecret 24)" `
@@ -114,22 +119,40 @@ if (-not (Test-Path "$here\.env")) {
     Write-Host ".env đã tồn tại — giữ nguyên (không sinh lại bí mật)."
 }
 
-if (-not $WebOrigin) {
+# WEB_ORIGIN CHỈ hỏi/ghi khi cài lần đầu (.env mới tạo) hoặc khi người dùng CHỦ ĐỘNG truyền
+# -WebOrigin — các lần chạy lại sau (cập nhật phiên bản) PHẢI giữ nguyên giá trị đang chạy thật.
+# BUG THẬT phát hiện lúc vận hành pilot (docs/DECISIONS.md #100): trước đây bước này luôn hỏi lại
+# và ghi đè cả WEB_ORIGIN lẫn config.json.apiBaseUrl mỗi lần chạy — nếu máy đó từng phải đổi cổng
+# thủ công để né xung đột cổng 80 (ví dụ IIS có sẵn trên Windows, xem mục "Xử lý sự cố thường gặp"),
+# lần chạy cập nhật tiếp theo sẽ ghi đè mất giá trị đã sửa, khiến trình duyệt gọi nhầm sang cổng 80
+# (IIS trả lời thay vì container web) → lỗi CORS dù mọi container vẫn "healthy" bình thường.
+if ($WebOrigin) {
+    (Get-Content "$here\.env") -replace 'WEB_ORIGIN=.*', "WEB_ORIGIN=$WebOrigin" | Set-Content "$here\.env"
+    Write-Host "WEB_ORIGIN = $WebOrigin (theo tham số -WebOrigin truyền vào)"
+} elseif ($envIsNew) {
     $answer = Read-Host "Địa chỉ IP LAN của máy này để nhân viên truy cập qua mạng nội bộ (Enter để chỉ dùng http://localhost ngay trên máy này)"
-    if ($answer) { $WebOrigin = "http://$answer" } else { $WebOrigin = 'http://localhost' }
+    $WebOrigin = if ($answer) { "http://$answer" } else { 'http://localhost' }
+    (Get-Content "$here\.env") -replace 'WEB_ORIGIN=.*', "WEB_ORIGIN=$WebOrigin" | Set-Content "$here\.env"
+    Write-Host "WEB_ORIGIN = $WebOrigin"
+} else {
+    $WebOrigin = ((Get-Content "$here\.env" | Where-Object { $_ -match '^WEB_ORIGIN=' }) -replace '^WEB_ORIGIN=', '').Trim()
+    Write-Host "WEB_ORIGIN giữ nguyên giá trị đã cấu hình trước đó: $WebOrigin (truyền -WebOrigin nếu muốn đổi)."
 }
-(Get-Content "$here\.env") -replace 'WEB_ORIGIN=.*', "WEB_ORIGIN=$WebOrigin" | Set-Content "$here\.env"
-Write-Host "WEB_ORIGIN = $WebOrigin"
 
 # ---- 3. config.json ----
 Write-Step "Cấu hình config.json (web)"
-if (-not (Test-Path "$here\config.json")) {
+$configIsNew = -not (Test-Path "$here\config.json")
+if ($configIsNew) {
     Copy-Item "$here\config.example.json" "$here\config.json"
 }
-$configJson = Get-Content "$here\config.json" -Raw | ConvertFrom-Json
-$configJson.apiBaseUrl = $WebOrigin
-$configJson | ConvertTo-Json | Set-Content "$here\config.json"
-Write-Host "apiBaseUrl trong config.json = $WebOrigin"
+if ($configIsNew -or $PSBoundParameters.ContainsKey('WebOrigin')) {
+    $configJson = Get-Content "$here\config.json" -Raw | ConvertFrom-Json
+    $configJson.apiBaseUrl = $WebOrigin
+    $configJson | ConvertTo-Json | Set-Content "$here\config.json"
+    Write-Host "apiBaseUrl trong config.json = $WebOrigin"
+} else {
+    Write-Host "config.json đã tồn tại — giữ nguyên apiBaseUrl (truyền -WebOrigin nếu muốn đổi)."
+}
 
 # ---- 4. Nạp ảnh Docker đã build sẵn + khởi động ----
 Write-Step "Nạp ảnh Docker đã build sẵn"

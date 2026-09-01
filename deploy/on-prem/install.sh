@@ -9,6 +9,10 @@
 # Dùng: ./install.sh [--version "2026.09.01"] [--tenant-name "..."] [--admin-username "..."] \
 #                     [--admin-full-name "..."] [--web-origin "http://192.168.1.50"] \
 #                     [--skip-tenant-creation]
+#
+# Idempotent — chạy lại an toàn: không sinh lại bí mật/tạo lại tenant, và (docs/DECISIONS.md #100)
+# KHÔNG hỏi lại/ghi đè WEB_ORIGIN + config.json.apiBaseUrl nếu đã cấu hình từ trước, trừ khi truyền
+# rõ --web-origin.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -51,7 +55,9 @@ echo "OK"
 
 # ---- 2. .env ----
 step "Cấu hình .env"
+ENV_IS_NEW=0
 if [ ! -f "$HERE/.env" ]; then
+  ENV_IS_NEW=1
   cp "$HERE/.env.example" "$HERE/.env"
   sed -i \
     -e "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$(random_secret 24)/" \
@@ -64,28 +70,48 @@ else
   echo ".env đã tồn tại — giữ nguyên (không sinh lại bí mật)."
 fi
 
-WEB_ORIGIN="$WEB_ORIGIN_ARG"
-if [ -z "$WEB_ORIGIN" ]; then
+# WEB_ORIGIN CHỈ hỏi/ghi khi cài lần đầu (.env mới tạo) hoặc khi truyền rõ --web-origin — các lần
+# chạy lại sau (cập nhật phiên bản) PHẢI giữ nguyên giá trị đang chạy thật, nếu không sẽ lệch với
+# apiBaseUrl/cổng đã từng chỉnh tay để né xung đột cổng 80 → lỗi CORS dù container vẫn khoẻ mạnh
+# bình thường (bug thật phát hiện lúc vận hành pilot, docs/DECISIONS.md #100).
+CONFIG_ORIGIN_EXPLICIT=0
+if [ -n "$WEB_ORIGIN_ARG" ]; then
+  WEB_ORIGIN="$WEB_ORIGIN_ARG"
+  CONFIG_ORIGIN_EXPLICIT=1
+  sed -i "s#^WEB_ORIGIN=.*#WEB_ORIGIN=$WEB_ORIGIN#" "$HERE/.env"
+  echo "WEB_ORIGIN = $WEB_ORIGIN (theo --web-origin truyền vào)"
+elif [ "$ENV_IS_NEW" = "1" ]; then
   read -r -p "Địa chỉ IP LAN của máy này (Enter để chỉ dùng http://localhost ngay trên máy này): " ip
   if [ -n "$ip" ]; then WEB_ORIGIN="http://$ip"; else WEB_ORIGIN="http://localhost"; fi
+  sed -i "s#^WEB_ORIGIN=.*#WEB_ORIGIN=$WEB_ORIGIN#" "$HERE/.env"
+  echo "WEB_ORIGIN = $WEB_ORIGIN"
+else
+  WEB_ORIGIN="$(grep '^WEB_ORIGIN=' "$HERE/.env" | head -n1 | cut -d= -f2-)"
+  echo "WEB_ORIGIN giữ nguyên giá trị đã cấu hình trước đó: $WEB_ORIGIN (truyền --web-origin nếu muốn đổi)."
 fi
-sed -i "s#^WEB_ORIGIN=.*#WEB_ORIGIN=$WEB_ORIGIN#" "$HERE/.env"
-echo "WEB_ORIGIN = $WEB_ORIGIN"
 
 # ---- 3. config.json ----
 step "Cấu hình config.json (web)"
-[ -f "$HERE/config.json" ] || cp "$HERE/config.example.json" "$HERE/config.json"
-node -e "
+CONFIG_IS_NEW=0
+if [ ! -f "$HERE/config.json" ]; then
+  CONFIG_IS_NEW=1
+  cp "$HERE/config.example.json" "$HERE/config.json"
+fi
+if [ "$CONFIG_IS_NEW" = "1" ] || [ "$CONFIG_ORIGIN_EXPLICIT" = "1" ]; then
+  node -e "
 const fs = require('fs');
 const p = '$HERE/config.json';
 const c = JSON.parse(fs.readFileSync(p, 'utf8'));
 c.apiBaseUrl = '$WEB_ORIGIN';
 fs.writeFileSync(p, JSON.stringify(c, null, 2) + '\n');
 " 2>/dev/null || {
-  # Máy chưa có Node — sửa bằng sed như trên (đơn giản hơn nhưng đủ dùng cho file 2 khoá).
-  sed -i "s#\"apiBaseUrl\": *\"[^\"]*\"#\"apiBaseUrl\": \"$WEB_ORIGIN\"#" "$HERE/config.json"
-}
-echo "apiBaseUrl trong config.json = $WEB_ORIGIN"
+    # Máy chưa có Node — sửa bằng sed như trên (đơn giản hơn nhưng đủ dùng cho file 2 khoá).
+    sed -i "s#\"apiBaseUrl\": *\"[^\"]*\"#\"apiBaseUrl\": \"$WEB_ORIGIN\"#" "$HERE/config.json"
+  }
+  echo "apiBaseUrl trong config.json = $WEB_ORIGIN"
+else
+  echo "config.json đã tồn tại — giữ nguyên apiBaseUrl (truyền --web-origin nếu muốn đổi)."
+fi
 
 # ---- 4. Nạp ảnh Docker đã build sẵn + khởi động ----
 step "Nạp ảnh Docker đã build sẵn"
