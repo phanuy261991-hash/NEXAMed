@@ -183,9 +183,9 @@ Chép file `package.zip` sang máy khách bằng USB hoặc qua mạng nội b�
 
 **Bước 2.** Giải nén `package.zip`. **Lưu ý**: có thể Windows tạo thêm 1 thư mục con trùng tên khi giải nén (`package\package\...`) — sau khi giải nén, gõ `dir` kiểm tra có thấy `install.ps1` ngay trong thư mục đang đứng không; nếu không thấy mà thấy 1 thư mục con thì `cd` thêm vào đó.
 
-**Bước 3.** Mở PowerShell, vào đúng thư mục có `install.ps1` (xác nhận bằng `dir`), rồi chạy:
+**Bước 3.** Double-click **`install.cmd`** (khuyên dùng — tránh lỗi Execution Policy chặn `.ps1` chưa ký, xem mục "Xử lý sự cố thường gặp" nếu vẫn muốn gọi `.\install.ps1` trực tiếp). Nếu thích dùng dòng lệnh, mở PowerShell, vào đúng thư mục có `install.cmd` (xác nhận bằng `dir`), rồi chạy:
 ```powershell
-.\install.ps1
+.\install.cmd
 ```
 
 **Bước 4.** Script hỏi lần lượt — trả lời rồi Enter:
@@ -205,17 +205,20 @@ docker compose restart web
 
 **Bước 7.** Mở trình duyệt, vào địa chỉ đã chọn ở Bước 4 (ví dụ `http://localhost`), đăng nhập bằng tài khoản + mật khẩu vừa tạo. Hệ thống bắt đổi mật khẩu ngay lần đầu.
 
-Linux/NAS: y hệt các bước trên, chỉ đổi `.\install.ps1` thành `./install.sh` (dùng `--tenant-name`/`--admin-username`... nếu muốn truyền sẵn, không cần trả lời tương tác).
+Linux/NAS: y hệt các bước trên, chỉ đổi `.\install.cmd` thành `./install.sh` (dùng `--tenant-name`/`--admin-username`... nếu muốn truyền sẵn, không cần trả lời tương tác).
 
 #### Xử lý sự cố thường gặp (đã gặp thật, không phải giả định)
 
+- **`.\install.ps1 : File ... cannot be loaded because running scripts is disabled on this system` (`PSSecurityException`)** → Execution Policy mặc định của Windows chặn `.ps1` chưa ký, KHÔNG phải lỗi trong script. Sửa (chọn 1 trong 2):
+  1. **Khuyên dùng**: chạy `.\install.cmd` thay vì `.\install.ps1` — file `.cmd` không bị Execution Policy kiểm soát, tự gọi PowerShell với `-ExecutionPolicy Bypass` chỉ cho đúng lần chạy đó.
+  2. Hoặc nới tạm chính sách cho cửa sổ PowerShell đang mở (không đổi chính sách toàn máy) rồi chạy lại: `Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force` rồi `.\install.ps1`.
 - **`.\install.ps1 : The term '.\install.ps1' is not recognized...`** → đang đứng sai thư mục, thường do giải nén `.zip` tạo thêm 1 lớp thư mục con trùng tên. Gõ `dir` xem có thư mục con nào không, `cd` vào đó rồi thử lại.
 - **`ports are not available: exposing port TCP 0.0.0.0:80 ... forbidden by its access permissions`** (lúc "Khởi động stack") → cổng 80 trên máy đó đang bị chương trình khác chiếm (rất phổ biến trên Windows, ví dụ IIS). Sửa:
   1. Mở `.env` (Notepad), đổi `WEB_HTTP_PORT=80` thành `WEB_HTTP_PORT=8080`.
   2. Mở `config.json` (Notepad), đổi `"apiBaseUrl"` thêm cổng mới, ví dụ `"http://localhost:8080"`.
-  3. **Chạy lại `.\install.ps1`** (KHÔNG chạy `docker compose up -d` trực tiếp — xem lý do ở mục ngay dưới).
+  3. **Chạy lại `.\install.cmd`** (KHÔNG chạy `docker compose up -d` trực tiếp — xem lý do ở mục ngay dưới).
   4. Truy cập bằng địa chỉ có kèm cổng: `http://localhost:8080`.
-- **Đã lỡ chạy `docker compose up -d` trực tiếp (không qua `install.ps1`) để khắc phục sự cố ở trên, giờ không thấy `tenantId`/mật khẩu đâu cả** → bình thường, vì bước tạo tài khoản quản trị CHỈ nằm trong `install.ps1` (Bước 5), không nằm trong lệnh `docker compose up -d` thuần. Chạy lại `.\install.ps1` — vì `.env`/`config.json` đã có sẵn nên script tự bỏ qua phần tạo lại, chạy thẳng tới đúng bước hỏi tạo tài khoản.
+- **Đã lỡ chạy `docker compose up -d` trực tiếp (không qua `install.cmd`/`install.ps1`) để khắc phục sự cố ở trên, giờ không thấy `tenantId`/mật khẩu đâu cả** → bình thường, vì bước tạo tài khoản quản trị CHỈ nằm trong `install.ps1` (Bước 5), không nằm trong lệnh `docker compose up -d` thuần. Chạy lại `.\install.cmd` — vì `.env`/`config.json` đã có sẵn nên script tự bỏ qua phần tạo lại, chạy thẳng tới đúng bước hỏi tạo tài khoản.
 
 ### 2.3b. Cập nhật bản mới lên hệ thống đang chạy
 

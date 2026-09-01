@@ -49,6 +49,14 @@
 .EXAMPLE
   .\install.ps1 -TenantName "Phòng khám Đa khoa ABC" -AdminUsername "quantri" -AdminFullName "Nguyễn Văn A" -WebOrigin "http://192.168.1.50"
   Chạy không cần trả lời — dùng khi cài từ xa qua script/CI nội bộ.
+
+.NOTES
+  Nếu máy khách báo lỗi "...cannot be loaded because running scripts is disabled on this
+  system" (Execution Policy mặc định của Windows chặn .ps1 chưa ký) — dùng `install.cmd`
+  (cùng thư mục, double-click hoặc gọi `.\install.cmd` với đúng tham số như trên) thay vì
+  gọi thẳng `.\install.ps1`. `install.cmd` chỉ là 1 dòng gọi PowerShell với
+  `-ExecutionPolicy Bypass` cho riêng lần chạy đó, không đổi chính sách toàn máy. Xem
+  docs/Deploy.md mục "Xử lý sự cố thường gặp".
 #>
 [CmdletBinding()]
 param(

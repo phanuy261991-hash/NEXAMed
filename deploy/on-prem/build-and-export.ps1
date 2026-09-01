@@ -97,8 +97,9 @@ Copy-Item "$PSScriptRoot\docker-compose.yml" $PackageDir -Force
 Copy-Item "$PSScriptRoot\.env.example" $PackageDir -Force
 Copy-Item "$PSScriptRoot\config.example.json" $PackageDir -Force
 Copy-Item "$PSScriptRoot\install.ps1" $PackageDir -Force
+Copy-Item "$PSScriptRoot\install.cmd" $PackageDir -Force
 Copy-Item "$PSScriptRoot\install.sh" $PackageDir -Force
-Write-Host "Đã copy: docker-compose.yml, .env.example, config.example.json, install.ps1, install.sh"
+Write-Host "Đã copy: docker-compose.yml, .env.example, config.example.json, install.ps1, install.cmd, install.sh"
 
 Write-Step "HOÀN TẤT"
 Write-Host "Thư mục sẵn sàng chép sang máy khách: $PackageDir" -ForegroundColor Green
@@ -107,4 +108,4 @@ Write-Host ""
 Write-Host "Bước tiếp theo:" -ForegroundColor Yellow
 Write-Host "  1. Nén thư mục $PackageDir thành 1 file .zip (chuột phải -> Send to -> Compressed folder), hoặc copy nguyên thư mục."
 Write-Host "  2. Chép file .zip (hoặc thư mục) sang máy khách qua USB/mạng nội bộ."
-Write-Host "  3. Tại máy khách: giải nén, mở PowerShell trong thư mục đó, chạy .\install.ps1"
+Write-Host "  3. Tại máy khách: giải nén rồi double-click install.cmd (hoặc mở PowerShell trong thư mục đó, chạy .\install.cmd) — tránh lỗi Execution Policy chặn .ps1 chưa ký."
