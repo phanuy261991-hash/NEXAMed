@@ -45,6 +45,21 @@ export function minutesToLabel(totalMin: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
+/**
+ * "Đăng ký ca làm việc" Giai đoạn 2 — mở rộng biên hiển thị lưới bằng hợp của `businessHours` VÀ
+ * mọi ca đã đăng ký hôm đó, tránh cắt mất ca ngoài giờ hành chính (ví dụ trực đêm) khi ít nhất một
+ * bác sĩ có ca vượt ra ngoài `businessHours` mặc định.
+ */
+export function extendRangeWithShifts(range: DayHoursRange, allShiftsToday: { startTime: string; endTime: string }[]): DayHoursRange {
+  let openMin = toMinutes(range.open);
+  let closeMin = toMinutes(range.close);
+  for (const shift of allShiftsToday) {
+    openMin = Math.min(openMin, toMinutes(shift.startTime));
+    closeMin = Math.max(closeMin, toMinutes(shift.endTime));
+  }
+  return { open: minutesToLabel(openMin), close: minutesToLabel(closeMin) };
+}
+
 /** Danh sách mốc giờ hiển thị bên trái lưới, bước `GRID_STEP_MINUTES`. */
 export function generateSlotLabels(range: DayHoursRange): string[] {
   const start = toMinutes(range.open);

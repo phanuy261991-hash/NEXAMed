@@ -3,6 +3,7 @@ import {
   CalendarBlank,
   CaretRight,
   ClipboardText,
+  Clock,
   ClockCounterClockwise,
   Flask,
   FolderSimple,
@@ -36,6 +37,13 @@ const RECEPTION_ROLES = ['receptionist', 'nurse', 'doctor', 'clinic_admin'];
 const DOCTOR_QUEUE_ROLES = ['doctor', 'clinic_admin'];
 /** Thu ngân cơ bản (Sprint 5/6) — khớp `invoice.read` trong ma trận mặc định: receptionist/clinic_admin=global, không có bác sĩ/điều dưỡng. */
 const BILLING_ROLES = ['receptionist', 'clinic_admin'];
+/** "Đăng ký ca làm việc" (Giai đoạn 2 #101) — MỌI vai trò trừ system_admin (khớp
+ * `work_shift_assignment.create=personal` trong ma trận mặc định). */
+const WORK_SCHEDULE_ROLES = ['receptionist', 'nurse', 'doctor', 'clinic_admin'];
+/** "Lịch làm việc nhân viên" — chỉ clinic_admin (mặc định duy nhất có scope `global`). Hạn chế đã
+ * biết: nếu sau này admin gán quyền xem toàn bộ cho vai trò khác qua "Vai trò & Phân quyền", vai
+ * trò đó vẫn KHÔNG tự thấy mục này (mảng vai trò tĩnh, giống mọi trang quản trị khác trong app). */
+const STAFF_SCHEDULE_ROLES = ['clinic_admin'];
 
 /** Route của "Hàng đợi khám" — giữ nguyên dưới `features/reception/` (chưa có module `encounter`/
  * `examination` thật ở web), chỉ đổi vị trí hiển thị sang nhóm "Khám bệnh" trong sidebar. */
@@ -46,6 +54,8 @@ const RECEPTION_GROUP_PATHS = ['/patients', '/appointments', '/reception'];
 /** Đường dẫn thuộc nhóm "Thu ngân" — hiện chỉ có "Danh sách cần thu" (`/billing`), tách nhóm cha/con
  * cùng khuôn "Khám bệnh" để sau này thêm mục con (vd tổng kết ca) không phải đổi lại cấu trúc. */
 const BILLING_GROUP_PATHS = ['/billing'];
+/** Đường dẫn thuộc nhóm "Lịch làm việc" (Giai đoạn 2 #101). */
+const WORK_SCHEDULE_GROUP_PATHS = ['/work-schedule'];
 /** Đường dẫn thuộc nhóm "Quản trị" — có 2 mục con thật (Danh mục dùng chung, Cấu hình hệ thống) và
  * 4 mục "Sắp ra mắt" đặt chỗ theo yêu cầu chủ dự án (docs/DECISIONS.md #046, ComingSoonPage — vẫn
  * KHÔNG viết logic/schema nghiệp vụ, không mở rộng phạm vi v1). Thêm ADM-01/03 vào đây khi có UI
@@ -108,6 +118,9 @@ export function Sidebar() {
   const [billingGroupOpen, setBillingGroupOpen] = useState(
     BILLING_GROUP_PATHS.some((path) => location.pathname.startsWith(path)),
   );
+  const [workScheduleGroupOpen, setWorkScheduleGroupOpen] = useState(
+    WORK_SCHEDULE_GROUP_PATHS.some((path) => location.pathname.startsWith(path)),
+  );
 
   const isAdmin = user?.roles.some((role) => ADMIN_ROLES.includes(role)) ?? false;
   const canSeePatients = user?.roles.some((role) => PATIENT_ROLES.includes(role)) ?? false;
@@ -115,10 +128,13 @@ export function Sidebar() {
   const canSeeReception = user?.roles.some((role) => RECEPTION_ROLES.includes(role)) ?? false;
   const canSeeDoctorQueue = user?.roles.some((role) => DOCTOR_QUEUE_ROLES.includes(role)) ?? false;
   const canSeeBilling = user?.roles.some((role) => BILLING_ROLES.includes(role)) ?? false;
+  const canSeeWorkSchedule = user?.roles.some((role) => WORK_SCHEDULE_ROLES.includes(role)) ?? false;
+  const canSeeStaffSchedule = user?.roles.some((role) => STAFF_SCHEDULE_ROLES.includes(role)) ?? false;
   const receptionGroupExpanded = receptionGroupOpen && !collapsed;
   const examinationGroupExpanded = examinationGroupOpen && !collapsed;
   const adminGroupExpanded = adminGroupOpen && !collapsed;
   const billingGroupExpanded = billingGroupOpen && !collapsed;
+  const workScheduleGroupExpanded = workScheduleGroupOpen && !collapsed;
 
   return (
     <aside
@@ -133,7 +149,7 @@ export function Sidebar() {
         {!collapsed && <span className="truncate text-[15px] font-bold">NEXAMed</span>}
       </div>
 
-      <nav className="flex-1 overflow-y-auto p-2.5" aria-label="Điều hướng chính">
+      <nav className="scroll-hover flex-1 overflow-y-auto p-2.5" aria-label="Điều hướng chính">
         <ul className="flex flex-col gap-0.5">
           <NavItem to="/" label="Tổng quan" icon={House} end collapsed={collapsed} />
 
@@ -258,6 +274,48 @@ export function Sidebar() {
               {billingGroupExpanded && (
                 <ul className="mt-0.5 flex flex-col gap-0.5 border-l border-slate-800 pl-3.5">
                   <NavItem to="/billing" label="Danh sách cần thu" icon={Receipt} collapsed={false} indent />
+                </ul>
+              )}
+            </li>
+          )}
+
+          {canSeeWorkSchedule && (
+            <li>
+              <button
+                type="button"
+                title={collapsed ? 'Lịch làm việc' : undefined}
+                onClick={() => {
+                  if (collapsed) {
+                    // Cùng quy tắc bắt buộc ở nhóm "Tiếp nhận và Đặt lịch" (.claude/docs/
+                    // ui-guidelines.md mục 8.1/8.3): bấm icon lúc thu gọn phải mở lại sidebar.
+                    setCollapsed(false);
+                    setWorkScheduleGroupOpen(true);
+                  } else {
+                    setWorkScheduleGroupOpen((v) => !v);
+                  }
+                }}
+                aria-expanded={workScheduleGroupExpanded}
+                className={`flex w-full items-center gap-3 rounded-md py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800/60 hover:text-white ${
+                  collapsed ? 'justify-center px-2' : 'px-3'
+                }`}
+              >
+                <Clock size={collapsed ? 20 : 18} weight="regular" aria-hidden="true" className="flex-shrink-0" />
+                {!collapsed && (
+                  <>
+                    <span className="truncate text-left">Lịch làm việc</span>
+                    <CaretRight
+                      size={13}
+                      weight="bold"
+                      aria-hidden="true"
+                      className={`ml-auto flex-shrink-0 transition-transform ${workScheduleGroupExpanded ? 'rotate-90' : ''}`}
+                    />
+                  </>
+                )}
+              </button>
+              {workScheduleGroupExpanded && (
+                <ul className="mt-0.5 flex flex-col gap-0.5 border-l border-slate-800 pl-3.5">
+                  <NavItem to="/work-schedule/mine" label="Lịch làm việc của tôi" icon={Clock} collapsed={false} indent />
+                  {canSeeStaffSchedule && <NavItem to="/work-schedule/staff" label="Lịch làm việc nhân viên" icon={Users} collapsed={false} indent />}
                 </ul>
               )}
             </li>

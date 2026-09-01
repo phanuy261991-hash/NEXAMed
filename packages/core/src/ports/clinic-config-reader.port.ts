@@ -58,6 +58,14 @@ export interface ClinicConfigReaderPort {
    * port này thay vì import thẳng `ClinicSettingsRepository`, cùng lý do `getNoShowConfig` ở trên.
    */
   getDoctorAvailabilityPolicy(tenantId: string): Promise<{ allowEmergencyEndShift: boolean; allowReceptionistEndShift: boolean }>;
+
+  /**
+   * "Đăng ký ca làm việc" Giai đoạn 2 — bật/tắt chặn đặt lịch hẹn ngoài ca bác sĩ đã đăng ký
+   * (`tenant_setting` key `block_booking_outside_work_shift_enabled`, mặc định `false`).
+   * `AppointmentService` đọc qua port này (module `clinic` sở hữu `tenant_setting`), cùng lý do
+   * `getNoShowConfig`/`getDoctorAvailabilityPolicy` ở trên.
+   */
+  getBlockBookingOutsideWorkShiftEnabled(tenantId: string): Promise<boolean>;
 }
 
 export const CLINIC_CONFIG_READER_PORT = Symbol('CLINIC_CONFIG_READER_PORT');

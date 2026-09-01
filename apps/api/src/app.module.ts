@@ -20,6 +20,7 @@ import { DrugModule } from './modules/drug/drug.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { DoctorAvailabilityModule } from './modules/doctor-availability/doctor-availability.module';
+import { WorkShiftAssignmentModule } from './modules/work-shift-assignment/work-shift-assignment.module';
 import { HealthModule } from './modules/health/health.module';
 import { TenantContextMiddleware } from './common/tenant-context.middleware';
 
@@ -46,6 +47,7 @@ import { TenantContextMiddleware } from './common/tenant-context.middleware';
     ReceptionModule,
     AuditModule,
     DoctorAvailabilityModule,
+    WorkShiftAssignmentModule,
     HealthModule,
   ],
 })

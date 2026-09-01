@@ -58,6 +58,7 @@ model Tenant {
   rooms                  Room[]
   examStations           ExamStation[]
   workShifts             WorkShift[]
+  workShiftAssignments   WorkShiftAssignment[]
   departmentTypes        DepartmentType[]
   departments            Department[]
   userAccounts           UserAccount[]
@@ -237,10 +238,45 @@ model WorkShift {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant Tenant @relation(fields: [tenantId], references: [id])
+  tenant      Tenant                @relation(fields: [tenantId], references: [id])
+  assignments WorkShiftAssignment[]
 
   @@unique([tenantId, code])
+  // Đích cho composite FK từ `work_shift_assignment` (Giai đoạn 2, đăng ký ca theo ngày) — thêm
+  // SAU migration #101 gốc (Prisma không tự sinh unique này lúc chỉ có `@@unique([tenantId, code])`),
+  // đúng bài học đã gặp với `room`/`department_type` ("lần đầu bị composite FK tham chiếu tới").
+  @@unique([tenantId, id])
   @@map("work_shift")
+}
+
+// "Đăng ký ca làm việc" (Giai đoạn 2 của #101) — MỌI nhân viên (không riêng bác sĩ) tự đăng ký ca
+// đã có trong danh mục `work_shift` cho một NGÀY CỤ THỂ (`workDate`, nullable-free — nhận từ
+// client, khác `doctor_availability`/`doctor_room_session` luôn ép "hôm nay"). Nhiều dòng/ngày
+// được (ví dụ Sáng+Chiều), miễn không trùng đúng 1 ca 2 lần cùng ngày (unique dưới). Tự sửa/xoá
+// tự do TRONG ĐÚNG NGÀY LỊCH VN đã tạo (`createdAt`, kiểm ở Service — PermissionGuard không có
+// khái niệm điều kiện thời gian), khoá lại từ hôm sau — chỉ vai trò có quyền `update`/`delete`
+// scope `global` (mặc định clinic_admin) sửa/xoá được sau đó.
+model WorkShiftAssignment {
+  id          String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  workShiftId String   @map("work_shift_id") @db.Uuid
+  workDate    DateTime @map("work_date") @db.Date
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant    Tenant      @relation(fields: [tenantId], references: [id])
+  user      UserAccount @relation(fields: [tenantId, userId], references: [tenantId, id])
+  workShift WorkShift   @relation(fields: [tenantId, workShiftId], references: [tenantId, id])
+
+  @@map("work_shift_assignment")
 }
 
 // "Phòng làm việc hôm nay" của bác sĩ — thuần vận hành/định tuyến UI (KHÔNG phải dữ liệu lâm
@@ -448,6 +484,7 @@ model UserAccount {
   encountersAsDoctor   Encounter[]         @relation("EncounterDoctor")
   roomSessionsAsDoctor DoctorRoomSession[]
   availabilityAsDoctor DoctorAvailability[]
+  workShiftAssignments WorkShiftAssignment[]
 
   // Đích của composite FK (tenant_id, id) từ user_role — chống trỏ chéo tenant (C5 trong ERD.md).
   @@unique([tenantId, id])

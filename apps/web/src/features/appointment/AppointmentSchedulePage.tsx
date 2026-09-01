@@ -10,7 +10,7 @@ import { AppointmentDetailPanel } from './AppointmentDetailPanel';
 import { AppointmentGridView } from './AppointmentGridView';
 import { AppointmentListView } from './AppointmentListView';
 import { AppointmentQuickCreatePanel } from './AppointmentQuickCreatePanel';
-import { useAppointmentsByDateQuery, useDoctorsQuery, useScheduleConfigQuery } from './appointment.queries';
+import { useAppointmentsByDateQuery, useDoctorWorkShiftsQuery, useDoctorsQuery, useScheduleConfigQuery } from './appointment.queries';
 import { addDays, formatDateLabel, getVietnamTodayDateString } from './schedule-grid.utils';
 
 /**
@@ -47,12 +47,14 @@ export function AppointmentSchedulePage() {
   const doctorsQuery = useDoctorsQuery();
   const scheduleConfigQuery = useScheduleConfigQuery();
   const dayQuery = useAppointmentsByDateQuery(date);
+  const doctorWorkShiftsQuery = useDoctorWorkShiftsQuery(date);
 
   const doctors = doctorsQuery.data?.items ?? [];
   const dayAppointments = dayQuery.data?.items ?? [];
   const defaultDuration = scheduleConfigQuery.data?.slotDurationMinutes ?? 15;
   const noShowThresholdMinutes = scheduleConfigQuery.data?.noShowThresholdMinutes ?? DEFAULT_NO_SHOW_THRESHOLD_MINUTES;
   const noShowAutoEnabled = scheduleConfigQuery.data?.noShowAutoEnabled ?? false;
+  const blockBookingOutsideWorkShift = scheduleConfigQuery.data?.blockBookingOutsideWorkShiftEnabled ?? false;
 
   function openQuickCreate(doctorId: string | null, time: string) {
     setDetailAppointment(null);
@@ -214,6 +216,8 @@ export function AppointmentSchedulePage() {
               businessHours={scheduleConfigQuery.data?.businessHours ?? null}
               noShowThresholdMinutes={noShowThresholdMinutes}
               noShowAutoEnabled={noShowAutoEnabled}
+              doctorWorkShifts={doctorWorkShiftsQuery.data?.byDoctorId ?? {}}
+              blockBookingOutsideWorkShift={blockBookingOutsideWorkShift}
               onSlotClick={(doctorId, time) => openQuickCreate(doctorId, time)}
               onCardClick={openDetail}
             />

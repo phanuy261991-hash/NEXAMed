@@ -52,6 +52,13 @@ const CatalogClinicalPage = lazy(() =>
 const RolePermissionPage = lazy(() => import('../features/role/RolePermissionPage').then((m) => ({ default: m.RolePermissionPage })));
 const ClinicConfigPage = lazy(() => import('../features/clinic/ClinicConfigPage').then((m) => ({ default: m.ClinicConfigPage })));
 const ActivityLogPage = lazy(() => import('../features/audit/ActivityLogPage').then((m) => ({ default: m.ActivityLogPage })));
+// "Đăng ký ca làm việc" (Giai đoạn 2 #101).
+const MyWorkSchedulePage = lazy(() =>
+  import('../features/work-shift-assignment/MyWorkSchedulePage').then((m) => ({ default: m.MyWorkSchedulePage })),
+);
+const StaffWorkSchedulePage = lazy(() =>
+  import('../features/work-shift-assignment/StaffWorkSchedulePage').then((m) => ({ default: m.StaffWorkSchedulePage })),
+);
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -90,6 +97,9 @@ export const router = createBrowserRouter([
       // patient/appointment/encounter detail không có mục sidebar riêng).
       { path: 'billing', element: <InvoiceListPage /> },
       { path: 'billing/:encounterId', element: <InvoiceDetailPage /> },
+      // "Đăng ký ca làm việc" (Giai đoạn 2 #101).
+      { path: 'work-schedule/mine', element: <MyWorkSchedulePage /> },
+      { path: 'work-schedule/staff', element: <StaffWorkSchedulePage /> },
       // Trình duyệt hay gợi ý gõ tắt "/admin" (rút gọn từ lịch sử "/admin/catalog") — chưa từng
       // là route thật, trước đây báo lỗi 404 mặc định của react-router (docs/DECISIONS.md #048).
       { path: 'admin', element: <Navigate to="/admin/catalog" replace /> },

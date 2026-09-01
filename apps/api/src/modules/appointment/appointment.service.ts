@@ -3,15 +3,19 @@ import { Prisma, type Appointment } from '@prisma/client';
 import {
   AppointmentInvalidReferenceError,
   AppointmentNotCancellableError,
+  AppointmentOutsideWorkShiftError,
   AppointmentSlotConflictError,
   CLINIC_CONFIG_READER_PORT,
   ConcurrentModificationError,
   DOCTOR_DIRECTORY_PORT,
   SYSTEM_ACTOR_ID,
+  WORK_SHIFT_ASSIGNMENT_READER_PORT,
   formatDisplayCode,
+  getVietnamDateString,
   vietnamDayRange,
   type ClinicConfigReaderPort,
   type DoctorDirectoryPort,
+  type WorkShiftAssignmentReaderPort,
 } from '@nexamed/core';
 import {
   APPOINTMENT_BOOKING_CODE_PREFIX,
@@ -21,6 +25,7 @@ import {
   type ClinicSettings,
   type CreateAppointmentRequest,
   type DataScope,
+  type DoctorWorkShiftsForDateResponse,
   type EditAppointmentRequest,
   type ListAppointmentsQuery,
   type ListAppointmentsResponse,
@@ -69,6 +74,7 @@ export class AppointmentService {
     private readonly codeSequenceRepository: CodeSequenceRepository,
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
     @Inject(CLINIC_CONFIG_READER_PORT) private readonly clinicConfigReader: ClinicConfigReaderPort,
+    @Inject(WORK_SHIFT_ASSIGNMENT_READER_PORT) private readonly workShiftAssignmentReader: WorkShiftAssignmentReaderPort,
   ) {}
 
   /**
@@ -90,6 +96,23 @@ export class AppointmentService {
   /** `GET /appointments/schedule-config` (S2-09) — cùng dữ liệu `GET /clinic-settings` nhưng gắn quyền `appointment.read`. */
   async getScheduleConfig(tenantId: string): Promise<ClinicSettings> {
     return this.clinicConfigReader.getScheduleConfig(tenantId) as Promise<ClinicSettings>;
+  }
+
+  /**
+   * `GET /appointments/doctor-work-shifts?date=` ("Đăng ký ca làm việc" Giai đoạn 2) — chiếu tối
+   * thiểu TỰ-PHỤC VỤ cho lưới Lịch hẹn (dải màu ca + gạch chéo ngoài ca theo cột bác sĩ), gắn quyền
+   * `appointment.read` thay vì `work_shift_assignment.read` (chỉ clinic_admin mặc định) — đúng khuôn
+   * `listDoctors()`/`getScheduleConfig()` ở trên, tránh lỗ hổng "lễ tân không có quyền đọc module
+   * khác" đã gặp 2 lần (#030/#064). Chỉ trả bác sĩ CÓ ít nhất 1 ca đăng ký đúng ngày đó.
+   */
+  async getDoctorWorkShifts(tenantId: string, date: string): Promise<DoctorWorkShiftsForDateResponse> {
+    const doctors = await this.doctorDirectory.listActiveDoctors(tenantId);
+    const byDoctorId = await this.workShiftAssignmentReader.getWorkShiftsForUsersOnDate(
+      tenantId,
+      doctors.map((d) => d.id),
+      date,
+    );
+    return { byDoctorId };
   }
 
   /**
@@ -117,6 +140,7 @@ export class AppointmentService {
         message: 'Chỉ có thể tạo lịch hẹn cho chính mình.',
       });
     }
+    await this.assertWithinWorkShift(tenantId, dto.doctorId, dto.scheduledAt, dto.durationMinutes);
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       // Mã đặt lịch cấp atomic qua code_sequence — cùng khuôn `patient_code`
@@ -303,6 +327,14 @@ export class AppointmentService {
     dto: EditAppointmentRequest,
     meta: RequestMeta,
   ): Promise<AppointmentSummary> {
+    if (dataScope === 'personal' && dto.doctorId !== actorId) {
+      throw new ForbiddenException({
+        code: 'PERMISSION_DENIED',
+        message: 'Chỉ có thể sửa lịch hẹn cho chính mình.',
+      });
+    }
+    await this.assertWithinWorkShift(tenantId, dto.doctorId, dto.scheduledAt, dto.durationMinutes);
+
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.appointmentRepository.findById(tx, tenantId, id);
       if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId)) {
@@ -310,12 +342,6 @@ export class AppointmentService {
       }
       if (existing.status !== 'SCHEDULED') {
         throw new AppointmentNotCancellableError();
-      }
-      if (dataScope === 'personal' && dto.doctorId !== actorId) {
-        throw new ForbiddenException({
-          code: 'PERMISSION_DENIED',
-          message: 'Chỉ có thể sửa lịch hẹn cho chính mình.',
-        });
       }
 
       let count: number;
@@ -383,6 +409,26 @@ export class AppointmentService {
     dto: RescheduleAppointmentRequest,
     meta: RequestMeta,
   ): Promise<AppointmentSummary> {
+    // scope `personal`: không được dời lịch của mình sang cho bác sĩ khác — cùng điều kiện
+    // `createAppointment()` (không đặt/không chuyển hộ bác sĩ khác).
+    if (dataScope === 'personal' && dto.doctorId !== actorId) {
+      throw new ForbiddenException({
+        code: 'PERMISSION_DENIED',
+        message: 'Chỉ có thể dời lịch hẹn cho chính mình.',
+      });
+    }
+    // Đọc trước (ngoài transaction ghi) CHỈ để biết `durationMinutes` hiện có — lịch mới kế thừa
+    // giá trị này (client không gửi), nên phải biết trước khi gọi `assertWithinWorkShift()` (không
+    // gọi port — tự mở transaction riêng — từ BÊN TRONG transaction ghi đang mở, xem docstring
+    // `assertWithinWorkShift()`). `existing` được đọc lại đầy đủ ngay dưới, trong transaction ghi
+    // thật, nên race hiếm gặp (đổi status/version giữa 2 lần đọc) vẫn được optimistic lock chặn
+    // đúng như trước — đọc thêm 1 lần chỉ tốn thêm 1 round-trip, không ảnh hưởng tính đúng đắn.
+    const preview = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.appointmentRepository.findById(tx, tenantId, id));
+    if (!preview || (dataScope === 'personal' && preview.doctorId !== actorId)) {
+      throw new NotFoundException();
+    }
+    await this.assertWithinWorkShift(tenantId, dto.doctorId, dto.scheduledAt, preview.durationMinutes);
+
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.appointmentRepository.findById(tx, tenantId, id);
       if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId)) {
@@ -390,14 +436,6 @@ export class AppointmentService {
       }
       if (existing.status !== 'SCHEDULED') {
         throw new AppointmentNotCancellableError();
-      }
-      // scope `personal`: không được dời lịch của mình sang cho bác sĩ khác — cùng điều kiện
-      // `createAppointment()` (không đặt/không chuyển hộ bác sĩ khác).
-      if (dataScope === 'personal' && dto.doctorId !== actorId) {
-        throw new ForbiddenException({
-          code: 'PERMISSION_DENIED',
-          message: 'Chỉ có thể dời lịch hẹn cho chính mình.',
-        });
       }
 
       const supersededCount = await this.appointmentRepository.markRescheduled(tx, tenantId, id, dto.version, actorId);
@@ -445,6 +483,37 @@ export class AppointmentService {
 
       return this.toSummary(created);
     });
+  }
+
+  /**
+   * "Đăng ký ca làm việc" Giai đoạn 2 — chặn đặt/sửa/dời lịch ra ngoài ca bác sĩ đã đăng ký khi
+   * `ClinicSettings.blockBookingOutsideWorkShiftEnabled=true`. Gọi port TRƯỚC khi mở
+   * `unitOfWork.runInTenantScope()` của chính hàm gọi (không gọi port — tự mở transaction riêng —
+   * TỪ BÊN TRONG một transaction khác đang mở, cùng nguyên tắc `DoctorAvailabilityService.setStatus()`
+   * đã áp dụng cho `getDoctorAvailabilityPolicy()`). Bác sĩ CHƯA đăng ký ca nào cho đúng ngày đó
+   * thì KHÔNG bị giới hạn gì thêm (chốt qua AskUserQuestion — tránh khoá cứng toàn bộ lịch hẹn
+   * ngay khi mới bật tính năng lúc chưa ai kịp đăng ký đủ ca).
+   */
+  private async assertWithinWorkShift(tenantId: string, doctorId: string, scheduledAtIso: string, durationMinutes: number): Promise<void> {
+    const blockEnabled = await this.clinicConfigReader.getBlockBookingOutsideWorkShiftEnabled(tenantId);
+    if (!blockEnabled) return;
+
+    const scheduledAt = new Date(scheduledAtIso);
+    const date = getVietnamDateString(scheduledAt);
+    const byDoctorId = await this.workShiftAssignmentReader.getWorkShiftsForUsersOnDate(tenantId, [doctorId], date);
+    const shifts = byDoctorId[doctorId];
+    if (!shifts || shifts.length === 0) return;
+
+    const toMinutes = (hhmm: string) => {
+      const [h, m] = hhmm.split(':').map(Number);
+      return (h ?? 0) * 60 + (m ?? 0);
+    };
+    const startMin = (scheduledAt.getUTCHours() * 60 + scheduledAt.getUTCMinutes() + 7 * 60) % (24 * 60);
+    const endMin = startMin + durationMinutes;
+    const within = shifts.some((s) => startMin >= toMinutes(s.startTime) && endMin <= toMinutes(s.endTime));
+    if (!within) {
+      throw new AppointmentOutsideWorkShiftError();
+    }
   }
 
   private toSummary(appointment: Appointment): AppointmentSummary {

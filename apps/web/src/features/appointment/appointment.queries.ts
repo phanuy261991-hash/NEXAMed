@@ -7,6 +7,7 @@ import {
   cancelAppointment,
   createAppointment,
   editAppointment,
+  getDoctorWorkShifts,
   getScheduleConfig,
   listAppointments,
   listDoctors,
@@ -64,6 +65,15 @@ export function useScheduleConfigQuery() {
   return useQuery({
     queryKey: queryKey(tenantId, 'appointment', 'schedule-config'),
     queryFn: () => getScheduleConfig(),
+  });
+}
+
+/** "Đăng ký ca làm việc" Giai đoạn 2 — dải màu ca + gạch chéo ngoài ca theo cột bác sĩ ở lưới. */
+export function useDoctorWorkShiftsQuery(date: string) {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'appointment', 'doctor-work-shifts', date),
+    queryFn: () => getDoctorWorkShifts(date),
   });
 }
 

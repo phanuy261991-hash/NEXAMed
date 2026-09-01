@@ -1937,6 +1937,88 @@ export interface paths {
                                 noShowThresholdMinutes: number;
                                 allowEmergencyEndShift: boolean;
                                 allowReceptionistEndShift: boolean;
+                                blockBookingOutsideWorkShiftEnabled: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền appointment.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/appointments/doctor-work-shifts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** "Đăng ký ca làm việc" Giai đoạn 2 — ca đã đăng ký của toàn bộ bác sĩ active cho 1 ngày (lưới Lịch hẹn), gắn quyền appointment.read */
+        get: {
+            parameters: {
+                query: {
+                    date: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                byDoctorId: {
+                                    [key: string]: {
+                                        name: string;
+                                        /** @enum {string} */
+                                        color: "blue" | "teal" | "emerald" | "amber" | "rose" | "purple" | "cyan" | "slate";
+                                        startTime: string;
+                                        endTime: string;
+                                    }[];
+                                };
                             };
                             meta: Record<string, never>;
                         };
@@ -10043,6 +10125,7 @@ export interface paths {
                                 noShowThresholdMinutes: number;
                                 allowEmergencyEndShift: boolean;
                                 allowReceptionistEndShift: boolean;
+                                blockBookingOutsideWorkShiftEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -10133,6 +10216,7 @@ export interface paths {
                         noShowThresholdMinutes?: number;
                         allowEmergencyEndShift?: boolean;
                         allowReceptionistEndShift?: boolean;
+                        blockBookingOutsideWorkShiftEnabled?: boolean;
                     };
                 };
             };
@@ -10182,6 +10266,7 @@ export interface paths {
                                 noShowThresholdMinutes: number;
                                 allowEmergencyEndShift: boolean;
                                 allowReceptionistEndShift: boolean;
+                                blockBookingOutsideWorkShiftEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -13109,6 +13194,470 @@ export interface paths {
         };
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/work-shift-assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** "Đăng ký ca làm việc" (Giai đoạn 2 của #101) — scope personal chỉ thấy của chính mình, scope global (mặc định clinic_admin) xem toàn bộ/lọc theo userId */
+        get: {
+            parameters: {
+                query: {
+                    from: string;
+                    to: string;
+                    userId?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    userId: string;
+                                    workDate: string;
+                                    /** Format: uuid */
+                                    workShiftId: string;
+                                    workShiftName: string;
+                                    /** @enum {string} */
+                                    workShiftColor: "blue" | "teal" | "emerald" | "amber" | "rose" | "purple" | "cyan" | "slate";
+                                    startTime: string;
+                                    endTime: string;
+                                    canEdit: boolean;
+                                    version: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền work_shift_assignment.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Đăng ký 1 ca làm việc cho 1 ngày — scope personal luôn tạo cho chính mình (bỏ qua userId gửi lên nếu có), scope global tạo hộ được qua userId */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        workShiftId: string;
+                        workDate: string;
+                        /** Format: uuid */
+                        userId?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                userId: string;
+                                workDate: string;
+                                /** Format: uuid */
+                                workShiftId: string;
+                                workShiftName: string;
+                                /** @enum {string} */
+                                workShiftColor: "blue" | "teal" | "emerald" | "amber" | "rose" | "purple" | "cyan" | "slate";
+                                startTime: string;
+                                endTime: string;
+                                canEdit: boolean;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền work_shift_assignment.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Đã đăng ký đúng ca này cho ngày đã chọn (WORK_SHIFT_ASSIGNMENT_DUPLICATE) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/work-shift-assignments/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** "Áp dụng cho các ngày đã chọn" — đăng ký cùng 1 ca cho nhiều ngày một lúc, bỏ qua (không lỗi) ngày đã đăng ký sẵn */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        workShiftId: string;
+                        workDates: string[];
+                        /** Format: uuid */
+                        userId?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                createdCount: number;
+                                skippedCount: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền work_shift_assignment.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/work-shift-assignments/copy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** "Sao chép tuần/tháng trước" — chỉ điền vào ngày còn trống ở đích, bỏ qua ngày đã có sẵn (không ghi đè) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        mode: "week";
+                        fromWeekStart: string;
+                        toWeekStart: string;
+                        /** Format: uuid */
+                        userId?: string;
+                    } | {
+                        /** @enum {string} */
+                        mode: "month";
+                        fromMonth: string;
+                        toMonth: string;
+                        /** Format: uuid */
+                        userId?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                createdCount: number;
+                                skippedCount: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền work_shift_assignment.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/work-shift-assignments/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Xoá ca đã đăng ký — scope personal chỉ xoá được của chính mình TRONG ĐÚNG NGÀY đăng ký, scope global xoá tự do */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Xoá thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                success: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền work_shift_assignment.delete */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION), hoặc đã khoá — ngoài ngày đăng ký (WORK_SHIFT_ASSIGNMENT_LOCKED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;

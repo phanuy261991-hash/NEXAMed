@@ -11,3 +11,4 @@ export * from './encounter-errors';
 export * from './allergen-errors';
 export * from './prescription-errors';
 export * from './billing-errors';
+export * from './work-shift-assignment-errors';

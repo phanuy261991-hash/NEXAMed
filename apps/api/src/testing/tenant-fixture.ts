@@ -97,6 +97,9 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       await prisma.rolePermission.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.userRole.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.role.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // work_shift_assignment ("Đăng ký ca làm việc" Giai đoạn 2) tham chiếu cả user_account lẫn
+      // work_shift (FK RESTRICT) — xoá trước CẢ HAI (trước cả dòng xoá work_shift bên dưới).
+      await prisma.workShiftAssignment.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // doctor_room_session (#054) tham chiếu cả user_account lẫn room (FK RESTRICT) — xoá trước cả hai.
       await prisma.doctorRoomSession.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // doctor_availability ("Tạm nghỉ / Đóng ca") tham chiếu user_account (FK RESTRICT) — xoá trước.
@@ -112,7 +115,7 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       await prisma.room.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // floor (#055) tham chiếu bởi room.floor_id (FK RESTRICT) — xoá sau room.
       await prisma.floor.deleteMany({ where: { tenantId: { in: tenantIds } } });
-      // work_shift (#101) — không bị bảng nào khác tham chiếu (giai đoạn "đăng ký ca" chưa xây), xoá tự do.
+      // work_shift (#101) — work_shift_assignment đã xoá ở trên (tham chiếu tới bảng này), giờ xoá tự do.
       await prisma.workShift.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.tenantSetting.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.tenant.deleteMany({ where: { id: { in: tenantIds } } });

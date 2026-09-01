@@ -146,6 +146,35 @@ export function AppointmentConfigPane() {
         )}
       </div>
 
+      {/* "Đăng ký ca làm việc" Giai đoạn 2 — cùng nhóm chủ đề "quy tắc đặt/xử lý lịch hẹn" với
+          khối "Tự động đánh dấu Không đến" ở trên, KHÔNG đặt ở pill "Cấu hình khám" (đó là cấu
+          hình Đóng ca/Tạm nghỉ của bác sĩ, #094 — khác chủ đề). */}
+      <div className={sectionBoxClassName}>
+        <span className={sectionBadgeClassName}>Đăng ký ca làm việc</span>
+        <div className="flex items-start justify-between gap-5">
+          <div>
+            <p className="text-[14.5px] font-bold text-slate-900">Chặn đặt lịch ngoài ca đã đăng ký</p>
+            <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
+              Bật để chỉ cho đặt lịch hẹn cho bác sĩ vào đúng khung giờ họ đã đăng ký ca hôm đó (mục &quot;Lịch làm việc&quot;). Bác
+              sĩ chưa đăng ký ca cho ngày cụ thể đó thì không bị giới hạn gì thêm. Tắt (mặc định) — giữ nguyên hành vi hiện tại,
+              chỉ theo giờ làm việc chung phòng khám.
+            </p>
+          </div>
+          <label className="relative mt-0.5 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center">
+            <input
+              type="checkbox"
+              className="peer sr-only"
+              checked={query.data.blockBookingOutsideWorkShiftEnabled}
+              disabled={mutation.isPending}
+              onChange={(e) => mutation.mutate({ blockBookingOutsideWorkShiftEnabled: e.target.checked })}
+              aria-label="Bật chặn đặt lịch ngoài ca đã đăng ký"
+            />
+            <span className="absolute inset-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-brand-teal peer-disabled:opacity-60" />
+            <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
+          </label>
+        </div>
+      </div>
+
       {mutation.isError && <ErrorBanner message="Không lưu được cấu hình. Thử lại." />}
 
       {savedNotice && (

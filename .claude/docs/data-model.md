@@ -82,7 +82,21 @@ Validate `endTime > startTime` và (khi có cả `restStartTime`/`restEndTime`) 
 
 Quyền: dùng lại `clinic_config.read`/`.update` như `room` — không permission mới. CRUD qua `PATCH` kèm `isActive`+`version` (đúng khuôn `RoomController`, không endpoint deactivate/reactivate riêng như `reference_catalog`).
 
-**Chỉ là Giai đoạn 1 (danh mục mẫu ca).** Giai đoạn kế tiếp (chưa xây, chưa thiết kế chi tiết): bác sĩ đăng ký ca theo tuần/tháng từ danh mục này (bảng mới, ví dụ `doctor_shift_assignment`, ràng buộc không vượt `business_hours` của đúng ngày trong tuần — validate lúc ĐĂNG KÝ chứ không phải lúc tạo mẫu ca vì mẫu ca không gắn thứ nào), bảng lịch làm việc toàn thể nhân viên (phân quyền xem), lọc cột bác sĩ ở lưới Lịch hẹn theo ca đã đăng ký, và chặn đặt lịch ngoài ca (lỗi 422 mới ở `AppointmentService`). Không nhầm với `doctor_room_session` (#054, chọn phòng vật lý mỗi ngày) hay `doctor_availability` (#094, trạng thái tức thời ACTIVE/BREAK/ENDED) — "ca làm việc" là recurring/đăng ký trước, trục hoàn toàn khác.
+**Giai đoạn 1 (danh mục mẫu ca) xong ở trên. Giai đoạn 2 (`docs/DECISIONS.md` #102, 02/09/2026) đã xây** — bảng mới `work_shift_assignment` (xem mục ngay dưới), KHÔNG nhầm với `doctor_room_session` (#054, chọn phòng vật lý mỗi ngày) hay `doctor_availability` (#094, trạng thái tức thời ACTIVE/BREAK/ENDED) — "ca làm việc" là recurring/đăng ký trước, trục hoàn toàn khác.
+
+### work_shift_assignment (`docs/DECISIONS.md` #102) — "Đăng ký ca làm việc" Giai đoạn 2
+
+MỌI nhân viên (không riêng bác sĩ — mở rộng phạm vi giữa buổi so với dự kiến ban đầu) tự đăng ký 1 hoặc nhiều ca (từ `work_shift`) cho một `work_date` cụ thể — nhận trực tiếp từ client (KHÁC `doctor_availability`/`doctor_room_session` luôn ép "hôm nay"). Cột đặc thù: `user_id` (composite FK `(tenant_id, user_id)` → `user_account`), `work_shift_id` (composite FK `(tenant_id, work_shift_id)` → `work_shift` — cần thêm `@@unique([tenantId, id])` cho `work_shift` trước, bảng đó chưa có), `work_date` (`date`). Unique `(tenant_id, user_id, work_date, work_shift_id) WHERE deleted_at IS NULL` (C23) — chặn trùng đúng 1 ca/ngày, cho phép nhiều ca KHÁC nhau cùng ngày (Sáng+Chiều).
+
+Ghi bằng Prisma `create()`/`createMany({skipDuplicates:true})` THUẦN — không cần raw SQL như `doctor_availability` (Postgres vẫn báo `unique_violation`→P2002 dù index có điều kiện `WHERE` không khai `@@unique`, đúng tiền lệ `patient.national_id_hash`). `createMany`+`skipDuplicates` giải bài toán "bulk-apply/sao chép bỏ qua ngày đã có sẵn" mà không bị Postgres abort cả transaction khi lặp `create()` từng dòng trong vòng lặp.
+
+**Quy tắc khoá** (kiểm ở Service, `PermissionGuard` không có khái niệm điều kiện thời gian): tự sửa/xoá tự do TRONG ĐÚNG NGÀY LỊCH VN đã tạo (`created_at`, so bằng `getVietnamDateString()`) — khoá lại từ hôm sau, chỉ scope `global` (mặc định `clinic_admin`) sửa/xoá tự do không giới hạn thời gian. Không có action "update" — đổi ca = xoá rồi đăng ký lại.
+
+Permission `work_shift_assignment.create/read/delete`: 4 vai trò thường (receptionist/nurse/doctor/clinic_admin) = `personal` cho `read`/`delete`; RIÊNG `create` của `clinic_admin` = `global` (khác `personal` của 4 vai trò kia) để "Lịch làm việc nhân viên" tạo hộ được qua `userId` trong body — ca đầu tiên trong dự án 1 permission có scope khác nhau THEO VAI TRÒ cho CÙNG action.
+
+`ClinicSettings` thêm `blockBookingOutsideWorkShiftEnabled` (`tenant_setting` key `block_booking_outside_work_shift_enabled`, mặc định `false`, pill "Cấu hình phòng khám" → mục con "Lịch hẹn" — cùng khối "Tự động đánh dấu Không đến"). Bật thì `AppointmentService.createAppointment/editAppointment/rescheduleAppointment` chặn đặt/sửa/dời lịch ra ngoài ca bác sĩ đã đăng ký cho đúng ngày đó (lỗi `AppointmentOutsideWorkShiftError`, 409) — bác sĩ CHƯA đăng ký ca ngày đó thì không bị giới hạn gì thêm. Port mới `WorkShiftAssignmentReaderPort` (module `work-shift-assignment` mới) phục vụ cả việc chặn này lẫn `GET /appointments/doctor-work-shifts?date=` (tự-phục vụ qua `appointment.read`, cho lưới Lịch hẹn hiện dải màu ca + gạch chéo ngoài ca).
+
+**Còn treo**: "Tháng" (month view) ở trang "Lịch làm việc của tôi" chưa xây (chỉ có Tuần, đầy đủ chức năng); chưa verify Playwright/trình duyệt thật.
 
 ### user_session (S1-04 — xem `security-audit.md` mục Xác thực, `docs/DECISIONS.md` #019)
 

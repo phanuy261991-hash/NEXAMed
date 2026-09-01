@@ -6,6 +6,7 @@ import { APPOINTMENT_SOURCE_LABEL, APPOINTMENT_STATUS_META, getNoShowCountdownTi
 import {
   GRID_STEP_MINUTES,
   ROW_HEIGHT_PX,
+  extendRangeWithShifts,
   generateSlotLabels,
   getVietnamTodayDateString,
   minutesToLabel,
@@ -14,6 +15,16 @@ import {
   vietnamNowMinutes,
   vnTimeOfDayMinutes,
 } from './schedule-grid.utils';
+import { WORK_SHIFT_COLOR_HEX } from '../clinic/WorkShiftFormModal';
+
+/** Khớp `DoctorWorkShiftBlock` ở `@nexamed/shared` — định nghĩa lại field cần dùng, tránh kéo
+ * thêm import không cần thiết chỉ cho 1 kiểu dữ liệu nhỏ. */
+interface DoctorShiftBlock {
+  name: string;
+  color: string;
+  startTime: string;
+  endTime: string;
+}
 
 const TIME_COL_WIDTH = 64;
 const DOCTOR_COL_MIN_WIDTH = 180;
@@ -41,6 +52,8 @@ export function AppointmentGridView({
   businessHours,
   noShowThresholdMinutes,
   noShowAutoEnabled,
+  doctorWorkShifts = {},
+  blockBookingOutsideWorkShift = false,
   onSlotClick,
   onCardClick,
 }: {
@@ -50,10 +63,21 @@ export function AppointmentGridView({
   businessHours: BusinessHours | null;
   noShowThresholdMinutes: number;
   noShowAutoEnabled: boolean;
+  /** "Đăng ký ca làm việc" Giai đoạn 2 — key = doctorId, rỗng/vắng mặt = bác sĩ đó CHƯA đăng ký ca
+   * hôm nay (không giới hạn gì thêm, giữ nguyên hành vi cũ). */
+  doctorWorkShifts?: Record<string, DoctorShiftBlock[]>;
+  /** `ClinicSettings.blockBookingOutsideWorkShiftEnabled` — bật thì ô ngoài ca đã đăng ký không
+   * bấm được (chỉ áp dụng cho bác sĩ CÓ đăng ký ca hôm đó); tắt thì vẫn bấm được, chỉ tô gạch chéo
+   * để cảnh báo trực quan. */
+  blockBookingOutsideWorkShift?: boolean;
   onSlotClick: (doctorId: string, time: string) => void;
   onCardClick: (appointment: AppointmentSummary) => void;
 }) {
-  const range = useMemo(() => resolveDayHours(businessHours, date), [businessHours, date]);
+  const allShiftsToday = useMemo(() => Object.values(doctorWorkShifts).flat(), [doctorWorkShifts]);
+  const range = useMemo(() => {
+    const base = resolveDayHours(businessHours, date);
+    return base ? extendRangeWithShifts(base, allShiftsToday) : null;
+  }, [businessHours, date, allShiftsToday]);
   const slots = useMemo(() => (range ? generateSlotLabels(range) : []), [range]);
   const totalHeight = slots.length * ROW_HEIGHT_PX;
   const isToday = date === getVietnamTodayDateString();
@@ -107,17 +131,32 @@ export function AppointmentGridView({
         {/* Header — mỗi ô là 1 grid item riêng ở hàng 1 (không bọc div spanning, để tự thẳng
             hàng với thân bảng ở hàng 2 mà không cần grid-cols-subgrid). */}
         <div className="sticky top-0 z-10 border-b border-slate-200 bg-white" />
-        {doctors.map((d) => (
-          <div
-            key={d.id}
-            className="sticky top-0 z-10 flex items-center gap-2.5 border-b border-r border-slate-200 bg-white px-3.5 py-2 last:border-r-0"
-          >
-            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blue-50 text-xs font-bold text-blue-600">
-              {initials(d.displayName ?? d.fullName)}
+        {doctors.map((d) => {
+          const shifts = doctorWorkShifts[d.id] ?? [];
+          return (
+            <div
+              key={d.id}
+              className="sticky top-0 z-10 flex flex-col gap-1 border-b border-r border-slate-200 bg-white px-3.5 py-2 last:border-r-0"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blue-50 text-xs font-bold text-blue-600">
+                  {initials(d.displayName ?? d.fullName)}
+                </div>
+                <div className="truncate text-[13.5px] font-semibold text-slate-900">{d.displayName ?? d.fullName}</div>
+              </div>
+              {shifts.length > 0 && (
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 pl-[42px]">
+                  {shifts.map((s, i) => (
+                    <span key={i} className="flex items-center gap-1 text-[10.5px] font-semibold text-slate-500">
+                      <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full" style={{ background: WORK_SHIFT_COLOR_HEX[s.color as keyof typeof WORK_SHIFT_COLOR_HEX] }} />
+                      {s.startTime}–{s.endTime}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
-            <div className="truncate text-[13.5px] font-semibold text-slate-900">{d.displayName ?? d.fullName}</div>
-          </div>
-        ))}
+          );
+        })}
 
         {/* Cột giờ */}
         <div className="relative border-r border-slate-200" style={{ height: totalHeight }}>
@@ -165,6 +204,15 @@ export function AppointmentGridView({
             return { start, end: start + a.durationMinutes / GRID_STEP_MINUTES, appointment: a };
           });
 
+          // "Đăng ký ca làm việc" Giai đoạn 2 — bác sĩ CHƯA đăng ký ca nào hôm nay thì
+          // `shiftWindows` rỗng, `isInsideShift()` luôn `true` (giữ nguyên hành vi cũ, không gạch
+          // chéo/không chặn gì thêm).
+          const shiftWindows = (doctorWorkShifts[doctor.id] ?? []).map((s) => ({ start: toMinutes(s.startTime), end: toMinutes(s.endTime) }));
+          const hasShifts = shiftWindows.length > 0;
+          function isInsideShift(rowStartMin: number): boolean {
+            return !hasShifts || shiftWindows.some((w) => rowStartMin >= w.start && rowStartMin < w.end);
+          }
+
           return (
             <div
               key={doctor.id}
@@ -178,14 +226,41 @@ export function AppointmentGridView({
                 const row = i;
                 const isOccupied = occupied.some((o) => row >= o.start && row < o.end);
                 if (isOccupied) return null;
+
+                const rowStartMin = startMin + i * GRID_STEP_MINUTES;
+                const inside = isInsideShift(rowStartMin);
+                if (!inside && blockBookingOutsideWorkShift) {
+                  // Ngoài ca đã đăng ký + đang BẬT chặn cứng — không cho bấm, chỉ tô gạch chéo +
+                  // tooltip giải thích lý do (title thuần, không cần component riêng cho trạng thái
+                  // thuần hiển thị này).
+                  return (
+                    <div
+                      key={label}
+                      title={`Ngoài ca làm việc bác sĩ đã đăng ký — bật ở "Cấu hình phòng khám" → "Lịch hẹn" nếu muốn tắt`}
+                      className="absolute left-0.5 right-0.5 cursor-not-allowed rounded-md"
+                      style={{
+                        top: i * ROW_HEIGHT_PX,
+                        height: ROW_HEIGHT_PX - 2,
+                        backgroundImage: 'repeating-linear-gradient(135deg, rgba(100,116,139,0.14) 0px, rgba(100,116,139,0.14) 5px, transparent 5px, transparent 10px)',
+                      }}
+                    />
+                  );
+                }
                 return (
                   <button
                     key={label}
                     type="button"
                     onClick={() => onSlotClick(doctor.id, label)}
                     aria-label={`Đặt lịch ${label} với ${doctor.displayName ?? doctor.fullName}`}
+                    title={!inside ? 'Ngoài ca làm việc bác sĩ đã đăng ký — vẫn đặt được (chỉ cảnh báo)' : undefined}
                     className="group absolute left-0.5 right-0.5 rounded-md hover:bg-blue-50 hover:outline hover:outline-1 hover:outline-dashed hover:outline-blue-200"
-                    style={{ top: i * ROW_HEIGHT_PX, height: ROW_HEIGHT_PX - 2 }}
+                    style={{
+                      top: i * ROW_HEIGHT_PX,
+                      height: ROW_HEIGHT_PX - 2,
+                      backgroundImage: inside
+                        ? undefined
+                        : 'repeating-linear-gradient(135deg, rgba(100,116,139,0.14) 0px, rgba(100,116,139,0.14) 5px, transparent 5px, transparent 10px)',
+                    }}
                   >
                     <span className="hidden items-center justify-center text-lg font-bold text-blue-600 group-hover:flex">+</span>
                   </button>

@@ -10,6 +10,7 @@ export * from './role';
 export * from './department';
 export * from './clinic';
 export * from './work-shift';
+export * from './work-shift-assignment';
 export * from './doctor-availability';
 export * from './reference-catalog';
 export * from './allergen';

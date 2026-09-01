@@ -163,6 +163,15 @@ export const clinicSettingsSchema = z.object({
    */
   allowEmergencyEndShift: z.boolean(),
   allowReceptionistEndShift: z.boolean(),
+  /**
+   * "Đăng ký ca làm việc" Giai đoạn 2 — pill "Cấu hình phòng khám" → mục con "Lịch hẹn" (cùng khối
+   * với "Tự động đánh dấu Không đến", KHÔNG phải pill "Cấu hình khám" — cả hai đều là quy tắc đặt/
+   * xử lý lịch hẹn). Tắt (mặc định — an toàn, giữ nguyên hành vi hiện tại): đặt/dời/sửa lịch không
+   * bị giới hạn gì thêm ngoài giờ làm việc chung. Bật: bác sĩ CÓ đăng ký ≥1 ca cho đúng ngày đó thì
+   * chỉ đặt được trong khung giờ đã đăng ký; bác sĩ CHƯA đăng ký ca ngày đó thì KHÔNG bị giới hạn gì
+   * thêm (tránh khoá cứng toàn bộ lịch hẹn khi mới bật lúc chưa ai kịp đăng ký đủ ca).
+   */
+  blockBookingOutsideWorkShiftEnabled: z.boolean(),
 });
 export type ClinicSettings = z.infer<typeof clinicSettingsSchema>;
 
@@ -181,6 +190,7 @@ export const updateClinicSettingsRequestSchema = z.object({
   noShowThresholdMinutes: z.number().int().min(1).max(1440).optional(),
   allowEmergencyEndShift: z.boolean().optional(),
   allowReceptionistEndShift: z.boolean().optional(),
+  blockBookingOutsideWorkShiftEnabled: z.boolean().optional(),
 });
 export type UpdateClinicSettingsRequest = z.infer<typeof updateClinicSettingsRequestSchema>;
 
@@ -195,6 +205,8 @@ export const DEFAULT_NO_SHOW_THRESHOLD_MINUTES = 60;
 export const DEFAULT_ALLOW_EMERGENCY_END_SHIFT = true;
 /** Tắt theo mặc định (an toàn — lễ tân KHÔNG thao tác hộ trạng thái bác sĩ khác tới khi chủ động bật). */
 export const DEFAULT_ALLOW_RECEPTIONIST_END_SHIFT = false;
+/** Tắt theo mặc định (an toàn — giữ nguyên hành vi hiện tại tới khi chủ động bật). */
+export const DEFAULT_BLOCK_BOOKING_OUTSIDE_WORK_SHIFT_ENABLED = false;
 
 /**
  * `GET /clinic-settings/deferred-payment-enabled` — chiếu tối thiểu tự-phục vụ (Thu ngân cơ bản,

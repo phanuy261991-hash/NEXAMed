@@ -4,6 +4,7 @@ import {
   appointmentPhoneLookupQuerySchema,
   cancelAppointmentRequestSchema,
   createAppointmentRequestSchema,
+  doctorWorkShiftsQuerySchema,
   editAppointmentRequestSchema,
   listAppointmentsQuerySchema,
   markNoShowRequestSchema,
@@ -56,6 +57,20 @@ export class AppointmentController {
   async getScheduleConfig(@Req() req: Request) {
     const { tenantId } = req.user!;
     return this.appointmentService.getScheduleConfig(tenantId);
+  }
+
+  /**
+   * "Đăng ký ca làm việc" Giai đoạn 2 — ca đã đăng ký của TOÀN BỘ bác sĩ active cho 1 ngày, phục vụ
+   * lưới Lịch hẹn (dải màu ca + gạch chéo ngoài ca). Tự-phục vụ qua `appointment.read` (không phải
+   * `work_shift_assignment.read`, chỉ clinic_admin mặc định) — cùng khuôn `doctors`/`schedule-config`
+   * ở trên. Khai TRƯỚC `@Get(':id')` cùng lý do các route tĩnh khác.
+   */
+  @Get('doctor-work-shifts')
+  @RequirePermission('appointment', 'read')
+  async getDoctorWorkShifts(@Query() query: unknown, @Req() req: Request) {
+    const dto = doctorWorkShiftsQuerySchema.parse(query);
+    const { tenantId } = req.user!;
+    return this.appointmentService.getDoctorWorkShifts(tenantId, dto.date);
   }
 
   /**

@@ -83,6 +83,17 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   // hộ CÒN CẦN THÊM 2 công tắc `ClinicSettings.allowEmergencyEndShift`/`allowReceptionistEndShift`
   // (kiểm trong service, không phải ở đây) — RBAC không phân biệt được ĐANG BẬT/TẮT cấu hình.
   { module: 'doctor_availability', action: 'update', description: 'Đổi trạng thái sẵn sàng nhận bệnh (Tạm nghỉ/Đóng ca) của bác sĩ' },
+  // "Đăng ký ca làm việc" (Giai đoạn 2 của #101) — MỌI nhân viên tự đăng ký ca cho chính mình
+  // (`create`=personal), tự xoá được TRONG ĐÚNG NGÀY ĐĂNG KÝ (điều kiện thời gian kiểm ở tầng
+  // Service, không phải RBAC — cùng lý do 2 công tắc `doctor_availability` không nằm ở đây). Không
+  // có action "update" (PATCH) — đổi ca = xoá rồi đăng ký lại, đơn giản hơn PATCH nhiều trường.
+  // `create`/`read`/`delete` scope `global` (mặc định CHỈ clinic_admin) là NGƯỜI QUẢN LÝ tạo/xem/
+  // xoá HỘ toàn bộ nhân viên, không giới hạn thời gian. Đây là ca ĐẦU TIÊN trong dự án một
+  // permission có scope khác nhau THEO VAI TRÒ cho CÙNG action (`create`: personal cho 4 vai trò
+  // thường, global cho clinic_admin) — không có tiền lệ tương tự trước đó.
+  { module: 'work_shift_assignment', action: 'create', description: 'Đăng ký ca làm việc (cho chính mình, hoặc hộ người khác nếu có quyền quản lý)' },
+  { module: 'work_shift_assignment', action: 'read', description: 'Xem lịch làm việc đã đăng ký' },
+  { module: 'work_shift_assignment', action: 'delete', description: 'Xoá ca làm việc đã đăng ký (của người khác, hoặc quá hạn tự xoá)' },
 ] as const;
 
 export function permissionKey(p: Pick<PermissionDefinition, 'module' | 'action'>): string {
@@ -123,6 +134,12 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     // "Tạm nghỉ / Đóng ca" hộ bác sĩ — chỉ thật sự dùng được khi phòng khám bật thêm
     // `allowReceptionistEndShift` (mặc định tắt), xem PERMISSIONS ở trên.
     'doctor_availability.update': 'global',
+    // "Đăng ký ca làm việc" (Giai đoạn 2 #101) — tự đăng ký cho chính mình, chỉ xem/sửa/xoá của
+    // riêng mình (không có 'read'/'update'/'delete' global — đó là quyền quản lý, mặc định chỉ
+    // clinic_admin, xem bên dưới).
+    'work_shift_assignment.create': 'personal',
+    'work_shift_assignment.read': 'personal',
+    'work_shift_assignment.delete': 'personal',
   },
   nurse: {
     'patient.read': 'global',
@@ -136,6 +153,9 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'allergen_catalog.read': 'global',
     'allergen_catalog.create': 'global',
     'drug.read': 'global',
+    'work_shift_assignment.create': 'personal',
+    'work_shift_assignment.read': 'personal',
+    'work_shift_assignment.delete': 'personal',
   },
   doctor: {
     'patient.read': 'global',
@@ -169,6 +189,9 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     // Tự thao tác "Tạm nghỉ / Đóng ca" cho chính mình — luôn cho phép (personal), không phụ thuộc
     // 2 công tắc cấu hình (2 công tắc đó chỉ gate nhánh "hộ" của receptionist/clinic_admin).
     'doctor_availability.update': 'personal',
+    'work_shift_assignment.create': 'personal',
+    'work_shift_assignment.read': 'personal',
+    'work_shift_assignment.delete': 'personal',
   },
   clinic_admin: {
     'patient.read': 'global',
@@ -205,6 +228,16 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     // `syncRolePermissionsForAllTenants()`, không cần thao tác tay.
     'invoice.refund': 'global',
     'doctor_availability.update': 'global',
+    // Người quản lý — xem/tạo/xoá TOÀN BỘ lịch làm việc nhân viên, không giới hạn thời gian tự sửa
+    // (khác `personal` của 4 vai trò còn lại). `create=global` (khác 4 vai trò kia) — bắt buộc để
+    // màn "Lịch làm việc nhân viên" tạo ca HỘ bất kỳ nhân viên nào (`userId` trong body mới có tác
+    // dụng ở scope `global`, xem `WorkShiftAssignmentService.create()`); vẫn tự đăng ký cho chính
+    // mình bình thường khi bỏ trống `userId`. Không có action "update" (PATCH) thật nào trong API —
+    // đổi ca = xoá rồi tạo lại (đơn giản hơn PATCH nhiều trường), permission `update` giữ lại trong
+    // catalog chỉ để đối xứng CRUD, chưa gắn route nào.
+    'work_shift_assignment.create': 'global',
+    'work_shift_assignment.read': 'global',
+    'work_shift_assignment.delete': 'global',
   },
   system_admin: {
     'user_account.read': 'global',

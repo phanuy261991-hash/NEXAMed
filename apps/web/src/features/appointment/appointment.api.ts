@@ -4,6 +4,7 @@ import type {
   CancelAppointmentRequest,
   ClinicSettings,
   CreateAppointmentRequest,
+  DoctorWorkShiftsForDateResponse,
   EditAppointmentRequest,
   ListAppointmentsResponse,
   ListDoctorsResponse,
@@ -66,4 +67,12 @@ export async function lookupAppointmentByPhone(phone: string): Promise<Appointme
   return unwrap(
     await getApiClient().GET('/api/v1/appointments/lookup', { params: { query: { phone } } }),
   ) as AppointmentPhoneLookupResponse;
+}
+
+/** "Đăng ký ca làm việc" Giai đoạn 2 — dải màu ca + gạch chéo ngoài ca theo cột bác sĩ ở lưới Lịch
+ * hẹn, tự-phục vụ qua `appointment.read` (xem `AppointmentService.getDoctorWorkShifts()`). */
+export async function getDoctorWorkShifts(date: string): Promise<DoctorWorkShiftsForDateResponse> {
+  return unwrap(
+    await getApiClient().GET('/api/v1/appointments/doctor-work-shifts', { params: { query: { date } } }),
+  ) as DoctorWorkShiftsForDateResponse;
 }

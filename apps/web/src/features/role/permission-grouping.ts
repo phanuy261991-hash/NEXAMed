@@ -18,6 +18,14 @@ const MODULE_LABELS: Record<string, string> = {
   role_permission: 'Phân quyền',
   audit_log: 'Nhật ký hoạt động',
   reference_catalog: 'Danh mục dùng chung',
+  // 4 module đã có permission từ trước nhưng chưa từng thêm nhãn ở đây (bug thật, chủ dự án phát
+  // hiện lúc xem trang Vai trò & Phân quyền — tên module thô hiện ra thay vì tiếng Việt, đúng cơ
+  // chế fallback `moduleLabel()` mô tả ở trên).
+  allergen_catalog: 'Danh mục Dị nguyên',
+  drug: 'Danh mục thuốc',
+  invoice: 'Phiếu thu',
+  doctor_availability: 'Tạm nghỉ / Đóng ca',
+  work_shift_assignment: 'Đăng ký ca làm việc',
 };
 
 export function moduleLabel(module: string): string {

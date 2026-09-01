@@ -42,3 +42,17 @@ export class AppointmentNotCancellableError extends DomainError {
     super('Lịch hẹn này không còn ở trạng thái có thể thao tác qua đây.');
   }
 }
+
+/**
+ * "Đăng ký ca làm việc" Giai đoạn 2 — đặt/sửa/dời lịch hẹn ra ngoài khung giờ bác sĩ đã đăng ký ca
+ * cho đúng ngày đó, khi `ClinicSettings.blockBookingOutsideWorkShiftEnabled=true`. CHỈ áp dụng khi
+ * bác sĩ CÓ ít nhất 1 ca đăng ký ngày đó — chưa đăng ký ca nào thì không bị chặn (xem comment
+ * `clinicSettingsSchema.blockBookingOutsideWorkShiftEnabled`).
+ */
+export class AppointmentOutsideWorkShiftError extends DomainError {
+  readonly code = 'APPOINTMENT_OUTSIDE_WORK_SHIFT';
+
+  constructor() {
+    super('Ngoài ca làm việc bác sĩ đã đăng ký cho ngày này.');
+  }
+}

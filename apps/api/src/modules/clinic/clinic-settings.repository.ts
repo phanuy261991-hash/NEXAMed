@@ -5,6 +5,7 @@ import {
   businessHoursSchema,
   DEFAULT_ALLOW_EMERGENCY_END_SHIFT,
   DEFAULT_ALLOW_RECEPTIONIST_END_SHIFT,
+  DEFAULT_BLOCK_BOOKING_OUTSIDE_WORK_SHIFT_ENABLED,
   DEFAULT_NO_SHOW_AUTO_ENABLED,
   DEFAULT_NO_SHOW_THRESHOLD_MINUTES,
   DEFAULT_OVERDUE_WAIT_WARNING_MINUTES,
@@ -36,6 +37,10 @@ const allowEmergencyEndShiftSchema = z.boolean();
 // Tắt theo mặc định (an toàn) — lễ tân KHÔNG thao tác hộ trạng thái bác sĩ khác tới khi chủ động bật.
 const ALLOW_RECEPTIONIST_END_SHIFT_KEY = 'allow_receptionist_end_shift';
 const allowReceptionistEndShiftSchema = z.boolean();
+// "Đăng ký ca làm việc" Giai đoạn 2 — tắt theo mặc định (an toàn, giữ nguyên hành vi hiện tại tới
+// khi chủ động bật).
+const BLOCK_BOOKING_OUTSIDE_WORK_SHIFT_KEY = 'block_booking_outside_work_shift_enabled';
+const blockBookingOutsideWorkShiftSchema = z.boolean();
 
 /**
  * Đọc/ghi `tenant_setting` cho hai key cấu hình phòng khám (S2-07, ADM-02) — cùng mẫu
@@ -115,6 +120,19 @@ export class ClinicSettingsRepository {
     }
     const parsed = allowReceptionistEndShiftSchema.safeParse(setting.valueJson);
     return parsed.success ? parsed.data : DEFAULT_ALLOW_RECEPTIONIST_END_SHIFT;
+  }
+
+  async getBlockBookingOutsideWorkShiftEnabled(tx: Prisma.TransactionClient, tenantId: string): Promise<boolean> {
+    const setting = await tx.tenantSetting.findFirst({ where: { tenantId, key: BLOCK_BOOKING_OUTSIDE_WORK_SHIFT_KEY } });
+    if (!setting) {
+      return DEFAULT_BLOCK_BOOKING_OUTSIDE_WORK_SHIFT_ENABLED;
+    }
+    const parsed = blockBookingOutsideWorkShiftSchema.safeParse(setting.valueJson);
+    return parsed.success ? parsed.data : DEFAULT_BLOCK_BOOKING_OUTSIDE_WORK_SHIFT_ENABLED;
+  }
+
+  upsertBlockBookingOutsideWorkShiftEnabled(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
+    return this.upsert(tx, tenantId, actorId, BLOCK_BOOKING_OUTSIDE_WORK_SHIFT_KEY, value);
   }
 
   upsertAllowEmergencyEndShift(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {

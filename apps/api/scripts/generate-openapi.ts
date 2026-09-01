@@ -150,6 +150,16 @@ import {
   updateWorkShiftRequestSchema,
   listWorkShiftsResponseSchema,
   workShiftItemSchema,
+  bulkCreateWorkShiftAssignmentRequestSchema,
+  copyWorkShiftAssignmentsRequestSchema,
+  createWorkShiftAssignmentRequestSchema,
+  deleteWorkShiftAssignmentRequestSchema,
+  doctorWorkShiftsForDateResponseSchema,
+  doctorWorkShiftsQuerySchema,
+  listWorkShiftAssignmentsQuerySchema,
+  listWorkShiftAssignmentsResponseSchema,
+  workShiftAssignmentBulkResultSchema,
+  workShiftAssignmentItemSchema,
 } from '@nexamed/shared';
 
 /**
@@ -466,6 +476,20 @@ registry.registerPath({
   security: [{ bearerAuth: [] }],
   responses: {
     200: jsonResponse('Thành công', envelope(clinicSettingsSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền appointment.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/appointments/doctor-work-shifts',
+  tags: ['appointment'],
+  summary: '"Đăng ký ca làm việc" Giai đoạn 2 — ca đã đăng ký của toàn bộ bác sĩ active cho 1 ngày (lưới Lịch hẹn), gắn quyền appointment.read',
+  security: [{ bearerAuth: [] }],
+  request: { query: doctorWorkShiftsQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(doctorWorkShiftsForDateResponseSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền appointment.read'),
   },
@@ -2115,6 +2139,84 @@ registry.registerPath({
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền doctor_availability.update, hoặc cấu hình chặn (DOCTOR_AVAILABILITY_RECEPTION_DISABLED/DOCTOR_AVAILABILITY_EMERGENCY_DISABLED)'),
     404: errorResponse('Không tìm thấy (bác sĩ khác scope personal, hoặc thuộc tenant khác)'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/work-shift-assignments',
+  tags: ['work-shift-assignment'],
+  summary: '"Đăng ký ca làm việc" (Giai đoạn 2 của #101) — scope personal chỉ thấy của chính mình, scope global (mặc định clinic_admin) xem toàn bộ/lọc theo userId',
+  security: [{ bearerAuth: [] }],
+  request: { query: listWorkShiftAssignmentsQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listWorkShiftAssignmentsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền work_shift_assignment.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/work-shift-assignments',
+  tags: ['work-shift-assignment'],
+  summary: 'Đăng ký 1 ca làm việc cho 1 ngày — scope personal luôn tạo cho chính mình (bỏ qua userId gửi lên nếu có), scope global tạo hộ được qua userId',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createWorkShiftAssignmentRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(workShiftAssignmentItemSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền work_shift_assignment.create'),
+    409: errorResponse('Đã đăng ký đúng ca này cho ngày đã chọn (WORK_SHIFT_ASSIGNMENT_DUPLICATE)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/work-shift-assignments/bulk',
+  tags: ['work-shift-assignment'],
+  summary: '"Áp dụng cho các ngày đã chọn" — đăng ký cùng 1 ca cho nhiều ngày một lúc, bỏ qua (không lỗi) ngày đã đăng ký sẵn',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: bulkCreateWorkShiftAssignmentRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(workShiftAssignmentBulkResultSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền work_shift_assignment.create'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/work-shift-assignments/copy',
+  tags: ['work-shift-assignment'],
+  summary: '"Sao chép tuần/tháng trước" — chỉ điền vào ngày còn trống ở đích, bỏ qua ngày đã có sẵn (không ghi đè)',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: copyWorkShiftAssignmentsRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(workShiftAssignmentBulkResultSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền work_shift_assignment.create'),
+  },
+});
+
+const workShiftAssignmentIdParams = z.object({ id: z.string().uuid() });
+
+registry.registerPath({
+  method: 'delete',
+  path: '/api/v1/work-shift-assignments/{id}',
+  tags: ['work-shift-assignment'],
+  summary: 'Xoá ca đã đăng ký — scope personal chỉ xoá được của chính mình TRONG ĐÚNG NGÀY đăng ký, scope global xoá tự do',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: workShiftAssignmentIdParams,
+    body: { content: { 'application/json': { schema: deleteWorkShiftAssignmentRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Xoá thành công', envelope(z.object({ success: z.boolean() }))),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền work_shift_assignment.delete'),
+    404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal)'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION), hoặc đã khoá — ngoài ngày đăng ký (WORK_SHIFT_ASSIGNMENT_LOCKED)'),
   },
 });
 

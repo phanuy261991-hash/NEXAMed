@@ -169,6 +169,15 @@ export const listDoctorsResponseSchema = z.object({
 });
 export type ListDoctorsResponse = z.infer<typeof listDoctorsResponseSchema>;
 
+/** `GET /appointments/doctor-work-shifts?date=` ("Đăng ký ca làm việc" Giai đoạn 2) — xem
+ * `doctorWorkShiftsForDateResponseSchema` ở `work-shift-assignment.ts`. */
+export const doctorWorkShiftsQuerySchema = z.object({
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'date phải theo định dạng YYYY-MM-DD'),
+});
+export type DoctorWorkShiftsQuery = z.infer<typeof doctorWorkShiftsQuerySchema>;
+
 /**
  * Tra cứu theo SĐT lúc đặt lịch (docs/DECISIONS.md #032) — tự điền Họ tên nếu SĐT đã từng đặt,
  * cảnh báo spam nếu số lần huỷ đạt ngưỡng. Không trả danh sách lịch hẹn đầy đủ (không cần cho UI,
