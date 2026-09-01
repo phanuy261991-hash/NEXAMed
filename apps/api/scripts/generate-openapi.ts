@@ -146,6 +146,10 @@ import {
   updateUserAccountRequestSchema,
   userAccountSummarySchema,
   vitalSignResponseSchema,
+  createWorkShiftRequestSchema,
+  updateWorkShiftRequestSchema,
+  listWorkShiftsResponseSchema,
+  workShiftItemSchema,
 } from '@nexamed/shared';
 
 /**
@@ -1377,6 +1381,56 @@ registry.registerPath({
     403: errorResponse('Không có quyền clinic_config.update'),
     404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
     409: errorResponse('version không khớp (CONCURRENT_MODIFICATION)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/work-shifts',
+  tags: ['clinic'],
+  summary: '"Ca làm việc" (docs/DECISIONS.md #101) — tạo mẫu ca mới, mã tự sinh',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createWorkShiftRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Tạo thành công', envelope(workShiftItemSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinic_config.update'),
+    422: errorResponse('Giờ kết thúc không sau giờ bắt đầu, hoặc giờ nghỉ không hợp lệ (WORK_SHIFT_INVALID_TIME_RANGE)'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/work-shifts',
+  tags: ['clinic'],
+  summary: '"Ca làm việc" — danh sách mẫu ca của phòng khám (không phân trang — quy mô nhỏ)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(listWorkShiftsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinic_config.read'),
+  },
+});
+
+const workShiftIdParams = z.object({ id: z.string().uuid() });
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/work-shifts/{id}',
+  tags: ['clinic'],
+  summary: '"Ca làm việc" — sửa/ẩn mẫu ca, bắt buộc kèm version hiện có',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: workShiftIdParams,
+    body: { content: { 'application/json': { schema: updateWorkShiftRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Sửa thành công', envelope(workShiftItemSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinic_config.update'),
+    404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION)'),
+    422: errorResponse('Giờ kết thúc không sau giờ bắt đầu, hoặc giờ nghỉ không hợp lệ (WORK_SHIFT_INVALID_TIME_RANGE)'),
   },
 });
 

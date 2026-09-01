@@ -72,6 +72,18 @@ Mở rộng `room` thành cấp bậc không gian vật lý — "Tầng phòng" 
 
 Quyền: dùng lại `clinic_config.read`/`.update` như `room` — không thêm permission mới (cùng lý do PRD ADM-02 gộp chung "phòng" vào một yêu cầu cấu hình).
 
+### work_shift (`docs/DECISIONS.md` #101)
+
+Danh mục "Ca làm việc" — mẫu ca (Ca sáng/Ca chiều...) do `clinic_admin` tự quản lý qua UI, mục con "Ca làm việc" trong pill "Cấu hình phòng khám". **Ban đầu định tái dùng `reference_catalog` (đã dùng cho EXAM_TYPE/PATIENT_SOURCE/UNIT...) nhưng đổi hướng lúc duyệt mockup**: `reference_catalog` là danh mục TOÀN HỆ THỐNG (không `tenant_id`, giống `icd10_catalog`/`province`) — mỗi phòng khám tự đặt giờ ca của riêng mình, không phải danh mục chia sẻ nhiều tenant, nên phải là bảng RIÊNG tenant-scoped, cùng khuôn `room`/`department` (đủ 8 cột bắt buộc bao gồm `tenant_id`, RLS, `CHECK(version>=1)`).
+
+Cột đặc thù: `name`, `code` (tự sinh — tái dùng `generateReferenceCatalogCode()`, không nhập tay), `start_time`/`end_time` (`text` dạng `"HH:mm"`, so sánh chuỗi đủ dùng — cùng khuôn `tenant_setting.business_hours`/`DayHours.open-close`, không cần kiểu `time` của Postgres), `color` (`text`, enum 8 giá trị cố định ở tầng Zod — `blue`/`teal`/`emerald`/`amber`/`rose`/`purple`/`cyan`/`slate`, không color-picker tự do), `rest_start_time`/`rest_end_time` (`text` `"HH:mm"`, **tuỳ chọn**, độc lập với `rest_minutes` — không bắt buộc khớp nhau), `rest_minutes`/`standard_work_minutes` (`int`, đơn vị PHÚT — "Tổng thời gian nghỉ"/"Số giờ công chuẩn" đều nhập ở web theo giờ/phút rồi quy đổi về phút lúc gửi, nhất quán với `durationMinutes`/`GRID_STEP_MINUTES` đã dùng trong hệ thống, không dùng kiểu decimal riêng), `sort_order`, `is_active`. Unique `(tenant_id, code)`.
+
+Validate `endTime > startTime` và (khi có cả `restStartTime`/`restEndTime`) `restEnd > restStart` + cả hai nằm trong `[startTime, endTime]` — ở tầng SERVICE (`WorkShiftService`), không phải Zod thuần, vì cần so sánh 2 field với nhau (lỗi mới `WorkShiftInvalidTimeRangeError`, 422). Modal riêng `WorkShiftFormModal.tsx` (không dùng chung `ItemFormModal` của `reference_catalog` — schema khác hẳn), theo Boxed Section Form Pattern (`.claude/docs/ui-guidelines.md` mục 9b) vì đủ 9 trường.
+
+Quyền: dùng lại `clinic_config.read`/`.update` như `room` — không permission mới. CRUD qua `PATCH` kèm `isActive`+`version` (đúng khuôn `RoomController`, không endpoint deactivate/reactivate riêng như `reference_catalog`).
+
+**Chỉ là Giai đoạn 1 (danh mục mẫu ca).** Giai đoạn kế tiếp (chưa xây, chưa thiết kế chi tiết): bác sĩ đăng ký ca theo tuần/tháng từ danh mục này (bảng mới, ví dụ `doctor_shift_assignment`, ràng buộc không vượt `business_hours` của đúng ngày trong tuần — validate lúc ĐĂNG KÝ chứ không phải lúc tạo mẫu ca vì mẫu ca không gắn thứ nào), bảng lịch làm việc toàn thể nhân viên (phân quyền xem), lọc cột bác sĩ ở lưới Lịch hẹn theo ca đã đăng ký, và chặn đặt lịch ngoài ca (lỗi 422 mới ở `AppointmentService`). Không nhầm với `doctor_room_session` (#054, chọn phòng vật lý mỗi ngày) hay `doctor_availability` (#094, trạng thái tức thời ACTIVE/BREAK/ENDED) — "ca làm việc" là recurring/đăng ký trước, trục hoàn toàn khác.
+
 ### user_session (S1-04 — xem `security-audit.md` mục Xác thực, `docs/DECISIONS.md` #019)
 
 Phiên refresh token, phục vụ "xoay vòng mỗi lần refresh" (rotation) + phát hiện token bị đánh cắp (reuse detection). Đủ 8 cột bắt buộc, cộng: `user_id` (composite FK `(tenant_id, user_id)` → `user_account`), `refresh_token_hash text UNIQUE NOT NULL` (SHA-256 của refresh token thật — **không** lưu token thô), `issued_at`, `expires_at`, `replaced_by_session_id uuid NULL` (composite FK `(tenant_id, replaced_by_session_id)` → chính bảng này — phiên kế tiếp trong chuỗi rotation), `ip`, `user_agent`.

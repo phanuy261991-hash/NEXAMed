@@ -57,6 +57,7 @@ model Tenant {
   floors                 Floor[]
   rooms                  Room[]
   examStations           ExamStation[]
+  workShifts             WorkShift[]
   departmentTypes        DepartmentType[]
   departments            Department[]
   userAccounts           UserAccount[]
@@ -194,6 +195,52 @@ model ExamStation {
   room   Room   @relation(fields: [tenantId, roomId], references: [tenantId, id])
 
   @@map("exam_station")
+}
+
+// "Ca làm việc" — danh mục mẫu ca (giờ/màu/giờ nghỉ/số giờ công chuẩn) do clinic_admin tự quản lý
+// RIÊNG cho từng phòng khám (tenant-scoped) — KHÔNG dùng chung khuôn `reference_catalog` (toàn hệ
+// thống, không tenant_id) vì mỗi phòng khám tự đặt giờ ca riêng, không phải danh mục chia sẻ nhiều
+// tenant như EXAM_TYPE/ICD-10. Cùng khuôn `room`/`department` — thao tác qua bác sĩ đăng ký ca
+// theo tuần/tháng (giai đoạn kế tiếp, chưa xây) sẽ tham chiếu tới bảng này.
+model WorkShift {
+  id       String @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  name     String
+  // Mã ngắn tự sinh (packages/core/src/reference-catalog/generate-code.ts), không nhập tay —
+  // clinic_admin chỉ đặt tên "Ca sáng"/"Ca chiều", không tự nghĩ mã.
+  code     String
+  // "HH:mm" — so sánh chuỗi đủ dùng, không cần kiểu `time` của Postgres (cùng khuôn
+  // `tenant_setting.business_hours`/`DayHours.open-close`).
+  startTime String @map("start_time")
+  endTime   String @map("end_time")
+  // Enum cố định 8 giá trị ở tầng ứng dụng (packages/shared/src/work-shift.ts) — TEXT ở DB để
+  // không phải thêm Postgres enum riêng cho một danh sách màu thuần hiển thị.
+  color String
+  // Giờ nghỉ giữa ca — hoàn toàn tuỳ chọn, độc lập với `restMinutes` (không bắt buộc khớp nhau,
+  // xem docs/DECISIONS.md).
+  restStartTime String? @map("rest_start_time")
+  restEndTime   String? @map("rest_end_time")
+  // Phút — cả "Tổng thời gian nghỉ" lẫn "Số giờ công chuẩn" đều quy đổi về phút lúc lưu (nhất
+  // quán với `durationMinutes`/`GRID_STEP_MINUTES` đã dùng trong hệ thống), UI tự quy đổi lại
+  // đúng đơn vị người dùng đã chọn lúc nhập (giờ/phút).
+  restMinutes         Int? @map("rest_minutes")
+  standardWorkMinutes Int? @map("standard_work_minutes")
+  sortOrder           Int  @default(0) @map("sort_order")
+  isActive             Boolean @default(true) @map("is_active")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, code])
+  @@map("work_shift")
 }
 
 // "Phòng làm việc hôm nay" của bác sĩ — thuần vận hành/định tuyến UI (KHÔNG phải dữ liệu lâm

@@ -21,6 +21,7 @@
 erDiagram
     TENANT ||--o{ TENANT_SETTING : "cau hinh"
     TENANT ||--o{ ROOM : "co"
+    TENANT ||--o{ WORK_SHIFT : "co danh muc ca"
     TENANT ||--o{ USER_ACCOUNT : "co"
     TENANT ||--o{ CODE_SEQUENCE : "cap ma"
     TENANT ||--o{ PATIENT : "quan ly"
@@ -429,6 +430,22 @@ erDiagram
         boolean is_active
     }
 
+    WORK_SHIFT {
+        uuid id PK
+        uuid tenant_id FK
+        text name
+        text code UK
+        text start_time
+        text end_time
+        text color
+        text rest_start_time
+        text rest_end_time
+        int rest_minutes
+        int standard_work_minutes
+        int sort_order
+        boolean is_active
+    }
+
     TENANT_SETTING {
         uuid id PK
         uuid tenant_id FK
@@ -468,6 +485,7 @@ erDiagram
 | `tenant` | Một phòng khám | Bảng gốc; `tenant_id` của chính nó là `id`. Trang "Thông tin phòng khám" (2026-08-13) thêm `phone`/`email`/`currency`/`timezone`/`logo_key`/`print_logo_key` — xem `docs/DECISIONS.md` #041 |
 | `tenant_setting` | Cấu hình theo phòng khám | Giờ làm việc, `slot_duration_minutes`, `overdue_wait_warning_minutes` (ngưỡng "chờ lâu" Hàng đợi khám, mặc định 30, #087), ngưỡng no-show, ngưỡng sinh hiệu, mẫu in. Unique `(tenant_id, key)` |
 | `room` | Phòng khám vật lý | |
+| `work_shift` | Danh mục "Ca làm việc" (v1.36, `docs/DECISIONS.md` #101) | Mẫu ca (tên/giờ/màu/giờ nghỉ/số giờ công chuẩn) do `clinic_admin` tự quản lý qua UI — RIÊNG theo `tenant_id`, KHÔNG dùng chung khuôn `reference_catalog` (toàn hệ thống) vì mỗi phòng khám tự đặt giờ ca. `code` tự sinh, unique `(tenant_id, code)`. Dùng cho bác sĩ đăng ký lịch làm việc theo tuần/tháng (giai đoạn kế tiếp, chưa xây) |
 | `department_type` | "Loại Khoa/Phòng" (mở rộng ADM-01, 2026-08-20) | Cấp cha tùy chọn của `department`, cùng khuôn `floor`/`room`. Chỉ tổ chức/phân loại, không ảnh hưởng logic nghiệp vụ |
 | `department` | Khoa/phòng trong tenant | Phục vụ Data Scope `department`; v1 phần lớn phòng khám không dùng nhưng bảng luôn tồn tại. `code` tự sinh (prefix `KP`), `department_type_id` tuỳ chọn, `is_active` quản lý qua UI (2026-08-20). **`is_default`** (v1.23, `docs/DECISIONS.md` #064) — đúng 1 Khoa "mặc định" ("Khoa chung") mỗi tenant, tự seed lúc tạo tenant (`seedDefaultRolesForTenant`), dùng làm fallback `encounter.department_id` khi bác sĩ chưa gán Khoa hoặc lúc Tiếp nhận chọn thẳng "Khoa chung" — ép đúng 1 dòng/tenant bằng partial unique index (C16) |
 | `user_account` | Tài khoản người dùng | `password_hash` Argon2id; `license_no` cho bác sĩ; `department_id` tuỳ chọn. Mở rộng ADM-01 (2026-08-20): hồ sơ nhân sự đầy đủ (`employee_code` tự sinh, SĐT/email cá nhân+công ty, học vị/chức danh/trạng thái+hình thức làm việc — mã tham chiếu `reference_catalog`, `can_sign_medical_record`, `must_change_password`). **Redesign 3-tab (v1.30, 2026-08-27, `docs/DECISIONS.md` #082)**: `personal_email`/`company_email` GỘP thành 1 cột `email` (đổi tên cột, xoá `company_email`); thêm `dob`/`gender` (2 giá trị `male`/`female`); thêm `display_name` (tên hiển thị — bắt buộc lúc tạo mới, tự gợi ý ghép Học vị/Học hàm + Họ tên ở web, dùng khi in đơn thuốc/HSBA); thêm `license_issued_at`/`license_issued_place` (ngày/nơi cấp CCHN, đi cùng `license_no` có sẵn); thêm `signature_key` (ảnh chữ ký PNG, khoá lưu StoragePort — cùng khuôn `patient.photo_key`, chỉ upload được sau khi tài khoản đã tồn tại); thêm `default_room_id` (composite FK tuỳ chọn → `room`, "Phòng khám mặc định" — THUẦN gợi ý hiển thị, không đổi cơ chế "Phòng làm việc hôm nay" `doctor_room_session` #054) |
@@ -720,4 +738,5 @@ Khi thêm, các bảng này vẫn phải đủ 8 cột bắt buộc và tuân th
 | v1.32 | 27/08/2026 | `payment.method`/`invoice.pending_payment_method` đổi từ Postgres enum cố định `payment_method` (`CASH`/`BANK_TRANSFER`) sang TEXT — mã tham chiếu `reference_catalog` category `PAYMENT_METHOD` mới (không FK cứng, đúng khuôn `exam_type_code`), quản lý được qua UI (chủ dự án yêu cầu trực tiếp). 2 migration: `20260827120000_reference_catalog_payment_method` (thêm giá trị enum `PAYMENT_METHOD`, đổi kiểu cột, `DROP TYPE payment_method`) → `20260827121000_seed_payment_method_catalog` (seed 2 mã mặc định `CASH`/`BANK_TRANSFER` sau khi enum đã commit). Không thêm bảng/C mới. Xem `docs/DECISIONS.md` #084. |
 | v1.33 | 28/08/2026 | Huỷ lượt khám + hoàn tiền (`docs/DECISIONS.md` #085) — `invoice_status` mở 2→4 giá trị (`UNPAID`/`PAID`/`CANCELLED`/`REFUNDED`), thêm `payment_type` (`PAYMENT`/`REFUND`) + cột `payment.type`/`payment.reason`. State machine `encounter` thêm 2 cạnh ở `IN_CONSULTATION`: `→CANCELLED` (khách bỏ về giữa chừng) và `→CHECKED_IN` ("Trả về hàng chờ", nhả `doctor_id` về `NULL` — ĐƯỜNG LÙI ĐẦU TIÊN, không vi phạm "không đường lùi từ COMPLETED"). Quyền mới `invoice.refund` (tách khỏi `invoice.update`, mặc định chỉ `clinic_admin`). Migration `20260828090000_encounter_cancel_refund`. |
 | v1.34 | 29/08/2026 | Ký hồ sơ khám + đính chính (Sprint 5, S5-02/03, ENC-04/05) — "Hoàn tất khám" (`POST /encounters/:id/complete`) TỰ ĐỘNG ký NGAY mọi `diagnosis`/`clinical_note` đang hiệu lực (1 giao dịch, cùng `signed_at`/`signed_by`), thay hẳn cơ chế "sửa tại chỗ sau hoàn tất" cũ (#066). `diagnosis` thêm MỚI 4 cột `signed_at`/`signed_by`/`supersedes_id`/`amendment_reason` (tự-relation, đúng khuôn `prescription`); `clinical_note` chỉ thêm trigger C8 (cột đã có sẵn từ Sprint 3, lần đầu thật sự dùng) + composite FK self-reference còn thiếu cho `supersedes_id`. 2 endpoint MỚI: `POST .../diagnoses/amend` (thay toàn bộ danh sách, `supersedes_id` ghép theo `(icd10_code, type)` không đổi qua `pairDiagnosisAmendment`, `packages/core`, thuần — vì `diagnosis` là danh sách không có "slot" cố định), `POST .../clinical-note/amend` (chỉ đính chính ĐÚNG section thực sự đổi nội dung, 1-1 giữa cũ/mới vì mỗi section là 1 "slot" cố định). Permission mới `diagnosis.sign` (đối xứng `clinical_note.sign` đã seed sẵn từ Sprint 3 nhưng chưa từng dùng tới). Migration `20260829090000_diagnosis_clinical_note_signing` kèm backfill `signed_at`/`signed_by` cho mọi encounter `COMPLETED` có sẵn từ trước (xấp xỉ = `encounter.completed_at`/`updated_by`, không có actor chính xác hơn). |
+| v1.36 | 02/09/2026 | Danh mục "Ca làm việc" (`docs/DECISIONS.md` #101, chủ dự án yêu cầu trực tiếp) — bảng MỚI `work_shift`, RIÊNG theo `tenant_id` (khác `reference_catalog` toàn hệ thống) vì mỗi phòng khám tự đặt giờ ca. Migration `20260902090000_work_shift`. Mẫu ca (`name`/`code` tự sinh/`start_time`/`end_time`/`color` — enum 8 giá trị/`rest_start_time`/`rest_end_time`/`rest_minutes`/`standard_work_minutes`/`sort_order`/`is_active`), quản lý qua CRUD `clinic_config.*` (dùng chung `room`), mục con mới "Ca làm việc" trong pill "Cấu hình phòng khám". Chỉ là **Giai đoạn 1** (danh mục mẫu ca) — bác sĩ đăng ký ca theo tuần/tháng + lọc lưới Lịch hẹn + chặn đặt lịch ngoài ca là giai đoạn kế tiếp, chưa xây. |
 | v1.35 | 29/08/2026 | "Tạm nghỉ / Đóng ca" của bác sĩ (đặc tả UX gốc chủ dự án gửi, cắt bỏ phần SMS/Zalo/WebSocket/bảng điện tử/voice-to-text ngoài hạ tầng v1) — thêm bảng MỚI `doctor_availability` (migration `20260829120000_doctor_availability`, thêm C22, đúng khuôn `doctor_room_session` nhưng TÁCH BIỆT hoàn toàn — bảng đó vẫn THUẦN chọn phòng vật lý, không đụng). 3 trạng thái `ACTIVE`/`BREAK`/`ENDED` (enum `doctor_availability_status`) — không có dòng cho hôm nay = `ACTIVE` ngầm định. `ENDED` bulk trả toàn bộ `CHECKED_IN`/`IN_CONSULTATION` của bác sĩ đó về hàng chờ chung Khoa (`EncounterRepository.releaseAllForDoctor()`, mới). 2 công tắc `tenant_setting` mới (`allow_emergency_end_shift` mặc định BẬT, `allow_receptionist_end_shift` mặc định TẮT, đọc/ghi qua `GET/PATCH /clinic-settings` có sẵn — không bảng riêng) gate nghiệp vụ THÊM ngoài RBAC (`doctor_availability.update`, permission mới: `doctor` personal, `receptionist`/`clinic_admin` global). "Đóng ca" có 2 cách kích hoạt cùng 1 API (`trigger='SCHEDULED_END'` cho Trường hợp 2 "hết giờ làm việc" — client tự so `Date.now()` với `ClinicSettings.businessHours`, luôn được phép bất kể công tắc khẩn cấp). Không sửa `encounter-state-machine.ts` (chỉ tác động routing, không phải trạng thái `encounter`). Mockup Artifact duyệt nhiều vòng trước khi code. |

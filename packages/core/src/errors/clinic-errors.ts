@@ -39,3 +39,26 @@ export class DoctorAvailabilityEmergencyDisabledError extends DomainError {
     super('Phòng khám chưa cho phép đóng ca khẩn cấp — bật ở "Cấu hình khám", hoặc chờ nhắc tự động đúng giờ đóng cửa.');
   }
 }
+
+/**
+ * "Ca làm việc" (`work_shift`, danh mục quản lý theo từng phòng khám) — `endTime` không sau
+ * `startTime`, hoặc `restStartTime`/`restEndTime` (khi cả hai có mặt) không hợp lệ (không theo
+ * đúng thứ tự, hoặc nằm ngoài khoảng `[startTime, endTime]` của chính ca đó).
+ */
+export class WorkShiftInvalidTimeRangeError extends DomainError {
+  readonly code = 'WORK_SHIFT_INVALID_TIME_RANGE';
+
+  constructor(message: string) {
+    super(message);
+  }
+}
+
+/** Mã tự sinh trùng hết số lần thử (xác suất cực nhỏ với UUID ngẫu nhiên — gần như không xảy ra
+ * thật, cùng khuôn `ReferenceCatalogDuplicateCodeError`). */
+export class WorkShiftDuplicateCodeError extends DomainError {
+  readonly code = 'WORK_SHIFT_DUPLICATE_CODE';
+
+  constructor() {
+    super('Không sinh được mã ca làm việc duy nhất, thử lại.');
+  }
+}

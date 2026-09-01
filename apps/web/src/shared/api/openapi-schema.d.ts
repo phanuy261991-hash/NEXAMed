@@ -8612,6 +8612,342 @@ export interface paths {
         };
         trace?: never;
     };
+    "/api/v1/work-shifts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** "Ca làm việc" — danh sách mẫu ca của phòng khám (không phân trang — quy mô nhỏ) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    code: string;
+                                    startTime: string;
+                                    endTime: string;
+                                    /** @enum {string} */
+                                    color: "blue" | "teal" | "emerald" | "amber" | "rose" | "purple" | "cyan" | "slate";
+                                    restStartTime: string | null;
+                                    restEndTime: string | null;
+                                    restMinutes: number | null;
+                                    standardWorkMinutes: number | null;
+                                    sortOrder: number;
+                                    isActive: boolean;
+                                    version: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền clinic_config.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** "Ca làm việc" (docs/DECISIONS.md #101) — tạo mẫu ca mới, mã tự sinh */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        name: string;
+                        startTime: string;
+                        endTime: string;
+                        /** @enum {string} */
+                        color: "blue" | "teal" | "emerald" | "amber" | "rose" | "purple" | "cyan" | "slate";
+                        restStartTime?: string | null;
+                        restEndTime?: string | null;
+                        restMinutes?: number | null;
+                        standardWorkMinutes?: number | null;
+                        /** @default 0 */
+                        sortOrder?: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Tạo thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                code: string;
+                                startTime: string;
+                                endTime: string;
+                                /** @enum {string} */
+                                color: "blue" | "teal" | "emerald" | "amber" | "rose" | "purple" | "cyan" | "slate";
+                                restStartTime: string | null;
+                                restEndTime: string | null;
+                                restMinutes: number | null;
+                                standardWorkMinutes: number | null;
+                                sortOrder: number;
+                                isActive: boolean;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền clinic_config.update */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Giờ kết thúc không sau giờ bắt đầu, hoặc giờ nghỉ không hợp lệ (WORK_SHIFT_INVALID_TIME_RANGE) */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/work-shifts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** "Ca làm việc" — sửa/ẩn mẫu ca, bắt buộc kèm version hiện có */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        name?: string;
+                        startTime?: string;
+                        endTime?: string;
+                        /** @enum {string} */
+                        color?: "blue" | "teal" | "emerald" | "amber" | "rose" | "purple" | "cyan" | "slate";
+                        restStartTime?: string | null;
+                        restEndTime?: string | null;
+                        restMinutes?: number | null;
+                        standardWorkMinutes?: number | null;
+                        sortOrder?: number;
+                        isActive?: boolean;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Sửa thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                code: string;
+                                startTime: string;
+                                endTime: string;
+                                /** @enum {string} */
+                                color: "blue" | "teal" | "emerald" | "amber" | "rose" | "purple" | "cyan" | "slate";
+                                restStartTime: string | null;
+                                restEndTime: string | null;
+                                restMinutes: number | null;
+                                standardWorkMinutes: number | null;
+                                sortOrder: number;
+                                isActive: boolean;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền clinic_config.update */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại hoặc thuộc tenant khác) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Giờ kết thúc không sau giờ bắt đầu, hoặc giờ nghỉ không hợp lệ (WORK_SHIFT_INVALID_TIME_RANGE) */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
     "/api/v1/drugs": {
         parameters: {
             query?: never;

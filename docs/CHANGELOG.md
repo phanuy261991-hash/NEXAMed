@@ -2,7 +2,38 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-02
+
+### Xác nhận lại bug CORS #100 đã vá thành công trên máy pilot thật
+
+Chủ dự án build lại + cập nhật đúng máy đã gặp lỗi — đăng nhập bình thường. Hết treo, xem `docs/DECISIONS.md` #100.
+
+### Định nghĩa lại "ca khám" cho thông báo tự động hết giờ — CHỐT: giữ nguyên hành vi hiện tại
+
+Sau khi cân nhắc các phương án đã phân tích ở phiên trước, chủ dự án chọn giữ nguyên `useClosingTimeReminder` như hiện có, không sửa gì. Hết treo.
+
+### Danh mục "Ca làm việc" — Giai đoạn 1 (thêm/sửa/xoá mẫu ca) — xem `docs/DECISIONS.md` #101
+
+Chủ dự án hỏi lại tính năng "Ca làm việc riêng từng bác sĩ" (từng lùi ở #030). Hỏi rõ mục đích qua `AskUserQuestion` — mô hình đủ 2 tầng (danh mục mẫu ca → bác sĩ đăng ký theo tuần/tháng → lọc lưới Lịch hẹn + chặn đặt lịch ngoài ca), sau đó chủ dự án thu hẹp việc làm ngay xuống đúng **Giai đoạn 1: danh mục mẫu ca**.
+
+- Dùng EnterPlanMode (3 agent Explore song song) + mockup Artifact duyệt 3 vòng trước khi code.
+- **Đổi kiến trúc giữa chừng lúc duyệt mockup**: đề xuất đầu tái dùng `reference_catalog` — phát hiện đó là danh mục **toàn hệ thống** (không `tenant_id`), sai bản chất cho dữ liệu riêng từng phòng khám. Chốt lại: bảng MỚI `work_shift`, **tenant-scoped**, cùng khuôn `room`/`department` (migration `20260902090000_work_shift`).
+- 9 trường (chốt qua 2 vòng bổ sung trực tiếp): tên, mã tự sinh, giờ bắt đầu/kết thúc, màu (8 giá trị cố định — không color-picker tự do), giờ nghỉ giữa ca (tuỳ chọn, độc lập với), tổng thời gian nghỉ (nhập giờ hoặc phút), số giờ công chuẩn (nhập giờ).
+- Modal riêng `WorkShiftFormModal.tsx` theo Boxed Section Form Pattern (3 khối: Thông tin chung/Giờ làm việc/Giờ nghỉ giữa ca) — sửa lại từ bản mockup đầu bị chủ dự án bác vì xếp input thành 1 cột dọc (vi phạm `.claude/docs/ui-guidelines.md` mục 4.1).
+- Mục con mới "Ca làm việc" trong Cấu hình hệ thống → Cấu hình phòng khám (`ClinicConfigPage.tsx`).
+- Không permission mới — dùng lại `clinic_config.read`/`.update`.
+- **Đã xác minh thật**: `work-shift-http.spec.ts` mới (10/10 — CRUD, validate giờ endTime<=startTime/giờ nghỉ ngoài khoảng ca → 422, sai định dạng → 400, cách ly tenant), tổng 535 test `apps/api` + 127 `packages/core` pass, không regression. `pnpm -w typecheck/lint/build` sạch toàn workspace. Playwright qua Chrome thật: thêm ca đủ 9 trường → hiện đúng (chấm màu, mã tự sinh) → sửa → validate giờ chặn đúng tại chỗ. Dữ liệu test đã xoá sạch.
+- **Chưa làm** (Giai đoạn 2, chưa thiết kế chi tiết): bác sĩ đăng ký ca theo tuần/tháng, bảng lịch làm việc toàn thể nhân viên, lọc cột bác sĩ ở lưới Lịch hẹn, chặn đặt lịch ngoài ca.
+
 ## 2026-09-01
+
+### S4-07 cài pilot thật thành công; S4-08 — vá bug thật do pilot báo cáo — xem `docs/DECISIONS.md` #100
+
+Chủ dự án xác nhận **S4-07 (cài đặt tại pilot) đã cài thành công**. Ngay sau đó phát sinh việc đầu tiên của S4-08/S5-01 (vá lỗi từ pilot thật): cập nhật lên bản `2026.09.05` xong, đăng nhập báo lỗi chung chung. DevTools xác nhận **CORS error**, response OPTIONS đến từ `Microsoft-IIS/10.0` — request rơi vào IIS có sẵn trên Windows đang chiếm cổng 80, không tới container `web`.
+
+- Nguyên nhân: `install.ps1`/`install.sh` hỏi lại "Địa chỉ IP LAN" và **ghi đè** `WEB_ORIGIN`/`config.json.apiBaseUrl` ở MỌI lần chạy (khác các bí mật khác chỉ sinh khi `.env` chưa có) — lần cập nhật đã xoá mất workaround cổng `8080` máy đó từng chỉnh tay để né xung đột cổng 80, khiến trình duyệt gọi nhầm sang cổng 80 (IIS) dù container `web` vẫn `healthy` bình thường ở cổng đúng.
+- Sửa: `WEB_ORIGIN`/`apiBaseUrl` giờ chỉ hỏi/ghi ở lần cài đầu tiên hoặc khi truyền rõ `-WebOrigin`/`--web-origin` — các lần cập nhật sau giữ nguyên giá trị đang chạy thật. Cập nhật `docs/Deploy.md` 2.3b đính chính khẳng định sai trước đó ("an toàn, không đụng `.env`/`config.json`" — đúng với việc giải nén, sai với chính bước script tự ghi).
+- **Chưa verify lại trên máy pilot thật** — cần chủ dự án build lại + cập nhật để xác nhận đăng nhập được; trước mắt có thể tự sửa tay `config.json.apiBaseUrl` đúng cổng `web` đang chạy (xem `docker compose ps`) rồi `docker compose restart web`.
 
 ### Diễn tập phục hồi thật (S6-02) — sửa bug thật chặn restore hoàn toàn — xem `docs/DECISIONS.md` #099
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Buildings, CalendarBlank, Clock, MapPinLine } from '@phosphor-icons/react';
+import { Buildings, CalendarBlank, CalendarCheck, Clock, MapPinLine } from '@phosphor-icons/react';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { ConfigScreenShell, type ConfigScreenPill } from '../../shared/ui/ConfigScreenShell';
 import { AppointmentConfigPane } from './AppointmentConfigPane';
@@ -8,6 +8,7 @@ import { ClinicInfoPane } from './ClinicInfoPane';
 import { ExamConfigPane } from './ExamConfigPane';
 import { PaymentConfigPane } from './PaymentConfigPane';
 import { RoomPane } from './RoomPane';
+import { WorkShiftPane } from './WorkShiftPane';
 
 /**
  * Pill "Cấu hình phòng khám" (4 mục con) — "Thông tin phòng khám" (2026-08-13, mặc định mở đầu
@@ -20,6 +21,8 @@ import { RoomPane } from './RoomPane';
  * độ "pill phẳng", mục 10 điểm 8 — bản thân pill đã là 1 màn hình lá, chỉ có đúng 1 cấu hình).
  * Không dựng thêm pill/mục "Sắp có" (.claude/docs/ui-guidelines.md mục 10), thêm khi có module
  * thật đứng sau.
+ * "Ca làm việc" (docs/DECISIONS.md #101, chủ dự án yêu cầu trực tiếp) — danh mục mẫu ca RIÊNG theo
+ * tenant (bảng `work_shift`, KHÔNG dùng chung `reference_catalog`), thêm/sửa/xoá qua UI.
  */
 const PILLS: ConfigScreenPill[] = [
   {
@@ -30,6 +33,7 @@ const PILLS: ConfigScreenPill[] = [
       { key: 'hours', label: 'Giờ làm việc', icon: Clock },
       { key: 'rooms', label: 'Tầng phòng', icon: MapPinLine },
       { key: 'appointments', label: 'Lịch hẹn', icon: CalendarBlank },
+      { key: 'shifts', label: 'Ca làm việc', icon: CalendarCheck },
     ],
   },
   { key: 'payment', label: 'Cấu hình thanh toán' },
@@ -79,6 +83,7 @@ export function ClinicConfigPage() {
       {activePillKey === 'clinic' && activeItemKey === 'hours' && <ClinicHoursPane />}
       {activePillKey === 'clinic' && activeItemKey === 'rooms' && <RoomPane />}
       {activePillKey === 'clinic' && activeItemKey === 'appointments' && <AppointmentConfigPane />}
+      {activePillKey === 'clinic' && activeItemKey === 'shifts' && <WorkShiftPane />}
       {activePillKey === 'payment' && <PaymentConfigPane />}
       {activePillKey === 'exam' && <ExamConfigPane />}
     </ConfigScreenShell>

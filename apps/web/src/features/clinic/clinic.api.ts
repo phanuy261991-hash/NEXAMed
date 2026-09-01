@@ -24,6 +24,10 @@ import type {
   UpdateExamStationRequest,
   UpdateFloorRequest,
   UpdateRoomRequest,
+  CreateWorkShiftRequest,
+  ListWorkShiftsResponse,
+  UpdateWorkShiftRequest,
+  WorkShiftItem,
 } from '@nexamed/shared';
 import { getApiClient, unwrap, uploadFile } from '../../shared/api/client';
 
@@ -89,6 +93,19 @@ export async function getRoomOptions(): Promise<ListRoomOptionsResponse> {
 
 export async function getMyRoomSession(): Promise<RoomSession | null> {
   return unwrap(await getApiClient().GET('/api/v1/rooms/my-session')) as RoomSession | null;
+}
+
+/** "Ca làm việc" (docs/DECISIONS.md #101) — CRUD đầy đủ, `clinic_config.*`, bảng RIÊNG theo tenant (khác `reference_catalog`). */
+export async function listWorkShifts(): Promise<ListWorkShiftsResponse> {
+  return unwrap(await getApiClient().GET('/api/v1/work-shifts')) as ListWorkShiftsResponse;
+}
+
+export async function createWorkShift(body: CreateWorkShiftRequest): Promise<WorkShiftItem> {
+  return unwrap(await getApiClient().POST('/api/v1/work-shifts', { body })) as WorkShiftItem;
+}
+
+export async function updateWorkShift(id: string, body: UpdateWorkShiftRequest): Promise<WorkShiftItem> {
+  return unwrap(await getApiClient().PATCH('/api/v1/work-shifts/{id}', { params: { path: { id } }, body })) as WorkShiftItem;
 }
 
 export async function setMyRoomSession(body: SetRoomSessionRequest): Promise<RoomSession> {

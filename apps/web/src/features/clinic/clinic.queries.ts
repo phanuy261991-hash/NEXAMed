@@ -4,6 +4,7 @@ import type {
   CreateExamStationRequest,
   CreateFloorRequest,
   CreateRoomRequest,
+  CreateWorkShiftRequest,
   DoctorAvailability,
   RoomSession,
   SetDoctorAvailabilityRequest,
@@ -13,6 +14,7 @@ import type {
   UpdateExamStationRequest,
   UpdateFloorRequest,
   UpdateRoomRequest,
+  UpdateWorkShiftRequest,
 } from '@nexamed/shared';
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { useAuthStore } from '../auth/auth.store';
@@ -32,6 +34,9 @@ import {
   listExamStations,
   listFloors,
   listRooms,
+  listWorkShifts,
+  createWorkShift,
+  updateWorkShift,
   setDoctorAvailability,
   setMyRoomSession,
   updateClinicProfile,
@@ -257,6 +262,30 @@ export function useUpdateExamStationMutation() {
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'exam-stations', updated.roomId) });
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'rooms') });
     },
+  });
+}
+
+/** "Ca làm việc" (docs/DECISIONS.md #101) — không phân trang, cùng lý do `useRoomsQuery`. Bảng RIÊNG theo tenant. */
+export function useWorkShiftsQuery() {
+  const { tenantId } = useAppConfig();
+  return useQuery({ queryKey: queryKey(tenantId, 'clinic', 'work-shifts'), queryFn: listWorkShifts });
+}
+
+export function useCreateWorkShiftMutation() {
+  const { tenantId } = useAppConfig();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CreateWorkShiftRequest) => createWorkShift(body),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'work-shifts') }),
+  });
+}
+
+export function useUpdateWorkShiftMutation() {
+  const { tenantId } = useAppConfig();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: UpdateWorkShiftRequest }) => updateWorkShift(id, body),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'work-shifts') }),
   });
 }
 

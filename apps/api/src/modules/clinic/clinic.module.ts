@@ -18,6 +18,9 @@ import { FloorRepository } from './floor.repository';
 import { ExamStationController } from './exam-station.controller';
 import { ExamStationService } from './exam-station.service';
 import { ExamStationRepository } from './exam-station.repository';
+import { WorkShiftController } from './work-shift.controller';
+import { WorkShiftService } from './work-shift.service';
+import { WorkShiftRepository } from './work-shift.repository';
 
 /**
  * S2-07, ADM-02 (trừ mẫu in) — cấu hình phòng khám, phòng (.claude/docs/architecture.md).
@@ -32,6 +35,8 @@ import { ExamStationRepository } from './exam-station.repository';
  * `FloorController`/`ExamStationController` (#055) — "Tầng"/"Bàn khám-Ghế", cấp cha/con tùy chọn
  * của `room`, cùng `clinic_config.*`. `RoomService` inject thêm `ExamStationRepository` để trả
  * `examStationCount` trong `RoomSummary`.
+ * `WorkShiftController` (docs/DECISIONS.md #101) — "Ca làm việc", danh mục mẫu ca RIÊNG theo
+ * tenant (khác `reference_catalog` toàn hệ thống), cùng `clinic_config.*`.
  */
 @Module({
   controllers: [
@@ -41,6 +46,7 @@ import { ExamStationRepository } from './exam-station.repository';
     DoctorRoomSessionController,
     FloorController,
     ExamStationController,
+    WorkShiftController,
   ],
   providers: [
     RoomService,
@@ -55,6 +61,8 @@ import { ExamStationRepository } from './exam-station.repository';
     FloorRepository,
     ExamStationService,
     ExamStationRepository,
+    WorkShiftService,
+    WorkShiftRepository,
     { provide: CLINIC_CONFIG_READER_PORT, useExisting: ClinicSettingsService },
   ],
   exports: [CLINIC_CONFIG_READER_PORT],
