@@ -205,8 +205,7 @@ export function ClinicInfoPane() {
 
   return (
     <div>
-      <div className="mb-5 flex items-start justify-between gap-3">
-        <p className="text-xs text-slate-500">Hiển thị trên hệ thống và chuẩn bị cho mẫu in đơn thuốc sau này.</p>
+      <div className="mb-5 flex items-start justify-end gap-3">
         {canManage && !editing && !query.isLoading && <EditIconButton onClick={() => setEditing(true)} />}
       </div>
 

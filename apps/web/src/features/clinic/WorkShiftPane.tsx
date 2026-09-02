@@ -67,7 +67,7 @@ export function WorkShiftPane() {
   return (
     <div className="flex h-full flex-col">
       <p className="mb-4 text-xs text-slate-500">
-        Mẫu ca làm việc dùng để bác sĩ đăng ký lịch làm việc theo tuần/tháng (tính năng đăng ký — chưa xây).
+        Tạo và quản lý danh sách ca làm việc mẫu (khung giờ bắt đầu - kết thúc) phục vụ việc đăng ký và phân công lịch làm việc cho nhân viên.
       </p>
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">

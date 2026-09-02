@@ -4,6 +4,23 @@
 
 ## 2026-09-02
 
+### Vá permission `work_shift.read` thiếu, redesign "Lịch làm việc nhân viên" sang xem-theo-tháng, thêm Nhập/Xuất Excel — xem `docs/DECISIONS.md` #104
+
+Tiếp ngay sau bug "Lịch làm việc của tôi" (mục dưới): phát hiện thêm bug RBAC nghiêm trọng hơn — `GET /work-shifts` đòi `clinic_config.read` (chỉ `clinic_admin`) khiến 4/5 vai trò bị 403 hoàn toàn ngay khi vào trang, dù tính năng tự đăng ký ca dành cho MỌI nhân viên. Sửa bằng permission riêng `work_shift.read` (global, cấp cho 4 vai trò thường + clinic_admin).
+
+- Xác minh cơ chế khoá lịch (canEdit + chặn xoá 409 `WORK_SHIFT_ASSIGNMENT_LOCKED`) hoạt động đúng qua test thật với tài khoản bác sĩ (chưa từng verify trước đó).
+- Redesign toàn diện "Lịch làm việc nhân viên": màu phủ toàn thẻ ca (áp dụng cả "Lịch làm việc của tôi"), tên NV kèm mã (bỏ avatar), viền lưới rõ hơn, tiêu đề cột "Thứ hai ⓵" kiểu mới, đổi từ xem-theo-tuần sang **xem nguyên 1 tháng** (cột tên cố định + cuộn ngang, nút "Cuộn tuần"). 1 bug dựng-rồi-sửa: `scroll-snap-type` xung đột với cột `sticky` (lỗi Chromium đã biết) — bỏ snap tự động, thay nút cuộn chủ động.
+- Tính năng mới: Nhập/Xuất Excel cho "Lịch làm việc nhân viên" — đổi định dạng file giữa chừng từ hàng-dọc sang **bảng ngang** (cột = ngày trong tháng) theo yêu cầu trực tiếp; tháng luôn chọn tường minh ở UI, không dò từ file. Dùng `exceljs` (backend-only).
+- Loạt chỉnh sửa text nhỏ: đổi nhãn/mô tả ở nhiều pane cấu hình cho khớp thực tế.
+
+Đã xác minh: `pnpm -w typecheck/lint` sạch, build web sạch (477.25 kB), 533/533 test `apps/api` không regression, Playwright + API test cho toàn bộ luồng mới. Không có migration/schema DB mới. **Còn treo, chưa code**: mục "Cấu hình chung" mới (dưới "Ca làm việc") + công tắc bật/tắt tự đăng ký ca cho nhân viên — xem `docs/CURRENT.md`.
+
+### Fix "Lịch làm việc của tôi" hiện nhầm ca của TẤT CẢ nhân viên thay vì chỉ của chính actor
+
+Phát hiện khi tạo dữ liệu demo nhiều tài khoản cùng có ca trong tuần (trước giờ chỉ verify với 1 tài khoản/lần nên chưa lộ). Nguyên nhân: `MyWorkSchedulePage.tsx` gọi `useWorkShiftAssignmentsQuery` không truyền `userId` — với actor có `work_shift_assignment.read=global` (`clinic_admin`), backend không có gì để lọc theo actor nên trả về ca của toàn bộ tenant thay vì chỉ của người đang đăng nhập. Sửa: truyền tường minh `userId = user.id` (từ `useAuthStore`) vào query, đúng ý nghĩa "của tôi" bất kể data_scope là `personal` hay `global`. Chỉ đổi frontend, không đổi API/schema.
+
+Đã xác minh: `pnpm -w typecheck`/`lint` sạch, Playwright qua Chrome thật xác nhận trang chỉ còn hiện đúng ca của actor đang đăng nhập.
+
 ### Verify Playwright #102, làm nốt "Tháng" (Month view), sự cố seed thiếu permission, badge "Có ca hôm nay" ở Tiếp nhận — xem `docs/DECISIONS.md` #103
 
 Quay lại việc treo đầu phiên (`docs/CURRENT.md` mục "Đang chờ"): verify Playwright cho "Ca làm việc" Giai đoạn 2.

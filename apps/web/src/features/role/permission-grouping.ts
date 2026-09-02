@@ -26,6 +26,7 @@ const MODULE_LABELS: Record<string, string> = {
   invoice: 'Phiếu thu',
   doctor_availability: 'Tạm nghỉ / Đóng ca',
   work_shift_assignment: 'Đăng ký ca làm việc',
+  work_shift: 'Danh mục Ca làm việc',
 };
 
 export function moduleLabel(module: string): string {

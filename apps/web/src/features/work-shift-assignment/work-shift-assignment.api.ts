@@ -2,12 +2,14 @@ import type {
   BulkCreateWorkShiftAssignmentRequest,
   CopyWorkShiftAssignmentsRequest,
   CreateWorkShiftAssignmentRequest,
+  ImportWorkShiftAssignmentsCommitResponse,
+  ImportWorkShiftAssignmentsPreviewResponse,
   ListWorkShiftAssignmentsQuery,
   ListWorkShiftAssignmentsResponse,
   WorkShiftAssignmentBulkResult,
   WorkShiftAssignmentItem,
 } from '@nexamed/shared';
-import { getApiClient, unwrap } from '../../shared/api/client';
+import { downloadFile, getApiClient, unwrap, uploadFile } from '../../shared/api/client';
 
 /** "Đăng ký ca làm việc" (Giai đoạn 2 của #101) — CRUD tối thiểu, đúng khuôn `clinic.api.ts`. */
 export async function listWorkShiftAssignments(query: ListWorkShiftAssignmentsQuery): Promise<ListWorkShiftAssignmentsResponse> {
@@ -28,4 +30,28 @@ export async function copyWorkShiftAssignments(body: CopyWorkShiftAssignmentsReq
 
 export async function deleteWorkShiftAssignment(id: string, version: number): Promise<void> {
   await getApiClient().DELETE('/api/v1/work-shift-assignments/{id}', { params: { path: { id } }, body: { version } });
+}
+
+/** Nhập/Xuất Excel — chỉ "Lịch làm việc nhân viên" (scope global), theo THÁNG (`YYYY-MM`), xem
+ * `work-shift-assignment.ts` ở `packages/shared`. */
+export async function downloadWorkShiftAssignmentTemplate(month: string): Promise<void> {
+  await downloadFile(`/api/v1/work-shift-assignments/import-template?month=${month}`, `mau-lich-lam-viec-${month}.xlsx`);
+}
+
+export async function exportWorkShiftAssignments(month: string): Promise<void> {
+  await downloadFile(`/api/v1/work-shift-assignments/export?month=${month}`, `lich-lam-viec-${month}.xlsx`);
+}
+
+export async function previewImportWorkShiftAssignments(file: File, month: string): Promise<ImportWorkShiftAssignmentsPreviewResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('month', month);
+  return uploadFile<ImportWorkShiftAssignmentsPreviewResponse>('/api/v1/work-shift-assignments/import/preview', formData);
+}
+
+export async function commitImportWorkShiftAssignments(file: File, month: string): Promise<ImportWorkShiftAssignmentsCommitResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('month', month);
+  return uploadFile<ImportWorkShiftAssignmentsCommitResponse>('/api/v1/work-shift-assignments/import/commit', formData);
 }

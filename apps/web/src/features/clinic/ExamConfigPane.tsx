@@ -75,8 +75,7 @@ export function ExamConfigPane() {
 
   return (
     <div>
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <p className="text-xs text-slate-500">Áp dụng cho cảnh báo &quot;chờ lâu&quot; ở Hàng đợi khám.</p>
+      <div className="mb-3 flex items-start justify-end gap-3">
         {!editing && <EditIconButton onClick={() => setEditing(true)} />}
       </div>
 

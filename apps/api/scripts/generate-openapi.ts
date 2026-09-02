@@ -160,6 +160,9 @@ import {
   listWorkShiftAssignmentsResponseSchema,
   workShiftAssignmentBulkResultSchema,
   workShiftAssignmentItemSchema,
+  importWorkShiftAssignmentsPreviewResponseSchema,
+  importWorkShiftAssignmentsCommitResponseSchema,
+  workShiftAssignmentMonthSchema,
 } from '@nexamed/shared';
 
 /**
@@ -2196,6 +2199,52 @@ registry.registerPath({
     200: jsonResponse('Thành công', envelope(workShiftAssignmentBulkResultSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền work_shift_assignment.create'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/work-shift-assignments/import/preview',
+  tags: ['work-shift-assignment'],
+  summary: 'Nhập Excel "Lịch làm việc nhân viên" — bước 1: đọc + đối chiếu file, KHÔNG ghi gì (chỉ scope global)',
+  security: [{ bearerAuth: [] }],
+  request: {
+    body: {
+      content: {
+        'multipart/form-data': {
+          schema: z.object({ file: z.string().openapi({ format: 'binary' }), month: workShiftAssignmentMonthSchema }),
+        },
+      },
+    },
+  },
+  responses: {
+    200: jsonResponse('Thành công', envelope(importWorkShiftAssignmentsPreviewResponseSchema)),
+    400: errorResponse('Thiếu file Excel'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền work_shift_assignment.create, hoặc không phải scope global'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/work-shift-assignments/import/commit',
+  tags: ['work-shift-assignment'],
+  summary: 'Nhập Excel "Lịch làm việc nhân viên" — bước 2: đọc lại đúng file đã preview rồi ghi các dòng hợp lệ (chỉ scope global)',
+  security: [{ bearerAuth: [] }],
+  request: {
+    body: {
+      content: {
+        'multipart/form-data': {
+          schema: z.object({ file: z.string().openapi({ format: 'binary' }), month: workShiftAssignmentMonthSchema }),
+        },
+      },
+    },
+  },
+  responses: {
+    200: jsonResponse('Thành công', envelope(importWorkShiftAssignmentsCommitResponseSchema)),
+    400: errorResponse('Thiếu file Excel'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền work_shift_assignment.create, hoặc không phải scope global'),
   },
 });
 

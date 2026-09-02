@@ -64,7 +64,7 @@ export function DepartmentPane() {
   return (
     <div className="flex h-full flex-col gap-3">
       <p className="text-xs text-slate-500">
-        Phục vụ trường &quot;Khoa/Phòng&quot; khi tạo/sửa tài khoản. Phần lớn phòng khám 1-3 bác sĩ không cần dùng tới.
+        Quản lý danh sách các khoa/phòng ban trong cơ sở y tế. Dùng để phân loại tài khoản người dùng và quản lý chuyên khoa (có thể bỏ qua nếu phòng khám quy mô nhỏ).
       </p>
 
       {query.isError && <ErrorBanner message="Không tải được danh sách Khoa/Phòng." onRetry={() => query.refetch()} />}

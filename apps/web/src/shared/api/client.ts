@@ -164,6 +164,40 @@ export async function uploadFile<T>(path: string, formData: FormData): Promise<T
     : unwrap<T>({ error: body as ErrorEnvelope });
 }
 
+/**
+ * Tải file nhị phân (Excel mẫu/xuất) — không qua envelope `{data,meta}`, cùng lý do `uploadFile`
+ * không dùng `openapi-fetch`. `filenameFallback` dùng khi server không trả `Content-Disposition`
+ * (không nên xảy ra, phòng vệ). Kích hoạt tải bằng thẻ `<a>` ẩn — trình duyệt thật (không phải
+ * artifact sandbox) nên không bị chặn.
+ */
+export async function downloadFile(path: string, filenameFallback: string): Promise<void> {
+  if (!currentConfig) {
+    throw new Error('downloadFile() gọi trước khi configureApiClient().');
+  }
+  const response = await fetch(`${currentConfig.apiBaseUrl}${path}`, {
+    method: 'GET',
+    credentials: 'include',
+    headers: currentAccessToken ? { Authorization: `Bearer ${currentAccessToken}` } : undefined,
+  });
+  if (!response.ok) {
+    const body: unknown = await response.json().catch(() => null);
+    const err = (body as ErrorEnvelope | null)?.error;
+    throw new ApiError(err?.code ?? 'UNKNOWN_ERROR', err?.message ?? 'Không tải được file.', err?.details);
+  }
+  const disposition = response.headers.get('Content-Disposition') ?? '';
+  const match = /filename="?([^"]+)"?/.exec(disposition);
+  const filename = match?.[1] ?? filenameFallback;
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 interface Envelope<T> {
   data: T;
 }

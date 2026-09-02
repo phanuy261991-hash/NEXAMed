@@ -1,8 +1,11 @@
 import { Module } from '@nestjs/common';
 import { WORK_SHIFT_ASSIGNMENT_READER_PORT } from '@nexamed/core';
+import { IamModule } from '../iam/iam.module';
+import { ClinicModule } from '../clinic/clinic.module';
 import { WorkShiftAssignmentController } from './work-shift-assignment.controller';
 import { WorkShiftAssignmentService } from './work-shift-assignment.service';
 import { WorkShiftAssignmentRepository } from './work-shift-assignment.repository';
+import { WorkShiftAssignmentImportService } from './work-shift-assignment-import.service';
 
 /**
  * "Đăng ký ca làm việc" (Giai đoạn 2 của #101) — module MỚI, tách khỏi `clinic` (nơi sở hữu danh
@@ -12,10 +15,12 @@ import { WorkShiftAssignmentRepository } from './work-shift-assignment.repositor
  * `CLINIC_CONFIG_READER_PORT` (.claude/docs/coding-standards.md mục "Ranh giới module").
  */
 @Module({
+  imports: [IamModule, ClinicModule],
   controllers: [WorkShiftAssignmentController],
   providers: [
     WorkShiftAssignmentService,
     WorkShiftAssignmentRepository,
+    WorkShiftAssignmentImportService,
     { provide: WORK_SHIFT_ASSIGNMENT_READER_PORT, useExisting: WorkShiftAssignmentService },
   ],
   exports: [WORK_SHIFT_ASSIGNMENT_READER_PORT],

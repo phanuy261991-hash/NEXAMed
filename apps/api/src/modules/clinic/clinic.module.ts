@@ -65,6 +65,8 @@ import { WorkShiftRepository } from './work-shift.repository';
     WorkShiftRepository,
     { provide: CLINIC_CONFIG_READER_PORT, useExisting: ClinicSettingsService },
   ],
-  exports: [CLINIC_CONFIG_READER_PORT],
+  // `WorkShiftService` export thêm cho `WorkShiftAssignmentModule` (Nhập Excel — tra mã ca, thuần
+  // đọc `list()` có sẵn, không cần port riêng cho một lệnh đọc).
+  exports: [CLINIC_CONFIG_READER_PORT, WorkShiftService],
 })
 export class ClinicModule {}

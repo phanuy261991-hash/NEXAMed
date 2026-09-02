@@ -82,6 +82,9 @@ import { ReferenceCatalogModule } from '../reference-catalog/reference-catalog.m
     { provide: NOTIFICATION_PORT, useClass: NoopNotificationAdapter },
     { provide: DOCTOR_DIRECTORY_PORT, useClass: DoctorDirectoryAdapter },
   ],
-  exports: [BreakGlassService, DOCTOR_DIRECTORY_PORT],
+  // `UserAccountRepository` export thêm cho `WorkShiftAssignmentModule` (Nhập Excel — tra mã nhân
+  // viên trong cùng transaction, đúng khuôn "reception/encounter/appointment chia sẻ Repository"
+  // đã ghi ở docs/DECISIONS.md #042, không dùng port vì cần atomic cùng lúc ghi assignment).
+  exports: [BreakGlassService, DOCTOR_DIRECTORY_PORT, UserAccountRepository],
 })
 export class IamModule {}

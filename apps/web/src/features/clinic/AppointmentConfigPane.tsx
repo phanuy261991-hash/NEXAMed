@@ -150,7 +150,7 @@ export function AppointmentConfigPane() {
           khối "Tự động đánh dấu Không đến" ở trên, KHÔNG đặt ở pill "Cấu hình khám" (đó là cấu
           hình Đóng ca/Tạm nghỉ của bác sĩ, #094 — khác chủ đề). */}
       <div className={sectionBoxClassName}>
-        <span className={sectionBadgeClassName}>Đăng ký ca làm việc</span>
+        <span className={sectionBadgeClassName}>Quy tắc đặt lịch theo ca</span>
         <div className="flex items-start justify-between gap-5">
           <div>
             <p className="text-[14.5px] font-bold text-slate-900">Chặn đặt lịch ngoài ca đã đăng ký</p>

@@ -119,8 +119,6 @@ export function ClinicHoursPane() {
 
   return (
     <div>
-      <p className="mb-5 text-xs text-slate-500">Áp dụng cho lưới lịch hẹn và cảnh báo trễ hẹn.</p>
-
       {query.isError && <ErrorBanner message="Không tải được cấu hình phòng khám." onRetry={() => query.refetch()} />}
 
       {query.isLoading || !query.data ? (

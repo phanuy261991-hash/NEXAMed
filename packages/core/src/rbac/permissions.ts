@@ -94,6 +94,14 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   { module: 'work_shift_assignment', action: 'create', description: 'Đăng ký ca làm việc (cho chính mình, hoặc hộ người khác nếu có quyền quản lý)' },
   { module: 'work_shift_assignment', action: 'read', description: 'Xem lịch làm việc đã đăng ký' },
   { module: 'work_shift_assignment', action: 'delete', description: 'Xoá ca làm việc đã đăng ký (của người khác, hoặc quá hạn tự xoá)' },
+  // Vá lỗ hổng thật (cùng dạng #030/#064 "lễ tân không có quyền đọc module khác"): `GET
+  // /work-shifts` (danh mục MẪU ca) trước đây chỉ gắn `clinic_config.read` — MỌI nhân viên tự
+  // đăng ký ca (`work_shift_assignment.create=personal` ở trên) nhưng KHÔNG xem được chính danh
+  // mục mẫu ca để chọn, vì `clinic_config.read` mặc định chỉ `clinic_admin` có. Tách quyền đọc
+  // RIÊNG, tối thiểu (không lộ gì nhạy cảm hơn tên/giờ/màu ca) — global cho mọi vai trò cần tự
+  // đăng ký ca. `POST`/`PATCH /work-shifts` (thêm/sửa mẫu ca) GIỮ NGUYÊN `clinic_config.update`,
+  // chỉ clinic_admin quản lý danh mục.
+  { module: 'work_shift', action: 'read', description: 'Xem danh mục mẫu ca làm việc' },
 ] as const;
 
 export function permissionKey(p: Pick<PermissionDefinition, 'module' | 'action'>): string {
@@ -140,6 +148,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'work_shift_assignment.create': 'personal',
     'work_shift_assignment.read': 'personal',
     'work_shift_assignment.delete': 'personal',
+    'work_shift.read': 'global',
   },
   nurse: {
     'patient.read': 'global',
@@ -156,6 +165,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'work_shift_assignment.create': 'personal',
     'work_shift_assignment.read': 'personal',
     'work_shift_assignment.delete': 'personal',
+    'work_shift.read': 'global',
   },
   doctor: {
     'patient.read': 'global',
@@ -192,6 +202,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'work_shift_assignment.create': 'personal',
     'work_shift_assignment.read': 'personal',
     'work_shift_assignment.delete': 'personal',
+    'work_shift.read': 'global',
   },
   clinic_admin: {
     'patient.read': 'global',
@@ -238,6 +249,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'work_shift_assignment.create': 'global',
     'work_shift_assignment.read': 'global',
     'work_shift_assignment.delete': 'global',
+    'work_shift.read': 'global',
   },
   system_admin: {
     'user_account.read': 'global',

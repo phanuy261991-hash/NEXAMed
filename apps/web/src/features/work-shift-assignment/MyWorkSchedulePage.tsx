@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { CaretLeft, CaretRight, CheckSquare, Lock, X as XIcon } from '@phosphor-icons/react';
 import { ApiError } from '../../shared/api/client';
+import { useAuthStore } from '../auth/auth.store';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
@@ -98,8 +99,12 @@ export function MyWorkSchedulePage() {
   const [toast, setToast] = useState<string | null>(null);
   const selection = useRowSelection(days);
 
+  const ownUserId = useAuthStore((s) => s.user?.id);
+
   const shiftsQuery = useWorkShiftsQuery();
-  const listQuery = useWorkShiftAssignmentsQuery(view === 'week' ? days[0]! : monthFrom, view === 'week' ? days[6]! : monthTo);
+  // `userId` bắt buộc truyền tường minh: với actor có data_scope `global` (vd. clinic_admin),
+  // bỏ trống sẽ khiến backend không lọc gì và trả về ca của TOÀN BỘ nhân viên thay vì "của tôi".
+  const listQuery = useWorkShiftAssignmentsQuery(view === 'week' ? days[0]! : monthFrom, view === 'week' ? days[6]! : monthTo, ownUserId);
   const createMutation = useCreateWorkShiftAssignmentMutation();
   const bulkMutation = useBulkCreateWorkShiftAssignmentsMutation();
   const copyMutation = useCopyWorkShiftAssignmentsMutation();
@@ -309,13 +314,13 @@ export function MyWorkSchedulePage() {
                     {dayItems.map((item) => (
                       <div
                         key={item.id}
-                        className="flex items-center gap-1.5 rounded-md border-l-[3px] px-2 py-1.5 text-[11.5px] font-bold text-slate-900"
-                        style={{ borderLeftColor: WORK_SHIFT_COLOR_HEX[item.workShiftColor], background: `color-mix(in srgb, ${WORK_SHIFT_COLOR_HEX[item.workShiftColor]} 12%, white)` }}
+                        className="flex items-center gap-1.5 rounded-md px-2 py-2 text-[13px] font-semibold text-white shadow-sm"
+                        style={{ background: WORK_SHIFT_COLOR_HEX[item.workShiftColor] }}
                       >
-                        {!item.canEdit && <Lock size={10} weight="bold" className="flex-shrink-0 opacity-60" aria-hidden="true" />}
+                        {!item.canEdit && <Lock size={10} weight="bold" className="flex-shrink-0 text-white/80" aria-hidden="true" />}
                         <span className="min-w-0 flex-1 truncate">
                           {item.workShiftName}
-                          <span className="block text-[10px] font-medium text-slate-500">
+                          <span className="block text-[11px] font-medium text-white/85">
                             {item.startTime}–{item.endTime}
                           </span>
                         </span>
@@ -324,7 +329,7 @@ export function MyWorkSchedulePage() {
                             type="button"
                             aria-label="Xoá ca"
                             onClick={() => deleteMutation.mutate({ id: item.id, version: item.version })}
-                            className="flex-shrink-0 rounded p-0.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                            className="flex-shrink-0 rounded p-0.5 text-white/75 hover:bg-white/20 hover:text-white"
                           >
                             <XIcon size={11} weight="bold" />
                           </button>

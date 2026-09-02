@@ -107,3 +107,54 @@ export const doctorWorkShiftsForDateResponseSchema = z.object({
   byDoctorId: z.record(z.string().uuid(), z.array(doctorWorkShiftBlockSchema)),
 });
 export type DoctorWorkShiftsForDateResponse = z.infer<typeof doctorWorkShiftsForDateResponseSchema>;
+
+/**
+ * Nhập/Xuất Excel cho "Lịch làm việc nhân viên" (chỉ scope `global`/clinic_admin, đúng phạm vi đã
+ * chốt — KHÔNG áp dụng cho "Lịch làm việc của tôi"). File dạng BẢNG NGANG: cột 1 = Mã nhân viên,
+ * các cột còn lại = TỪNG NGÀY trong tháng (tiêu đề là số ngày 1..28/30/31, tối đa 31 cột), ô giao
+ * = Mã ca (bỏ trống nếu không có ca hôm đó, nhiều ca/ngày ghi cách nhau bằng dấu phẩy).
+ *
+ * Ngày cụ thể suy từ VỊ TRÍ CỘT + tháng — bản thân file KHÔNG tự chứa tháng theo cách đọc được an
+ * toàn (ô ghi chú tháng trong file mẫu chỉ để người dùng tự đối chiếu bằng mắt), nên `month` LUÔN
+ * là tham số riêng do người dùng chọn tường minh ở UI lúc tải mẫu/nhập/xuất (mặc định = tháng đang
+ * xem trên lưới) — không dò/suy đoán từ nội dung file.
+ *
+ * `POST .../import/preview` CHỈ đọc + đối chiếu, KHÔNG ghi gì — trả về 3 nhóm để người dùng tự xem
+ * rồi quyết định có bấm "Xác nhận nhập" không (đã hỏi và chốt: không tự động bỏ qua/ghi đè trùng ca
+ * âm thầm). `POST .../import/commit` gửi lại ĐÚNG file + `month` đó (FE giữ nguyên `File` trong
+ * state) — chỉ tạo các ô hợp lệ VÀ CHƯA CÓ, ô lỗi/trùng luôn bị bỏ qua (không có "ghi đè" — trùng
+ * nghĩa là (nhân viên, ngày, ca) đã giống hệt ô có sẵn, không có nội dung gì khác để ghi đè lên).
+ */
+export const workShiftAssignmentMonthSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}$/, 'Định dạng tháng phải là YYYY-MM');
+export const importWorkShiftAssignmentRowErrorSchema = z.object({
+  rowNumber: z.number().int(),
+  employeeCode: z.string(),
+  workDate: z.string(),
+  workShiftCode: z.string(),
+  reason: z.string(),
+});
+export type ImportWorkShiftAssignmentRowError = z.infer<typeof importWorkShiftAssignmentRowErrorSchema>;
+
+export const importWorkShiftAssignmentValidRowSchema = z.object({
+  rowNumber: z.number().int(),
+  employeeName: z.string(),
+  workDate: z.string(),
+  workShiftName: z.string(),
+});
+export type ImportWorkShiftAssignmentValidRow = z.infer<typeof importWorkShiftAssignmentValidRowSchema>;
+
+export const importWorkShiftAssignmentsPreviewResponseSchema = z.object({
+  validRows: z.array(importWorkShiftAssignmentValidRowSchema),
+  duplicateRows: z.array(importWorkShiftAssignmentValidRowSchema),
+  errorRows: z.array(importWorkShiftAssignmentRowErrorSchema),
+});
+export type ImportWorkShiftAssignmentsPreviewResponse = z.infer<typeof importWorkShiftAssignmentsPreviewResponseSchema>;
+
+export const importWorkShiftAssignmentsCommitResponseSchema = z.object({
+  createdCount: z.number().int(),
+  duplicateCount: z.number().int(),
+  errorCount: z.number().int(),
+});
+export type ImportWorkShiftAssignmentsCommitResponse = z.infer<typeof importWorkShiftAssignmentsCommitResponseSchema>;

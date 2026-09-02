@@ -104,6 +104,17 @@ export class UserAccountRepository {
     });
   }
 
+  /**
+   * Tra nhiều tài khoản ACTIVE theo `employeeCode` cùng lúc — dùng cho Nhập Excel "Lịch làm việc
+   * nhân viên" (chỉ khớp tài khoản còn hoạt động, đúng phạm vi trang chỉ liệt kê nhân viên active).
+   * `employeeCode` không unique-index riêng nhưng `code_sequence` sinh ra thực tế luôn duy nhất
+   * trong tenant (S2-07 mở rộng #063) — không cần xử lý trùng.
+   */
+  findActiveByEmployeeCodes(tx: Prisma.TransactionClient, tenantId: string, employeeCodes: string[]): Promise<UserAccount[]> {
+    if (employeeCodes.length === 0) return Promise.resolve([]);
+    return tx.userAccount.findMany({ where: { tenantId, employeeCode: { in: employeeCodes }, isActive: true, deletedAt: null } });
+  }
+
   /** `updateMany` + kiểm `count` — cùng lý do `PatientRepository.updateIfVersionMatches`. */
   async updateIfVersionMatches(
     tx: Prisma.TransactionClient,

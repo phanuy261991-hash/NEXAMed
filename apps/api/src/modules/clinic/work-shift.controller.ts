@@ -8,9 +8,13 @@ import { extractRequestMeta } from '../../common/request-meta';
 import { WorkShiftService } from './work-shift.service';
 
 /**
- * "Ca làm việc" (docs/DECISIONS.md #101) — danh mục mẫu ca RIÊNG theo phòng khám (tenant-scoped),
- * dùng chung permission `clinic_config.*` với `RoomController` (cùng lý do — ADM-02 gộp cấu hình
- * phòng khám làm một, không tách quyền riêng theo từng loại danh mục con).
+ * "Ca làm việc" (docs/DECISIONS.md #101) — danh mục mẫu ca RIÊNG theo phòng khám (tenant-scoped).
+ * `create`/`update` (thêm/sửa mẫu ca) vẫn dùng `clinic_config.update`, chỉ `clinic_admin` quản lý.
+ * `list` (đọc) dùng `work_shift.read` riêng (không phải `clinic_config.read`) — MỌI nhân viên tự
+ * đăng ký ca (Giai đoạn 2 #101) cần đọc được danh mục này để chọn, mà `clinic_config.read` mặc
+ * định chỉ `clinic_admin` có; dùng chung sẽ chặn 4/5 vai trò khỏi chính tính năng dành cho họ —
+ * bug thật phát hiện lúc kiểm bằng tài khoản không phải `clinic_admin` (trước giờ chỉ verify bằng
+ * `clinic_admin` nên chưa lộ, cùng dạng lỗ hổng RBAC tự-phục vụ đã gặp ở #030/#064).
  */
 @Controller('work-shifts')
 @UseGuards(JwtAuthGuard, PermissionGuard)
@@ -27,7 +31,7 @@ export class WorkShiftController {
   }
 
   @Get()
-  @RequirePermission('clinic_config', 'read')
+  @RequirePermission('work_shift', 'read')
   async list(@Req() req: Request) {
     const { tenantId } = req.user!;
     return this.workShiftService.list(tenantId);
