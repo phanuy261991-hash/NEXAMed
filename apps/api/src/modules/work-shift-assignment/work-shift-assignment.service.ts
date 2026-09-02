@@ -1,10 +1,13 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
+  CLINIC_CONFIG_READER_PORT,
   ConcurrentModificationError,
   WorkShiftAssignmentDuplicateError,
   WorkShiftAssignmentLockedError,
+  WorkShiftAssignmentSelfScheduleDisabledError,
   getVietnamDateString,
+  type ClinicConfigReaderPort,
   type PortWorkShiftColor,
   type WorkShiftAssignmentReaderPort,
 } from '@nexamed/core';
@@ -79,7 +82,20 @@ export class WorkShiftAssignmentService implements WorkShiftAssignmentReaderPort
   constructor(
     private readonly unitOfWork: UnitOfWorkService,
     private readonly repository: WorkShiftAssignmentRepository,
+    @Inject(CLINIC_CONFIG_READER_PORT) private readonly clinicConfigReader: ClinicConfigReaderPort,
   ) {}
+
+  /** "Cấu hình chung" — chặn `create`/`bulkCreate`/`copy`/`remove` khi actor tự thao tác cho chính
+   * mình (`dataScope==='personal'`) và công tắc đang tắt. Scope `global` (clinic_admin ở "Lịch làm
+   * việc nhân viên") không bị ảnh hưởng — tách khỏi `assertSelfScheduleAllowed` là cố ý để không
+   * gọi nhầm ở nhánh global. */
+  private async assertSelfScheduleAllowed(tenantId: string, dataScope: DataScope): Promise<void> {
+    if (dataScope !== 'personal') return;
+    const enabled = await this.clinicConfigReader.getAllowStaffSelfScheduleEnabled(tenantId);
+    if (!enabled) {
+      throw new WorkShiftAssignmentSelfScheduleDisabledError();
+    }
+  }
 
   async create(
     tenantId: string,
@@ -88,6 +104,7 @@ export class WorkShiftAssignmentService implements WorkShiftAssignmentReaderPort
     dto: CreateWorkShiftAssignmentRequest,
     meta: RequestMeta,
   ): Promise<WorkShiftAssignmentItem> {
+    await this.assertSelfScheduleAllowed(tenantId, dataScope);
     const targetUserId = dataScope === 'personal' ? actorId : (dto.userId ?? actorId);
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
@@ -122,6 +139,7 @@ export class WorkShiftAssignmentService implements WorkShiftAssignmentReaderPort
     dto: BulkCreateWorkShiftAssignmentRequest,
     meta: RequestMeta,
   ): Promise<WorkShiftAssignmentBulkResult> {
+    await this.assertSelfScheduleAllowed(tenantId, dataScope);
     const targetUserId = dataScope === 'personal' ? actorId : (dto.userId ?? actorId);
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
@@ -161,6 +179,7 @@ export class WorkShiftAssignmentService implements WorkShiftAssignmentReaderPort
     dto: CopyWorkShiftAssignmentsRequest,
     meta: RequestMeta,
   ): Promise<WorkShiftAssignmentBulkResult> {
+    await this.assertSelfScheduleAllowed(tenantId, dataScope);
     const targetUserId = dataScope === 'personal' ? actorId : (dto.userId ?? actorId);
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
@@ -215,6 +234,7 @@ export class WorkShiftAssignmentService implements WorkShiftAssignmentReaderPort
   }
 
   async remove(tenantId: string, actorId: string, dataScope: DataScope, id: string, version: number, meta: RequestMeta): Promise<void> {
+    await this.assertSelfScheduleAllowed(tenantId, dataScope);
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.repository.findById(tx, tenantId, id);
       if (!existing || (dataScope === 'personal' && existing.userId !== actorId)) {

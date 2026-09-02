@@ -100,6 +100,7 @@ describe('markNoShowForAllTenants — S5-07, APP-05', () => {
       getNoShowConfig: (tid: string) => Promise.resolve(overrides[tid] ?? { enabled: false, thresholdMinutes: 60 }),
       getDoctorAvailabilityPolicy: () => Promise.reject(new Error('không dùng trong test này')),
       getBlockBookingOutsideWorkShiftEnabled: () => Promise.reject(new Error('không dùng trong test này')),
+      getAllowStaffSelfScheduleEnabled: () => Promise.reject(new Error('không dùng trong test này')),
     };
   }
 

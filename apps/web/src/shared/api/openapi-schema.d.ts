@@ -1938,6 +1938,7 @@ export interface paths {
                                 allowEmergencyEndShift: boolean;
                                 allowReceptionistEndShift: boolean;
                                 blockBookingOutsideWorkShiftEnabled: boolean;
+                                allowStaffSelfScheduleEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -10126,6 +10127,7 @@ export interface paths {
                                 allowEmergencyEndShift: boolean;
                                 allowReceptionistEndShift: boolean;
                                 blockBookingOutsideWorkShiftEnabled: boolean;
+                                allowStaffSelfScheduleEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -10217,6 +10219,7 @@ export interface paths {
                         allowEmergencyEndShift?: boolean;
                         allowReceptionistEndShift?: boolean;
                         blockBookingOutsideWorkShiftEnabled?: boolean;
+                        allowStaffSelfScheduleEnabled?: boolean;
                     };
                 };
             };
@@ -10267,6 +10270,7 @@ export interface paths {
                                 allowEmergencyEndShift: boolean;
                                 allowReceptionistEndShift: boolean;
                                 blockBookingOutsideWorkShiftEnabled: boolean;
+                                allowStaffSelfScheduleEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -10314,6 +10318,62 @@ export interface paths {
             cookie?: never;
         };
         /** Thu ngân cơ bản (Sprint 5/6) — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /appointments/doctors #030) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                enabled: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinic-settings/allow-staff-self-schedule-enabled": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** "Cấu hình chung" — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /clinic-settings/deferred-payment-enabled) */
         get: {
             parameters: {
                 query?: never;

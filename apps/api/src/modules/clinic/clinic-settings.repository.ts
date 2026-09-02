@@ -5,6 +5,7 @@ import {
   businessHoursSchema,
   DEFAULT_ALLOW_EMERGENCY_END_SHIFT,
   DEFAULT_ALLOW_RECEPTIONIST_END_SHIFT,
+  DEFAULT_ALLOW_STAFF_SELF_SCHEDULE_ENABLED,
   DEFAULT_BLOCK_BOOKING_OUTSIDE_WORK_SHIFT_ENABLED,
   DEFAULT_NO_SHOW_AUTO_ENABLED,
   DEFAULT_NO_SHOW_THRESHOLD_MINUTES,
@@ -41,6 +42,10 @@ const allowReceptionistEndShiftSchema = z.boolean();
 // khi chủ động bật).
 const BLOCK_BOOKING_OUTSIDE_WORK_SHIFT_KEY = 'block_booking_outside_work_shift_enabled';
 const blockBookingOutsideWorkShiftSchema = z.boolean();
+// "Cấu hình chung" (02/09/2026, tiếp sau #104) — bật theo mặc định (giữ nguyên hành vi hiện tại:
+// mọi nhân viên tự đăng ký ca) tới khi chủ động tắt.
+const ALLOW_STAFF_SELF_SCHEDULE_KEY = 'allow_staff_self_schedule_enabled';
+const allowStaffSelfScheduleSchema = z.boolean();
 
 /**
  * Đọc/ghi `tenant_setting` cho hai key cấu hình phòng khám (S2-07, ADM-02) — cùng mẫu
@@ -133,6 +138,19 @@ export class ClinicSettingsRepository {
 
   upsertBlockBookingOutsideWorkShiftEnabled(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
     return this.upsert(tx, tenantId, actorId, BLOCK_BOOKING_OUTSIDE_WORK_SHIFT_KEY, value);
+  }
+
+  async getAllowStaffSelfScheduleEnabled(tx: Prisma.TransactionClient, tenantId: string): Promise<boolean> {
+    const setting = await tx.tenantSetting.findFirst({ where: { tenantId, key: ALLOW_STAFF_SELF_SCHEDULE_KEY } });
+    if (!setting) {
+      return DEFAULT_ALLOW_STAFF_SELF_SCHEDULE_ENABLED;
+    }
+    const parsed = allowStaffSelfScheduleSchema.safeParse(setting.valueJson);
+    return parsed.success ? parsed.data : DEFAULT_ALLOW_STAFF_SELF_SCHEDULE_ENABLED;
+  }
+
+  upsertAllowStaffSelfScheduleEnabled(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
+    return this.upsert(tx, tenantId, actorId, ALLOW_STAFF_SELF_SCHEDULE_KEY, value);
   }
 
   upsertAllowEmergencyEndShift(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {

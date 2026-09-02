@@ -22,3 +22,16 @@ export class WorkShiftAssignmentLockedError extends DomainError {
     super('Ca đã khoá (chỉ sửa/xoá được trong đúng ngày đăng ký) — liên hệ quản lý để đổi.');
   }
 }
+
+/**
+ * "Cấu hình chung" — công tắc `allowStaffSelfScheduleEnabled` tắt, chặn nhân viên (scope
+ * `personal`) tự đăng ký/xoá ca. Cùng ngữ nghĩa 403 với `DOCTOR_AVAILABILITY_*_DISABLED` (thao tác
+ * bị cấu hình phòng khám chặn, không phải thiếu quyền RBAC — đã kiểm ở `PermissionGuard` trước đó).
+ */
+export class WorkShiftAssignmentSelfScheduleDisabledError extends DomainError {
+  readonly code = 'WORK_SHIFT_ASSIGNMENT_SELF_SCHEDULE_DISABLED';
+
+  constructor() {
+    super('Tự đăng ký ca đang bị tắt — liên hệ quản lý để được phân công ca làm việc.');
+  }
+}

@@ -15,6 +15,7 @@ import {
   appointmentPhoneLookupQuerySchema,
   appointmentPhoneLookupResponseSchema,
   appointmentSummarySchema,
+  allowStaffSelfScheduleStatusSchema,
   breakGlassRequestSchema,
   breakGlassResponseSchema,
   clinicPrintHeaderSchema,
@@ -1663,6 +1664,18 @@ registry.registerPath({
   security: [{ bearerAuth: [] }],
   responses: {
     200: jsonResponse('Thành công', envelope(deferredPaymentStatusSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/clinic-settings/allow-staff-self-schedule-enabled',
+  tags: ['clinic'],
+  summary: '"Cấu hình chung" — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /clinic-settings/deferred-payment-enabled)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(allowStaffSelfScheduleStatusSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
   },
 });

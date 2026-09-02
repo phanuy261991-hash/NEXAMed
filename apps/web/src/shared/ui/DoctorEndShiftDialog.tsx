@@ -52,7 +52,7 @@ export function DoctorEndShiftDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4" role="dialog" aria-modal="true" aria-labelledby="doctor-end-shift-title">
-      <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
+      <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-md ring-1 ring-slate-200">
         <form onSubmit={(e) => void handleSubmit(e)}>
           <p id="doctor-end-shift-title" className="text-sm font-semibold text-slate-900">
             {isScheduled ? 'Đã hết giờ làm việc hôm nay' : 'Đóng ca hôm nay?'}
@@ -69,9 +69,13 @@ export function DoctorEndShiftDialog({
           )}
 
           {pendingCount > 0 && (
-            <div className="mt-3 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-              <Warning size={14} weight="fill" className="mt-0.5 flex-shrink-0" aria-hidden="true" />
-              Còn <strong>{pendingCount}</strong> lượt khám chưa xử lý — toàn bộ sẽ được trả về hàng chờ chung của Khoa để bác sĩ khác tiếp nhận.
+            <div className="mt-3 flex items-center gap-3 rounded-md bg-amber-50/70 py-2 pl-2.5 pr-3">
+              <div className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-amber-400 text-[15px] font-bold text-white">
+                {pendingCount}
+              </div>
+              <p className="text-xs leading-snug text-slate-700">
+                <span className="font-semibold text-slate-900">lượt khám chưa xử lý</span> — tự động chuyển về hàng chờ chung của Khoa.
+              </p>
             </div>
           )}
 
@@ -84,7 +88,7 @@ export function DoctorEndShiftDialog({
               rows={2}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="Ví dụ: hết giờ làm, có việc đột xuất..."
+              placeholder="Ví dụ: có việc đột xuất, cần rời phòng khám sớm..."
               className="w-full rounded-md border border-slate-300 px-3 py-2 text-[14px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             />
           </div>

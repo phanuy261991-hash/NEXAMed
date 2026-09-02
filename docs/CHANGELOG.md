@@ -4,6 +4,18 @@
 
 ## 2026-09-02
 
+### Redesign dialog "Đóng ca hôm nay"/"Tạm nghỉ" — bớt đổ bóng, huy hiệu số nổi bật, sửa câu mô tả
+
+Chủ dự án phản hồi trực tiếp: 2 dialog `DoctorEndShiftDialog.tsx`/`DoctorBreakDialog.tsx` nhìn "quá AI"/đổ bóng nhiều, câu mô tả vô nghĩa. Mockup Artifact 3 phương án duyệt trước khi code (chốt "Phương án A — huy hiệu số"). Đổi `shadow-xl` → `shadow-md ring-1 ring-slate-200` (nhẹ tay hơn, vẫn nổi khỏi overlay); khối "Còn N lượt khám chưa xử lý" đổi từ khung viền/nền vàng nguyên khối sang huy hiệu số tròn đặc màu (`bg-amber-400`) + nền rất nhạt không viền — số liệu là điểm nhấn đầu tiên đập vào mắt thay vì chìm trong câu chữ. Sửa 2 câu: placeholder ví dụ lý do "hết giờ làm" ở dialog Đóng ca (vô lý — trường hợp đó đã có dialog riêng tự bật) → "có việc đột xuất, cần rời phòng khám sớm..."; câu mô tả dialog Tạm nghỉ "bạn sẽ tạm không được điều phối ca khám mới" (thuật ngữ hệ thống, câu bị động) → "bạn chỉ tạm ngừng nhận ca khám mới" (khớp văn phong dialog kia). Phạm vi CHỈ 2 dialog này — 3 dialog xác nhận khác (`CancelEncounterDialog`/`ReleaseEncounterDialog`/`BreakGlassDialog`) vẫn giữ đúng `shadow-xl` theo `.claude/docs/ui-guidelines.md` mục 2.2, chưa đổi.
+
+Đã xác minh: `pnpm -w typecheck/lint/build` sạch, chunk web không đổi (477.58 kB). Playwright qua Chrome thật (tài khoản bác sĩ test tạo qua HTTP API, kèm 1 lượt khám test để thấy huy hiệu số) — cả 2 dialog hiển thị đúng như mockup đã chốt, đã huỷ lượt khám + vô hiệu hoá tài khoản test sau khi kiểm.
+
+### "Cấu hình chung" — công tắc bật/tắt tự đăng ký ca cho nhân viên
+
+Làm nốt việc còn treo cuối phiên #104. Mục con mới "Cấu hình chung" trong pill "Cấu hình phòng khám" (dưới "Ca làm việc") — 1 công tắc `allowStaffSelfScheduleEnabled` (`tenant_setting`, mặc định `true` — giữ nguyên hành vi hiện tại), đọc/ghi qua `GET/PATCH /clinic-settings` có sẵn (không permission mới). Thêm chiếu tối thiểu tự-phục vụ `GET /clinic-settings/allow-staff-self-schedule-enabled` (đúng khuôn `deferred-payment-enabled`) để `MyWorkSchedulePage.tsx` đọc được dù không có `clinic_config.read`. Tắt: `WorkShiftAssignmentService` chặn `create`/`bulkCreate`/`copy`/`remove` cho scope `personal` (lỗi mới `WORK_SHIFT_ASSIGNMENT_SELF_SCHEDULE_DISABLED`, 403) — `list()` và scope `global` (clinic_admin ở "Lịch làm việc nhân viên") không bị ảnh hưởng; trang "Lịch làm việc của tôi" ẩn hết nút tự đăng ký/xoá/chọn nhiều ngày/sao chép, chỉ còn xem lịch đã phân công + banner cảnh báo.
+
+Đã xác minh: `apps/api` +7 test (`clinic-http.spec.ts`, `work-shift-assignment-http.spec.ts`), 538/540 test không regression (2 flake `geo-http.spec.ts`/`icd10-http.spec.ts` đã biết, pass 100% khi chạy riêng), `pnpm -w typecheck/lint/build` sạch (chunk web 477.58 kB). Playwright qua Chrome thật (dùng lại dev server đang chạy sẵn, tài khoản `dev.admin`): tắt công tắc → banner + ẩn hết nút tự đăng ký đúng ngay; bật lại → nút hiện lại đúng, dữ liệu ca cũ giữ nguyên. Không migration/schema mới.
+
 ### Vá permission `work_shift.read` thiếu, redesign "Lịch làm việc nhân viên" sang xem-theo-tháng, thêm Nhập/Xuất Excel — xem `docs/DECISIONS.md` #104
 
 Tiếp ngay sau bug "Lịch làm việc của tôi" (mục dưới): phát hiện thêm bug RBAC nghiêm trọng hơn — `GET /work-shifts` đòi `clinic_config.read` (chỉ `clinic_admin`) khiến 4/5 vai trò bị 403 hoàn toàn ngay khi vào trang, dù tính năng tự đăng ký ca dành cho MỌI nhân viên. Sửa bằng permission riêng `work_shift.read` (global, cấp cho 4 vai trò thường + clinic_admin).

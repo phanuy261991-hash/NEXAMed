@@ -258,4 +258,61 @@ describe('HTTP e2e — /api/v1/work-shift-assignments', () => {
       .send({ version: 1 });
     expect(del.status).toBe(404);
   });
+
+  describe('"Cấu hình chung" — allowStaffSelfScheduleEnabled tắt', () => {
+    it('tắt công tắc → bác sĩ (scope personal) create/bulkCreate/copy/remove đều 403 WORK_SHIFT_ASSIGNMENT_SELF_SCHEDULE_DISABLED; list() vẫn xem được; clinic_admin (scope global) không bị ảnh hưởng', async () => {
+      await request(app.getHttpServer())
+        .patch('/api/v1/clinic-settings')
+        .set(authed(clinicAdminToken))
+        .send({ allowStaffSelfScheduleEnabled: false });
+
+      const create = await request(app.getHttpServer())
+        .post('/api/v1/work-shift-assignments')
+        .set(authed(doctorAToken))
+        .send({ workShiftId: shiftMorningId, workDate: '2026-09-26' });
+      expect(create.status).toBe(403);
+      expect(create.body.error.code).toBe('WORK_SHIFT_ASSIGNMENT_SELF_SCHEDULE_DISABLED');
+
+      const bulk = await request(app.getHttpServer())
+        .post('/api/v1/work-shift-assignments/bulk')
+        .set(authed(doctorAToken))
+        .send({ workShiftId: shiftMorningId, workDates: ['2026-09-26', '2026-09-27'] });
+      expect(bulk.status).toBe(403);
+      expect(bulk.body.error.code).toBe('WORK_SHIFT_ASSIGNMENT_SELF_SCHEDULE_DISABLED');
+
+      const copy = await request(app.getHttpServer())
+        .post('/api/v1/work-shift-assignments/copy')
+        .set(authed(doctorAToken))
+        .send({ mode: 'week', fromWeekStart: '2026-09-07', toWeekStart: '2026-09-28' });
+      expect(copy.status).toBe(403);
+      expect(copy.body.error.code).toBe('WORK_SHIFT_ASSIGNMENT_SELF_SCHEDULE_DISABLED');
+
+      // Ca đã đăng ký từ trước (lúc công tắc còn bật) — tự xoá cũng bị chặn ngay cả khi vẫn trong
+      // đúng ngày đăng ký (khoá vì cấu hình, không phải vì hết hạn ngày).
+      const existing = await privileged.workShiftAssignment.findFirstOrThrow({ where: { userId: doctorAUserId, deletedAt: null } });
+      const remove = await request(app.getHttpServer())
+        .delete(`/api/v1/work-shift-assignments/${existing.id}`)
+        .set(authed(doctorAToken))
+        .send({ version: existing.version });
+      expect(remove.status).toBe(403);
+      expect(remove.body.error.code).toBe('WORK_SHIFT_ASSIGNMENT_SELF_SCHEDULE_DISABLED');
+
+      const list = await request(app.getHttpServer())
+        .get('/api/v1/work-shift-assignments')
+        .query({ from: '2026-09-01', to: '2026-09-30' })
+        .set(authed(doctorAToken));
+      expect(list.status).toBe(200);
+
+      const adminCreate = await request(app.getHttpServer())
+        .post('/api/v1/work-shift-assignments')
+        .set(authed(clinicAdminToken))
+        .send({ workShiftId: shiftMorningId, workDate: '2026-09-26', userId: doctorBUserId });
+      expect(adminCreate.status).toBe(200);
+
+      await request(app.getHttpServer())
+        .patch('/api/v1/clinic-settings')
+        .set(authed(clinicAdminToken))
+        .send({ allowStaffSelfScheduleEnabled: true });
+    });
+  });
 });

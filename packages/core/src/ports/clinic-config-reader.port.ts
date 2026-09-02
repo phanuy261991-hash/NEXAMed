@@ -66,6 +66,16 @@ export interface ClinicConfigReaderPort {
    * `getNoShowConfig`/`getDoctorAvailabilityPolicy` ở trên.
    */
   getBlockBookingOutsideWorkShiftEnabled(tenantId: string): Promise<boolean>;
+
+  /**
+   * "Cấu hình chung" — bật/tắt cho phép nhân viên tự đăng ký ca trên "Lịch làm việc của tôi"
+   * (`tenant_setting` key `allow_staff_self_schedule_enabled`, mặc định `true`). Module
+   * `work-shift-assignment` đọc qua port này (module `clinic` sở hữu `tenant_setting`), cùng lý do
+   * `getBlockBookingOutsideWorkShiftEnabled` ở trên. Chỉ chặn `create`/`bulkCreate`/`copy`/`remove`
+   * khi `dataScope==='personal'` — `list()` (xem) và scope `global` (clinic_admin ở "Lịch làm việc
+   * nhân viên") không bị ảnh hưởng.
+   */
+  getAllowStaffSelfScheduleEnabled(tenantId: string): Promise<boolean>;
 }
 
 export const CLINIC_CONFIG_READER_PORT = Symbol('CLINIC_CONFIG_READER_PORT');

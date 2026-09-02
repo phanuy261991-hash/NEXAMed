@@ -172,6 +172,15 @@ export const clinicSettingsSchema = z.object({
    * thêm (tránh khoá cứng toàn bộ lịch hẹn khi mới bật lúc chưa ai kịp đăng ký đủ ca).
    */
   blockBookingOutsideWorkShiftEnabled: z.boolean(),
+  /**
+   * "Cấu hình chung" — pill "Cấu hình phòng khám" → mục con mới, dưới "Ca làm việc" (chủ dự án yêu
+   * cầu trực tiếp, 02/09/2026, tiếp sau #104). Bật (mặc định — giữ đúng hành vi hiện tại): mọi
+   * nhân viên tự đăng ký/xoá ca trên "Lịch làm việc của tôi" như đang có. Tắt: ẩn hết chức năng tự
+   * đăng ký (nút "+ Đăng ký ca"/xoá/"Chọn nhiều ngày"/"Sao chép tuần trước"), trang chỉ còn xem
+   * lịch ĐÃ ĐƯỢC PHÂN CÔNG từ "Lịch làm việc nhân viên" (read-only) — không ảnh hưởng scope
+   * `global` (clinic_admin) ở "Lịch làm việc nhân viên", vẫn tạo/sửa/xoá hộ được bình thường.
+   */
+  allowStaffSelfScheduleEnabled: z.boolean(),
 });
 export type ClinicSettings = z.infer<typeof clinicSettingsSchema>;
 
@@ -191,6 +200,7 @@ export const updateClinicSettingsRequestSchema = z.object({
   allowEmergencyEndShift: z.boolean().optional(),
   allowReceptionistEndShift: z.boolean().optional(),
   blockBookingOutsideWorkShiftEnabled: z.boolean().optional(),
+  allowStaffSelfScheduleEnabled: z.boolean().optional(),
 });
 export type UpdateClinicSettingsRequest = z.infer<typeof updateClinicSettingsRequestSchema>;
 
@@ -207,6 +217,8 @@ export const DEFAULT_ALLOW_EMERGENCY_END_SHIFT = true;
 export const DEFAULT_ALLOW_RECEPTIONIST_END_SHIFT = false;
 /** Tắt theo mặc định (an toàn — giữ nguyên hành vi hiện tại tới khi chủ động bật). */
 export const DEFAULT_BLOCK_BOOKING_OUTSIDE_WORK_SHIFT_ENABLED = false;
+/** Bật theo mặc định — giữ đúng hành vi hiện tại (mọi nhân viên tự đăng ký ca) tới khi chủ động tắt. */
+export const DEFAULT_ALLOW_STAFF_SELF_SCHEDULE_ENABLED = true;
 
 /**
  * `GET /clinic-settings/deferred-payment-enabled` — chiếu tối thiểu tự-phục vụ (Thu ngân cơ bản,
@@ -218,6 +230,15 @@ export const DEFAULT_BLOCK_BOOKING_OUTSIDE_WORK_SHIFT_ENABLED = false;
  */
 export const deferredPaymentStatusSchema = z.object({ enabled: z.boolean() });
 export type DeferredPaymentStatus = z.infer<typeof deferredPaymentStatusSchema>;
+
+/**
+ * `GET /clinic-settings/allow-staff-self-schedule-enabled` — chiếu tối thiểu tự-phục vụ ("Cấu hình
+ * chung"), đúng khuôn `deferredPaymentStatusSchema` ở trên: MỌI nhân viên (không chỉ `clinic_admin`)
+ * cần biết công tắc này để `MyWorkSchedulePage.tsx` ẩn/hiện đúng thao tác tự đăng ký, nhưng không
+ * có `clinic_config.read`.
+ */
+export const allowStaffSelfScheduleStatusSchema = z.object({ enabled: z.boolean() });
+export type AllowStaffSelfScheduleStatus = z.infer<typeof allowStaffSelfScheduleStatusSchema>;
 
 /**
  * Trang "Thông tin phòng khám" (2026-08-13, `/admin/system-config`) — mở rộng `tenant`

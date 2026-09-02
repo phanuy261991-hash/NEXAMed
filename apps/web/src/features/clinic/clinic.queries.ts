@@ -23,6 +23,7 @@ import {
   createExamStation,
   createFloor,
   createRoom,
+  getAllowStaffSelfScheduleStatus,
   getClinicPrintHeader,
   getClinicProfile,
   getClinicSettings,
@@ -69,6 +70,19 @@ export function useDeferredPaymentEnabledQuery() {
   });
 }
 
+/**
+ * "Cấu hình chung" — `MyWorkSchedulePage.tsx` dùng riêng hook này (KHÔNG dùng
+ * `useClinicSettingsQuery()`): MỌI nhân viên (không chỉ `clinic_admin`) cần biết công tắc này,
+ * cùng lý do `useDeferredPaymentEnabledQuery` ở trên.
+ */
+export function useAllowStaffSelfScheduleEnabledQuery() {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'clinic', 'allow-staff-self-schedule-enabled'),
+    queryFn: getAllowStaffSelfScheduleStatus,
+  });
+}
+
 export function useUpdateClinicSettingsMutation() {
   const { tenantId } = useAppConfig();
   const queryClient = useQueryClient();
@@ -81,6 +95,8 @@ export function useUpdateClinicSettingsMutation() {
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'appointment', 'schedule-config') });
       // Thu ngân cơ bản — ReceptionIntakeForm.tsx đọc qua hook tự-phục vụ riêng (useDeferredPaymentEnabledQuery), làm mới luôn.
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'deferred-payment-enabled') });
+      // "Cấu hình chung" — MyWorkSchedulePage.tsx đọc qua hook tự-phục vụ riêng, làm mới luôn.
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'allow-staff-self-schedule-enabled') });
       // "Tạm nghỉ / Đóng ca" — TopBar/board đọc qua hook tự-phục vụ riêng (useDoctorAvailabilityPolicyQuery), làm mới luôn.
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'doctor-availability-policy') });
     },

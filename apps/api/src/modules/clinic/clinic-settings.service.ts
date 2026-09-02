@@ -34,6 +34,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         allowEmergencyEndShift,
         allowReceptionistEndShift,
         blockBookingOutsideWorkShiftEnabled,
+        allowStaffSelfScheduleEnabled,
       ] = await Promise.all([
         this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
         this.clinicSettingsRepository.getSlotDurationMinutes(tx, tenantId),
@@ -44,6 +45,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getAllowEmergencyEndShift(tx, tenantId),
         this.clinicSettingsRepository.getAllowReceptionistEndShift(tx, tenantId),
         this.clinicSettingsRepository.getBlockBookingOutsideWorkShiftEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getAllowStaffSelfScheduleEnabled(tx, tenantId),
       ]);
       return {
         businessHours,
@@ -55,8 +57,14 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         allowEmergencyEndShift,
         allowReceptionistEndShift,
         blockBookingOutsideWorkShiftEnabled,
+        allowStaffSelfScheduleEnabled,
       };
     });
+  }
+
+  /** `ClinicConfigReaderPort` ("Cấu hình chung", "Đăng ký ca làm việc") — xem comment ở khai báo class. */
+  getAllowStaffSelfScheduleEnabled(tenantId: string): ReturnType<ClinicConfigReaderPort['getAllowStaffSelfScheduleEnabled']> {
+    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getAllowStaffSelfScheduleEnabled(tx, tenantId));
   }
 
   /** `ClinicConfigReaderPort` — xem comment ở khai báo class. */
@@ -135,6 +143,9 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
       if (dto.blockBookingOutsideWorkShiftEnabled !== undefined) {
         await this.clinicSettingsRepository.upsertBlockBookingOutsideWorkShiftEnabled(tx, tenantId, actorId, dto.blockBookingOutsideWorkShiftEnabled);
       }
+      if (dto.allowStaffSelfScheduleEnabled !== undefined) {
+        await this.clinicSettingsRepository.upsertAllowStaffSelfScheduleEnabled(tx, tenantId, actorId, dto.allowStaffSelfScheduleEnabled);
+      }
 
       const hasChanges =
         dto.businessHours !== undefined ||
@@ -145,7 +156,8 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         dto.noShowThresholdMinutes !== undefined ||
         dto.allowEmergencyEndShift !== undefined ||
         dto.allowReceptionistEndShift !== undefined ||
-        dto.blockBookingOutsideWorkShiftEnabled !== undefined;
+        dto.blockBookingOutsideWorkShiftEnabled !== undefined ||
+        dto.allowStaffSelfScheduleEnabled !== undefined;
       if (hasChanges) {
         await writeAuditLog(tx, tenantId, {
           actorId,
@@ -168,6 +180,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         allowEmergencyEndShift,
         allowReceptionistEndShift,
         blockBookingOutsideWorkShiftEnabled,
+        allowStaffSelfScheduleEnabled,
       ] = await Promise.all([
         this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
         this.clinicSettingsRepository.getSlotDurationMinutes(tx, tenantId),
@@ -178,6 +191,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getAllowEmergencyEndShift(tx, tenantId),
         this.clinicSettingsRepository.getAllowReceptionistEndShift(tx, tenantId),
         this.clinicSettingsRepository.getBlockBookingOutsideWorkShiftEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getAllowStaffSelfScheduleEnabled(tx, tenantId),
       ]);
       return {
         businessHours,
@@ -189,6 +203,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         allowEmergencyEndShift,
         allowReceptionistEndShift,
         blockBookingOutsideWorkShiftEnabled,
+        allowStaffSelfScheduleEnabled,
       };
     });
   }

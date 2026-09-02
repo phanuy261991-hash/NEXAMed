@@ -31,6 +31,18 @@ export class ClinicSettingsController {
     return { enabled };
   }
 
+  /**
+   * "Cấu hình chung" — tự-phục vụ, KHÔNG gắn `@RequirePermission` (đúng khuôn
+   * `getDeferredPaymentEnabled` ở trên): MỌI nhân viên (không chỉ `clinic_admin`) cần biết công tắc
+   * này để "Lịch làm việc của tôi" ẩn/hiện đúng thao tác tự đăng ký.
+   */
+  @Get('allow-staff-self-schedule-enabled')
+  async getAllowStaffSelfScheduleEnabled(@Req() req: Request) {
+    const { tenantId } = req.user!;
+    const enabled = await this.clinicSettingsService.getAllowStaffSelfScheduleEnabled(tenantId);
+    return { enabled };
+  }
+
   @Patch()
   @RequirePermission('clinic_config', 'update')
   async update(@Body() body: unknown, @Req() req: Request) {

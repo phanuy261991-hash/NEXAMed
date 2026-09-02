@@ -27,13 +27,13 @@ export function DoctorBreakDialog({ doctorId, onDone, onClose }: { doctorId: str
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4" role="dialog" aria-modal="true" aria-labelledby="doctor-break-title">
-      <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
+      <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-md ring-1 ring-slate-200">
         <form onSubmit={(e) => void handleSubmit(e)}>
           <p id="doctor-break-title" className="text-sm font-semibold text-slate-900">
             Tạm nghỉ?
           </p>
           <p className="mt-1.5 text-xs text-slate-500">
-            Ca làm việc vẫn mở — bạn sẽ tạm không được điều phối ca khám mới cho tới khi bấm "Quay lại làm việc". Các lượt khám đang có không bị ảnh hưởng.
+            Ca làm việc vẫn mở — bạn chỉ tạm ngừng nhận ca khám mới cho tới khi bấm "Quay lại làm việc". Các lượt khám đang có không bị ảnh hưởng.
           </p>
 
           <div className="mt-3.5">

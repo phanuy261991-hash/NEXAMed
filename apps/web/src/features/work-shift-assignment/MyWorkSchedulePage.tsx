@@ -8,7 +8,7 @@ import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
 import { useRowSelection } from '../../shared/hooks/useRowSelection';
-import { useWorkShiftsQuery } from '../clinic/clinic.queries';
+import { useAllowStaffSelfScheduleEnabledQuery, useWorkShiftsQuery } from '../clinic/clinic.queries';
 import { WORK_SHIFT_COLOR_HEX } from '../clinic/WorkShiftFormModal';
 import { WorkShiftPickerModal } from './WorkShiftPickerModal';
 import {
@@ -100,6 +100,11 @@ export function MyWorkSchedulePage() {
   const selection = useRowSelection(days);
 
   const ownUserId = useAuthStore((s) => s.user?.id);
+
+  // "Cấu hình chung" — mặc định `true` trong lúc tải (đúng mặc định backend), tránh nút tự đăng
+  // ký nháy ẩn/hiện lúc mới vào trang trước khi query trả về.
+  const selfScheduleQuery = useAllowStaffSelfScheduleEnabledQuery();
+  const selfScheduleEnabled = selfScheduleQuery.data?.enabled ?? true;
 
   const shiftsQuery = useWorkShiftsQuery();
   // `userId` bắt buộc truyền tường minh: với actor có data_scope `global` (vd. clinic_admin),
@@ -235,30 +240,39 @@ export function MyWorkSchedulePage() {
           )}
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant={bulkMode ? 'primary' : 'secondary'}
-            className="px-3 py-1.5 text-xs"
-            onClick={() => {
-              setBulkMode((b) => !b);
-              selection.clear();
-            }}
-          >
-            <CheckSquare size={14} weight="bold" aria-hidden="true" />
-            {bulkMode ? 'Thoát chọn nhiều ngày' : 'Chọn nhiều ngày'}
-          </Button>
-          {view === 'week' ? (
-            <Button type="button" variant="secondary" className="px-3 py-1.5 text-xs" onClick={() => void handleCopyWeek()}>
-              Sao chép tuần trước
+        {selfScheduleEnabled && (
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant={bulkMode ? 'primary' : 'secondary'}
+              className="px-3 py-1.5 text-xs"
+              onClick={() => {
+                setBulkMode((b) => !b);
+                selection.clear();
+              }}
+            >
+              <CheckSquare size={14} weight="bold" aria-hidden="true" />
+              {bulkMode ? 'Thoát chọn nhiều ngày' : 'Chọn nhiều ngày'}
             </Button>
-          ) : (
-            <Button type="button" variant="secondary" className="px-3 py-1.5 text-xs" onClick={() => void handleCopyMonth(monthAnchor)}>
-              Sao chép tháng trước
-            </Button>
-          )}
-        </div>
+            {view === 'week' ? (
+              <Button type="button" variant="secondary" className="px-3 py-1.5 text-xs" onClick={() => void handleCopyWeek()}>
+                Sao chép tuần trước
+              </Button>
+            ) : (
+              <Button type="button" variant="secondary" className="px-3 py-1.5 text-xs" onClick={() => void handleCopyMonth(monthAnchor)}>
+                Sao chép tháng trước
+              </Button>
+            )}
+          </div>
+        )}
       </div>
+
+      {!selfScheduleEnabled && (
+        <div className="flex flex-shrink-0 items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700">
+          <Lock size={13} weight="bold" aria-hidden="true" />
+          Tự đăng ký ca đang bị tắt — trang chỉ hiện lịch đã được quản lý phân công.
+        </div>
+      )}
 
       {toast && (
         <div className="flex flex-shrink-0 items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">
@@ -324,7 +338,7 @@ export function MyWorkSchedulePage() {
                             {item.startTime}–{item.endTime}
                           </span>
                         </span>
-                        {item.canEdit && (
+                        {item.canEdit && selfScheduleEnabled && (
                           <button
                             type="button"
                             aria-label="Xoá ca"
@@ -336,7 +350,7 @@ export function MyWorkSchedulePage() {
                         )}
                       </div>
                     ))}
-                    {!bulkMode && (
+                    {!bulkMode && selfScheduleEnabled && (
                       <Button type="button" variant="add" className="w-full py-1.5 text-[11px]" onClick={() => setPickerFor([day])}>
                         {dayItems.length > 0 ? '+ Thêm ca khác' : '+ Đăng ký ca'}
                       </Button>
@@ -414,7 +428,9 @@ export function MyWorkSchedulePage() {
           <p className="mt-3 text-[11.5px] text-slate-400">
             {bulkMode
               ? 'Đang ở chế độ chọn nhiều ngày — bấm vào các ngày cần đăng ký, rồi bấm "Áp dụng ca cho các ngày này" ở thanh dưới.'
-              : 'Chấm màu chỉ có/không có ca, không hiện chi tiết giờ. Bấm 1 ngày để xem chi tiết Tuần chứa ngày đó, hoặc bật "Chọn nhiều ngày" để đăng ký ca ngay tại đây.'}
+              : selfScheduleEnabled
+                ? 'Chấm màu chỉ có/không có ca, không hiện chi tiết giờ. Bấm 1 ngày để xem chi tiết Tuần chứa ngày đó, hoặc bật "Chọn nhiều ngày" để đăng ký ca ngay tại đây.'
+                : 'Chấm màu chỉ có/không có ca, không hiện chi tiết giờ. Bấm 1 ngày để xem chi tiết Tuần chứa ngày đó.'}
           </p>
         </div>
       )}

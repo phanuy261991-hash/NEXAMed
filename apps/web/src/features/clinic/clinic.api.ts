@@ -1,4 +1,5 @@
 import type {
+  AllowStaffSelfScheduleStatus,
   ClinicPrintHeader,
   ClinicProfile,
   ClinicSettings,
@@ -42,6 +43,11 @@ export async function updateClinicSettings(body: UpdateClinicSettingsRequest): P
 /** Thu ngân cơ bản (Sprint 5/6) — tự-phục vụ, không cần `clinic_config.read` (đúng khuôn `GET /appointments/doctors`). */
 export async function getDeferredPaymentStatus(): Promise<DeferredPaymentStatus> {
   return unwrap(await getApiClient().GET('/api/v1/clinic-settings/deferred-payment-enabled')) as DeferredPaymentStatus;
+}
+
+/** "Cấu hình chung" — tự-phục vụ, không cần `clinic_config.read` (đúng khuôn `getDeferredPaymentStatus`). */
+export async function getAllowStaffSelfScheduleStatus(): Promise<AllowStaffSelfScheduleStatus> {
+  return unwrap(await getApiClient().GET('/api/v1/clinic-settings/allow-staff-self-schedule-enabled')) as AllowStaffSelfScheduleStatus;
 }
 
 /** Trang "Thông tin phòng khám" (2026-08-13) — GET/PATCH cùng contract `clinic-settings` phía trên. */
