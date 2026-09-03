@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
-import { ConcurrentModificationError, formatDisplayCode } from '@nexamed/core';
+import { ConcurrentModificationError } from '@nexamed/core';
 import type {
   CreateDepartmentRequest,
   DepartmentSummary,
@@ -9,25 +9,23 @@ import type {
   UpdateDepartmentRequest,
 } from '@nexamed/shared';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
-import { CodeSequenceRepository } from '../../infrastructure/persistence/code-sequence.repository';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
+import { BusinessCodeService } from '../clinic/business-code.service';
 import type { RequestMeta } from '../../common/request-meta';
 import { DepartmentRepository, type DepartmentWithType, type UpdateDepartmentData } from './department.repository';
-
-const DEPARTMENT_CODE_PREFIX = 'KP';
 
 /**
  * Khoa/Phòng (mở rộng ADM-01) — module `iam` sở hữu, cùng chỗ `role`/`user_account` (bảng phục vụ
  * Data Scope `department`, .claude/docs/architecture.md). Thêm/Sửa/Ẩn — cùng khuôn `RoomService`.
- * `code` tự sinh qua `CodeSequenceRepository` (prefix "KP"), đúng khuôn `employeeCode`
- * (`user-account.service.ts`) — không nhập tay, theo yêu cầu chủ dự án 2026-08-20.
+ * `code` tự sinh qua `BusinessCodeService` (docs/DECISIONS.md #114, loại mã `DEPARTMENT`, tiền tố
+ * nội bộ "KP") — không nhập tay, theo yêu cầu chủ dự án 2026-08-20.
  */
 @Injectable()
 export class DepartmentService {
   constructor(
     private readonly unitOfWork: UnitOfWorkService,
     private readonly departmentRepository: DepartmentRepository,
-    private readonly codeSequenceRepository: CodeSequenceRepository,
+    private readonly businessCodeService: BusinessCodeService,
   ) {}
 
   async createDepartment(
@@ -37,8 +35,7 @@ export class DepartmentService {
     meta: RequestMeta,
   ): Promise<DepartmentSummary> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const seq = await this.codeSequenceRepository.next(tx, tenantId, DEPARTMENT_CODE_PREFIX, actorId);
-      const code = formatDisplayCode(DEPARTMENT_CODE_PREFIX, new Date(), seq);
+      const code = await this.businessCodeService.generate(tx, tenantId, actorId, 'DEPARTMENT', new Date());
       const created = await this.departmentRepository.create(
         tx,
         tenantId,

@@ -21,7 +21,7 @@ Mọi `UPDATE` kèm điều kiện `WHERE version = ?` và tăng `version` lên 
 
 ### Quy ước khác
 
-- Mã hiển thị (`patient_code`, `encounter_no`) format `<prefix><yyMM><seq6>`, ví dụ `BN2508000123`, cấp từ `code_sequence` theo tenant.
+- Mã hiển thị (`patient_code`, `department.code`, `employee_code`, `booking_code`, `encounter_no`, `invoice_no`, `cashier_shift.shift_no`) mặc định format `<prefix><yyMM><seq6>`, ví dụ `BN2508000123`, cấp từ `code_sequence` theo tenant. **"Cấu hình mẫu mã phát sinh" (docs/DECISIONS.md #114, 2026-09-03)** — từng tenant tự đổi khuôn qua `/admin/system-config` (token `[Năm 2/4 số]`/`[Tháng]`/`[Ngày]`/`[Số đếm]` + số chữ số đệm + số bắt đầu đếm, khoá sau lần dùng đầu); khuôn mặc định giữ nguyên đúng `<prefix><yyMM><seq6>` cho tenant chưa cấu hình gì. Đổi khuôn CHỈ áp dụng mã tạo mới, không hồi tố. Cấp qua `BusinessCodeService` (module `clinic`) — không gọi thẳng `code_sequence`/`formatDisplayCode` từ service khác. Bộ đếm reset theo chu kỳ mịn nhất có trong khuôn (`code_sequence.period_key`, mặc định `''` = không reset). Mã danh mục ngắn (Nhóm A — Học vị/Chức danh/Trạng thái-Hình thức làm việc/Đơn vị tính/Hình thức thanh toán/Nhóm dị nguyên/Dị nguyên/Ca làm việc) KHÔNG thuộc cơ chế này — cố định khuôn `<2 ký tự><seq5>` (docs/DECISIONS.md #113), không cấu hình được.
 - Bảng dữ liệu lâm sàng có thêm: `signed_at`, `signed_by`, `signature_payload` (null ở v1, để sẵn cho ký số), `supersedes_id`, `amendment_reason`.
 - Tiền: `bigint` đơn vị đồng. **Cấm** `numeric`, `decimal`, `money`, `real`, `double precision` cho cột tiền. Tỷ lệ: `smallint` đơn vị 0.01% (80% lưu `8000`).
 - Thời gian: `timestamptz` lưu UTC. **Cấm** `timestamp` không timezone.

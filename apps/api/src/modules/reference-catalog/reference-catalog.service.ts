@@ -1,6 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, type ExamTypePrice, type ReferenceCatalog } from '@prisma/client';
-import { ExamTypePriceOverlapError, generateReferenceCatalogCode, ReferenceCatalogDuplicateCodeError } from '@nexamed/core';
+import {
+  ExamTypePriceOverlapError,
+  formatShortSequentialCode,
+  generateReferenceCatalogCode,
+  REFERENCE_CATALOG_SHORT_CODE_PREFIXES,
+  ReferenceCatalogDuplicateCodeError,
+} from '@nexamed/core';
+import { GlobalCodeSequenceRepository } from '../../infrastructure/persistence/global-code-sequence.repository';
 import type {
   CreateReferenceCatalogRequest,
   ExamTypePriceInput,
@@ -32,9 +39,6 @@ function isExclusionViolation(err: unknown): boolean {
   );
 }
 
-/** Random UUID nên xác suất trùng cực nhỏ — vài lần thử là đủ, không cần vòng lặp lớn. */
-const AUTO_CODE_MAX_ATTEMPTS = 5;
-
 /**
  * Danh mục dùng chung toàn hệ thống (Dân tộc, Quốc tịch — docs/DECISIONS.md, đảo ngược #034
  * phần ethnicity/nationality). Không tenant_id trên `reference_catalog` nhưng `writeAuditLog`
@@ -48,7 +52,24 @@ export class ReferenceCatalogService {
     private readonly unitOfWork: UnitOfWorkService,
     private readonly referenceCatalogRepository: ReferenceCatalogRepository,
     private readonly examTypePriceRepository: ExamTypePriceRepository,
+    private readonly globalCodeSequenceRepository: GlobalCodeSequenceRepository,
   ) {}
+
+  /**
+   * Mã tự sinh khi client không cung cấp `code` — category có trong
+   * `REFERENCE_CATALOG_SHORT_CODE_PREFIXES` (docs/DECISIONS.md #113) dùng mã NGẮN, TUẦN TỰ
+   * (`GlobalCodeSequenceRepository`, atomic, không cần retry). Category khác (nếu có nơi nào gọi
+   * API thẳng bỏ trống `code` cho category vốn luôn nhập tay ở UI) rơi về cơ chế ngẫu nhiên cũ
+   * làm lưới an toàn — không đổi hành vi ngoài phạm vi 6 category đã chốt.
+   */
+  private async generateCode(tx: Prisma.TransactionClient, category: ReferenceCatalogCategory): Promise<string> {
+    const shortPrefix = REFERENCE_CATALOG_SHORT_CODE_PREFIXES[category];
+    if (shortPrefix) {
+      const seq = await this.globalCodeSequenceRepository.next(tx, shortPrefix);
+      return formatShortSequentialCode(shortPrefix, seq);
+    }
+    return generateReferenceCatalogCode(category);
+  }
 
   async listByCategory(
     tenantId: string,
@@ -72,39 +93,29 @@ export class ReferenceCatalogService {
   ): Promise<ReferenceCatalogItem> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       // Không nhập tay mã (mở rộng ADM-01, yêu cầu chủ dự án 2026-08-20) — web chỉ ẩn ô "Mã" cho
-      // 4 category nhân sự, backend không hardcode danh sách category, chỉ tự sinh khi thiếu
-      // `code`. Random UUID nên chỉ retry khi CHÍNH mã tự sinh bị trùng (không lặp lại khi lỗi
-      // đến từ mã client tự nhập — trường hợp đó phải báo lỗi ngay, không âm thầm đổi mã khác).
-      const isAutoCode = dto.code === undefined;
-      let created: ReferenceCatalog | undefined;
-      for (let attempt = 1; attempt <= (isAutoCode ? AUTO_CODE_MAX_ATTEMPTS : 1); attempt++) {
-        const code = dto.code ?? generateReferenceCatalogCode(dto.category);
-        try {
-          created = await this.referenceCatalogRepository.create(tx, {
-            category: dto.category,
-            code,
-            name: dto.name,
-            sortOrder: dto.sortOrder,
-            price: dto.price !== undefined ? BigInt(dto.price) : null,
-            unit: dto.unit ?? null,
-            deactivatesAccount: dto.deactivatesAccount ?? false,
-            countsAsCash: dto.countsAsCash ?? false,
-            description: dto.description ?? null,
-            isActive: dto.isActive ?? true,
-          });
-          break;
-        } catch (err) {
-          if (!isDuplicateCodeViolation(err)) {
-            throw err;
-          }
-          if (!isAutoCode || attempt === AUTO_CODE_MAX_ATTEMPTS) {
-            throw new ReferenceCatalogDuplicateCodeError();
-          }
-          // isAutoCode && chưa hết lượt thử — vòng lặp tự sinh mã khác rồi thử lại.
+      // 6 category không có nguồn dữ liệu chính thức, backend không hardcode danh sách category,
+      // chỉ tự sinh khi thiếu `code`. Mã ngắn tuần tự cấp atomic (docs/DECISIONS.md #113) nên
+      // không cần retry khi trùng — chỉ mã client TỰ NHẬP mới có thể trùng thật.
+      const code = dto.code ?? (await this.generateCode(tx, dto.category));
+      let created: ReferenceCatalog;
+      try {
+        created = await this.referenceCatalogRepository.create(tx, {
+          category: dto.category,
+          code,
+          name: dto.name,
+          sortOrder: dto.sortOrder,
+          price: dto.price !== undefined ? BigInt(dto.price) : null,
+          unit: dto.unit ?? null,
+          deactivatesAccount: dto.deactivatesAccount ?? false,
+          countsAsCash: dto.countsAsCash ?? false,
+          description: dto.description ?? null,
+          isActive: dto.isActive ?? true,
+        });
+      } catch (err) {
+        if (isDuplicateCodeViolation(err)) {
+          throw new ReferenceCatalogDuplicateCodeError();
         }
-      }
-      if (!created) {
-        throw new ReferenceCatalogDuplicateCodeError();
+        throw err;
       }
 
       let prices: ExamTypePrice[] | undefined;

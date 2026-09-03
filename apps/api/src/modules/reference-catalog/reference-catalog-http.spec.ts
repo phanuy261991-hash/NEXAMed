@@ -253,8 +253,8 @@ describe('HTTP e2e — /api/v1/reference-catalog', () => {
       description: 'Dùng cho thuốc dạng viên nén',
       isActive: true,
     });
-    expect(typeof created.body.data.code).toBe('string');
-    expect(created.body.data.code.length).toBeGreaterThan(0);
+    // Mã ngắn tuần tự (docs/DECISIONS.md #113) — <2 ký tự><5 chữ số>, không còn dạng ngẫu nhiên cũ.
+    expect(created.body.data.code).toMatch(/^DV[0-9]{5}$/);
 
     const id = created.body.data.id as string;
     const patched = await request(app.getHttpServer())

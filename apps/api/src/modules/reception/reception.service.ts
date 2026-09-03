@@ -8,13 +8,11 @@ import {
   EncounterNotCheckedInError,
   PatientAlreadyMergedError,
   evaluateVitalSignWarnings,
-  formatDisplayCode,
   getVietnamDateString,
   vietnamDayRange,
   type DoctorDirectoryPort,
 } from '@nexamed/core';
 import {
-  ENCOUNTER_NO_PREFIX,
   calculateAgeYears,
   type CheckInRequest,
   type DataScope,
@@ -28,8 +26,8 @@ import {
   type VitalSignWarning,
 } from '@nexamed/shared';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
-import { CodeSequenceRepository } from '../../infrastructure/persistence/code-sequence.repository';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
+import { BusinessCodeService } from '../clinic/business-code.service';
 import type { RequestMeta } from '../../common/request-meta';
 import { AppointmentRepository } from '../appointment/appointment.repository';
 import { EncounterRepository } from '../encounter/encounter.repository';
@@ -103,7 +101,7 @@ export class ReceptionService {
     private readonly vitalSignRepository: VitalSignRepository,
     private readonly encounterServiceItemRepository: EncounterServiceItemRepository,
     private readonly invoiceRepository: InvoiceRepository,
-    private readonly codeSequenceRepository: CodeSequenceRepository,
+    private readonly businessCodeService: BusinessCodeService,
     private readonly patientRepository: PatientRepository,
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
   ) {}
@@ -200,8 +198,7 @@ export class ReceptionService {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       await this.assertPatientNotMerged(tx, tenantId, dto.patientId);
 
-      const seq = await this.codeSequenceRepository.next(tx, tenantId, ENCOUNTER_NO_PREFIX, actorId);
-      const encounterNo = formatDisplayCode(ENCOUNTER_NO_PREFIX, new Date(), seq);
+      const encounterNo = await this.businessCodeService.generate(tx, tenantId, actorId, 'ENCOUNTER', new Date());
 
       let created: Encounter;
       try {
@@ -336,8 +333,7 @@ export class ReceptionService {
       meta: RequestMeta;
     },
   ): Promise<Encounter> {
-    const seq = await this.codeSequenceRepository.next(tx, tenantId, ENCOUNTER_NO_PREFIX, actorId);
-    const encounterNo = formatDisplayCode(ENCOUNTER_NO_PREFIX, new Date(), seq);
+    const encounterNo = await this.businessCodeService.generate(tx, tenantId, actorId, 'ENCOUNTER', new Date());
 
     let created: Encounter;
     try {

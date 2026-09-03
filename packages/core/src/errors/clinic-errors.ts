@@ -53,12 +53,22 @@ export class WorkShiftInvalidTimeRangeError extends DomainError {
   }
 }
 
-/** Mã tự sinh trùng hết số lần thử (xác suất cực nhỏ với UUID ngẫu nhiên — gần như không xảy ra
- * thật, cùng khuôn `ReferenceCatalogDuplicateCodeError`). */
-export class WorkShiftDuplicateCodeError extends DomainError {
-  readonly code = 'WORK_SHIFT_DUPLICATE_CODE';
+/** "Cấu hình mẫu mã phát sinh" (docs/DECISIONS.md #114) — khuôn mẫu sai cú pháp: thiếu/thừa
+ * `[Số đếm]`, hoặc có token lạ không thuộc 5 token đã biết (`parseBusinessCodeTemplate`). */
+export class BusinessCodeTemplateInvalidError extends DomainError {
+  readonly code = 'BUSINESS_CODE_TEMPLATE_INVALID';
+
+  constructor(message: string) {
+    super(message);
+  }
+}
+
+/** "Số bắt đầu đếm" chỉ sửa được 1 lần — loại mã này đã phát sinh mã đầu tiên (bất kỳ chu kỳ
+ * nào), sửa lại có nguy cơ hạ thấp gây trùng mã đã cấp. */
+export class BusinessCodeTemplateStartingValueLockedError extends DomainError {
+  readonly code = 'BUSINESS_CODE_TEMPLATE_STARTING_VALUE_LOCKED';
 
   constructor() {
-    super('Không sinh được mã ca làm việc duy nhất, thử lại.');
+    super('Loại mã này đã phát sinh mã đầu tiên — không thể sửa lại "Số bắt đầu đếm".');
   }
 }

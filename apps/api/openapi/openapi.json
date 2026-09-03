@@ -25317,6 +25317,422 @@
         }
       }
     },
+    "/api/v1/clinic-settings/code-templates": {
+      "get": {
+        "tags": [
+          "clinic"
+        ],
+        "summary": "\"Cấu hình mẫu mã phát sinh\" (docs/DECISIONS.md #114) — 7 loại mã nghiệp vụ, kèm locked/mã kế tiếp minh hoạ",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "codeType": {
+                                "type": "string",
+                                "enum": [
+                                  "PATIENT",
+                                  "DEPARTMENT",
+                                  "EMPLOYEE",
+                                  "APPOINTMENT_BOOKING",
+                                  "ENCOUNTER",
+                                  "INVOICE",
+                                  "CASHIER_SHIFT"
+                                ]
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "prefix": {
+                                "type": "string"
+                              },
+                              "template": {
+                                "type": "string"
+                              },
+                              "counterDigits": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 9
+                              },
+                              "startingValue": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0
+                              },
+                              "locked": {
+                                "type": "boolean"
+                              },
+                              "exampleNextCode": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "codeType",
+                              "label",
+                              "prefix",
+                              "template",
+                              "counterDigits",
+                              "startingValue",
+                              "locked",
+                              "exampleNextCode"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền clinic_config.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clinic-settings/code-templates/{codeType}": {
+      "patch": {
+        "tags": [
+          "clinic"
+        ],
+        "summary": "\"Cấu hình mẫu mã phát sinh\" — sửa khuôn mẫu 1 loại mã, \"Số bắt đầu đếm\" khoá sau lần dùng đầu",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PATIENT",
+                "DEPARTMENT",
+                "EMPLOYEE",
+                "APPOINTMENT_BOOKING",
+                "ENCOUNTER",
+                "INVOICE",
+                "CASHIER_SHIFT"
+              ]
+            },
+            "required": true,
+            "name": "codeType",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "template": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "counterDigits": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9
+                  },
+                  "startingValue": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "template",
+                  "counterDigits"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sửa thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "codeType": {
+                          "type": "string",
+                          "enum": [
+                            "PATIENT",
+                            "DEPARTMENT",
+                            "EMPLOYEE",
+                            "APPOINTMENT_BOOKING",
+                            "ENCOUNTER",
+                            "INVOICE",
+                            "CASHIER_SHIFT"
+                          ]
+                        },
+                        "label": {
+                          "type": "string"
+                        },
+                        "prefix": {
+                          "type": "string"
+                        },
+                        "template": {
+                          "type": "string"
+                        },
+                        "counterDigits": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9
+                        },
+                        "startingValue": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0
+                        },
+                        "locked": {
+                          "type": "boolean"
+                        },
+                        "exampleNextCode": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "codeType",
+                        "label",
+                        "prefix",
+                        "template",
+                        "counterDigits",
+                        "startingValue",
+                        "locked",
+                        "exampleNextCode"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Khuôn mẫu sai cú pháp (BUSINESS_CODE_TEMPLATE_INVALID)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền clinic_config.update",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Đã khoá — không sửa lại được \"Số bắt đầu đếm\" (BUSINESS_CODE_TEMPLATE_STARTING_VALUE_LOCKED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/clinic-profile": {
       "get": {
         "tags": [

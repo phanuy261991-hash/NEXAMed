@@ -10507,6 +10507,206 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/clinic-settings/code-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** "Cấu hình mẫu mã phát sinh" (docs/DECISIONS.md #114) — 7 loại mã nghiệp vụ, kèm locked/mã kế tiếp minh hoạ */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** @enum {string} */
+                                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT";
+                                    label: string;
+                                    prefix: string;
+                                    template: string;
+                                    counterDigits: number;
+                                    startingValue: number;
+                                    locked: boolean;
+                                    exampleNextCode: string;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền clinic_config.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinic-settings/code-templates/{codeType}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** "Cấu hình mẫu mã phát sinh" — sửa khuôn mẫu 1 loại mã, "Số bắt đầu đếm" khoá sau lần dùng đầu */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT";
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        template: string;
+                        counterDigits: number;
+                        startingValue?: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Sửa thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** @enum {string} */
+                                codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT";
+                                label: string;
+                                prefix: string;
+                                template: string;
+                                counterDigits: number;
+                                startingValue: number;
+                                locked: boolean;
+                                exampleNextCode: string;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Khuôn mẫu sai cú pháp (BUSINESS_CODE_TEMPLATE_INVALID) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền clinic_config.update */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Đã khoá — không sửa lại được "Số bắt đầu đếm" (BUSINESS_CODE_TEMPLATE_STARTING_VALUE_LOCKED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
     "/api/v1/clinic-profile": {
         parameters: {
             query?: never;

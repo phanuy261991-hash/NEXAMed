@@ -1,23 +1,16 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma, type WorkShift } from '@prisma/client';
-import {
-  ConcurrentModificationError,
-  WorkShiftDuplicateCodeError,
-  WorkShiftInvalidTimeRangeError,
-  generateReferenceCatalogCode,
-} from '@nexamed/core';
+import type { WorkShift } from '@prisma/client';
+import { ConcurrentModificationError, formatShortSequentialCode, WorkShiftInvalidTimeRangeError } from '@nexamed/core';
 import type { CreateWorkShiftRequest, ListWorkShiftsResponse, UpdateWorkShiftRequest, WorkShiftItem } from '@nexamed/shared';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
+import { CodeSequenceRepository } from '../../infrastructure/persistence/code-sequence.repository';
 import type { RequestMeta } from '../../common/request-meta';
 import { WorkShiftRepository, type UpdateWorkShiftData } from './work-shift.repository';
 
-function isDuplicateCodeViolation(err: unknown): boolean {
-  return err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002';
-}
-
-/** Random hex nên xác suất trùng cực nhỏ — vài lần thử là đủ, cùng khuôn `ReferenceCatalogService`. */
-const AUTO_CODE_MAX_ATTEMPTS = 5;
+/** Mã ngắn tuần tự (docs/DECISIONS.md #113) — RIÊNG theo tenant (khác 6 category `reference_catalog`
+ * toàn hệ thống), dùng `CodeSequenceRepository` có sẵn (đúng khuôn `department`/`patient`). */
+const WORK_SHIFT_CODE_PREFIX = 'CA';
 
 /** "HH:mm" → phút trong ngày, chỉ để so sánh thứ tự — không cần xử lý múi giờ (cùng bản chất
  * `DayHours.open/close`, không phải mốc thời gian thật). */
@@ -36,6 +29,7 @@ export class WorkShiftService {
   constructor(
     private readonly unitOfWork: UnitOfWorkService,
     private readonly workShiftRepository: WorkShiftRepository,
+    private readonly codeSequenceRepository: CodeSequenceRepository,
   ) {}
 
   private assertValidTimeRange(input: {
@@ -64,34 +58,23 @@ export class WorkShiftService {
   async create(tenantId: string, actorId: string, dto: CreateWorkShiftRequest, meta: RequestMeta): Promise<WorkShiftItem> {
     this.assertValidTimeRange(dto);
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      let created: WorkShift | undefined;
-      for (let attempt = 1; attempt <= AUTO_CODE_MAX_ATTEMPTS; attempt++) {
-        const code = generateReferenceCatalogCode('work_shift');
-        try {
-          created = await this.workShiftRepository.create(tx, tenantId, actorId, {
-            name: dto.name,
-            code,
-            startTime: dto.startTime,
-            endTime: dto.endTime,
-            color: dto.color,
-            restStartTime: dto.restStartTime ?? null,
-            restEndTime: dto.restEndTime ?? null,
-            restMinutes: dto.restMinutes ?? null,
-            standardWorkMinutes: dto.standardWorkMinutes ?? null,
-            sortOrder: dto.sortOrder,
-          });
-          break;
-        } catch (err) {
-          if (!isDuplicateCodeViolation(err) || attempt === AUTO_CODE_MAX_ATTEMPTS) {
-            if (isDuplicateCodeViolation(err)) throw new WorkShiftDuplicateCodeError();
-            throw err;
-          }
-          // Mã tự sinh trùng — vòng lặp tự sinh mã khác rồi thử lại.
-        }
-      }
-      if (!created) {
-        throw new WorkShiftDuplicateCodeError();
-      }
+      // Mã ngắn tuần tự, cấp atomic theo tenant (docs/DECISIONS.md #113) — không nhập tay
+      // (CreateWorkShiftRequest không có field `code`) nên không còn khả năng trùng, không cần
+      // retry như cơ chế ngẫu nhiên cũ.
+      const seq = await this.codeSequenceRepository.next(tx, tenantId, WORK_SHIFT_CODE_PREFIX, actorId);
+      const code = formatShortSequentialCode(WORK_SHIFT_CODE_PREFIX, seq);
+      const created: WorkShift = await this.workShiftRepository.create(tx, tenantId, actorId, {
+        name: dto.name,
+        code,
+        startTime: dto.startTime,
+        endTime: dto.endTime,
+        color: dto.color,
+        restStartTime: dto.restStartTime ?? null,
+        restEndTime: dto.restEndTime ?? null,
+        restMinutes: dto.restMinutes ?? null,
+        standardWorkMinutes: dto.standardWorkMinutes ?? null,
+        sortOrder: dto.sortOrder,
+      });
 
       await writeAuditLog(tx, tenantId, {
         actorId,

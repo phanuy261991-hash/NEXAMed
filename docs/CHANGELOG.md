@@ -4,6 +4,32 @@
 
 ## 2026-09-03
 
+### "Cấu hình mẫu mã phát sinh" cho mã nghiệp vụ có tháng-năm
+
+Tiếp ngay sau rút gọn Nhóm A — chủ dự án yêu cầu cho Nhóm B (mã có tháng-năm: patient_code, encounter_no, booking_code, employee_code, department.code, invoice_no, cashier_shift.shift_no) tự cấu hình được theo tenant, dạng `[Năm][Tháng] [Ký tự][số đếm]` + số bắt đầu đếm. Kế hoạch kỹ thuật duyệt qua `EnterPlanMode` trước khi code.
+
+Chốt qua `AskUserQuestion`: đổi khuôn chỉ áp dụng mã tạo MỚI (mã cũ giữ nguyên); bộ đếm tự reset theo chu kỳ mịn nhất trong khuôn (có `[Tháng]` → reset tháng, chỉ `[Năm]` → reset năm, không có → chạy liên tục như hiện tại); "Số bắt đầu đếm" chỉ đặt được 1 lần rồi khoá vĩnh viễn; chèn token qua nút bấm, không kéo-thả; từng tenant tự cấu hình riêng.
+
+`code_sequence` thêm cột `period_key` (mặc định `''`, tương thích ngược tuyệt đối — không cascade/backfill). `tenant_setting` thêm key `business_code_templates`. `BusinessCodeService` (module `clinic`) mới, điểm gọi DUY NHẤT thay 7 nơi gọi `formatDisplayCode` trực tiếp trước đây. Pill mới "Cấu hình mẫu mã phát sinh" trong Cấu hình hệ thống, lazy.
+
+Bug bundler thật lặp lại (#032/#091): Rollup không dò được export của `packages/shared/src/business-code.ts` (cả hằng số lẫn hàm) qua `vite build` — khai lại 3 hàm xem trước THUẦN CLIENT tại `apps/web/src/features/clinic/business-code-preview.ts`.
+
+Xem `docs/DECISIONS.md` #114, `docs/ERD.md` v1.41.
+
+Đã xác minh: `packages/shared` 20/20 (+12), `apps/api` (+3 `code-sequence.repository.spec.ts`, +11 `business-code-http.spec.ts` mới), toàn bộ 7 spec HTTP của các module đã migrate KHÔNG cần sửa gì (mặc định giữ nguyên format cũ). `pnpm -w typecheck/lint/build` sạch toàn workspace, chunk web 481.24 kB. Migration áp thật lên Postgres dev. Chưa verify Playwright cho màn hình mới.
+
+### Mã tự sinh NGẮN, TUẦN TỰ cho danh mục — thay cơ chế ngẫu nhiên cũ
+
+Chủ dự án yêu cầu trực tiếp: mã tự sinh (dạng `AC-3F9B2A1D`, 11-12 ký tự, ngẫu nhiên không theo thứ tự) quá dài, muốn rút gọn theo khuôn `<2 ký tự><5 chữ số>` (vd `HV00001`), sinh theo đúng thứ tự đã tạo. Phạm vi CHỈ nhóm "mã danh mục" (6 category `reference_catalog` không có nguồn dữ liệu chính thức — Học vị/Chức danh/Trạng thái-Hình thức làm việc/Đơn vị tính/Hình thức thanh toán + Nhóm dị nguyên/Dị nguyên + Ca làm việc) — KHÔNG đụng "mã nghiệp vụ" có tháng-năm (patient_code, encounter_no...) đã chốt riêng.
+
+Bảng mới `global_code_sequence` (toàn hệ thống, khoá theo `prefix`) cấp số cho 3 nhóm danh mục toàn hệ thống; `work_shift` (tenant-scoped) dùng lại `code_sequence` có sẵn. Migration `20260903190000_short_sequential_catalog_codes` đánh số lại TOÀN BỘ mã cũ đã tồn tại (chỉ dòng khớp đúng mẫu ngẫu nhiên cũ, không đụng mã seed cố định như `CASH`/`FULL_TIME`) + cascade UPDATE sang mọi cột đang lưu thẳng mã dạng chuỗi (`user_account.*_code`, `exam_type_price.unit_code`, `encounter_service_item.unit_code`, `invoice_line.unit_code`, `payment.method`, `invoice.pending_payment_method`).
+
+Xem `docs/DECISIONS.md` #113, `docs/ERD.md` v1.40.
+
+Đã xác minh: migration áp thật lên Postgres dev, xác nhận cascade đúng qua query trực tiếp; `packages/core` 145/145; `apps/api` 576/594 pass + 18 skip (2 flake đã biết, pass riêng); `pnpm -w typecheck/lint/build` sạch toàn workspace, chunk web không đổi (480.68 kB). Chưa verify Playwright.
+
+**Việc còn treo, khác phạm vi trên**: chủ dự án yêu cầu tiếp — dựng "Cấu hình mẫu mã phát sinh" cho nhóm mã nghiệp vụ có tháng-năm (khuôn tự cấu hình được, số bắt đầu đếm) — tính năng mới, chưa thiết kế/code.
+
 ### Bổ sung bộ lọc "Thu ngân" ở "Danh sách phiếu chốt ca"
 
 Điểm còn treo duy nhất của "Chốt ca" (#112) — chủ dự án xác nhận cần bổ sung. Không dựng endpoint liệt kê thu ngân riêng: dùng lại `GET /users` có sẵn (`useUserAccountsQuery()`, đúng khuôn `ActivityLogPage.tsx`), lọc phía client chỉ giữ tài khoản có vai trò `receptionist`/`clinic_admin` (2 vai trò duy nhất có quyền `cashier_shift.create`). Thêm `<select>` vào toolbar `CashierShiftListPage.tsx`, nối tham số `cashierId` đã có sẵn trong `ListCashierShiftsQuery`.

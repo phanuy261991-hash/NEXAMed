@@ -1,8 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { CashierShift, CashierShiftDiscrepancyResolution, Prisma } from '@prisma/client';
-import { CASHIER_SHIFT_NO_PREFIX } from '@nexamed/shared';
-import { formatDisplayCode } from '@nexamed/core';
-import { CodeSequenceRepository } from '../../infrastructure/persistence/code-sequence.repository';
+import { BusinessCodeService } from '../clinic/business-code.service';
 
 export interface OpenCashierShiftData {
   shiftLabel: string;
@@ -51,11 +49,10 @@ export interface EditCashierShiftData {
  */
 @Injectable()
 export class CashierShiftRepository {
-  constructor(private readonly codeSequenceRepository: CodeSequenceRepository) {}
+  constructor(private readonly businessCodeService: BusinessCodeService) {}
 
   async create(tx: Prisma.TransactionClient, tenantId: string, actorId: string, data: OpenCashierShiftData): Promise<CashierShift> {
-    const seq = await this.codeSequenceRepository.next(tx, tenantId, CASHIER_SHIFT_NO_PREFIX, actorId);
-    const shiftNo = formatDisplayCode(CASHIER_SHIFT_NO_PREFIX, data.openedAt, seq);
+    const shiftNo = await this.businessCodeService.generate(tx, tenantId, actorId, 'CASHIER_SHIFT', data.openedAt);
     return tx.cashierShift.create({
       data: {
         tenantId,

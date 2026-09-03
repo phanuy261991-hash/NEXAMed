@@ -21,6 +21,7 @@ import { ExamStationRepository } from './exam-station.repository';
 import { WorkShiftController } from './work-shift.controller';
 import { WorkShiftService } from './work-shift.service';
 import { WorkShiftRepository } from './work-shift.repository';
+import { BusinessCodeService } from './business-code.service';
 
 /**
  * S2-07, ADM-02 (trừ mẫu in) — cấu hình phòng khám, phòng (.claude/docs/architecture.md).
@@ -37,6 +38,10 @@ import { WorkShiftRepository } from './work-shift.repository';
  * `examStationCount` trong `RoomSummary`.
  * `WorkShiftController` (docs/DECISIONS.md #101) — "Ca làm việc", danh mục mẫu ca RIÊNG theo
  * tenant (khác `reference_catalog` toàn hệ thống), cùng `clinic_config.*`.
+ * `BusinessCodeService` (docs/DECISIONS.md #114) — "Cấu hình mẫu mã phát sinh", export cho
+ * `patient`/`iam`(department,user-account)/`appointment`/`reception`/`billing`/`cashier-shift`
+ * dùng trong CÙNG transaction (đúng khuôn "reception/encounter/appointment chia sẻ Repository",
+ * #042) thay `formatDisplayCode`+`CodeSequenceRepository.next()` gọi trực tiếp trước đây.
  */
 @Module({
   controllers: [
@@ -63,10 +68,12 @@ import { WorkShiftRepository } from './work-shift.repository';
     ExamStationRepository,
     WorkShiftService,
     WorkShiftRepository,
+    BusinessCodeService,
     { provide: CLINIC_CONFIG_READER_PORT, useExisting: ClinicSettingsService },
   ],
   // `WorkShiftService` export thêm cho `WorkShiftAssignmentModule` (Nhập Excel — tra mã ca, thuần
-  // đọc `list()` có sẵn, không cần port riêng cho một lệnh đọc).
-  exports: [CLINIC_CONFIG_READER_PORT, WorkShiftService],
+  // đọc `list()` có sẵn, không cần port riêng cho một lệnh đọc). `BusinessCodeService` export cho
+  // mọi module sinh mã nghiệp vụ (docs/DECISIONS.md #114).
+  exports: [CLINIC_CONFIG_READER_PORT, WorkShiftService, BusinessCodeService],
 })
 export class ClinicModule {}

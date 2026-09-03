@@ -1,8 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { EncounterServiceItem, EncounterStatus, Invoice, InvoiceLine, PaymentType, Prisma } from '@prisma/client';
-import { computeInvoiceFromServiceItems, formatDisplayCode, type ServiceItemForInvoice } from '@nexamed/core';
-import { INVOICE_NO_PREFIX } from '@nexamed/shared';
-import { CodeSequenceRepository } from '../../infrastructure/persistence/code-sequence.repository';
+import { computeInvoiceFromServiceItems, type ServiceItemForInvoice } from '@nexamed/core';
+import { BusinessCodeService } from '../clinic/business-code.service';
 
 interface EncounterContext {
   id: string;
@@ -80,7 +79,7 @@ function toPaymentSides(payments: { method: string; paidAt: Date; type: PaymentT
  */
 @Injectable()
 export class InvoiceRepository {
-  constructor(private readonly codeSequenceRepository: CodeSequenceRepository) {}
+  constructor(private readonly businessCodeService: BusinessCodeService) {}
 
   /**
    * Tạo phiếu thu (BIL-01) từ danh sách `encounter_service_item` VỪA tạo trong CÙNG transaction —
@@ -108,8 +107,7 @@ export class InvoiceRepository {
       return null;
     }
 
-    const seq = await this.codeSequenceRepository.next(tx, tenantId, INVOICE_NO_PREFIX, actorId);
-    const invoiceNo = formatDisplayCode(INVOICE_NO_PREFIX, new Date(), seq);
+    const invoiceNo = await this.businessCodeService.generate(tx, tenantId, actorId, 'INVOICE', new Date());
 
     // 2 lệnh riêng (không nested `create`) — cùng khuôn `EncounterServiceItemRepository.createMany()`:
     // nested write qua quan hệ composite FK (tenant_id, x_id) không nhận field scalar `tenantId`

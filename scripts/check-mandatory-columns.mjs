@@ -39,6 +39,9 @@ const EXEMPTIONS = {
   // mới — phát hiện lại khi rà soát cùng lúc thêm EncounterServiceItem (docs/DECISIONS.md #080).
   AllergenGroup: [...APPEND_ONLY_EXEMPT, 'tenant_id'],
   Allergen: [...APPEND_ONLY_EXEMPT, 'tenant_id'],
+  // Bảng đếm số thuần hạ tầng cho mã ngắn của danh mục toàn hệ thống (docs/DECISIONS.md #113) —
+  // không phải dữ liệu nghiệp vụ hiển thị, cùng lý do miễn trừ như Permission.
+  GlobalCodeSequence: [...APPEND_ONLY_EXEMPT, 'tenant_id'],
 };
 
 const schema = readFileSync(SCHEMA_PATH, 'utf8');

@@ -13,6 +13,16 @@ function toVietnamYearMonth(utcDate: Date): { year: number; month: number } {
 }
 
 /**
+ * Cùng kỹ thuật `toVietnamYearMonth` ở trên, thêm `day` — dùng cho "Cấu hình mẫu mã phát sinh"
+ * (docs/DECISIONS.md #114, `BusinessCodeService`) tính `period_key`/token `[Ngày]` theo đúng giờ
+ * Việt Nam thay vì UTC server.
+ */
+export function toVietnamDateParts(utcDate: Date): { year: number; month: number; day: number } {
+  const shifted = new Date(utcDate.getTime() + VIETNAM_UTC_OFFSET_MINUTES * 60_000);
+  return { year: shifted.getUTCFullYear(), month: shifted.getUTCMonth() + 1, day: shifted.getUTCDate() };
+}
+
+/**
  * Định dạng mã hiển thị `<prefix><yyMM><seq6>` (ví dụ `BN2508000123`) — xem .claude/docs/
  * data-model.md mục "Quy ước khác". `seq` do `CodeSequenceRepository` cấp theo tenant (atomic ở
  * tầng DB); hàm này chỉ định dạng chuỗi, thuần không phụ thuộc DB.

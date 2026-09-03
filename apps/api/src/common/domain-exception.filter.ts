@@ -95,6 +95,10 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   CASHIER_SHIFT_NOT_CLOSED: HttpStatus.CONFLICT,
   // Thiếu lý do giải trình chênh lệch — lỗi input (client phải gửi kèm), không phải xung đột trạng thái.
   CASHIER_SHIFT_DISCREPANCY_REASON_REQUIRED: HttpStatus.BAD_REQUEST,
+  // "Cấu hình mẫu mã phát sinh" (docs/DECISIONS.md #114) — cú pháp khuôn mẫu sai là lỗi input;
+  // sửa "Số bắt đầu đếm" khi đã khoá là xung đột trạng thái (loại mã đó đã phát sinh mã đầu tiên).
+  BUSINESS_CODE_TEMPLATE_INVALID: HttpStatus.BAD_REQUEST,
+  BUSINESS_CODE_TEMPLATE_STARTING_VALUE_LOCKED: HttpStatus.CONFLICT,
 };
 
 /**

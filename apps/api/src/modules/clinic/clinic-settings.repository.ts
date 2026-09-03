@@ -2,7 +2,9 @@ import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import {
+  businessCodeTypeSchema,
   businessHoursSchema,
+  type BusinessCodeType,
   DEFAULT_ALLOW_EMERGENCY_END_SHIFT,
   DEFAULT_ALLOW_RECEPTIONIST_END_SHIFT,
   DEFAULT_ALLOW_STAFF_SELF_SCHEDULE_ENABLED,
@@ -56,6 +58,22 @@ const workShiftAssignmentLockGraceDaysSchema = z.number().int().min(0).max(27);
 // cấu hình (khuyến nghị chống gian lận).
 const CASHIER_SHIFT_BLIND_CLOSE_KEY = 'cashier_shift_blind_close_enabled';
 const cashierShiftBlindCloseSchema = z.boolean();
+// "Cấu hình mẫu mã phát sinh" (docs/DECISIONS.md #114, 2026-09-03) — 1 object JSON duy nhất,
+// khoá theo loại mã (7 loại), chỉ chứa entry của loại mã ĐÃ được tenant chủ động sửa (loại chưa
+// đụng tới thì KHÔNG có key — service tự áp mặc định khớp hành vi cũ, xem `BusinessCodeService`).
+const BUSINESS_CODE_TEMPLATES_KEY = 'business_code_templates';
+export interface BusinessCodeTemplateEntry {
+  template: string;
+  counterDigits: number;
+  startingValue: number;
+}
+const businessCodeTemplateEntrySchema = z.object({
+  template: z.string().min(1),
+  counterDigits: z.number().int().min(1).max(9),
+  startingValue: z.number().int().positive(),
+});
+const businessCodeTemplatesConfigSchema = z.record(businessCodeTypeSchema, businessCodeTemplateEntrySchema);
+type BusinessCodeTemplatesConfig = Partial<Record<BusinessCodeType, BusinessCodeTemplateEntry>>;
 
 /**
  * Đọc/ghi `tenant_setting` cho hai key cấu hình phòng khám (S2-07, ADM-02) — cùng mẫu
@@ -187,6 +205,32 @@ export class ClinicSettingsRepository {
 
   upsertCashierShiftBlindCloseEnabled(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
     return this.upsert(tx, tenantId, actorId, CASHIER_SHIFT_BLIND_CLOSE_KEY, value);
+  }
+
+  /** Chỉ trả entry của loại mã tenant ĐÃ chủ động cấu hình — loại mã vắng mặt nghĩa là "dùng mặc
+   * định", `BusinessCodeService` tự áp giá trị mặc định (không lưu ở đây). */
+  async getBusinessCodeTemplatesConfig(tx: Prisma.TransactionClient, tenantId: string): Promise<BusinessCodeTemplatesConfig> {
+    const setting = await tx.tenantSetting.findFirst({ where: { tenantId, key: BUSINESS_CODE_TEMPLATES_KEY } });
+    if (!setting) {
+      return {};
+    }
+    const parsed = businessCodeTemplatesConfigSchema.safeParse(setting.valueJson);
+    return parsed.success ? parsed.data : {};
+  }
+
+  /** Merge đúng 1 loại mã vào object JSON chung, không đụng các loại khác — đọc-sửa-ghi trong
+   * CÙNG transaction của caller (không race vì `tenant_setting` không có ai ghi đồng thời khoá
+   * mã ngay tại chỗ này — khác `code_sequence` cần atomic thật). */
+  async upsertBusinessCodeTemplateEntry(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    actorId: string,
+    codeType: BusinessCodeType,
+    entry: BusinessCodeTemplateEntry,
+  ): Promise<void> {
+    const current = await this.getBusinessCodeTemplatesConfig(tx, tenantId);
+    const next: BusinessCodeTemplatesConfig = { ...current, [codeType]: entry };
+    await this.upsert(tx, tenantId, actorId, BUSINESS_CODE_TEMPLATES_KEY, next);
   }
 
   upsertAllowEmergencyEndShift(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {

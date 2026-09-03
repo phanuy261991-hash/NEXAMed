@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
+  BusinessCodeType,
   ClinicProfile,
   CreateExamStationRequest,
   CreateFloorRequest,
@@ -9,6 +10,7 @@ import type {
   RoomSession,
   SetDoctorAvailabilityRequest,
   SetRoomSessionRequest,
+  UpdateBusinessCodeTemplateRequest,
   UpdateClinicProfileRequest,
   UpdateClinicSettingsRequest,
   UpdateExamStationRequest,
@@ -36,8 +38,10 @@ import {
   listFloors,
   listRooms,
   listWorkShifts,
+  listBusinessCodeTemplates,
   createWorkShift,
   updateWorkShift,
+  updateBusinessCodeTemplate,
   setDoctorAvailability,
   setMyRoomSession,
   updateClinicProfile,
@@ -302,6 +306,22 @@ export function useUpdateWorkShiftMutation() {
   return useMutation({
     mutationFn: ({ id, body }: { id: string; body: UpdateWorkShiftRequest }) => updateWorkShift(id, body),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'work-shifts') }),
+  });
+}
+
+/** "Cấu hình mẫu mã phát sinh" (docs/DECISIONS.md #114) — 7 loại mã nghiệp vụ, không phân trang. */
+export function useBusinessCodeTemplatesQuery() {
+  const { tenantId } = useAppConfig();
+  return useQuery({ queryKey: queryKey(tenantId, 'clinic', 'business-code-templates'), queryFn: listBusinessCodeTemplates });
+}
+
+export function useUpdateBusinessCodeTemplateMutation() {
+  const { tenantId } = useAppConfig();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ codeType, body }: { codeType: BusinessCodeType; body: UpdateBusinessCodeTemplateRequest }) =>
+      updateBusinessCodeTemplate(codeType, body),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'business-code-templates') }),
   });
 }
 

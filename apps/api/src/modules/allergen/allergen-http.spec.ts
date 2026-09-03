@@ -93,11 +93,11 @@ describe('HTTP e2e — /api/v1/allergen-groups, /api/v1/allergens', () => {
   });
 
   describe('Nhóm dị nguyên', () => {
-    it('clinic_admin tạo nhóm → 200, mã tự sinh đúng định dạng NDN-XXXXXXXX, không nhận code từ client', async () => {
+    it('clinic_admin tạo nhóm → 200, mã tự sinh đúng định dạng ND00001, không nhận code từ client', async () => {
       const res = await createGroup(clinicAdminToken, 'Nhóm hải sản');
       expect(res.status).toBe(200);
       expect(res.body.data.name).toBe('Nhóm hải sản');
-      expect(res.body.data.code).toMatch(/^NDN-[0-9A-F]{8}$/);
+      expect(res.body.data.code).toMatch(/^ND[0-9]{5}$/);
       // Request không có field `code` — gửi kèm cũng bị Zod strip, không ảnh hưởng mã tự sinh.
       expect(res.body.data).not.toHaveProperty('allergenGroupId');
     });
@@ -152,7 +152,7 @@ describe('HTTP e2e — /api/v1/allergen-groups, /api/v1/allergens', () => {
   });
 
   describe('Dị nguyên', () => {
-    it('clinic_admin tạo dị nguyên thuộc nhóm → 200, mã tự sinh đúng định dạng DN-XXXXXXXX, kèm allergenGroupName', async () => {
+    it('clinic_admin tạo dị nguyên thuộc nhóm → 200, mã tự sinh đúng định dạng DN00001, kèm allergenGroupName', async () => {
       const group = await createGroup(clinicAdminToken, 'Nhóm thuốc');
       const groupId = group.body.data.id as string;
 
@@ -162,7 +162,7 @@ describe('HTTP e2e — /api/v1/allergen-groups, /api/v1/allergens', () => {
         .send({ allergenGroupId: groupId, name: 'Penicillin' });
       expect(res.status).toBe(200);
       expect(res.body.data.name).toBe('Penicillin');
-      expect(res.body.data.code).toMatch(/^DN-[0-9A-F]{8}$/);
+      expect(res.body.data.code).toMatch(/^DN[0-9]{5}$/);
       expect(res.body.data.allergenGroupId).toBe(groupId);
       expect(res.body.data.allergenGroupName).toBe('Nhóm thuốc');
     });
@@ -250,7 +250,7 @@ describe('HTTP e2e — /api/v1/allergen-groups, /api/v1/allergens', () => {
         .send({ allergenGroupId: group.body.data.id, name: 'Do lễ tân thêm' });
       expect(res.status).toBe(200);
       expect(res.body.data.name).toBe('Do lễ tân thêm');
-      expect(res.body.data.code).toMatch(/^DN-[0-9A-F]{8}$/);
+      expect(res.body.data.code).toMatch(/^DN[0-9]{5}$/);
     });
   });
 

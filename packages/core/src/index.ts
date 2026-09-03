@@ -1,7 +1,8 @@
 export * from './rbac/permissions';
 export * from './reference-catalog/data';
 export * from './reference-catalog/generate-code';
-export * from './allergen/generate-code';
+export * from './reference-catalog/code-prefixes';
+export * from './allergen/code-prefixes';
 export * from './allergen/data';
 export * from './geo/data';
 export * from './icd10/data';
@@ -15,6 +16,7 @@ export * from './iam/employment-status';
 export * from './ports';
 export * from './entity';
 export * from './code-sequence/format-display-code';
+export * from './code-sequence/format-short-sequential-code';
 export * from './search/strip-vietnamese-diacritics';
 export * from './date/vietnam-day-range';
 export * from './specialty/registry';

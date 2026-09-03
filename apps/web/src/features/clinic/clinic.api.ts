@@ -1,5 +1,7 @@
 import type {
   AllowStaffSelfScheduleStatus,
+  BusinessCodeTemplateItem,
+  BusinessCodeType,
   ClinicPrintHeader,
   ClinicProfile,
   ClinicSettings,
@@ -28,6 +30,7 @@ import type {
   CreateWorkShiftRequest,
   ListWorkShiftsResponse,
   UpdateWorkShiftRequest,
+  UpdateBusinessCodeTemplateRequest,
   WorkShiftItem,
 } from '@nexamed/shared';
 import { getApiClient, unwrap, uploadFile } from '../../shared/api/client';
@@ -158,4 +161,15 @@ export async function setDoctorAvailability(doctorId: string, body: SetDoctorAva
   return unwrap(
     await getApiClient().PUT('/api/v1/doctor-availability/{doctorId}', { params: { path: { doctorId } }, body }),
   ) as DoctorAvailability;
+}
+
+/** "Cấu hình mẫu mã phát sinh" (docs/DECISIONS.md #114) — 7 loại mã nghiệp vụ. */
+export async function listBusinessCodeTemplates(): Promise<{ items: BusinessCodeTemplateItem[] }> {
+  return unwrap(await getApiClient().GET('/api/v1/clinic-settings/code-templates')) as { items: BusinessCodeTemplateItem[] };
+}
+
+export async function updateBusinessCodeTemplate(codeType: BusinessCodeType, body: UpdateBusinessCodeTemplateRequest): Promise<BusinessCodeTemplateItem> {
+  return unwrap(
+    await getApiClient().PATCH('/api/v1/clinic-settings/code-templates/{codeType}', { params: { path: { codeType } }, body }),
+  ) as BusinessCodeTemplateItem;
 }

@@ -26,6 +26,7 @@ import { DepartmentTypeRepository } from './department-type.repository';
 import { NoopNotificationAdapter } from '../../infrastructure/notification/noop.adapter';
 import { DoctorDirectoryAdapter } from '../../infrastructure/directory/doctor-directory.adapter';
 import { ReferenceCatalogModule } from '../reference-catalog/reference-catalog.module';
+import { ClinicModule } from '../clinic/clinic.module';
 
 /**
  * Rate limit riêng cho /auth/login và /break-glass (10 request/phút/IP mỗi endpoint — mỗi
@@ -54,6 +55,10 @@ import { ReferenceCatalogModule } from '../reference-catalog/reference-catalog.m
     // hoá tài khoản theo Trạng thái làm việc) — không có chiều ngược lại (ReferenceCatalogModule
     // không import IamModule), không circular.
     ReferenceCatalogModule,
+    // BusinessCodeService (docs/DECISIONS.md #114) — DepartmentService/UserAccountService sinh
+    // department.code/employee_code qua đây thay formatDisplayCode+CodeSequenceRepository.next()
+    // gọi trực tiếp trước đây. Không circular (ClinicModule không import IamModule).
+    ClinicModule,
   ],
   controllers: [
     AuthController,

@@ -1,16 +1,21 @@
-import { Body, Controller, Get, Patch, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
-import { updateClinicSettingsRequestSchema } from '@nexamed/shared';
+import { businessCodeTypeSchema, updateBusinessCodeTemplateRequestSchema, updateClinicSettingsRequestSchema } from '@nexamed/shared';
+import { z } from 'zod';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
 import { extractRequestMeta } from '../../common/request-meta';
 import { ClinicSettingsService } from './clinic-settings.service';
+import { BusinessCodeService } from './business-code.service';
 
 @Controller('clinic-settings')
 @UseGuards(JwtAuthGuard, PermissionGuard)
 export class ClinicSettingsController {
-  constructor(private readonly clinicSettingsService: ClinicSettingsService) {}
+  constructor(
+    private readonly clinicSettingsService: ClinicSettingsService,
+    private readonly businessCodeService: BusinessCodeService,
+  ) {}
 
   @Get()
   @RequirePermission('clinic_config', 'read')
@@ -61,5 +66,24 @@ export class ClinicSettingsController {
     const dto = updateClinicSettingsRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
     return this.clinicSettingsService.updateSettings(tenantId, userId, dto, extractRequestMeta(req));
+  }
+
+  /** "Cấu hình mẫu mã phát sinh" (docs/DECISIONS.md #114) — đường dẫn cố định `code-templates`,
+   * không trùng `:id` nào khác trong controller này nên thứ tự khai báo không quan trọng. */
+  @Get('code-templates')
+  @RequirePermission('clinic_config', 'read')
+  async listCodeTemplates(@Req() req: Request) {
+    const { tenantId } = req.user!;
+    const items = await this.businessCodeService.listTemplates(tenantId);
+    return { items };
+  }
+
+  @Patch('code-templates/:codeType')
+  @RequirePermission('clinic_config', 'update')
+  async updateCodeTemplate(@Param('codeType') codeTypeParam: string, @Body() body: unknown, @Req() req: Request) {
+    const codeType = z.object({ codeType: businessCodeTypeSchema }).parse({ codeType: codeTypeParam }).codeType;
+    const dto = updateBusinessCodeTemplateRequestSchema.parse(body);
+    const { userId, tenantId } = req.user!;
+    return this.businessCodeService.updateTemplate(tenantId, userId, codeType, dto, extractRequestMeta(req));
   }
 }

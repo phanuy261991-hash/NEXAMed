@@ -62,4 +62,59 @@ describe('CodeSequenceRepository — cấp mã tuần tự theo tenant', () => {
     const unique = new Set(results.map((v) => v.toString()));
     expect(unique.size).toBe(10);
   });
+
+  it('periodKey khác nhau (docs/DECISIONS.md #114) → bộ đếm độc lập, không cộng dồn chéo chu kỳ', async () => {
+    const period1First = await unitOfWork.runInTenantScope(fixture.tenantA.id, (tx) =>
+      repository.next(tx, fixture.tenantA.id, 'PERIODIC', SYSTEM_TEST_ACTOR, { periodKey: '202609' }),
+    );
+    const period1Second = await unitOfWork.runInTenantScope(fixture.tenantA.id, (tx) =>
+      repository.next(tx, fixture.tenantA.id, 'PERIODIC', SYSTEM_TEST_ACTOR, { periodKey: '202609' }),
+    );
+    const period2First = await unitOfWork.runInTenantScope(fixture.tenantA.id, (tx) =>
+      repository.next(tx, fixture.tenantA.id, 'PERIODIC', SYSTEM_TEST_ACTOR, { periodKey: '202610' }),
+    );
+    expect(period1First).toBe(1n);
+    expect(period1Second).toBe(2n);
+    expect(period2First).toBe(1n); // chu kỳ mới tự bắt đầu lại từ 1, không tiếp nối chu kỳ trước
+  });
+
+  it('initialValueIfNeverUsed: chỉ áp dụng cho lần cấp ĐẦU TIÊN trên toàn bộ lịch sử prefix, chu kỳ sau vẫn bắt đầu lại từ 1', async () => {
+    const bootstrap = await unitOfWork.runInTenantScope(fixture.tenantA.id, (tx) =>
+      repository.next(tx, fixture.tenantA.id, 'BOOTSTRAP', SYSTEM_TEST_ACTOR, {
+        periodKey: '2026',
+        initialValueIfNeverUsed: 3000n,
+      }),
+    );
+    const nextSamePeriod = await unitOfWork.runInTenantScope(fixture.tenantA.id, (tx) =>
+      repository.next(tx, fixture.tenantA.id, 'BOOTSTRAP', SYSTEM_TEST_ACTOR, {
+        periodKey: '2026',
+        initialValueIfNeverUsed: 9999n, // bị bỏ qua — prefix này đã có dòng rồi
+      }),
+    );
+    const nextPeriod = await unitOfWork.runInTenantScope(fixture.tenantA.id, (tx) =>
+      repository.next(tx, fixture.tenantA.id, 'BOOTSTRAP', SYSTEM_TEST_ACTOR, {
+        periodKey: '2027',
+        initialValueIfNeverUsed: 9999n, // vẫn bị bỏ qua — chu kỳ mới luôn bắt đầu lại từ 1
+      }),
+    );
+    expect(bootstrap).toBe(3000n);
+    expect(nextSamePeriod).toBe(3001n);
+    expect(nextPeriod).toBe(1n);
+  });
+
+  it('hasEverBeenUsed/peekCurrentValue phản ánh đúng trạng thái, không cấp số mới', async () => {
+    const beforeUsed = await unitOfWork.runInTenantScope(fixture.tenantB.id, (tx) => repository.hasEverBeenUsed(tx, fixture.tenantB.id, 'PEEK'));
+    expect(beforeUsed).toBe(false);
+
+    await unitOfWork.runInTenantScope(fixture.tenantB.id, (tx) => repository.next(tx, fixture.tenantB.id, 'PEEK', SYSTEM_TEST_ACTOR, { periodKey: '2026' }));
+
+    const afterUsed = await unitOfWork.runInTenantScope(fixture.tenantB.id, (tx) => repository.hasEverBeenUsed(tx, fixture.tenantB.id, 'PEEK'));
+    const peeked = await unitOfWork.runInTenantScope(fixture.tenantB.id, (tx) => repository.peekCurrentValue(tx, fixture.tenantB.id, 'PEEK', '2026'));
+    const peekedOtherPeriod = await unitOfWork.runInTenantScope(fixture.tenantB.id, (tx) =>
+      repository.peekCurrentValue(tx, fixture.tenantB.id, 'PEEK', '2099'),
+    );
+    expect(afterUsed).toBe(true);
+    expect(peeked).toBe(1n);
+    expect(peekedOtherPeriod).toBeNull();
+  });
 });

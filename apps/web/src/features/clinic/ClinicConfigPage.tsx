@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Buildings, CalendarBlank, CalendarCheck, Clock, MapPinLine, SlidersHorizontal } from '@phosphor-icons/react';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { ConfigScreenShell, type ConfigScreenPill } from '../../shared/ui/ConfigScreenShell';
@@ -10,6 +10,13 @@ import { GeneralConfigPane } from './GeneralConfigPane';
 import { PaymentConfigPane } from './PaymentConfigPane';
 import { RoomPane } from './RoomPane';
 import { WorkShiftPane } from './WorkShiftPane';
+
+/** Lazy — riêng pill này có thêm form phân tích cú pháp khuôn mẫu (`@nexamed/shared`), tránh đẩy
+ * thêm code vào chunk khởi động cho một màn hình hiếm khi mở (`.claude/docs/coding-standards.md`
+ * mục "Hiệu suất"). */
+const BusinessCodeTemplatePane = lazy(() =>
+  import('./BusinessCodeTemplatePane').then((m) => ({ default: m.BusinessCodeTemplatePane })),
+);
 
 /**
  * Pill "Cấu hình phòng khám" (4 mục con) — "Thông tin phòng khám" (2026-08-13, mặc định mở đầu
@@ -26,6 +33,9 @@ import { WorkShiftPane } from './WorkShiftPane';
  * tenant (bảng `work_shift`, KHÔNG dùng chung `reference_catalog`), thêm/sửa/xoá qua UI.
  * "Cấu hình chung" (02/09/2026, tiếp sau #104) — bật/tắt cho phép nhân viên tự đăng ký ca, đặt
  * dưới "Ca làm việc".
+ * "Cấu hình mẫu mã phát sinh" (docs/DECISIONS.md #114, 2026-09-03, chủ dự án yêu cầu trực tiếp) —
+ * pill phẳng mới, danh sách 7 loại mã nghiệp vụ + khuôn mẫu tự cấu hình được, lazy (form phân tích
+ * cú pháp khuôn mẫu hiếm khi dùng tới, không đẩy vào chunk khởi động).
  */
 const PILLS: ConfigScreenPill[] = [
   {
@@ -42,6 +52,7 @@ const PILLS: ConfigScreenPill[] = [
   },
   { key: 'payment', label: 'Cấu hình thanh toán' },
   { key: 'exam', label: 'Cấu hình khám' },
+  { key: 'code-templates', label: 'Cấu hình mẫu mã phát sinh' },
 ];
 const FIRST_PILL = PILLS[0]!;
 
@@ -91,6 +102,11 @@ export function ClinicConfigPage() {
       {activePillKey === 'clinic' && activeItemKey === 'general' && <GeneralConfigPane />}
       {activePillKey === 'payment' && <PaymentConfigPane />}
       {activePillKey === 'exam' && <ExamConfigPane />}
+      {activePillKey === 'code-templates' && (
+        <Suspense fallback={null}>
+          <BusinessCodeTemplatePane />
+        </Suspense>
+      )}
     </ConfigScreenShell>
   );
 }

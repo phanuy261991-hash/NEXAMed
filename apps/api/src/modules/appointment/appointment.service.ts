@@ -10,7 +10,6 @@ import {
   DOCTOR_DIRECTORY_PORT,
   SYSTEM_ACTOR_ID,
   WORK_SHIFT_ASSIGNMENT_READER_PORT,
-  formatDisplayCode,
   getVietnamDateString,
   vietnamDayRange,
   type ClinicConfigReaderPort,
@@ -18,7 +17,6 @@ import {
   type WorkShiftAssignmentReaderPort,
 } from '@nexamed/core';
 import {
-  APPOINTMENT_BOOKING_CODE_PREFIX,
   type AppointmentPhoneLookupResponse,
   type AppointmentSummary,
   type CancelAppointmentRequest,
@@ -34,8 +32,8 @@ import {
   type RescheduleAppointmentRequest,
 } from '@nexamed/shared';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
-import { CodeSequenceRepository } from '../../infrastructure/persistence/code-sequence.repository';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
+import { BusinessCodeService } from '../clinic/business-code.service';
 import type { RequestMeta } from '../../common/request-meta';
 import { AppointmentRepository } from './appointment.repository';
 
@@ -71,7 +69,7 @@ export class AppointmentService {
   constructor(
     private readonly unitOfWork: UnitOfWorkService,
     private readonly appointmentRepository: AppointmentRepository,
-    private readonly codeSequenceRepository: CodeSequenceRepository,
+    private readonly businessCodeService: BusinessCodeService,
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
     @Inject(CLINIC_CONFIG_READER_PORT) private readonly clinicConfigReader: ClinicConfigReaderPort,
     @Inject(WORK_SHIFT_ASSIGNMENT_READER_PORT) private readonly workShiftAssignmentReader: WorkShiftAssignmentReaderPort,
@@ -143,10 +141,9 @@ export class AppointmentService {
     await this.assertWithinWorkShift(tenantId, dto.doctorId, dto.scheduledAt, dto.durationMinutes);
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      // Mã đặt lịch cấp atomic qua code_sequence — cùng khuôn `patient_code`
-      // (PatientService.createPatient()), prefix riêng `LH` (APPOINTMENT_BOOKING_CODE_PREFIX).
-      const seq = await this.codeSequenceRepository.next(tx, tenantId, APPOINTMENT_BOOKING_CODE_PREFIX, actorId);
-      const bookingCode = formatDisplayCode(APPOINTMENT_BOOKING_CODE_PREFIX, new Date(), seq);
+      // Mã đặt lịch cấp qua BusinessCodeService (docs/DECISIONS.md #114), loại mã
+      // `APPOINTMENT_BOOKING` — cùng khuôn `patient_code` (PatientService.createPatient()).
+      const bookingCode = await this.businessCodeService.generate(tx, tenantId, actorId, 'APPOINTMENT_BOOKING', new Date());
 
       let created: Appointment;
       try {
@@ -443,8 +440,7 @@ export class AppointmentService {
         throw new ConcurrentModificationError();
       }
 
-      const seq = await this.codeSequenceRepository.next(tx, tenantId, APPOINTMENT_BOOKING_CODE_PREFIX, actorId);
-      const bookingCode = formatDisplayCode(APPOINTMENT_BOOKING_CODE_PREFIX, new Date(), seq);
+      const bookingCode = await this.businessCodeService.generate(tx, tenantId, actorId, 'APPOINTMENT_BOOKING', new Date());
 
       let created: Appointment;
       try {

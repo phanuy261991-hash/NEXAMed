@@ -7,10 +7,13 @@ import { PatientAllergenRepository } from './patient-allergen.repository';
 import { PatientConditionRepository } from './patient-condition.repository';
 import { PatientFamilyHistoryRepository } from './patient-family-history.repository';
 import { PatientReaderAdapter } from '../../infrastructure/patient/patient-reader.adapter';
+import { ClinicModule } from '../clinic/clinic.module';
 
 /**
- * CodeSequenceRepository không khai báo ở đây — đăng ký global trong PersistenceModule (dùng
- * chung cho mọi domain sinh mã hiển thị: patient_code hôm nay, encounter_no ở S3).
+ * `imports: [ClinicModule]` (docs/DECISIONS.md #114) — dùng `BusinessCodeService` sinh
+ * `patient_code` thay `formatDisplayCode`+`CodeSequenceRepository.next()` gọi trực tiếp trước
+ * đây (`CodeSequenceRepository` vẫn đăng ký global trong `PersistenceModule`, không cần khai báo
+ * riêng ở đây — chỉ `BusinessCodeService` mới cần import module).
  * `exports: [PatientAllergenRepository, PatientConditionRepository, PatientFamilyHistoryRepository]`
  * — `EncounterModule` đọc dị nguyên (kê đơn, PRE-03), bệnh lý nền/thói quen và tiền sử gia đình
  * (màn khám, chỉ xem — Sprint 5) của bệnh nhân trong cùng transaction, cùng tinh thần
@@ -21,6 +24,7 @@ import { PatientReaderAdapter } from '../../infrastructure/patient/patient-reade
  * riêng, xem `patient-merge.module.ts`) cần đọc/ghi `mergedIntoId` trong cùng transaction gộp.
  */
 @Module({
+  imports: [ClinicModule],
   controllers: [PatientController],
   providers: [
     PatientService,

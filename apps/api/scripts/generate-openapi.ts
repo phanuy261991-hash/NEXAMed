@@ -43,6 +43,10 @@ import {
   checkInRequestSchema,
   checkPatientDuplicateQuerySchema,
   checkPatientDuplicateResponseSchema,
+  businessCodeTemplateItemSchema,
+  businessCodeTypeSchema,
+  listBusinessCodeTemplatesResponseSchema,
+  updateBusinessCodeTemplateRequestSchema,
   clinicProfileSchema,
   clinicSettingsSchema,
   clinicalNoteResponseSchema,
@@ -1718,6 +1722,40 @@ registry.registerPath({
     200: jsonResponse('Sửa thành công', envelope(clinicSettingsSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền clinic_config.update'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/clinic-settings/code-templates',
+  tags: ['clinic'],
+  summary: '"Cấu hình mẫu mã phát sinh" (docs/DECISIONS.md #114) — 7 loại mã nghiệp vụ, kèm locked/mã kế tiếp minh hoạ',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(listBusinessCodeTemplatesResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinic_config.read'),
+  },
+});
+
+const businessCodeTypeParams = z.object({ codeType: businessCodeTypeSchema });
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/clinic-settings/code-templates/{codeType}',
+  tags: ['clinic'],
+  summary: '"Cấu hình mẫu mã phát sinh" — sửa khuôn mẫu 1 loại mã, "Số bắt đầu đếm" khoá sau lần dùng đầu',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: businessCodeTypeParams,
+    body: { content: { 'application/json': { schema: updateBusinessCodeTemplateRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Sửa thành công', envelope(businessCodeTemplateItemSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinic_config.update'),
+    400: errorResponse('Khuôn mẫu sai cú pháp (BUSINESS_CODE_TEMPLATE_INVALID)'),
+    409: errorResponse('Đã khoá — không sửa lại được "Số bắt đầu đếm" (BUSINESS_CODE_TEMPLATE_STARTING_VALUE_LOCKED)'),
   },
 });
 

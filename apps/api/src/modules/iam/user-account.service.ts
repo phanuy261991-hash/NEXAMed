@@ -5,7 +5,6 @@ import { randomUUID } from 'node:crypto';
 import { Prisma, type UserAccount } from '@prisma/client';
 import {
   ConcurrentModificationError,
-  formatDisplayCode,
   InvalidSignatureError,
   REFERENCE_CATALOG_READER_PORT,
   resolveAccountActiveState,
@@ -27,9 +26,9 @@ import type {
   UserAccountSummary,
 } from '@nexamed/shared';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
-import { CodeSequenceRepository } from '../../infrastructure/persistence/code-sequence.repository';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
 import { signFileToken } from '../../infrastructure/storage/signed-url';
+import { BusinessCodeService } from '../clinic/business-code.service';
 import type { RequestMeta } from '../../common/request-meta';
 import { SessionRepository } from './session.repository';
 import { UserAccountAuthRepository } from './user-account-auth.repository';
@@ -40,7 +39,6 @@ function isUsernameConflict(err: unknown): boolean {
   return err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002';
 }
 
-const EMPLOYEE_CODE_PREFIX = 'NV';
 const EMPLOYMENT_STATUS_CATEGORY = 'EMPLOYMENT_STATUS';
 /** Chữ ký sống 15 phút — bằng access token TTL, cùng khuôn `PHOTO_URL_TTL_SECONDS` ở `patient.service.ts`. */
 const SIGNATURE_URL_TTL_SECONDS = 15 * 60;
@@ -53,8 +51,8 @@ export const MAX_SIGNATURE_SIZE_BYTES = 1 * 1024 * 1024;
  * (.claude/docs/security-audit.md mục Xác thực; `SessionRepository.revokeAllForUser()` viết sẵn
  * từ S1-04 chờ đúng nơi gọi này, xem docs/DECISIONS.md #019).
  *
- * Mở rộng ADM-01 (hồ sơ nhân sự): `employeeCode` sinh qua `CodeSequenceRepository` đúng khuôn
- * `PATIENT_CODE_PREFIX` (`patient.service.ts`). Trạng thái làm việc tự-vô-hiệu-hoá tài khoản (ví
+ * Mở rộng ADM-01 (hồ sơ nhân sự): `employeeCode` sinh qua `BusinessCodeService` (docs/DECISIONS.md
+ * #114, loại mã `EMPLOYEE`, tiền tố nội bộ "NV"). Trạng thái làm việc tự-vô-hiệu-hoá tài khoản (ví
  * dụ "Nghỉ việc") đọc qua `ReferenceCatalogReaderPort` — xem `resolveAccountActiveState`.
  *
  * Redesign 3-tab (#082, 2026-08-27): thêm hồ sơ cá nhân/pháp lý (dob/gender/CCHN) + upload chữ ký
@@ -71,7 +69,7 @@ export class UserAccountService {
     private readonly userAccountAuthRepository: UserAccountAuthRepository,
     private readonly sessionRepository: SessionRepository,
     private readonly roleRepository: RoleRepository,
-    private readonly codeSequenceRepository: CodeSequenceRepository,
+    private readonly businessCodeService: BusinessCodeService,
     private readonly configService: ConfigService,
     @Inject(REFERENCE_CATALOG_READER_PORT) private readonly referenceCatalogReader: ReferenceCatalogReaderPort,
     @Inject(STORAGE_PORT) private readonly storage: StoragePort,
@@ -117,8 +115,7 @@ export class UserAccountService {
         throw new RoleInvalidReferenceError();
       }
 
-      const seq = await this.codeSequenceRepository.next(tx, tenantId, EMPLOYEE_CODE_PREFIX, actorId);
-      const employeeCode = formatDisplayCode(EMPLOYEE_CODE_PREFIX, new Date(), seq);
+      const employeeCode = await this.businessCodeService.generate(tx, tenantId, actorId, 'EMPLOYEE', new Date());
 
       let created: UserAccount;
       try {

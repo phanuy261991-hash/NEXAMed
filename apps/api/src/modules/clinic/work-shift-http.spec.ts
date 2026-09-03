@@ -99,7 +99,7 @@ describe('HTTP e2e — /api/v1/work-shifts', () => {
     const created = await request(app.getHttpServer()).post('/api/v1/work-shifts').set(authed(clinicAdminToken)).send(validPayload);
     expect(created.status).toBe(200);
     expect(created.body.data.name).toBe('Ca sáng');
-    expect(created.body.data.code).toMatch(/^WO-[0-9A-F]{8}$/);
+    expect(created.body.data.code).toMatch(/^CA[0-9]{5}$/);
     expect(created.body.data.color).toBe('blue');
     expect(created.body.data.restMinutes).toBe(15);
     expect(created.body.data.standardWorkMinutes).toBe(240);

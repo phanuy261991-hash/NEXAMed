@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, type AllergenGroup } from '@prisma/client';
-import { AllergenGroupDuplicateCodeError, generateAllergenGroupCode } from '@nexamed/core';
+import { ALLERGEN_GROUP_CODE_PREFIX, AllergenGroupDuplicateCodeError, formatShortSequentialCode } from '@nexamed/core';
 import type {
   AllergenGroupSummary,
   CreateAllergenGroupRequest,
@@ -9,15 +9,13 @@ import type {
 } from '@nexamed/shared';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
+import { GlobalCodeSequenceRepository } from '../../infrastructure/persistence/global-code-sequence.repository';
 import type { RequestMeta } from '../../common/request-meta';
 import { AllergenGroupRepository } from './allergen-group.repository';
 
 function isDuplicateCodeViolation(err: unknown): boolean {
   return err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002';
 }
-
-/** Random UUID nên xác suất trùng cực nhỏ — vài lần thử là đủ, không cần vòng lặp lớn. */
-const AUTO_CODE_MAX_ATTEMPTS = 5;
 
 /**
  * "Nhóm dị nguyên" (docs/DECISIONS.md #069) — toàn hệ thống, không tenant_id trên bảng nhưng
@@ -30,6 +28,7 @@ export class AllergenGroupService {
   constructor(
     private readonly unitOfWork: UnitOfWorkService,
     private readonly allergenGroupRepository: AllergenGroupRepository,
+    private readonly globalCodeSequenceRepository: GlobalCodeSequenceRepository,
   ) {}
 
   async list(tenantId: string, includeInactive: boolean): Promise<ListAllergenGroupsResponse> {
@@ -41,17 +40,17 @@ export class AllergenGroupService {
 
   async create(tenantId: string, actorId: string, dto: CreateAllergenGroupRequest, meta: RequestMeta): Promise<AllergenGroupSummary> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      let created: AllergenGroup | undefined;
-      for (let attempt = 1; attempt <= AUTO_CODE_MAX_ATTEMPTS; attempt++) {
-        try {
-          created = await this.allergenGroupRepository.create(tx, { code: generateAllergenGroupCode(), name: dto.name });
-          break;
-        } catch (err) {
-          if (!isDuplicateCodeViolation(err)) throw err;
-          if (attempt === AUTO_CODE_MAX_ATTEMPTS) throw new AllergenGroupDuplicateCodeError();
-        }
+      // Mã ngắn tuần tự, cấp atomic (docs/DECISIONS.md #113) — không còn cần retry trùng mã như
+      // cơ chế ngẫu nhiên cũ.
+      const seq = await this.globalCodeSequenceRepository.next(tx, ALLERGEN_GROUP_CODE_PREFIX);
+      const code = formatShortSequentialCode(ALLERGEN_GROUP_CODE_PREFIX, seq);
+      let created: AllergenGroup;
+      try {
+        created = await this.allergenGroupRepository.create(tx, { code, name: dto.name });
+      } catch (err) {
+        if (isDuplicateCodeViolation(err)) throw new AllergenGroupDuplicateCodeError();
+        throw err;
       }
-      if (!created) throw new AllergenGroupDuplicateCodeError();
 
       await writeAuditLog(tx, tenantId, {
         actorId,

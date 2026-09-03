@@ -6,7 +6,6 @@ import {
   InvalidPhotoError,
   PatientDuplicateNationalIdError,
   STORAGE_PORT,
-  formatDisplayCode,
   sniffImageExtension,
   stripVietnameseDiacritics,
   type StoragePort,
@@ -30,8 +29,8 @@ import {
 } from '@nexamed/shared';
 import { randomUUID } from 'node:crypto';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
-import { CodeSequenceRepository } from '../../infrastructure/persistence/code-sequence.repository';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
+import { BusinessCodeService } from '../clinic/business-code.service';
 import { decryptPii, encryptPii, hashForLookup } from '../../infrastructure/crypto/pii-encryption';
 import { signFileToken } from '../../infrastructure/storage/signed-url';
 import type { RequestMeta } from '../../common/request-meta';
@@ -44,8 +43,6 @@ import { PatientFamilyHistoryRepository, type PatientFamilyHistoryRow } from './
 const PHOTO_URL_TTL_SECONDS = 15 * 60;
 /** Cũng dùng ở `patient.controller.ts` (giới hạn `FileInterceptor` — chặn sớm ở tầng multer, không đợi đọc hết buffer rồi mới từ chối). */
 export const MAX_PHOTO_SIZE_BYTES = 3 * 1024 * 1024;
-
-const PATIENT_CODE_PREFIX = 'BN';
 
 /**
  * `patient_tenant_id_national_id_hash_key` là partial unique index tạo bằng raw SQL trong
@@ -72,7 +69,7 @@ export class PatientService {
     private readonly patientAllergenRepository: PatientAllergenRepository,
     private readonly patientConditionRepository: PatientConditionRepository,
     private readonly patientFamilyHistoryRepository: PatientFamilyHistoryRepository,
-    private readonly codeSequenceRepository: CodeSequenceRepository,
+    private readonly businessCodeService: BusinessCodeService,
     private readonly configService: ConfigService,
     @Inject(STORAGE_PORT) private readonly storage: StoragePort,
   ) {}
@@ -86,8 +83,7 @@ export class PatientService {
     const encryptionKey = this.configService.getOrThrow<string>('ENCRYPTION_KEY');
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const seq = await this.codeSequenceRepository.next(tx, tenantId, PATIENT_CODE_PREFIX, actorId);
-      const patientCode = formatDisplayCode(PATIENT_CODE_PREFIX, new Date(), seq);
+      const patientCode = await this.businessCodeService.generate(tx, tenantId, actorId, 'PATIENT', new Date());
 
       let created: Patient;
       try {

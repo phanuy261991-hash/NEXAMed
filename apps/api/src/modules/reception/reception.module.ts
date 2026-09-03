@@ -7,6 +7,7 @@ import { AppointmentModule } from '../appointment/appointment.module';
 import { EncounterModule } from '../encounter/encounter.module';
 import { BillingModule } from '../billing/billing.module';
 import { PatientModule } from '../patient/patient.module';
+import { ClinicModule } from '../clinic/clinic.module';
 
 /**
  * Module điều phối (Sprint 3, Tiếp nhận) — không sở hữu bảng nghiệp vụ nào của riêng nó trừ
@@ -19,9 +20,11 @@ import { PatientModule } from '../patient/patient.module';
  * động tạo phiếu thu trong CÙNG transaction check-in/tiếp nhận trực tiếp, cùng lý do trên.
  * `imports: [..., PatientModule]` (S5-06, PAT-04) — dùng `PatientRepository` để chặn tạo `encounter`
  * mới cho hồ sơ đã bị gộp (`merged_into_id` khác null), cùng lý do trên.
+ * `imports: [..., ClinicModule]` (docs/DECISIONS.md #114) — dùng `BusinessCodeService` sinh
+ * `encounter_no` thay `formatDisplayCode` gọi trực tiếp trước đây.
  */
 @Module({
-  imports: [AppointmentModule, EncounterModule, BillingModule, PatientModule],
+  imports: [AppointmentModule, EncounterModule, BillingModule, PatientModule, ClinicModule],
   controllers: [ReceptionController],
   providers: [ReceptionService, VitalSignRepository, EncounterServiceItemRepository],
 })
