@@ -598,6 +598,18 @@ Bản ghi từ CẢ HAI luồng cùng xuất hiện trong "Danh sách tiếp nh�
 - v1 chỉ hoàn **TOÀN PHẦN** (không nhận số tiền từ client, luôn đúng bằng `invoice.total_amount` đã thu) — mở hoàn một phần sau này không cần đổi schema (`payment.amount` đã lưu số thật).
 - Quyền mới `invoice.refund` — TÁCH khỏi `invoice.update`, mặc định **CHỈ `clinic_admin`** (lễ tân không có).
 
+**"Chốt ca" (đối soát tiền mặt/két, ngoài kế hoạch BIL-05, `docs/DECISIONS.md` #112, 03/09/2026)** — v1 chỉ **1 két dùng chung toàn tenant**, chỉ 1 ca `OPEN` tại một thời điểm.
+
+| Bảng | Vai trò | Đặc thù |
+|---|---|---|
+| `cashier_shift` | 1 phiên làm việc của két tiền mặt (mở/đóng/đối soát) | Partial unique `(tenant_id) WHERE status='OPEN'` (C2-style, chặn quá 1 ca mở cùng lúc — đường mở rộng nhiều két/chi nhánh sau này chỉ cần đổi thành `UNIQUE(tenant_id, branch_id) WHERE status='OPEN'`). `shift_label` ("Ca sáng"/"Ca chiều"/"Ca tối") là SNAPSHOT tính lúc mở ca (`deriveShiftLabel`), KHÔNG phải FK tới `work_shift` (danh mục ca làm việc nhân viên #101 — khác bản chất hoàn toàn dù tên gần giống). `opening_float_expected` kế thừa từ `keep_for_next_amount` của ca `CLOSED`/`APPROVED` gần nhất (bất kỳ ai, toàn tenant). `status`: `OPEN → CLOSED → APPROVED`. `cash_in_amount`/`cash_out_amount`/`non_cash_breakdown_json`/`expected_cash_amount` snapshot lúc chốt (tính từ `payment` trong khoảng `[opened_at, closed_at)`, lọc theo THỜI GIAN không theo `created_by`). `edited_by`/`edited_at` có giá trị ⇒ badge "Đã chỉnh sửa" |
+
+`reference_catalog` thêm cột `counts_as_cash` (boolean, mặc định `false`) — CHỈ có ý nghĩa với category `PAYMENT_METHOD`, tách khỏi so khớp cứng `code='CASH'` (cùng lý do `deactivates_account`/#063). Backfill `true` cho dòng `CASH` có sẵn.
+
+`tenant_setting` thêm `cashier_shift_blind_close_enabled` (boolean, mặc định `true`) — "Chế độ Mù" ẩn số tiền mặt dự kiến ở bước 1 wizard Chốt ca tới khi đã đếm xong, đọc/ghi qua `GET/PATCH /clinic-settings` có sẵn.
+
+3 permission mới `cashier_shift.create/read/manage` — `create`/`read` (`personal`, receptionist + clinic_admin tự thao tác két của ca mình), `read=global`/`manage=global` (chỉ `clinic_admin`, màn "Danh sách phiếu chốt ca" + duyệt/xử lý chênh lệch/mở khoá sửa).
+
 ---
 
 ## 4. Ràng buộc ở tầng cơ sở dữ liệu
@@ -629,6 +641,7 @@ Những ràng buộc này đặt ở DB, không chỉ ở tầng ứng dụng.
 | C22 | `UNIQUE (tenant_id, work_date, doctor_id) WHERE deleted_at IS NULL` | `doctor_availability` | "Tạm nghỉ / Đóng ca" (v1.35) — mỗi bác sĩ chỉ có 1 trạng thái hiệu lực/ngày lịch VN, cùng khuôn C12 (`doctor_room_session`) kể cả arbiter `ON CONFLICT` |
 | C21 | `UNIQUE (tenant_id, encounter_id)` | `invoice` | Thu ngân cơ bản (v1.31, `docs/DECISIONS.md` #084) — đúng 1 phiếu thu/lượt khám (BIL-01) |
 | C23 | `UNIQUE (tenant_id, user_id, work_date, work_shift_id) WHERE deleted_at IS NULL` | `work_shift_assignment` | "Đăng ký ca làm việc" Giai đoạn 2 (v1.37, `docs/DECISIONS.md` #102) — chặn đăng ký trùng ĐÚNG 1 ca/ngày, vẫn cho nhiều ca KHÁC nhau cùng ngày (Sáng+Chiều). Cũng là arbiter cho `createMany({skipDuplicates:true})` khi bulk-apply/sao chép |
+| C24 | `UNIQUE (tenant_id) WHERE status='OPEN' AND deleted_at IS NULL` | `cashier_shift` | "Chốt ca" (v1.39, `docs/DECISIONS.md` #112) — v1 chỉ 1 két dùng chung toàn tenant, chặn có quá 1 ca `OPEN` cùng lúc kể cả mở đồng thời (double bảo vệ cùng `CashierShiftAlreadyOpenError` ở Service) |
 
 ---
 
@@ -651,6 +664,7 @@ Những ràng buộc này đặt ở DB, không chỉ ở tầng ứng dụng.
 | `encounter_service_item (tenant_id, encounter_id)` | Tra danh sách "Chỉ định dịch vụ khám" theo lượt khám (`docs/DECISIONS.md` #080) |
 | `invoice_line (tenant_id, invoice_id)` | Tra danh sách dòng theo phiếu thu — xem chi tiết/in phiếu (v1.31) |
 | `payment (tenant_id, invoice_id)` | Tra lịch sử thu theo phiếu thu — revert/audit (v1.31) |
+| `cashier_shift (tenant_id, opened_at)` | "Danh sách phiếu chốt ca" — tra theo ngày/khoảng ngày (v1.39, `docs/DECISIONS.md` #112) |
 
 `patient.search_key` là cột dẫn xuất (tên đã bỏ dấu, viết thường), cập nhật bằng trigger hoặc generated column — không tính lại trong câu truy vấn.
 
@@ -670,6 +684,7 @@ Khớp với `docs/product/plan.md`.
 | S4 (tuần 7-8) | `drug`, `prescription`, `prescription_item`, `patient_allergen` (mới, ngoài đặc tả gốc — liên kết `allergen_catalog` #069 với `patient`, `docs/DECISIONS.md` 2026-08-25) |
 | S5-S6 | `patient_condition`, `patient_family_history` (Tiền sử có cấu trúc, 25/08/2026); `invoice`, `invoice_line`, `payment` — **ĐÃ HIỆN THỰC (v1.31, 27/08/2026, `docs/DECISIONS.md` #084)**, xem mục 3.6; `diagnosis` thêm cột `signed_at`/`signed_by`/`supersedes_id`/`amendment_reason` + trigger C8 (`clinical_note` chỉ cần thêm trigger, cột đã có sẵn từ S3) — **ĐÃ HIỆN THỰC (v1.34, S5-02/03, `docs/DECISIONS.md`)** |
 | Ngoài kế hoạch, sau S4 (2026-08-26) | `encounter_service_item` — "Chỉ định dịch vụ khám" đổi từ 1 dịch vụ/lượt khám sang danh sách nhiều dịch vụ + cascade giá thật theo `exam_type_price` (`docs/DECISIONS.md` #080) |
+| Ngoài kế hoạch, sau S5-S6 (2026-09-03) | `cashier_shift` (BIL-05, "Chốt ca" — đối soát tiền mặt/két, `docs/DECISIONS.md` #112), xem mục 3.6 |
 
 Khuyến nghị: tạo đủ 8 cột bắt buộc **ngay từ migration đầu tiên của mỗi bảng**, kể cả khi tính năng dùng tới chúng ở sprint sau. Thêm cột vào bảng đã có dữ liệu thật tốn hơn nhiều.
 
@@ -745,3 +760,4 @@ Khi thêm, các bảng này vẫn phải đủ 8 cột bắt buộc và tuân th
 | v1.37 | 02/09/2026 | "Ca làm việc" Giai đoạn 2 (`docs/DECISIONS.md` #102) — bảng MỚI `work_shift_assignment` (tenant-scoped, đúng khuôn `doctor_availability` nhưng nhận `work_date` từ client thay vì ép "hôm nay", cho phép NHIỀU dòng/ngày). Migration `20260902130000_work_shift_assignment` — tiện thêm `@@unique([tenantId, id])` còn thiếu cho `work_shift` (đích FK composite). Cột `user_id`/`work_shift_id`/`work_date`, unique `(tenant_id, user_id, work_date, work_shift_id) WHERE deleted_at IS NULL`, index `(tenant_id, work_date, user_id)`. Permission mới `work_shift_assignment.create/read/delete` (không có `update`). `ClinicSettings` thêm `blockBookingOutsideWorkShiftEnabled` (`tenant_setting` key `block_booking_outside_work_shift_enabled`, mặc định `false`). |
 | v1.35 | 29/08/2026 | "Tạm nghỉ / Đóng ca" của bác sĩ (đặc tả UX gốc chủ dự án gửi, cắt bỏ phần SMS/Zalo/WebSocket/bảng điện tử/voice-to-text ngoài hạ tầng v1) — thêm bảng MỚI `doctor_availability` (migration `20260829120000_doctor_availability`, thêm C22, đúng khuôn `doctor_room_session` nhưng TÁCH BIỆT hoàn toàn — bảng đó vẫn THUẦN chọn phòng vật lý, không đụng). 3 trạng thái `ACTIVE`/`BREAK`/`ENDED` (enum `doctor_availability_status`) — không có dòng cho hôm nay = `ACTIVE` ngầm định. `ENDED` bulk trả toàn bộ `CHECKED_IN`/`IN_CONSULTATION` của bác sĩ đó về hàng chờ chung Khoa (`EncounterRepository.releaseAllForDoctor()`, mới). 2 công tắc `tenant_setting` mới (`allow_emergency_end_shift` mặc định BẬT, `allow_receptionist_end_shift` mặc định TẮT, đọc/ghi qua `GET/PATCH /clinic-settings` có sẵn — không bảng riêng) gate nghiệp vụ THÊM ngoài RBAC (`doctor_availability.update`, permission mới: `doctor` personal, `receptionist`/`clinic_admin` global). "Đóng ca" có 2 cách kích hoạt cùng 1 API (`trigger='SCHEDULED_END'` cho Trường hợp 2 "hết giờ làm việc" — client tự so `Date.now()` với `ClinicSettings.businessHours`, luôn được phép bất kể công tắc khẩn cấp). Không sửa `encounter-state-machine.ts` (chỉ tác động routing, không phải trạng thái `encounter`). Mockup Artifact duyệt nhiều vòng trước khi code. |
 | v1.38 | 03/09/2026 | `department` thêm cột `participates_in_queue` (boolean, mặc định `true`), migration `20260903090000_department_participates_in_queue` — tách khỏi `department_type_id` (thuần mô tả/tổ chức, #063). Sửa bug thật chủ dự án phát hiện lúc dùng thử: `GET /departments/options` (điều phối Tiếp nhận, #064) trả về MỌI Khoa/Phòng active, kể cả bộ phận hành chính (ví dụ "Bộ phận Lễ Tân") không tiếp nhận bệnh nhân. `listActiveOptions()` lọc thêm `participatesInQueue=true`; `GET /departments` (danh sách quản lý) không đổi, vẫn thấy cả hai. Xem `docs/DECISIONS.md` #105. |
+| v1.39 | 03/09/2026 | "Chốt ca" (BIL-05, đối soát tiền mặt/két, ngoài kế hoạch — `docs/DECISIONS.md` #112). Bảng MỚI `cashier_shift` (migration `20260903180000_cashier_shift`, v1 chỉ 1 két dùng chung toàn tenant — partial unique `(tenant_id) WHERE status='OPEN'`). `reference_catalog` thêm cột `counts_as_cash` (chỉ có ý nghĩa với `PAYMENT_METHOD`, backfill `true` cho `CASH`). `tenant_setting` thêm `cashier_shift_blind_close_enabled`. 3 permission mới `cashier_shift.create/read/manage`. Xem mục 3.6. |

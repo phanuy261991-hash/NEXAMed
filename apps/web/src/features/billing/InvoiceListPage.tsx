@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowCounterClockwise, CaretLeft, CaretRight, Clock, MagnifyingGlass, Receipt, Wallet, Warning } from '@phosphor-icons/react';
-import type { BillingListItem } from '@nexamed/shared';
+import type { BillingListItem, CashierShiftDetail } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { EmptyState } from '../../shared/ui/EmptyState';
@@ -79,7 +79,12 @@ export function InvoiceListPage() {
   const itemIds = items.map((i) => i.invoiceId);
   const rowSelection = useRowSelection(itemIds);
 
-  const [closeShiftOpen, setCloseShiftOpen] = useState(false);
+  // Chụp lại đúng ca đang chốt tại thời điểm bấm nút — KHÔNG dùng lại `openShift` sống trong lúc
+  // dialog mở: chốt ca thành công làm `openShift` về `null` ngay (query bị invalidate), nếu dialog
+  // phụ thuộc `openShift` để render thì sẽ bị gỡ mất trước khi kịp hiện màn "Đã chốt ca thành
+  // công" + phiếu in của chính nó — bug thật phát hiện lúc verify Playwright (docs/CURRENT.md).
+  const [closingShift, setClosingShift] = useState<CashierShiftDetail | null>(null);
+  const [openShiftDialogVisible, setOpenShiftDialogVisible] = useState(false);
   const currentShiftQuery = useCurrentCashierShiftQuery();
   const openShift = currentShiftQuery.data?.openShift ?? null;
   // PERMISSION_DENIED nghĩa là vai trò này không có `cashier_shift.*` — không hiện gì thêm ở
@@ -131,10 +136,16 @@ export function InvoiceListPage() {
           />
         </div>
 
-        {openShift && (
-          <Button type="button" variant="amber" onClick={() => setCloseShiftOpen(true)}>
+        {openShift ? (
+          <Button type="button" variant="amber" onClick={() => setClosingShift(openShift)}>
             Chốt ca
           </Button>
+        ) : (
+          !shiftFeatureUnavailable && (
+            <Button type="button" variant="secondary" onClick={() => setOpenShiftDialogVisible(true)}>
+              Mở ca
+            </Button>
+          )
         )}
       </div>
 
@@ -326,8 +337,14 @@ export function InvoiceListPage() {
 
       {/* "Chốt ca" — bắt buộc Mở ca trước khi dùng trang này nếu chưa có ca nào đang mở (mockup
           duyệt 2026-09-03). Không hiện gì nếu vai trò không có cashier_shift.* (bác sĩ/điều dưỡng). */}
-      {!shiftFeatureUnavailable && currentShiftQuery.isSuccess && !openShift && <OpenShiftDialog previousClosedShift={currentShiftQuery.data.previousClosedShift} />}
-      {closeShiftOpen && openShift && <CloseShiftDialog shift={openShift} onClose={() => setCloseShiftOpen(false)} />}
+      {openShiftDialogVisible && currentShiftQuery.isSuccess && !openShift && (
+        <OpenShiftDialog
+          previousClosedShift={currentShiftQuery.data.previousClosedShift}
+          onCancel={() => setOpenShiftDialogVisible(false)}
+          onSuccess={() => setOpenShiftDialogVisible(false)}
+        />
+      )}
+      {closingShift && <CloseShiftDialog shift={closingShift} onClose={() => setClosingShift(null)} />}
     </div>
   );
 }

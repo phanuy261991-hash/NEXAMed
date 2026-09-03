@@ -26,9 +26,29 @@ function formatDateTimeVn(iso: string): string {
  * `print:block` (khác InvoicePrintView vì view này vốn đã ẩn/hiện qua render có điều kiện của
  * React, không cần ẩn kép bằng CSS).
  */
-export function CashierShiftReceiptView({ shift, clinicHeader }: { shift: CashierShiftDetail; clinicHeader: ClinicPrintHeader }) {
+/**
+ * `onAfterPrint` (tuỳ chọn) — gọi ngay sau khi trình duyệt đóng hộp thoại in (`window.print()` chặn
+ * luồng JS tới khi người dùng in/huỷ) — dùng để tự thoát khỏi wizard "Chốt ca" ngay sau khi in, theo
+ * yêu cầu chủ dự án (không dùng ở "In lại phiếu" từ Danh sách phiếu chốt ca — xem `CashierShiftDetailDialog.tsx`,
+ * nơi đó không truyền prop này). Trình duyệt KHÔNG cho phép bỏ qua hộp thoại in bằng JS (giới hạn bảo
+ * mật nền tảng web, không phải hạn chế của app) — đây chỉ rút ngắn bước SAU khi in xong.
+ */
+export function CashierShiftReceiptView({
+  shift,
+  clinicHeader,
+  onAfterPrint,
+}: {
+  shift: CashierShiftDetail;
+  clinicHeader: ClinicPrintHeader;
+  onAfterPrint?: () => void;
+}) {
   const [format, setFormat] = useState<ReceiptFormat>('roll');
   const diff = (shift.countedCashAmount ?? 0) - (shift.expectedCashAmount ?? 0);
+
+  function handlePrint() {
+    window.print();
+    onAfterPrint?.();
+  }
 
   return (
     <div>
@@ -49,11 +69,11 @@ export function CashierShiftReceiptView({ shift, clinicHeader }: { shift: Cashie
 
       <div className="scroll-hover flex justify-center overflow-x-auto rounded-lg bg-slate-100 py-6">
         {format === 'roll' && <RollReceipt shift={shift} clinicHeader={clinicHeader} diff={diff} />}
-        {(format === 'a5' || format === 'a4') && <FormalReceipt shift={shift} clinicHeader={clinicHeader} diff={diff} width={format === 'a5' ? 380 : 520} />}
+        {(format === 'a5' || format === 'a4') && <FormalReceipt shift={shift} clinicHeader={clinicHeader} diff={diff} width={format === 'a5' ? '128mm' : '190mm'} />}
       </div>
 
       <div className="mt-4 flex justify-center">
-        <Button type="button" onClick={() => window.print()} className="inline-flex items-center gap-1.5">
+        <Button type="button" onClick={handlePrint} className="inline-flex items-center gap-1.5">
           <Printer size={16} weight="regular" aria-hidden="true" />
           In phiếu
         </Button>
@@ -100,9 +120,9 @@ function Row({ label, value, bold, className }: { label: string; value: string; 
   );
 }
 
-function FormalReceipt({ shift, clinicHeader, diff, width }: { shift: CashierShiftDetail; clinicHeader: ClinicPrintHeader; diff: number; width: number }) {
+function FormalReceipt({ shift, clinicHeader, diff, width }: { shift: CashierShiftDetail; clinicHeader: ClinicPrintHeader; diff: number; width: string }) {
   return (
-    <div className="print-area bg-white shadow-sm" style={{ width }}>
+    <div className="print-area shrink-0 bg-white shadow-sm" style={{ width }}>
       <div className="p-8">
         <div className="mb-6 text-center">
           <div className="text-base font-bold text-slate-900">{clinicHeader.name.toUpperCase()}</div>

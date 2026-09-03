@@ -67,7 +67,15 @@ export function useCloseCashierShiftMutation(id: string) {
 export function useCashierShiftListQuery(query: ListCashierShiftsQuery) {
   const { tenantId } = useAppConfig();
   return useQuery({
-    queryKey: queryKey(tenantId, 'cashier-shift', 'list', query),
+    queryKey: queryKey(
+      tenantId,
+      'cashier-shift',
+      'list',
+      query.dateFrom,
+      query.dateTo,
+      query.cashierId,
+      query.status,
+    ),
     queryFn: () => getCashierShiftList(query),
   });
 }

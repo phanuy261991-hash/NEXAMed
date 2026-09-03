@@ -61,6 +61,7 @@ export const cashierShiftDetailSchema = z.object({
   cashDiscrepancyReason: z.string().nullable(),
   keepForNextAmount: z.number().int().nullable(),
   submittedAmount: z.number().int().nullable(),
+  handoverNote: z.string().nullable(),
   resolutionMethod: cashierShiftDiscrepancyResolutionSchema.nullable(),
   resolutionNote: z.string().nullable(),
   resolvedByName: z.string().nullable(),

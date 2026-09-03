@@ -14,6 +14,8 @@ import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { formatVnd } from '../../shared/format/currency';
 import { useAuthStore } from '../auth/auth.store';
 import { useClinicPrintHeaderQuery } from '../clinic/clinic.queries';
+import { OpenShiftDialog } from '../cashier-shift/OpenShiftDialog';
+import { useCurrentCashierShiftQuery } from '../cashier-shift/cashier-shift.queries';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { InvoicePrintView } from './InvoicePrintView';
 import {
@@ -64,6 +66,12 @@ export function InvoiceDetailPage() {
   const invoiceQuery = useBillingInvoiceQuery(encounterId);
   const clinicQuery = useClinicPrintHeaderQuery();
   const paymentMethodQuery = useReferenceCatalogQuery('PAYMENT_METHOD');
+  // "Thu tiền" đòi có ca thu ngân đang mở (đối soát tiền mặt, #chốt-ca) — không chặn cả trang, chỉ
+  // chặn đúng thao tác chạm tới tiền (chốt qua AskUserQuestion, đảo hướng 2026-09-03).
+  const currentShiftQuery = useCurrentCashierShiftQuery();
+  const openShift = currentShiftQuery.data?.openShift ?? null;
+  const shiftFeatureUnavailable = currentShiftQuery.isError && currentShiftQuery.error instanceof ApiError && currentShiftQuery.error.code === 'PERMISSION_DENIED';
+  const [openShiftDialogVisible, setOpenShiftDialogVisible] = useState(false);
   const invoice = invoiceQuery.data ?? null;
   const paymentMethods = useMemo(() => paymentMethodQuery.data?.items.filter((i) => i.isActive) ?? [], [paymentMethodQuery.data]);
   const paymentMethodName = (code: PaymentMethod | null) => paymentMethods.find((i) => i.code === code)?.name ?? code ?? '—';
@@ -100,6 +108,12 @@ export function InvoiceDetailPage() {
 
   async function handlePay() {
     if (!invoice) return;
+    // Chưa có ca thu ngân nào đang mở — bật popup "Mở ca" trước, mở xong tự chạy lại đúng thao tác
+    // thu tiền này (không bắt bấm "Thu tiền" lại lần 2).
+    if (!shiftFeatureUnavailable && !openShift) {
+      setOpenShiftDialogVisible(true);
+      return;
+    }
     setError(null);
     try {
       await payMutation.mutateAsync({ method, version: invoice.version });
@@ -470,6 +484,17 @@ export function InvoiceDetailPage() {
           version={invoice.encounterVersion}
           onCancelled={() => setCancelOpen(false)}
           onClose={() => setCancelOpen(false)}
+        />
+      )}
+
+      {openShiftDialogVisible && currentShiftQuery.isSuccess && !openShift && (
+        <OpenShiftDialog
+          previousClosedShift={currentShiftQuery.data.previousClosedShift}
+          onCancel={() => setOpenShiftDialogVisible(false)}
+          onSuccess={() => {
+            setOpenShiftDialogVisible(false);
+            void handlePay();
+          }}
         />
       )}
     </div>

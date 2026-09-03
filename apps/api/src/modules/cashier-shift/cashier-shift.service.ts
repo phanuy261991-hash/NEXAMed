@@ -450,6 +450,7 @@ export class CashierShiftService {
       cashDiscrepancyReason: row.cashDiscrepancyReason,
       keepForNextAmount: row.keepForNextAmount !== null ? Number(row.keepForNextAmount) : null,
       submittedAmount: row.submittedAmount !== null ? Number(row.submittedAmount) : null,
+      handoverNote: row.handoverNote,
       resolutionMethod: row.resolutionMethod,
       resolutionNote: row.resolutionNote,
       resolvedByName: row.resolvedBy ? (names.get(row.resolvedBy) ?? 'Không rõ') : null,

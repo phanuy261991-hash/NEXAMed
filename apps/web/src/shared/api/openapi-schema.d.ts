@@ -11043,6 +11043,7 @@ export interface paths {
                                         /** Format: uuid */
                                         id: string;
                                     })[];
+                                    countsAsCash: boolean;
                                 }[];
                             };
                             meta: Record<string, never>;
@@ -11133,6 +11134,7 @@ export interface paths {
                         price?: number;
                         unit?: string;
                         deactivatesAccount?: boolean;
+                        countsAsCash?: boolean;
                         description?: string;
                         isActive?: boolean;
                         examTypePrices?: {
@@ -11176,6 +11178,7 @@ export interface paths {
                                     /** Format: uuid */
                                     id: string;
                                 })[];
+                                countsAsCash: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -11286,6 +11289,7 @@ export interface paths {
                                     /** Format: uuid */
                                     id: string;
                                 })[];
+                                countsAsCash: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -11359,6 +11363,7 @@ export interface paths {
                         price?: number;
                         unit?: string;
                         deactivatesAccount?: boolean;
+                        countsAsCash?: boolean;
                         description?: string;
                         isActive?: boolean;
                         examTypePrices?: {
@@ -11402,6 +11407,7 @@ export interface paths {
                                     /** Format: uuid */
                                     id: string;
                                 })[];
+                                countsAsCash: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -11522,6 +11528,7 @@ export interface paths {
                                     /** Format: uuid */
                                     id: string;
                                 })[];
+                                countsAsCash: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -14173,6 +14180,7 @@ export interface paths {
                                     cashDiscrepancyReason: string | null;
                                     keepForNextAmount: number | null;
                                     submittedAmount: number | null;
+                                    handoverNote: string | null;
                                     /** @enum {string|null} */
                                     resolutionMethod: "DEDUCT" | "INCOME" | "WAIVE" | null;
                                     resolutionNote: string | null;
@@ -14297,6 +14305,7 @@ export interface paths {
                                 cashDiscrepancyReason: string | null;
                                 keepForNextAmount: number | null;
                                 submittedAmount: number | null;
+                                handoverNote: string | null;
                                 /** @enum {string|null} */
                                 resolutionMethod: "DEDUCT" | "INCOME" | "WAIVE" | null;
                                 resolutionNote: string | null;
@@ -14628,6 +14637,7 @@ export interface paths {
                                 cashDiscrepancyReason: string | null;
                                 keepForNextAmount: number | null;
                                 submittedAmount: number | null;
+                                handoverNote: string | null;
                                 /** @enum {string|null} */
                                 resolutionMethod: "DEDUCT" | "INCOME" | "WAIVE" | null;
                                 resolutionNote: string | null;
@@ -14764,6 +14774,7 @@ export interface paths {
                                 cashDiscrepancyReason: string | null;
                                 keepForNextAmount: number | null;
                                 submittedAmount: number | null;
+                                handoverNote: string | null;
                                 /** @enum {string|null} */
                                 resolutionMethod: "DEDUCT" | "INCOME" | "WAIVE" | null;
                                 resolutionNote: string | null;
@@ -15025,6 +15036,7 @@ export interface paths {
                                 cashDiscrepancyReason: string | null;
                                 keepForNextAmount: number | null;
                                 submittedAmount: number | null;
+                                handoverNote: string | null;
                                 /** @enum {string|null} */
                                 resolutionMethod: "DEDUCT" | "INCOME" | "WAIVE" | null;
                                 resolutionNote: string | null;
@@ -15170,6 +15182,7 @@ export interface paths {
                                 cashDiscrepancyReason: string | null;
                                 keepForNextAmount: number | null;
                                 submittedAmount: number | null;
+                                handoverNote: string | null;
                                 /** @enum {string|null} */
                                 resolutionMethod: "DEDUCT" | "INCOME" | "WAIVE" | null;
                                 resolutionNote: string | null;
@@ -15321,6 +15334,7 @@ export interface paths {
                                 cashDiscrepancyReason: string | null;
                                 keepForNextAmount: number | null;
                                 submittedAmount: number | null;
+                                handoverNote: string | null;
                                 /** @enum {string|null} */
                                 resolutionMethod: "DEDUCT" | "INCOME" | "WAIVE" | null;
                                 resolutionNote: string | null;

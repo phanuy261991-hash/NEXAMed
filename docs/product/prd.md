@@ -181,8 +181,9 @@ Phạm vi giới hạn ở **thu ngân mức 1** (một phiếu thu cho một l�
 | BIL-02 | In phiếu thu theo mẫu, có thông tin phòng khám (dùng chung hạ tầng in với PRE-04) | P0 |
 | BIL-03 | Đánh dấu trạng thái đã thu/chưa thu và phương thức thanh toán (tiền mặt/chuyển khoản); ghi nhật ký | P0 |
 | BIL-04 | Tổng kết thu cuối ngày: danh sách phiếu thu trong ngày và tổng tiền | P0 |
+| BIL-05 | **Chốt ca** (đối soát tiền mặt/két, ngoài kế hoạch, chốt 2026-09-03): mở ca (đếm vốn đầu ca) trước khi thu ngân thao tác; chốt ca (4 bước: tổng kết hệ thống tự động → kiểm đếm tiền mặt → đối soát khớp/lệch có giải trình → bàn giao) khoá dữ liệu; in phiếu bàn giao 3 khổ (cuộn/A5/A4); "Danh sách phiếu chốt ca" cho Quản lý xem/xử lý chênh lệch/duyệt; "Mở khoá để sửa" phiếu đã chốt (bắt buộc lý do, ghi audit before/after) | P1 |
 
-**Lý do đưa vào v1** (trước đây xếp v2): điều kiện GA ở mục 7 yêu cầu "pilot ngừng dùng sổ giấy, chạy hoàn toàn trên hệ thống" — không có thu ngân thì phòng khám buộc phải giữ sổ tiền, không đạt được điều kiện này. Làm ở Sprint 5/6 (sau pilot, trước GA) để không làm phình Sprint 4.
+**Lý do đưa vào v1** (trước đây xếp v2): điều kiện GA ở mục 7 yêu cầu "pilot ngừng dùng sổ giấy, chạy hoàn toàn trên hệ thống" — không có thu ngân thì phòng khám buộc phải giữ sổ tiền, không đạt được điều kiện này. Làm ở Sprint 5/6 (sau pilot, trước GA) để không làm phình Sprint 4. **BIL-05 (Chốt ca) là mở rộng ngoài kế hoạch gốc** (chủ dự án yêu cầu trực tiếp sau khi BIL-01→04 đã chạy pilot — phiếu thu từng lượt khám không đủ, cần đối soát tổng tiền mặt/két theo ca làm việc) — v1 chỉ 1 két dùng chung toàn tenant, chỉ 1 ca `OPEN` tại một thời điểm (khớp mô hình phòng khám 1-3 bác sĩ; đường mở rộng nhiều két/chi nhánh để sẵn khi `branch` ra đời, xem `docs/DECISIONS.md` #112).
 
 **Ghi chú kiến trúc phân quyền (chốt 2026-08-08, thay thế mô tả "5 vai trò cố định" ở bản v1.0)**: hệ thống dùng RBAC kết hợp Data Scope (4 mức: `none`/`personal`/`department`/`global`) thay vì quyền on/off đơn thuần. Chi tiết đầy đủ xem `.claude/docs/security-audit.md`. Mức `branch` (đa chi nhánh) **chưa triển khai** — khớp với quyết định hoãn ở câu hỏi Q6 mục 10 bên dưới; ADM-07 (UI cấu hình) là P1, có thể lùi nếu timeline căng (xem mục 7).
 
@@ -364,3 +365,4 @@ Các câu hỏi cần trả lời, kèm hạn chót vì chúng ảnh hưởng t�
 | v1.0 | 07/08/2026 | Bản đầu tiên, dựa trên phạm vi kỹ thuật đã chốt |
 | v1.1 | 08/08/2026 | Thay mô tả "5 vai trò cố định" bằng RBAC + Data Scope (ADM-01 cập nhật, thêm ADM-06 break-glass, ADM-07 UI cấu hình ma trận), thêm rủi ro R10 |
 | v1.2 | 22/08/2026 | **Mở rộng phạm vi v1**: thêm mục 4.7 "Thu ngân cơ bản" (BIL-01→04, P0, làm ở Sprint 5/6) — trước đây xếp v2, chuyển vào v1 vì là điều kiện bắt buộc để đạt mốc GA "pilot ngừng dùng sổ giấy hoàn toàn". Thêm phase **v1.5 — Gói chuyên khoa** (Nhi khoa → Sản phụ khoa) vào Appendix A cho 2 khách hàng thật đã có. Xem `docs/DECISIONS.md` #069→#072 |
+| v1.3 | 03/09/2026 | Thêm BIL-05 "Chốt ca" (đối soát tiền mặt/két theo ca làm việc, P1, ngoài kế hoạch — chủ dự án yêu cầu sau khi thu ngân cơ bản chạy pilot). Xem `docs/DECISIONS.md` #112 |

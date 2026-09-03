@@ -26610,6 +26610,9 @@
                                     }
                                   ]
                                 }
+                              },
+                              "countsAsCash": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -26622,7 +26625,8 @@
                               "price",
                               "unit",
                               "deactivatesAccount",
-                              "description"
+                              "description",
+                              "countsAsCash"
                             ]
                           }
                         }
@@ -26800,6 +26804,9 @@
                   "deactivatesAccount": {
                     "type": "boolean"
                   },
+                  "countsAsCash": {
+                    "type": "boolean"
+                  },
                   "description": {
                     "type": "string",
                     "minLength": 1
@@ -26968,6 +26975,9 @@
                               }
                             ]
                           }
+                        },
+                        "countsAsCash": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -26980,7 +26990,8 @@
                         "price",
                         "unit",
                         "deactivatesAccount",
-                        "description"
+                        "description",
+                        "countsAsCash"
                       ]
                     },
                     "meta": {
@@ -27140,6 +27151,9 @@
                     "minLength": 1
                   },
                   "deactivatesAccount": {
+                    "type": "boolean"
+                  },
+                  "countsAsCash": {
                     "type": "boolean"
                   },
                   "description": {
@@ -27306,6 +27320,9 @@
                               }
                             ]
                           }
+                        },
+                        "countsAsCash": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -27318,7 +27335,8 @@
                         "price",
                         "unit",
                         "deactivatesAccount",
-                        "description"
+                        "description",
+                        "countsAsCash"
                       ]
                     },
                     "meta": {
@@ -27599,6 +27617,9 @@
                               }
                             ]
                           }
+                        },
+                        "countsAsCash": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -27611,7 +27632,8 @@
                         "price",
                         "unit",
                         "deactivatesAccount",
-                        "description"
+                        "description",
+                        "countsAsCash"
                       ]
                     },
                     "meta": {
@@ -27863,6 +27885,9 @@
                               }
                             ]
                           }
+                        },
+                        "countsAsCash": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -27875,7 +27900,8 @@
                         "price",
                         "unit",
                         "deactivatesAccount",
-                        "description"
+                        "description",
+                        "countsAsCash"
                       ]
                     },
                     "meta": {
@@ -33107,6 +33133,12 @@
                                 "null"
                               ]
                             },
+                            "handoverNote": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
                             "resolutionMethod": {
                               "type": [
                                 "string",
@@ -33184,6 +33216,7 @@
                             "cashDiscrepancyReason",
                             "keepForNextAmount",
                             "submittedAmount",
+                            "handoverNote",
                             "resolutionMethod",
                             "resolutionNote",
                             "resolvedByName",
@@ -33469,6 +33502,12 @@
                             "null"
                           ]
                         },
+                        "handoverNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "resolutionMethod": {
                           "type": [
                             "string",
@@ -33546,6 +33585,7 @@
                         "cashDiscrepancyReason",
                         "keepForNextAmount",
                         "submittedAmount",
+                        "handoverNote",
                         "resolutionMethod",
                         "resolutionNote",
                         "resolvedByName",
@@ -34285,6 +34325,12 @@
                             "null"
                           ]
                         },
+                        "handoverNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "resolutionMethod": {
                           "type": [
                             "string",
@@ -34362,6 +34408,7 @@
                         "cashDiscrepancyReason",
                         "keepForNextAmount",
                         "submittedAmount",
+                        "handoverNote",
                         "resolutionMethod",
                         "resolutionNote",
                         "resolvedByName",
@@ -34665,6 +34712,12 @@
                             "null"
                           ]
                         },
+                        "handoverNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "resolutionMethod": {
                           "type": [
                             "string",
@@ -34742,6 +34795,7 @@
                         "cashDiscrepancyReason",
                         "keepForNextAmount",
                         "submittedAmount",
+                        "handoverNote",
                         "resolutionMethod",
                         "resolutionNote",
                         "resolvedByName",
@@ -35296,6 +35350,12 @@
                             "null"
                           ]
                         },
+                        "handoverNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "resolutionMethod": {
                           "type": [
                             "string",
@@ -35373,6 +35433,7 @@
                         "cashDiscrepancyReason",
                         "keepForNextAmount",
                         "submittedAmount",
+                        "handoverNote",
                         "resolutionMethod",
                         "resolutionNote",
                         "resolvedByName",
@@ -35691,6 +35752,12 @@
                             "null"
                           ]
                         },
+                        "handoverNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "resolutionMethod": {
                           "type": [
                             "string",
@@ -35768,6 +35835,7 @@
                         "cashDiscrepancyReason",
                         "keepForNextAmount",
                         "submittedAmount",
+                        "handoverNote",
                         "resolutionMethod",
                         "resolutionNote",
                         "resolvedByName",
@@ -36108,6 +36176,12 @@
                             "null"
                           ]
                         },
+                        "handoverNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "resolutionMethod": {
                           "type": [
                             "string",
@@ -36185,6 +36259,7 @@
                         "cashDiscrepancyReason",
                         "keepForNextAmount",
                         "submittedAmount",
+                        "handoverNote",
                         "resolutionMethod",
                         "resolutionNote",
                         "resolvedByName",

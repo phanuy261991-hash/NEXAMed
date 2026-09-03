@@ -66,11 +66,9 @@ export function CloseShiftDialog({ shift, onClose }: { shift: CashierShiftDetail
                 {shift.shiftLabel} · {shift.cashierName} · Mở lúc {new Date(shift.openedAt).toLocaleString('vi-VN')}
               </p>
             </div>
-            {!closedShift && (
-              <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-700" aria-label="Đóng">
-                <X size={20} weight="bold" aria-hidden="true" />
-              </button>
-            )}
+            <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-700" aria-label="Đóng">
+              <X size={20} weight="bold" aria-hidden="true" />
+            </button>
           </div>
 
           {!closedShift && (
@@ -106,7 +104,7 @@ export function CloseShiftDialog({ shift, onClose }: { shift: CashierShiftDetail
               <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
                 Đã chốt ca thành công — dữ liệu đã khoá. Tài khoản vẫn đang đăng nhập bình thường.
               </div>
-              {clinicHeaderQuery.data && <CashierShiftReceiptView shift={closedShift} clinicHeader={clinicHeaderQuery.data} />}
+              {clinicHeaderQuery.data && <CashierShiftReceiptView shift={closedShift} clinicHeader={clinicHeaderQuery.data} onAfterPrint={onClose} />}
             </div>
           ) : (
             <>

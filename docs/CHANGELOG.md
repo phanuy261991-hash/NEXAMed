@@ -4,6 +4,18 @@
 
 ## 2026-09-03
 
+### "Chốt ca" (BIL-05, đối soát tiền mặt/két) — hoàn tất, verify Playwright, sửa 5 lỗi thật
+
+Tiếp nối phiên trước để dở dang ("CHƯA XONG, CHƯA TEST"). Hoàn tất theo đúng thứ tự việc treo: typecheck `apps/web` lần đầu (phát hiện 2 lỗi thật — `queryKey()` truyền sai kiểu, thiếu `handoverNote` trong schema/service khiến "Sửa phiếu" không đọc lại được giá trị hiện tại), viết 37 test HTTP e2e mới (`cashier-shift-http.spec.ts`, đủ mở/chốt/khớp/lệch/race/quyền sở hữu/danh sách/duyệt/xử lý chênh lệch/sửa sau chốt/cách ly tenant), vá lỗ hổng `tenant-fixture.ts` thiếu dọn `cashier_shift` (vỡ FK khi test). Toàn bộ 594/594 test `apps/api` pass (2 flake đã biết, xác nhận riêng).
+
+Verify Playwright qua Chrome thật (chủ dự án đồng thời tự dùng thử trên dev server, báo trực tiếp từng lỗi) phát hiện + sửa 5 vấn đề thật: (1) dialog "Chốt ca" tự đóng ngay sau khi chốt thành công, mất luôn màn hình phiếu in (do phụ thuộc dữ liệu sống thay vì snapshot); (2) mẫu in khổ A4/A5 lệch hẳn kích thước giấy thật (dùng px màn hình thay vì mm vật lý); (3) bản xem trước A4 bị flexbox co hẹp (thêm `shrink-0`); (4) không có nút thoát sau khi in (nút X bị ẩn nhầm ở màn hình thành công); (5) theo yêu cầu, bấm "In phiếu" giờ tự thoát dialog ngay sau khi hộp thoại in của trình duyệt đóng lại.
+
+Đảo hướng thiết kế qua `AskUserQuestion`: bỏ hẳn việc bắt buộc "Mở ca" ngay khi vào "Danh sách cần thu" nếu chưa có ca mở (chủ dự án phản biện đúng — chốt ca xong không có lý do gì bắt mở ca mới ngay) — nay trang luôn xem được, chỉ chặn đúng lúc bấm "Thu tiền" (tự bật popup Mở ca, mở xong tự tiếp tục thu tiền), có thêm nút "Mở ca" chủ động.
+
+Xem `docs/DECISIONS.md` #112, `docs/ERD.md` v1.39, `docs/product/prd.md` v1.3 (BIL-05).
+
+Đã xác minh: `pnpm -w typecheck/lint/build` sạch toàn workspace, chunk web 480.68 kB, Playwright qua Chrome thật (mở ca → chốt ca → in 2 khổ đúng tỉ lệ vật lý → danh sách → duyệt phiếu → không bị ép mở ca lại).
+
 ### Verify Playwright: "Khoá bảng ca" theo tháng (work_shift_assignment, #110)
 
 Việc còn treo ghi ở `docs/CURRENT.md` — verify qua Chrome thật cho cả 2 biến thể của banner khoá. `dev.admin` (có quyền `work_shift_assignment.unlock`): tháng trước bị khoá đúng (banner amber + nút "Sửa"), bấm "Sửa" mở khoá tạm thời (banner slate + "Khoá lại") và ghi được 1 ca thật vào tháng đã khoá; tăng `workShiftAssignmentLockGraceDays` lên 15 thì tháng trước tự mở khoá không cần bấm "Sửa", trả về 0 thì khoá lại ngay. Tạo riêng 1 vai trò + 1 tài khoản test qua HTTP API (sao chép ma trận `clinic_admin`, bỏ đúng quyền `unlock`) để xác nhận biến thể còn lại: banner khoá hiện nhưng KHÔNG có nút "Sửa", đúng thông báo liên hệ người có quyền. Không phát hiện bug mới. Đã dọn sạch dữ liệu test (ca/tài khoản/vai trò) và trả cấu hình về mặc định.

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Calculator, Wallet } from '@phosphor-icons/react';
+import { Calculator, Wallet, X } from '@phosphor-icons/react';
 import type { CurrentCashierShiftResponse } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { formatVnd } from '../../shared/format/currency';
@@ -9,11 +9,22 @@ import { DenominationCounter } from '../../shared/ui/DenominationCounter';
 import { useOpenCashierShiftMutation } from './cashier-shift.queries';
 
 /**
- * "Mở ca" — bắt buộc trước khi dùng "Danh sách cần thu" nếu chưa có ca nào đang mở (mockup duyệt
- * 2026-09-03). Không có nút Đăng xuất/Đóng — chỉ bật lên khi thu ngân chủ động vào trang này, nên
- * không cần lối thoát ra ngoài (chốt trực tiếp với chủ dự án).
+ * "Mở ca" — chủ động mở (nút "Mở ca" ở Thu ngân, hoặc tự bật khi bấm "Thu tiền" mà chưa có ca nào
+ * đang mở). KHÔNG còn chặn toàn màn hình Thu ngân nữa (đảo hướng 2026-09-03, chủ dự án phản hồi
+ * trực tiếp: chốt ca xong không có lý do gì bắt mở ca mới ngay — xem `docs/DECISIONS.md`) — chỉ
+ * thao tác chạm tới tiền (Thu tiền/Chốt ca) mới cần ca đang mở. `onCancel` có thì hiện nút thoát
+ * (dùng khi mở chủ động, không bắt buộc); `onSuccess` gọi sau khi mở ca thành công (ví dụ tự chạy
+ * tiếp "Thu tiền" đang dang dở ở `InvoiceDetailPage.tsx`).
  */
-export function OpenShiftDialog({ previousClosedShift }: { previousClosedShift: CurrentCashierShiftResponse['previousClosedShift'] }) {
+export function OpenShiftDialog({
+  previousClosedShift,
+  onCancel,
+  onSuccess,
+}: {
+  previousClosedShift: CurrentCashierShiftResponse['previousClosedShift'];
+  onCancel?: () => void;
+  onSuccess?: () => void;
+}) {
   const suggested = previousClosedShift?.keepForNextAmount ?? 0;
   const [countedAmount, setCountedAmount] = useState<number>(suggested);
   const [showDenom, setShowDenom] = useState(false);
@@ -32,6 +43,7 @@ export function OpenShiftDialog({ previousClosedShift }: { previousClosedShift: 
     }
     try {
       await mutation.mutateAsync({ openingFloatActual: countedAmount, openingDiscrepancyReason: hasDiff ? reason : undefined });
+      onSuccess?.();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Không mở được ca, vui lòng thử lại.');
     }
@@ -41,11 +53,18 @@ export function OpenShiftDialog({ previousClosedShift }: { previousClosedShift: 
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4" role="dialog" aria-modal="true" aria-labelledby="open-shift-title">
       <div className="w-full max-w-xl rounded-xl bg-white shadow-xl">
         <form onSubmit={(e) => void handleSubmit(e)}>
-          <div className="px-6 pt-5 pb-4 border-b border-slate-100">
-            <h2 id="open-shift-title" className="text-lg font-bold text-slate-900">
-              Mở ca làm việc
-            </h2>
-            <p className="mt-1 text-sm font-medium text-slate-500">Kiểm đếm tiền mặt trong két trước khi bắt đầu thu ngân.</p>
+          <div className="flex items-start justify-between px-6 pt-5 pb-4 border-b border-slate-100">
+            <div>
+              <h2 id="open-shift-title" className="text-lg font-bold text-slate-900">
+                Mở ca làm việc
+              </h2>
+              <p className="mt-1 text-sm font-medium text-slate-500">Kiểm đếm tiền mặt trong két trước khi bắt đầu thu ngân.</p>
+            </div>
+            {onCancel && (
+              <button type="button" onClick={onCancel} className="text-slate-400 hover:text-slate-700" aria-label="Đóng">
+                <X size={20} weight="bold" aria-hidden="true" />
+              </button>
+            )}
           </div>
 
           <div className="px-6 py-5 space-y-4">

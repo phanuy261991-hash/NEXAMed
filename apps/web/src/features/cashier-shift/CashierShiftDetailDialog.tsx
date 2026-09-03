@@ -70,12 +70,16 @@ export function CashierShiftDetailDialog({ id, onClose }: { id: string; onClose:
       <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-xl bg-white shadow-xl">
         <div className="flex flex-shrink-0 items-start justify-between border-b border-slate-100 px-6 pt-6 pb-4">
           <div>
-            <h2 id="cashier-shift-detail-title" className="text-lg font-bold text-slate-900">
-              {shift ? `Phiếu chốt ca — ${shift.shiftNo}` : 'Phiếu chốt ca'}
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 id="cashier-shift-detail-title" className="text-lg font-bold text-slate-900">
+                {shift ? `Phiếu chốt ca — ${shift.shiftNo}` : 'Phiếu chốt ca'}
+              </h2>
+              {shift?.editedAt && <StatusBadge tone="info">Đã chỉnh sửa</StatusBadge>}
+            </div>
             {shift && (
               <p className="mt-1 text-sm font-medium text-slate-500">
                 {shift.shiftLabel} · {shift.cashierName} · {new Date(shift.openedAt).toLocaleString('vi-VN')} – {shift.closedAt ? new Date(shift.closedAt).toLocaleString('vi-VN') : '—'}
+                {shift.editedAt && ` · Sửa lần cuối bởi ${shift.editedByName} lúc ${new Date(shift.editedAt).toLocaleString('vi-VN')}`}
               </p>
             )}
           </div>
