@@ -108,6 +108,16 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   // đăng ký ca. `POST`/`PATCH /work-shifts` (thêm/sửa mẫu ca) GIỮ NGUYÊN `clinic_config.update`,
   // chỉ clinic_admin quản lý danh mục.
   { module: 'work_shift', action: 'read', description: 'Xem danh mục mẫu ca làm việc' },
+  // "Chốt ca" (đối soát tiền mặt/két, ngoài kế hoạch, mockup duyệt 2026-09-03) — KHÔNG liên quan
+  // `work_shift`/`work_shift_assignment` ở trên (đăng ký ca làm việc nhân viên, #101) dù tên gần
+  // giống nhau: đây là phiên làm việc CỦA KÉT TIỀN MẶT (mở/đóng/đối soát), một khái niệm hoàn
+  // toàn khác. `create` dùng chung cho cả mở lẫn chốt ca (không tách riêng, cùng tinh thần
+  // `encounter.create` dùng chung check-in/tiếp nhận trực tiếp).
+  { module: 'cashier_shift', action: 'create', description: 'Mở ca / Chốt ca (đối soát tiền mặt)' },
+  { module: 'cashier_shift', action: 'read', description: 'Xem ca đang mở và lịch sử phiếu chốt ca' },
+  // Duyệt phiếu / Xử lý chênh lệch / Mở khoá sửa sau khi chốt — nhóm hành động của Quản lý, mặc
+  // định CHỈ clinic_admin (đúng tinh thần `invoice.refund`).
+  { module: 'cashier_shift', action: 'manage', description: 'Duyệt phiếu, xử lý chênh lệch, mở khoá sửa phiếu chốt ca' },
 ] as const;
 
 export function permissionKey(p: Pick<PermissionDefinition, 'module' | 'action'>): string {
@@ -155,6 +165,11 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'work_shift_assignment.read': 'personal',
     'work_shift_assignment.delete': 'personal',
     'work_shift.read': 'global',
+    // Chốt ca — lễ tân là thu ngân chính, chỉ mở/chốt/xem CA CỦA MÌNH (personal — hệ thống chỉ
+    // 1 két dùng chung nên "của mình" nghĩa là ca đang OPEN do chính actor mở, xem
+    // `CashierShiftService`), không xem lịch sử toàn phòng khám (đó là màn Quản lý, dưới đây).
+    'cashier_shift.create': 'personal',
+    'cashier_shift.read': 'personal',
   },
   nurse: {
     'patient.read': 'global',
@@ -258,6 +273,11 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     // Mặc định clinic_admin mở khoá được lịch tháng đã chốt (đúng yêu cầu chủ dự án).
     'work_shift_assignment.unlock': 'global',
     'work_shift.read': 'global',
+    // Chốt ca — clinic_admin vừa tự thao tác két được (personal, giống lễ tân) vừa xem/duyệt/xử lý
+    // TOÀN BỘ lịch sử phiếu chốt ca (global) — màn "Danh sách phiếu chốt ca".
+    'cashier_shift.create': 'personal',
+    'cashier_shift.read': 'global',
+    'cashier_shift.manage': 'global',
   },
   system_admin: {
     'user_account.read': 'global',

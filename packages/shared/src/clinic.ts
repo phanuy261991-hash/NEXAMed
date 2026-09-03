@@ -190,6 +190,12 @@ export const clinicSettingsSchema = z.object({
    * (`packages/core/src/work-shift-assignment/month-lock.ts`).
    */
   workShiftAssignmentLockGraceDays: z.number().int().min(0).max(27),
+  /**
+   * "Chốt ca" (đối soát tiền mặt/két, ngoài kế hoạch, mockup duyệt 2026-09-03) — chế độ đối soát
+   * "Mù" (BẬT, mặc định — khuyến nghị chống gian lận: ẩn số tiền mặt dự kiến tới khi thu ngân đã
+   * nhập số đếm thực tế) hay "Mở" (TẮT — hiện luôn số dự kiến). Đặt cạnh "Cấu hình thanh toán".
+   */
+  cashierShiftBlindCloseEnabled: z.boolean(),
 });
 export type ClinicSettings = z.infer<typeof clinicSettingsSchema>;
 
@@ -211,6 +217,7 @@ export const updateClinicSettingsRequestSchema = z.object({
   blockBookingOutsideWorkShiftEnabled: z.boolean().optional(),
   allowStaffSelfScheduleEnabled: z.boolean().optional(),
   workShiftAssignmentLockGraceDays: z.number().int().min(0).max(27).optional(),
+  cashierShiftBlindCloseEnabled: z.boolean().optional(),
 });
 export type UpdateClinicSettingsRequest = z.infer<typeof updateClinicSettingsRequestSchema>;
 
@@ -231,6 +238,15 @@ export const DEFAULT_BLOCK_BOOKING_OUTSIDE_WORK_SHIFT_ENABLED = false;
 export const DEFAULT_ALLOW_STAFF_SELF_SCHEDULE_ENABLED = true;
 /** 0 ngày ân hạn — khoá ngay khi sang tháng mới, cho tenant chưa từng cấu hình. */
 export const DEFAULT_WORK_SHIFT_ASSIGNMENT_LOCK_GRACE_DAYS = 0;
+/** Bật theo mặc định — chế độ Mù được khuyến nghị chống gian lận cho tenant chưa từng cấu hình. */
+export const DEFAULT_CASHIER_SHIFT_BLIND_CLOSE_ENABLED = true;
+
+/**
+ * `GET /clinic-settings/cashier-shift-blind-close-enabled` — chiếu tối thiểu tự-phục vụ, cùng lý
+ * do `deferredPaymentStatusSchema` ngay dưới: thu ngân (`receptionist`) cần biết chế độ Mù/Mở để
+ * hiện đúng UI popup Chốt ca nhưng không có `clinic_config.read`.
+ */
+export const cashierShiftBlindCloseStatusSchema = z.object({ enabled: z.boolean() });
 
 /**
  * `GET /clinic-settings/deferred-payment-enabled` — chiếu tối thiểu tự-phục vụ (Thu ngân cơ bản,

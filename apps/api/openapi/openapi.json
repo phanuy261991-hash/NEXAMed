@@ -4781,6 +4781,9 @@
                           "type": "integer",
                           "minimum": 0,
                           "maximum": 27
+                        },
+                        "cashierShiftBlindCloseEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -4794,7 +4797,8 @@
                         "allowReceptionistEndShift",
                         "blockBookingOutsideWorkShiftEnabled",
                         "allowStaffSelfScheduleEnabled",
-                        "workShiftAssignmentLockGraceDays"
+                        "workShiftAssignmentLockGraceDays",
+                        "cashierShiftBlindCloseEnabled"
                       ]
                     },
                     "meta": {
@@ -24466,6 +24470,9 @@
                           "type": "integer",
                           "minimum": 0,
                           "maximum": 27
+                        },
+                        "cashierShiftBlindCloseEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -24479,7 +24486,8 @@
                         "allowReceptionistEndShift",
                         "blockBookingOutsideWorkShiftEnabled",
                         "allowStaffSelfScheduleEnabled",
-                        "workShiftAssignmentLockGraceDays"
+                        "workShiftAssignmentLockGraceDays",
+                        "cashierShiftBlindCloseEnabled"
                       ]
                     },
                     "meta": {
@@ -24766,6 +24774,9 @@
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 27
+                  },
+                  "cashierShiftBlindCloseEnabled": {
+                    "type": "boolean"
                   }
                 }
               }
@@ -24977,6 +24988,9 @@
                           "type": "integer",
                           "minimum": 0,
                           "maximum": 27
+                        },
+                        "cashierShiftBlindCloseEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -24990,7 +25004,8 @@
                         "allowReceptionistEndShift",
                         "blockBookingOutsideWorkShiftEnabled",
                         "allowStaffSelfScheduleEnabled",
-                        "workShiftAssignmentLockGraceDays"
+                        "workShiftAssignmentLockGraceDays",
+                        "cashierShiftBlindCloseEnabled"
                       ]
                     },
                     "meta": {
@@ -25154,6 +25169,83 @@
           "clinic"
         ],
         "summary": "\"Cấu hình chung\" — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /clinic-settings/deferred-payment-enabled)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "enabled"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clinic-settings/cashier-shift-blind-close-enabled": {
+      "get": {
+        "tags": [
+          "clinic"
+        ],
+        "summary": "\"Chốt ca\" — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /clinic-settings/deferred-payment-enabled)",
         "security": [
           {
             "bearerAuth": []
@@ -32838,6 +32930,3380 @@
           },
           "409": {
             "description": "version không khớp (CONCURRENT_MODIFICATION), đã khoá — ngoài ngày đăng ký (WORK_SHIFT_ASSIGNMENT_LOCKED), hoặc tháng đã khoá (WORK_SHIFT_ASSIGNMENT_MONTH_LOCKED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cashier-shifts/current": {
+      "get": {
+        "tags": [
+          "cashier-shift"
+        ],
+        "summary": "Ca đang OPEN (nếu có) + gợi ý vốn đầu ca cho lần Mở ca tiếp theo (ca CLOSED gần nhất toàn tenant)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "openShift": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "shiftNo": {
+                              "type": "string"
+                            },
+                            "cashierId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "cashierName": {
+                              "type": "string"
+                            },
+                            "shiftLabel": {
+                              "type": "string"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "OPEN",
+                                "CLOSED",
+                                "APPROVED"
+                              ]
+                            },
+                            "openedAt": {
+                              "type": "string"
+                            },
+                            "openingFloatExpected": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
+                            "openingFloatActual": {
+                              "type": "integer"
+                            },
+                            "openingDiscrepancyReason": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "closedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "cashInAmount": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
+                            "cashOutAmount": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
+                            "nonCashBreakdown": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "method": {
+                                    "type": "string"
+                                  },
+                                  "methodLabel": {
+                                    "type": "string"
+                                  },
+                                  "count": {
+                                    "type": "integer"
+                                  },
+                                  "amount": {
+                                    "type": "integer"
+                                  }
+                                },
+                                "required": [
+                                  "method",
+                                  "methodLabel",
+                                  "count",
+                                  "amount"
+                                ]
+                              }
+                            },
+                            "expectedCashAmount": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
+                            "countedCashAmount": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
+                            "cashDiscrepancyReason": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "keepForNextAmount": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
+                            "submittedAmount": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
+                            "resolutionMethod": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "enum": [
+                                "DEDUCT",
+                                "INCOME",
+                                "WAIVE"
+                              ]
+                            },
+                            "resolutionNote": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "resolvedByName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "resolvedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "approvedByName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "approvedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "editedByName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "editedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "version": {
+                              "type": "integer"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "shiftNo",
+                            "cashierId",
+                            "cashierName",
+                            "shiftLabel",
+                            "status",
+                            "openedAt",
+                            "openingFloatExpected",
+                            "openingFloatActual",
+                            "openingDiscrepancyReason",
+                            "closedAt",
+                            "cashInAmount",
+                            "cashOutAmount",
+                            "nonCashBreakdown",
+                            "expectedCashAmount",
+                            "countedCashAmount",
+                            "cashDiscrepancyReason",
+                            "keepForNextAmount",
+                            "submittedAmount",
+                            "resolutionMethod",
+                            "resolutionNote",
+                            "resolvedByName",
+                            "resolvedAt",
+                            "approvedByName",
+                            "approvedAt",
+                            "editedByName",
+                            "editedAt",
+                            "version"
+                          ]
+                        },
+                        "previousClosedShift": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "shiftNo": {
+                              "type": "string"
+                            },
+                            "cashierName": {
+                              "type": "string"
+                            },
+                            "shiftLabel": {
+                              "type": "string"
+                            },
+                            "closedAt": {
+                              "type": "string"
+                            },
+                            "keepForNextAmount": {
+                              "type": "integer"
+                            }
+                          },
+                          "required": [
+                            "shiftNo",
+                            "cashierName",
+                            "shiftLabel",
+                            "closedAt",
+                            "keepForNextAmount"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "openShift",
+                        "previousClosedShift"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền cashier_shift.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cashier-shifts/open": {
+      "post": {
+        "tags": [
+          "cashier-shift"
+        ],
+        "summary": "Mở ca — chặn nếu đang có ca khác chưa chốt (v1 chỉ 1 két dùng chung toàn tenant)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "openingFloatActual": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "openingDiscrepancyReason": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "openingFloatActual"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "shiftNo": {
+                          "type": "string"
+                        },
+                        "cashierId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "cashierName": {
+                          "type": "string"
+                        },
+                        "shiftLabel": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "OPEN",
+                            "CLOSED",
+                            "APPROVED"
+                          ]
+                        },
+                        "openedAt": {
+                          "type": "string"
+                        },
+                        "openingFloatExpected": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "openingFloatActual": {
+                          "type": "integer"
+                        },
+                        "openingDiscrepancyReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "closedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cashInAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "cashOutAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "nonCashBreakdown": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "method": {
+                                "type": "string"
+                              },
+                              "methodLabel": {
+                                "type": "string"
+                              },
+                              "count": {
+                                "type": "integer"
+                              },
+                              "amount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "method",
+                              "methodLabel",
+                              "count",
+                              "amount"
+                            ]
+                          }
+                        },
+                        "expectedCashAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "countedCashAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "cashDiscrepancyReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "keepForNextAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "submittedAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "resolutionMethod": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "DEDUCT",
+                            "INCOME",
+                            "WAIVE"
+                          ]
+                        },
+                        "resolutionNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "editedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "editedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "shiftNo",
+                        "cashierId",
+                        "cashierName",
+                        "shiftLabel",
+                        "status",
+                        "openedAt",
+                        "openingFloatExpected",
+                        "openingFloatActual",
+                        "openingDiscrepancyReason",
+                        "closedAt",
+                        "cashInAmount",
+                        "cashOutAmount",
+                        "nonCashBreakdown",
+                        "expectedCashAmount",
+                        "countedCashAmount",
+                        "cashDiscrepancyReason",
+                        "keepForNextAmount",
+                        "submittedAmount",
+                        "resolutionMethod",
+                        "resolutionNote",
+                        "resolvedByName",
+                        "resolvedAt",
+                        "approvedByName",
+                        "approvedAt",
+                        "editedByName",
+                        "editedAt",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Có chênh lệch với vốn ca trước để lại mà thiếu lý do (CASHIER_SHIFT_DISCREPANCY_REASON_REQUIRED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền cashier_shift.create",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Đang có ca khác chưa chốt (CASHIER_SHIFT_ALREADY_OPEN)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cashier-shifts": {
+      "get": {
+        "tags": [
+          "cashier-shift"
+        ],
+        "summary": "\"Danh sách phiếu chốt ca\" (Quản lý/Kế toán) — chỉ scope global, lọc theo khoảng ngày/thu ngân/trạng thái chênh lệch",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": false,
+            "name": "dateFrom",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": false,
+            "name": "dateTo",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "cashierId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ok",
+                "bad"
+              ]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "shiftNo": {
+                                "type": "string"
+                              },
+                              "cashierName": {
+                                "type": "string"
+                              },
+                              "shiftLabel": {
+                                "type": "string"
+                              },
+                              "openedAt": {
+                                "type": "string"
+                              },
+                              "closedAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "expectedCashAmount": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "countedCashAmount": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "submittedAmount": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "cashDiscrepancyAmount": {
+                                "type": "integer"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "OPEN",
+                                  "CLOSED",
+                                  "APPROVED"
+                                ]
+                              },
+                              "editedAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "shiftNo",
+                              "cashierName",
+                              "shiftLabel",
+                              "openedAt",
+                              "closedAt",
+                              "expectedCashAmount",
+                              "countedCashAmount",
+                              "submittedAmount",
+                              "cashDiscrepancyAmount",
+                              "status",
+                              "editedAt"
+                            ]
+                          }
+                        },
+                        "totalCount": {
+                          "type": "integer"
+                        },
+                        "totalSubmittedAmount": {
+                          "type": "integer"
+                        },
+                        "pendingApprovalCount": {
+                          "type": "integer"
+                        },
+                        "discrepancyCount": {
+                          "type": "integer"
+                        },
+                        "discrepancyTotalAmount": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "totalCount",
+                        "totalSubmittedAmount",
+                        "pendingApprovalCount",
+                        "discrepancyCount",
+                        "discrepancyTotalAmount"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền cashier_shift.read, hoặc chỉ scope personal (không xem được danh sách)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cashier-shifts/{id}/summary": {
+      "get": {
+        "tags": [
+          "cashier-shift"
+        ],
+        "summary": "\"Tổng kết hệ thống\" (bước 1 wizard Chốt ca) — tính SỐNG từ payment trong khoảng [openedAt, đóng ca hoặc hiện tại)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "cashInAmount": {
+                          "type": "integer"
+                        },
+                        "cashInCount": {
+                          "type": "integer"
+                        },
+                        "cashOutAmount": {
+                          "type": "integer"
+                        },
+                        "cashOutCount": {
+                          "type": "integer"
+                        },
+                        "nonCashBreakdown": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "method": {
+                                "type": "string"
+                              },
+                              "methodLabel": {
+                                "type": "string"
+                              },
+                              "count": {
+                                "type": "integer"
+                              },
+                              "amount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "method",
+                              "methodLabel",
+                              "count",
+                              "amount"
+                            ]
+                          }
+                        },
+                        "expectedCashAmount": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "cashInAmount",
+                        "cashInCount",
+                        "cashOutAmount",
+                        "cashOutCount",
+                        "nonCashBreakdown",
+                        "expectedCashAmount"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền cashier_shift.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy (không tồn tại hoặc thuộc tenant khác)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cashier-shifts/{id}": {
+      "get": {
+        "tags": [
+          "cashier-shift"
+        ],
+        "summary": "Chi tiết 1 phiếu chốt ca",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "shiftNo": {
+                          "type": "string"
+                        },
+                        "cashierId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "cashierName": {
+                          "type": "string"
+                        },
+                        "shiftLabel": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "OPEN",
+                            "CLOSED",
+                            "APPROVED"
+                          ]
+                        },
+                        "openedAt": {
+                          "type": "string"
+                        },
+                        "openingFloatExpected": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "openingFloatActual": {
+                          "type": "integer"
+                        },
+                        "openingDiscrepancyReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "closedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cashInAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "cashOutAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "nonCashBreakdown": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "method": {
+                                "type": "string"
+                              },
+                              "methodLabel": {
+                                "type": "string"
+                              },
+                              "count": {
+                                "type": "integer"
+                              },
+                              "amount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "method",
+                              "methodLabel",
+                              "count",
+                              "amount"
+                            ]
+                          }
+                        },
+                        "expectedCashAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "countedCashAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "cashDiscrepancyReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "keepForNextAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "submittedAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "resolutionMethod": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "DEDUCT",
+                            "INCOME",
+                            "WAIVE"
+                          ]
+                        },
+                        "resolutionNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "editedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "editedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "shiftNo",
+                        "cashierId",
+                        "cashierName",
+                        "shiftLabel",
+                        "status",
+                        "openedAt",
+                        "openingFloatExpected",
+                        "openingFloatActual",
+                        "openingDiscrepancyReason",
+                        "closedAt",
+                        "cashInAmount",
+                        "cashOutAmount",
+                        "nonCashBreakdown",
+                        "expectedCashAmount",
+                        "countedCashAmount",
+                        "cashDiscrepancyReason",
+                        "keepForNextAmount",
+                        "submittedAmount",
+                        "resolutionMethod",
+                        "resolutionNote",
+                        "resolvedByName",
+                        "resolvedAt",
+                        "approvedByName",
+                        "approvedAt",
+                        "editedByName",
+                        "editedAt",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền cashier_shift.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cashier-shifts/{id}/close": {
+      "post": {
+        "tags": [
+          "cashier-shift"
+        ],
+        "summary": "Chốt ca — tự tính \"Tổng kết hệ thống\" tại thời điểm chốt, bắt buộc lý do nếu có chênh lệch",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "countedCashAmount": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "cashDiscrepancyReason": {
+                    "type": "string"
+                  },
+                  "keepForNextAmount": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "handoverNote": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "countedCashAmount",
+                  "keepForNextAmount",
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "shiftNo": {
+                          "type": "string"
+                        },
+                        "cashierId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "cashierName": {
+                          "type": "string"
+                        },
+                        "shiftLabel": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "OPEN",
+                            "CLOSED",
+                            "APPROVED"
+                          ]
+                        },
+                        "openedAt": {
+                          "type": "string"
+                        },
+                        "openingFloatExpected": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "openingFloatActual": {
+                          "type": "integer"
+                        },
+                        "openingDiscrepancyReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "closedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cashInAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "cashOutAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "nonCashBreakdown": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "method": {
+                                "type": "string"
+                              },
+                              "methodLabel": {
+                                "type": "string"
+                              },
+                              "count": {
+                                "type": "integer"
+                              },
+                              "amount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "method",
+                              "methodLabel",
+                              "count",
+                              "amount"
+                            ]
+                          }
+                        },
+                        "expectedCashAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "countedCashAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "cashDiscrepancyReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "keepForNextAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "submittedAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "resolutionMethod": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "DEDUCT",
+                            "INCOME",
+                            "WAIVE"
+                          ]
+                        },
+                        "resolutionNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "editedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "editedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "shiftNo",
+                        "cashierId",
+                        "cashierName",
+                        "shiftLabel",
+                        "status",
+                        "openedAt",
+                        "openingFloatExpected",
+                        "openingFloatActual",
+                        "openingDiscrepancyReason",
+                        "closedAt",
+                        "cashInAmount",
+                        "cashOutAmount",
+                        "nonCashBreakdown",
+                        "expectedCashAmount",
+                        "countedCashAmount",
+                        "cashDiscrepancyReason",
+                        "keepForNextAmount",
+                        "submittedAmount",
+                        "resolutionMethod",
+                        "resolutionNote",
+                        "resolvedByName",
+                        "resolvedAt",
+                        "approvedByName",
+                        "approvedAt",
+                        "editedByName",
+                        "editedAt",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Có chênh lệch mà thiếu lý do (CASHIER_SHIFT_DISCREPANCY_REASON_REQUIRED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền cashier_shift.create",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy, hoặc scope personal mà không phải người đã mở ca này",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp (CONCURRENT_MODIFICATION), hoặc ca không còn OPEN (CASHIER_SHIFT_NOT_OPEN)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cashier-shifts/{id}/resync-preview": {
+      "get": {
+        "tags": [
+          "cashier-shift"
+        ],
+        "summary": "Quản lý xem trước \"Tính toán lại\" số hệ thống (đọc-only, chưa lưu) — dùng lại đúng hàm tính của bước 1 wizard",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "cashInAmount": {
+                          "type": "integer"
+                        },
+                        "cashInCount": {
+                          "type": "integer"
+                        },
+                        "cashOutAmount": {
+                          "type": "integer"
+                        },
+                        "cashOutCount": {
+                          "type": "integer"
+                        },
+                        "nonCashBreakdown": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "method": {
+                                "type": "string"
+                              },
+                              "methodLabel": {
+                                "type": "string"
+                              },
+                              "count": {
+                                "type": "integer"
+                              },
+                              "amount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "method",
+                              "methodLabel",
+                              "count",
+                              "amount"
+                            ]
+                          }
+                        },
+                        "expectedCashAmount": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "cashInAmount",
+                        "cashInCount",
+                        "cashOutAmount",
+                        "cashOutCount",
+                        "nonCashBreakdown",
+                        "expectedCashAmount"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền cashier_shift.manage",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cashier-shifts/{id}/resolve-discrepancy": {
+      "post": {
+        "tags": [
+          "cashier-shift"
+        ],
+        "summary": "Xử lý chênh lệch (Quản lý) — trừ lương/ghi thu nhập khác/bỏ qua",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "method": {
+                    "type": "string",
+                    "enum": [
+                      "DEDUCT",
+                      "INCOME",
+                      "WAIVE"
+                    ]
+                  },
+                  "note": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "method",
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "shiftNo": {
+                          "type": "string"
+                        },
+                        "cashierId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "cashierName": {
+                          "type": "string"
+                        },
+                        "shiftLabel": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "OPEN",
+                            "CLOSED",
+                            "APPROVED"
+                          ]
+                        },
+                        "openedAt": {
+                          "type": "string"
+                        },
+                        "openingFloatExpected": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "openingFloatActual": {
+                          "type": "integer"
+                        },
+                        "openingDiscrepancyReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "closedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cashInAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "cashOutAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "nonCashBreakdown": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "method": {
+                                "type": "string"
+                              },
+                              "methodLabel": {
+                                "type": "string"
+                              },
+                              "count": {
+                                "type": "integer"
+                              },
+                              "amount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "method",
+                              "methodLabel",
+                              "count",
+                              "amount"
+                            ]
+                          }
+                        },
+                        "expectedCashAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "countedCashAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "cashDiscrepancyReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "keepForNextAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "submittedAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "resolutionMethod": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "DEDUCT",
+                            "INCOME",
+                            "WAIVE"
+                          ]
+                        },
+                        "resolutionNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "editedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "editedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "shiftNo",
+                        "cashierId",
+                        "cashierName",
+                        "shiftLabel",
+                        "status",
+                        "openedAt",
+                        "openingFloatExpected",
+                        "openingFloatActual",
+                        "openingDiscrepancyReason",
+                        "closedAt",
+                        "cashInAmount",
+                        "cashOutAmount",
+                        "nonCashBreakdown",
+                        "expectedCashAmount",
+                        "countedCashAmount",
+                        "cashDiscrepancyReason",
+                        "keepForNextAmount",
+                        "submittedAmount",
+                        "resolutionMethod",
+                        "resolutionNote",
+                        "resolvedByName",
+                        "resolvedAt",
+                        "approvedByName",
+                        "approvedAt",
+                        "editedByName",
+                        "editedAt",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền cashier_shift.manage",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp (CONCURRENT_MODIFICATION), hoặc ca chưa chốt (CASHIER_SHIFT_NOT_CLOSED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cashier-shifts/{id}/approve": {
+      "post": {
+        "tags": [
+          "cashier-shift"
+        ],
+        "summary": "Duyệt phiếu (Quản lý) — \"Đã kiểm tra / Duyệt phiếu\"",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "shiftNo": {
+                          "type": "string"
+                        },
+                        "cashierId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "cashierName": {
+                          "type": "string"
+                        },
+                        "shiftLabel": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "OPEN",
+                            "CLOSED",
+                            "APPROVED"
+                          ]
+                        },
+                        "openedAt": {
+                          "type": "string"
+                        },
+                        "openingFloatExpected": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "openingFloatActual": {
+                          "type": "integer"
+                        },
+                        "openingDiscrepancyReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "closedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cashInAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "cashOutAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "nonCashBreakdown": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "method": {
+                                "type": "string"
+                              },
+                              "methodLabel": {
+                                "type": "string"
+                              },
+                              "count": {
+                                "type": "integer"
+                              },
+                              "amount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "method",
+                              "methodLabel",
+                              "count",
+                              "amount"
+                            ]
+                          }
+                        },
+                        "expectedCashAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "countedCashAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "cashDiscrepancyReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "keepForNextAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "submittedAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "resolutionMethod": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "DEDUCT",
+                            "INCOME",
+                            "WAIVE"
+                          ]
+                        },
+                        "resolutionNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "editedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "editedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "shiftNo",
+                        "cashierId",
+                        "cashierName",
+                        "shiftLabel",
+                        "status",
+                        "openedAt",
+                        "openingFloatExpected",
+                        "openingFloatActual",
+                        "openingDiscrepancyReason",
+                        "closedAt",
+                        "cashInAmount",
+                        "cashOutAmount",
+                        "nonCashBreakdown",
+                        "expectedCashAmount",
+                        "countedCashAmount",
+                        "cashDiscrepancyReason",
+                        "keepForNextAmount",
+                        "submittedAmount",
+                        "resolutionMethod",
+                        "resolutionNote",
+                        "resolvedByName",
+                        "resolvedAt",
+                        "approvedByName",
+                        "approvedAt",
+                        "editedByName",
+                        "editedAt",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền cashier_shift.manage",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp (CONCURRENT_MODIFICATION), hoặc ca không ở trạng thái CLOSED (CASHIER_SHIFT_NOT_CLOSED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cashier-shifts/{id}/edit": {
+      "post": {
+        "tags": [
+          "cashier-shift"
+        ],
+        "summary": "\"Mở khoá để sửa\" (Quản lý) — sửa số liệu người nhập + \"Tính toán lại\" số hệ thống, bắt buộc lý do, ghi audit before/after",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "version": {
+                    "type": "integer"
+                  },
+                  "countedCashAmount": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "keepForNextAmount": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "cashDiscrepancyReason": {
+                    "type": "string"
+                  },
+                  "handoverNote": {
+                    "type": "string"
+                  },
+                  "resyncSystemTotals": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "reason",
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "shiftNo": {
+                          "type": "string"
+                        },
+                        "cashierId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "cashierName": {
+                          "type": "string"
+                        },
+                        "shiftLabel": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "OPEN",
+                            "CLOSED",
+                            "APPROVED"
+                          ]
+                        },
+                        "openedAt": {
+                          "type": "string"
+                        },
+                        "openingFloatExpected": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "openingFloatActual": {
+                          "type": "integer"
+                        },
+                        "openingDiscrepancyReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "closedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cashInAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "cashOutAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "nonCashBreakdown": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "method": {
+                                "type": "string"
+                              },
+                              "methodLabel": {
+                                "type": "string"
+                              },
+                              "count": {
+                                "type": "integer"
+                              },
+                              "amount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "method",
+                              "methodLabel",
+                              "count",
+                              "amount"
+                            ]
+                          }
+                        },
+                        "expectedCashAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "countedCashAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "cashDiscrepancyReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "keepForNextAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "submittedAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "resolutionMethod": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "DEDUCT",
+                            "INCOME",
+                            "WAIVE"
+                          ]
+                        },
+                        "resolutionNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "editedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "editedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "shiftNo",
+                        "cashierId",
+                        "cashierName",
+                        "shiftLabel",
+                        "status",
+                        "openedAt",
+                        "openingFloatExpected",
+                        "openingFloatActual",
+                        "openingDiscrepancyReason",
+                        "closedAt",
+                        "cashInAmount",
+                        "cashOutAmount",
+                        "nonCashBreakdown",
+                        "expectedCashAmount",
+                        "countedCashAmount",
+                        "cashDiscrepancyReason",
+                        "keepForNextAmount",
+                        "submittedAmount",
+                        "resolutionMethod",
+                        "resolutionNote",
+                        "resolvedByName",
+                        "resolvedAt",
+                        "approvedByName",
+                        "approvedAt",
+                        "editedByName",
+                        "editedAt",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền cashier_shift.manage",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp (CONCURRENT_MODIFICATION), hoặc ca chưa chốt (CASHIER_SHIFT_NOT_CLOSED)",
             "content": {
               "application/json": {
                 "schema": {

@@ -16,6 +16,13 @@ export interface ReferenceCatalogReaderPort {
     category: string,
     code: string,
   ): Promise<{ code: string; name: string; deactivatesAccount: boolean } | null>;
+
+  /**
+   * "Chốt ca" (2026-09-03) — `cashier-shift` cần TOÀN BỘ mục `PAYMENT_METHOD` một lần (kể cả đã ẩn,
+   * để phiếu cũ tham chiếu mã đã ẩn vẫn resolve được tên) để gộp nhóm phi tiền mặt theo hình thức +
+   * biết hình thức nào tính là tiền mặt (`countsAsCash`).
+   */
+  listByCategory(tenantId: string, category: string): Promise<Array<{ code: string; name: string; countsAsCash: boolean }>>;
 }
 
 export const REFERENCE_CATALOG_READER_PORT = Symbol('REFERENCE_CATALOG_READER_PORT');

@@ -88,6 +88,13 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   // "Cấu hình chung" — tự đăng ký ca bị tắt, cùng nhóm DOCTOR_AVAILABILITY_*_DISABLED ở trên (thao
   // tác bị cấu hình phòng khám chặn, không phải thiếu quyền RBAC).
   WORK_SHIFT_ASSIGNMENT_SELF_SCHEDULE_DISABLED: HttpStatus.FORBIDDEN,
+  // "Chốt ca" (2026-09-03) — cùng nhóm CONFLICT: trạng thái hiện tại của ca (đang mở/đã chốt) không
+  // cho phép thao tác này, không phải lỗi input.
+  CASHIER_SHIFT_ALREADY_OPEN: HttpStatus.CONFLICT,
+  CASHIER_SHIFT_NOT_OPEN: HttpStatus.CONFLICT,
+  CASHIER_SHIFT_NOT_CLOSED: HttpStatus.CONFLICT,
+  // Thiếu lý do giải trình chênh lệch — lỗi input (client phải gửi kèm), không phải xung đột trạng thái.
+  CASHIER_SHIFT_DISCREPANCY_REASON_REQUIRED: HttpStatus.BAD_REQUEST,
 };
 
 /**

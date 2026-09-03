@@ -12,6 +12,8 @@ export interface CreateReferenceCatalogData {
   unit?: string | null;
   /** Chỉ có ý nghĩa với category EMPLOYMENT_STATUS — mở rộng ADM-01, xem schema.prisma. */
   deactivatesAccount?: boolean;
+  /** Chỉ có ý nghĩa với category PAYMENT_METHOD ("Chốt ca", 2026-09-03) — xem schema.prisma. */
+  countsAsCash?: boolean;
   /** Chỉ có ý nghĩa với category UNIT (Đơn vị tính) — xem schema.prisma. */
   description?: string | null;
   /** Chỉ ItemFormModal category UNIT gửi — category khác luôn tạo mới ở trạng thái hoạt động
@@ -26,6 +28,7 @@ export interface UpdateReferenceCatalogData {
   price?: bigint | null;
   unit?: string | null;
   deactivatesAccount?: boolean;
+  countsAsCash?: boolean;
   description?: string | null;
   isActive?: boolean;
 }

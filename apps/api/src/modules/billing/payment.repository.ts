@@ -48,4 +48,17 @@ export class PaymentRepository {
       data: { deletedAt: new Date(), deletedReason: reason, updatedBy: actorId },
     });
   }
+
+  /**
+   * "Chốt ca" (2026-09-03) — mọi dòng thu/hoàn tiền (mọi hình thức, không riêng tiền mặt) trong
+   * khoảng [startAt, endAt) — dùng cho `computeCashierShiftTotals()` ở `@nexamed/core`. Lọc theo
+   * THỜI GIAN (`paidAt`), KHÔNG theo `createdBy` — v1 chỉ 1 két dùng chung, bất kỳ ai xử lý thu
+   * ngân trong khung giờ ca đang mở đều tính vào ca đó (đúng bản chất tiền vào CÙNG 1 két vật lý).
+   */
+  listForWindow(tx: Prisma.TransactionClient, tenantId: string, startAt: Date, endAt: Date): Promise<Array<Pick<Payment, 'method' | 'type' | 'amount'>>> {
+    return tx.payment.findMany({
+      where: { tenantId, deletedAt: null, paidAt: { gte: startAt, lt: endAt } },
+      select: { method: true, type: true, amount: true },
+    });
+  }
 }

@@ -1940,6 +1940,7 @@ export interface paths {
                                 blockBookingOutsideWorkShiftEnabled: boolean;
                                 allowStaffSelfScheduleEnabled: boolean;
                                 workShiftAssignmentLockGraceDays: number;
+                                cashierShiftBlindCloseEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -10151,6 +10152,7 @@ export interface paths {
                                 blockBookingOutsideWorkShiftEnabled: boolean;
                                 allowStaffSelfScheduleEnabled: boolean;
                                 workShiftAssignmentLockGraceDays: number;
+                                cashierShiftBlindCloseEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -10244,6 +10246,7 @@ export interface paths {
                         blockBookingOutsideWorkShiftEnabled?: boolean;
                         allowStaffSelfScheduleEnabled?: boolean;
                         workShiftAssignmentLockGraceDays?: number;
+                        cashierShiftBlindCloseEnabled?: boolean;
                     };
                 };
             };
@@ -10296,6 +10299,7 @@ export interface paths {
                                 blockBookingOutsideWorkShiftEnabled: boolean;
                                 allowStaffSelfScheduleEnabled: boolean;
                                 workShiftAssignmentLockGraceDays: number;
+                                cashierShiftBlindCloseEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -10399,6 +10403,62 @@ export interface paths {
             cookie?: never;
         };
         /** "Cấu hình chung" — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /clinic-settings/deferred-payment-enabled) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                enabled: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinic-settings/cashier-shift-blind-close-enabled": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** "Chốt ca" — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /clinic-settings/deferred-payment-enabled) */
         get: {
             parameters: {
                 query?: never;
@@ -14055,6 +14115,1290 @@ export interface paths {
                 };
             };
         };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cashier-shifts/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ca đang OPEN (nếu có) + gợi ý vốn đầu ca cho lần Mở ca tiếp theo (ca CLOSED gần nhất toàn tenant) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                openShift: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    shiftNo: string;
+                                    /** Format: uuid */
+                                    cashierId: string;
+                                    cashierName: string;
+                                    shiftLabel: string;
+                                    /** @enum {string} */
+                                    status: "OPEN" | "CLOSED" | "APPROVED";
+                                    openedAt: string;
+                                    openingFloatExpected: number | null;
+                                    openingFloatActual: number;
+                                    openingDiscrepancyReason: string | null;
+                                    closedAt: string | null;
+                                    cashInAmount: number | null;
+                                    cashOutAmount: number | null;
+                                    nonCashBreakdown: {
+                                        method: string;
+                                        methodLabel: string;
+                                        count: number;
+                                        amount: number;
+                                    }[];
+                                    expectedCashAmount: number | null;
+                                    countedCashAmount: number | null;
+                                    cashDiscrepancyReason: string | null;
+                                    keepForNextAmount: number | null;
+                                    submittedAmount: number | null;
+                                    /** @enum {string|null} */
+                                    resolutionMethod: "DEDUCT" | "INCOME" | "WAIVE" | null;
+                                    resolutionNote: string | null;
+                                    resolvedByName: string | null;
+                                    resolvedAt: string | null;
+                                    approvedByName: string | null;
+                                    approvedAt: string | null;
+                                    editedByName: string | null;
+                                    editedAt: string | null;
+                                    version: number;
+                                } | null;
+                                previousClosedShift: {
+                                    shiftNo: string;
+                                    cashierName: string;
+                                    shiftLabel: string;
+                                    closedAt: string;
+                                    keepForNextAmount: number;
+                                } | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền cashier_shift.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cashier-shifts/open": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mở ca — chặn nếu đang có ca khác chưa chốt (v1 chỉ 1 két dùng chung toàn tenant) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        openingFloatActual: number;
+                        openingDiscrepancyReason?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                shiftNo: string;
+                                /** Format: uuid */
+                                cashierId: string;
+                                cashierName: string;
+                                shiftLabel: string;
+                                /** @enum {string} */
+                                status: "OPEN" | "CLOSED" | "APPROVED";
+                                openedAt: string;
+                                openingFloatExpected: number | null;
+                                openingFloatActual: number;
+                                openingDiscrepancyReason: string | null;
+                                closedAt: string | null;
+                                cashInAmount: number | null;
+                                cashOutAmount: number | null;
+                                nonCashBreakdown: {
+                                    method: string;
+                                    methodLabel: string;
+                                    count: number;
+                                    amount: number;
+                                }[];
+                                expectedCashAmount: number | null;
+                                countedCashAmount: number | null;
+                                cashDiscrepancyReason: string | null;
+                                keepForNextAmount: number | null;
+                                submittedAmount: number | null;
+                                /** @enum {string|null} */
+                                resolutionMethod: "DEDUCT" | "INCOME" | "WAIVE" | null;
+                                resolutionNote: string | null;
+                                resolvedByName: string | null;
+                                resolvedAt: string | null;
+                                approvedByName: string | null;
+                                approvedAt: string | null;
+                                editedByName: string | null;
+                                editedAt: string | null;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Có chênh lệch với vốn ca trước để lại mà thiếu lý do (CASHIER_SHIFT_DISCREPANCY_REASON_REQUIRED) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền cashier_shift.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Đang có ca khác chưa chốt (CASHIER_SHIFT_ALREADY_OPEN) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cashier-shifts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** "Danh sách phiếu chốt ca" (Quản lý/Kế toán) — chỉ scope global, lọc theo khoảng ngày/thu ngân/trạng thái chênh lệch */
+        get: {
+            parameters: {
+                query?: {
+                    dateFrom?: string;
+                    dateTo?: string;
+                    cashierId?: string;
+                    status?: "ok" | "bad";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    shiftNo: string;
+                                    cashierName: string;
+                                    shiftLabel: string;
+                                    openedAt: string;
+                                    closedAt: string | null;
+                                    expectedCashAmount: number | null;
+                                    countedCashAmount: number | null;
+                                    submittedAmount: number | null;
+                                    cashDiscrepancyAmount: number;
+                                    /** @enum {string} */
+                                    status: "OPEN" | "CLOSED" | "APPROVED";
+                                    editedAt: string | null;
+                                }[];
+                                totalCount: number;
+                                totalSubmittedAmount: number;
+                                pendingApprovalCount: number;
+                                discrepancyCount: number;
+                                discrepancyTotalAmount: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền cashier_shift.read, hoặc chỉ scope personal (không xem được danh sách) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cashier-shifts/{id}/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** "Tổng kết hệ thống" (bước 1 wizard Chốt ca) — tính SỐNG từ payment trong khoảng [openedAt, đóng ca hoặc hiện tại) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                cashInAmount: number;
+                                cashInCount: number;
+                                cashOutAmount: number;
+                                cashOutCount: number;
+                                nonCashBreakdown: {
+                                    method: string;
+                                    methodLabel: string;
+                                    count: number;
+                                    amount: number;
+                                }[];
+                                expectedCashAmount: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền cashier_shift.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại hoặc thuộc tenant khác) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cashier-shifts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Chi tiết 1 phiếu chốt ca */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                shiftNo: string;
+                                /** Format: uuid */
+                                cashierId: string;
+                                cashierName: string;
+                                shiftLabel: string;
+                                /** @enum {string} */
+                                status: "OPEN" | "CLOSED" | "APPROVED";
+                                openedAt: string;
+                                openingFloatExpected: number | null;
+                                openingFloatActual: number;
+                                openingDiscrepancyReason: string | null;
+                                closedAt: string | null;
+                                cashInAmount: number | null;
+                                cashOutAmount: number | null;
+                                nonCashBreakdown: {
+                                    method: string;
+                                    methodLabel: string;
+                                    count: number;
+                                    amount: number;
+                                }[];
+                                expectedCashAmount: number | null;
+                                countedCashAmount: number | null;
+                                cashDiscrepancyReason: string | null;
+                                keepForNextAmount: number | null;
+                                submittedAmount: number | null;
+                                /** @enum {string|null} */
+                                resolutionMethod: "DEDUCT" | "INCOME" | "WAIVE" | null;
+                                resolutionNote: string | null;
+                                resolvedByName: string | null;
+                                resolvedAt: string | null;
+                                approvedByName: string | null;
+                                approvedAt: string | null;
+                                editedByName: string | null;
+                                editedAt: string | null;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền cashier_shift.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cashier-shifts/{id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Chốt ca — tự tính "Tổng kết hệ thống" tại thời điểm chốt, bắt buộc lý do nếu có chênh lệch */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        countedCashAmount: number;
+                        cashDiscrepancyReason?: string;
+                        keepForNextAmount: number;
+                        handoverNote?: string;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                shiftNo: string;
+                                /** Format: uuid */
+                                cashierId: string;
+                                cashierName: string;
+                                shiftLabel: string;
+                                /** @enum {string} */
+                                status: "OPEN" | "CLOSED" | "APPROVED";
+                                openedAt: string;
+                                openingFloatExpected: number | null;
+                                openingFloatActual: number;
+                                openingDiscrepancyReason: string | null;
+                                closedAt: string | null;
+                                cashInAmount: number | null;
+                                cashOutAmount: number | null;
+                                nonCashBreakdown: {
+                                    method: string;
+                                    methodLabel: string;
+                                    count: number;
+                                    amount: number;
+                                }[];
+                                expectedCashAmount: number | null;
+                                countedCashAmount: number | null;
+                                cashDiscrepancyReason: string | null;
+                                keepForNextAmount: number | null;
+                                submittedAmount: number | null;
+                                /** @enum {string|null} */
+                                resolutionMethod: "DEDUCT" | "INCOME" | "WAIVE" | null;
+                                resolutionNote: string | null;
+                                resolvedByName: string | null;
+                                resolvedAt: string | null;
+                                approvedByName: string | null;
+                                approvedAt: string | null;
+                                editedByName: string | null;
+                                editedAt: string | null;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Có chênh lệch mà thiếu lý do (CASHIER_SHIFT_DISCREPANCY_REASON_REQUIRED) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền cashier_shift.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy, hoặc scope personal mà không phải người đã mở ca này */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION), hoặc ca không còn OPEN (CASHIER_SHIFT_NOT_OPEN) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cashier-shifts/{id}/resync-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Quản lý xem trước "Tính toán lại" số hệ thống (đọc-only, chưa lưu) — dùng lại đúng hàm tính của bước 1 wizard */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                cashInAmount: number;
+                                cashInCount: number;
+                                cashOutAmount: number;
+                                cashOutCount: number;
+                                nonCashBreakdown: {
+                                    method: string;
+                                    methodLabel: string;
+                                    count: number;
+                                    amount: number;
+                                }[];
+                                expectedCashAmount: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền cashier_shift.manage */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cashier-shifts/{id}/resolve-discrepancy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Xử lý chênh lệch (Quản lý) — trừ lương/ghi thu nhập khác/bỏ qua */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        method: "DEDUCT" | "INCOME" | "WAIVE";
+                        note?: string;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                shiftNo: string;
+                                /** Format: uuid */
+                                cashierId: string;
+                                cashierName: string;
+                                shiftLabel: string;
+                                /** @enum {string} */
+                                status: "OPEN" | "CLOSED" | "APPROVED";
+                                openedAt: string;
+                                openingFloatExpected: number | null;
+                                openingFloatActual: number;
+                                openingDiscrepancyReason: string | null;
+                                closedAt: string | null;
+                                cashInAmount: number | null;
+                                cashOutAmount: number | null;
+                                nonCashBreakdown: {
+                                    method: string;
+                                    methodLabel: string;
+                                    count: number;
+                                    amount: number;
+                                }[];
+                                expectedCashAmount: number | null;
+                                countedCashAmount: number | null;
+                                cashDiscrepancyReason: string | null;
+                                keepForNextAmount: number | null;
+                                submittedAmount: number | null;
+                                /** @enum {string|null} */
+                                resolutionMethod: "DEDUCT" | "INCOME" | "WAIVE" | null;
+                                resolutionNote: string | null;
+                                resolvedByName: string | null;
+                                resolvedAt: string | null;
+                                approvedByName: string | null;
+                                approvedAt: string | null;
+                                editedByName: string | null;
+                                editedAt: string | null;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền cashier_shift.manage */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION), hoặc ca chưa chốt (CASHIER_SHIFT_NOT_CLOSED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cashier-shifts/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Duyệt phiếu (Quản lý) — "Đã kiểm tra / Duyệt phiếu" */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                shiftNo: string;
+                                /** Format: uuid */
+                                cashierId: string;
+                                cashierName: string;
+                                shiftLabel: string;
+                                /** @enum {string} */
+                                status: "OPEN" | "CLOSED" | "APPROVED";
+                                openedAt: string;
+                                openingFloatExpected: number | null;
+                                openingFloatActual: number;
+                                openingDiscrepancyReason: string | null;
+                                closedAt: string | null;
+                                cashInAmount: number | null;
+                                cashOutAmount: number | null;
+                                nonCashBreakdown: {
+                                    method: string;
+                                    methodLabel: string;
+                                    count: number;
+                                    amount: number;
+                                }[];
+                                expectedCashAmount: number | null;
+                                countedCashAmount: number | null;
+                                cashDiscrepancyReason: string | null;
+                                keepForNextAmount: number | null;
+                                submittedAmount: number | null;
+                                /** @enum {string|null} */
+                                resolutionMethod: "DEDUCT" | "INCOME" | "WAIVE" | null;
+                                resolutionNote: string | null;
+                                resolvedByName: string | null;
+                                resolvedAt: string | null;
+                                approvedByName: string | null;
+                                approvedAt: string | null;
+                                editedByName: string | null;
+                                editedAt: string | null;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền cashier_shift.manage */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION), hoặc ca không ở trạng thái CLOSED (CASHIER_SHIFT_NOT_CLOSED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cashier-shifts/{id}/edit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** "Mở khoá để sửa" (Quản lý) — sửa số liệu người nhập + "Tính toán lại" số hệ thống, bắt buộc lý do, ghi audit before/after */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        reason: string;
+                        version: number;
+                        countedCashAmount?: number;
+                        keepForNextAmount?: number;
+                        cashDiscrepancyReason?: string;
+                        handoverNote?: string;
+                        resyncSystemTotals?: boolean;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                shiftNo: string;
+                                /** Format: uuid */
+                                cashierId: string;
+                                cashierName: string;
+                                shiftLabel: string;
+                                /** @enum {string} */
+                                status: "OPEN" | "CLOSED" | "APPROVED";
+                                openedAt: string;
+                                openingFloatExpected: number | null;
+                                openingFloatActual: number;
+                                openingDiscrepancyReason: string | null;
+                                closedAt: string | null;
+                                cashInAmount: number | null;
+                                cashOutAmount: number | null;
+                                nonCashBreakdown: {
+                                    method: string;
+                                    methodLabel: string;
+                                    count: number;
+                                    amount: number;
+                                }[];
+                                expectedCashAmount: number | null;
+                                countedCashAmount: number | null;
+                                cashDiscrepancyReason: string | null;
+                                keepForNextAmount: number | null;
+                                submittedAmount: number | null;
+                                /** @enum {string|null} */
+                                resolutionMethod: "DEDUCT" | "INCOME" | "WAIVE" | null;
+                                resolutionNote: string | null;
+                                resolvedByName: string | null;
+                                resolvedAt: string | null;
+                                approvedByName: string | null;
+                                approvedAt: string | null;
+                                editedByName: string | null;
+                                editedAt: string | null;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền cashier_shift.manage */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION), hoặc ca chưa chốt (CASHIER_SHIFT_NOT_CLOSED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;

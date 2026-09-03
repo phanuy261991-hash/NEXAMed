@@ -91,6 +91,12 @@ export const referenceCatalogItemSchema = z.object({
   description: z.string().nullable(),
   /** Chỉ có ý nghĩa với category EXAM_TYPE — danh sách đơn giá còn hiệu lực (docs/DECISIONS.md #079). */
   prices: z.array(examTypePriceItemSchema).optional(),
+  /**
+   * "Chốt ca" (2026-09-03) — CHỈ có ý nghĩa với category PAYMENT_METHOD: hình thức thanh toán này
+   * có gộp vào đối soát đếm két tiền mặt không. Tách cột riêng thay vì so khớp cứng code='CASH' —
+   * cùng lý do `deactivatesAccount` (code sửa được qua UI).
+   */
+  countsAsCash: z.boolean(),
 });
 export type ReferenceCatalogItem = z.infer<typeof referenceCatalogItemSchema>;
 
@@ -113,6 +119,7 @@ export const createReferenceCatalogRequestSchema = z.object({
   price: z.number().int().nonnegative().optional(),
   unit: z.string().min(1).optional(),
   deactivatesAccount: z.boolean().optional(),
+  countsAsCash: z.boolean().optional(),
   description: z.string().min(1).optional(),
   /** Chỉ ItemFormModal của category UNIT/ACADEMIC_TITLE/STAFF_POSITION gửi field này (select "Đang
    * sử dụng"/"Ngưng sử dụng" ngay trong form, cùng mẫu RoomPane/DepartmentPane) — category khác
@@ -135,6 +142,7 @@ export const updateReferenceCatalogRequestSchema = z.object({
   price: z.number().int().nonnegative().optional(),
   unit: z.string().min(1).optional(),
   deactivatesAccount: z.boolean().optional(),
+  countsAsCash: z.boolean().optional(),
   description: z.string().min(1).optional(),
   isActive: z.boolean().optional(),
   /** Bulk-replace đơn giá, đúng ngữ nghĩa như `createReferenceCatalogRequestSchema` — `undefined`

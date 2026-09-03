@@ -36,4 +36,13 @@ export class ReferenceCatalogReaderAdapter implements ReferenceCatalogReaderPort
       return { code: row.code, name: row.name, deactivatesAccount: row.deactivatesAccount };
     });
   }
+
+  async listByCategory(tenantId: string, category: string): Promise<Array<{ code: string; name: string; countsAsCash: boolean }>> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      // includeInactive=true — phiếu chốt ca cũ có thể tham chiếu 1 hình thức thanh toán đã bị ẩn
+      // sau đó, vẫn phải resolve được tên để hiển thị lại đúng lịch sử.
+      const rows = await this.referenceCatalogRepository.listByCategory(tx, category as never, true);
+      return rows.map((row) => ({ code: row.code, name: row.name, countsAsCash: row.countsAsCash }));
+    });
+  }
 }

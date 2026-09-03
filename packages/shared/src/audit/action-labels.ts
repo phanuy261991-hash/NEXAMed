@@ -133,6 +133,14 @@ const ACTION_LABELS: Record<string, string> = {
   'doctor_availability.ended': 'Đóng ca làm việc',
   'doctor_availability.break_started': 'Tạm nghỉ',
   'doctor_availability.resumed': 'Mở lại ca làm việc',
+
+  // cashier-shift ("Chốt ca", 2026-09-03) — thêm nhãn NGAY lúc code, đúng bài học lặp lại
+  // #087/#089/#104/#109 (thêm module mới mà quên vá bảng nhãn).
+  'cashier_shift.opened': 'Mở ca',
+  'cashier_shift.closed': 'Chốt ca',
+  'cashier_shift.discrepancy_resolved': 'Xử lý chênh lệch phiếu chốt ca',
+  'cashier_shift.approved': 'Duyệt phiếu chốt ca',
+  'cashier_shift.edited': 'Sửa phiếu chốt ca đã khoá',
 };
 
 export function labelForAuditAction(action: string): string {

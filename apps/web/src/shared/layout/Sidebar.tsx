@@ -5,6 +5,7 @@ import {
   ClipboardText,
   Clock,
   ClockCounterClockwise,
+  FileText,
   Flask,
   FolderSimple,
   GearSix,
@@ -273,7 +274,8 @@ export function Sidebar() {
               </button>
               {billingGroupExpanded && (
                 <ul className="mt-0.5 flex flex-col gap-0.5 border-l border-slate-800 pl-3.5">
-                  <NavItem to="/billing" label="Danh sách cần thu" icon={Receipt} collapsed={false} indent />
+                  <NavItem to="/billing" label="Danh sách cần thu" icon={Receipt} end collapsed={false} indent />
+                  <NavItem to="/billing/cashier-shifts" label="Phiếu chốt ca" icon={FileText} collapsed={false} indent />
                 </ul>
               )}
             </li>

@@ -43,6 +43,9 @@ const EncounterConsultationPage = lazy(() =>
 // Thu ngân cơ bản (Sprint 5/6, BIL-01→04).
 const InvoiceListPage = lazy(() => import('../features/billing/InvoiceListPage').then((m) => ({ default: m.InvoiceListPage })));
 const InvoiceDetailPage = lazy(() => import('../features/billing/InvoiceDetailPage').then((m) => ({ default: m.InvoiceDetailPage })));
+const CashierShiftListPage = lazy(() =>
+  import('../features/cashier-shift/CashierShiftListPage').then((m) => ({ default: m.CashierShiftListPage })),
+);
 // Nhóm Quản trị — chỉ `clinic_admin` dùng tới; lễ tân/điều dưỡng/bác sĩ không bao giờ tải các
 // chunk này (gồm cả trang tra cứu ICD-10 và toàn bộ màn hình danh mục).
 const CatalogAdminPage = lazy(() => import('../features/catalog/CatalogAdminPage').then((m) => ({ default: m.CatalogAdminPage })));
@@ -96,6 +99,7 @@ export const router = createBrowserRouter([
       // Thu ngân cơ bản (Sprint 5/6) — không có mục sidebar riêng cho chi tiết (cùng cách
       // patient/appointment/encounter detail không có mục sidebar riêng).
       { path: 'billing', element: <InvoiceListPage /> },
+      { path: 'billing/cashier-shifts', element: <CashierShiftListPage /> },
       { path: 'billing/:encounterId', element: <InvoiceDetailPage /> },
       // "Đăng ký ca làm việc" (Giai đoạn 2 #101).
       { path: 'work-schedule/mine', element: <MyWorkSchedulePage /> },

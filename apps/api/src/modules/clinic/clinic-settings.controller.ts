@@ -43,6 +43,18 @@ export class ClinicSettingsController {
     return { enabled };
   }
 
+  /**
+   * "Chốt ca" — tự-phục vụ, KHÔNG gắn `@RequirePermission` (đúng khuôn `getDeferredPaymentEnabled`
+   * ở trên): thu ngân (`cashier_shift.create=personal`, không có `clinic_config.read`) cần biết chế
+   * độ Mù/Mở để hiện đúng UI popup Chốt ca.
+   */
+  @Get('cashier-shift-blind-close-enabled')
+  async getCashierShiftBlindCloseEnabled(@Req() req: Request) {
+    const { tenantId } = req.user!;
+    const enabled = await this.clinicSettingsService.getCashierShiftBlindCloseEnabled(tenantId);
+    return { enabled };
+  }
+
   @Patch()
   @RequirePermission('clinic_config', 'update')
   async update(@Body() body: unknown, @Req() req: Request) {

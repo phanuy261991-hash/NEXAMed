@@ -87,6 +87,7 @@ model Tenant {
   invoices               Invoice[]
   invoiceLines           InvoiceLine[]
   payments               Payment[]
+  cashierShifts          CashierShift[]
 
   @@map("tenant")
 }
@@ -204,30 +205,30 @@ model ExamStation {
 // tenant như EXAM_TYPE/ICD-10. Cùng khuôn `room`/`department` — thao tác qua bác sĩ đăng ký ca
 // theo tuần/tháng (giai đoạn kế tiếp, chưa xây) sẽ tham chiếu tới bảng này.
 model WorkShift {
-  id       String @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId String @map("tenant_id") @db.Uuid
-  name     String
+  id                  String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId            String  @map("tenant_id") @db.Uuid
+  name                String
   // Mã ngắn tự sinh (packages/core/src/reference-catalog/generate-code.ts), không nhập tay —
   // clinic_admin chỉ đặt tên "Ca sáng"/"Ca chiều", không tự nghĩ mã.
-  code     String
+  code                String
   // "HH:mm" — so sánh chuỗi đủ dùng, không cần kiểu `time` của Postgres (cùng khuôn
   // `tenant_setting.business_hours`/`DayHours.open-close`).
-  startTime String @map("start_time")
-  endTime   String @map("end_time")
+  startTime           String  @map("start_time")
+  endTime             String  @map("end_time")
   // Enum cố định 8 giá trị ở tầng ứng dụng (packages/shared/src/work-shift.ts) — TEXT ở DB để
   // không phải thêm Postgres enum riêng cho một danh sách màu thuần hiển thị.
-  color String
+  color               String
   // Giờ nghỉ giữa ca — hoàn toàn tuỳ chọn, độc lập với `restMinutes` (không bắt buộc khớp nhau,
   // xem docs/DECISIONS.md).
-  restStartTime String? @map("rest_start_time")
-  restEndTime   String? @map("rest_end_time")
+  restStartTime       String? @map("rest_start_time")
+  restEndTime         String? @map("rest_end_time")
   // Phút — cả "Tổng thời gian nghỉ" lẫn "Số giờ công chuẩn" đều quy đổi về phút lúc lưu (nhất
   // quán với `durationMinutes`/`GRID_STEP_MINUTES` đã dùng trong hệ thống), UI tự quy đổi lại
   // đúng đơn vị người dùng đã chọn lúc nhập (giờ/phút).
-  restMinutes         Int? @map("rest_minutes")
-  standardWorkMinutes Int? @map("standard_work_minutes")
-  sortOrder           Int  @default(0) @map("sort_order")
-  isActive             Boolean @default(true) @map("is_active")
+  restMinutes         Int?    @map("rest_minutes")
+  standardWorkMinutes Int?    @map("standard_work_minutes")
+  sortOrder           Int     @default(0) @map("sort_order")
+  isActive            Boolean @default(true) @map("is_active")
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -369,23 +370,23 @@ model DepartmentType {
 }
 
 model Department {
-  id               String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId         String  @map("tenant_id") @db.Uuid
-  departmentTypeId String? @map("department_type_id") @db.Uuid
+  id                  String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId            String  @map("tenant_id") @db.Uuid
+  departmentTypeId    String? @map("department_type_id") @db.Uuid
   // Mã hiển thị tự sinh qua CodeSequenceRepository (prefix "KP"), đúng khuôn patient_code/
   // employee_code — KHÔNG nhập tay. Nullable: phòng ban tạo trước tính năng này không backfill.
-  code             String?
-  name             String
+  code                String?
+  name                String
   // Mở rộng ADM-01 (2026-08-20) — danh mục Khoa/Phòng quản lý được qua UI (Thêm/Sửa/Ẩn), cùng
   // khuôn Room (isActive, không phải soft-delete deletedAt — giữ nguyên lịch sử gán trên
   // user_account.department_id, chỉ ẩn khỏi Combobox chọn mới).
-  isActive         Boolean @default(true) @map("is_active")
+  isActive            Boolean @default(true) @map("is_active")
   // "Hàng đợi ảo" (#064) — đánh dấu "Khoa chung" tự sinh mỗi tenant lúc seed
   // (`seedDefaultRolesForTenant`), dùng làm fallback `encounter.department_id` khi bác sĩ chưa gán
   // Khoa hoặc lúc Tiếp nhận chọn thẳng "Khoa chung". Đúng 1 dòng/tenant — ép bằng partial unique
   // index raw SQL trong migration (`(tenant_id) WHERE is_default`), không khai `@@unique` ở Prisma
   // (không biểu diễn được unique có điều kiện, cùng lý do patient.nationalIdHash).
-  isDefault        Boolean @default(false) @map("is_default")
+  isDefault           Boolean @default(false) @map("is_default")
   // Khoa/Phòng này có xuất hiện trong khu vực điều phối "Hàng đợi khám" không (GET
   // /departments/options, #064) — TÁCH KHỎI department_type (thuần mô tả/tổ chức, #063) vì dựa
   // vào tên/loại để suy luận "khoa nào là lâm sàng" sẽ vỡ ngầm khi đổi tên Loại. Mặc định true.
@@ -474,21 +475,22 @@ model UserAccount {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant               Tenant              @relation(fields: [tenantId], references: [id])
+  tenant                 Tenant                @relation(fields: [tenantId], references: [id])
   // Composite FK (tenant_id, department_id) -> department(tenant_id, id): department_id
   // nullable nên FK chỉ áp khi có giá trị (Postgres MATCH SIMPLE — xem docs/DECISIONS.md).
-  department           Department?         @relation(fields: [tenantId, departmentId], references: [tenantId, id])
+  department             Department?           @relation(fields: [tenantId, departmentId], references: [tenantId, id])
   // "Phòng khám mặc định" (redesign 3-tab #082) — cùng mẫu department ở trên, FK chỉ áp khi có
   // giá trị. Chỉ là gợi ý mặc định hiển thị, KHÔNG đổi cơ chế "Phòng làm việc hôm nay"
   // (doctor_room_session, #054) — hai khái niệm tách biệt.
-  defaultRoom          Room?               @relation(fields: [tenantId, defaultRoomId], references: [tenantId, id])
-  userRoles            UserRole[]
-  sessions             UserSession[]
-  appointmentsAsDoctor Appointment[]       @relation("AppointmentDoctor")
-  encountersAsDoctor   Encounter[]         @relation("EncounterDoctor")
-  roomSessionsAsDoctor DoctorRoomSession[]
-  availabilityAsDoctor DoctorAvailability[]
-  workShiftAssignments WorkShiftAssignment[]
+  defaultRoom            Room?                 @relation(fields: [tenantId, defaultRoomId], references: [tenantId, id])
+  userRoles              UserRole[]
+  sessions               UserSession[]
+  appointmentsAsDoctor   Appointment[]         @relation("AppointmentDoctor")
+  encountersAsDoctor     Encounter[]           @relation("EncounterDoctor")
+  roomSessionsAsDoctor   DoctorRoomSession[]
+  availabilityAsDoctor   DoctorAvailability[]
+  workShiftAssignments   WorkShiftAssignment[]
+  cashierShiftsAsCashier CashierShift[]
 
   // Đích của composite FK (tenant_id, id) từ user_role — chống trỏ chéo tenant (C5 trong ERD.md).
   @@unique([tenantId, id])
@@ -650,6 +652,10 @@ model ReferenceCatalog {
   // Mô tả tự do — CHỈ có ý nghĩa với category UNIT (Đơn vị tính, chủ dự án yêu cầu trực tiếp
   // 2026-08-26), NULL với category khác (cùng bản chất price/unit/deactivatesAccount ở trên).
   description        String?
+  // "Chốt ca" (2026-09-03) — CHỈ có ý nghĩa với category PAYMENT_METHOD: đánh dấu hình thức thanh
+  // toán nào gộp vào đối soát đếm két tiền mặt. Tách thành cột riêng thay vì so khớp cứng
+  // code='CASH' — cùng lý do deactivatesAccount ở trên (`code` sửa được qua UI).
+  countsAsCash       Boolean                  @default(false) @map("counts_as_cash")
 
   @@unique([category, code])
   @@map("reference_catalog")
@@ -1302,19 +1308,19 @@ model VitalSign {
 // không khai @unique ở đây (Prisma không biểu diễn được unique có điều kiện WHERE, cùng lý do
 // patient.nationalIdHash/encounter.appointmentId).
 model Diagnosis {
-  id          String        @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId    String        @map("tenant_id") @db.Uuid
-  encounterId String        @map("encounter_id") @db.Uuid
+  id              String        @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId        String        @map("tenant_id") @db.Uuid
+  encounterId     String        @map("encounter_id") @db.Uuid
   // FK thường (không composite) tới icd10_catalog.code — danh mục toàn hệ thống, không có tenant_id.
-  icd10Code   String        @map("icd10_code")
-  type        DiagnosisType
-  note        String?
+  icd10Code       String        @map("icd10_code")
+  type            DiagnosisType
+  note            String?
   // Ký hồ sơ khám (Sprint 5, S5-02/03) — "Hoàn tất khám" tự động ký, đúng khuôn `Prescription`.
   // Đính chính ghép supersedesId theo (icd10Code, type) không đổi — xem `pairDiagnosisAmendment`.
-  signedAt        DateTime? @map("signed_at") @db.Timestamptz(6)
-  signedBy        String?   @map("signed_by") @db.Uuid
-  supersedesId    String?   @map("supersedes_id") @db.Uuid
-  amendmentReason String?   @map("amendment_reason")
+  signedAt        DateTime?     @map("signed_at") @db.Timestamptz(6)
+  signedBy        String?       @map("signed_by") @db.Uuid
+  supersedesId    String?       @map("supersedes_id") @db.Uuid
+  amendmentReason String?       @map("amendment_reason")
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -1623,6 +1629,93 @@ model Payment {
 
   @@unique([tenantId, id])
   @@map("payment")
+}
+
+enum CashierShiftStatus {
+  OPEN
+  CLOSED
+  APPROVED
+
+  @@map("cashier_shift_status")
+}
+
+enum CashierShiftDiscrepancyResolution {
+  DEDUCT
+  INCOME
+  WAIVE
+
+  @@map("cashier_shift_discrepancy_resolution")
+}
+
+// "Chốt ca" (đối soát tiền mặt/két, ngoài kế hoạch, mockup duyệt 2026-09-03) — module
+// `cashier-shift`. KHÔNG liên quan `work_shift`/`work_shift_assignment` (đăng ký ca làm việc nhân
+// viên, #101) dù tên gần giống — đây là phiên làm việc CỦA KÉT TIỀN MẶT (mở/đóng/đối soát), một
+// khái niệm hoàn toàn khác. v1: 1 két dùng chung toàn tenant, chỉ 1 ca OPEN tại một thời điểm (xem
+// partial unique index trong migration) — vốn đầu ca kế thừa từ ca CLOSED gần nhất bất kỳ ai.
+model CashierShift {
+  id         String             @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId   String             @map("tenant_id") @db.Uuid
+  // Mã hiển thị, sinh qua code_sequence (prefix "PCC", packages/shared/src/cashier-shift.ts).
+  shiftNo    String             @map("shift_no")
+  // Người mở ca — CHỈ đúng người này (hoặc actor có cashier_shift.manage) mới chốt/sửa được, kiểm
+  // ở Service (RBAC chỉ gác "được thử", không phân biệt "đúng ca của mình").
+  cashierId  String             @map("cashier_id") @db.Uuid
+  // "Ca sáng"/"Ca chiều"/"Ca tối" — snapshot tính bằng deriveShiftLabel(openedAt), KHÔNG phải FK
+  // tới work_shift (danh mục mẫu ca làm việc nhân viên, #101 — khác bản chất hoàn toàn).
+  shiftLabel String             @map("shift_label")
+  status     CashierShiftStatus @default(OPEN)
+
+  openedAt                 DateTime @map("opened_at") @db.Timestamptz(6)
+  // Vốn ca trước để lại — NULL nếu đây là ca đầu tiên hệ thống (chưa từng có ca CLOSED nào).
+  openingFloatExpected     BigInt?  @map("opening_float_expected")
+  openingFloatActual       BigInt   @map("opening_float_actual")
+  openingDiscrepancyReason String?  @map("opening_discrepancy_reason")
+
+  closedAt             DateTime? @map("closed_at") @db.Timestamptz(6)
+  // 3 cột snapshot lúc chốt — tính lại được qua "Tính toán lại" (POST .../edit,
+  // resyncSystemTotals=true), KHÔNG sửa tay trực tiếp.
+  cashInAmount         BigInt?   @map("cash_in_amount")
+  cashOutAmount        BigInt?   @map("cash_out_amount")
+  // Mảng {method, count, amount} — snapshot phi tiền mặt lúc chốt, đúng tiền lệ JSON đã dùng
+  // (patient.address_json).
+  nonCashBreakdownJson Json?     @map("non_cash_breakdown_json") @db.JsonB
+  expectedCashAmount   BigInt?   @map("expected_cash_amount")
+
+  // 4 trường sửa được khi mở khoá (POST .../edit) sau khi CLOSED.
+  countedCashAmount     BigInt? @map("counted_cash_amount")
+  cashDiscrepancyReason String? @map("cash_discrepancy_reason")
+  keepForNextAmount     BigInt? @map("keep_for_next_amount")
+  handoverNote          String? @map("handover_note")
+  // = countedCashAmount - keepForNextAmount, tính lại server-side mỗi lần sửa.
+  submittedAmount       BigInt? @map("submitted_amount")
+
+  resolutionMethod CashierShiftDiscrepancyResolution? @map("resolution_method")
+  resolutionNote   String?                            @map("resolution_note")
+  resolvedBy       String?                            @map("resolved_by") @db.Uuid
+  resolvedAt       DateTime?                          @map("resolved_at") @db.Timestamptz(6)
+
+  approvedBy String?   @map("approved_by") @db.Uuid
+  approvedAt DateTime? @map("approved_at") @db.Timestamptz(6)
+
+  // Có giá trị ⇒ hiện badge "Đã chỉnh sửa" ở danh sách (chỉ set qua POST .../edit).
+  editedBy String?   @map("edited_by") @db.Uuid
+  editedAt DateTime? @map("edited_at") @db.Timestamptz(6)
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant  Tenant      @relation(fields: [tenantId], references: [id])
+  cashier UserAccount @relation(fields: [tenantId, cashierId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, shiftNo])
+  @@map("cashier_shift")
 }
 
 // Dị nguyên đã biết của bệnh nhân (Sprint 4, chốt 2026-08-25) — liên kết `patient` với danh mục

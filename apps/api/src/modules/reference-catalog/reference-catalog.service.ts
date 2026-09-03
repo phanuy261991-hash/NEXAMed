@@ -88,6 +88,7 @@ export class ReferenceCatalogService {
             price: dto.price !== undefined ? BigInt(dto.price) : null,
             unit: dto.unit ?? null,
             deactivatesAccount: dto.deactivatesAccount ?? false,
+            countsAsCash: dto.countsAsCash ?? false,
             description: dto.description ?? null,
             isActive: dto.isActive ?? true,
           });
@@ -198,6 +199,7 @@ export class ReferenceCatalogService {
         dto.price !== undefined ||
         dto.unit !== undefined ||
         dto.deactivatesAccount !== undefined ||
+        dto.countsAsCash !== undefined ||
         dto.description !== undefined ||
         dto.isActive !== undefined;
 
@@ -211,6 +213,7 @@ export class ReferenceCatalogService {
             price: dto.price !== undefined ? BigInt(dto.price) : undefined,
             unit: dto.unit,
             deactivatesAccount: dto.deactivatesAccount,
+            countsAsCash: dto.countsAsCash,
             description: dto.description,
             isActive: dto.isActive,
           });
@@ -300,6 +303,7 @@ export class ReferenceCatalogService {
       price: row.price !== null ? Number(row.price) : null,
       unit: row.unit,
       deactivatesAccount: row.deactivatesAccount,
+      countsAsCash: row.countsAsCash,
       description: row.description,
       // Category khác luôn `undefined` (field không áp dụng). EXAM_TYPE luôn là MẢNG thật (kể cả
       // rỗng — ví dụ tenant khác chưa tạo đơn giá cho mục dùng chung này) chứ không phải

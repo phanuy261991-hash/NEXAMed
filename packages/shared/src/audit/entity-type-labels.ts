@@ -34,6 +34,7 @@ const ENTITY_TYPE_LABELS: Record<string, string> = {
   work_shift_assignment: 'Đăng ký ca làm việc',
   doctor_availability: 'Trạng thái làm việc bác sĩ',
   tenant_setting: 'Cấu hình phòng khám',
+  cashier_shift: 'Phiếu chốt ca',
 };
 
 export function labelForEntityType(entityType: string): string {

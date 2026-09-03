@@ -7,6 +7,7 @@ import {
   DEFAULT_ALLOW_RECEPTIONIST_END_SHIFT,
   DEFAULT_ALLOW_STAFF_SELF_SCHEDULE_ENABLED,
   DEFAULT_BLOCK_BOOKING_OUTSIDE_WORK_SHIFT_ENABLED,
+  DEFAULT_CASHIER_SHIFT_BLIND_CLOSE_ENABLED,
   DEFAULT_NO_SHOW_AUTO_ENABLED,
   DEFAULT_NO_SHOW_THRESHOLD_MINUTES,
   DEFAULT_OVERDUE_WAIT_WARNING_MINUTES,
@@ -51,6 +52,10 @@ const allowStaffSelfScheduleSchema = z.boolean();
 // ngay) cho tenant chưa từng cấu hình.
 const WORK_SHIFT_ASSIGNMENT_LOCK_GRACE_DAYS_KEY = 'work_shift_assignment_lock_grace_days';
 const workShiftAssignmentLockGraceDaysSchema = z.number().int().min(0).max(27);
+// "Chốt ca" (2026-09-03) — chế độ đối soát Mù/Mở, bật (Mù) theo mặc định cho tenant chưa từng
+// cấu hình (khuyến nghị chống gian lận).
+const CASHIER_SHIFT_BLIND_CLOSE_KEY = 'cashier_shift_blind_close_enabled';
+const cashierShiftBlindCloseSchema = z.boolean();
 
 /**
  * Đọc/ghi `tenant_setting` cho hai key cấu hình phòng khám (S2-07, ADM-02) — cùng mẫu
@@ -169,6 +174,19 @@ export class ClinicSettingsRepository {
 
   upsertWorkShiftAssignmentLockGraceDays(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: number) {
     return this.upsert(tx, tenantId, actorId, WORK_SHIFT_ASSIGNMENT_LOCK_GRACE_DAYS_KEY, value);
+  }
+
+  async getCashierShiftBlindCloseEnabled(tx: Prisma.TransactionClient, tenantId: string): Promise<boolean> {
+    const setting = await tx.tenantSetting.findFirst({ where: { tenantId, key: CASHIER_SHIFT_BLIND_CLOSE_KEY } });
+    if (!setting) {
+      return DEFAULT_CASHIER_SHIFT_BLIND_CLOSE_ENABLED;
+    }
+    const parsed = cashierShiftBlindCloseSchema.safeParse(setting.valueJson);
+    return parsed.success ? parsed.data : DEFAULT_CASHIER_SHIFT_BLIND_CLOSE_ENABLED;
+  }
+
+  upsertCashierShiftBlindCloseEnabled(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
+    return this.upsert(tx, tenantId, actorId, CASHIER_SHIFT_BLIND_CLOSE_KEY, value);
   }
 
   upsertAllowEmergencyEndShift(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {

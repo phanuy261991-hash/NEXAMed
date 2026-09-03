@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowCounterClockwise, CaretLeft, CaretRight, ChartLineUp, Clock, MagnifyingGlass, Receipt, Wallet, Warning } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, CaretLeft, CaretRight, Clock, MagnifyingGlass, Receipt, Wallet, Warning } from '@phosphor-icons/react';
 import type { BillingListItem } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
@@ -13,6 +13,10 @@ import { Skeleton } from '../../shared/ui/Skeleton';
 import { formatVnd } from '../../shared/format/currency';
 import { useRowSelection } from '../../shared/hooks/useRowSelection';
 import { addDays, formatDateLabel, getVietnamTodayDateString } from '../appointment/schedule-grid.utils';
+import { Button } from '../../shared/ui/Button';
+import { CloseShiftDialog } from '../cashier-shift/CloseShiftDialog';
+import { OpenShiftDialog } from '../cashier-shift/OpenShiftDialog';
+import { useCurrentCashierShiftQuery } from '../cashier-shift/cashier-shift.queries';
 import { useBillingInvoiceListQuery } from './invoice.queries';
 
 /** Cùng khuôn `ReceptionListPage.tsx` (List Screen Pattern, .claude/docs/ui-guidelines.md mục 9).
@@ -75,6 +79,13 @@ export function InvoiceListPage() {
   const itemIds = items.map((i) => i.invoiceId);
   const rowSelection = useRowSelection(itemIds);
 
+  const [closeShiftOpen, setCloseShiftOpen] = useState(false);
+  const currentShiftQuery = useCurrentCashierShiftQuery();
+  const openShift = currentShiftQuery.data?.openShift ?? null;
+  // PERMISSION_DENIED nghĩa là vai trò này không có `cashier_shift.*` — không hiện gì thêm ở
+  // Thu ngân, khác lỗi mạng thật (không chặn cả trang).
+  const shiftFeatureUnavailable = currentShiftQuery.isError && currentShiftQuery.error instanceof ApiError && currentShiftQuery.error.code === 'PERMISSION_DENIED';
+
   return (
     <div className="flex h-full flex-col gap-2.5 p-3">
       <h1 className="sr-only">Thu ngân</h1>
@@ -119,6 +130,12 @@ export function InvoiceListPage() {
             className="w-full rounded-md border border-slate-300 py-1.5 pl-8 pr-3 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
           />
         </div>
+
+        {openShift && (
+          <Button type="button" variant="amber" onClick={() => setCloseShiftOpen(true)}>
+            Chốt ca
+          </Button>
+        )}
       </div>
 
       <div className="flex flex-shrink-0 items-center gap-1 border-b border-slate-200 px-1">
@@ -262,7 +279,7 @@ export function InvoiceListPage() {
 
       {listQuery.isSuccess && (
         <div className="flex flex-shrink-0 flex-wrap items-stretch overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          <div className="flex min-w-[190px] flex-1 items-center gap-3 px-5 py-3.5">
+          <div className="flex min-w-[190px] flex-1 items-center justify-center gap-3 px-5 py-3.5">
             <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
               <Wallet size={20} weight="bold" aria-hidden="true" />
             </div>
@@ -275,7 +292,7 @@ export function InvoiceListPage() {
               computeDailyBillingTotals ở @nexamed/core — nên phải trừ ra ở đây mới đúng số tiền còn
               lại trong két, tránh chủ phòng khám đối soát bị lệch không giải thích được). */}
           {listQuery.data.refundedTotalAmount > 0 && (
-            <div className="flex min-w-[190px] flex-1 items-center gap-3 border-l border-slate-100 px-5 py-3.5">
+            <div className="flex min-w-[190px] flex-1 items-center justify-center gap-3 border-l border-slate-100 px-5 py-3.5">
               <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-violet-50 text-violet-600">
                 <ArrowCounterClockwise size={20} weight="bold" aria-hidden="true" />
               </div>
@@ -285,16 +302,9 @@ export function InvoiceListPage() {
               </div>
             </div>
           )}
-          <div className="flex min-w-[190px] flex-1 items-center gap-3 border-l border-slate-100 px-5 py-3.5">
-            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
-              <ChartLineUp size={20} weight="bold" aria-hidden="true" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Thực thu</span>
-              <span className="text-xl font-bold tabular-nums text-blue-700">{formatVnd(listQuery.data.netTotalAmount)}</span>
-            </div>
-          </div>
-          {/* Cố ý tô nền đặc (khác 3 khối trên) — đây là mục CẦN HÀNH ĐỘNG (còn phiếu chưa thu),
+          {/* "Thực thu" (netTotalAmount) ẩn khỏi hiển thị theo yêu cầu chủ dự án — chỉ giữ 2 khối
+              nguồn thô "Đã thu hôm nay"/"Đã hoàn" cho gọn, tránh 3 con số cạnh nhau gây rối. */}
+          {/* Cố ý tô nền đặc (khác các khối trên) — đây là mục CẦN HÀNH ĐỘNG (còn phiếu chưa thu),
               đúng token "Triage - Lưu ý/Đang chờ" (`bg-amber-500`, .claude/docs/ui-guidelines.md mục
               2.1). `flex-none` (khác 3 khối kia dùng `flex-1`) — chỉ rộng vừa đủ nội dung, không kéo
               giãn hết phần còn lại của thanh (chủ dự án phản hồi bản đầu "quá thô và to"). */}
@@ -313,6 +323,11 @@ export function InvoiceListPage() {
       )}
 
       <SelectionToolbar count={rowSelection.selectedCount} onClear={rowSelection.clear} />
+
+      {/* "Chốt ca" — bắt buộc Mở ca trước khi dùng trang này nếu chưa có ca nào đang mở (mockup
+          duyệt 2026-09-03). Không hiện gì nếu vai trò không có cashier_shift.* (bác sĩ/điều dưỡng). */}
+      {!shiftFeatureUnavailable && currentShiftQuery.isSuccess && !openShift && <OpenShiftDialog previousClosedShift={currentShiftQuery.data.previousClosedShift} />}
+      {closeShiftOpen && openShift && <CloseShiftDialog shift={openShift} onClose={() => setCloseShiftOpen(false)} />}
     </div>
   );
 }

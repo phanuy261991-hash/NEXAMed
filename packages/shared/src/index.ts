@@ -21,6 +21,7 @@ export * from './timezone';
 export * from './drug';
 export * from './prescription';
 export * from './billing';
+export * from './cashier-shift';
 export * from './audit-log';
 export * from './audit/action-labels';
 export * from './audit/entity-type-labels';

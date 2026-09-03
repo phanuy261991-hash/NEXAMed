@@ -337,6 +337,7 @@ function ItemFormModal({
     name: string;
     sortOrder: number;
     deactivatesAccount?: boolean;
+    countsAsCash?: boolean;
     description?: string;
     isActive?: boolean;
   }) => void;
@@ -345,10 +346,13 @@ function ItemFormModal({
   const [name, setName] = useState(item?.name ?? '');
   const [sortOrder, setSortOrder] = useState(item?.sortOrder ?? 0);
   const [deactivatesAccount, setDeactivatesAccount] = useState(item?.deactivatesAccount ?? false);
+  const [countsAsCash, setCountsAsCash] = useState(item?.countsAsCash ?? false);
   const [description, setDescription] = useState(item?.description ?? '');
   const [isActive, setIsActive] = useState(item?.isActive ?? true);
   // Mở rộng ADM-01 — chỉ EMPLOYMENT_STATUS có ý nghĩa với deactivatesAccount.
   const isEmploymentStatus = category === 'EMPLOYMENT_STATUS';
+  // "Chốt ca" (2026-09-03) — chỉ PAYMENT_METHOD có ý nghĩa với countsAsCash.
+  const isPaymentMethod = category === 'PAYMENT_METHOD';
   // "Đơn vị tính" (2026-08-26) — chỉ category này đổi nhãn trường Tên.
   const isUnit = category === 'UNIT';
   // Mô tả + Trạng thái ngay trong form — UNIT (#078) + "Chức danh"/"Học hàm học vị" (2026-08-27).
@@ -366,6 +370,7 @@ function ItemFormModal({
       name: name.trim(),
       sortOrder,
       deactivatesAccount: isEmploymentStatus ? deactivatesAccount : undefined,
+      countsAsCash: isPaymentMethod ? countsAsCash : undefined,
       description: hasDescriptionAndStatus && description.trim() !== '' ? description.trim() : undefined,
       isActive: hasDescriptionAndStatus ? isActive : undefined,
     });
@@ -451,6 +456,18 @@ function ItemFormModal({
               Tự động vô hiệu hoá tài khoản khi chọn trạng thái này
               <span className="mt-0.5 block text-xs font-normal text-slate-500">
                 Ví dụ &quot;Nghỉ việc&quot; — tài khoản gán trạng thái này sẽ tự chuyển sang &quot;Vô hiệu hoá&quot;, không đăng nhập được nữa.
+              </span>
+            </span>
+          </label>
+        )}
+
+        {isPaymentMethod && (
+          <label className="mb-4 flex items-start gap-2 text-sm font-semibold text-slate-800">
+            <input type="checkbox" checked={countsAsCash} onChange={(e) => setCountsAsCash(e.target.checked)} className="mt-0.5" />
+            <span>
+              Tính là tiền mặt
+              <span className="mt-0.5 block text-xs font-normal text-slate-500">
+                Gộp vào đối soát đếm két khi Chốt ca. Ví dụ &quot;Tiền mặt&quot; — bật; &quot;Chuyển khoản&quot;/&quot;Quẹt thẻ&quot; — tắt.
               </span>
             </span>
           </label>

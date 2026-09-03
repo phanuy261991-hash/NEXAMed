@@ -167,6 +167,17 @@ import {
   workShiftAssignmentMonthSchema,
   workShiftAssignmentMonthLockStatusQuerySchema,
   workShiftAssignmentMonthLockStatusResponseSchema,
+  approveCashierShiftRequestSchema,
+  cashierShiftBlindCloseStatusSchema,
+  cashierShiftDetailSchema,
+  cashierShiftSummarySchema,
+  closeCashierShiftRequestSchema,
+  currentCashierShiftResponseSchema,
+  editCashierShiftRequestSchema,
+  listCashierShiftsQuerySchema,
+  listCashierShiftsResponseSchema,
+  openCashierShiftRequestSchema,
+  resolveCashierShiftDiscrepancyRequestSchema,
 } from '@nexamed/shared';
 
 /**
@@ -1685,6 +1696,18 @@ registry.registerPath({
 });
 
 registry.registerPath({
+  method: 'get',
+  path: '/api/v1/clinic-settings/cashier-shift-blind-close-enabled',
+  tags: ['clinic'],
+  summary: '"Chốt ca" — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /clinic-settings/deferred-payment-enabled)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(cashierShiftBlindCloseStatusSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+  },
+});
+
+registry.registerPath({
   method: 'patch',
   path: '/api/v1/clinic-settings',
   tags: ['clinic'],
@@ -2301,6 +2324,175 @@ registry.registerPath({
     409: errorResponse(
       'version không khớp (CONCURRENT_MODIFICATION), đã khoá — ngoài ngày đăng ký (WORK_SHIFT_ASSIGNMENT_LOCKED), hoặc tháng đã khoá (WORK_SHIFT_ASSIGNMENT_MONTH_LOCKED)',
     ),
+  },
+});
+
+// ---------------- cashier-shift ("Chốt ca", ngoài kế hoạch, mockup duyệt 2026-09-03) ----------------
+
+const cashierShiftIdParams = z.object({ id: z.string().uuid() });
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/cashier-shifts/current',
+  tags: ['cashier-shift'],
+  summary: 'Ca đang OPEN (nếu có) + gợi ý vốn đầu ca cho lần Mở ca tiếp theo (ca CLOSED gần nhất toàn tenant)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(currentCashierShiftResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền cashier_shift.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/cashier-shifts/open',
+  tags: ['cashier-shift'],
+  summary: 'Mở ca — chặn nếu đang có ca khác chưa chốt (v1 chỉ 1 két dùng chung toàn tenant)',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: openCashierShiftRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(cashierShiftDetailSchema)),
+    400: errorResponse('Có chênh lệch với vốn ca trước để lại mà thiếu lý do (CASHIER_SHIFT_DISCREPANCY_REASON_REQUIRED)'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền cashier_shift.create'),
+    409: errorResponse('Đang có ca khác chưa chốt (CASHIER_SHIFT_ALREADY_OPEN)'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/cashier-shifts',
+  tags: ['cashier-shift'],
+  summary: '"Danh sách phiếu chốt ca" (Quản lý/Kế toán) — chỉ scope global, lọc theo khoảng ngày/thu ngân/trạng thái chênh lệch',
+  security: [{ bearerAuth: [] }],
+  request: { query: listCashierShiftsQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listCashierShiftsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền cashier_shift.read, hoặc chỉ scope personal (không xem được danh sách)'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/cashier-shifts/{id}/summary',
+  tags: ['cashier-shift'],
+  summary: '"Tổng kết hệ thống" (bước 1 wizard Chốt ca) — tính SỐNG từ payment trong khoảng [openedAt, đóng ca hoặc hiện tại)',
+  security: [{ bearerAuth: [] }],
+  request: { params: cashierShiftIdParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(cashierShiftSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền cashier_shift.read'),
+    404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/cashier-shifts/{id}',
+  tags: ['cashier-shift'],
+  summary: 'Chi tiết 1 phiếu chốt ca',
+  security: [{ bearerAuth: [] }],
+  request: { params: cashierShiftIdParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(cashierShiftDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền cashier_shift.read'),
+    404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/cashier-shifts/{id}/close',
+  tags: ['cashier-shift'],
+  summary: 'Chốt ca — tự tính "Tổng kết hệ thống" tại thời điểm chốt, bắt buộc lý do nếu có chênh lệch',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: cashierShiftIdParams,
+    body: { content: { 'application/json': { schema: closeCashierShiftRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Thành công', envelope(cashierShiftDetailSchema)),
+    400: errorResponse('Có chênh lệch mà thiếu lý do (CASHIER_SHIFT_DISCREPANCY_REASON_REQUIRED)'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền cashier_shift.create'),
+    404: errorResponse('Không tìm thấy, hoặc scope personal mà không phải người đã mở ca này'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION), hoặc ca không còn OPEN (CASHIER_SHIFT_NOT_OPEN)'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/cashier-shifts/{id}/resync-preview',
+  tags: ['cashier-shift'],
+  summary: 'Quản lý xem trước "Tính toán lại" số hệ thống (đọc-only, chưa lưu) — dùng lại đúng hàm tính của bước 1 wizard',
+  security: [{ bearerAuth: [] }],
+  request: { params: cashierShiftIdParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(cashierShiftSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền cashier_shift.manage'),
+    404: errorResponse('Không tìm thấy'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/cashier-shifts/{id}/resolve-discrepancy',
+  tags: ['cashier-shift'],
+  summary: 'Xử lý chênh lệch (Quản lý) — trừ lương/ghi thu nhập khác/bỏ qua',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: cashierShiftIdParams,
+    body: { content: { 'application/json': { schema: resolveCashierShiftDiscrepancyRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Thành công', envelope(cashierShiftDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền cashier_shift.manage'),
+    404: errorResponse('Không tìm thấy'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION), hoặc ca chưa chốt (CASHIER_SHIFT_NOT_CLOSED)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/cashier-shifts/{id}/approve',
+  tags: ['cashier-shift'],
+  summary: 'Duyệt phiếu (Quản lý) — "Đã kiểm tra / Duyệt phiếu"',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: cashierShiftIdParams,
+    body: { content: { 'application/json': { schema: approveCashierShiftRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Thành công', envelope(cashierShiftDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền cashier_shift.manage'),
+    404: errorResponse('Không tìm thấy'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION), hoặc ca không ở trạng thái CLOSED (CASHIER_SHIFT_NOT_CLOSED)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/cashier-shifts/{id}/edit',
+  tags: ['cashier-shift'],
+  summary: '"Mở khoá để sửa" (Quản lý) — sửa số liệu người nhập + "Tính toán lại" số hệ thống, bắt buộc lý do, ghi audit before/after',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: cashierShiftIdParams,
+    body: { content: { 'application/json': { schema: editCashierShiftRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Thành công', envelope(cashierShiftDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền cashier_shift.manage'),
+    404: errorResponse('Không tìm thấy'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION), hoặc ca chưa chốt (CASHIER_SHIFT_NOT_CLOSED)'),
   },
 });
 
