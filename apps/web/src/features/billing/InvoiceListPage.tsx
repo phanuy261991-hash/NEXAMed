@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CaretLeft, CaretRight, MagnifyingGlass, Receipt, Warning } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, CaretLeft, CaretRight, ChartLineUp, Clock, MagnifyingGlass, Receipt, Wallet, Warning } from '@phosphor-icons/react';
 import type { BillingListItem } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
@@ -17,8 +17,8 @@ import { useBillingInvoiceListQuery } from './invoice.queries';
 
 /** Cùng khuôn `ReceptionListPage.tsx` (List Screen Pattern, .claude/docs/ui-guidelines.md mục 9).
  * Cột đầu (chọn dòng) để sẵn cho hành động hàng loạt sau này, chưa có hành động nào dùng tới. */
-const GRID_COLUMNS = '40px 170px 1.4fr 190px 170px 150px 130px 120px';
-const TABLE_MIN_WIDTH_PX = 1170;
+const GRID_COLUMNS = '40px 170px 1.4fr 190px 170px 150px 130px 130px 120px';
+const TABLE_MIN_WIDTH_PX = 1300;
 const ROW_HEIGHT_PX = 60;
 
 type StatusTab = 'UNPAID' | 'PAID' | 'ALL';
@@ -187,6 +187,7 @@ export function InvoiceListPage() {
                 <div role="columnheader" className="py-2.5 text-center">Lượt khám</div>
                 <div role="columnheader" className="py-2.5 text-center">Khoa</div>
                 <div role="columnheader" className="py-2.5 text-center">Tổng tiền</div>
+                <div role="columnheader" className="py-2.5 text-center">Đã hoàn</div>
                 <div role="columnheader" className="py-2.5 text-center">Trạng thái</div>
                 <div role="columnheader" className="py-2.5 text-center">Thao tác</div>
               </div>
@@ -224,6 +225,11 @@ export function InvoiceListPage() {
                     </div>
                     <div role="cell" className="truncate text-center font-medium text-slate-600">{item.departmentName}</div>
                     <div role="cell" className="text-center font-bold tabular-nums text-slate-900">{formatVnd(item.totalAmount)}</div>
+                    {/* Refund luôn TOÀN PHẦN (#085, không hoàn một phần) — số tiền đã hoàn của dòng
+                        REFUNDED chính là `totalAmount` của dòng đó, không cần trường riêng. */}
+                    <div role="cell" className="text-center font-bold tabular-nums text-violet-700">
+                      {item.status === 'REFUNDED' ? `-${formatVnd(item.totalAmount)}` : <span className="text-slate-300">—</span>}
+                    </div>
                     <div role="cell" className="flex flex-col items-center gap-1 text-center">
                       <StatusBadge tone={STATUS_META[item.status].tone}>{STATUS_META[item.status].label}</StatusBadge>
                       {/* #085 — phiếu PAID của lượt khám đã huỷ nhưng chưa hoàn tiền. */}
@@ -255,29 +261,53 @@ export function InvoiceListPage() {
       )}
 
       {listQuery.isSuccess && (
-        <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-4 rounded-lg border border-slate-200 bg-white px-4.5 py-3">
-          <div className="flex flex-wrap items-center gap-5">
-            <div className="flex flex-col">
-              <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Đã thu hôm nay</span>
-              <span className="text-xl font-bold tabular-nums text-brand-teal">{formatVnd(listQuery.data.paidTotalAmount)}</span>
+        <div className="flex flex-shrink-0 flex-wrap items-stretch overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex min-w-[190px] flex-1 items-center gap-3 px-5 py-3.5">
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+              <Wallet size={20} weight="bold" aria-hidden="true" />
             </div>
-            {/* #085 — tách riêng "Đã hoàn"/"Thực thu" (paidTotalAmount VẪN gồm cả phiếu đã hoàn —
-                xem computeDailyBillingTotals ở @nexamed/core — nên phải trừ ra ở đây mới đúng số
-                tiền còn lại trong két, tránh chủ phòng khám đối soát bị lệch không giải thích được). */}
-            {listQuery.data.refundedTotalAmount > 0 && (
-              <div className="flex flex-col">
-                <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Đã hoàn ({listQuery.data.refundedCount})</span>
-                <span className="text-xl font-bold tabular-nums text-violet-700">-{formatVnd(listQuery.data.refundedTotalAmount)}</span>
-              </div>
-            )}
             <div className="flex flex-col">
-              <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Thực thu</span>
-              <span className="text-xl font-bold tabular-nums text-slate-900">{formatVnd(listQuery.data.netTotalAmount)}</span>
+              <span className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Đã thu hôm nay</span>
+              <span className="text-xl font-bold tabular-nums text-slate-900">{formatVnd(listQuery.data.paidTotalAmount)}</span>
             </div>
           </div>
-          <div className="text-sm text-slate-600">
-            Còn <strong className="font-bold text-slate-900">{listQuery.data.unpaidCount}</strong> phiếu chờ thu · tổng{' '}
-            <strong className="font-bold text-slate-900">{formatVnd(listQuery.data.unpaidTotalAmount)}</strong>
+          {/* #085 — tách riêng "Đã hoàn"/"Thực thu" (paidTotalAmount VẪN gồm cả phiếu đã hoàn — xem
+              computeDailyBillingTotals ở @nexamed/core — nên phải trừ ra ở đây mới đúng số tiền còn
+              lại trong két, tránh chủ phòng khám đối soát bị lệch không giải thích được). */}
+          {listQuery.data.refundedTotalAmount > 0 && (
+            <div className="flex min-w-[190px] flex-1 items-center gap-3 border-l border-slate-100 px-5 py-3.5">
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-violet-50 text-violet-600">
+                <ArrowCounterClockwise size={20} weight="bold" aria-hidden="true" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Đã hoàn ({listQuery.data.refundedCount})</span>
+                <span className="text-xl font-bold tabular-nums text-violet-700">-{formatVnd(listQuery.data.refundedTotalAmount)}</span>
+              </div>
+            </div>
+          )}
+          <div className="flex min-w-[190px] flex-1 items-center gap-3 border-l border-slate-100 px-5 py-3.5">
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+              <ChartLineUp size={20} weight="bold" aria-hidden="true" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Thực thu</span>
+              <span className="text-xl font-bold tabular-nums text-blue-700">{formatVnd(listQuery.data.netTotalAmount)}</span>
+            </div>
+          </div>
+          {/* Cố ý tô nền đặc (khác 3 khối trên) — đây là mục CẦN HÀNH ĐỘNG (còn phiếu chưa thu),
+              đúng token "Triage - Lưu ý/Đang chờ" (`bg-amber-500`, .claude/docs/ui-guidelines.md mục
+              2.1). `flex-none` (khác 3 khối kia dùng `flex-1`) — chỉ rộng vừa đủ nội dung, không kéo
+              giãn hết phần còn lại của thanh (chủ dự án phản hồi bản đầu "quá thô và to"). */}
+          <div className="flex flex-none items-center gap-3 self-stretch bg-amber-500 px-5 py-3.5 text-white">
+            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-white/20">
+              <Clock size={18} weight="bold" aria-hidden="true" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[11px] font-bold uppercase tracking-wide text-amber-50">Còn chờ thu</span>
+              <span className="whitespace-nowrap text-xl font-bold tabular-nums">
+                {listQuery.data.unpaidCount} phiếu · {formatVnd(listQuery.data.unpaidTotalAmount)}
+              </span>
+            </div>
           </div>
         </div>
       )}

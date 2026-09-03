@@ -7,6 +7,7 @@ import {
   createWorkShiftAssignmentRequestSchema,
   deleteWorkShiftAssignmentRequestSchema,
   listWorkShiftAssignmentsQuerySchema,
+  workShiftAssignmentMonthLockStatusQuerySchema,
   workShiftAssignmentMonthSchema,
 } from '@nexamed/shared';
 import { z } from 'zod';
@@ -46,6 +47,16 @@ export class WorkShiftAssignmentController {
     const dto = listWorkShiftAssignmentsQuerySchema.parse(query);
     const { userId, tenantId } = req.user!;
     return this.service.list(tenantId, userId, req.dataScope!, dto);
+  }
+
+  /** "Khoá bảng ca" theo tháng — tự-phục vụ, KHÔNG `@RequirePermission` (đúng khuôn
+   * `allow-staff-self-schedule-enabled`): MỌI nhân viên cần biết tháng đang xem có bị khoá hay
+   * không để ẩn/hiện đúng nút, không riêng ai có `work_shift_assignment.read`. */
+  @Get('month-lock-status')
+  async getMonthLockStatus(@Query() query: unknown, @Req() req: Request) {
+    const { month } = workShiftAssignmentMonthLockStatusQuerySchema.parse(query);
+    const { userId, tenantId } = req.user!;
+    return this.service.getMonthLockStatus(tenantId, userId, month);
   }
 
   @Post()

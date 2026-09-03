@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Bank, CheckCircle, CreditCard, Money, Printer, Receipt, Warning, XCircle } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, ArrowLeft, Bank, CheckCircle, CreditCard, Money, Printer, Receipt, Warning, XCircle } from '@phosphor-icons/react';
 import type { PaymentMethod } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
@@ -137,7 +137,8 @@ export function InvoiceDetailPage() {
     }
   }
 
-  async function handleRefund() {
+  async function handleRefund(e: React.FormEvent) {
+    e.preventDefault();
     if (!invoice || refundReason.trim() === '') return;
     setError(null);
     try {
@@ -414,33 +415,51 @@ export function InvoiceDetailPage() {
         </div>
       )}
 
+      {/* Đồng bộ khuôn với `CancelEncounterDialog.tsx` (overlay /45, p-4 ngoài/p-5 trong, rounded-lg,
+          shadow-xl theo .claude/docs/ui-guidelines.md mục 2.2, <form> để Enter submit được — mục
+          4.4 — và huy hiệu tròn nổi bật số tiền thay khung chữ thuần, đúng khuôn #095). */}
       {refundOpen && invoice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4">
-          <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-2xl">
-            <h3 className="text-base font-bold text-slate-900">Hoàn tiền?</h3>
-            <p className="mt-1.5 text-sm text-slate-600">
-              Trả lại <strong className="text-slate-900">{formatVnd(invoice.totalAmount)}</strong> cho khách (lượt khám đã huỷ). Chỉ hoàn TOÀN PHẦN, không sửa
-              lại được. Bắt buộc nhập lý do.
-            </p>
-            <label htmlFor="refund-reason" className="mt-3 block text-sm font-semibold text-slate-800">
-              Lý do
-            </label>
-            <textarea
-              id="refund-reason"
-              rows={3}
-              value={refundReason}
-              onChange={(e) => setRefundReason(e.target.value)}
-              className="mt-1.5 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              placeholder="Ví dụ: khách bỏ về, chưa dùng dịch vụ nào"
-            />
-            <div className="mt-4 flex justify-end gap-2.5">
-              <Button type="button" variant="secondary" onClick={() => setRefundOpen(false)}>
-                Đóng
-              </Button>
-              <Button type="button" variant="danger" onClick={() => void handleRefund()} disabled={refundReason.trim() === ''} loading={refundMutation.isPending}>
-                Xác nhận hoàn tiền
-              </Button>
-            </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4" role="dialog" aria-modal="true" aria-labelledby="refund-title">
+          <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
+            <form onSubmit={(e) => void handleRefund(e)}>
+              <p id="refund-title" className="text-sm font-semibold text-slate-900">
+                Hoàn tiền?
+              </p>
+              <p className="mt-1.5 text-xs text-slate-500">Lượt khám này đã huỷ. Chỉ hoàn TOÀN PHẦN, không sửa lại được.</p>
+
+              <div className="mt-3 flex items-center gap-3 rounded-md bg-violet-50/70 py-2.5 pl-2.5 pr-3">
+                <div className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-violet-500 text-white">
+                  <ArrowCounterClockwise size={16} weight="bold" aria-hidden="true" />
+                </div>
+                <p className="text-xs leading-snug text-slate-700">
+                  Trả lại <span className="text-sm font-bold text-slate-900">{formatVnd(invoice.totalAmount)}</span> cho khách.
+                </p>
+              </div>
+
+              <div className="mt-3.5">
+                <label htmlFor="refund-reason" className="mb-1 block text-sm font-semibold text-slate-800">
+                  Lý do <span className="text-rose-500">*</span>
+                </label>
+                <textarea
+                  id="refund-reason"
+                  rows={3}
+                  required
+                  value={refundReason}
+                  onChange={(e) => setRefundReason(e.target.value)}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-[14px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  placeholder="Ví dụ: khách bỏ về, chưa dùng dịch vụ nào"
+                />
+              </div>
+
+              <div className="mt-4 flex justify-end gap-2">
+                <Button type="button" variant="secondary" onClick={() => setRefundOpen(false)}>
+                  Đóng
+                </Button>
+                <Button type="submit" variant="danger" disabled={refundReason.trim() === ''} loading={refundMutation.isPending}>
+                  Xác nhận hoàn tiền
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
       )}

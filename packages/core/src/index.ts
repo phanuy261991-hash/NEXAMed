@@ -28,3 +28,4 @@ export * from './billing/compute-invoice-lines';
 export * from './billing/invoice-lifecycle';
 export * from './audit/log-retention';
 export * from './system-actor';
+export * from './work-shift-assignment/month-lock';

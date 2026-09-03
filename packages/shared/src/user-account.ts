@@ -136,6 +136,12 @@ export const userAccountSummarySchema = z.object({
   isActive: z.boolean(),
   roleNames: z.array(z.string()),
   version: z.number().int(),
+  /** "Lịch làm việc nhân viên" — chỉ hiện nhân viên đã tồn tại tại thời điểm tháng đang xem, tránh
+   * hiện tên nhân viên mới tạo ở tháng trước ngày họ được tạo (2026-09-03, ngoài kế hoạch). */
+  createdAt: z.string(),
+  /** Cùng mục đích với `createdAt` — khi `isActive=false` (nghỉ việc), xấp xỉ thời điểm nghỉ bằng
+   * lần sửa gần nhất (đủ dùng cho mục đích hiển thị lịch, không phải nguồn sự thật pháp lý). */
+  updatedAt: z.string(),
 });
 export type UserAccountSummary = z.infer<typeof userAccountSummarySchema>;
 

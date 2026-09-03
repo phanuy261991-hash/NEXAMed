@@ -495,6 +495,8 @@ export class UserAccountService {
       isActive: user.isActive,
       roleNames: [...roleNames],
       version: user.version,
+      createdAt: user.createdAt.toISOString(),
+      updatedAt: user.updatedAt.toISOString(),
     };
   }
 }

@@ -35,6 +35,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         allowReceptionistEndShift,
         blockBookingOutsideWorkShiftEnabled,
         allowStaffSelfScheduleEnabled,
+        workShiftAssignmentLockGraceDays,
       ] = await Promise.all([
         this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
         this.clinicSettingsRepository.getSlotDurationMinutes(tx, tenantId),
@@ -46,6 +47,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getAllowReceptionistEndShift(tx, tenantId),
         this.clinicSettingsRepository.getBlockBookingOutsideWorkShiftEnabled(tx, tenantId),
         this.clinicSettingsRepository.getAllowStaffSelfScheduleEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getWorkShiftAssignmentLockGraceDays(tx, tenantId),
       ]);
       return {
         businessHours,
@@ -58,6 +60,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         allowReceptionistEndShift,
         blockBookingOutsideWorkShiftEnabled,
         allowStaffSelfScheduleEnabled,
+        workShiftAssignmentLockGraceDays,
       };
     });
   }
@@ -65,6 +68,11 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
   /** `ClinicConfigReaderPort` ("Cấu hình chung", "Đăng ký ca làm việc") — xem comment ở khai báo class. */
   getAllowStaffSelfScheduleEnabled(tenantId: string): ReturnType<ClinicConfigReaderPort['getAllowStaffSelfScheduleEnabled']> {
     return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getAllowStaffSelfScheduleEnabled(tx, tenantId));
+  }
+
+  /** `ClinicConfigReaderPort` ("Khoá bảng ca" theo tháng) — xem comment ở khai báo class. */
+  getWorkShiftAssignmentLockGraceDays(tenantId: string): ReturnType<ClinicConfigReaderPort['getWorkShiftAssignmentLockGraceDays']> {
+    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getWorkShiftAssignmentLockGraceDays(tx, tenantId));
   }
 
   /** `ClinicConfigReaderPort` — xem comment ở khai báo class. */
@@ -146,6 +154,9 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
       if (dto.allowStaffSelfScheduleEnabled !== undefined) {
         await this.clinicSettingsRepository.upsertAllowStaffSelfScheduleEnabled(tx, tenantId, actorId, dto.allowStaffSelfScheduleEnabled);
       }
+      if (dto.workShiftAssignmentLockGraceDays !== undefined) {
+        await this.clinicSettingsRepository.upsertWorkShiftAssignmentLockGraceDays(tx, tenantId, actorId, dto.workShiftAssignmentLockGraceDays);
+      }
 
       const hasChanges =
         dto.businessHours !== undefined ||
@@ -157,7 +168,8 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         dto.allowEmergencyEndShift !== undefined ||
         dto.allowReceptionistEndShift !== undefined ||
         dto.blockBookingOutsideWorkShiftEnabled !== undefined ||
-        dto.allowStaffSelfScheduleEnabled !== undefined;
+        dto.allowStaffSelfScheduleEnabled !== undefined ||
+        dto.workShiftAssignmentLockGraceDays !== undefined;
       if (hasChanges) {
         await writeAuditLog(tx, tenantId, {
           actorId,
@@ -181,6 +193,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         allowReceptionistEndShift,
         blockBookingOutsideWorkShiftEnabled,
         allowStaffSelfScheduleEnabled,
+        workShiftAssignmentLockGraceDays,
       ] = await Promise.all([
         this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
         this.clinicSettingsRepository.getSlotDurationMinutes(tx, tenantId),
@@ -192,6 +205,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getAllowReceptionistEndShift(tx, tenantId),
         this.clinicSettingsRepository.getBlockBookingOutsideWorkShiftEnabled(tx, tenantId),
         this.clinicSettingsRepository.getAllowStaffSelfScheduleEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getWorkShiftAssignmentLockGraceDays(tx, tenantId),
       ]);
       return {
         businessHours,
@@ -204,6 +218,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         allowReceptionistEndShift,
         blockBookingOutsideWorkShiftEnabled,
         allowStaffSelfScheduleEnabled,
+        workShiftAssignmentLockGraceDays,
       };
     });
   }

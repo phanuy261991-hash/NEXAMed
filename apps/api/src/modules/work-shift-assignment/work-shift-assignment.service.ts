@@ -5,8 +5,10 @@ import {
   ConcurrentModificationError,
   WorkShiftAssignmentDuplicateError,
   WorkShiftAssignmentLockedError,
+  WorkShiftAssignmentMonthLockedError,
   WorkShiftAssignmentSelfScheduleDisabledError,
   getVietnamDateString,
+  isMonthLocked,
   type ClinicConfigReaderPort,
   type PortWorkShiftColor,
   type WorkShiftAssignmentReaderPort,
@@ -20,10 +22,12 @@ import type {
   ListWorkShiftAssignmentsResponse,
   WorkShiftAssignmentBulkResult,
   WorkShiftAssignmentItem,
+  WorkShiftAssignmentMonthLockStatusResponse,
 } from '@nexamed/shared';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
 import type { RequestMeta } from '../../common/request-meta';
+import { assertMonthWritable, canBypassMonthLock } from './month-lock.guard';
 import { WorkShiftAssignmentRepository, type WorkShiftAssignmentRow } from './work-shift-assignment.repository';
 
 function isDuplicateViolation(err: unknown): boolean {
@@ -106,8 +110,15 @@ export class WorkShiftAssignmentService implements WorkShiftAssignmentReaderPort
   ): Promise<WorkShiftAssignmentItem> {
     await this.assertSelfScheduleAllowed(tenantId, dataScope);
     const targetUserId = dataScope === 'personal' ? actorId : (dto.userId ?? actorId);
+    const graceDays = await this.clinicConfigReader.getWorkShiftAssignmentLockGraceDays(tenantId);
+    const today = getVietnamDateString();
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const canBypass = await canBypassMonthLock(tx, tenantId, actorId);
+      if (isMonthLocked(dto.workDate.slice(0, 7), today, graceDays) && !canBypass) {
+        throw new WorkShiftAssignmentMonthLockedError();
+      }
+
       let created: WorkShiftAssignmentRow;
       try {
         created = await this.repository.create(tx, tenantId, targetUserId, dto.workShiftId, dto.workDate, actorId);
@@ -128,7 +139,7 @@ export class WorkShiftAssignmentService implements WorkShiftAssignmentReaderPort
         userAgent: meta.userAgent,
       });
 
-      return this.toItem(created, actorId, dataScope);
+      return this.toItem(created, actorId, dataScope, today, graceDays, canBypass);
     });
   }
 
@@ -141,8 +152,19 @@ export class WorkShiftAssignmentService implements WorkShiftAssignmentReaderPort
   ): Promise<WorkShiftAssignmentBulkResult> {
     await this.assertSelfScheduleAllowed(tenantId, dataScope);
     const targetUserId = dataScope === 'personal' ? actorId : (dto.userId ?? actorId);
+    const graceDays = await this.clinicConfigReader.getWorkShiftAssignmentLockGraceDays(tenantId);
+    const today = getVietnamDateString();
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const canBypass = await canBypassMonthLock(tx, tenantId, actorId);
+      if (!canBypass) {
+        for (const workDate of dto.workDates) {
+          if (isMonthLocked(workDate.slice(0, 7), today, graceDays)) {
+            throw new WorkShiftAssignmentMonthLockedError();
+          }
+        }
+      }
+
       const rows = dto.workDates.map((workDate) => ({
         tenantId,
         userId: targetUserId,
@@ -181,8 +203,11 @@ export class WorkShiftAssignmentService implements WorkShiftAssignmentReaderPort
   ): Promise<WorkShiftAssignmentBulkResult> {
     await this.assertSelfScheduleAllowed(tenantId, dataScope);
     const targetUserId = dataScope === 'personal' ? actorId : (dto.userId ?? actorId);
+    const graceDays = await this.clinicConfigReader.getWorkShiftAssignmentLockGraceDays(tenantId);
+    const today = getVietnamDateString();
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const canBypass = await canBypassMonthLock(tx, tenantId, actorId);
       let sourceRows: WorkShiftAssignmentRow[];
       let targetDates: (string | null)[];
 
@@ -213,6 +238,14 @@ export class WorkShiftAssignmentService implements WorkShiftAssignmentReaderPort
           createdBy: actorId,
           updatedBy: actorId,
         }));
+
+      if (!canBypass) {
+        for (const row of rows) {
+          if (isMonthLocked(dateToDateString(row.workDate).slice(0, 7), today, graceDays)) {
+            throw new WorkShiftAssignmentMonthLockedError();
+          }
+        }
+      }
 
       const createdCount = await this.repository.createManySkipDuplicates(tx, rows);
       const skippedCount = sourceRows.length - createdCount;
@@ -251,6 +284,11 @@ export class WorkShiftAssignmentService implements WorkShiftAssignmentReaderPort
         }
       }
 
+      // "Khoá bảng ca" theo tháng — áp dụng cho MỌI dataScope kể cả `global`, khác khối self-lock
+      // (theo NGÀY đăng ký, chỉ `personal`) ở trên. Chỉ biết tháng cần kiểm SAU khi đọc `existing`
+      // (workDate), nên không fetch `graceDays` trước `runInTenantScope` như create/bulkCreate/copy.
+      await assertMonthWritable(tx, this.clinicConfigReader, tenantId, actorId, dateToDateString(existing.workDate).slice(0, 7));
+
       const count = await this.repository.softDelete(
         tx,
         tenantId,
@@ -276,11 +314,23 @@ export class WorkShiftAssignmentService implements WorkShiftAssignmentReaderPort
   }
 
   async list(tenantId: string, actorId: string, dataScope: DataScope, query: ListWorkShiftAssignmentsQuery): Promise<ListWorkShiftAssignmentsResponse> {
+    const graceDays = await this.clinicConfigReader.getWorkShiftAssignmentLockGraceDays(tenantId);
+    const today = getVietnamDateString();
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const canBypass = await canBypassMonthLock(tx, tenantId, actorId);
       const userId = dataScope === 'personal' ? actorId : query.userId;
       const rows = await this.repository.list(tx, tenantId, { from: query.from, to: query.to, userId });
-      return { items: rows.map((row) => this.toItem(row, actorId, dataScope)) };
+      return { items: rows.map((row) => this.toItem(row, actorId, dataScope, today, graceDays, canBypass)) };
     });
+  }
+
+  /** "Khoá bảng ca" theo tháng — tự-phục vụ, MỌI nhân viên cần biết để ẩn/hiện đúng nút thao tác dù
+   * tháng đang xem chưa có ca nào (không suy ra được từ `canEdit` của từng dòng). */
+  async getMonthLockStatus(tenantId: string, actorId: string, month: string): Promise<WorkShiftAssignmentMonthLockStatusResponse> {
+    const graceDays = await this.clinicConfigReader.getWorkShiftAssignmentLockGraceDays(tenantId);
+    const locked = isMonthLocked(month, getVietnamDateString(), graceDays);
+    const canBypass = await this.unitOfWork.runInTenantScope(tenantId, (tx) => canBypassMonthLock(tx, tenantId, actorId));
+    return { locked, canBypass };
   }
 
   /** `WorkShiftAssignmentReaderPort` — dùng cho lưới Lịch hẹn (module `appointment`, qua port). */
@@ -305,8 +355,17 @@ export class WorkShiftAssignmentService implements WorkShiftAssignmentReaderPort
     });
   }
 
-  private toItem(row: WorkShiftAssignmentRow, actorId: string, dataScope: DataScope): WorkShiftAssignmentItem {
-    const canEdit = dataScope === 'global' || (row.userId === actorId && getVietnamDateString(row.createdAt) === getVietnamDateString());
+  private toItem(
+    row: WorkShiftAssignmentRow,
+    actorId: string,
+    dataScope: DataScope,
+    today: string,
+    graceDays: number,
+    canBypass: boolean,
+  ): WorkShiftAssignmentItem {
+    const baseEditable = dataScope === 'global' || (row.userId === actorId && getVietnamDateString(row.createdAt) === today);
+    const monthLocked = !canBypass && isMonthLocked(dateToDateString(row.workDate).slice(0, 7), today, graceDays);
+    const canEdit = baseEditable && !monthLocked;
     return {
       id: row.id,
       userId: row.userId,

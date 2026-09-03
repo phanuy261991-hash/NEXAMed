@@ -165,6 +165,8 @@ import {
   importWorkShiftAssignmentsPreviewResponseSchema,
   importWorkShiftAssignmentsCommitResponseSchema,
   workShiftAssignmentMonthSchema,
+  workShiftAssignmentMonthLockStatusQuerySchema,
+  workShiftAssignmentMonthLockStatusResponseSchema,
 } from '@nexamed/shared';
 
 /**
@@ -2175,6 +2177,19 @@ registry.registerPath({
 });
 
 registry.registerPath({
+  method: 'get',
+  path: '/api/v1/work-shift-assignments/month-lock-status',
+  tags: ['work-shift-assignment'],
+  summary: '"Khoá bảng ca" theo tháng — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần work_shift_assignment.read)',
+  security: [{ bearerAuth: [] }],
+  request: { query: workShiftAssignmentMonthLockStatusQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(workShiftAssignmentMonthLockStatusResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+  },
+});
+
+registry.registerPath({
   method: 'post',
   path: '/api/v1/work-shift-assignments',
   tags: ['work-shift-assignment'],
@@ -2185,7 +2200,7 @@ registry.registerPath({
     200: jsonResponse('Thành công', envelope(workShiftAssignmentItemSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền work_shift_assignment.create'),
-    409: errorResponse('Đã đăng ký đúng ca này cho ngày đã chọn (WORK_SHIFT_ASSIGNMENT_DUPLICATE)'),
+    409: errorResponse('Đã đăng ký đúng ca này cho ngày đã chọn (WORK_SHIFT_ASSIGNMENT_DUPLICATE), hoặc tháng đã khoá (WORK_SHIFT_ASSIGNMENT_MONTH_LOCKED)'),
   },
 });
 
@@ -2200,6 +2215,7 @@ registry.registerPath({
     200: jsonResponse('Thành công', envelope(workShiftAssignmentBulkResultSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền work_shift_assignment.create'),
+    409: errorResponse('Có ngày rơi vào tháng đã khoá (WORK_SHIFT_ASSIGNMENT_MONTH_LOCKED)'),
   },
 });
 
@@ -2214,6 +2230,7 @@ registry.registerPath({
     200: jsonResponse('Thành công', envelope(workShiftAssignmentBulkResultSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền work_shift_assignment.create'),
+    409: errorResponse('Có ngày đích rơi vào tháng đã khoá (WORK_SHIFT_ASSIGNMENT_MONTH_LOCKED)'),
   },
 });
 
@@ -2260,6 +2277,7 @@ registry.registerPath({
     400: errorResponse('Thiếu file Excel'),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền work_shift_assignment.create, hoặc không phải scope global'),
+    409: errorResponse('Tháng đã khoá (WORK_SHIFT_ASSIGNMENT_MONTH_LOCKED)'),
   },
 });
 
@@ -2280,7 +2298,9 @@ registry.registerPath({
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền work_shift_assignment.delete'),
     404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal)'),
-    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION), hoặc đã khoá — ngoài ngày đăng ký (WORK_SHIFT_ASSIGNMENT_LOCKED)'),
+    409: errorResponse(
+      'version không khớp (CONCURRENT_MODIFICATION), đã khoá — ngoài ngày đăng ký (WORK_SHIFT_ASSIGNMENT_LOCKED), hoặc tháng đã khoá (WORK_SHIFT_ASSIGNMENT_MONTH_LOCKED)',
+    ),
   },
 });
 

@@ -39,12 +39,12 @@ export function ReleaseEncounterDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4" role="dialog" aria-modal="true" aria-labelledby="release-encounter-title">
-      <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-2xl">
-        <h3 id="release-encounter-title" className="text-base font-bold text-slate-900">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4" role="dialog" aria-modal="true" aria-labelledby="release-encounter-title">
+      <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
+        <p id="release-encounter-title" className="text-sm font-semibold text-slate-900">
           Trả về hàng chờ?
-        </h3>
-        <p className="mt-1.5 text-sm text-slate-600">
+        </p>
+        <p className="mt-1.5 text-xs text-slate-500">
           <span className="font-semibold text-slate-800">{patientFullName}</span> sẽ quay lại hàng chờ chung Khoa cho bác sĩ khác nhận, không huỷ lượt khám.
         </p>
         {mutation.isError && (

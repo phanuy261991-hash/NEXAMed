@@ -101,6 +101,7 @@ describe('markNoShowForAllTenants — S5-07, APP-05', () => {
       getDoctorAvailabilityPolicy: () => Promise.reject(new Error('không dùng trong test này')),
       getBlockBookingOutsideWorkShiftEnabled: () => Promise.reject(new Error('không dùng trong test này')),
       getAllowStaffSelfScheduleEnabled: () => Promise.reject(new Error('không dùng trong test này')),
+      getWorkShiftAssignmentLockGraceDays: () => Promise.reject(new Error('không dùng trong test này')),
     };
   }
 

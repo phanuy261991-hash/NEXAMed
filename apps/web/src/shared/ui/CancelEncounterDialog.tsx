@@ -60,11 +60,18 @@ export function CancelEncounterDialog({
           </p>
           <p className="mt-1.5 text-xs text-slate-500">Lượt khám này sẽ chuyển sang trạng thái đã huỷ, không quay lại được.</p>
 
+          {/* Nổi bật số tiền bằng huy hiệu tròn đặc + nền rất nhạt không viền — đúng khuôn
+              "pendingCount" ở DoctorEndShiftDialog.tsx (docs/DECISIONS.md #095), không phải khung
+              viền cảnh báo thuần chữ như bản cũ. */}
           {invoicePaid && (
-            <div className="mt-3 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-              <Warning size={14} weight="fill" className="mt-0.5 flex-shrink-0" aria-hidden="true" />
-              Lượt khám này đã thu {formatVnd(invoiceQuery.data!.totalAmount)} — huỷ xong cần hoàn tiền riêng ở Thu ngân
-              (quyền hoàn tiền không cấp cho mọi vai trò).
+            <div className="mt-3 flex items-center gap-3 rounded-md bg-amber-50/70 py-2.5 pl-2.5 pr-3">
+              <div className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-amber-400 text-white">
+                <Warning size={16} weight="fill" aria-hidden="true" />
+              </div>
+              <p className="text-xs leading-snug text-slate-700">
+                Lượt khám này đã thu <span className="text-sm font-bold text-slate-900">{formatVnd(invoiceQuery.data!.totalAmount)}</span> — huỷ xong
+                cần hoàn tiền riêng ở Thu ngân.
+              </p>
             </div>
           )}
 

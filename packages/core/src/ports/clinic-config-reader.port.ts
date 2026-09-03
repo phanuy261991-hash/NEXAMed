@@ -76,6 +76,15 @@ export interface ClinicConfigReaderPort {
    * nhân viên") không bị ảnh hưởng.
    */
   getAllowStaffSelfScheduleEnabled(tenantId: string): Promise<boolean>;
+
+  /**
+   * "Khoá bảng ca" theo tháng (2026-09-03) — số ngày ân hạn sau khi sang tháng mới trước khi tháng
+   * trước bị khoá hoàn toàn (`tenant_setting` key `work_shift_assignment_lock_grace_days`, mặc
+   * định `0` = khoá ngay khi sang tháng mới). Module `work-shift-assignment` đọc qua port này
+   * (module `clinic` sở hữu `tenant_setting`), cùng lý do `getAllowStaffSelfScheduleEnabled` ở
+   * trên. Dùng cùng `isMonthLocked()` (`packages/core/src/work-shift-assignment/month-lock.ts`).
+   */
+  getWorkShiftAssignmentLockGraceDays(tenantId: string): Promise<number>;
 }
 
 export const CLINIC_CONFIG_READER_PORT = Symbol('CLINIC_CONFIG_READER_PORT');

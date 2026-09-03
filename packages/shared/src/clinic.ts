@@ -181,6 +181,15 @@ export const clinicSettingsSchema = z.object({
    * `global` (clinic_admin) ở "Lịch làm việc nhân viên", vẫn tạo/sửa/xoá hộ được bình thường.
    */
   allowStaffSelfScheduleEnabled: z.boolean(),
+  /**
+   * "Khoá bảng ca" theo tháng (2026-09-03, ngoài kế hoạch — chuẩn bị nền cho chấm công/tính lương
+   * v2, chưa xây). Số ngày ân hạn SAU khi sang tháng mới trước khi tháng trước bị khoá TOÀN BỘ
+   * (Thêm/Sửa/Xoá) cho mọi actor kể cả `clinic_admin`, trừ ai có quyền
+   * `work_shift_assignment.unlock`. Mặc định `0` = khoá ngay khi sang tháng mới. Ví dụ `5`: lịch
+   * tháng trước vẫn sửa được tới hết ngày 5 tháng này. Xem `isMonthLocked()`
+   * (`packages/core/src/work-shift-assignment/month-lock.ts`).
+   */
+  workShiftAssignmentLockGraceDays: z.number().int().min(0).max(27),
 });
 export type ClinicSettings = z.infer<typeof clinicSettingsSchema>;
 
@@ -201,6 +210,7 @@ export const updateClinicSettingsRequestSchema = z.object({
   allowReceptionistEndShift: z.boolean().optional(),
   blockBookingOutsideWorkShiftEnabled: z.boolean().optional(),
   allowStaffSelfScheduleEnabled: z.boolean().optional(),
+  workShiftAssignmentLockGraceDays: z.number().int().min(0).max(27).optional(),
 });
 export type UpdateClinicSettingsRequest = z.infer<typeof updateClinicSettingsRequestSchema>;
 
@@ -219,6 +229,8 @@ export const DEFAULT_ALLOW_RECEPTIONIST_END_SHIFT = false;
 export const DEFAULT_BLOCK_BOOKING_OUTSIDE_WORK_SHIFT_ENABLED = false;
 /** Bật theo mặc định — giữ đúng hành vi hiện tại (mọi nhân viên tự đăng ký ca) tới khi chủ động tắt. */
 export const DEFAULT_ALLOW_STAFF_SELF_SCHEDULE_ENABLED = true;
+/** 0 ngày ân hạn — khoá ngay khi sang tháng mới, cho tenant chưa từng cấu hình. */
+export const DEFAULT_WORK_SHIFT_ASSIGNMENT_LOCK_GRACE_DAYS = 0;
 
 /**
  * `GET /clinic-settings/deferred-payment-enabled` — chiếu tối thiểu tự-phục vụ (Thu ngân cơ bản,

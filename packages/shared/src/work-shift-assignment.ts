@@ -158,3 +158,24 @@ export const importWorkShiftAssignmentsCommitResponseSchema = z.object({
   errorCount: z.number().int(),
 });
 export type ImportWorkShiftAssignmentsCommitResponse = z.infer<typeof importWorkShiftAssignmentsCommitResponseSchema>;
+
+/**
+ * `GET .../month-lock-status?month=` — chiếu tối thiểu TỰ-PHỤC VỤ ("Khoá bảng ca" theo tháng,
+ * 2026-09-03), đúng khuôn `allowStaffSelfScheduleStatusSchema` (`clinic.ts`): MỌI nhân viên (không
+ * chỉ `clinic_admin`) cần biết tháng đang xem có bị khoá hay không để "Lịch làm việc của tôi"/"Lịch
+ * làm việc nhân viên" ẩn/hiện đúng nút, kể cả khi tháng đó CHƯA có ca nào (không suy ra được từ
+ * `canEdit` của từng dòng item — có thể danh sách rỗng). `locked` là trạng thái TUYỆT ĐỐI của
+ * tháng (không tính actor); `canBypass` là quyền `work_shift_assignment.unlock` CỦA ACTOR hiện tại
+ * — cho phép FE phân biệt "khoá, bị chặn" (`locked && !canBypass`) với "khoá nhưng bạn mở khoá
+ * được" (`locked && canBypass`).
+ */
+export const workShiftAssignmentMonthLockStatusQuerySchema = z.object({
+  month: workShiftAssignmentMonthSchema,
+});
+export type WorkShiftAssignmentMonthLockStatusQuery = z.infer<typeof workShiftAssignmentMonthLockStatusQuerySchema>;
+
+export const workShiftAssignmentMonthLockStatusResponseSchema = z.object({
+  locked: z.boolean(),
+  canBypass: z.boolean(),
+});
+export type WorkShiftAssignmentMonthLockStatusResponse = z.infer<typeof workShiftAssignmentMonthLockStatusResponseSchema>;

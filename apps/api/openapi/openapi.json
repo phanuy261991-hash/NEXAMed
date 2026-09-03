@@ -4776,6 +4776,11 @@
                         },
                         "allowStaffSelfScheduleEnabled": {
                           "type": "boolean"
+                        },
+                        "workShiftAssignmentLockGraceDays": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 27
                         }
                       },
                       "required": [
@@ -4788,7 +4793,8 @@
                         "allowEmergencyEndShift",
                         "allowReceptionistEndShift",
                         "blockBookingOutsideWorkShiftEnabled",
-                        "allowStaffSelfScheduleEnabled"
+                        "allowStaffSelfScheduleEnabled",
+                        "workShiftAssignmentLockGraceDays"
                       ]
                     },
                     "meta": {
@@ -16135,6 +16141,12 @@
                         },
                         "version": {
                           "type": "integer"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
                         }
                       },
                       "required": [
@@ -16161,7 +16173,9 @@
                         "signatureUrl",
                         "isActive",
                         "roleNames",
-                        "version"
+                        "version",
+                        "createdAt",
+                        "updatedAt"
                       ]
                     },
                     "meta": {
@@ -16480,6 +16494,12 @@
                               },
                               "version": {
                                 "type": "integer"
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "updatedAt": {
+                                "type": "string"
                               }
                             },
                             "required": [
@@ -16506,7 +16526,9 @@
                               "signatureUrl",
                               "isActive",
                               "roleNames",
-                              "version"
+                              "version",
+                              "createdAt",
+                              "updatedAt"
                             ]
                           }
                         },
@@ -16751,6 +16773,12 @@
                         },
                         "version": {
                           "type": "integer"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
                         }
                       },
                       "required": [
@@ -16777,7 +16805,9 @@
                         "signatureUrl",
                         "isActive",
                         "roleNames",
-                        "version"
+                        "version",
+                        "createdAt",
+                        "updatedAt"
                       ]
                     },
                     "meta": {
@@ -17024,6 +17054,12 @@
                         },
                         "version": {
                           "type": "integer"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
                         }
                       },
                       "required": [
@@ -17050,7 +17086,9 @@
                         "signatureUrl",
                         "isActive",
                         "roleNames",
-                        "version"
+                        "version",
+                        "createdAt",
+                        "updatedAt"
                       ]
                     },
                     "meta": {
@@ -17293,6 +17331,12 @@
                         },
                         "version": {
                           "type": "integer"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
                         }
                       },
                       "required": [
@@ -17319,7 +17363,9 @@
                         "signatureUrl",
                         "isActive",
                         "roleNames",
-                        "version"
+                        "version",
+                        "createdAt",
+                        "updatedAt"
                       ]
                     },
                     "meta": {
@@ -17718,6 +17764,12 @@
                         },
                         "version": {
                           "type": "integer"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
                         }
                       },
                       "required": [
@@ -17744,7 +17796,9 @@
                         "signatureUrl",
                         "isActive",
                         "roleNames",
-                        "version"
+                        "version",
+                        "createdAt",
+                        "updatedAt"
                       ]
                     },
                     "meta": {
@@ -18106,6 +18160,12 @@
                         },
                         "version": {
                           "type": "integer"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
                         }
                       },
                       "required": [
@@ -18132,7 +18192,9 @@
                         "signatureUrl",
                         "isActive",
                         "roleNames",
-                        "version"
+                        "version",
+                        "createdAt",
+                        "updatedAt"
                       ]
                     },
                     "meta": {
@@ -24399,6 +24461,11 @@
                         },
                         "allowStaffSelfScheduleEnabled": {
                           "type": "boolean"
+                        },
+                        "workShiftAssignmentLockGraceDays": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 27
                         }
                       },
                       "required": [
@@ -24411,7 +24478,8 @@
                         "allowEmergencyEndShift",
                         "allowReceptionistEndShift",
                         "blockBookingOutsideWorkShiftEnabled",
-                        "allowStaffSelfScheduleEnabled"
+                        "allowStaffSelfScheduleEnabled",
+                        "workShiftAssignmentLockGraceDays"
                       ]
                     },
                     "meta": {
@@ -24693,6 +24761,11 @@
                   },
                   "allowStaffSelfScheduleEnabled": {
                     "type": "boolean"
+                  },
+                  "workShiftAssignmentLockGraceDays": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 27
                   }
                 }
               }
@@ -24899,6 +24972,11 @@
                         },
                         "allowStaffSelfScheduleEnabled": {
                           "type": "boolean"
+                        },
+                        "workShiftAssignmentLockGraceDays": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 27
                         }
                       },
                       "required": [
@@ -24911,7 +24989,8 @@
                         "allowEmergencyEndShift",
                         "allowReceptionistEndShift",
                         "blockBookingOutsideWorkShiftEnabled",
-                        "allowStaffSelfScheduleEnabled"
+                        "allowStaffSelfScheduleEnabled",
+                        "workShiftAssignmentLockGraceDays"
                       ]
                     },
                     "meta": {
@@ -31639,7 +31718,99 @@
             }
           },
           "409": {
-            "description": "Đã đăng ký đúng ca này cho ngày đã chọn (WORK_SHIFT_ASSIGNMENT_DUPLICATE)",
+            "description": "Đã đăng ký đúng ca này cho ngày đã chọn (WORK_SHIFT_ASSIGNMENT_DUPLICATE), hoặc tháng đã khoá (WORK_SHIFT_ASSIGNMENT_MONTH_LOCKED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/work-shift-assignments/month-lock-status": {
+      "get": {
+        "tags": [
+          "work-shift-assignment"
+        ],
+        "summary": "\"Khoá bảng ca\" theo tháng — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần work_shift_assignment.read)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}$"
+            },
+            "required": true,
+            "name": "month",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "locked": {
+                          "type": "boolean"
+                        },
+                        "canBypass": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "locked",
+                        "canBypass"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
             "content": {
               "application/json": {
                 "schema": {
@@ -31784,6 +31955,37 @@
           },
           "403": {
             "description": "Không có quyền work_shift_assignment.create",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Có ngày rơi vào tháng đã khoá (WORK_SHIFT_ASSIGNMENT_MONTH_LOCKED)",
             "content": {
               "application/json": {
                 "schema": {
@@ -31962,6 +32164,37 @@
           },
           "403": {
             "description": "Không có quyền work_shift_assignment.create",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Có ngày đích rơi vào tháng đã khoá (WORK_SHIFT_ASSIGNMENT_MONTH_LOCKED)",
             "content": {
               "application/json": {
                 "schema": {
@@ -32403,6 +32636,37 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "Tháng đã khoá (WORK_SHIFT_ASSIGNMENT_MONTH_LOCKED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -32573,7 +32837,7 @@
             }
           },
           "409": {
-            "description": "version không khớp (CONCURRENT_MODIFICATION), hoặc đã khoá — ngoài ngày đăng ký (WORK_SHIFT_ASSIGNMENT_LOCKED)",
+            "description": "version không khớp (CONCURRENT_MODIFICATION), đã khoá — ngoài ngày đăng ký (WORK_SHIFT_ASSIGNMENT_LOCKED), hoặc tháng đã khoá (WORK_SHIFT_ASSIGNMENT_MONTH_LOCKED)",
             "content": {
               "application/json": {
                 "schema": {

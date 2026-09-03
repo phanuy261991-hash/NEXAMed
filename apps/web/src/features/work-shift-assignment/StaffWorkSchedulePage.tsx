@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { CaretLeft, CaretRight, CheckSquare, DownloadSimple, MagnifyingGlass, Plus, UploadSimple, X as XIcon } from '@phosphor-icons/react';
+import { CaretLeft, CaretRight, CheckSquare, DownloadSimple, Lock, MagnifyingGlass, Plus, UploadSimple, WarningCircle, X as XIcon } from '@phosphor-icons/react';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
@@ -18,6 +18,7 @@ import {
   useBulkCreateWorkShiftAssignmentsMutation,
   useCreateWorkShiftAssignmentMutation,
   useDeleteWorkShiftAssignmentMutation,
+  useWorkShiftAssignmentMonthLockStatusQuery,
   useWorkShiftAssignmentsQuery,
 } from './work-shift-assignment.queries';
 
@@ -105,6 +106,25 @@ export function StaffWorkSchedulePage() {
     return () => observer.disconnect();
   }, []);
 
+  // "Khoá bảng ca" theo tháng (2026-09-03) — trang này chỉ có 1 view Tháng, gọi đúng 1 tháng.
+  // `monthLockedAbsolute` là trạng thái THẬT của tháng (không tính quyền); `unlockedForEditing` là
+  // lựa chọn CHỦ ĐỘNG của người xem (chỉ có tác dụng nếu họ có quyền `canBypassLock`) — mặc định
+  // LUÔN hiện giao diện khoá (ẩn nút) dù có quyền mở khoá hay không, phải bấm "Sửa" mới lộ nút thao
+  // tác (chốt qua phản hồi trực tiếp chủ dự án, 2026-09-03: không tự động mở khoá chỉ vì có quyền).
+  const lockStatusQuery = useWorkShiftAssignmentMonthLockStatusQuery(monthAnchor);
+  const canBypassLock = lockStatusQuery.data?.canBypass ?? false;
+  const monthLockedAbsolute = lockStatusQuery.data?.locked ?? false;
+  const [unlockedForEditing, setUnlockedForEditing] = useState(false);
+  useEffect(() => setUnlockedForEditing(false), [monthAnchor]);
+  const monthLocked = monthLockedAbsolute && !unlockedForEditing;
+  const [lockErrorToast, setLockErrorToast] = useState<string | null>(null);
+  function showLockErrorIfApplicable(err: unknown) {
+    if (err instanceof ApiError && err.code === 'WORK_SHIFT_ASSIGNMENT_MONTH_LOCKED') {
+      setLockErrorToast(err.message);
+      setTimeout(() => setLockErrorToast(null), 5000);
+    }
+  }
+
   const usersQuery = useUserAccountsQuery();
   // Trang này quản lý lịch làm việc của TOÀN BỘ nhân viên (mọi bộ phận, không riêng Khoa chuyên
   // môn) — dùng GET /departments (đầy đủ, yêu cầu user_account.read) thay vì GET /departments/
@@ -121,9 +141,21 @@ export function StaffWorkSchedulePage() {
   const departments = (departmentsQuery.data?.items ?? []).filter((d) => d.isActive);
   const trimmedSearch = search.trim().toLowerCase();
   const staff = (usersQuery.data?.items ?? [])
-    .filter((u) => u.isActive && !u.roleNames.includes('system_admin'))
+    .filter((u) => !u.roleNames.includes('system_admin'))
     .filter((u) => !departmentFilter || u.departmentId === departmentFilter)
-    .filter((u) => !trimmedSearch || (u.displayName ?? u.fullName).toLowerCase().includes(trimmedSearch));
+    .filter((u) => !trimmedSearch || (u.displayName ?? u.fullName).toLowerCase().includes(trimmedSearch))
+    // Chỉ hiện nhân viên đã TỒN TẠI tại tháng đang xem (2026-09-03, chủ dự án phát hiện lúc dùng
+    // thử) — tránh 2 lỗi ngược chiều nhau: (1) hiện tên nhân viên mới tạo ở tháng TRƯỚC ngày họ
+    // được tạo; (2) MẤT hẳn nhân viên đã nghỉ việc khỏi tháng họ CÒN làm (lọc cứng `isActive` trước
+    // đây xoá luôn lịch sử). Nhân viên đang hoạt động: hiện từ `createdAt` trở đi. Nhân viên đã
+    // nghỉ (`isActive=false`): CHỈ hiện tới hết tháng nghỉ (xấp xỉ bằng `updatedAt` — lần sửa gần
+    // nhất, đủ dùng cho mục đích hiển thị lịch), tháng sau đó ẩn hẳn. So sánh chuỗi YYYY-MM là đủ.
+    .filter((u) => {
+      const monthCreated = u.createdAt.slice(0, 7);
+      if (monthCreated > monthAnchor) return false;
+      if (!u.isActive && u.updatedAt.slice(0, 7) < monthAnchor) return false;
+      return true;
+    });
   const workShifts = shiftsQuery.data?.items ?? [];
   const items = listQuery.data?.items ?? [];
   const itemsByUserDay = new Map<string, typeof items>();
@@ -139,14 +171,19 @@ export function StaffWorkSchedulePage() {
 
   async function handlePickerSave(shiftIds: string[]) {
     if (!picker) return;
-    if (picker.dates.length === 1) {
-      for (const workShiftId of shiftIds) {
-        await createMutation.mutateAsync({ workShiftId, workDate: picker.dates[0]!, userId: picker.userId });
+    try {
+      if (picker.dates.length === 1) {
+        for (const workShiftId of shiftIds) {
+          await createMutation.mutateAsync({ workShiftId, workDate: picker.dates[0]!, userId: picker.userId });
+        }
+      } else {
+        for (const workShiftId of shiftIds) {
+          await bulkMutation.mutateAsync({ workShiftId, workDates: picker.dates, userId: picker.userId });
+        }
       }
-    } else {
-      for (const workShiftId of shiftIds) {
-        await bulkMutation.mutateAsync({ workShiftId, workDates: picker.dates, userId: picker.userId });
-      }
+    } catch (err) {
+      showLockErrorIfApplicable(err);
+      return;
     }
     setPicker(null);
     selection.clear();
@@ -220,12 +257,62 @@ export function StaffWorkSchedulePage() {
             <DownloadSimple size={14} weight="bold" aria-hidden="true" />
             Xuất Excel
           </Button>
-          <Button type="button" variant="secondary" className="px-3 py-1.5 text-xs" onClick={() => setImportOpen(true)}>
-            <UploadSimple size={14} weight="bold" aria-hidden="true" />
-            Nhập Excel
-          </Button>
+          {/* Nhập Excel là thao tác GHI theo tháng — ẩn khi tháng đang xem đã khoá (Xuất Excel/Tải
+              mẫu chỉ đọc, không bị ảnh hưởng). */}
+          {!monthLocked && (
+            <Button type="button" variant="secondary" className="px-3 py-1.5 text-xs" onClick={() => setImportOpen(true)}>
+              <UploadSimple size={14} weight="bold" aria-hidden="true" />
+              Nhập Excel
+            </Button>
+          )}
         </div>
       </div>
+
+      {/* "Khoá bảng ca" theo tháng — nền ĐẶC (không nhạt, đúng #106) để gây chú ý. 3 biến thể: (1)
+          khoá + KHÔNG có quyền mở → chỉ báo, không có nút; (2) khoá + có quyền nhưng CHƯA bấm "Sửa"
+          → cùng cảnh báo, thêm nút "Sửa"; (3) đã bấm "Sửa" (unlockedForEditing) → dải nhắc đang ở
+          chế độ sửa tạm thời + nút "Khoá lại". Mặc định LUÔN ở trạng thái (1)/(2) — có quyền không
+          tự động mở khoá (chốt qua phản hồi trực tiếp chủ dự án). */}
+      {monthLocked && (
+        <div className="flex flex-shrink-0 items-center gap-2.5 rounded-md bg-amber-500 px-3.5 py-2.5 text-white shadow-sm">
+          <WarningCircle size={18} weight="fill" className="flex-shrink-0" aria-hidden="true" />
+          <span className="flex-1 text-[13px] font-semibold">
+            Lịch làm việc {formatMonthLabel(monthAnchor)} đã khoá (đã qua ngày chốt bảng ca)
+            {!canBypassLock && ' — liên hệ người có quyền "Sửa lịch đã khoá" để mở khoá.'}
+          </span>
+          {canBypassLock && (
+            <Button
+              type="button"
+              variant="secondary"
+              className="px-3.5 py-1.5 text-xs font-bold transition-colors active:bg-amber-100 active:text-amber-800"
+              onClick={() => setUnlockedForEditing(true)}
+            >
+              Sửa
+            </Button>
+          )}
+        </div>
+      )}
+      {monthLockedAbsolute && !monthLocked && (
+        <div className="flex flex-shrink-0 items-center gap-2.5 rounded-md bg-slate-700 px-3.5 py-2.5 text-white shadow-sm">
+          <Lock size={16} weight="bold" className="flex-shrink-0" aria-hidden="true" />
+          <span className="flex-1 text-[13px] font-semibold">
+            Đang chỉnh sửa lịch {formatMonthLabel(monthAnchor)} dù đã khoá — mọi thay đổi vẫn được ghi nhận.
+          </span>
+          <Button
+            type="button"
+            variant="secondary"
+            className="px-3.5 py-1.5 text-xs font-bold transition-colors active:bg-slate-200 active:text-slate-900"
+            onClick={() => setUnlockedForEditing(false)}
+          >
+            Khoá lại
+          </Button>
+        </div>
+      )}
+      {lockErrorToast && (
+        <div className="flex flex-shrink-0 items-center gap-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">
+          {lockErrorToast}
+        </div>
+      )}
 
       {!loading && !error && (
         <div className="flex flex-shrink-0 flex-wrap items-center gap-2 px-1">
@@ -336,25 +423,27 @@ export function StaffWorkSchedulePage() {
                         <div className="flex flex-col gap-1">
                           <span className="truncate font-semibold text-slate-900">{person.displayName ?? person.fullName}</span>
                           {person.employeeCode && <span className="text-[11px] font-medium text-slate-400">{person.employeeCode}</span>}
-                          <div className="flex flex-wrap items-center gap-1">
-                            <Button
-                              type="button"
-                              variant={rowBulkActive ? 'primary' : 'secondary'}
-                              className="gap-1 px-1.5 py-1 text-[10.5px]"
-                              onClick={() => {
-                                setBulkUserId(rowBulkActive ? null : person.id);
-                                selection.clear();
-                              }}
-                            >
-                              <CheckSquare size={11} weight="bold" aria-hidden="true" />
-                              {rowBulkActive ? 'Đang chọn' : 'Chọn nhiều ngày'}
-                            </Button>
-                            {rowBulkActive && (
-                              <Button type="button" variant="secondary" className="px-1.5 py-1 text-[10.5px]" onClick={() => selection.toggleAll()}>
-                                {selection.allLoadedSelected ? 'Bỏ chọn cả tháng' : 'Chọn cả tháng'}
+                          {!monthLocked && (
+                            <div className="flex flex-wrap items-center gap-1">
+                              <Button
+                                type="button"
+                                variant={rowBulkActive ? 'primary' : 'secondary'}
+                                className="gap-1 px-1.5 py-1 text-[10.5px]"
+                                onClick={() => {
+                                  setBulkUserId(rowBulkActive ? null : person.id);
+                                  selection.clear();
+                                }}
+                              >
+                                <CheckSquare size={11} weight="bold" aria-hidden="true" />
+                                {rowBulkActive ? 'Đang chọn' : 'Chọn nhiều ngày'}
                               </Button>
-                            )}
-                          </div>
+                              {rowBulkActive && (
+                                <Button type="button" variant="secondary" className="px-1.5 py-1 text-[10.5px]" onClick={() => selection.toggleAll()}>
+                                  {selection.allLoadedSelected ? 'Bỏ chọn cả tháng' : 'Chọn cả tháng'}
+                                </Button>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </td>
                       {days.map((day) => {
@@ -378,18 +467,25 @@ export function StaffWorkSchedulePage() {
                                   className="flex items-center gap-1 rounded-md px-2 py-2 text-[11px] font-bold text-white shadow-sm"
                                   style={{ background: WORK_SHIFT_COLOR_HEX[item.workShiftColor] }}
                                 >
+                                  {(!item.canEdit || monthLocked) && (
+                                    <Lock size={9} weight="bold" className="flex-shrink-0 text-white/80" aria-hidden="true" />
+                                  )}
                                   <span className="min-w-0 flex-1 truncate">{item.workShiftName}</span>
-                                  <button
-                                    type="button"
-                                    aria-label="Xoá ca"
-                                    onClick={() => deleteMutation.mutate({ id: item.id, version: item.version })}
-                                    className="flex-shrink-0 rounded p-0.5 text-white/75 hover:bg-white/20 hover:text-white"
-                                  >
-                                    <XIcon size={10} weight="bold" />
-                                  </button>
+                                  {item.canEdit && !monthLocked && (
+                                    <button
+                                      type="button"
+                                      aria-label="Xoá ca"
+                                      onClick={() =>
+                                        deleteMutation.mutate({ id: item.id, version: item.version }, { onError: showLockErrorIfApplicable })
+                                      }
+                                      className="flex-shrink-0 rounded p-0.5 text-white/75 hover:bg-white/20 hover:text-white"
+                                    >
+                                      <XIcon size={10} weight="bold" />
+                                    </button>
+                                  )}
                                 </div>
                               ))}
-                              {!rowBulkActive && (
+                              {!rowBulkActive && !monthLocked && (
                                 <Button
                                   type="button"
                                   variant="add"

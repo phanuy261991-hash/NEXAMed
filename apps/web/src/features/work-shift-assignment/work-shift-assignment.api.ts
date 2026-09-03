@@ -8,6 +8,7 @@ import type {
   ListWorkShiftAssignmentsResponse,
   WorkShiftAssignmentBulkResult,
   WorkShiftAssignmentItem,
+  WorkShiftAssignmentMonthLockStatusResponse,
 } from '@nexamed/shared';
 import { downloadFile, getApiClient, unwrap, uploadFile } from '../../shared/api/client';
 
@@ -30,6 +31,13 @@ export async function copyWorkShiftAssignments(body: CopyWorkShiftAssignmentsReq
 
 export async function deleteWorkShiftAssignment(id: string, version: number): Promise<void> {
   await getApiClient().DELETE('/api/v1/work-shift-assignments/{id}', { params: { path: { id } }, body: { version } });
+}
+
+/** "Khoá bảng ca" theo tháng (2026-09-03) — tự-phục vụ, mọi nhân viên gọi được. */
+export async function getWorkShiftAssignmentMonthLockStatus(month: string): Promise<WorkShiftAssignmentMonthLockStatusResponse> {
+  return unwrap(
+    await getApiClient().GET('/api/v1/work-shift-assignments/month-lock-status', { params: { query: { month } } }),
+  ) as WorkShiftAssignmentMonthLockStatusResponse;
 }
 
 /** Nhập/Xuất Excel — chỉ "Lịch làm việc nhân viên" (scope global), theo THÁNG (`YYYY-MM`), xem

@@ -4,6 +4,26 @@
 
 ## 2026-09-03
 
+### Redesign khung tổng kết Thu ngân + đồng bộ popup xác nhận có số tiền
+
+Khung tổng kết "Thu ngân" (`InvoiceListPage.tsx`) đổi sang dải "thẻ số liệu" hiện đại (icon tròn, nhãn hoa nhỏ, số đậm, ngăn viền dọc), khối "Còn chờ thu" tô nền đặc amber; 2 vòng chỉnh theo phản hồi trực tiếp (giảm độ đậm chữ số tiền, khối "Còn chờ thu" hết kéo giãn to). Thêm cột "Đã hoàn" vào bảng danh sách. Giải thích lại cách tính "Đã thu hôm nay"/"Thực thu" cho chủ dự án (logic gốc #085, không đổi).
+
+Đồng bộ 3 popup xác nhận có hiện số tiền (`CancelEncounterDialog.tsx`, dùng chung 4 nơi; `RefundDialog` trong `InvoiceDetailPage.tsx`; `ReleaseEncounterDialog.tsx`) — 2 dialog sau đã lệch chuẩn `CancelEncounterDialog.tsx` (overlay/shadow/padding sai, `RefundDialog` còn thiếu `<form>` bọc — vi phạm quy tắc Enter-to-submit mục 4.4), đã sửa khớp lại. Đổi khung cảnh báo số tiền sang huy hiệu tròn đặc + nền nhạt (đúng khuôn "huy hiệu số" đã duyệt ở `DoctorEndShiftDialog.tsx`, #095) thay khung chữ viền nhạt cũ.
+
+Xem `docs/DECISIONS.md` #111.
+
+Đã xác minh: `pnpm -w typecheck/lint/build` sạch toàn workspace, chunk web 477.58 kB (không đổi bất thường), Playwright qua Chrome thật.
+
+### "Khoá bảng ca" theo tháng (work_shift_assignment) — chuẩn bị nền cho chấm công/tính lương v2
+
+Ngoài kế hoạch, chủ dự án yêu cầu trực tiếp. Lịch làm việc của tháng cũ bị khoá TOÀN BỘ (Thêm/Sửa/Xoá/Nhập Excel) sau một mốc "chốt bảng ca" cấu hình được theo tenant (`tenant_setting.work_shift_assignment_lock_grace_days`, mặc định 0 = khoá ngay khi sang tháng mới) — áp dụng cho MỌI actor kể cả `clinic_admin`, trừ ai có đặc quyền mới `work_shift_assignment.unlock` ("Sửa lịch đã khoá", cấu hình qua Vai trò & Phân quyền, mặc định seed `clinic_admin`/`system_admin`). Có quyền cũng KHÔNG tự động mở khoá giao diện — phải bấm nút "Sửa" tường minh mới lộ nút thao tác (chốt qua phản hồi trực tiếp chủ dự án, đảo hướng so với bản thiết kế đầu).
+
+Phát hiện + sửa thêm giữa phiên: "Lịch làm việc nhân viên" hiện sai nhân viên theo thời gian — nhân viên mới tạo lộ ra ở tháng trước ngày tạo, nhân viên nghỉ việc bị mất khỏi cả tháng họ còn làm. Sửa bằng lọc theo `createdAt`/`updatedAt` (2 field mới, additive, `userAccountSummarySchema`).
+
+Xem `docs/DECISIONS.md` #110.
+
+Đã xác minh: `packages/core` `month-lock.spec.ts` mới (11/11, tổng 138/138), `apps/api` 549/557 pass + 7 skip (2 suite flake đã biết, pass 100% khi chạy riêng), `work-shift-assignment-http.spec.ts` chạy riêng 12/12 không regression, `pnpm -w typecheck/lint/build` sạch toàn workspace. Không có migration (chỉ thêm permission catalog + `tenant_setting` key). Đã `db:seed` + build lại + khởi động lại API, xác nhận qua `curl` thật. Chưa verify Playwright chính thức cho luồng khoá/mở khoá — chủ dự án đã tự test trực tiếp qua `pnpm dev` và phản hồi từng vòng.
+
 ### Fix: "Bộ phận Lễ Tân" (hành chính) lọt vào danh sách chọn "Chuyển vào hàng đợi" ở Tiếp nhận
 
 Chủ dự án phát hiện lúc xem demo: `department` dùng chung cho tổ chức nhân sự (phân loại tuỳ chọn qua `department_type`, thuần mô tả) và điều phối "Hàng đợi ảo" (`encounter.departmentId`, #064) — `GET /departments/options` trả về mọi Khoa/Phòng active, không phân biệt lâm sàng/hành chính. Thêm cột `department.participatesInQueue` (mặc định `true`, tách khỏi `department_type` — dựa vào tên loại để lọc sẽ vỡ ngầm khi đổi tên) — checkbox "Nhận bệnh nhân / hiện trong Hàng đợi khám" trong form Thêm/Sửa Khoa-Phòng. `listActiveOptions()` lọc thêm điều kiện này; trang quản lý danh sách Khoa/Phòng không đổi, chỉ thêm cột hiển thị trạng thái. Xem `docs/DECISIONS.md` #105.

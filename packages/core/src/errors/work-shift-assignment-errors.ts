@@ -35,3 +35,17 @@ export class WorkShiftAssignmentSelfScheduleDisabledError extends DomainError {
     super('Tự đăng ký ca đang bị tắt — liên hệ quản lý để được phân công ca làm việc.');
   }
 }
+
+/**
+ * "Khoá bảng ca" theo tháng (2026-09-03) — tháng của `work_date` đã qua mốc chốt
+ * (`tenant_setting.work_shift_assignment_lock_grace_days`) và actor KHÔNG có quyền
+ * `work_shift_assignment.unlock` (scope `global`). Áp dụng cho MỌI `dataScope` kể cả `global` —
+ * khác `WorkShiftAssignmentLockedError` (chỉ áp `personal`, khoá theo NGÀY đăng ký).
+ */
+export class WorkShiftAssignmentMonthLockedError extends DomainError {
+  readonly code = 'WORK_SHIFT_ASSIGNMENT_MONTH_LOCKED';
+
+  constructor() {
+    super('Lịch làm việc tháng này đã khoá (đã qua ngày chốt bảng ca) — liên hệ người có quyền mở khoá.');
+  }
+}

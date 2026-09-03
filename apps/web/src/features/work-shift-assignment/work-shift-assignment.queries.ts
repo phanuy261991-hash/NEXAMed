@@ -7,6 +7,7 @@ import {
   copyWorkShiftAssignments,
   createWorkShiftAssignment,
   deleteWorkShiftAssignment,
+  getWorkShiftAssignmentMonthLockStatus,
   listWorkShiftAssignments,
 } from './work-shift-assignment.api';
 
@@ -18,6 +19,16 @@ export function useWorkShiftAssignmentsQuery(from: string, to: string, userId?: 
   return useQuery({
     queryKey: queryKey(tenantId, 'work-shift-assignment', 'list', from, to, userId),
     queryFn: () => listWorkShiftAssignments({ from, to, userId }),
+  });
+}
+
+/** "Khoá bảng ca" theo tháng (2026-09-03) — tự-phục vụ, đúng khuôn `useAllowStaffSelfScheduleEnabledQuery`.
+ * Gọi cho từng tháng riêng (React Query dedupe cache key trùng nhau tự động khi 2 lời gọi cùng `month`). */
+export function useWorkShiftAssignmentMonthLockStatusQuery(month: string) {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'work-shift-assignment', 'month-lock-status', month),
+    queryFn: () => getWorkShiftAssignmentMonthLockStatus(month),
   });
 }
 

@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import ExcelJS from 'exceljs';
 import type { Prisma } from '@prisma/client';
+import { CLINIC_CONFIG_READER_PORT, type ClinicConfigReaderPort } from '@nexamed/core';
 import type {
   ImportWorkShiftAssignmentRowError,
   ImportWorkShiftAssignmentValidRow,
@@ -10,6 +11,7 @@ import type {
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { UserAccountRepository } from '../iam/user-account.repository';
 import { WorkShiftService } from '../clinic/work-shift.service';
+import { assertMonthWritable } from './month-lock.guard';
 import { WorkShiftAssignmentRepository } from './work-shift-assignment.repository';
 
 const WEEKDAY_ABBR = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
@@ -59,6 +61,7 @@ export class WorkShiftAssignmentImportService {
     private readonly userAccountRepository: UserAccountRepository,
     private readonly workShiftService: WorkShiftService,
     private readonly repository: WorkShiftAssignmentRepository,
+    @Inject(CLINIC_CONFIG_READER_PORT) private readonly clinicConfigReader: ClinicConfigReaderPort,
   ) {}
 
   async buildTemplate(month: string): Promise<Buffer> {
@@ -151,6 +154,10 @@ export class WorkShiftAssignmentImportService {
 
   async commit(tenantId: string, actorId: string, month: string, fileBuffer: Buffer): Promise<ImportWorkShiftAssignmentsCommitResponse> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      // "Khoá bảng ca" theo tháng — Nhập Excel luôn ghi theo ĐÚNG 1 tháng (không cần lọc từng ô),
+      // chặn TOÀN BỘ commit nếu tháng đó đã khoá và actor không có quyền mở khoá.
+      await assertMonthWritable(tx, this.clinicConfigReader, tenantId, actorId, month);
+
       const { validCells, duplicateCells, errorCells } = await this.parseAndResolve(tx, tenantId, month, fileBuffer);
 
       const createdCount = await this.repository.createManySkipDuplicates(

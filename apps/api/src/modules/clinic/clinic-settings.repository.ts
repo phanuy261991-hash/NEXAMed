@@ -11,6 +11,7 @@ import {
   DEFAULT_NO_SHOW_THRESHOLD_MINUTES,
   DEFAULT_OVERDUE_WAIT_WARNING_MINUTES,
   DEFAULT_SLOT_DURATION_MINUTES,
+  DEFAULT_WORK_SHIFT_ASSIGNMENT_LOCK_GRACE_DAYS,
   type BusinessHours,
 } from '@nexamed/shared';
 
@@ -46,6 +47,10 @@ const blockBookingOutsideWorkShiftSchema = z.boolean();
 // mọi nhân viên tự đăng ký ca) tới khi chủ động tắt.
 const ALLOW_STAFF_SELF_SCHEDULE_KEY = 'allow_staff_self_schedule_enabled';
 const allowStaffSelfScheduleSchema = z.boolean();
+// "Khoá bảng ca" theo tháng (2026-09-03) — số ngày ân hạn sau khi sang tháng mới, mặc định 0 (khoá
+// ngay) cho tenant chưa từng cấu hình.
+const WORK_SHIFT_ASSIGNMENT_LOCK_GRACE_DAYS_KEY = 'work_shift_assignment_lock_grace_days';
+const workShiftAssignmentLockGraceDaysSchema = z.number().int().min(0).max(27);
 
 /**
  * Đọc/ghi `tenant_setting` cho hai key cấu hình phòng khám (S2-07, ADM-02) — cùng mẫu
@@ -151,6 +156,19 @@ export class ClinicSettingsRepository {
 
   upsertAllowStaffSelfScheduleEnabled(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
     return this.upsert(tx, tenantId, actorId, ALLOW_STAFF_SELF_SCHEDULE_KEY, value);
+  }
+
+  async getWorkShiftAssignmentLockGraceDays(tx: Prisma.TransactionClient, tenantId: string): Promise<number> {
+    const setting = await tx.tenantSetting.findFirst({ where: { tenantId, key: WORK_SHIFT_ASSIGNMENT_LOCK_GRACE_DAYS_KEY } });
+    if (!setting) {
+      return DEFAULT_WORK_SHIFT_ASSIGNMENT_LOCK_GRACE_DAYS;
+    }
+    const parsed = workShiftAssignmentLockGraceDaysSchema.safeParse(setting.valueJson);
+    return parsed.success ? parsed.data : DEFAULT_WORK_SHIFT_ASSIGNMENT_LOCK_GRACE_DAYS;
+  }
+
+  upsertWorkShiftAssignmentLockGraceDays(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: number) {
+    return this.upsert(tx, tenantId, actorId, WORK_SHIFT_ASSIGNMENT_LOCK_GRACE_DAYS_KEY, value);
   }
 
   upsertAllowEmergencyEndShift(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {

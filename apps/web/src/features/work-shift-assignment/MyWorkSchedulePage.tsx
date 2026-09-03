@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { CaretLeft, CaretRight, CheckSquare, Lock, X as XIcon } from '@phosphor-icons/react';
+import { useEffect, useState } from 'react';
+import { CaretLeft, CaretRight, CheckSquare, Lock, WarningCircle, X as XIcon } from '@phosphor-icons/react';
 import { ApiError } from '../../shared/api/client';
 import { useAuthStore } from '../auth/auth.store';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
@@ -16,6 +16,7 @@ import {
   useCopyWorkShiftAssignmentsMutation,
   useCreateWorkShiftAssignmentMutation,
   useDeleteWorkShiftAssignmentMutation,
+  useWorkShiftAssignmentMonthLockStatusQuery,
   useWorkShiftAssignmentsQuery,
 } from './work-shift-assignment.queries';
 
@@ -106,6 +107,34 @@ export function MyWorkSchedulePage() {
   const selfScheduleQuery = useAllowStaffSelfScheduleEnabledQuery();
   const selfScheduleEnabled = selfScheduleQuery.data?.enabled ?? true;
 
+  // "Khoá bảng ca" theo tháng (2026-09-03) — Tuần có thể trải 2 tháng liền kề, nên luôn gọi đúng 2
+  // hook cố định (React Query tự dedupe cache key trùng nhau khi cả 2 cùng 1 tháng, đúng lúc ở
+  // Tháng hoặc Tuần nằm gọn trong 1 tháng). Chỉ dùng để ẨN/HIỆN nút trước — enforcement thật vẫn ở
+  // server (`canEdit` từng dòng + lỗi 409 khi bấm thử, phòng trường hợp biên qua nửa đêm).
+  const monthsInView: [string, string] = view === 'week' ? [days[0]!.slice(0, 7), days[6]!.slice(0, 7)] : [monthAnchor, monthAnchor];
+  const lockStatusAQuery = useWorkShiftAssignmentMonthLockStatusQuery(monthsInView[0]);
+  const lockStatusBQuery = useWorkShiftAssignmentMonthLockStatusQuery(monthsInView[1]);
+  const canBypassLock = lockStatusAQuery.data?.canBypass ?? lockStatusBQuery.data?.canBypass ?? false;
+  const lockedMonths = new Set<string>();
+  if (lockStatusAQuery.data?.locked) lockedMonths.add(monthsInView[0]);
+  if (lockStatusBQuery.data?.locked) lockedMonths.add(monthsInView[1]);
+  // Có quyền `unlock` KHÔNG tự động mở khoá giao diện — phải bấm "Sửa" mới lộ nút thao tác (chốt
+  // qua phản hồi trực tiếp chủ dự án, 2026-09-03). Reset về đóng khi đổi tháng/tuần/chế độ xem.
+  const [unlockedForEditing, setUnlockedForEditing] = useState(false);
+  useEffect(() => setUnlockedForEditing(false), [view, monthAnchor, weekStart]);
+  const monthAnchorLockedAbsolute = lockedMonths.has(monthAnchor);
+  const monthAnchorLocked = monthAnchorLockedAbsolute && !unlockedForEditing;
+  // Ẩn toolbar "Chọn nhiều ngày"/"Sao chép..." khi TOÀN BỘ tháng đang xem đã khoá (Tháng: đúng 1
+  // tháng; Tuần trải 2 tháng: chỉ ẩn khi CẢ HAI đều khoá — còn ngày nào mở thì vẫn hữu ích).
+  const toolbarLocked = !unlockedForEditing && monthsInView.every((m) => lockedMonths.has(m));
+  const [lockErrorToast, setLockErrorToast] = useState<string | null>(null);
+  function showLockErrorIfApplicable(err: unknown) {
+    if (err instanceof ApiError && err.code === 'WORK_SHIFT_ASSIGNMENT_MONTH_LOCKED') {
+      setLockErrorToast(err.message);
+      setTimeout(() => setLockErrorToast(null), 5000);
+    }
+  }
+
   const shiftsQuery = useWorkShiftsQuery();
   // `userId` bắt buộc truyền tường minh: với actor có data_scope `global` (vd. clinic_admin),
   // bỏ trống sẽ khiến backend không lọc gì và trả về ca của TOÀN BỘ nhân viên thay vì "của tôi".
@@ -129,14 +158,19 @@ export function MyWorkSchedulePage() {
 
   async function handlePickerSave(shiftIds: string[]) {
     if (!pickerFor) return;
-    if (pickerFor.length === 1) {
-      for (const workShiftId of shiftIds) {
-        await createMutation.mutateAsync({ workShiftId, workDate: pickerFor[0]! });
+    try {
+      if (pickerFor.length === 1) {
+        for (const workShiftId of shiftIds) {
+          await createMutation.mutateAsync({ workShiftId, workDate: pickerFor[0]! });
+        }
+      } else {
+        for (const workShiftId of shiftIds) {
+          await bulkMutation.mutateAsync({ workShiftId, workDates: pickerFor });
+        }
       }
-    } else {
-      for (const workShiftId of shiftIds) {
-        await bulkMutation.mutateAsync({ workShiftId, workDates: pickerFor });
-      }
+    } catch (err) {
+      showLockErrorIfApplicable(err);
+      return;
     }
     setPickerFor(null);
     selection.clear();
@@ -147,11 +181,19 @@ export function MyWorkSchedulePage() {
     setTimeout(() => setToast(null), 4000);
   }
   async function handleCopyWeek() {
-    showCopyToast(await copyMutation.mutateAsync({ mode: 'week', fromWeekStart: addDays(weekStart, -7), toWeekStart: weekStart }));
+    try {
+      showCopyToast(await copyMutation.mutateAsync({ mode: 'week', fromWeekStart: addDays(weekStart, -7), toWeekStart: weekStart }));
+    } catch (err) {
+      showLockErrorIfApplicable(err);
+    }
   }
   /** `targetMonth` — tháng ĐÍCH nhận ca sao chép (nguồn luôn là tháng liền trước). */
   async function handleCopyMonth(targetMonth: string) {
-    showCopyToast(await copyMutation.mutateAsync({ mode: 'month', fromMonth: addMonths(targetMonth, -1), toMonth: targetMonth }));
+    try {
+      showCopyToast(await copyMutation.mutateAsync({ mode: 'month', fromMonth: addMonths(targetMonth, -1), toMonth: targetMonth }));
+    } catch (err) {
+      showLockErrorIfApplicable(err);
+    }
   }
 
   return (
@@ -240,7 +282,7 @@ export function MyWorkSchedulePage() {
           )}
         </div>
 
-        {selfScheduleEnabled && (
+        {selfScheduleEnabled && !toolbarLocked && (
           <div className="flex items-center gap-2">
             <Button
               type="button"
@@ -276,9 +318,58 @@ export function MyWorkSchedulePage() {
         </p>
       )}
 
+      {/* "Khoá bảng ca" theo tháng — chỉ hiện ở chế độ Tháng (đúng scenario chủ dự án nêu: xem lại
+          tháng trước). Nền ĐẶC (không nhạt, đúng #106) để gây chú ý. 3 biến thể như
+          `StaffWorkSchedulePage.tsx`: (1) khoá, không có quyền mở → chỉ báo; (2) khoá, có quyền
+          nhưng CHƯA bấm "Sửa" → cùng cảnh báo + nút "Sửa"; (3) đã bấm "Sửa" → dải nhắc đang sửa tạm
+          + nút "Khoá lại". Mặc định LUÔN khoá giao diện dù có quyền hay không. */}
+      {view === 'month' && monthAnchorLocked && (
+        <div className="flex flex-shrink-0 items-center gap-2.5 rounded-md bg-amber-500 px-3.5 py-2.5 text-white shadow-sm">
+          <WarningCircle size={18} weight="fill" className="flex-shrink-0" aria-hidden="true" />
+          <span className="flex-1 text-[13px] font-semibold">
+            Lịch làm việc {formatMonthLabel(monthAnchor)} đã khoá (đã qua ngày chốt bảng ca)
+            {!canBypassLock && ' — liên hệ người có quyền "Sửa lịch đã khoá" để mở khoá.'}
+          </span>
+          {canBypassLock && (
+            <Button
+              type="button"
+              variant="secondary"
+              className="px-3.5 py-1.5 text-xs font-bold transition-colors active:bg-amber-100 active:text-amber-800"
+              onClick={() => setUnlockedForEditing(true)}
+            >
+              Sửa
+            </Button>
+          )}
+        </div>
+      )}
+      {view === 'month' && monthAnchorLockedAbsolute && !monthAnchorLocked && (
+        <div className="flex flex-shrink-0 items-center gap-2.5 rounded-md bg-slate-700 px-3.5 py-2.5 text-white shadow-sm">
+          <Lock size={16} weight="bold" className="flex-shrink-0" aria-hidden="true" />
+          <span className="flex-1 text-[13px] font-semibold">
+            Đang chỉnh sửa lịch {formatMonthLabel(monthAnchor)} dù đã khoá — mọi thay đổi vẫn được ghi nhận.
+          </span>
+          <Button
+            type="button"
+            variant="secondary"
+            className="px-3.5 py-1.5 text-xs font-bold transition-colors active:bg-slate-200 active:text-slate-900"
+            onClick={() => setUnlockedForEditing(false)}
+          >
+            Khoá lại
+          </Button>
+        </div>
+      )}
+
       {toast && (
         <div className="flex flex-shrink-0 items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">
           {toast}
+        </div>
+      )}
+
+      {/* Phòng trường hợp biên (khoá xảy ra đúng lúc đang mở trang, hoặc nút chưa kịp ẩn) — banner
+          đã che phần lớn trường hợp, đây chỉ là lưới an toàn thứ hai khi thao tác thật sự bị 409. */}
+      {lockErrorToast && (
+        <div className="flex flex-shrink-0 items-center gap-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">
+          {lockErrorToast}
         </div>
       )}
 
@@ -307,6 +398,7 @@ export function MyWorkSchedulePage() {
               const dayItems = itemsByDay.get(day) ?? [];
               const isToday = day === today;
               const isWeekend = index >= 5;
+              const dayLocked = lockedMonths.has(day.slice(0, 7)) && !unlockedForEditing;
               return (
                 <div
                   key={day}
@@ -321,7 +413,7 @@ export function MyWorkSchedulePage() {
                     <div className={`text-[16px] font-extrabold ${isToday ? 'text-white' : 'text-slate-900'}`}>{formatDDMM(day)}</div>
                   </div>
                   <div className="flex flex-col gap-1.5 bg-white p-2">
-                    {bulkMode && (
+                    {bulkMode && !dayLocked && (
                       <label className="flex items-center justify-center gap-1.5 pb-0.5 text-[11px] text-slate-400">
                         <input type="checkbox" checked={selection.isSelected(day)} onChange={() => selection.toggle(day)} className="h-3.5 w-3.5" />
                         Chọn ngày
@@ -333,18 +425,22 @@ export function MyWorkSchedulePage() {
                         className="flex items-center gap-1.5 rounded-md px-2 py-2 text-[13px] font-semibold text-white shadow-sm"
                         style={{ background: WORK_SHIFT_COLOR_HEX[item.workShiftColor] }}
                       >
-                        {!item.canEdit && <Lock size={10} weight="bold" className="flex-shrink-0 text-white/80" aria-hidden="true" />}
+                        {(!item.canEdit || dayLocked) && (
+                          <Lock size={10} weight="bold" className="flex-shrink-0 text-white/80" aria-hidden="true" />
+                        )}
                         <span className="min-w-0 flex-1 truncate">
                           {item.workShiftName}
                           <span className="block text-[11px] font-medium text-white/85">
                             {item.startTime}–{item.endTime}
                           </span>
                         </span>
-                        {item.canEdit && selfScheduleEnabled && (
+                        {item.canEdit && selfScheduleEnabled && !dayLocked && (
                           <button
                             type="button"
                             aria-label="Xoá ca"
-                            onClick={() => deleteMutation.mutate({ id: item.id, version: item.version })}
+                            onClick={() =>
+                              deleteMutation.mutate({ id: item.id, version: item.version }, { onError: showLockErrorIfApplicable })
+                            }
                             className="flex-shrink-0 rounded p-0.5 text-white/75 hover:bg-white/20 hover:text-white"
                           >
                             <XIcon size={11} weight="bold" />
@@ -352,7 +448,7 @@ export function MyWorkSchedulePage() {
                         )}
                       </div>
                     ))}
-                    {!bulkMode && selfScheduleEnabled && (
+                    {!bulkMode && selfScheduleEnabled && !dayLocked && (
                       <Button type="button" variant="add" className="w-full py-1.5 text-[11px]" onClick={() => setPickerFor([day])}>
                         {dayItems.length > 0 ? '+ Thêm ca khác' : '+ Đăng ký ca'}
                       </Button>
@@ -383,7 +479,7 @@ export function MyWorkSchedulePage() {
                 <button
                   type="button"
                   key={date}
-                  disabled={bulkMode && !inMonth}
+                  disabled={bulkMode && (!inMonth || monthAnchorLocked)}
                   onClick={() => {
                     if (bulkMode) {
                       selection.toggle(date);

@@ -1939,6 +1939,7 @@ export interface paths {
                                 allowReceptionistEndShift: boolean;
                                 blockBookingOutsideWorkShiftEnabled: boolean;
                                 allowStaffSelfScheduleEnabled: boolean;
+                                workShiftAssignmentLockGraceDays: number;
                             };
                             meta: Record<string, never>;
                         };
@@ -6424,6 +6425,8 @@ export interface paths {
                                     isActive: boolean;
                                     roleNames: string[];
                                     version: number;
+                                    createdAt: string;
+                                    updatedAt: string;
                                 }[];
                                 nextCursor: string | null;
                             };
@@ -6543,6 +6546,8 @@ export interface paths {
                                 isActive: boolean;
                                 roleNames: string[];
                                 version: number;
+                                createdAt: string;
+                                updatedAt: string;
                             };
                             meta: Record<string, never>;
                         };
@@ -6669,6 +6674,8 @@ export interface paths {
                                 isActive: boolean;
                                 roleNames: string[];
                                 version: number;
+                                createdAt: string;
+                                updatedAt: string;
                             };
                             meta: Record<string, never>;
                         };
@@ -6755,6 +6762,8 @@ export interface paths {
                                 isActive: boolean;
                                 roleNames: string[];
                                 version: number;
+                                createdAt: string;
+                                updatedAt: string;
                             };
                             meta: Record<string, never>;
                         };
@@ -6849,6 +6858,8 @@ export interface paths {
                                 isActive: boolean;
                                 roleNames: string[];
                                 version: number;
+                                createdAt: string;
+                                updatedAt: string;
                             };
                             meta: Record<string, never>;
                         };
@@ -6984,6 +6995,8 @@ export interface paths {
                                 isActive: boolean;
                                 roleNames: string[];
                                 version: number;
+                                createdAt: string;
+                                updatedAt: string;
                             };
                             meta: Record<string, never>;
                         };
@@ -7133,6 +7146,8 @@ export interface paths {
                                 isActive: boolean;
                                 roleNames: string[];
                                 version: number;
+                                createdAt: string;
+                                updatedAt: string;
                             };
                             meta: Record<string, never>;
                         };
@@ -10135,6 +10150,7 @@ export interface paths {
                                 allowReceptionistEndShift: boolean;
                                 blockBookingOutsideWorkShiftEnabled: boolean;
                                 allowStaffSelfScheduleEnabled: boolean;
+                                workShiftAssignmentLockGraceDays: number;
                             };
                             meta: Record<string, never>;
                         };
@@ -10227,6 +10243,7 @@ export interface paths {
                         allowReceptionistEndShift?: boolean;
                         blockBookingOutsideWorkShiftEnabled?: boolean;
                         allowStaffSelfScheduleEnabled?: boolean;
+                        workShiftAssignmentLockGraceDays?: number;
                     };
                 };
             };
@@ -10278,6 +10295,7 @@ export interface paths {
                                 allowReceptionistEndShift: boolean;
                                 blockBookingOutsideWorkShiftEnabled: boolean;
                                 allowStaffSelfScheduleEnabled: boolean;
+                                workShiftAssignmentLockGraceDays: number;
                             };
                             meta: Record<string, never>;
                         };
@@ -13426,7 +13444,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Đã đăng ký đúng ca này cho ngày đã chọn (WORK_SHIFT_ASSIGNMENT_DUPLICATE) */
+                /** @description Đã đăng ký đúng ca này cho ngày đã chọn (WORK_SHIFT_ASSIGNMENT_DUPLICATE), hoặc tháng đã khoá (WORK_SHIFT_ASSIGNMENT_MONTH_LOCKED) */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -13443,6 +13461,65 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/work-shift-assignments/month-lock-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** "Khoá bảng ca" theo tháng — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần work_shift_assignment.read) */
+        get: {
+            parameters: {
+                query: {
+                    month: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                locked: boolean;
+                                canBypass: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -13510,6 +13587,21 @@ export interface paths {
                 };
                 /** @description Không có quyền work_shift_assignment.create */
                 403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Có ngày rơi vào tháng đã khoá (WORK_SHIFT_ASSIGNMENT_MONTH_LOCKED) */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -13600,6 +13692,21 @@ export interface paths {
                 };
                 /** @description Không có quyền work_shift_assignment.create */
                 403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Có ngày đích rơi vào tháng đã khoá (WORK_SHIFT_ASSIGNMENT_MONTH_LOCKED) */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -13821,6 +13928,21 @@ export interface paths {
                         };
                     };
                 };
+                /** @description Tháng đã khoá (WORK_SHIFT_ASSIGNMENT_MONTH_LOCKED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
             };
         };
         delete?: never;
@@ -13916,7 +14038,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description version không khớp (CONCURRENT_MODIFICATION), hoặc đã khoá — ngoài ngày đăng ký (WORK_SHIFT_ASSIGNMENT_LOCKED) */
+                /** @description version không khớp (CONCURRENT_MODIFICATION), đã khoá — ngoài ngày đăng ký (WORK_SHIFT_ASSIGNMENT_LOCKED), hoặc tháng đã khoá (WORK_SHIFT_ASSIGNMENT_MONTH_LOCKED) */
                 409: {
                     headers: {
                         [name: string]: unknown;

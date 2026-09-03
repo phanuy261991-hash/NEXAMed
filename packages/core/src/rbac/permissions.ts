@@ -94,6 +94,12 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   { module: 'work_shift_assignment', action: 'create', description: 'Đăng ký ca làm việc (cho chính mình, hoặc hộ người khác nếu có quyền quản lý)' },
   { module: 'work_shift_assignment', action: 'read', description: 'Xem lịch làm việc đã đăng ký' },
   { module: 'work_shift_assignment', action: 'delete', description: 'Xoá ca làm việc đã đăng ký (của người khác, hoặc quá hạn tự xoá)' },
+  // "Khoá bảng ca" theo tháng (2026-09-03) — đặc quyền mở rộng (action ngoài read/create/update nên
+  // tự rơi vào cột "Đặc quyền mở rộng" ở màn Vai trò & Phân quyền, không cần sửa gì thêm ở web).
+  // Mặc định CHỈ clinic_admin/system_admin có (xem DEFAULT_ROLE_PERMISSIONS) — tenant tự cấp thêm
+  // cho vai trò tuỳ biến khác (ví dụ "Hành chính nhân sự") nếu cần đối chiếu/sửa lại sau khi chốt
+  // tháng, phục vụ nghiệp vụ chấm công/tính lương (v2, chưa xây — đây chỉ chuẩn bị nền).
+  { module: 'work_shift_assignment', action: 'unlock', description: 'Sửa/xoá lịch làm việc dù tháng đã khoá (chốt bảng ca)' },
   // Vá lỗ hổng thật (cùng dạng #030/#064 "lễ tân không có quyền đọc module khác"): `GET
   // /work-shifts` (danh mục MẪU ca) trước đây chỉ gắn `clinic_config.read` — MỌI nhân viên tự
   // đăng ký ca (`work_shift_assignment.create=personal` ở trên) nhưng KHÔNG xem được chính danh
@@ -249,11 +255,17 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'work_shift_assignment.create': 'global',
     'work_shift_assignment.read': 'global',
     'work_shift_assignment.delete': 'global',
+    // Mặc định clinic_admin mở khoá được lịch tháng đã chốt (đúng yêu cầu chủ dự án).
+    'work_shift_assignment.unlock': 'global',
     'work_shift.read': 'global',
   },
   system_admin: {
     'user_account.read': 'global',
     'user_account.manage': 'global',
     'audit_log.read': 'global',
+    // Mặc định cũng có quyền mở khoá theo yêu cầu chủ dự án — chưa có
+    // `work_shift_assignment.read/create/delete` nên hiện chưa dùng được ở UI (không phải bug: vai
+    // trò này vốn không quản lý lịch làm việc, chỉ để sẵn nếu tenant tự cấp thêm CRUD sau).
+    'work_shift_assignment.unlock': 'global',
   },
 };

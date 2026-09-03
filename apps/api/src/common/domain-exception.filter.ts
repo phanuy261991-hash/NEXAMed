@@ -83,6 +83,7 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   // không phải lỗi input (422 mặc định không phù hợp).
   WORK_SHIFT_ASSIGNMENT_DUPLICATE: HttpStatus.CONFLICT,
   WORK_SHIFT_ASSIGNMENT_LOCKED: HttpStatus.CONFLICT,
+  WORK_SHIFT_ASSIGNMENT_MONTH_LOCKED: HttpStatus.CONFLICT,
   APPOINTMENT_OUTSIDE_WORK_SHIFT: HttpStatus.CONFLICT,
   // "Cấu hình chung" — tự đăng ký ca bị tắt, cùng nhóm DOCTOR_AVAILABILITY_*_DISABLED ở trên (thao
   // tác bị cấu hình phòng khám chặn, không phải thiếu quyền RBAC).
