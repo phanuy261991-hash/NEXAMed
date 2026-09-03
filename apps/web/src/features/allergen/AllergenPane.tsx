@@ -7,6 +7,7 @@ import { Combobox } from '../../shared/ui/Combobox';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { EmptyState } from '../../shared/ui/EmptyState';
+import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
 import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
 import { useRowSelection } from '../../shared/hooks/useRowSelection';
@@ -236,13 +237,9 @@ export function AllergenPane() {
                         <td className="px-4 py-2 text-left font-medium text-slate-900">{allergen.name}</td>
                         <td className="px-4 py-2 text-center font-medium text-slate-600">{allergen.allergenGroupName}</td>
                         <td className="px-4 py-2 text-center">
-                          <span
-                            className={`whitespace-nowrap rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
-                              allergen.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
-                            }`}
-                          >
+                          <StatusBadge tone={allergen.isActive ? 'success' : 'neutral'}>
                             {allergen.isActive ? 'Đang hoạt động' : 'Ngưng dùng'}
-                          </span>
+                          </StatusBadge>
                         </td>
                         {canManage && (
                           <td className="px-4 py-2 text-center">

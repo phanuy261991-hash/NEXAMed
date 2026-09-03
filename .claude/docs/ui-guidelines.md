@@ -32,6 +32,12 @@
   - **Triage - Khẩn cấp/Lỗi:** `bg-rose-600`
   - **Trạng thái vô hiệu/Đã khám xong:** `bg-slate-300 text-slate-500`
 
+### 2.1a. Badge trạng thái (Status Badge) — nền ĐẶC, không dùng kiểu nhạt (chốt 2026-09-03)
+- **Mọi badge/pill thể hiện TRẠNG THÁI CỦA MỘT THỰC THỂ** (Đang hoạt động/Ngưng dùng, Có/Không, trạng thái lượt khám/lịch hẹn/phiếu thu...) dùng nền ĐẶC + chữ trắng đậm — đúng token "Tín hiệu Y tế" ở mục 2.1 (`bg-emerald-500`/`bg-amber-500`/`bg-rose-600` + `text-white`; vô hiệu `bg-slate-300 text-slate-600`, không trắng vì nền quá nhạt). **Cấm** kiểu nhạt `bg-*-50/text-*-700` hoặc `bg-*-100/text-*-700` cho badge trạng thái — nhìn nhợt nhạt, khó đọc (phản hồi trực tiếp chủ dự án, xem `docs/DECISIONS.md` #105).
+- Dùng `shared/ui/StatusBadge.tsx` (`tone: success|warning|danger|neutral|info|accent`) cho badge 2 trạng thái đơn giản (isActive, invoice status...). `info` (`bg-blue-600`) dùng cho cờ cấu hình có/không không thuộc 4 tín hiệu y tế gốc; `accent` (`bg-violet-500`) dành riêng cho trạng thái đặc thù cần tách màu (ví dụ phiếu thu "Đã hoàn tiền").
+- Badge có nhiều biến thể/dùng logic riêng (ví dụ `ENCOUNTER_STATUS_META`/`APPOINTMENT_STATUS_META`) thì đổi trực tiếp giá trị màu trong file nguồn thay vì bọc `StatusBadge` — miễn đúng token đặc ở trên.
+- **Ngoại lệ CHỦ ĐÍCH, không đổi** (khác bản chất "badge trạng thái nhỏ"): (1) nền TOÀN Ô của thẻ lịch hẹn trên lưới (`AppointmentGridView.tsx`, dùng `APPOINTMENT_STATUS_META.bg`/`.text` NHẠT — chữ tối `text-slate-900` đè lên phải đọc được; badge nhỏ ở nơi khác dùng `.badgeBg`/`.badgeText` ĐẶC riêng); (2) cảnh báo mềm ICD-10 (giới tính/hạn chế sử dụng, `docs/DECISIONS.md` #056 — cố ý nhạt, không phải lỗi cảnh báo nghiêm trọng); (3) banner/alert cảnh báo dạng khung viền (`ErrorBanner.tsx`, cảnh báo dị ứng, xác nhận lỗi form — pattern khác, đã có quyết định riêng); (4) chip/tag PHÂN LOẠI không phải trạng thái (loại tiếp nhận, "N mức giá", "hàng chờ chung"/"của tôi", PRIMARY/SECONDARY chẩn đoán — đây là nhãn phân loại, không phải on/off).
+
 ### 2.2. Elevation & Z-Index (Hệ thống phân tầng)
 - `shadow-sm`: Dành cho Card thông thường.
 - `shadow-md`: Dành cho Card đang được hover hoặc Form nổi.

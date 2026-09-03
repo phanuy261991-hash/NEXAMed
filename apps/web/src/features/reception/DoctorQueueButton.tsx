@@ -47,7 +47,7 @@ export function DoctorQueueButton() {
   const [releasingItem, setReleasingItem] = useState<ReceptionListItem | null>(null);
 
   const listQuery = useReceptionListQuery(today, user?.id, true, true);
-  const departmentsQuery = useDepartmentOptionsQuery();
+  const departmentsQuery = useDepartmentOptionsQuery(true);
   const scheduleConfigQuery = useScheduleConfigQuery();
   const startMutation = useStartConsultationMutation();
 

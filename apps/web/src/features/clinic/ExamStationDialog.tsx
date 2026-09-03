@@ -4,6 +4,7 @@ import type { ExamStationSummary, RoomSummary } from '@nexamed/shared';
 import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
+import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { useAuthStore } from '../auth/auth.store';
 import { useCreateExamStationMutation, useExamStationsQuery, useUpdateExamStationMutation } from './clinic.queries';
 
@@ -88,9 +89,7 @@ export function ExamStationDialog({ room, onClose }: { room: RoomSummary; onClos
                   >
                     <span className="text-sm font-medium text-slate-900">{station.name}</span>
                     <div className="flex items-center gap-2">
-                      {!station.isActive && (
-                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10.5px] font-semibold text-slate-500">Ngưng dùng</span>
-                      )}
+                      {!station.isActive && <StatusBadge tone="neutral">Ngưng dùng</StatusBadge>}
                       {canManage && (
                         <button
                           type="button"

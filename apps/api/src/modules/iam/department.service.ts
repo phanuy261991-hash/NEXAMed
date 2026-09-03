@@ -39,7 +39,15 @@ export class DepartmentService {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const seq = await this.codeSequenceRepository.next(tx, tenantId, DEPARTMENT_CODE_PREFIX, actorId);
       const code = formatDisplayCode(DEPARTMENT_CODE_PREFIX, new Date(), seq);
-      const created = await this.departmentRepository.create(tx, tenantId, actorId, dto.name, code, dto.departmentTypeId ?? null);
+      const created = await this.departmentRepository.create(
+        tx,
+        tenantId,
+        actorId,
+        dto.name,
+        code,
+        dto.departmentTypeId ?? null,
+        dto.participatesInQueue ?? true,
+      );
 
       await writeAuditLog(tx, tenantId, {
         actorId,
@@ -63,10 +71,10 @@ export class DepartmentService {
     });
   }
 
-  /** "Hàng đợi ảo" (#064) — chiếu tối thiểu cho khu vực Điều phối lúc Tiếp nhận. */
-  async listDepartmentOptions(tenantId: string): Promise<ListDepartmentOptionsResponse> {
+  /** "Hàng đợi ảo" (#064) — chiếu tối thiểu, dùng chung nhiều nơi (không riêng điều phối Tiếp nhận, xem #107). */
+  async listDepartmentOptions(tenantId: string, queueOnly: boolean): Promise<ListDepartmentOptionsResponse> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const rows = await this.departmentRepository.listActiveOptions(tx, tenantId);
+      const rows = await this.departmentRepository.listActiveOptions(tx, tenantId, queueOnly);
       return { items: rows };
     });
   }
@@ -87,6 +95,7 @@ export class DepartmentService {
       const patch: UpdateDepartmentData = {};
       if (dto.name !== undefined) patch.name = dto.name;
       if (dto.departmentTypeId !== undefined) patch.departmentTypeId = dto.departmentTypeId;
+      if (dto.participatesInQueue !== undefined) patch.participatesInQueue = dto.participatesInQueue;
       if (dto.isActive !== undefined) patch.isActive = dto.isActive;
 
       const count = await this.departmentRepository.updateIfVersionMatches(tx, tenantId, id, dto.version, actorId, patch);
@@ -119,6 +128,7 @@ export class DepartmentService {
       name: department.name,
       departmentTypeId: department.departmentTypeId,
       departmentTypeName: department.departmentType?.name ?? null,
+      participatesInQueue: department.participatesInQueue,
       isActive: department.isActive,
       version: department.version,
     };

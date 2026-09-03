@@ -7,6 +7,7 @@ import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { PasswordInput } from '../../shared/ui/PasswordInput';
 import { Skeleton } from '../../shared/ui/Skeleton';
+import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { formatDobDisplay } from '../../shared/format/date';
 import { getInitials } from '../../shared/format/initials';
 import { useDepartmentOptionsQuery } from '../department/department.queries';
@@ -170,13 +171,11 @@ export function MyAccountDialog({ onClose }: { onClose: () => void }) {
                 ))}
                 {departmentName && <span className="flex items-center gap-1.5 before:content-['·'] before:text-slate-300">{departmentName}</span>}
                 {query.data && (
-                  <span
-                    className={`ml-1 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11.5px] font-bold ${
-                      query.data.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'
-                    }`}
-                  >
-                    <span className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${query.data.isActive ? 'bg-emerald-500' : 'bg-slate-400'}`} />
-                    {query.data.isActive ? 'Đang hoạt động' : 'Ngưng hoạt động'}
+                  <span className="ml-1">
+                    <StatusBadge tone={query.data.isActive ? 'success' : 'neutral'}>
+                      <span className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${query.data.isActive ? 'bg-white' : 'bg-slate-500'}`} />
+                      {query.data.isActive ? 'Đang hoạt động' : 'Ngưng hoạt động'}
+                    </StatusBadge>
                   </span>
                 )}
               </div>

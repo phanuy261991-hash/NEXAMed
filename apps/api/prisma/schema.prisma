@@ -386,6 +386,10 @@ model Department {
   // index raw SQL trong migration (`(tenant_id) WHERE is_default`), không khai `@@unique` ở Prisma
   // (không biểu diễn được unique có điều kiện, cùng lý do patient.nationalIdHash).
   isDefault        Boolean @default(false) @map("is_default")
+  // Khoa/Phòng này có xuất hiện trong khu vực điều phối "Hàng đợi khám" không (GET
+  // /departments/options, #064) — TÁCH KHỎI department_type (thuần mô tả/tổ chức, #063) vì dựa
+  // vào tên/loại để suy luận "khoa nào là lâm sàng" sẽ vỡ ngầm khi đổi tên Loại. Mặc định true.
+  participatesInQueue Boolean @default(true) @map("participates_in_queue")
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)

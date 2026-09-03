@@ -10,6 +10,7 @@ import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { MoneyInput } from '../../shared/ui/MoneyInput';
 import { Skeleton } from '../../shared/ui/Skeleton';
+import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { formatVnd } from '../../shared/format/currency';
 import { useAuthStore } from '../auth/auth.store';
 import { useClinicPrintHeaderQuery } from '../clinic/clinic.queries';
@@ -186,28 +187,26 @@ export function InvoiceDetailPage() {
               Phiếu thu <span className="text-blue-600">{invoice.invoiceNo}</span>
             </h2>
             {invoice.status === 'PAID' && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700">
+              <StatusBadge tone="success">
                 <CheckCircle size={12} weight="bold" aria-hidden="true" /> Đã thu
-              </span>
+              </StatusBadge>
             )}
-            {invoice.status === 'UNPAID' && (
-              <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-bold text-amber-700">Chờ thu</span>
-            )}
+            {invoice.status === 'UNPAID' && <StatusBadge tone="warning">Chờ thu</StatusBadge>}
             {/* #085 — CANCELLED (huỷ khi chưa thu)/REFUNDED (đã hoàn tiền xong) là 2 trạng thái đóng sổ mới. */}
             {invoice.status === 'CANCELLED' && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-600">
+              <StatusBadge tone="neutral">
                 <XCircle size={12} weight="bold" aria-hidden="true" /> Đã huỷ (chưa thu)
-              </span>
+              </StatusBadge>
             )}
             {invoice.status === 'REFUNDED' && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2.5 py-0.5 text-xs font-bold text-violet-700">
+              <StatusBadge tone="accent">
                 <ArrowLeft size={12} weight="bold" aria-hidden="true" /> Đã hoàn tiền
-              </span>
+              </StatusBadge>
             )}
             {invoice.needsRefund && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-bold text-rose-700">
+              <StatusBadge tone="danger">
                 <Warning size={12} weight="fill" aria-hidden="true" /> Cần hoàn tiền
-              </span>
+              </StatusBadge>
             )}
             {/* #085 — "Hủy lượt khám" ngay tại đây, dùng chung dialog. Ẩn khi lượt khám đã huỷ rồi
                 (encounterCancelled) — không huỷ lại lần 2. */}

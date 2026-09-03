@@ -6,6 +6,7 @@ import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { EmptyState } from '../../shared/ui/EmptyState';
+import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
 import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
@@ -125,13 +126,7 @@ export function DrugCatalogPane() {
                     <td className="px-4 py-2 text-center font-medium text-slate-600">{drug.concentration ?? '—'}</td>
                     <td className="px-4 py-2 text-center font-medium text-slate-600">{drug.unit ?? '—'}</td>
                     <td className="px-4 py-2 text-center">
-                      <span
-                        className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
-                          drug.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
-                        }`}
-                      >
-                        {drug.isActive ? 'Đang dùng' : 'Đã ẩn'}
-                      </span>
+                      <StatusBadge tone={drug.isActive ? 'success' : 'neutral'}>{drug.isActive ? 'Đang dùng' : 'Đã ẩn'}</StatusBadge>
                     </td>
                     {canManage && (
                       <td className="px-4 py-2 text-center">

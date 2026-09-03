@@ -168,7 +168,7 @@ export function TopBar() {
           <button
             type="button"
             onClick={() => setEndShiftDialog({ trigger: 'SCHEDULED_END' })}
-            className="flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-bold text-rose-700 hover:bg-rose-100"
+            className="flex items-center gap-1.5 rounded-full bg-rose-600 px-2.5 py-1 text-xs font-bold text-white hover:bg-rose-700"
           >
             <Clock size={12} weight="fill" aria-hidden="true" />
             Đã quá giờ làm việc — Đóng ca
@@ -176,14 +176,14 @@ export function TopBar() {
         )}
 
         {isDoctor && isBreak && myAvailability && (
-          <span className="flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700">
-            <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-amber-500" aria-hidden="true" />
+          <span className="flex items-center gap-1.5 rounded-full bg-amber-500 px-2.5 py-1 text-xs font-bold text-white">
+            <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-white" aria-hidden="true" />
             Đang tạm nghỉ {formatClockTime(myAvailability.statusChangedAt)}
           </span>
         )}
         {isDoctor && isEnded && myAvailability && (
-          <span className="flex items-center gap-1.5 rounded-full border border-slate-300 bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">
-            <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-slate-400" aria-hidden="true" />
+          <span className="flex items-center gap-1.5 rounded-full bg-slate-300 px-2.5 py-1 text-xs font-bold text-slate-600">
+            <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-slate-500" aria-hidden="true" />
             Đã đóng ca {formatClockTime(myAvailability.statusChangedAt)}
           </span>
         )}

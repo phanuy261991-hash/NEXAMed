@@ -27,6 +27,13 @@ const ENTITY_TYPE_LABELS: Record<string, string> = {
   drug: 'Thuốc',
   doctor_room_session: 'Phòng làm việc',
   break_glass_session: 'Quyền khẩn cấp (break-glass)',
+  // Bổ sung #109 — thiếu từ lúc thêm module work_shift/work_shift_assignment (#101/#102) và
+  // doctor_availability (#094), cùng `tenant_setting` (đã có action `clinic_settings.updated`
+  // dùng entityType này từ S2-07 nhưng chưa từng có nhãn).
+  work_shift: 'Ca làm việc',
+  work_shift_assignment: 'Đăng ký ca làm việc',
+  doctor_availability: 'Trạng thái làm việc bác sĩ',
+  tenant_setting: 'Cấu hình phòng khám',
 };
 
 export function labelForEntityType(entityType: string): string {

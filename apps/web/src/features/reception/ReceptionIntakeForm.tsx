@@ -174,7 +174,7 @@ export function ReceptionIntakeForm({
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
 
   const doctorsQuery = useDoctorsQuery();
-  const departmentsQuery = useDepartmentOptionsQuery();
+  const departmentsQuery = useDepartmentOptionsQuery(true);
   const roomOptionsQuery = useRoomOptionsQuery();
   const deferredPaymentStatusQuery = useDeferredPaymentEnabledQuery();
   const deferredPaymentFeatureEnabled = deferredPaymentStatusQuery.data?.enabled ?? false;
@@ -1078,7 +1078,7 @@ export function ReceptionIntakeForm({
                       {line.examTypePrice !== undefined ? formatVnd(line.examTypePrice * line.quantity) : '—'}
                     </td>
                     <td className="px-3 py-3 text-center">
-                      <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700">Chờ thực hiện</span>
+                      <span className="rounded-full bg-amber-500 px-2.5 py-1 text-xs font-bold text-white">Chờ thực hiện</span>
                     </td>
                     <td className="px-3 py-3 text-center">
                       <button

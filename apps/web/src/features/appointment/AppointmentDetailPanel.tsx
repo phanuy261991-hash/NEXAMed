@@ -207,7 +207,7 @@ export function AppointmentDetailPanel({
                 <Row
                   label="Trạng thái"
                   value={
-                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${meta.bg} ${meta.text}`}>
+                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${meta.badgeBg} ${meta.badgeText}`}>
                       {meta.label}
                       {appointment.status === 'NO_SHOW' && appointment.noShowAutoMarked && <span className="font-normal"> (tự động)</span>}
                     </span>

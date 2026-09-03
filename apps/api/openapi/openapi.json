@@ -18299,6 +18299,9 @@
                   "departmentTypeId": {
                     "type": "string",
                     "format": "uuid"
+                  },
+                  "participatesInQueue": {
+                    "type": "boolean"
                   }
                 },
                 "required": [
@@ -18345,6 +18348,9 @@
                             "null"
                           ]
                         },
+                        "participatesInQueue": {
+                          "type": "boolean"
+                        },
                         "isActive": {
                           "type": "boolean"
                         },
@@ -18358,6 +18364,7 @@
                         "name",
                         "departmentTypeId",
                         "departmentTypeName",
+                        "participatesInQueue",
                         "isActive",
                         "version"
                       ]
@@ -18491,6 +18498,9 @@
                                   "null"
                                 ]
                               },
+                              "participatesInQueue": {
+                                "type": "boolean"
+                              },
                               "isActive": {
                                 "type": "boolean"
                               },
@@ -18504,6 +18514,7 @@
                               "name",
                               "departmentTypeId",
                               "departmentTypeName",
+                              "participatesInQueue",
                               "isActive",
                               "version"
                             ]
@@ -18597,10 +18608,32 @@
         "tags": [
           "department"
         ],
-        "summary": "\"Hàng đợi ảo\" (#064) — chiếu tối thiểu {id,name} cho khu vực Điều phối Bác sĩ/Khoa lúc Tiếp nhận, chỉ Khoa đang active, gắn quyền reference_catalog.read (không cần user_account.read)",
+        "summary": "Chiếu tối thiểu {id,name}, chỉ Khoa đang active, gắn quyền reference_catalog.read (không cần user_account.read). queueOnly=true (#107) lọc thêm participatesInQueue cho điều phối \"Hàng đợi khám\"",
         "security": [
           {
             "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "true",
+                    "false"
+                  ]
+                }
+              ],
+              "default": false
+            },
+            "required": false,
+            "name": "queueOnly",
+            "in": "query"
           }
         ],
         "responses": {
@@ -18755,6 +18788,9 @@
                     ],
                     "format": "uuid"
                   },
+                  "participatesInQueue": {
+                    "type": "boolean"
+                  },
                   "isActive": {
                     "type": "boolean"
                   },
@@ -18807,6 +18843,9 @@
                             "null"
                           ]
                         },
+                        "participatesInQueue": {
+                          "type": "boolean"
+                        },
                         "isActive": {
                           "type": "boolean"
                         },
@@ -18820,6 +18859,7 @@
                         "name",
                         "departmentTypeId",
                         "departmentTypeName",
+                        "participatesInQueue",
                         "isActive",
                         "version"
                       ]

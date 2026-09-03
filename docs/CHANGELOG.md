@@ -2,6 +2,42 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-03
+
+### Fix: "Bộ phận Lễ Tân" (hành chính) lọt vào danh sách chọn "Chuyển vào hàng đợi" ở Tiếp nhận
+
+Chủ dự án phát hiện lúc xem demo: `department` dùng chung cho tổ chức nhân sự (phân loại tuỳ chọn qua `department_type`, thuần mô tả) và điều phối "Hàng đợi ảo" (`encounter.departmentId`, #064) — `GET /departments/options` trả về mọi Khoa/Phòng active, không phân biệt lâm sàng/hành chính. Thêm cột `department.participatesInQueue` (mặc định `true`, tách khỏi `department_type` — dựa vào tên loại để lọc sẽ vỡ ngầm khi đổi tên) — checkbox "Nhận bệnh nhân / hiện trong Hàng đợi khám" trong form Thêm/Sửa Khoa-Phòng. `listActiveOptions()` lọc thêm điều kiện này; trang quản lý danh sách Khoa/Phòng không đổi, chỉ thêm cột hiển thị trạng thái. Xem `docs/DECISIONS.md` #105.
+
+Đã xác minh: `user-account-hr-profile-http.spec.ts` +1 test, 550/557 test `apps/api` (7 skip do 1 flake `geo-http.spec.ts` đã biết), `pnpm -w typecheck/lint/build` sạch, `pnpm run db:check-schema` sạch. Migration đã áp lên Postgres dev. Chưa verify Playwright/trình duyệt thật.
+
+### Badge trạng thái toàn app: nền nhạt → nền đặc
+
+Chủ dự án phản hồi badge "Đang hoạt động"/"Có/Không" nhìn nhợt nhạt (gửi ảnh mẫu tham khảo) — sửa mẫu ở trang "Khoa/Phòng" cho xem trước, duyệt xong áp dụng toàn app theo đúng token "Tín hiệu Y tế" đã có sẵn ở `ui-guidelines.md` mục 2.1 (nền đặc `bg-emerald-500`/`bg-amber-500`/`bg-rose-600` + chữ trắng, vô hiệu `bg-slate-300`) — nhiều màn hình trước đó code sai thành nhạt. Component mới `shared/ui/StatusBadge.tsx`. Rà soát toàn `apps/web/src`, đổi ~15 vị trí (danh mục isActive, trạng thái lượt khám/lịch hẹn/phiếu thu, badge bác sĩ ở TopBar...), cố ý GIỮ NGUYÊN vài nơi khác bản chất (nền toàn ô lưới lịch hẹn cần nhạt để chữ đọc được, cảnh báo mềm ICD-10, banner/alert khung viền, chip phân loại không phải trạng thái). Ghi quy tắc bắt buộc vào `.claude/docs/ui-guidelines.md` mục 2.1a. Xem `docs/DECISIONS.md` #106.
+
+Đã xác minh: `pnpm -w typecheck/lint/build` sạch toàn workspace, chunk web 477.56 kB (không đổi bất thường). Không đổi backend/schema.
+
+### Fix: "Lịch làm việc nhân viên"/"Thông tin tài khoản" mất "Bộ phận Lễ Tân" khỏi bộ lọc Khoa (do #105 gây ra)
+
+`GET /departments/options` là endpoint dùng chung nhiều nơi, không riêng điều phối "Hàng đợi khám" — #105 lọc cứng `participatesInQueue=true` ngay trong repository làm 2 nơi khác (`StaffWorkSchedulePage.tsx`, `MyAccountDialog.tsx`) mất luôn "Bộ phận Lễ Tân" khỏi kết quả. Sửa: endpoint mặc định trả TOÀN BỘ Khoa active như trước #105, thêm query param tường minh `queueOnly=true` chỉ dùng ở 3 nơi điều phối hàng đợi thật sự (`ReceptionIntakeForm.tsx`/`ReceptionDoctorQueuePage.tsx`/`DoctorQueueButton.tsx`). `StaffWorkSchedulePage.tsx` đổi hẳn sang `GET /departments` đầy đủ (an toàn vì trang này đã giới hạn chỉ `clinic_admin`). Xem `docs/DECISIONS.md` #107.
+
+Đã xác minh: viết lại test #105 rộng hơn (14/14), 557/557 test `apps/api` (không flake), `pnpm -w typecheck/lint/build` sạch, chunk web 477.56 kB.
+
+### "Lịch làm việc nhân viên" — chọn nhiều ngày theo từng dòng nhân viên (bulk-apply ca lặp lại cả tháng)
+
+Chủ dự án nêu vấn đề: nhân viên có lịch cố định lặp lại cả tháng, bấm từng ngày để thêm ca rất tốn công. Cơ chế bulk-apply đã có sẵn (dùng ở "Lịch làm việc của tôi", #101/#102) nhưng chưa nối vào trang quản lý nhiều nhân viên. Thêm nút "Chọn nhiều ngày" riêng từng dòng (chỉ 1 dòng active cùng lúc, tránh áp nhầm ca cho người khác) + nút "Chọn cả tháng" chọn hết ngày còn lại trong 1 lần bấm + thanh công cụ "Áp dụng ca cho N ngày đã chọn" ở cuối trang. Không có API/migration mới — dùng lại nguyên `bulkCreateWorkShiftAssignment`/`useRowSelection`/`SelectionToolbar` đã có. Xem `docs/DECISIONS.md` #108.
+
+Tiện thể gọn lại banner "Tự đăng ký ca đang bị tắt" ở "Lịch làm việc của tôi" (từ khung viền màu hổ phách sang chú thích chữ nhỏ màu xám — đây là trạng thái cấu hình chứ không phải cảnh báo khẩn) + đổi câu chữ theo yêu cầu chủ dự án.
+
+Đã xác minh: `pnpm -w typecheck/lint/build` sạch toàn workspace, chunk `StaffWorkSchedulePage` 26.81 kB, chunk khởi động chính 477.56 kB (không đổi). Không đổi backend/schema.
+
+Sửa thêm ngay sau đó: nút "Chọn nhiều ngày"/"Chọn cả tháng" lúc đầu viết tay không nền/viền, chủ dự án phản hồi khó thấy — đổi sang dùng `Button` component (`variant="primary"/"secondary"`) đúng quy tắc bắt buộc đã có.
+
+### Fix: "Nhật ký hoạt động" hiện mã kỹ thuật thay tiếng Việt cho các module gần đây
+
+Rà soát toàn bộ `writeAuditLog(...)` trong backend, phát hiện `ACTION_LABELS`/`ENTITY_TYPE_LABELS` (`packages/shared/src/audit/`) thiếu nhãn cho mọi module thêm sau ngày khảo sát gốc (29/08/2026): `work_shift`/`work_shift_assignment` (#101/#102), `doctor_availability` (#094), cộng 1 lỗi cũ hơn (`appointment.no_show` — action thật trong code nhưng dictionary có 2 khoá sai `marked_no_show`/`auto_no_show` chưa từng khớp) và thiếu `tenant_setting`/`user_account.self_updated`. Bổ sung 11 action + 4 entityType. Xem `docs/DECISIONS.md` #109.
+
+Đã xác minh: `action-labels.spec.ts`/`entity-type-labels.spec.ts` +2 test (8/8), `pnpm -w typecheck/lint/build` sạch toàn workspace. Khởi động lại dev server để nạp bản `packages/shared` mới.
+
 ## 2026-09-02
 
 ### Redesign dialog "Đóng ca hôm nay"/"Tạm nghỉ" — bớt đổ bóng, huy hiệu số nổi bật, sửa câu mô tả

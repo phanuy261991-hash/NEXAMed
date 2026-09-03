@@ -184,7 +184,7 @@ export function AppointmentListView({
                   <div role="cell" className="truncate font-medium text-slate-600">{doctorNameById.get(a.doctorId) ?? '—'}</div>
                   <div role="cell" className="text-center font-medium text-slate-600">{APPOINTMENT_SOURCE_LABEL[a.source]}</div>
                   <div role="cell" className="text-center">
-                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${meta.bg} ${meta.text}`}>
+                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${meta.badgeBg} ${meta.badgeText}`}>
                       {meta.label}
                       {a.status === 'NO_SHOW' && a.noShowAutoMarked && <span className="ml-1 font-normal">(tự động)</span>}
                     </span>

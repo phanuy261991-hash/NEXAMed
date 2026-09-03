@@ -46,17 +46,9 @@ export function DoctorAvailabilityList({
               )}
             </span>
             {busyUntil ? (
-              <span
-                className={`rounded-full px-2 py-0.5 text-[10.5px] font-bold ${active ? 'bg-white text-amber-700' : 'bg-amber-50 text-amber-700'}`}
-              >
-                Bận tới {busyUntil}
-              </span>
+              <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[10.5px] font-bold text-white">Bận tới {busyUntil}</span>
             ) : (
-              <span
-                className={`rounded-full px-2 py-0.5 text-[10.5px] font-bold ${active ? 'bg-white text-emerald-700' : 'bg-emerald-50 text-emerald-700'}`}
-              >
-                Trống
-              </span>
+              <span className="rounded-full bg-emerald-500 px-2 py-0.5 text-[10.5px] font-bold text-white">Trống</span>
             )}
           </button>
         );

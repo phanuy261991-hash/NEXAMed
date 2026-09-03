@@ -6,6 +6,7 @@ import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { EmptyState } from '../../shared/ui/EmptyState';
+import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
 import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
 import { useRowSelection } from '../../shared/hooks/useRowSelection';
@@ -137,7 +138,7 @@ export function WorkShiftPane() {
                       <span className="flex items-center gap-2 font-medium text-slate-900">
                         <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full" style={{ background: WORK_SHIFT_COLOR_HEX[item.color] }} />
                         {item.name}
-                        {!item.isActive && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">Đã ẩn</span>}
+                        {!item.isActive && <StatusBadge tone="neutral">Đã ẩn</StatusBadge>}
                       </span>
                     </td>
                     <td className="px-4 py-2 text-center font-semibold text-blue-600">{item.startTime}</td>

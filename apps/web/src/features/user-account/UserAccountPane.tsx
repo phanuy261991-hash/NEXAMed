@@ -6,6 +6,7 @@ import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { EmptyState } from '../../shared/ui/EmptyState';
+import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { PasswordInput } from '../../shared/ui/PasswordInput';
 import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
 import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
@@ -269,13 +270,7 @@ export function UserAccountPane() {
                     {item.employmentStatusCode ? (employmentStatusNameByCode.get(item.employmentStatusCode) ?? '—') : '—'}
                   </td>
                   <td className="px-4 py-2 text-center">
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                        item.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
-                      }`}
-                    >
-                      {item.isActive ? 'Đang hoạt động' : 'Vô hiệu hoá'}
-                    </span>
+                    <StatusBadge tone={item.isActive ? 'success' : 'neutral'}>{item.isActive ? 'Đang hoạt động' : 'Vô hiệu hoá'}</StatusBadge>
                   </td>
                   <td className="px-2 py-2">
                     {/* ≤3 nút thao tác → xếp ngang 1 hàng (không cho wrap xuống dòng, tránh chồng

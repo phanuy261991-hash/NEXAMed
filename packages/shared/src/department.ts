@@ -44,6 +44,8 @@ export const departmentSummarySchema = z.object({
   departmentTypeId: z.string().uuid().nullable(),
   /** Kèm sẵn tên loại để hiển thị (cùng mẫu `RoomSummary.floorName`) — tránh N+1 lookup phía web. */
   departmentTypeName: z.string().nullable(),
+  /** Có hiện trong `GET /departments/options` (điều phối Hàng đợi khám, #064) không — tách khỏi `departmentTypeId`, xem migration `20260903090000_department_participates_in_queue`. */
+  participatesInQueue: z.boolean(),
   isActive: z.boolean(),
   version: z.number().int(),
 });
@@ -55,17 +57,31 @@ export const listDepartmentsResponseSchema = z.object({
 export type ListDepartmentsResponse = z.infer<typeof listDepartmentsResponseSchema>;
 
 /**
- * "Hàng đợi ảo" (#064) — chiếu tối thiểu cho khu vực Điều phối Bác sĩ/Khoa lúc Tiếp nhận
- * (`GET /departments/options`), gắn quyền `reference_catalog.read` thay vì `user_account.read`
- * (như `GET /departments` ở trên) — đúng lý do đã áp dụng cho `GET /appointments/doctors`
- * (`docs/DECISIONS.md` #030): lễ tân có `reference_catalog.read` nhưng không có
- * `user_account.read`. Chỉ Khoa đang `isActive`.
+ * Chiếu tối thiểu tự-phục vụ (`GET /departments/options`), gắn quyền `reference_catalog.read`
+ * thay vì `user_account.read` (như `GET /departments` ở trên) — đúng lý do đã áp dụng cho
+ * `GET /appointments/doctors` (`docs/DECISIONS.md` #030): lễ tân/bác sĩ/điều dưỡng có
+ * `reference_catalog.read` nhưng không có `user_account.read`. Chỉ Khoa đang `isActive`.
  */
 export const departmentOptionSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
 });
 export type DepartmentOption = z.infer<typeof departmentOptionSchema>;
+
+/**
+ * `queueOnly` (#107, sửa lại #105) — TƯỜNG MINH do client gửi, mặc định `false` (trả TOÀN BỘ Khoa
+ * đang active, đúng hành vi gốc trước #105 — dùng ở nhiều nơi ngoài điều phối hàng đợi, ví dụ
+ * `MyAccountDialog.tsx` tự xem hồ sơ). `true` — CHỈ dùng ở khu vực điều phối "Hàng đợi khám" — lọc
+ * thêm `participatesInQueue=true`, loại bộ phận hành chính (ví dụ "Bộ phận Lễ Tân").
+ */
+export const listDepartmentOptionsQuerySchema = z.object({
+  queueOnly: z
+    .union([z.boolean(), z.enum(['true', 'false'])])
+    .optional()
+    .default(false)
+    .transform((v) => (typeof v === 'string' ? v === 'true' : v)),
+});
+export type ListDepartmentOptionsQuery = z.infer<typeof listDepartmentOptionsQuerySchema>;
 
 export const listDepartmentOptionsResponseSchema = z.object({
   items: z.array(departmentOptionSchema),
@@ -75,12 +91,14 @@ export type ListDepartmentOptionsResponse = z.infer<typeof listDepartmentOptions
 export const createDepartmentRequestSchema = z.object({
   name: z.string().min(1),
   departmentTypeId: z.string().uuid().optional(),
+  participatesInQueue: z.boolean().optional(),
 });
 export type CreateDepartmentRequest = z.infer<typeof createDepartmentRequestSchema>;
 
 export const updateDepartmentRequestSchema = z.object({
   name: z.string().min(1).optional(),
   departmentTypeId: z.string().uuid().nullable().optional(),
+  participatesInQueue: z.boolean().optional(),
   isActive: z.boolean().optional(),
   version: z.number().int().positive(),
 });

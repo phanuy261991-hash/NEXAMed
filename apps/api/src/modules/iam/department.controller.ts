@@ -1,6 +1,6 @@
-import { Body, Controller, Get, HttpCode, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
-import { createDepartmentRequestSchema, updateDepartmentRequestSchema } from '@nexamed/shared';
+import { createDepartmentRequestSchema, listDepartmentOptionsQuerySchema, updateDepartmentRequestSchema } from '@nexamed/shared';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
@@ -33,16 +33,19 @@ export class DepartmentController {
   }
 
   /**
-   * "Hàng đợi ảo" (#064) — chiếu tối thiểu cho khu vực Điều phối Bác sĩ/Khoa lúc Tiếp nhận
-   * (`ReceptionIntakeForm.tsx`). Gắn quyền `reference_catalog.read` thay vì `user_account.read`
-   * (đúng lý do đã áp dụng cho `GET /appointments/doctors`, `docs/DECISIONS.md` #030) — lễ tân/bác
-   * sĩ/điều dưỡng có `reference_catalog.read` nhưng không có `user_account.read`.
+   * Chiếu tối thiểu tự-phục vụ (id/name), dùng bởi mọi vai trò không có `user_account.read`. Gắn
+   * quyền `reference_catalog.read` (đúng lý do đã áp dụng cho `GET /appointments/doctors`,
+   * `docs/DECISIONS.md` #030). MẶC ĐỊNH trả toàn bộ Khoa/Phòng active — dùng ở nhiều nơi ngoài
+   * điều phối Tiếp nhận (ví dụ `MyAccountDialog.tsx` tự xem hồ sơ). `?queueOnly=true` (#107) —
+   * CHỈ dùng ở khu vực điều phối "Hàng đợi khám" (`ReceptionIntakeForm.tsx` và tương tự) — lọc
+   * thêm `participatesInQueue=true`, loại bộ phận hành chính (ví dụ "Bộ phận Lễ Tân").
    */
   @Get('options')
   @RequirePermission('reference_catalog', 'read')
-  async listOptions(@Req() req: Request) {
+  async listOptions(@Query() query: unknown, @Req() req: Request) {
+    const { queueOnly } = listDepartmentOptionsQuerySchema.parse(query);
     const { tenantId } = req.user!;
-    return this.departmentService.listDepartmentOptions(tenantId);
+    return this.departmentService.listDepartmentOptions(tenantId, queueOnly);
   }
 
   @Patch(':id')

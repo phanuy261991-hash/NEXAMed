@@ -58,6 +58,7 @@ const ACTION_LABELS: Record<string, string> = {
   'user_account.role_changed': 'Đổi vai trò',
   'user_account.password_reset': 'Đặt lại mật khẩu',
   'user_account.signature_updated': 'Cập nhật chữ ký',
+  'user_account.self_updated': 'Tự sửa hồ sơ cá nhân',
 
   // reference-catalog / allergen / allergen-group
   'reference_catalog.created': 'Thêm danh mục',
@@ -98,8 +99,10 @@ const ACTION_LABELS: Record<string, string> = {
   'appointment.cancelled': 'Huỷ lịch hẹn',
   'appointment.updated': 'Sửa lịch hẹn',
   'appointment.rescheduled': 'Dời lịch hẹn',
-  'appointment.marked_no_show': 'Đánh dấu không đến',
-  'appointment.auto_no_show': 'Tự động đánh dấu không đến',
+  // 1 action DUY NHẤT cho cả đánh dấu thủ công lẫn tự động (job nền, #092/#093) — phân biệt qua
+  // `noShowAutoMarked` trong dữ liệu, không phải action riêng. 2 khoá cũ ở đây (`marked_no_show`/
+  // `auto_no_show`) chưa từng khớp action thật nào trong code — sửa lại đúng #109.
+  'appointment.no_show': 'Đánh dấu không đến',
 
   // patient
   'patient.created': 'Tạo hồ sơ bệnh nhân',
@@ -117,6 +120,19 @@ const ACTION_LABELS: Record<string, string> = {
   'doctor_room_session.set': 'Chọn phòng làm việc',
   'break_glass.request': 'Yêu cầu quyền khẩn cấp (break-glass)',
   'break_glass.access': 'Dùng quyền khẩn cấp (break-glass)',
+
+  // work-shift / work-shift-assignment (#101/#102) — bổ sung #109, thiếu từ lúc thêm module
+  'work_shift.created': 'Thêm ca làm việc',
+  'work_shift.updated': 'Sửa ca làm việc',
+  'work_shift_assignment.created': 'Đăng ký ca làm việc',
+  'work_shift_assignment.bulk_created': 'Đăng ký ca hàng loạt',
+  'work_shift_assignment.copied': 'Sao chép ca làm việc',
+  'work_shift_assignment.deleted': 'Xoá ca làm việc',
+
+  // doctor-availability (#094) — action tính động theo trạng thái, bổ sung #109
+  'doctor_availability.ended': 'Đóng ca làm việc',
+  'doctor_availability.break_started': 'Tạm nghỉ',
+  'doctor_availability.resumed': 'Mở lại ca làm việc',
 };
 
 export function labelForAuditAction(action: string): string {

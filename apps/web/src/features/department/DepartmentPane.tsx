@@ -7,6 +7,7 @@ import { Combobox } from '../../shared/ui/Combobox';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { EmptyState } from '../../shared/ui/EmptyState';
+import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
 import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
 import { useRowSelection } from '../../shared/hooks/useRowSelection';
@@ -191,6 +192,7 @@ export function DepartmentPane() {
                       <th className="w-28 px-4 py-2.5 text-center">Mã</th>
                       <th className="px-4 py-2.5 text-left">Tên Khoa/Phòng</th>
                       {hasTypes && <th className="w-40 px-4 py-2.5 text-center">Phân loại</th>}
+                      <th className="w-32 px-4 py-2.5 text-center">Hàng đợi khám</th>
                       <th className="w-36 px-4 py-2.5 text-center">Trạng thái</th>
                       {canManage && <th className="w-20 px-4 py-2.5 text-center">Sửa</th>}
                     </tr>
@@ -210,13 +212,14 @@ export function DepartmentPane() {
                         <td className="px-4 py-2 text-left font-medium text-slate-900">{department.name}</td>
                         {hasTypes && <td className="px-4 py-2 text-center font-medium text-slate-600">{department.departmentTypeName ?? '—'}</td>}
                         <td className="px-4 py-2 text-center">
-                          <span
-                            className={`whitespace-nowrap rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
-                              department.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
-                            }`}
-                          >
+                          <StatusBadge tone={department.participatesInQueue ? 'info' : 'neutral'}>
+                            {department.participatesInQueue ? 'Có' : 'Không'}
+                          </StatusBadge>
+                        </td>
+                        <td className="px-4 py-2 text-center">
+                          <StatusBadge tone={department.isActive ? 'success' : 'neutral'}>
                             {department.isActive ? 'Đang hoạt động' : 'Ngưng dùng'}
-                          </span>
+                          </StatusBadge>
                         </td>
                         {canManage && (
                           <td className="px-4 py-2 text-center">
@@ -272,7 +275,10 @@ export function DepartmentPane() {
           onSubmit={(dto) => {
             const onSettled = () => setModal(null);
             if (modal.mode === 'create') {
-              createMutation.mutate({ name: dto.name, departmentTypeId: dto.departmentTypeId }, { onSuccess: onSettled });
+              createMutation.mutate(
+                { name: dto.name, departmentTypeId: dto.departmentTypeId, participatesInQueue: dto.participatesInQueue },
+                { onSuccess: onSettled },
+              );
             } else if (modal.department) {
               updateMutation.mutate(
                 {
@@ -280,6 +286,7 @@ export function DepartmentPane() {
                   body: {
                     name: dto.name,
                     departmentTypeId: dto.departmentTypeId ?? null,
+                    participatesInQueue: dto.participatesInQueue,
                     isActive: dto.isActive,
                     version: modal.department.version,
                   },
@@ -370,10 +377,11 @@ function DepartmentFormModal({
   types: DepartmentTypeSummary[];
   submitting: boolean;
   onCancel: () => void;
-  onSubmit: (dto: { name: string; departmentTypeId?: string; isActive: boolean }) => void;
+  onSubmit: (dto: { name: string; departmentTypeId?: string; participatesInQueue: boolean; isActive: boolean }) => void;
 }) {
   const [name, setName] = useState(department?.name ?? '');
   const [departmentTypeId, setDepartmentTypeId] = useState(department?.departmentTypeId ?? NO_TYPE_VALUE);
+  const [participatesInQueue, setParticipatesInQueue] = useState(department?.participatesInQueue ?? true);
   const [isActive, setIsActive] = useState(department?.isActive ?? true);
 
   const typeOptions = [{ value: NO_TYPE_VALUE, label: 'Không phân loại' }, ...types.filter((t) => t.isActive).map((t) => ({ value: t.id, label: t.name }))];
@@ -382,7 +390,12 @@ function DepartmentFormModal({
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (isInvalid) return;
-    onSubmit({ name: name.trim(), departmentTypeId: departmentTypeId === NO_TYPE_VALUE ? undefined : departmentTypeId, isActive });
+    onSubmit({
+      name: name.trim(),
+      departmentTypeId: departmentTypeId === NO_TYPE_VALUE ? undefined : departmentTypeId,
+      participatesInQueue,
+      isActive,
+    });
   }
 
   return (
@@ -405,6 +418,14 @@ function DepartmentFormModal({
             <Combobox id="dept-type" value={departmentTypeId} onChange={setDepartmentTypeId} options={typeOptions} />
           </div>
         )}
+
+        <div className="mb-3.5 flex flex-col gap-1">
+          <label className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+            <input type="checkbox" checked={participatesInQueue} onChange={(e) => setParticipatesInQueue(e.target.checked)} />
+            Nhận bệnh nhân / hiện trong Hàng đợi khám
+          </label>
+          <p className="pl-6 text-xs text-slate-500">Tắt cho bộ phận không tiếp nhận trực tiếp bệnh nhân (ví dụ Lễ tân, Kế toán).</p>
+        </div>
 
         {mode === 'edit' && (
           <label className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800">

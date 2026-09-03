@@ -722,7 +722,7 @@ export function EncounterConsultationPage() {
               {encounter.encounterNo}
             </span>
             {isCompleted && (
-              <span className="flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700">
+              <span className="flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-500 px-2.5 py-0.5 text-[11px] font-semibold text-white">
                 <CheckCircle size={12} weight="fill" aria-hidden="true" />
                 {editingCompleted ? 'Đang chỉnh sửa thông tin' : `Đã hoàn tất${encounter.completedAt ? ` · ${formatHistoryDate(encounter.completedAt)}` : ''}`}
               </span>

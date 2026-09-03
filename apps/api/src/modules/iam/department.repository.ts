@@ -4,6 +4,7 @@ import type { Department, Prisma } from '@prisma/client';
 export interface UpdateDepartmentData {
   name?: string;
   departmentTypeId?: string | null;
+  participatesInQueue?: boolean;
   isActive?: boolean;
 }
 
@@ -24,9 +25,10 @@ export class DepartmentRepository {
     name: string,
     code: string,
     departmentTypeId: string | null,
+    participatesInQueue: boolean,
   ): Promise<Department> {
     return tx.department.create({
-      data: { tenantId, name, code, departmentTypeId, createdBy: actorId, updatedBy: actorId },
+      data: { tenantId, name, code, departmentTypeId, participatesInQueue, createdBy: actorId, updatedBy: actorId },
     });
   }
 
@@ -46,10 +48,18 @@ export class DepartmentRepository {
     });
   }
 
-  /** "Hàng đợi ảo" (#064) — chiếu tối thiểu (chỉ Khoa đang active) cho `GET /departments/options`. */
-  listActiveOptions(tx: Prisma.TransactionClient, tenantId: string): Promise<{ id: string; name: string }[]> {
+  /**
+   * "Hàng đợi ảo" (#064) — chiếu tối thiểu (chỉ Khoa đang active) cho `GET /departments/options`,
+   * dùng bởi mọi vai trò không có `user_account.read` (lễ tân/bác sĩ/điều dưỡng). MẶC ĐỊNH trả
+   * TOÀN BỘ Khoa/Phòng active — nhiều nơi dùng endpoint này cho mục đích KHÁC điều phối hàng đợi
+   * (ví dụ tự xem hồ sơ ở `MyAccountDialog.tsx` cần thấy đúng tên "Bộ phận Lễ Tân" của chính mình).
+   * `queueOnly=true` (#107, sửa lại #105) — CHỈ dùng ở 3 nơi điều phối "Chuyển vào hàng đợi"/"Hàng
+   * đợi khám" — lọc thêm `participatesInQueue=true`, loại bộ phận hành chính. Xem migration
+   * `20260903090000_department_participates_in_queue`.
+   */
+  listActiveOptions(tx: Prisma.TransactionClient, tenantId: string, queueOnly: boolean): Promise<{ id: string; name: string }[]> {
     return tx.department.findMany({
-      where: { tenantId, deletedAt: null, isActive: true },
+      where: { tenantId, deletedAt: null, isActive: true, ...(queueOnly ? { participatesInQueue: true } : {}) },
       select: { id: true, name: true },
       orderBy: { name: 'asc' },
     });

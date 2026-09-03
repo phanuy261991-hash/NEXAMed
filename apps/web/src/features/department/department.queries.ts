@@ -11,13 +11,17 @@ export function useDepartmentsQuery() {
 }
 
 /**
- * "Hàng đợi ảo" (#064) — chiếu tối thiểu cho khu vực Điều phối Bác sĩ/Khoa lúc Tiếp nhận
- * (`ReceptionIntakeForm.tsx`). Dùng được bởi lễ tân/bác sĩ/điều dưỡng (chỉ cần
- * `reference_catalog.read`, khác `useDepartmentsQuery()` ở trên yêu cầu `user_account.read`).
+ * Chiếu tối thiểu, dùng được bởi lễ tân/bác sĩ/điều dưỡng (chỉ cần `reference_catalog.read`, khác
+ * `useDepartmentsQuery()` ở trên yêu cầu `user_account.read`). `queueOnly=true` (#107) — CHỈ dùng
+ * ở khu vực điều phối "Hàng đợi khám" (`ReceptionIntakeForm.tsx` và tương tự) — lọc bớt bộ phận
+ * hành chính; mặc định `false` (ví dụ `MyAccountDialog.tsx` tự xem hồ sơ cần thấy đủ mọi Khoa).
  */
-export function useDepartmentOptionsQuery() {
+export function useDepartmentOptionsQuery(queueOnly = false) {
   const { tenantId } = useAppConfig();
-  return useQuery({ queryKey: queryKey(tenantId, 'departments', 'options'), queryFn: listDepartmentOptions });
+  return useQuery({
+    queryKey: queryKey(tenantId, 'departments', 'options', String(queueOnly)),
+    queryFn: () => listDepartmentOptions(queueOnly),
+  });
 }
 
 export function useCreateDepartmentMutation() {

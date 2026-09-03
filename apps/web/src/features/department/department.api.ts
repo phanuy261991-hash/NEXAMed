@@ -11,9 +11,15 @@ export async function listDepartments(): Promise<ListDepartmentsResponse> {
   return unwrap(await getApiClient().GET('/api/v1/departments')) as ListDepartmentsResponse;
 }
 
-/** "Hàng đợi ảo" (#064) — chiếu tối thiểu, dùng được bởi mọi vai trò có `reference_catalog.read` (không cần `user_account.read`). */
-export async function listDepartmentOptions(): Promise<ListDepartmentOptionsResponse> {
-  return unwrap(await getApiClient().GET('/api/v1/departments/options')) as ListDepartmentOptionsResponse;
+/**
+ * Chiếu tối thiểu, dùng được bởi mọi vai trò có `reference_catalog.read` (không cần
+ * `user_account.read`). `queueOnly=true` (#107) — CHỈ dùng ở khu vực điều phối "Hàng đợi khám",
+ * lọc bớt bộ phận hành chính (ví dụ "Bộ phận Lễ Tân"); mặc định `false` trả toàn bộ Khoa active.
+ */
+export async function listDepartmentOptions(queueOnly = false): Promise<ListDepartmentOptionsResponse> {
+  return unwrap(
+    await getApiClient().GET('/api/v1/departments/options', { params: { query: { queueOnly } } }),
+  ) as ListDepartmentOptionsResponse;
 }
 
 export async function createDepartment(body: CreateDepartmentRequest): Promise<DepartmentSummary> {

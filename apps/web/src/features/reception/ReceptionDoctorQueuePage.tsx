@@ -68,7 +68,7 @@ export function ReceptionDoctorQueuePage() {
   const [doneSearch, setDoneSearch] = useState({ open: false, query: '' });
 
   const listQuery = useReceptionListQuery(today, currentUser?.id, true, true);
-  const departmentsQuery = useDepartmentOptionsQuery();
+  const departmentsQuery = useDepartmentOptionsQuery(true);
   const doctorsQuery = useDoctorsQuery();
   const scheduleConfigQuery = useScheduleConfigQuery();
   const startConsultationMutation = useStartConsultationMutation();

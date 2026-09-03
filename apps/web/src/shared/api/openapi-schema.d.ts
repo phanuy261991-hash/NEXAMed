@@ -7239,6 +7239,7 @@ export interface paths {
                                     /** Format: uuid */
                                     departmentTypeId: string | null;
                                     departmentTypeName: string | null;
+                                    participatesInQueue: boolean;
                                     isActive: boolean;
                                     version: number;
                                 }[];
@@ -7294,6 +7295,7 @@ export interface paths {
                         name: string;
                         /** Format: uuid */
                         departmentTypeId?: string;
+                        participatesInQueue?: boolean;
                     };
                 };
             };
@@ -7313,6 +7315,7 @@ export interface paths {
                                 /** Format: uuid */
                                 departmentTypeId: string | null;
                                 departmentTypeName: string | null;
+                                participatesInQueue: boolean;
                                 isActive: boolean;
                                 version: number;
                             };
@@ -7365,10 +7368,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** "Hàng đợi ảo" (#064) — chiếu tối thiểu {id,name} cho khu vực Điều phối Bác sĩ/Khoa lúc Tiếp nhận, chỉ Khoa đang active, gắn quyền reference_catalog.read (không cần user_account.read) */
+        /** Chiếu tối thiểu {id,name}, chỉ Khoa đang active, gắn quyền reference_catalog.read (không cần user_account.read). queueOnly=true (#107) lọc thêm participatesInQueue cho điều phối "Hàng đợi khám" */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    queueOnly?: boolean | ("true" | "false");
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;
@@ -7462,6 +7467,7 @@ export interface paths {
                         name?: string;
                         /** Format: uuid */
                         departmentTypeId?: string | null;
+                        participatesInQueue?: boolean;
                         isActive?: boolean;
                         version: number;
                     };
@@ -7483,6 +7489,7 @@ export interface paths {
                                 /** Format: uuid */
                                 departmentTypeId: string | null;
                                 departmentTypeName: string | null;
+                                participatesInQueue: boolean;
                                 isActive: boolean;
                                 version: number;
                             };

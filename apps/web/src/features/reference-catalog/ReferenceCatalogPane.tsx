@@ -6,6 +6,7 @@ import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { EmptyState } from '../../shared/ui/EmptyState';
+import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
 import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
 import { useRowSelection } from '../../shared/hooks/useRowSelection';
@@ -179,7 +180,9 @@ export function ReferenceCatalogPane({
                       {item.name}
                       {/* Category có cột "Trạng thái" riêng (Đang sử dụng/Ngưng sử dụng) — badge "Đã ẩn" ở đây sẽ trùng lặp thông tin. */}
                       {!item.isActive && !DESCRIPTION_STATUS_CATEGORIES.includes(category) && (
-                        <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">Đã ẩn</span>
+                        <span className="ml-2">
+                          <StatusBadge tone="neutral">Đã ẩn</StatusBadge>
+                        </span>
                       )}
                     </td>
                     {category === 'EXAM_TYPE' && (
@@ -198,13 +201,7 @@ export function ReferenceCatalogPane({
                     )}
                     {DESCRIPTION_STATUS_CATEGORIES.includes(category) && (
                       <td className="px-4 py-2 text-center">
-                        <span
-                          className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
-                            item.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
-                          }`}
-                        >
-                          {item.isActive ? 'Đang sử dụng' : 'Ngưng sử dụng'}
-                        </span>
+                        <StatusBadge tone={item.isActive ? 'success' : 'neutral'}>{item.isActive ? 'Đang sử dụng' : 'Ngưng sử dụng'}</StatusBadge>
                       </td>
                     )}
                     <td className="px-4 py-2 text-center text-slate-500">{item.sortOrder}</td>

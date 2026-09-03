@@ -1,14 +1,65 @@
 import type { AppointmentSource, AppointmentStatus } from '@nexamed/shared';
 
-/** Màu theo trạng thái — đúng token "Tín hiệu Y tế" ở .claude/docs/ui-guidelines.md mục 2.1 (emerald=thành công, amber=lưu ý, slate=vô hiệu). SCHEDULED dùng brand blue (đang hoạt động, chưa phải tín hiệu y tế). */
-export const APPOINTMENT_STATUS_META: Record<AppointmentStatus, { label: string; text: string; bg: string; border: string; accent: string }> = {
-  SCHEDULED: { label: 'Đã đặt', text: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-600', accent: 'bg-blue-600' },
-  CONVERTED: { label: 'Đã chuyển khám', text: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-500', accent: 'bg-emerald-500' },
-  NO_SHOW: { label: 'Không đến', text: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-500', accent: 'bg-amber-500' },
-  CANCELLED: { label: 'Đã huỷ', text: 'text-slate-500', bg: 'bg-slate-100', border: 'border-slate-300', accent: 'bg-slate-300' },
+/**
+ * Màu theo trạng thái — đúng token "Tín hiệu Y tế" ở .claude/docs/ui-guidelines.md mục 2.1
+ * (emerald=thành công, amber=lưu ý, slate=vô hiệu). SCHEDULED dùng brand blue (đang hoạt động,
+ * chưa phải tín hiệu y tế). `bg`/`text` NHẠT — dùng làm NỀN TOÀN Ô thẻ lịch hẹn trên lưới
+ * (`AppointmentGridView.tsx`, chữ tối `text-slate-900` đè lên phải đọc được, không phải badge nhỏ)
+ * — KHÔNG đổi sang đặc. `badgeBg`/`badgeText` ĐẶC (chốt 2026-09-03, `docs/DECISIONS.md` #105) —
+ * dùng cho badge "Trạng thái" nhỏ ở `AppointmentDetailPanel.tsx`/`AppointmentListView.tsx`.
+ * `border`/`accent` (vạch màu đầu dòng) đã đặc sẵn từ trước, không đổi.
+ */
+export const APPOINTMENT_STATUS_META: Record<
+  AppointmentStatus,
+  { label: string; text: string; bg: string; badgeText: string; badgeBg: string; border: string; accent: string }
+> = {
+  SCHEDULED: {
+    label: 'Đã đặt',
+    text: 'text-blue-700',
+    bg: 'bg-blue-50',
+    badgeText: 'text-white',
+    badgeBg: 'bg-blue-600',
+    border: 'border-blue-600',
+    accent: 'bg-blue-600',
+  },
+  CONVERTED: {
+    label: 'Đã chuyển khám',
+    text: 'text-emerald-700',
+    bg: 'bg-emerald-50',
+    badgeText: 'text-white',
+    badgeBg: 'bg-emerald-500',
+    border: 'border-emerald-500',
+    accent: 'bg-emerald-500',
+  },
+  NO_SHOW: {
+    label: 'Không đến',
+    text: 'text-amber-700',
+    bg: 'bg-amber-50',
+    badgeText: 'text-white',
+    badgeBg: 'bg-amber-500',
+    border: 'border-amber-500',
+    accent: 'bg-amber-500',
+  },
+  CANCELLED: {
+    label: 'Đã huỷ',
+    text: 'text-slate-500',
+    bg: 'bg-slate-100',
+    badgeText: 'text-slate-600',
+    badgeBg: 'bg-slate-300',
+    border: 'border-slate-300',
+    accent: 'bg-slate-300',
+  },
   // Lịch cũ sau khi dời sang lịch mới (2026-08-18) — cùng tông "vô hiệu" với CANCELLED (mục 2.1
   // ui-guidelines.md), chỉ khác nhãn để phân biệt lý do kết thúc.
-  RESCHEDULED: { label: 'Đã dời lịch', text: 'text-slate-500', bg: 'bg-slate-100', border: 'border-slate-300', accent: 'bg-slate-300' },
+  RESCHEDULED: {
+    label: 'Đã dời lịch',
+    text: 'text-slate-500',
+    bg: 'bg-slate-100',
+    badgeText: 'text-slate-600',
+    badgeBg: 'bg-slate-300',
+    border: 'border-slate-300',
+    accent: 'bg-slate-300',
+  },
 };
 
 export const APPOINTMENT_SOURCE_LABEL: Record<AppointmentSource, string> = {

@@ -106,6 +106,7 @@ import {
   departmentTypeSummarySchema,
   listAllergenGroupsResponseSchema,
   listAllergensResponseSchema,
+  listDepartmentOptionsQuerySchema,
   listDepartmentOptionsResponseSchema,
   listDepartmentsResponseSchema,
   listDepartmentTypesResponseSchema,
@@ -1192,8 +1193,9 @@ registry.registerPath({
   path: '/api/v1/departments/options',
   tags: ['department'],
   summary:
-    '"Hàng đợi ảo" (#064) — chiếu tối thiểu {id,name} cho khu vực Điều phối Bác sĩ/Khoa lúc Tiếp nhận, chỉ Khoa đang active, gắn quyền reference_catalog.read (không cần user_account.read)',
+    'Chiếu tối thiểu {id,name}, chỉ Khoa đang active, gắn quyền reference_catalog.read (không cần user_account.read). queueOnly=true (#107) lọc thêm participatesInQueue cho điều phối "Hàng đợi khám"',
   security: [{ bearerAuth: [] }],
+  request: { query: listDepartmentOptionsQuerySchema },
   responses: {
     200: jsonResponse('Thành công', envelope(listDepartmentOptionsResponseSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),

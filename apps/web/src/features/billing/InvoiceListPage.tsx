@@ -6,6 +6,7 @@ import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
+import { StatusBadge, type StatusBadgeTone } from '../../shared/ui/StatusBadge';
 import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
 import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
 import { Skeleton } from '../../shared/ui/Skeleton';
@@ -22,12 +23,12 @@ const ROW_HEIGHT_PX = 60;
 
 type StatusTab = 'UNPAID' | 'PAID' | 'ALL';
 
-/** #085 — nhãn/màu cho cả 4 trạng thái, dùng chung cho cột "Trạng thái". */
-const STATUS_META: Record<BillingListItem['status'], { label: string; className: string }> = {
-  UNPAID: { label: 'Chờ thu', className: 'bg-amber-50 text-amber-700' },
-  PAID: { label: 'Đã thu', className: 'bg-emerald-50 text-emerald-700' },
-  CANCELLED: { label: 'Đã huỷ (chưa thu)', className: 'bg-slate-100 text-slate-600' },
-  REFUNDED: { label: 'Đã hoàn tiền', className: 'bg-violet-50 text-violet-700' },
+/** #085 — nhãn/tone cho cả 4 trạng thái, dùng chung cho cột "Trạng thái" (nền đặc, #105). */
+const STATUS_META: Record<BillingListItem['status'], { label: string; tone: StatusBadgeTone }> = {
+  UNPAID: { label: 'Chờ thu', tone: 'warning' },
+  PAID: { label: 'Đã thu', tone: 'success' },
+  CANCELLED: { label: 'Đã huỷ (chưa thu)', tone: 'neutral' },
+  REFUNDED: { label: 'Đã hoàn tiền', tone: 'accent' },
 };
 
 function formatDateTime(iso: string): string {
@@ -224,14 +225,12 @@ export function InvoiceListPage() {
                     <div role="cell" className="truncate text-center font-medium text-slate-600">{item.departmentName}</div>
                     <div role="cell" className="text-center font-bold tabular-nums text-slate-900">{formatVnd(item.totalAmount)}</div>
                     <div role="cell" className="flex flex-col items-center gap-1 text-center">
-                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold ${STATUS_META[item.status].className}`}>
-                        {STATUS_META[item.status].label}
-                      </span>
+                      <StatusBadge tone={STATUS_META[item.status].tone}>{STATUS_META[item.status].label}</StatusBadge>
                       {/* #085 — phiếu PAID của lượt khám đã huỷ nhưng chưa hoàn tiền. */}
                       {item.needsRefund && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-700">
+                        <StatusBadge tone="danger">
                           <Warning size={10} weight="fill" aria-hidden="true" /> Cần hoàn tiền
-                        </span>
+                        </StatusBadge>
                       )}
                     </div>
                     <div role="cell" className="text-center">

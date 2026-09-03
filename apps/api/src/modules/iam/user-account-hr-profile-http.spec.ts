@@ -312,6 +312,72 @@ describe('HTTP e2e — /api/v1/users (hồ sơ nhân sự + Trạng thái làm v
         .send({ name: 'Không được phép', version: renamed.body.data.version });
       expect(crossTenant.status).toBe(404);
     });
+
+    /**
+     * Bug thật chủ dự án phát hiện lúc dùng thử: `GET /departments/options` (điều phối Tiếp nhận,
+     * #064) trả về MỌI Khoa/Phòng active, kể cả bộ phận hành chính không tiếp nhận bệnh nhân (ví
+     * dụ "Bộ phận Lễ Tân"). Sửa bằng cột `participatesInQueue` (mặc định `true`, tách khỏi
+     * `departmentTypeId` — thuần mô tả, #063) — xem migration
+     * `20260903090000_department_participates_in_queue`.
+     *
+     * **Sửa lại ngay sau đó (#107)**: bug thứ 2 phát hiện lúc chủ dự án xem demo — `GET
+     * /departments/options` còn được dùng ở nhiều nơi KHÁC điều phối hàng đợi (ví dụ trang "Lịch
+     * làm việc nhân viên"/`MyAccountDialog.tsx` tự xem hồ sơ — cần thấy đúng "Bộ phận Lễ Tân" của
+     * chính mình), lọc cứng theo `participatesInQueue` làm các nơi đó mất Khoa hành chính. Sửa:
+     * endpoint MẶC ĐỊNH trả TOÀN BỘ Khoa active (đúng hành vi gốc trước #105); `?queueOnly=true`
+     * mới lọc thêm `participatesInQueue=true`, CHỈ dùng ở khu vực điều phối hàng đợi thật sự.
+     */
+    it('participatesInQueue=false: vẫn thấy ở GET /departments VÀ GET /departments/options mặc định, chỉ ẩn khi ?queueOnly=true', async () => {
+      const clinicalName = `Khoa Lâm Sàng ${randomUUID().slice(0, 8)}`;
+      const clinical = await request(app.getHttpServer())
+        .post('/api/v1/departments')
+        .set(authed(clinicAdminToken))
+        .send({ name: clinicalName });
+      expect(clinical.body.data.participatesInQueue).toBe(true);
+
+      const adminName = `Bộ phận Lễ Tân ${randomUUID().slice(0, 8)}`;
+      const admin = await request(app.getHttpServer())
+        .post('/api/v1/departments')
+        .set(authed(clinicAdminToken))
+        .send({ name: adminName, participatesInQueue: false });
+      expect(admin.status).toBe(200);
+      expect(admin.body.data.participatesInQueue).toBe(false);
+
+      const fullList = await request(app.getHttpServer()).get('/api/v1/departments').set(authed(clinicAdminToken));
+      const fullListIds = fullList.body.data.items.map((d: { id: string }) => d.id);
+      expect(fullListIds).toContain(clinical.body.data.id);
+      expect(fullListIds).toContain(admin.body.data.id);
+
+      // Mặc định (không truyền queueOnly) — trả TOÀN BỘ Khoa active, kể cả "Bộ phận Lễ Tân".
+      const optionsDefault = await request(app.getHttpServer()).get('/api/v1/departments/options').set(authed(receptionistToken));
+      expect(optionsDefault.status).toBe(200);
+      const optionsDefaultIds = optionsDefault.body.data.items.map((d: { id: string }) => d.id);
+      expect(optionsDefaultIds).toContain(clinical.body.data.id);
+      expect(optionsDefaultIds).toContain(admin.body.data.id);
+
+      // queueOnly=true — CHỈ dùng ở khu vực điều phối hàng đợi khám, lọc bớt "Bộ phận Lễ Tân".
+      const optionsQueueOnly = await request(app.getHttpServer())
+        .get('/api/v1/departments/options')
+        .query({ queueOnly: 'true' })
+        .set(authed(receptionistToken));
+      expect(optionsQueueOnly.status).toBe(200);
+      const optionsQueueOnlyIds = optionsQueueOnly.body.data.items.map((d: { id: string }) => d.id);
+      expect(optionsQueueOnlyIds).toContain(clinical.body.data.id);
+      expect(optionsQueueOnlyIds).not.toContain(admin.body.data.id);
+
+      // Bật lại participatesInQueue → xuất hiện ở queueOnly=true ngay.
+      const reEnabled = await request(app.getHttpServer())
+        .patch(`/api/v1/departments/${admin.body.data.id}`)
+        .set(authed(clinicAdminToken))
+        .send({ participatesInQueue: true, version: admin.body.data.version });
+      expect(reEnabled.body.data.participatesInQueue).toBe(true);
+
+      const optionsQueueOnlyAfter = await request(app.getHttpServer())
+        .get('/api/v1/departments/options')
+        .query({ queueOnly: 'true' })
+        .set(authed(receptionistToken));
+      expect(optionsQueueOnlyAfter.body.data.items.map((d: { id: string }) => d.id)).toContain(admin.body.data.id);
+    });
   });
 
   /** Redesign form "Thêm tài khoản" sang 3-tab (docs/DECISIONS.md #082) — chữ ký + Phòng khám mặc định + vô hiệu hoá nhanh. */

@@ -267,11 +267,13 @@ export function MyWorkSchedulePage() {
         )}
       </div>
 
+      {/* Trạng thái cấu hình, không phải lỗi/cảnh báo khẩn — chú thích gọn màu trung tính, không
+          bọc khung banner đầy màu (chốt 2026-09-03, phản hồi trực tiếp chủ dự án). */}
       {!selfScheduleEnabled && (
-        <div className="flex flex-shrink-0 items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700">
-          <Lock size={13} weight="bold" aria-hidden="true" />
-          Tự đăng ký ca đang bị tắt — trang chỉ hiện lịch đã được quản lý phân công.
-        </div>
+        <p className="flex flex-shrink-0 items-center gap-1.5 px-1 text-xs text-slate-400">
+          <Lock size={12} weight="bold" aria-hidden="true" />
+          Đăng ký lịch cá nhân đang tắt — lịch làm việc được lấy từ lịch nhân viên do quản lý phân công.
+        </p>
       )}
 
       {toast && (

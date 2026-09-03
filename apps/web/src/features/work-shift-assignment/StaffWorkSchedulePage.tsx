@@ -1,18 +1,25 @@
 import { useEffect, useRef, useState } from 'react';
-import { CaretLeft, CaretRight, DownloadSimple, MagnifyingGlass, Plus, UploadSimple, X as XIcon } from '@phosphor-icons/react';
+import { CaretLeft, CaretRight, CheckSquare, DownloadSimple, MagnifyingGlass, Plus, UploadSimple, X as XIcon } from '@phosphor-icons/react';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
+import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
+import { useRowSelection } from '../../shared/hooks/useRowSelection';
 import { useUserAccountsQuery } from '../user-account/user-account.queries';
-import { useDepartmentOptionsQuery } from '../department/department.queries';
+import { useDepartmentsQuery } from '../department/department.queries';
 import { useWorkShiftsQuery } from '../clinic/clinic.queries';
 import { WORK_SHIFT_COLOR_HEX } from '../clinic/WorkShiftFormModal';
 import { ImportExcelDialog } from './ImportExcelDialog';
 import { WorkShiftPickerModal } from './WorkShiftPickerModal';
 import { exportWorkShiftAssignments } from './work-shift-assignment.api';
-import { useCreateWorkShiftAssignmentMutation, useDeleteWorkShiftAssignmentMutation, useWorkShiftAssignmentsQuery } from './work-shift-assignment.queries';
+import {
+  useBulkCreateWorkShiftAssignmentsMutation,
+  useCreateWorkShiftAssignmentMutation,
+  useDeleteWorkShiftAssignmentMutation,
+  useWorkShiftAssignmentsQuery,
+} from './work-shift-assignment.queries';
 
 function toDateOnlyUtc(dateStr: string): Date {
   return new Date(`${dateStr}T00:00:00.000Z`);
@@ -72,11 +79,16 @@ export function StaffWorkSchedulePage() {
   const [monthAnchor, setMonthAnchor] = useState(() => today.slice(0, 7));
   const days = getDaysInMonth(monthAnchor);
 
-  const [pickerTarget, setPickerTarget] = useState<{ userId: string; date: string } | null>(null);
+  /** `dates.length === 1` → tạo đơn (`createMutation`); nhiều ngày → bulk-apply (`bulkMutation`). */
+  const [picker, setPicker] = useState<{ userId: string; dates: string[] } | null>(null);
   const [departmentFilter, setDepartmentFilter] = useState('');
   const [search, setSearch] = useState('');
   const [importOpen, setImportOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
+  /** "Chọn nhiều ngày" theo TỪNG DÒNG nhân viên — chỉ 1 dòng active cùng lúc, tránh áp nhầm ca cho
+   * người khác (chốt qua AskUserQuestion 2026-09-03). Đổi dòng active thì tự xoá lựa chọn cũ. */
+  const [bulkUserId, setBulkUserId] = useState<string | null>(null);
+  const selection = useRowSelection(days);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [dayColWidth, setDayColWidth] = useState(MIN_DAY_COL_WIDTH);
@@ -94,13 +106,19 @@ export function StaffWorkSchedulePage() {
   }, []);
 
   const usersQuery = useUserAccountsQuery();
-  const departmentsQuery = useDepartmentOptionsQuery();
+  // Trang này quản lý lịch làm việc của TOÀN BỘ nhân viên (mọi bộ phận, không riêng Khoa chuyên
+  // môn) — dùng GET /departments (đầy đủ, yêu cầu user_account.read) thay vì GET /departments/
+  // options (chỉ Khoa participatesInQueue=true, phục vụ điều phối hàng đợi khám #064/#105) để
+  // không ẩn mất các bộ phận hành chính (ví dụ "Bộ phận Lễ Tân") khỏi bộ lọc. An toàn vì trang này
+  // đã giới hạn chỉ clinic_admin (Sidebar.tsx STAFF_SCHEDULE_ROLES), vốn luôn có user_account.read.
+  const departmentsQuery = useDepartmentsQuery();
   const shiftsQuery = useWorkShiftsQuery();
   const listQuery = useWorkShiftAssignmentsQuery(days[0]!, days[days.length - 1]!);
   const createMutation = useCreateWorkShiftAssignmentMutation();
+  const bulkMutation = useBulkCreateWorkShiftAssignmentsMutation();
   const deleteMutation = useDeleteWorkShiftAssignmentMutation();
 
-  const departments = departmentsQuery.data?.items ?? [];
+  const departments = (departmentsQuery.data?.items ?? []).filter((d) => d.isActive);
   const trimmedSearch = search.trim().toLowerCase();
   const staff = (usersQuery.data?.items ?? [])
     .filter((u) => u.isActive && !u.roleNames.includes('system_admin'))
@@ -120,11 +138,18 @@ export function StaffWorkSchedulePage() {
   const error = usersQuery.error ?? shiftsQuery.error ?? listQuery.error;
 
   async function handlePickerSave(shiftIds: string[]) {
-    if (!pickerTarget) return;
-    for (const workShiftId of shiftIds) {
-      await createMutation.mutateAsync({ workShiftId, workDate: pickerTarget.date, userId: pickerTarget.userId });
+    if (!picker) return;
+    if (picker.dates.length === 1) {
+      for (const workShiftId of shiftIds) {
+        await createMutation.mutateAsync({ workShiftId, workDate: picker.dates[0]!, userId: picker.userId });
+      }
+    } else {
+      for (const workShiftId of shiftIds) {
+        await bulkMutation.mutateAsync({ workShiftId, workDates: picker.dates, userId: picker.userId });
+      }
     }
-    setPickerTarget(null);
+    setPicker(null);
+    selection.clear();
   }
 
   async function handleExport() {
@@ -300,71 +325,115 @@ export function StaffWorkSchedulePage() {
                 </tr>
               </thead>
               <tbody>
-                {staff.map((person) => (
-                  <tr key={person.id}>
-                    <td
-                      className="sticky left-0 z-10 border-b border-r border-slate-300 bg-white px-4 py-2.5"
-                      style={{ width: NAME_COL_WIDTH, minWidth: NAME_COL_WIDTH }}
-                    >
-                      <div className="flex flex-col">
-                        <span className="truncate font-semibold text-slate-900">{person.displayName ?? person.fullName}</span>
-                        {person.employeeCode && <span className="text-[11px] font-medium text-slate-400">{person.employeeCode}</span>}
-                      </div>
-                    </td>
-                    {days.map((day) => {
-                      const dayItems = itemsByUserDay.get(`${person.id}|${day}`) ?? [];
-                      return (
-                        <td
-                          key={day}
-                          className="border-b border-r border-slate-300 px-1.5 py-2 align-top"
-                          style={{ width: dayColWidth, minWidth: dayColWidth }}
-                        >
-                          <div className="flex flex-col gap-1.5">
-                            {dayItems.map((item) => (
-                              <div
-                                key={item.id}
-                                className="flex items-center gap-1 rounded-md px-2 py-2 text-[11px] font-bold text-white shadow-sm"
-                                style={{ background: WORK_SHIFT_COLOR_HEX[item.workShiftColor] }}
-                              >
-                                <span className="min-w-0 flex-1 truncate">{item.workShiftName}</span>
-                                <button
-                                  type="button"
-                                  aria-label="Xoá ca"
-                                  onClick={() => deleteMutation.mutate({ id: item.id, version: item.version })}
-                                  className="flex-shrink-0 rounded p-0.5 text-white/75 hover:bg-white/20 hover:text-white"
-                                >
-                                  <XIcon size={10} weight="bold" />
-                                </button>
-                              </div>
-                            ))}
+                {staff.map((person) => {
+                  const rowBulkActive = bulkUserId === person.id;
+                  return (
+                    <tr key={person.id}>
+                      <td
+                        className="sticky left-0 z-10 border-b border-r border-slate-300 bg-white px-4 py-2.5"
+                        style={{ width: NAME_COL_WIDTH, minWidth: NAME_COL_WIDTH }}
+                      >
+                        <div className="flex flex-col gap-1">
+                          <span className="truncate font-semibold text-slate-900">{person.displayName ?? person.fullName}</span>
+                          {person.employeeCode && <span className="text-[11px] font-medium text-slate-400">{person.employeeCode}</span>}
+                          <div className="flex flex-wrap items-center gap-1">
                             <Button
                               type="button"
-                              variant="add"
-                              className="w-full justify-center gap-1 px-1.5 py-1.5 text-[11px]"
-                              onClick={() => setPickerTarget({ userId: person.id, date: day })}
+                              variant={rowBulkActive ? 'primary' : 'secondary'}
+                              className="gap-1 px-1.5 py-1 text-[10.5px]"
+                              onClick={() => {
+                                setBulkUserId(rowBulkActive ? null : person.id);
+                                selection.clear();
+                              }}
                             >
-                              <Plus size={11} weight="bold" aria-hidden="true" />
-                              Thêm ca
+                              <CheckSquare size={11} weight="bold" aria-hidden="true" />
+                              {rowBulkActive ? 'Đang chọn' : 'Chọn nhiều ngày'}
                             </Button>
+                            {rowBulkActive && (
+                              <Button type="button" variant="secondary" className="px-1.5 py-1 text-[10.5px]" onClick={() => selection.toggleAll()}>
+                                {selection.allLoadedSelected ? 'Bỏ chọn cả tháng' : 'Chọn cả tháng'}
+                              </Button>
+                            )}
                           </div>
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
+                        </div>
+                      </td>
+                      {days.map((day) => {
+                        const dayItems = itemsByUserDay.get(`${person.id}|${day}`) ?? [];
+                        return (
+                          <td
+                            key={day}
+                            className="border-b border-r border-slate-300 px-1.5 py-2 align-top"
+                            style={{ width: dayColWidth, minWidth: dayColWidth }}
+                          >
+                            <div className="flex flex-col gap-1.5">
+                              {rowBulkActive && (
+                                <label className="flex items-center justify-center gap-1.5 pb-0.5 text-[10.5px] text-slate-400">
+                                  <input type="checkbox" checked={selection.isSelected(day)} onChange={() => selection.toggle(day)} className="h-3.5 w-3.5" />
+                                  Chọn
+                                </label>
+                              )}
+                              {dayItems.map((item) => (
+                                <div
+                                  key={item.id}
+                                  className="flex items-center gap-1 rounded-md px-2 py-2 text-[11px] font-bold text-white shadow-sm"
+                                  style={{ background: WORK_SHIFT_COLOR_HEX[item.workShiftColor] }}
+                                >
+                                  <span className="min-w-0 flex-1 truncate">{item.workShiftName}</span>
+                                  <button
+                                    type="button"
+                                    aria-label="Xoá ca"
+                                    onClick={() => deleteMutation.mutate({ id: item.id, version: item.version })}
+                                    className="flex-shrink-0 rounded p-0.5 text-white/75 hover:bg-white/20 hover:text-white"
+                                  >
+                                    <XIcon size={10} weight="bold" />
+                                  </button>
+                                </div>
+                              ))}
+                              {!rowBulkActive && (
+                                <Button
+                                  type="button"
+                                  variant="add"
+                                  className="w-full justify-center gap-1 px-1.5 py-1.5 text-[11px]"
+                                  onClick={() => setPicker({ userId: person.id, dates: [day] })}
+                                >
+                                  <Plus size={11} weight="bold" aria-hidden="true" />
+                                  Thêm ca
+                                </Button>
+                              )}
+                            </div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </div>
       )}
 
-      {pickerTarget && (
+      <SelectionToolbar count={selection.selectedCount} onClear={selection.clear}>
+        <Button
+          type="button"
+          className="px-3 py-1 text-xs"
+          onClick={() => bulkUserId && setPicker({ userId: bulkUserId, dates: [...selection.selectedIds] })}
+        >
+          Áp dụng ca cho {selection.selectedCount} ngày đã chọn
+        </Button>
+      </SelectionToolbar>
+
+      {picker && (
         <WorkShiftPickerModal
-          subtitle={`Ngày ${formatDDMM(pickerTarget.date)} — ${staff.find((p) => p.id === pickerTarget.userId)?.displayName ?? ''}`}
+          subtitle={
+            picker.dates.length === 1
+              ? `Ngày ${formatDDMM(picker.dates[0]!)} — ${staff.find((p) => p.id === picker.userId)?.displayName ?? ''}`
+              : `Áp dụng cho ${picker.dates.length} ngày đã chọn — ${staff.find((p) => p.id === picker.userId)?.displayName ?? ''}`
+          }
           workShifts={workShifts}
-          saving={createMutation.isPending}
+          saving={createMutation.isPending || bulkMutation.isPending}
           showLockNotice={false}
-          onClose={() => setPickerTarget(null)}
+          onClose={() => setPicker(null)}
           onSave={(ids) => void handlePickerSave(ids)}
         />
       )}
