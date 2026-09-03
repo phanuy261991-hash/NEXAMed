@@ -74,6 +74,7 @@ export class CashierShiftService {
             shiftLabel: lastClosed.shiftLabel,
             closedAt: lastClosed.closedAt!.toISOString(),
             keepForNextAmount: Number(lastClosed.keepForNextAmount ?? 0),
+            handoverNote: lastClosed.handoverNote,
           }
         : null,
     };

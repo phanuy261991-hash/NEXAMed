@@ -76,9 +76,16 @@ export function OpenShiftDialog({
                 <div className="min-w-0">
                   <div className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Vốn đầu ca</div>
                   <div className="text-xl font-bold text-slate-900">{formatVnd(suggested)}</div>
-                  <div className="truncate text-xs font-medium text-slate-500">
+                  <div
+                    className="truncate text-xs font-medium text-slate-500"
+                    title={
+                      previousClosedShift
+                        ? `${previousClosedShift.cashierName} bàn giao ${new Date(previousClosedShift.closedAt).toLocaleString('vi-VN')}`
+                        : undefined
+                    }
+                  >
                     {previousClosedShift
-                      ? `${previousClosedShift.cashierName} bàn giao ${new Date(previousClosedShift.closedAt).toLocaleString('vi-VN')}`
+                      ? `${previousClosedShift.cashierName} · ${new Date(previousClosedShift.closedAt).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}`
                       : 'Ca đầu tiên — chưa có ca trước'}
                   </div>
                 </div>
@@ -114,6 +121,13 @@ export function OpenShiftDialog({
             </div>
 
             {showDenom && <DenominationCounter value={countedAmount} onChange={setCountedAmount} />}
+
+            {previousClosedShift?.handoverNote && (
+              <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
+                <div className="text-[11px] font-bold uppercase tracking-wide text-blue-500">Ghi chú bàn giao từ ca trước</div>
+                <p className="mt-1 whitespace-pre-wrap text-sm font-medium text-blue-900">{previousClosedShift.handoverNote}</p>
+              </div>
+            )}
 
             {!hasDiff && (
               <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">

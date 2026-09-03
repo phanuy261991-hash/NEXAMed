@@ -4,6 +4,18 @@
 
 ## 2026-09-03
 
+### Bug thật "Mở ca" crash 500 (tái phát từ #114) — sửa xong + redesign nút Mở ca/Chốt ca
+
+Chủ dự án tự dùng thử "Chốt ca" trên bản chạy thật, bấm "Mở ca" gặp lỗi 500. Nguyên nhân: khuôn mã MẶC ĐỊNH của 7 loại mã nghiệp vụ (#114) đều chứa token `[Tháng]` (chỉ để hiển thị giống khuôn cũ) nhưng `BusinessCodeService.generate()` không phân biệt "khuôn mặc định" với "khuôn tenant chủ động lưu" — tính `periodKey` theo tháng ngay cả khi chưa ai cấu hình gì, vi phạm lời hứa tương thích ngược đã chốt ở #114. Với `cashier_shift` (module mới, mọi mã sinh trong tháng 09), bộ đếm chu kỳ mới bắt đầu lại từ 1, trùng mã cũ đã cấp ở bộ đếm liên tục → vi phạm UNIQUE `shift_no` → 500. Lỗi tiềm ẩn cho cả 7 loại mã, không riêng cashier_shift.
+
+Sửa: chỉ tính `periodKey` thật khi tenant THẬT SỰ đã lưu cấu hình riêng cho loại mã đó; dùng khuôn mặc định thì luôn ép `periodKey=''`. Xem `docs/DECISIONS.md` #115.
+
+Cùng phiên: redesign nút "Mở ca" (nút nhỏ ẩn trong thanh công cụ → banner xanh đậm full-width) và "Chốt ca" (viền nhạt → nền đặc `amberSolid` + icon, variant mới trong `Button.tsx`) theo phản hồi trực tiếp "không nổi bật". 2 bug phụ: `GET /cashier-shifts/current` thiếu hẳn `handoverNote` của ca trước (người mở ca không đọc được ghi chú bàn giao); module `cashier_shift` thiếu nhãn tiếng Việt ở "Vai trò & Phân quyền".
+
+Verify Playwright #113/#114 (giao song song) hoàn tất cùng lúc: cả hai đúng thiết kế, không bug nghiệp vụ. Phát hiện thêm 1 sự cố hạ tầng không liên quan code — Vite dep pre-bundle kẹt (`@tanstack/react-virtual` 504) — đã sửa bằng xoá cache `.vite` + restart web dev server.
+
+Đã xác minh: mở ca thật qua API thành công, số tiếp đúng mạch (không nhảy về 1); 254 test liên quan pass (business-code/cashier-shift/patient/appointment/reception/billing/user-account), không regression; `pnpm -w typecheck` sạch toàn workspace.
+
 ### "Cấu hình mẫu mã phát sinh" cho mã nghiệp vụ có tháng-năm
 
 Tiếp ngay sau rút gọn Nhóm A — chủ dự án yêu cầu cho Nhóm B (mã có tháng-năm: patient_code, encounter_no, booking_code, employee_code, department.code, invoice_no, cashier_shift.shift_no) tự cấu hình được theo tenant, dạng `[Năm][Tháng] [Ký tự][số đếm]` + số bắt đầu đếm. Kế hoạch kỹ thuật duyệt qua `EnterPlanMode` trước khi code.

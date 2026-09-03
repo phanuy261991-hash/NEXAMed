@@ -43,7 +43,9 @@ export class BusinessCodeService {
   /** Sinh mã thật — cấp số atomic, KHÔNG hoàn tác được. Gọi trong transaction đang tạo bản ghi
    * (patient/encounter/invoice...), đúng khuôn `formatDisplayCode` cũ. */
   async generate(tx: Prisma.TransactionClient, tenantId: string, actorId: string, codeType: BusinessCodeType, occurredAtUtc: Date): Promise<string> {
-    const config = await this.resolveConfig(tx, tenantId, codeType);
+    const stored = await this.clinicSettingsRepository.getBusinessCodeTemplatesConfig(tx, tenantId);
+    const explicitConfig = stored[codeType];
+    const config = explicitConfig ?? this.defaultConfig(codeType);
     // Khuôn mặc định luôn hợp lệ (test tương thích ngược); khuôn tenant tự sửa đã validate lúc
     // lưu (updateTemplate) nên về lý thuyết không bao giờ lỗi tới đây — vẫn kiểm để không âm thầm
     // sinh mã sai nếu có lỗ hổng nào đó lọt qua validate.
@@ -53,7 +55,15 @@ export class BusinessCodeService {
     }
 
     const dateParts = toVietnamDateParts(occurredAtUtc);
-    const periodKey = computeBusinessCodePeriodKey(parseResult.parsed, dateParts);
+    // BUG THẬT phát hiện 2026-09-03 (mở ca "Chốt ca" crash 500, UNIQUE shift_no) — khuôn MẶC ĐỊNH
+    // (`explicitConfig` rỗng, tenant CHƯA từng cấu hình) đã chứa sẵn token [Tháng] chỉ để HIỂN THỊ
+    // giống hệt `<prefix><yyMM><seq6>` cũ, nhưng `computeBusinessCodePeriodKey` không phân biệt
+    // "token để hiển thị" với "token do tenant chủ động chọn để RESET" — khiến bộ đếm tự tách
+    // thành 1 chu kỳ mới bắt đầu lại từ 1 ngay cả khi tenant chưa cấu hình gì, đụng trùng mã cũ đã
+    // cấp dưới bộ đếm liên tục (`period_key=''`). Chỉ tính periodKey thật khi tenant ĐÃ chủ động
+    // lưu khuôn riêng (`explicitConfig` tồn tại) — đúng lời hứa "tương thích ngược tuyệt đối,
+    // CHO TỚI KHI tenant chủ động cấu hình" đã chốt ở docs/DECISIONS.md #114.
+    const periodKey = explicitConfig ? computeBusinessCodePeriodKey(parseResult.parsed, dateParts) : '';
     const prefix = BUSINESS_CODE_TYPE_REGISTRY[codeType].internalPrefix;
 
     const seq = await this.codeSequenceRepository.next(tx, tenantId, prefix, actorId, {
@@ -72,8 +82,9 @@ export class BusinessCodeService {
       const now = toVietnamDateParts(new Date());
       const items: BusinessCodeTemplateItem[] = [];
       for (const codeType of businessCodeTypeSchema.options) {
-        const config = stored[codeType] ?? this.defaultConfig(codeType);
-        items.push(await this.toItem(tx, tenantId, codeType, config, now));
+        const explicitConfig = stored[codeType];
+        const config = explicitConfig ?? this.defaultConfig(codeType);
+        items.push(await this.toItem(tx, tenantId, codeType, config, now, explicitConfig !== undefined));
       }
       return items;
     });
@@ -124,7 +135,7 @@ export class BusinessCodeService {
       });
 
       const now = toVietnamDateParts(new Date());
-      return this.toItem(tx, tenantId, codeType, newEntry, now);
+      return this.toItem(tx, tenantId, codeType, newEntry, now, true);
     });
   }
 
@@ -136,17 +147,15 @@ export class BusinessCodeService {
     };
   }
 
-  private async resolveConfig(tx: Prisma.TransactionClient, tenantId: string, codeType: BusinessCodeType): Promise<BusinessCodeTemplateEntry> {
-    const stored = await this.clinicSettingsRepository.getBusinessCodeTemplatesConfig(tx, tenantId);
-    return stored[codeType] ?? this.defaultConfig(codeType);
-  }
-
   private async toItem(
     tx: Prisma.TransactionClient,
     tenantId: string,
     codeType: BusinessCodeType,
     config: BusinessCodeTemplateEntry,
     now: { year: number; month: number; day: number },
+    /** Khuôn này có phải do tenant CHỦ ĐỘNG lưu không — quyết định periodKey có tính "thật" theo
+     * token trong khuôn hay ép về '' (mặc định chưa cấu hình, xem comment ở `generate()`). */
+    isExplicit: boolean,
   ): Promise<BusinessCodeTemplateItem> {
     const prefix = BUSINESS_CODE_TYPE_REGISTRY[codeType].internalPrefix;
     const locked = await this.codeSequenceRepository.hasEverBeenUsed(tx, tenantId, prefix);
@@ -154,7 +163,7 @@ export class BusinessCodeService {
     const parseResult = parseBusinessCodeTemplate(config.template);
     let exampleNextCode = '(khuôn mẫu lỗi)';
     if (parseResult.ok) {
-      const periodKey = computeBusinessCodePeriodKey(parseResult.parsed, now);
+      const periodKey = isExplicit ? computeBusinessCodePeriodKey(parseResult.parsed, now) : '';
       const current = await this.codeSequenceRepository.peekCurrentValue(tx, tenantId, prefix, periodKey);
       const nextSeq = current !== null ? current + 1n : BigInt(config.startingValue);
       exampleNextCode = formatBusinessCode(config.template, config.counterDigits, now, nextSeq);

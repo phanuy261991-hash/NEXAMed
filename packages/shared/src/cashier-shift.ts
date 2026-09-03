@@ -88,6 +88,7 @@ export const currentCashierShiftResponseSchema = z.object({
       shiftLabel: z.string(),
       closedAt: z.string(),
       keepForNextAmount: z.number().int(),
+      handoverNote: z.string().nullable(),
     })
     .nullable(),
 });

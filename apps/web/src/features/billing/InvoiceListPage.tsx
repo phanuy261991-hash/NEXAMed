@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowCounterClockwise, CaretLeft, CaretRight, Clock, MagnifyingGlass, Receipt, Wallet, Warning } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, CaretLeft, CaretRight, Clock, LockKey, MagnifyingGlass, Receipt, Wallet, Warning } from '@phosphor-icons/react';
 import type { BillingListItem, CashierShiftDetail } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
@@ -136,18 +136,34 @@ export function InvoiceListPage() {
           />
         </div>
 
-        {openShift ? (
-          <Button type="button" variant="amber" onClick={() => setClosingShift(openShift)}>
+        {openShift && (
+          <Button type="button" variant="amberSolid" onClick={() => setClosingShift(openShift)}>
+            <LockKey size={16} weight="bold" aria-hidden="true" />
             Chốt ca
           </Button>
-        ) : (
-          !shiftFeatureUnavailable && (
-            <Button type="button" variant="secondary" onClick={() => setOpenShiftDialogVisible(true)}>
-              Mở ca
-            </Button>
-          )
         )}
       </div>
+
+      {/* Chưa có ca mở — banner CHỦ ĐỘNG, nổi bật hơn hẳn nút "Mở ca" cũ (trước đặt lẫn trong
+          thanh công cụ, cùng hàng ngày/tìm kiếm, chủ dự án phản hồi trực tiếp "không nổi bật,
+          không gây chú ý" 2026-09-03) — full-width, tông xanh đặc (`bg-blue-600`, cùng token
+          `primary` của Button) thay vì nút phụ nhỏ ở góc. */}
+      {!openShift && !shiftFeatureUnavailable && (
+        <div className="flex flex-shrink-0 items-center justify-between gap-3 rounded-xl bg-blue-600 px-5 py-3.5 text-white shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-white/20">
+              <Wallet size={20} weight="bold" aria-hidden="true" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-sm font-bold">Chưa mở ca hôm nay</span>
+              <span className="text-xs font-medium text-blue-100">Cần mở ca trước khi thu tiền hoặc chốt ca.</span>
+            </div>
+          </div>
+          <Button type="button" variant="secondary" onClick={() => setOpenShiftDialogVisible(true)}>
+            Mở ca ngay
+          </Button>
+        </div>
+      )}
 
       <div className="flex flex-shrink-0 items-center gap-1 border-b border-slate-200 px-1">
         {(
