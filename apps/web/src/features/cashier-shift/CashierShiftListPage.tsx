@@ -8,8 +8,12 @@ import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { formatVnd } from '../../shared/format/currency';
 import { getVietnamTodayDateString } from '../appointment/schedule-grid.utils';
+import { useUserAccountsQuery } from '../user-account/user-account.queries';
 import { useCashierShiftListQuery } from './cashier-shift.queries';
 import { CashierShiftDetailDialog } from './CashierShiftDetailDialog';
+
+/** Chỉ 2 vai trò có `cashier_shift.create` (xem `packages/core/src/rbac/permissions.ts`) mới thực sự mở/chốt ca được. */
+const CASHIER_ROLES = ['receptionist', 'clinic_admin'];
 
 const ROW_HEIGHT_PX = 60;
 type StatusTab = 'all' | 'ok' | 'bad';
@@ -36,8 +40,9 @@ function matchesSearch(item: CashierShiftListItem, q: string): boolean {
 
 /**
  * "Danh sách phiếu chốt ca" (Quản lý/Kế toán) — tra cứu lịch sử, xử lý chênh lệch, duyệt phiếu.
- * Mockup duyệt 2026-09-03. Đơn giản hoá so với mockup: bỏ bộ lọc "Thu ngân" (chưa có nguồn liệt kê
- * danh sách thu ngân sẵn có, không dựng thêm endpoint riêng chỉ cho 1 ô lọc).
+ * Mockup duyệt 2026-09-03. Bộ lọc "Thu ngân" (03/09/2026, bổ sung sau — dùng lại `GET /users` có
+ * sẵn thay vì dựng endpoint liệt kê thu ngân riêng, đúng khuôn `ActivityLogPage.tsx`; trang này chỉ
+ * `clinic_admin` truy cập được nên chắc chắn có sẵn `user_account.read`).
  */
 export function CashierShiftListPage() {
   useBreadcrumb([{ label: 'Thu ngân' }, { label: 'Phiếu chốt ca' }]);
@@ -46,12 +51,17 @@ export function CashierShiftListPage() {
   const [dateTo, setDateTo] = useState(getVietnamTodayDateString());
   const [tab, setTab] = useState<StatusTab>('all');
   const [search, setSearch] = useState('');
+  const [cashierId, setCashierId] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const usersQuery = useUserAccountsQuery();
+  const cashiers = (usersQuery.data?.items ?? []).filter((u) => u.roleNames.some((r) => CASHIER_ROLES.includes(r)));
 
   const listQuery = useCashierShiftListQuery({
     dateFrom,
     dateTo,
     status: tab === 'all' ? undefined : tab,
+    cashierId: cashierId || undefined,
   });
 
   const items = (listQuery.data?.items ?? []).filter((item) => matchesSearch(item, search));
@@ -77,6 +87,18 @@ export function CashierShiftListPage() {
             className="rounded-md border border-slate-300 px-2.5 py-1.5 text-[13px] font-semibold text-slate-900"
           />
         </div>
+        <select
+          value={cashierId}
+          onChange={(e) => setCashierId(e.target.value)}
+          className="rounded-md border border-slate-300 px-2.5 py-1.5 text-[13px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+        >
+          <option value="">Tất cả thu ngân</option>
+          {cashiers.map((u) => (
+            <option key={u.id} value={u.id}>
+              {u.displayName ?? u.fullName}
+            </option>
+          ))}
+        </select>
         <div className="relative min-w-[220px] max-w-sm flex-1">
           <input
             type="text"

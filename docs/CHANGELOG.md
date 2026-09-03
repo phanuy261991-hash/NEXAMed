@@ -4,6 +4,12 @@
 
 ## 2026-09-03
 
+### Bổ sung bộ lọc "Thu ngân" ở "Danh sách phiếu chốt ca"
+
+Điểm còn treo duy nhất của "Chốt ca" (#112) — chủ dự án xác nhận cần bổ sung. Không dựng endpoint liệt kê thu ngân riêng: dùng lại `GET /users` có sẵn (`useUserAccountsQuery()`, đúng khuôn `ActivityLogPage.tsx`), lọc phía client chỉ giữ tài khoản có vai trò `receptionist`/`clinic_admin` (2 vai trò duy nhất có quyền `cashier_shift.create`). Thêm `<select>` vào toolbar `CashierShiftListPage.tsx`, nối tham số `cashierId` đã có sẵn trong `ListCashierShiftsQuery`.
+
+Đã xác minh: `pnpm -w typecheck/lint/build` sạch toàn workspace, chunk web không đổi, Playwright qua Chrome thật xác nhận dropdown hiện đúng danh sách đã lọc vai trò và lọc kết quả không lỗi.
+
 ### "Chốt ca" (BIL-05, đối soát tiền mặt/két) — hoàn tất, verify Playwright, sửa 5 lỗi thật
 
 Tiếp nối phiên trước để dở dang ("CHƯA XONG, CHƯA TEST"). Hoàn tất theo đúng thứ tự việc treo: typecheck `apps/web` lần đầu (phát hiện 2 lỗi thật — `queryKey()` truyền sai kiểu, thiếu `handoverNote` trong schema/service khiến "Sửa phiếu" không đọc lại được giá trị hiện tại), viết 37 test HTTP e2e mới (`cashier-shift-http.spec.ts`, đủ mở/chốt/khớp/lệch/race/quyền sở hữu/danh sách/duyệt/xử lý chênh lệch/sửa sau chốt/cách ly tenant), vá lỗ hổng `tenant-fixture.ts` thiếu dọn `cashier_shift` (vỡ FK khi test). Toàn bộ 594/594 test `apps/api` pass (2 flake đã biết, xác nhận riêng).
