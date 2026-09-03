@@ -4,6 +4,12 @@
 
 ## 2026-09-03
 
+### Verify Playwright: "Khoá bảng ca" theo tháng (work_shift_assignment, #110)
+
+Việc còn treo ghi ở `docs/CURRENT.md` — verify qua Chrome thật cho cả 2 biến thể của banner khoá. `dev.admin` (có quyền `work_shift_assignment.unlock`): tháng trước bị khoá đúng (banner amber + nút "Sửa"), bấm "Sửa" mở khoá tạm thời (banner slate + "Khoá lại") và ghi được 1 ca thật vào tháng đã khoá; tăng `workShiftAssignmentLockGraceDays` lên 15 thì tháng trước tự mở khoá không cần bấm "Sửa", trả về 0 thì khoá lại ngay. Tạo riêng 1 vai trò + 1 tài khoản test qua HTTP API (sao chép ma trận `clinic_admin`, bỏ đúng quyền `unlock`) để xác nhận biến thể còn lại: banner khoá hiện nhưng KHÔNG có nút "Sửa", đúng thông báo liên hệ người có quyền. Không phát hiện bug mới. Đã dọn sạch dữ liệu test (ca/tài khoản/vai trò) và trả cấu hình về mặc định.
+
+Xem `docs/DECISIONS.md` #110.
+
 ### Redesign khung tổng kết Thu ngân + đồng bộ popup xác nhận có số tiền
 
 Khung tổng kết "Thu ngân" (`InvoiceListPage.tsx`) đổi sang dải "thẻ số liệu" hiện đại (icon tròn, nhãn hoa nhỏ, số đậm, ngăn viền dọc), khối "Còn chờ thu" tô nền đặc amber; 2 vòng chỉnh theo phản hồi trực tiếp (giảm độ đậm chữ số tiền, khối "Còn chờ thu" hết kéo giãn to). Thêm cột "Đã hoàn" vào bảng danh sách. Giải thích lại cách tính "Đã thu hôm nay"/"Thực thu" cho chủ dự án (logic gốc #085, không đổi).
