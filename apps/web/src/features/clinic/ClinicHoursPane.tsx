@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { CheckCircle } from '@phosphor-icons/react';
 import type { BusinessHours } from '@nexamed/shared';
-import { useAuthStore } from '../auth/auth.store';
+import { useHasPermission } from '../auth/usePermission';
 import { Button } from '../../shared/ui/Button';
 import { Combobox } from '../../shared/ui/Combobox';
 import { EditIconButton } from '../../shared/ui/EditIconButton';
@@ -9,9 +9,6 @@ import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { TimeInput } from '../../shared/ui/TimeInput';
 import { useClinicSettingsQuery, useUpdateClinicSettingsMutation } from './clinic.queries';
-
-/** Khớp `clinic_config.update` — .claude/docs/security-audit.md (chỉ clinic_admin ở v1). */
-const MANAGE_ROLES = ['clinic_admin'];
 
 const DAY_ORDER: (keyof BusinessHours)[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const DAY_LABEL: Record<keyof BusinessHours, string> = {
@@ -49,8 +46,7 @@ const SECTION_BADGE_CLASS =
  * Pattern, mục 9b) để phân tách rõ 2 phần: giờ làm việc và độ dài slot.
  */
 export function ClinicHoursPane() {
-  const user = useAuthStore((s) => s.user);
-  const canManage = user?.roles.some((role) => MANAGE_ROLES.includes(role)) ?? false;
+  const canManage = useHasPermission('clinic_config', 'update');
 
   const query = useClinicSettingsQuery();
   const mutation = useUpdateClinicSettingsMutation();

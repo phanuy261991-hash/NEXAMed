@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ArrowCounterClockwise, MagnifyingGlass, PencilSimple, Plus, Trash } from '@phosphor-icons/react';
 import type { ReferenceCatalogCategory, ReferenceCatalogItem } from '@nexamed/shared';
-import { useAuthStore } from '../auth/auth.store';
+import { useHasPermission } from '../auth/usePermission';
 import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
@@ -19,9 +19,6 @@ import {
   useUpdateReferenceCatalogItemMutation,
 } from './reference-catalog.queries';
 import { ExamTypeFormModal } from './ExamTypeFormModal';
-
-/** Khớp `reference_catalog.manage` (chỉ clinic_admin) — .claude/docs/security-audit.md. */
-const MANAGE_ROLES = ['clinic_admin'];
 
 /**
  * 4 danh mục nhân sự (mở rộng ADM-01, 2026-08-20) + "Đơn vị tính" (UNIT, 2026-08-26) + "Hình thức
@@ -68,8 +65,7 @@ export function ReferenceCatalogPane({
   category: ReferenceCatalogCategory;
   categoryLabel: string;
 }) {
-  const user = useAuthStore((s) => s.user);
-  const canManage = user?.roles.some((role) => MANAGE_ROLES.includes(role)) ?? false;
+  const canManage = useHasPermission('reference_catalog', 'manage');
   const hideCode = AUTO_CODE_CATEGORIES.includes(category);
 
   const [search, setSearch] = useState('');

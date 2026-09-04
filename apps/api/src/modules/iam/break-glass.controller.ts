@@ -6,12 +6,21 @@ import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { BreakGlassService } from './break-glass.service';
 import type { RequestMeta } from './auth.service';
 
+/**
+ * "Phá kính" — TỰ-PHỤC VỤ có chủ đích, KHÔNG gắn `PermissionGuard`/`@RequirePermission` (khác 27/30
+ * controller nghiệp vụ còn lại): mục đích của route này CHÍNH LÀ cấp quyền tạm thời cho actor
+ * vốn KHÔNG có permission cần dùng — đòi hỏi chính permission đó ở đây sẽ tự loại trừ lẫn nhau.
+ * An toàn không phải nhờ RBAC mà nhờ xác thực lại mật khẩu (step-up auth, `argon2.verify` trong
+ * `BreakGlassService.request()`) + ghi `audit_log` + `ThrottlerGuard` — xem
+ * .claude/docs/security-audit.md mục Break-glass.
+ */
 @Controller('break-glass')
+@UseGuards(JwtAuthGuard)
 export class BreakGlassController {
   constructor(private readonly breakGlassService: BreakGlassService) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard, ThrottlerGuard)
+  @UseGuards(ThrottlerGuard)
   @HttpCode(200)
   async request(@Body() body: unknown, @Req() req: Request) {
     const dto = breakGlassRequestSchema.parse(body);

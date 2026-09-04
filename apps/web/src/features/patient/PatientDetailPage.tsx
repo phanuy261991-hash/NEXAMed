@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { IdentificationCard, Warning } from '@phosphor-icons/react';
 import type { PatientSummary } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
-import { useAuthStore } from '../auth/auth.store';
+import { useHasPermission } from '../auth/usePermission';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
@@ -16,10 +16,6 @@ import { MergePatientsDialog } from './MergePatientsDialog';
 import { patientDetailToFormValues, toUpdatePatientRequest } from './patient-form.utils';
 
 const GENDER_LABEL: Record<string, string> = { male: 'Nam', female: 'Nữ', other: 'Khác' };
-/** Khớp `patient.update` trong ma trận mặc định (.claude/docs/security-audit.md) — chỉ 2 vai trò. */
-const PATIENT_EDIT_ROLES = ['receptionist', 'clinic_admin'];
-/** Khớp `patient.merge` (chỉ `clinic_admin`, global — packages/core/src/rbac/permissions.ts). */
-const PATIENT_MERGE_ROLES = ['clinic_admin'];
 
 /** Chi tiết + sửa TẠI CHỖ (không modal, đã chốt với chủ dự án) — cùng bố cục PatientFormFields cho cả xem/sửa. */
 export function PatientDetailPage() {
@@ -27,9 +23,8 @@ export function PatientDetailPage() {
   const patientId = id!;
   const query = usePatientQuery(patientId);
   const updateMutation = useUpdatePatientMutation(patientId);
-  const user = useAuthStore((s) => s.user);
-  const canEdit = user?.roles.some((role) => PATIENT_EDIT_ROLES.includes(role)) ?? false;
-  const canMerge = user?.roles.some((role) => PATIENT_MERGE_ROLES.includes(role)) ?? false;
+  const canEdit = useHasPermission('patient', 'update');
+  const canMerge = useHasPermission('patient', 'merge');
   const [searchingMergeTarget, setSearchingMergeTarget] = useState(false);
   const [mergeTarget, setMergeTarget] = useState<PatientSummary | null>(null);
 

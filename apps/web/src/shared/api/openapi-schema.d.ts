@@ -49,6 +49,9 @@ export interface paths {
                                     fullName: string;
                                     displayName: string | null;
                                     roles: string[];
+                                    permissions: {
+                                        [key: string]: "none" | "personal" | "department" | "global";
+                                    };
                                     mustChangePassword: boolean;
                                 };
                             };
@@ -238,6 +241,9 @@ export interface paths {
                                 fullName: string;
                                 displayName: string | null;
                                 roles: string[];
+                                permissions: {
+                                    [key: string]: "none" | "personal" | "department" | "global";
+                                };
                                 mustChangePassword: boolean;
                             };
                             meta: Record<string, never>;

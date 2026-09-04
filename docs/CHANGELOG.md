@@ -4,6 +4,22 @@
 
 ## 2026-09-04
 
+### Bảo mật: thu hồi quyền qua "Vai trò & Phân quyền" không có tác dụng (backend) + menu/route không theo quyền thật (frontend)
+
+Chủ dự án báo lễ tân `linh.tran` đã bị gỡ hết quyền Thu ngân vẫn thấy menu "Thu ngân" (bấm vào treo trang) — hỏi thẳng "nếu cho phép người dùng phân quyền vai trò mà không áp dụng được quyền đó theo vai trò thì có ý nghĩa gì", yêu cầu rà soát toàn hệ thống.
+
+**Bug gốc nghiêm trọng nhất**: `findScopesForUserPermission()` (`permission-lookup.helper.ts`, hàm DUY NHẤT `PermissionGuard` dùng cho MỌI endpoint) thiếu `deletedAt: null` — quyền đã thu hồi hoặc vai trò đã gỡ khỏi tài khoản vẫn còn hiệu lực vĩnh viễn. Đã sửa + thêm `findAllPermissionsForUser()` + test hồi quy xác nhận bắt được bug (chạy lại với code cũ → 2/3 test fail đúng).
+
+**Frontend**: rà soát phát hiện 19 file `apps/web` hardcode tên vai trò để ẩn/hiện menu/nút thay vì tra quyền thật. Thêm `currentUserSchema.permissions`, hook `usePermission.ts` (`useHasPermission`/`useDataScope`/`useHasAnyPermission`), sửa cả 19 file, thêm route guard (`RequirePermissionRoute`/`RequireAnyPermissionRoute`) bọc toàn bộ route trong `router.tsx` (trước chỉ ẩn menu, gõ thẳng URL vẫn vào được). Nhóm "Quản trị" tách từ 1 khối thành 7 mục con tự kiểm tra đúng quyền riêng.
+
+Xem `docs/DECISIONS.md` #119.
+
+Đã xác minh: `apps/api` 611/611 pass (2 flake đã biết, pass riêng) gồm `permission-lookup.helper.spec.ts` mới, `encounter-http.spec.ts` 61/61 (break-glass HTTP end-to-end không đổi). `pnpm -w typecheck/build` sạch, chunk web 486.53 kB raw/141.77 kB gzip. `.claude/docs/security-audit.md` mở rộng quy tắc chống hardcode sang frontend + bắt buộc test hồi quy cho hàm tra quyền mới.
+
+### Hiện lại khối "Thực thu" ở thanh tổng kết Thu ngân
+
+Chủ dự án yêu cầu trực tiếp hiện lại số "Thực thu" (`netTotalAmount = paidTotalAmount - refundedTotalAmount`) tại `/billing` — trước đó #111 đã ẩn để gọn thanh tổng kết. `InvoiceListPage.tsx` thêm 1 khối giữa "Đã thu hôm nay" và "Đã hoàn" (đúng thứ tự dòng tiền), dùng thẳng `netTotalAmount` backend đã tính sẵn — không đổi API/schema. `pnpm -w typecheck/build` sạch, chunk `InvoiceListPage` không đổi bất thường.
+
 ### Popup "Tổng hợp ca khám hôm nay" khi Đóng ca
 
 Chủ dự án yêu cầu: khi bác sĩ bấm "Đóng ca hôm nay" (chủ động hoặc hệ thống tự nhắc hết giờ làm việc), hiện thêm 1 giao diện tổng hợp ca đã khám trong ngày để bác sĩ xác nhận. Mockup Artifact duyệt nhiều vòng trước khi code — 3 điểm phạm vi chốt qua `AskUserQuestion` (số liệu tính CẢ NGÀY hôm nay không riêng phiên ACTIVE hiện tại; gộp 1 dialog duy nhất; "Huỷ khám" chỉ tính ca đã gán cho đúng bác sĩ này), sau đó nhiều vòng chỉnh trực tiếp trên mockup tĩnh (bố cục quá bó hẹp → nới rộng; nền xám bị chê "AI look" → đổi sang panel màu thương hiệu `brand-teal`; chữ `font-extrabold` bị chê "vỡ nét" → hạ về `font-bold`; thêm lời chào cá nhân hoá có tên bác sĩ) — có tra `/ui-ux-pro-max` để đối chiếu nguyên tắc bố cục, không áp dụng gợi ý đổi bảng màu của công cụ vì xung đột token đã chốt.

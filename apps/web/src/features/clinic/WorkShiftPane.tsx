@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ArrowCounterClockwise, MagnifyingGlass, PencilSimple, Plus, Trash } from '@phosphor-icons/react';
 import type { WorkShiftItem } from '@nexamed/shared';
-import { useAuthStore } from '../auth/auth.store';
+import { useHasPermission } from '../auth/usePermission';
 import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
@@ -13,9 +13,6 @@ import { useRowSelection } from '../../shared/hooks/useRowSelection';
 import { ApiError } from '../../shared/api/client';
 import { useCreateWorkShiftMutation, useUpdateWorkShiftMutation, useWorkShiftsQuery } from './clinic.queries';
 import { WORK_SHIFT_COLOR_HEX, WorkShiftFormModal, type WorkShiftSubmitDto } from './WorkShiftFormModal';
-
-/** Khớp `clinic_config.update` — .claude/docs/security-audit.md (chỉ clinic_admin ở v1). */
-const MANAGE_ROLES = ['clinic_admin'];
 
 const inputClassName =
   'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
@@ -32,8 +29,7 @@ interface ModalState {
  * `version`, không endpoint deactivate/reactivate riêng).
  */
 export function WorkShiftPane() {
-  const user = useAuthStore((s) => s.user);
-  const canManage = user?.roles.some((role) => MANAGE_ROLES.includes(role)) ?? false;
+  const canManage = useHasPermission('clinic_config', 'update');
 
   const [search, setSearch] = useState('');
   const [modal, setModal] = useState<ModalState | null>(null);

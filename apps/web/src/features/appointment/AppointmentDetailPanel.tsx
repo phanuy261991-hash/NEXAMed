@@ -6,11 +6,9 @@ import { ApiError } from '../../shared/api/client';
 import { Button } from '../../shared/ui/Button';
 import { Combobox } from '../../shared/ui/Combobox';
 import { TimeInput } from '../../shared/ui/TimeInput';
-import { useAuthStore } from '../auth/auth.store';
+import { useHasPermission } from '../auth/usePermission';
 import type { ReceptionIntakeCheckinContext } from '../reception/ReceptionIntakeForm';
 import { APPOINTMENT_SOURCE_LABEL, APPOINTMENT_STATUS_META, getNoShowCountdownTier, isAppointmentLate, noShowCountdownTierMeta } from './appointment-status';
-/** Khớp `encounter.create` (packages/core/src/rbac/permissions.ts) — nút Tiếp nhận chỉ hiện đúng nơi có quyền, backend vẫn là lớp chặn thật. */
-const CHECK_IN_ROLES = ['receptionist', 'clinic_admin'];
 const DURATION_OPTIONS = [15, 30, 45, 60].map((m) => ({ value: String(m), label: `${m} phút` }));
 import {
   useAppointmentsByDateQuery,
@@ -56,8 +54,7 @@ export function AppointmentDetailPanel({
   const [rescheduleResult, setRescheduleResult] = useState<AppointmentSummary | null>(null);
 
   const navigate = useNavigate();
-  const currentUser = useAuthStore((s) => s.user);
-  const canCheckIn = currentUser?.roles.some((r) => CHECK_IN_ROLES.includes(r)) ?? false;
+  const canCheckIn = useHasPermission('encounter', 'create');
 
   const cancelMutation = useCancelAppointmentMutation();
   const editMutation = useEditAppointmentMutation();

@@ -1,16 +1,13 @@
 import { useState } from 'react';
 import { PencilSimple } from '@phosphor-icons/react';
 import type { BusinessCodeTemplateItem } from '@nexamed/shared';
-import { useAuthStore } from '../auth/auth.store';
+import { useHasPermission } from '../auth/usePermission';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { ApiError } from '../../shared/api/client';
 import { useBusinessCodeTemplatesQuery, useUpdateBusinessCodeTemplateMutation } from './clinic.queries';
 import { BusinessCodeTemplateFormModal } from './BusinessCodeTemplateFormModal';
-
-/** Khớp `clinic_config.update` — .claude/docs/security-audit.md (chỉ clinic_admin ở v1). */
-const MANAGE_ROLES = ['clinic_admin'];
 
 /**
  * "Cấu hình mẫu mã phát sinh" (docs/DECISIONS.md #114, chủ dự án yêu cầu trực tiếp 2026-09-03) —
@@ -19,8 +16,7 @@ const MANAGE_ROLES = ['clinic_admin'];
  * (không mục con) trong "Cấu hình hệ thống", đúng khuôn `PaymentConfigPane`/`ExamConfigPane`.
  */
 export function BusinessCodeTemplatePane() {
-  const user = useAuthStore((s) => s.user);
-  const canManage = user?.roles.some((role) => MANAGE_ROLES.includes(role)) ?? false;
+  const canManage = useHasPermission('clinic_config', 'update');
 
   const [editing, setEditing] = useState<BusinessCodeTemplateItem | null>(null);
   const query = useBusinessCodeTemplatesQuery();

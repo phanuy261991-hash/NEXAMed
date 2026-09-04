@@ -24,27 +24,21 @@ import {
 } from '@phosphor-icons/react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../features/auth/auth.store';
+import { useHasAnyPermission, useDataScope, useHasPermission } from '../../features/auth/usePermission';
+import { ADMIN_ANY_PERMISSIONS, ADMIN_ORG_PERMISSIONS } from '../../features/auth/admin-permissions';
+import { DOCTOR_QUEUE_ROLES } from '../../features/auth/workflow-roles';
 import { useSidebar } from './sidebar.context';
 
-/** Vai trò được thấy mục Quản trị — theo lựa chọn đã chốt ở S1-08 (kết hợp luồng nghiệp vụ + vai trò). */
-const ADMIN_ROLES = ['clinic_admin', 'system_admin'];
-/** Khớp `patient.read` trong ma trận mặc định (.claude/docs/security-audit.md) — mọi vai trò trừ system_admin. */
-const PATIENT_ROLES = ['receptionist', 'nurse', 'doctor', 'clinic_admin'];
-/** Khớp `appointment.read` (S2-09) — receptionist/clinic_admin=global, doctor=personal; nurse/system_admin không có (none). */
-const APPOINTMENT_ROLES = ['receptionist', 'doctor', 'clinic_admin'];
-/** Khớp `encounter.read` (Sprint 3, sau khi vá ma trận) — receptionist/nurse/doctor/clinic_admin=global; system_admin không có. */
-const RECEPTION_ROLES = ['receptionist', 'nurse', 'doctor', 'clinic_admin'];
-/** "Hàng đợi khám" — khu vực RIÊNG cho bác sĩ (đã chốt lại với chủ dự án), không cần cho lễ tân/điều dưỡng. */
-const DOCTOR_QUEUE_ROLES = ['doctor', 'clinic_admin'];
-/** Thu ngân cơ bản (Sprint 5/6) — khớp `invoice.read` trong ma trận mặc định: receptionist/clinic_admin=global, không có bác sĩ/điều dưỡng. */
-const BILLING_ROLES = ['receptionist', 'clinic_admin'];
-/** "Đăng ký ca làm việc" (Giai đoạn 2 #101) — MỌI vai trò trừ system_admin (khớp
- * `work_shift_assignment.create=personal` trong ma trận mặc định). */
-const WORK_SCHEDULE_ROLES = ['receptionist', 'nurse', 'doctor', 'clinic_admin'];
-/** "Lịch làm việc nhân viên" — chỉ clinic_admin (mặc định duy nhất có scope `global`). Hạn chế đã
- * biết: nếu sau này admin gán quyền xem toàn bộ cho vai trò khác qua "Vai trò & Phân quyền", vai
- * trò đó vẫn KHÔNG tự thấy mục này (mảng vai trò tĩnh, giống mọi trang quản trị khác trong app). */
-const STAFF_SCHEDULE_ROLES = ['clinic_admin'];
+/**
+ * 7 mục con của "Quản trị" (2026-09-04) — TỪNG mục ẩn/hiện theo ĐÚNG quyền route đó cần, không
+ * còn 1 khối chung theo tên vai trò cứng: trước đây thu hồi hết quyền quản trị của 1 vai trò qua
+ * "Vai trò & Phân quyền" không ẩn được menu (bug thật, xem `docs/DECISIONS.md`); sau khi sửa còn
+ * lỗ hổng kế tiếp — 1 khối gộp cả 6 mục theo BẤT KỲ quyền quản trị nào khiến vai trò tuỳ biến chỉ
+ * được cấp 1 phần (ví dụ chỉ `audit_log.read`) vẫn thấy đủ 6 mục nhưng bấm vào 5 mục kia bị route
+ * guard chặn — nay mỗi mục tự kiểm tra đúng quyền route đó cần (khớp tuyệt đối
+ * `RequirePermissionRoute`/`RequireAnyPermissionRoute` ở `router.tsx`, 2 danh sách quyền dùng
+ * chung đặt ở `features/auth/admin-permissions.ts`).
+ */
 
 /** Route của "Hàng đợi khám" — giữ nguyên dưới `features/reception/` (chưa có module `encounter`/
  * `examination` thật ở web), chỉ đổi vị trí hiển thị sang nhóm "Khám bệnh" trong sidebar. */
@@ -123,14 +117,29 @@ export function Sidebar() {
     WORK_SCHEDULE_GROUP_PATHS.some((path) => location.pathname.startsWith(path)),
   );
 
-  const isAdmin = user?.roles.some((role) => ADMIN_ROLES.includes(role)) ?? false;
-  const canSeePatients = user?.roles.some((role) => PATIENT_ROLES.includes(role)) ?? false;
-  const canSeeAppointments = user?.roles.some((role) => APPOINTMENT_ROLES.includes(role)) ?? false;
-  const canSeeReception = user?.roles.some((role) => RECEPTION_ROLES.includes(role)) ?? false;
+  const isAdmin = useHasAnyPermission(ADMIN_ANY_PERMISSIONS);
+  const canSeeCatalog = useHasPermission('reference_catalog', 'manage');
+  const canSeeCatalogOrganization = useHasAnyPermission(ADMIN_ORG_PERMISSIONS);
+  // ICD-10 tái dùng patient.read ở backend (không có permission "manage" riêng, xem
+  // .claude/docs/multi-tenancy.md) — sẽ lộ menu này cho cả bác sĩ/điều dưỡng/lễ tân nếu tra thẳng
+  // patient.read (họ đều có), sai tinh thần "chỉ Quản trị" của cả nhóm — theo BẤT KỲ quyền quản
+  // trị nào thay vì permission route thật sự dùng, xem comment ADMIN_ANY_PERMISSIONS phía trên.
+  const canSeeCatalogClinical = isAdmin;
+  // "Danh mục cận lâm sàng" còn là ComingSoonPage, chưa có permission route thật — cùng lý do trên.
+  const canSeeCatalogParaclinical = isAdmin;
+  const canSeeCatalogPharmacy = useHasPermission('drug', 'manage');
+  const canSeeSystemConfig = useHasPermission('clinic_config', 'update');
+  const canSeeActivityLog = useHasPermission('audit_log', 'read');
+  const canSeePatients = useHasPermission('patient', 'read');
+  const canSeeAppointments = useHasPermission('appointment', 'read');
+  const canSeeReception = useHasPermission('encounter', 'read');
+  // "Hàng đợi khám" — quyết định workflow (không phải quyền), giữ theo tên vai trò, xem DOCTOR_QUEUE_ROLES.
   const canSeeDoctorQueue = user?.roles.some((role) => DOCTOR_QUEUE_ROLES.includes(role)) ?? false;
-  const canSeeBilling = user?.roles.some((role) => BILLING_ROLES.includes(role)) ?? false;
-  const canSeeWorkSchedule = user?.roles.some((role) => WORK_SCHEDULE_ROLES.includes(role)) ?? false;
-  const canSeeStaffSchedule = user?.roles.some((role) => STAFF_SCHEDULE_ROLES.includes(role)) ?? false;
+  const canSeeBilling = useHasPermission('invoice', 'read');
+  const canSeeWorkSchedule = useHasPermission('work_shift_assignment', 'create');
+  // "Lịch làm việc nhân viên" — chỉ actor có scope GLOBAL (quản lý toàn phòng khám) mới thấy mục
+  // này, khác canSeeWorkSchedule (personal cũng đủ để thấy "Lịch làm việc của tôi").
+  const canSeeStaffSchedule = useDataScope('work_shift_assignment', 'read') === 'global';
   const receptionGroupExpanded = receptionGroupOpen && !collapsed;
   const examinationGroupExpanded = examinationGroupOpen && !collapsed;
   const adminGroupExpanded = adminGroupOpen && !collapsed;
@@ -359,15 +368,18 @@ export function Sidebar() {
               </button>
               {adminGroupExpanded && (
                 <ul className="mt-0.5 flex flex-col gap-0.5 border-l border-slate-800 pl-3.5">
-                  <NavItem to="/admin/catalog" label="Danh mục dùng chung" icon={FolderSimple} collapsed={false} indent />
-                  <NavItem to="/admin/catalog-organization" label="Danh mục Tổ chức và Nhân sự" icon={Users} collapsed={false} indent />
-                  <NavItem to="/admin/catalog-clinical" label="Danh mục Chuyên môn" icon={GraduationCap} collapsed={false} indent />
-                  <NavItem to="/admin/catalog-paraclinical" label="Danh mục cận lâm sàng" icon={Flask} collapsed={false} indent />
+                  {canSeeCatalog && <NavItem to="/admin/catalog" label="Danh mục dùng chung" icon={FolderSimple} collapsed={false} indent />}
+                  {canSeeCatalogOrganization && (
+                    <NavItem to="/admin/catalog-organization" label="Danh mục Tổ chức và Nhân sự" icon={Users} collapsed={false} indent />
+                  )}
+                  {canSeeCatalogClinical && <NavItem to="/admin/catalog-clinical" label="Danh mục Chuyên môn" icon={GraduationCap} collapsed={false} indent />}
+                  {canSeeCatalogParaclinical && (
+                    <NavItem to="/admin/catalog-paraclinical" label="Danh mục cận lâm sàng" icon={Flask} collapsed={false} indent />
+                  )}
                   {/* Đổi nhãn từ "Danh mục Dược và Vật tư" (Sprint 4) — v1 chỉ quản lý danh mục thuốc, không vật tư/kho (docs/product/future-modules-reference.md mục 2.2.1). */}
-                  <NavItem to="/admin/catalog-pharmacy" label="Danh mục thuốc" icon={Pill} collapsed={false} indent />
-                  <NavItem to="/admin/system-config" label="Cấu hình hệ thống" icon={SlidersHorizontal} collapsed={false} indent />
-                  {/* S5-05 (ADM-03) — khớp quyền `audit_log.read` (clinic_admin/system_admin, đúng ADMIN_ROLES của cả nhóm). */}
-                  <NavItem to="/admin/activity-log" label="Nhật ký hoạt động" icon={ClockCounterClockwise} collapsed={false} indent />
+                  {canSeeCatalogPharmacy && <NavItem to="/admin/catalog-pharmacy" label="Danh mục thuốc" icon={Pill} collapsed={false} indent />}
+                  {canSeeSystemConfig && <NavItem to="/admin/system-config" label="Cấu hình hệ thống" icon={SlidersHorizontal} collapsed={false} indent />}
+                  {canSeeActivityLog && <NavItem to="/admin/activity-log" label="Nhật ký hoạt động" icon={ClockCounterClockwise} collapsed={false} indent />}
                 </ul>
               )}
             </li>

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { MagnifyingGlass, PencilSimple, Plus, Warning } from '@phosphor-icons/react';
 import type { AllergenGroupSummary, AllergenItem } from '@nexamed/shared';
-import { useAuthStore } from '../auth/auth.store';
+import { useHasPermission } from '../auth/usePermission';
 import { Button } from '../../shared/ui/Button';
 import { Combobox } from '../../shared/ui/Combobox';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
@@ -24,9 +24,6 @@ import {
   useUpdateAllergenMutation,
 } from './allergen.queries';
 
-/** Khớp `allergen_catalog.manage` (chỉ clinic_admin) — .claude/docs/security-audit.md. */
-const MANAGE_ROLES = ['clinic_admin'];
-
 const inputClassName =
   'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 
@@ -39,8 +36,7 @@ const inputClassName =
  * vì dữ liệu không có `version` để optimistic-lock theo kiểu đó.
  */
 export function AllergenPane() {
-  const user = useAuthStore((s) => s.user);
-  const canManage = user?.roles.some((role) => MANAGE_ROLES.includes(role)) ?? false;
+  const canManage = useHasPermission('allergen_catalog', 'manage');
 
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [groupSearch, setGroupSearch] = useState('');

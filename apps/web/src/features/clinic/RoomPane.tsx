@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ChairIcon, MagnifyingGlass, PencilSimple, Plus } from '@phosphor-icons/react';
 import type { FloorSummary, RoomSummary } from '@nexamed/shared';
-import { useAuthStore } from '../auth/auth.store';
+import { useHasPermission } from '../auth/usePermission';
 import { Button } from '../../shared/ui/Button';
 import { Combobox } from '../../shared/ui/Combobox';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
@@ -21,9 +21,6 @@ import {
   useUpdateRoomMutation,
 } from './clinic.queries';
 
-/** Khớp `clinic_config.update` — .claude/docs/security-audit.md (chỉ clinic_admin ở v1). */
-const MANAGE_ROLES = ['clinic_admin'];
-
 const inputClassName =
   'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 
@@ -42,8 +39,7 @@ const NO_FLOOR_VALUE = '';
  * Phòng (không phải cột riêng — 3 cột song song sẽ chật, đúng cấu trúc 2 cột của ảnh tham khảo).
  */
 export function RoomPane() {
-  const user = useAuthStore((s) => s.user);
-  const canManage = user?.roles.some((role) => MANAGE_ROLES.includes(role)) ?? false;
+  const canManage = useHasPermission('clinic_config', 'update');
 
   const [selectedFloorId, setSelectedFloorId] = useState<string | null>(null);
   const [floorSearch, setFloorSearch] = useState('');

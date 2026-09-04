@@ -9,9 +9,10 @@ import {
   isAccountLocked,
   recordFailedLogin,
 } from '@nexamed/core';
-import type { ChangePasswordRequest, LoginRequest } from '@nexamed/shared';
+import type { ChangePasswordRequest, DataScope, LoginRequest } from '@nexamed/shared';
 import type { Prisma, UserSession } from '@prisma/client';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
+import { findAllPermissionsForUser } from '../../infrastructure/persistence/permission-lookup.helper';
 import { SessionRepository } from './session.repository';
 import { UserAccountAuthRepository } from './user-account-auth.repository';
 import { TokenService } from './token.service';
@@ -28,6 +29,7 @@ export interface CurrentUserResult {
   fullName: string;
   displayName: string | null;
   roles: string[];
+  permissions: Record<string, DataScope>;
   mustChangePassword: boolean;
 }
 
@@ -116,6 +118,7 @@ export class AuthService {
       await this.userAccountAuthRepository.recordSuccessfulLogin(tx, request.tenantId, user.id);
       const issued = await this.issueSession(tx, request.tenantId, user.id, meta);
       const roles = await this.userAccountAuthRepository.findRoleNamesForUser(tx, request.tenantId, user.id);
+      const permissions = await findAllPermissionsForUser(tx, request.tenantId, user.id);
 
       await writeAuditLog(tx, request.tenantId, {
         actorId: user.id,
@@ -139,6 +142,7 @@ export class AuthService {
             fullName: user.fullName,
             displayName: user.displayName,
             roles,
+            permissions,
             mustChangePassword: user.mustChangePassword,
           },
           refreshToken: issued.rawRefreshToken,
@@ -291,12 +295,14 @@ export class AuthService {
         throw new AccountDisabledError();
       }
       const roles = await this.userAccountAuthRepository.findRoleNamesForUser(tx, tenantId, userId);
+      const permissions = await findAllPermissionsForUser(tx, tenantId, userId);
       return {
         id: user.id,
         username: user.username,
         fullName: user.fullName,
         displayName: user.displayName,
         roles,
+        permissions,
         mustChangePassword: user.mustChangePassword,
       };
     });

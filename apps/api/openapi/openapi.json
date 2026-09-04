@@ -99,6 +99,18 @@
                                 "type": "string"
                               }
                             },
+                            "permissions": {
+                              "type": "object",
+                              "additionalProperties": {
+                                "type": "string",
+                                "enum": [
+                                  "none",
+                                  "personal",
+                                  "department",
+                                  "global"
+                                ]
+                              }
+                            },
                             "mustChangePassword": {
                               "type": "boolean"
                             }
@@ -109,6 +121,7 @@
                             "fullName",
                             "displayName",
                             "roles",
+                            "permissions",
                             "mustChangePassword"
                           ]
                         }
@@ -390,6 +403,18 @@
                             "type": "string"
                           }
                         },
+                        "permissions": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "string",
+                            "enum": [
+                              "none",
+                              "personal",
+                              "department",
+                              "global"
+                            ]
+                          }
+                        },
                         "mustChangePassword": {
                           "type": "boolean"
                         }
@@ -400,6 +425,7 @@
                         "fullName",
                         "displayName",
                         "roles",
+                        "permissions",
                         "mustChangePassword"
                       ]
                     },

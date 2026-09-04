@@ -13,15 +13,13 @@ import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
 import { useRowSelection } from '../../shared/hooks/useRowSelection';
-import { useAuthStore } from '../auth/auth.store';
+import { useHasPermission } from '../auth/usePermission';
 import { usePatientsQuery } from './patient.queries';
 import { computeBirthYear, formatAddressLine } from './patient-form.utils';
 import { MergePatientsDialog } from './MergePatientsDialog';
 import { useAllWardsQuery, useProvincesQuery } from '../geo/geo.queries';
 
 const GENDER_LABEL: Record<string, string> = { male: 'Nam', female: 'Nữ', other: 'Khác' };
-/** Khớp `patient.merge` (chỉ `clinic_admin`, global — packages/core/src/rbac/permissions.ts). */
-const PATIENT_MERGE_ROLES = ['clinic_admin'];
 /**
  * Thứ tự cột (docs/DECISIONS.md #034): chọn dòng, Mã BN, Họ tên, CCCD, Giới tính, Năm sinh, Điện
  * thoại, Địa chỉ. Hai cột dài (Họ tên, Địa chỉ) CÙNG chia phần rộng còn lại (`minmax(0,*fr)`) thay
@@ -52,8 +50,7 @@ export function PatientListPage() {
   const debouncedQ = useDebouncedValue(q, 300);
   const query = usePatientsQuery(debouncedQ);
   const [merging, setMerging] = useState(false);
-  const currentUser = useAuthStore((s) => s.user);
-  const canMerge = currentUser?.roles.some((r) => PATIENT_MERGE_ROLES.includes(r)) ?? false;
+  const canMerge = useHasPermission('patient', 'merge');
 
   // Bảng tra code→tên cho cột Địa chỉ (docs/DECISIONS.md #038) — `patient.address.province`/
   // `.ward` lưu mã, không lưu tên. Tải 1 lần, cache mãi (`staleTime: Infinity`), memo hoá thành

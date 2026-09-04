@@ -7,6 +7,7 @@ import type { ConfigService } from '@nestjs/config';
 import {
   AccountDisabledError,
   AccountLockedError,
+  DEFAULT_ROLE_PERMISSIONS,
   InvalidCredentialsError,
   RefreshTokenInvalidError,
   RefreshTokenReuseDetectedError,
@@ -219,7 +220,7 @@ describe('AuthService — login/refresh/logout', () => {
     await expect(authService.logout(undefined, REQUEST_META)).resolves.toBeUndefined();
   });
 
-  it('getCurrentUser: trả đúng danh tính + vai trò', async () => {
+  it('getCurrentUser: trả đúng danh tính + vai trò + quyền thật (bug thu hồi quyền 2026-09-04)', async () => {
     const result = await authService.getCurrentUser(tenantAId, userAId);
     expect(result).toEqual({
       id: userAId,
@@ -227,6 +228,8 @@ describe('AuthService — login/refresh/logout', () => {
       fullName: 'Bác sĩ A',
       displayName: null,
       roles: ['doctor'],
+      // Đúng khớp ma trận mặc định của vai trò 'doctor' — permissions không phải suy diễn ở web.
+      permissions: DEFAULT_ROLE_PERMISSIONS.doctor,
       mustChangePassword: false,
     });
   });

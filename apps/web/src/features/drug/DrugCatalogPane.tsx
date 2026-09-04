@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { MagnifyingGlass, PencilSimple, Plus } from '@phosphor-icons/react';
 import type { DrugSummary } from '@nexamed/shared';
-import { useAuthStore } from '../auth/auth.store';
+import { useHasPermission } from '../auth/usePermission';
 import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
@@ -12,9 +12,6 @@ import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
 import { useRowSelection } from '../../shared/hooks/useRowSelection';
 import { useCreateDrugMutation, useDrugsQuery, useUpdateDrugMutation } from './drug.queries';
-
-/** Khớp `drug.manage` (chỉ clinic_admin) — .claude/docs/security-audit.md. */
-const MANAGE_ROLES = ['clinic_admin'];
 
 const inputClassName =
   'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
@@ -32,8 +29,7 @@ interface ModalState {
  * `version`/optimistic lock).
  */
 export function DrugCatalogPane() {
-  const user = useAuthStore((s) => s.user);
-  const canManage = user?.roles.some((role) => MANAGE_ROLES.includes(role)) ?? false;
+  const canManage = useHasPermission('drug', 'manage');
 
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search, 300);

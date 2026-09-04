@@ -5,11 +5,8 @@ import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
-import { useAuthStore } from '../auth/auth.store';
+import { useHasPermission } from '../auth/usePermission';
 import { useCreateExamStationMutation, useExamStationsQuery, useUpdateExamStationMutation } from './clinic.queries';
-
-/** Khớp `clinic_config.update` — .claude/docs/security-audit.md (chỉ clinic_admin ở v1). */
-const MANAGE_ROLES = ['clinic_admin'];
 
 const inputClassName =
   'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
@@ -21,8 +18,7 @@ const inputClassName =
  * khám mỗi phòng luôn rất ít.
  */
 export function ExamStationDialog({ room, onClose }: { room: RoomSummary; onClose: () => void }) {
-  const user = useAuthStore((s) => s.user);
-  const canManage = user?.roles.some((role) => MANAGE_ROLES.includes(role)) ?? false;
+  const canManage = useHasPermission('clinic_config', 'update');
 
   const [editing, setEditing] = useState<ExamStationSummary | 'new' | null>(null);
   const query = useExamStationsQuery(room.id);

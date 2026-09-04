@@ -13,6 +13,7 @@ import { Skeleton } from '../../shared/ui/Skeleton';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { formatVnd } from '../../shared/format/currency';
 import { useAuthStore } from '../auth/auth.store';
+import { useHasPermission } from '../auth/usePermission';
 import { useClinicPrintHeaderQuery } from '../clinic/clinic.queries';
 import { OpenShiftDialog } from '../cashier-shift/OpenShiftDialog';
 import { useCurrentCashierShiftQuery } from '../cashier-shift/cashier-shift.queries';
@@ -33,9 +34,6 @@ const PAYMENT_METHOD_ICON: Record<string, typeof Money> = {
   CASH: Money,
   BANK_TRANSFER: Bank,
 };
-
-/** #085 — hoàn tiền là thao tác nhạy cảm hơn thu tiền, mặc định CHỈ clinic_admin (khớp `invoice.refund` ở ma trận mặc định, `packages/core/src/rbac/permissions.ts`). Ẩn hẳn nút với vai trò không có quyền, đúng `.claude/docs/ui-guidelines.md` mục 9. */
-const REFUND_ROLES = ['clinic_admin'];
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
@@ -62,7 +60,7 @@ export function InvoiceDetailPage() {
   const navigate = useNavigate();
   const currentUser = useAuthStore((s) => s.user);
   const collectedByName = currentUser?.displayName ?? currentUser?.fullName ?? '';
-  const canRefund = currentUser?.roles.some((role) => REFUND_ROLES.includes(role)) ?? false;
+  const canRefund = useHasPermission('invoice', 'refund');
 
   const invoiceQuery = useBillingInvoiceQuery(encounterId);
   const clinicQuery = useClinicPrintHeaderQuery();

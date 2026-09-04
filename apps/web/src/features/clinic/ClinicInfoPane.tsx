@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { Camera, CheckCircle, Image as ImageIcon } from '@phosphor-icons/react';
 import type { CurrencyCode, Timezone } from '@nexamed/shared';
-import { useAuthStore } from '../auth/auth.store';
+import { useHasPermission } from '../auth/usePermission';
 import { ApiError, resolveApiUrl } from '../../shared/api/client';
 import { Button } from '../../shared/ui/Button';
 import { Combobox, type ComboboxOption } from '../../shared/ui/Combobox';
@@ -14,9 +14,6 @@ import {
   useUploadClinicLogoMutation,
   useUploadClinicPrintLogoMutation,
 } from './clinic.queries';
-
-/** Khớp `clinic_config.update` — .claude/docs/security-audit.md (chỉ clinic_admin ở v1). */
-const MANAGE_ROLES = ['clinic_admin'];
 
 const SECTION_BADGE_CLASS =
   'absolute -top-3 left-4 rounded-md bg-blue-600 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white';
@@ -135,8 +132,7 @@ function LogoUploadBox({ label, hint, imageUrl, version, aspectClassName, disabl
  * với các trường văn bản khác).
  */
 export function ClinicInfoPane() {
-  const user = useAuthStore((s) => s.user);
-  const canManage = user?.roles.some((role) => MANAGE_ROLES.includes(role)) ?? false;
+  const canManage = useHasPermission('clinic_config', 'update');
 
   const query = useClinicProfileQuery();
   const updateMutation = useUpdateClinicProfileMutation();

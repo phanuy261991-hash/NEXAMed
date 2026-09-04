@@ -7,7 +7,7 @@ import { Button } from '../../shared/ui/Button';
 import { MoneyInput } from '../../shared/ui/MoneyInput';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { Skeleton } from '../../shared/ui/Skeleton';
-import { useAuthStore } from '../auth/auth.store';
+import { useHasPermission } from '../auth/usePermission';
 import { useClinicPrintHeaderQuery } from '../clinic/clinic.queries';
 import { CashierShiftReceiptView } from './CashierShiftReceiptView';
 import {
@@ -18,9 +18,6 @@ import {
   useResolveCashierShiftDiscrepancyMutation,
 } from './cashier-shift.queries';
 
-/** Đúng ma trận mặc định `cashier_shift.manage` (`packages/core/src/rbac/permissions.ts`) — chỉ clinic_admin. */
-const MANAGE_ROLES = ['clinic_admin'];
-
 const RESOLUTION_LABEL: Record<CashierShiftDiscrepancyResolution, string> = {
   DEDUCT: 'Trừ vào lương / bắt thu ngân đền phần thiếu',
   INCOME: 'Ghi nhận thu nhập khác (trường hợp dư tiền)',
@@ -28,8 +25,7 @@ const RESOLUTION_LABEL: Record<CashierShiftDiscrepancyResolution, string> = {
 };
 
 export function CashierShiftDetailDialog({ id, onClose }: { id: string; onClose: () => void }) {
-  const currentUser = useAuthStore((s) => s.user);
-  const canManage = currentUser?.roles.some((role) => MANAGE_ROLES.includes(role)) ?? false;
+  const canManage = useHasPermission('cashier_shift', 'manage');
 
   const [showReceipt, setShowReceipt] = useState(false);
   const [editing, setEditing] = useState(false);
