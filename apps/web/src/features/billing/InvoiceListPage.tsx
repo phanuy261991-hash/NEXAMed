@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowCounterClockwise, CaretLeft, CaretRight, Clock, LockKey, MagnifyingGlass, Receipt, Wallet, Warning } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, Bank, CaretLeft, CaretRight, Clock, LockKey, MagnifyingGlass, Receipt, Wallet, Warning } from '@phosphor-icons/react';
 import type { BillingListItem, CashierShiftDetail } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
@@ -347,8 +347,18 @@ export function InvoiceListPage() {
               </span>
             </div>
           </div>
-          {/* "Thực thu" (netTotalAmount) ẩn khỏi hiển thị theo yêu cầu chủ dự án — chỉ giữ 2 khối
-              nguồn thô "Đã thu hôm nay"/"Đã hoàn" cho gọn, tránh 3 con số cạnh nhau gây rối. */}
+          {/* "Thực thu" (netTotalAmount = paidTotalAmount - refundedTotalAmount) — hiện lại theo yêu
+              cầu trực tiếp 2026-09-04 (trước đó #111 từng ẩn để gọn, nay chủ dự án muốn xem lại số
+              tiền thật còn trong két). */}
+          <div className="flex min-w-[190px] flex-1 items-center justify-center gap-3 border-l border-slate-100 px-5 py-3.5">
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+              <Bank size={20} weight="bold" aria-hidden="true" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Thực thu</span>
+              <span className="text-xl font-bold tabular-nums text-slate-900">{formatVnd(listQuery.data.netTotalAmount)}</span>
+            </div>
+          </div>
           {/* Cố ý tô nền đặc (khác các khối trên) — đây là mục CẦN HÀNH ĐỘNG (còn phiếu chưa thu),
               đúng token "Triage - Lưu ý/Đang chờ" (`bg-amber-500`, .claude/docs/ui-guidelines.md mục
               2.1). `flex-none` (khác 3 khối kia dùng `flex-1`) — chỉ rộng vừa đủ nội dung, không kéo
