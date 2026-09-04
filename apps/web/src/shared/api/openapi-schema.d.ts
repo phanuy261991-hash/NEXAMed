@@ -13615,6 +13615,101 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/doctor-availability/{doctorId}/shift-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Popup xác nhận "Đóng ca hôm nay" — tổng hợp ca khám trong ngày (cả ngày hôm nay, không riêng phiên ACTIVE hiện tại) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    doctorId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                doctorId: string;
+                                doctorName: string;
+                                calledCount: number;
+                                completedCount: number;
+                                avgConsultMinutes: number | null;
+                                cancelledCount: number;
+                                prescriptionCount: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền doctor_availability.update */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (bác sĩ khác scope personal, hoặc thuộc tenant khác) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/work-shift-assignments": {
         parameters: {
             query?: never;

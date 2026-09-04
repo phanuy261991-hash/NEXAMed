@@ -51,3 +51,22 @@ export const doctorAvailabilityPolicySchema = z.object({
   allowReceptionistEndShift: z.boolean(),
 });
 export type DoctorAvailabilityPolicy = z.infer<typeof doctorAvailabilityPolicySchema>;
+
+/**
+ * `GET /doctor-availability/{doctorId}/shift-summary` — popup xác nhận "Đóng ca hôm nay" hiện tổng
+ * hợp ca khám trong ngày (mockup duyệt trước khi code). Tính theo CẢ NGÀY hôm nay (không riêng
+ * phiên ACTIVE hiện tại — Tạm nghỉ giữa ngày không làm mất số liệu trước đó, đã chốt qua hỏi-đáp).
+ * `avgConsultMinutes=null` khi chưa có ca nào hoàn tất hôm nay (không phải `0`, tránh hiểu nhầm).
+ * "Huỷ khám" chỉ tính ca ĐÃ GÁN cho đúng bác sĩ này (đã gọi khám) rồi mới huỷ — không tính ca còn ở
+ * hàng chờ chung Khoa (chưa ai nhận) bị huỷ.
+ */
+export const doctorShiftSummarySchema = z.object({
+  doctorId: z.string().uuid(),
+  doctorName: z.string(),
+  calledCount: z.number().int().nonnegative(),
+  completedCount: z.number().int().nonnegative(),
+  avgConsultMinutes: z.number().int().nonnegative().nullable(),
+  cancelledCount: z.number().int().nonnegative(),
+  prescriptionCount: z.number().int().nonnegative(),
+});
+export type DoctorShiftSummary = z.infer<typeof doctorShiftSummarySchema>;

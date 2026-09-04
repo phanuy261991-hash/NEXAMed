@@ -13,6 +13,7 @@ import type {
   DoctorAvailability,
   DoctorAvailabilityBoardResponse,
   DoctorAvailabilityPolicy,
+  DoctorShiftSummary,
   ExamStationSummary,
   FloorSummary,
   ListExamStationsResponse,
@@ -167,6 +168,13 @@ export async function setDoctorAvailability(doctorId: string, body: SetDoctorAva
   return unwrap(
     await getApiClient().PUT('/api/v1/doctor-availability/{doctorId}', { params: { path: { doctorId } }, body }),
   ) as DoctorAvailability;
+}
+
+/** Popup xác nhận "Đóng ca hôm nay" — tổng hợp ca khám trong ngày (mockup duyệt trước khi code). */
+export async function getDoctorShiftSummary(doctorId: string): Promise<DoctorShiftSummary> {
+  return unwrap(
+    await getApiClient().GET('/api/v1/doctor-availability/{doctorId}/shift-summary', { params: { path: { doctorId } } }),
+  ) as DoctorShiftSummary;
 }
 
 /** "Cấu hình mẫu mã phát sinh" (docs/DECISIONS.md #114) — 7 loại mã nghiệp vụ. */

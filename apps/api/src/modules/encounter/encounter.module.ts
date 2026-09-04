@@ -23,6 +23,9 @@ import { EncounterReaderAdapter } from '../../infrastructure/encounter/encounter
  * Repository giữa module trong 1 transaction" (`docs/DECISIONS.md` #042).
  * `ENCOUNTER_READER_PORT` (S5-05, ADM-03) — `AuditModule` inject để resolve mã lượt khám + bệnh
  * nhân cho nhật ký hoạt động, đúng khuôn `PATIENT_READER_PORT` export từ `PatientModule`.
+ * `exports: [..., PrescriptionRepository]` — "Đóng ca hôm nay" (popup tổng hợp) cần đếm đơn thuốc
+ * đã ký hôm nay của bác sĩ, `DoctorAvailabilityModule` đã `imports: [EncounterModule]` sẵn (dùng
+ * chung `EncounterRepository`) nên dùng chung luôn `PrescriptionRepository`, đúng tiền lệ #042.
  */
 @Module({
   imports: [PatientModule, ClinicModule, BillingModule],
@@ -35,6 +38,6 @@ import { EncounterReaderAdapter } from '../../infrastructure/encounter/encounter
     PrescriptionRepository,
     { provide: ENCOUNTER_READER_PORT, useClass: EncounterReaderAdapter },
   ],
-  exports: [EncounterRepository, ENCOUNTER_READER_PORT],
+  exports: [EncounterRepository, PrescriptionRepository, ENCOUNTER_READER_PORT],
 })
 export class EncounterModule {}

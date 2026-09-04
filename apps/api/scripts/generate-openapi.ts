@@ -62,6 +62,7 @@ import {
   doctorAvailabilityBoardResponseSchema,
   doctorAvailabilityPolicySchema,
   doctorAvailabilitySchema,
+  doctorShiftSummarySchema,
   editAppointmentRequestSchema,
   encounterSummarySchema,
   examStationSummarySchema,
@@ -2232,6 +2233,21 @@ registry.registerPath({
     200: jsonResponse('Thành công', envelope(doctorAvailabilitySchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền doctor_availability.update, hoặc cấu hình chặn (DOCTOR_AVAILABILITY_RECEPTION_DISABLED/DOCTOR_AVAILABILITY_EMERGENCY_DISABLED)'),
+    404: errorResponse('Không tìm thấy (bác sĩ khác scope personal, hoặc thuộc tenant khác)'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/doctor-availability/{doctorId}/shift-summary',
+  tags: ['clinic'],
+  summary: 'Popup xác nhận "Đóng ca hôm nay" — tổng hợp ca khám trong ngày (cả ngày hôm nay, không riêng phiên ACTIVE hiện tại)',
+  security: [{ bearerAuth: [] }],
+  request: { params: doctorAvailabilityParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(doctorShiftSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền doctor_availability.update'),
     404: errorResponse('Không tìm thấy (bác sĩ khác scope personal, hoặc thuộc tenant khác)'),
   },
 });

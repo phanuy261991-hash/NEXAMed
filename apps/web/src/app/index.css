@@ -11,6 +11,14 @@
   --color-brand-teal-hover: #087a66;
   --color-brand-teal-active: #065f50;
   --color-brand-teal-tint: #e3f3f0;
+  /**
+   * Nền panel "Tổng hợp ca khám hôm nay" (popup Đóng ca) — pha ~20% brand-teal + trắng, ĐẬM hơn
+   * hẳn `--color-brand-teal-tint` (~11%, dành cho hover chip lựa chọn, một vai trò khác hẳn). Chốt
+   * qua nhiều vòng duyệt mockup trực tiếp: bản đầu dùng `brand-teal-tint` bị phản hồi "quá mờ nhạt,
+   * không đẹp" — token riêng này CHỈ dùng cho panel/khối tổng hợp cần màu thương hiệu nổi bật, có
+   * chủ đích đậm hơn tint gốc.
+   */
+  --color-brand-teal-panel: #cee9e4;
 }
 
 /**

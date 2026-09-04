@@ -12,6 +12,7 @@ import { DomainExceptionFilter } from '../../common/domain-exception.filter';
 import { createTwoTenantFixture, SYSTEM_TEST_ACTOR, type TwoTenantFixture } from '../../testing/tenant-fixture';
 import { seedPermissionCatalog } from '../../infrastructure/persistence/seed-permissions';
 import { seedDefaultRolesForTenant } from '../../infrastructure/persistence/seed-tenant-roles';
+import { seedIcd10Catalog } from '../../infrastructure/persistence/seed-icd10';
 
 /**
  * HTTP e2e — "Tạm nghỉ / Đóng ca" của bác sĩ (`doctor-availability.controller.ts`). 2 công tắc
@@ -123,6 +124,10 @@ describe('HTTP e2e — /api/v1/doctor-availability', () => {
     await seedPermissionCatalog(privileged);
     await seedDefaultRolesForTenant(privileged, fixture.tenantA.id, SYSTEM_TEST_ACTOR);
     await seedDefaultRolesForTenant(privileged, fixture.tenantB.id, SYSTEM_TEST_ACTOR);
+    // Popup "Đóng ca hôm nay" (shift-summary) cần kê được đơn thuốc, mà PUT .../diagnoses cần
+    // icd10_catalog có dữ liệu thật (FK icd10Code) — dữ liệu không seed sẵn toàn cục, tự seed cho
+    // riêng file test này (cùng cách encounter-http.spec.ts/icd10-http.spec.ts đã làm).
+    await seedIcd10Catalog(privileged);
 
     const doctorA = await createUserWithRole(fixture.tenantA.id, 'doctor');
     doctorAToken = doctorA.token;
@@ -299,5 +304,94 @@ describe('HTTP e2e — /api/v1/doctor-availability', () => {
     expect(board.body.data.items.some((i: { doctorId: string }) => i.doctorId === tenantBDoctorUserId)).toBe(false);
 
     await request(app.getHttpServer()).put(`/api/v1/doctor-availability/${doctorAUserId}`).set(authed(doctorAToken)).send({ status: 'ACTIVE' });
+  });
+
+  describe('GET /api/v1/doctor-availability/:doctorId/shift-summary — popup "Đóng ca hôm nay"', () => {
+    let doctorCToken: string;
+    let doctorCUserId: string;
+
+    beforeAll(async () => {
+      const doctorC = await createUserWithRole(fixture.tenantA.id, 'doctor');
+      doctorCToken = doctorC.token;
+      doctorCUserId = doctorC.userId;
+    });
+
+    it('không có access token → 401', async () => {
+      const res = await request(app.getHttpServer()).get(`/api/v1/doctor-availability/${doctorCUserId}/shift-summary`);
+      expect(res.status).toBe(401);
+    });
+
+    it('chưa có ca nào hôm nay → toàn 0, avgConsultMinutes null (không phải 0), tên bác sĩ đúng', async () => {
+      const res = await request(app.getHttpServer()).get(`/api/v1/doctor-availability/${doctorCUserId}/shift-summary`).set(authed(doctorCToken));
+      expect(res.status).toBe(200);
+      expect(res.body.data).toMatchObject({
+        doctorId: doctorCUserId,
+        doctorName: 'User doctor',
+        calledCount: 0,
+        completedCount: 0,
+        avgConsultMinutes: null,
+        cancelledCount: 0,
+        prescriptionCount: 0,
+      });
+    });
+
+    it('đếm đúng: 1 ca gọi+hoàn tất+kê 1 đơn đã ký, 1 ca gọi+huỷ giữa chừng', async () => {
+      // Ca 1: gọi khám → chẩn đoán → kê đơn → ký đơn → hoàn tất khám.
+      const encounter1 = await checkInFreshEncounter(8, doctorCUserId);
+      await request(app.getHttpServer()).post(`/api/v1/encounters/${encounter1}/start`).set(authed(doctorCToken)).send({ version: 1 });
+      await request(app.getHttpServer())
+        .put(`/api/v1/encounters/${encounter1}/diagnoses`)
+        .set(authed(doctorCToken))
+        .send({ diagnoses: [{ icd10Code: 'A00.0', type: 'PRIMARY' as const }] });
+
+      const drug = await privileged.drug.create({
+        data: {
+          tenantId: fixture.tenantA.id,
+          code: `DRG-${randomUUID().slice(0, 8)}`,
+          name: 'Thuốc test tổng hợp ca',
+          activeIngredient: 'Test',
+          createdBy: SYSTEM_TEST_ACTOR,
+          updatedBy: SYSTEM_TEST_ACTOR,
+        },
+      });
+      await request(app.getHttpServer())
+        .put(`/api/v1/encounters/${encounter1}/prescription-items`)
+        .set(authed(doctorCToken))
+        .send({ items: [{ drugId: drug.id, dose: '1 viên', frequency: '2 lần/ngày', durationDays: 5, quantity: 10 }] });
+      await request(app.getHttpServer()).post(`/api/v1/encounters/${encounter1}/prescription/sign`).set(authed(doctorCToken)).send({ version: 1 });
+      await request(app.getHttpServer()).post(`/api/v1/encounters/${encounter1}/complete`).set(authed(doctorCToken)).send({ version: 2 });
+
+      // Ca 2: gọi khám rồi huỷ giữa chừng (khách bỏ về) — vẫn tính "đã gọi khám" + "huỷ khám".
+      const encounter2 = await checkInFreshEncounter(9, doctorCUserId);
+      await request(app.getHttpServer()).post(`/api/v1/encounters/${encounter2}/start`).set(authed(doctorCToken)).send({ version: 1 });
+      await request(app.getHttpServer())
+        .post(`/api/v1/encounters/${encounter2}/cancel`)
+        .set(authed(doctorCToken))
+        .send({ cancelReason: 'Khách bỏ về giữa chừng', version: 2 });
+
+      const res = await request(app.getHttpServer()).get(`/api/v1/doctor-availability/${doctorCUserId}/shift-summary`).set(authed(doctorCToken));
+      expect(res.status).toBe(200);
+      expect(res.body.data.calledCount).toBe(2);
+      expect(res.body.data.completedCount).toBe(1);
+      expect(res.body.data.avgConsultMinutes).toBeGreaterThanOrEqual(0);
+      expect(res.body.data.cancelledCount).toBe(1);
+      expect(res.body.data.prescriptionCount).toBe(1);
+    });
+
+    it('scope personal: bác sĩ khác xem hộ (không phải chính mình) → 404', async () => {
+      const res = await request(app.getHttpServer()).get(`/api/v1/doctor-availability/${doctorCUserId}/shift-summary`).set(authed(doctorAToken));
+      expect(res.status).toBe(404);
+    });
+
+    it('lễ tân (scope global) xem được tổng hợp của bác sĩ khác — cùng khuôn "Đóng ca hộ"', async () => {
+      const res = await request(app.getHttpServer()).get(`/api/v1/doctor-availability/${doctorCUserId}/shift-summary`).set(authed(receptionistToken));
+      expect(res.status).toBe(200);
+      expect(res.body.data.doctorId).toBe(doctorCUserId);
+    });
+
+    it('cách ly tenant: bác sĩ tenant B xem tổng hợp của bác sĩ tenant A → 404', async () => {
+      const res = await request(app.getHttpServer()).get(`/api/v1/doctor-availability/${doctorCUserId}/shift-summary`).set(authed(tenantBDoctorToken));
+      expect(res.status).toBe(404);
+    });
   });
 });

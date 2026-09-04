@@ -33,6 +33,7 @@ import {
   getDeferredPaymentStatus,
   getDoctorAvailabilityPolicy,
   getDoctorAvailabilityToday,
+  getDoctorShiftSummary,
   getMyRoomSession,
   getRoomOptions,
   listExamStations,
@@ -353,6 +354,16 @@ export function useDoctorAvailabilityTodayQuery(enabled = true) {
     queryFn: getDoctorAvailabilityToday,
     refetchInterval: 30_000,
     enabled,
+  });
+}
+
+/** Popup xác nhận "Đóng ca hôm nay" — tổng hợp ca khám trong ngày. Không `refetchInterval`, chỉ tải
+ * đúng 1 lần khi mở dialog (`enabled` theo `doctorId`), khác `useDoctorAvailabilityTodayQuery`. */
+export function useDoctorShiftSummaryQuery(doctorId: string) {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'clinic', 'doctor-shift-summary', doctorId),
+    queryFn: () => getDoctorShiftSummary(doctorId),
   });
 }
 

@@ -4,6 +4,16 @@
 
 ## 2026-09-04
 
+### Popup "Tổng hợp ca khám hôm nay" khi Đóng ca
+
+Chủ dự án yêu cầu: khi bác sĩ bấm "Đóng ca hôm nay" (chủ động hoặc hệ thống tự nhắc hết giờ làm việc), hiện thêm 1 giao diện tổng hợp ca đã khám trong ngày để bác sĩ xác nhận. Mockup Artifact duyệt nhiều vòng trước khi code — 3 điểm phạm vi chốt qua `AskUserQuestion` (số liệu tính CẢ NGÀY hôm nay không riêng phiên ACTIVE hiện tại; gộp 1 dialog duy nhất; "Huỷ khám" chỉ tính ca đã gán cho đúng bác sĩ này), sau đó nhiều vòng chỉnh trực tiếp trên mockup tĩnh (bố cục quá bó hẹp → nới rộng; nền xám bị chê "AI look" → đổi sang panel màu thương hiệu `brand-teal`; chữ `font-extrabold` bị chê "vỡ nét" → hạ về `font-bold`; thêm lời chào cá nhân hoá có tên bác sĩ) — có tra `/ui-ux-pro-max` để đối chiếu nguyên tắc bố cục, không áp dụng gợi ý đổi bảng màu của công cụ vì xung đột token đã chốt.
+
+`DoctorEndShiftDialog.tsx` (#094) mở đầu bằng panel nền teal: avatar + "BS. {tên} đã hoàn thành ngày làm việc hôm nay với:" + 5 thẻ chỉ số (Đã gọi khám/Đã hoàn thành/TB thời gian-ca/Huỷ khám/Đơn thuốc đã kê). Backend mới `GET /doctor-availability/{doctorId}/shift-summary` (cùng quyền/scope `setStatus()`) — `EncounterRepository.getShiftCounts()` + `PrescriptionRepository.countSignedForDoctorToday()` (export thêm từ `EncounterModule`, dùng chung đúng tiền lệ #042), hàm thuần `computeShiftSummary()` mới ở `packages/core`.
+
+Xem `docs/DECISIONS.md` #118.
+
+Đã xác minh: `packages/core` +4 test (151/151), `apps/api` +7 test (619/626, 7 skip flake `geo-http.spec.ts` đã biết không liên quan), `pnpm -w typecheck/lint/build` sạch. Playwright qua Chrome thật (tài khoản bác sĩ test tạo/xoá qua HTTP API bằng `dev.admin`) xác nhận khớp gần như tuyệt đối với mockup đã duyệt, không lỗi console ngoài `401 /auth/refresh` đã biết.
+
 ### "Đa thu ngân" — nhiều ca thu ngân chạy song song + sửa tương tác 2 công tắc
 
 Chủ dự án hỏi tiếp sau công tắc "Yêu cầu mở ca": phòng khám có 3 thu ngân làm việc CÙNG LÚC (mỗi người 1 két riêng) thì "Chốt ca" hiện tại (chỉ 1 két dùng chung, chỉ 1 ca OPEN toàn tenant) có đáp ứng được không. Lập kế hoạch qua `EnterPlanMode` trước khi code (chạm ràng buộc DB + cách gán tiền vào ca).

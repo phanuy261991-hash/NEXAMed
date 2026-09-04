@@ -1,15 +1,27 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
   CLINIC_CONFIG_READER_PORT,
+  DOCTOR_DIRECTORY_PORT,
   DoctorAvailabilityEmergencyDisabledError,
   DoctorAvailabilityReceptionDisabledError,
+  computeShiftSummary,
+  getVietnamDateString,
+  vietnamDayRange,
   type ClinicConfigReaderPort,
+  type DoctorDirectoryPort,
 } from '@nexamed/core';
-import type { DataScope, DoctorAvailability, DoctorAvailabilityBoardResponse, SetDoctorAvailabilityRequest } from '@nexamed/shared';
+import type {
+  DataScope,
+  DoctorAvailability,
+  DoctorAvailabilityBoardResponse,
+  DoctorShiftSummary,
+  SetDoctorAvailabilityRequest,
+} from '@nexamed/shared';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
 import type { RequestMeta } from '../../common/request-meta';
 import { EncounterRepository } from '../encounter/encounter.repository';
+import { PrescriptionRepository } from '../encounter/prescription.repository';
 import { DoctorAvailabilityRepository, type DoctorAvailabilityRow } from './doctor-availability.repository';
 
 /**
@@ -25,7 +37,9 @@ export class DoctorAvailabilityService {
     private readonly unitOfWork: UnitOfWorkService,
     private readonly doctorAvailabilityRepository: DoctorAvailabilityRepository,
     private readonly encounterRepository: EncounterRepository,
+    private readonly prescriptionRepository: PrescriptionRepository,
     @Inject(CLINIC_CONFIG_READER_PORT) private readonly clinicConfigReader: ClinicConfigReaderPort,
+    @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
   ) {}
 
   /** `GET /doctor-availability/policy` — chiếu tối thiểu tự-phục vụ, xem docstring schema ở `@nexamed/shared`. */
@@ -38,6 +52,34 @@ export class DoctorAvailabilityService {
       const rows = await this.doctorAvailabilityRepository.listTodayForTenant(tx, tenantId);
       return { items: rows.map((row) => this.toDto(row, null)) };
     });
+  }
+
+  /**
+   * "Đóng ca hôm nay" — popup tổng hợp ca khám trong ngày cho bác sĩ xác nhận trước khi xác nhận
+   * đóng ca (mockup duyệt qua nhiều vòng trước khi code). Cùng quy tắc scope với `setStatus()`:
+   * scope `personal` chỉ xem được của chính mình (404 nếu khác) — lễ tân/clinic_admin xem được của
+   * bác sĩ khác vì họ cũng là người có thể "Đóng ca hộ". Tính theo CẢ NGÀY hôm nay (workDate theo
+   * giờ VN), không phải riêng phiên ACTIVE hiện tại — đã hỏi và chốt qua `AskUserQuestion`.
+   */
+  async getShiftSummary(tenantId: string, actorId: string, dataScope: DataScope, doctorId: string): Promise<DoctorShiftSummary> {
+    if (dataScope === 'personal' && doctorId !== actorId) {
+      throw new NotFoundException();
+    }
+
+    const range = vietnamDayRange(getVietnamDateString());
+    const raw = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const [encounterCounts, prescriptionCount] = await Promise.all([
+        this.encounterRepository.getShiftCounts(tx, tenantId, doctorId, range),
+        this.prescriptionRepository.countSignedForDoctorToday(tx, tenantId, doctorId, range),
+      ]);
+      return { ...encounterCounts, completedCount: encounterCounts.completedDurationsMs.length, prescriptionCount };
+    });
+
+    // `DoctorDirectoryPort` tự mở transaction RIÊNG — resolve tên bác sĩ SAU transaction chính,
+    // cùng nguyên tắc đã áp dụng toàn dự án (tránh `$transaction` lồng nhau, xem `EncounterService`).
+    const names = await this.doctorDirectory.getUserFullNames(tenantId, [doctorId]);
+
+    return { doctorId, doctorName: names.get(doctorId) ?? '', ...computeShiftSummary(raw) };
   }
 
   /**

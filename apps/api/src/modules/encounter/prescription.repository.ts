@@ -143,4 +143,18 @@ export class PrescriptionRepository {
       data: { tenantId, encounterId, createdBy: actorId, updatedBy: actorId, ...data },
     });
   }
+
+  /** "Đóng ca hôm nay" — popup tổng hợp (`DoctorAvailabilityService.getShiftSummary()`). Đếm "sự
+   * kiện ký" trong ngày (đơn nháp ký lần đầu VÀ đính chính đều tính — đính chính là bản mới ĐÃ KÝ
+   * NGAY, xem `createAmendment()`), lọc theo bác sĩ của LƯỢT KHÁM chứa đơn đó qua quan hệ Prisma. */
+  async countSignedForDoctorToday(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    doctorId: string,
+    range: { startUtc: Date; endUtc: Date },
+  ): Promise<number> {
+    return tx.prescription.count({
+      where: { tenantId, deletedAt: null, signedAt: { gte: range.startUtc, lt: range.endUtc }, encounter: { doctorId } },
+    });
+  }
 }

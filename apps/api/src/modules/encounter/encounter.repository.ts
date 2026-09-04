@@ -382,4 +382,39 @@ export class EncounterRepository {
     });
     return targets.map((t) => ({ id: t.id, previousStatus: t.status as 'CHECKED_IN' | 'IN_CONSULTATION' }));
   }
+
+  /**
+   * "Đóng ca hôm nay" — popup tổng hợp ca khám trong ngày (`DoctorAvailabilityService.getShiftSummary()`).
+   * "Đã gọi khám" = `startedAt` rơi trong khoảng ngày truyền vào VÀ `doctorId` hiện đang là bác sĩ
+   * này (ca đã "Trả về hàng chờ" thì `doctorId=null`, tự động không còn tính là "của bác sĩ này" —
+   * chấp nhận đơn giản hoá này vì đây chỉ là số liệu tổng hợp tham khảo, không phải sổ sách chính
+   * thức). "Huỷ khám" dùng CHUNG mốc `startedAt` (không phải lúc huỷ) để nhất quán với "Đã gọi
+   * khám" — trả lời đúng câu hỏi "trong số ca tôi gọi hôm nay, bao nhiêu ca bị huỷ", đã chốt với
+   * chủ dự án qua `AskUserQuestion` (chỉ tính ca đã gán cho bác sĩ này, không tính ca ở hàng chờ
+   * chung Khoa bị huỷ trước khi ai nhận — điều kiện `doctorId` + `startedAt IS NOT NULL` tự loại
+   * trừ đúng nhóm đó).
+   */
+  async getShiftCounts(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    doctorId: string,
+    range: { startUtc: Date; endUtc: Date },
+  ): Promise<{ calledCount: number; cancelledCount: number; completedDurationsMs: number[] }> {
+    const [calledCount, cancelledCount, completedRows] = await Promise.all([
+      tx.encounter.count({
+        where: { tenantId, doctorId, deletedAt: null, startedAt: { gte: range.startUtc, lt: range.endUtc } },
+      }),
+      tx.encounter.count({
+        where: { tenantId, doctorId, deletedAt: null, status: 'CANCELLED', startedAt: { gte: range.startUtc, lt: range.endUtc } },
+      }),
+      tx.encounter.findMany({
+        where: { tenantId, doctorId, deletedAt: null, status: 'COMPLETED', completedAt: { gte: range.startUtc, lt: range.endUtc } },
+        select: { startedAt: true, completedAt: true },
+      }),
+    ]);
+    const completedDurationsMs = completedRows
+      .filter((row): row is { startedAt: Date; completedAt: Date } => row.startedAt !== null && row.completedAt !== null)
+      .map((row) => row.completedAt.getTime() - row.startedAt.getTime());
+    return { calledCount, cancelledCount, completedDurationsMs };
+  }
 }

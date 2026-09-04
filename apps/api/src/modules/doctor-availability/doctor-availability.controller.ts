@@ -38,4 +38,13 @@ export class DoctorAvailabilityController {
     const { userId, tenantId } = req.user!;
     return this.doctorAvailabilityService.setStatus(tenantId, userId, req.dataScope!, doctorId, dto, extractRequestMeta(req));
   }
+
+  /** Popup xác nhận "Đóng ca hôm nay" — cùng quyền `doctor_availability.update` (chỉ là bước xem
+   * trước khi thao tác đóng ca thật, không cần permission đọc riêng). */
+  @Get(':doctorId/shift-summary')
+  @RequirePermission('doctor_availability', 'update')
+  async getShiftSummary(@Param('doctorId') doctorId: string, @Req() req: Request) {
+    const { userId, tenantId } = req.user!;
+    return this.doctorAvailabilityService.getShiftSummary(tenantId, userId, req.dataScope!, doctorId);
+  }
 }
