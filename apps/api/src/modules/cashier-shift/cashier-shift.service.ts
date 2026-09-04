@@ -5,6 +5,7 @@ import {
   CashierShiftDiscrepancyReasonRequiredError,
   CashierShiftNotClosedError,
   CashierShiftNotOpenError,
+  CLINIC_CONFIG_READER_PORT,
   computeCashierShiftTotals,
   ConcurrentModificationError,
   deriveShiftLabel,
@@ -12,7 +13,9 @@ import {
   REFERENCE_CATALOG_READER_PORT,
   vietnamDayRange,
   type CashierShiftPaymentInput,
+  type CashierShiftReaderPort,
   type CashierShiftTotals,
+  type ClinicConfigReaderPort,
   type DoctorDirectoryPort,
   type ReferenceCatalogReaderPort,
 } from '@nexamed/core';
@@ -38,25 +41,41 @@ import { CashierShiftRepository, type EditCashierShiftData } from './cashier-shi
 type PaymentMethodMap = Map<string, { name: string; countsAsCash: boolean }>;
 
 /**
- * Điều phối use case "Chốt ca" (đối soát tiền mặt/két, ngoài kế hoạch, mockup duyệt 2026-09-03) —
- * v1 chỉ 1 két dùng chung toàn tenant. Mọi truy vấn `payment` lọc theo THỜI GIAN mở/đóng ca, KHÔNG
- * theo người thực hiện (`createdBy`) — bất kỳ ai xử lý thu ngân trong khung giờ ca đang mở đều tính
- * vào ca đó (đúng bản chất tiền vào CÙNG 1 két vật lý).
+ * Điều phối use case "Chốt ca" (đối soát tiền mặt/két, ngoài kế hoạch, mockup duyệt 2026-09-03).
+ * Mặc định (`cashierShiftMultiCashierEnabled=false`): 1 két dùng chung toàn tenant — mọi truy vấn
+ * `payment` lọc theo THỜI GIAN mở/đóng ca, KHÔNG theo người thực hiện, bất kỳ ai xử lý thu ngân
+ * trong khung giờ ca đang mở đều tính vào ca đó (đúng bản chất tiền vào CÙNG 1 két vật lý). "Đa thu
+ * ngân" (2026-09-04, `docs/DECISIONS.md`, TẮT mặc định — giữ nguyên hành vi trên): mỗi thu ngân mở
+ * ca RIÊNG, chạy song song — mọi phương thức dưới đây đọc `cashierShiftMultiCashierEnabled` qua
+ * `ClinicConfigReaderPort` và rẽ nhánh, KHÔNG đổi code nhánh mặc định.
  */
 @Injectable()
-export class CashierShiftService {
+export class CashierShiftService implements CashierShiftReaderPort {
   constructor(
     private readonly unitOfWork: UnitOfWorkService,
     private readonly cashierShiftRepository: CashierShiftRepository,
     private readonly paymentRepository: PaymentRepository,
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
     @Inject(REFERENCE_CATALOG_READER_PORT) private readonly referenceCatalogReader: ReferenceCatalogReaderPort,
+    @Inject(CLINIC_CONFIG_READER_PORT) private readonly clinicConfigReader: ClinicConfigReaderPort,
   ) {}
 
-  async getCurrent(tenantId: string): Promise<CurrentCashierShiftResponse> {
+  /** `CashierShiftReaderPort` — `billing` gọi để gắn `payment.cashierShiftId` lúc thu/hoàn tiền. */
+  async getRelevantOpenShiftId(tenantId: string, actorId: string): Promise<string | null> {
+    const multiCashierEnabled = await this.clinicConfigReader.getCashierShiftMultiCashierEnabled(tenantId);
+    const row = await this.unitOfWork.runInTenantScope(tenantId, (tx) =>
+      multiCashierEnabled ? this.cashierShiftRepository.findOpenForCashier(tx, tenantId, actorId) : this.cashierShiftRepository.findOpen(tx, tenantId),
+    );
+    return row?.id ?? null;
+  }
+
+  async getCurrent(tenantId: string, actorId: string): Promise<CurrentCashierShiftResponse> {
+    const multiCashierEnabled = await this.clinicConfigReader.getCashierShiftMultiCashierEnabled(tenantId);
     const { open, lastClosed } = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const openRow = await this.cashierShiftRepository.findOpen(tx, tenantId);
-      const lastClosedRow = openRow ? null : await this.cashierShiftRepository.findLastClosed(tx, tenantId);
+      const openRow = multiCashierEnabled
+        ? await this.cashierShiftRepository.findOpenForCashier(tx, tenantId, actorId)
+        : await this.cashierShiftRepository.findOpen(tx, tenantId);
+      const lastClosedRow = openRow ? null : await this.cashierShiftRepository.findLastClosed(tx, tenantId, multiCashierEnabled ? actorId : undefined);
       return { open: openRow, lastClosed: lastClosedRow };
     });
 
@@ -81,13 +100,25 @@ export class CashierShiftService {
   }
 
   async openShift(tenantId: string, actorId: string, dto: OpenCashierShiftRequest, meta: RequestMeta): Promise<CashierShiftDetail> {
+    const multiCashierEnabled = await this.clinicConfigReader.getCashierShiftMultiCashierEnabled(tenantId);
     const created = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.cashierShiftRepository.findOpen(tx, tenantId);
+      // Khoá tay (advisory lock) TRƯỚC bước kiểm tra "đã có ca mở chưa" — bắt buộc phải có, vì
+      // partial unique index DB giờ chỉ còn chặn theo TỪNG thu ngân (cashier_shift_one_open_per_
+      // cashier), không còn tự chặn "chỉ 1 ca toàn tenant" như trước #116. TẮT "Đa thu ngân": khoá
+      // theo `tenantId` — giữ đúng đảm bảo cũ (2 thu ngân khác nhau mở gần như đồng thời → đúng 1
+      // thành công), chỉ khác là DB không còn tự lo phần này, phải khoá tay. BẬT: khoá theo
+      // `tenantId:actorId` — chỉ chặn CHÍNH người đó mở 2 lần, không tranh chấp người khác.
+      const lockKey = multiCashierEnabled ? `${tenantId}:${actorId}` : tenantId;
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`;
+
+      const existing = multiCashierEnabled
+        ? await this.cashierShiftRepository.findOpenForCashier(tx, tenantId, actorId)
+        : await this.cashierShiftRepository.findOpen(tx, tenantId);
       if (existing) {
         throw new CashierShiftAlreadyOpenError();
       }
 
-      const lastClosed = await this.cashierShiftRepository.findLastClosed(tx, tenantId);
+      const lastClosed = await this.cashierShiftRepository.findLastClosed(tx, tenantId, multiCashierEnabled ? actorId : undefined);
       const openingFloatExpected = lastClosed ? Number(lastClosed.keepForNextAmount ?? 0) : null;
       if (openingFloatExpected !== null && openingFloatExpected !== dto.openingFloatActual && !dto.openingDiscrepancyReason) {
         throw new CashierShiftDiscrepancyReasonRequiredError();
@@ -392,6 +423,12 @@ export class CashierShiftService {
     });
   }
 
+  /**
+   * "Đa thu ngân" — rẽ nhánh nguồn `payment` theo công tắc HIỆN TẠI (đọc lại mỗi lần gọi, không
+   * snapshot theo ca): TẮT dùng `listForWindow()` (theo khoảng thời gian, code KHÔNG đổi so với
+   * trước #116 — an toàn cho ca cũ vốn không có `cashierShiftId`); BẬT dùng `listForShift()` (theo
+   * FK, chỉ đúng phiếu của người mở ca này).
+   */
   private async computeTotals(
     tx: Prisma.TransactionClient,
     tenantId: string,
@@ -399,8 +436,10 @@ export class CashierShiftService {
     methodMap: PaymentMethodMap,
     endAtOverride?: Date,
   ): Promise<CashierShiftTotals> {
-    const endAt = endAtOverride ?? row.closedAt ?? new Date();
-    const paymentRows = await this.paymentRepository.listForWindow(tx, tenantId, row.openedAt, endAt);
+    const multiCashierEnabled = await this.clinicConfigReader.getCashierShiftMultiCashierEnabled(tenantId);
+    const paymentRows = multiCashierEnabled
+      ? await this.paymentRepository.listForShift(tx, tenantId, row.id)
+      : await this.paymentRepository.listForWindow(tx, tenantId, row.openedAt, endAtOverride ?? row.closedAt ?? new Date());
     return computeCashierShiftTotals(Number(row.openingFloatActual), this.buildPaymentInputs(paymentRows, methodMap));
   }
 

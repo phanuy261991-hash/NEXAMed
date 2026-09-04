@@ -38,6 +38,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         workShiftAssignmentLockGraceDays,
         cashierShiftBlindCloseEnabled,
         cashierShiftRequiredEnabled,
+        cashierShiftMultiCashierEnabled,
       ] = await Promise.all([
         this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
         this.clinicSettingsRepository.getSlotDurationMinutes(tx, tenantId),
@@ -52,6 +53,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getWorkShiftAssignmentLockGraceDays(tx, tenantId),
         this.clinicSettingsRepository.getCashierShiftBlindCloseEnabled(tx, tenantId),
         this.clinicSettingsRepository.getCashierShiftRequiredEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getCashierShiftMultiCashierEnabled(tx, tenantId),
       ]);
       return {
         businessHours,
@@ -67,6 +69,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         workShiftAssignmentLockGraceDays,
         cashierShiftBlindCloseEnabled,
         cashierShiftRequiredEnabled,
+        cashierShiftMultiCashierEnabled,
       };
     });
   }
@@ -79,6 +82,11 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
   /** `GET /clinic-settings/cashier-shift-required-enabled` — chiếu tối thiểu tự-phục vụ, xem comment ở `packages/shared/src/clinic.ts`. */
   getCashierShiftRequiredEnabled(tenantId: string): Promise<boolean> {
     return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getCashierShiftRequiredEnabled(tx, tenantId));
+  }
+
+  /** `ClinicConfigReaderPort` ("Đa thu ngân") — module `cashier-shift` đọc qua port này (không có endpoint tự-phục vụ, chỉ backend rẽ nhánh). */
+  getCashierShiftMultiCashierEnabled(tenantId: string): ReturnType<ClinicConfigReaderPort['getCashierShiftMultiCashierEnabled']> {
+    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getCashierShiftMultiCashierEnabled(tx, tenantId));
   }
 
   /** `ClinicConfigReaderPort` ("Cấu hình chung", "Đăng ký ca làm việc") — xem comment ở khai báo class. */
@@ -179,6 +187,9 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
       if (dto.cashierShiftRequiredEnabled !== undefined) {
         await this.clinicSettingsRepository.upsertCashierShiftRequiredEnabled(tx, tenantId, actorId, dto.cashierShiftRequiredEnabled);
       }
+      if (dto.cashierShiftMultiCashierEnabled !== undefined) {
+        await this.clinicSettingsRepository.upsertCashierShiftMultiCashierEnabled(tx, tenantId, actorId, dto.cashierShiftMultiCashierEnabled);
+      }
 
       const hasChanges =
         dto.businessHours !== undefined ||
@@ -193,7 +204,8 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         dto.allowStaffSelfScheduleEnabled !== undefined ||
         dto.workShiftAssignmentLockGraceDays !== undefined ||
         dto.cashierShiftBlindCloseEnabled !== undefined ||
-        dto.cashierShiftRequiredEnabled !== undefined;
+        dto.cashierShiftRequiredEnabled !== undefined ||
+        dto.cashierShiftMultiCashierEnabled !== undefined;
       if (hasChanges) {
         await writeAuditLog(tx, tenantId, {
           actorId,
@@ -220,6 +232,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         workShiftAssignmentLockGraceDays,
         cashierShiftBlindCloseEnabled,
         cashierShiftRequiredEnabled,
+        cashierShiftMultiCashierEnabled,
       ] = await Promise.all([
         this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
         this.clinicSettingsRepository.getSlotDurationMinutes(tx, tenantId),
@@ -234,6 +247,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getWorkShiftAssignmentLockGraceDays(tx, tenantId),
         this.clinicSettingsRepository.getCashierShiftBlindCloseEnabled(tx, tenantId),
         this.clinicSettingsRepository.getCashierShiftRequiredEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getCashierShiftMultiCashierEnabled(tx, tenantId),
       ]);
       return {
         businessHours,
@@ -249,6 +263,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         workShiftAssignmentLockGraceDays,
         cashierShiftBlindCloseEnabled,
         cashierShiftRequiredEnabled,
+        cashierShiftMultiCashierEnabled,
       };
     });
   }

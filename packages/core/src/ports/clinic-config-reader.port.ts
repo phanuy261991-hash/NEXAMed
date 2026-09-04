@@ -85,6 +85,14 @@ export interface ClinicConfigReaderPort {
    * trên. Dùng cùng `isMonthLocked()` (`packages/core/src/work-shift-assignment/month-lock.ts`).
    */
   getWorkShiftAssignmentLockGraceDays(tenantId: string): Promise<number>;
+
+  /**
+   * "Đa thu ngân" (2026-09-04) — cho phép nhiều thu ngân cùng mở ca RIÊNG, chạy song song
+   * (`tenant_setting` key `cashier_shift_multi_cashier_enabled`, mặc định `false` — giữ nguyên "1
+   * két dùng chung toàn tenant"). Module `cashier-shift` đọc qua port này (module `clinic` sở hữu
+   * `tenant_setting`), cùng lý do các cấu hình khác ở trên.
+   */
+  getCashierShiftMultiCashierEnabled(tenantId: string): Promise<boolean>;
 }
 
 export const CLINIC_CONFIG_READER_PORT = Symbol('CLINIC_CONFIG_READER_PORT');

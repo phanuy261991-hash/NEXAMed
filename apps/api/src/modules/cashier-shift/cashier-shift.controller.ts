@@ -27,8 +27,8 @@ export class CashierShiftController {
   @Get('current')
   @RequirePermission('cashier_shift', 'read')
   async current(@Req() req: Request) {
-    const { tenantId } = req.user!;
-    return this.cashierShiftService.getCurrent(tenantId);
+    const { tenantId, userId } = req.user!;
+    return this.cashierShiftService.getCurrent(tenantId, userId);
   }
 
   @Post('open')

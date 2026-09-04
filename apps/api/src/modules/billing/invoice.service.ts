@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
   canRefundInvoice,
+  CASHIER_SHIFT_READER_PORT,
   computeDailyBillingTotals,
   ConcurrentModificationError,
   getVietnamDateString,
@@ -11,6 +12,7 @@ import {
   isInvoiceClosed,
   needsRefund as computeNeedsRefund,
   vietnamDayRange,
+  type CashierShiftReaderPort,
 } from '@nexamed/core';
 import type {
   Invoice as InvoiceDto,
@@ -77,6 +79,7 @@ export class InvoiceService {
     private readonly unitOfWork: UnitOfWorkService,
     private readonly invoiceRepository: InvoiceRepository,
     private readonly paymentRepository: PaymentRepository,
+    @Inject(CASHIER_SHIFT_READER_PORT) private readonly cashierShiftReader: CashierShiftReaderPort,
   ) {}
 
   async getByEncounterId(tenantId: string, encounterId: string): Promise<InvoiceDto | null> {
@@ -122,6 +125,10 @@ export class InvoiceService {
 
   /** "Thu tiền" (BIL-03) — đánh dấu "Đã thu" + ghi nhận phương thức. */
   async markPaid(tenantId: string, actorId: string, encounterId: string, dto: MarkInvoicePaidRequest, meta: RequestMeta): Promise<InvoiceDto> {
+    // "Đa thu ngân" (2026-09-04) — resolve TRƯỚC transaction chính (port tự mở transaction đọc
+    // riêng, không lồng `runInTenantScope`, đúng khuôn mọi port đọc khác trong dự án). `null` khi
+    // không có ca nào đang mở — KHÔNG chặn thu tiền, độc lập với "Yêu cầu mở ca trước khi thu tiền".
+    const cashierShiftId = await this.cashierShiftReader.getRelevantOpenShiftId(tenantId, actorId);
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const invoice = await this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
       if (!invoice) {
@@ -142,7 +149,7 @@ export class InvoiceService {
         }
         throw new ConcurrentModificationError();
       }
-      await this.paymentRepository.create(tx, tenantId, actorId, invoice.id, dto.method, invoice.totalAmount, paidAt);
+      await this.paymentRepository.create(tx, tenantId, actorId, invoice.id, dto.method, invoice.totalAmount, paidAt, cashierShiftId);
 
       await writeAuditLog(tx, tenantId, {
         actorId,
@@ -205,6 +212,8 @@ export class InvoiceService {
    * Chỉ hoàn TOÀN PHẦN ở v1 — số tiền lấy đúng `invoice.totalAmount` đã thu, không nhận từ client.
    */
   async refund(tenantId: string, actorId: string, encounterId: string, dto: RefundInvoiceRequest, meta: RequestMeta): Promise<InvoiceDto> {
+    // "Đa thu ngân" — xem comment ở markPaid() phía trên.
+    const cashierShiftId = await this.cashierShiftReader.getRelevantOpenShiftId(tenantId, actorId);
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const invoice = await this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
       if (!invoice) {
@@ -233,6 +242,7 @@ export class InvoiceService {
         invoice.totalAmount,
         refundedAt,
         dto.reason,
+        cashierShiftId,
       );
 
       await writeAuditLog(tx, tenantId, {

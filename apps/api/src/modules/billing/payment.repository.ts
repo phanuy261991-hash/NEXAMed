@@ -15,9 +15,10 @@ export class PaymentRepository {
     method: string,
     amount: bigint,
     paidAt: Date,
+    cashierShiftId: string | null = null,
   ): Promise<Payment> {
     return tx.payment.create({
-      data: { tenantId, invoiceId, method, amount, paidAt, type: 'PAYMENT', createdBy: actorId, updatedBy: actorId },
+      data: { tenantId, invoiceId, method, amount, paidAt, type: 'PAYMENT', cashierShiftId, createdBy: actorId, updatedBy: actorId },
     });
   }
 
@@ -35,9 +36,10 @@ export class PaymentRepository {
     amount: bigint,
     refundedAt: Date,
     reason: string,
+    cashierShiftId: string | null = null,
   ): Promise<Payment> {
     return tx.payment.create({
-      data: { tenantId, invoiceId, method, amount, paidAt: refundedAt, type: 'REFUND', reason, createdBy: actorId, updatedBy: actorId },
+      data: { tenantId, invoiceId, method, amount, paidAt: refundedAt, type: 'REFUND', reason, cashierShiftId, createdBy: actorId, updatedBy: actorId },
     });
   }
 
@@ -58,6 +60,19 @@ export class PaymentRepository {
   listForWindow(tx: Prisma.TransactionClient, tenantId: string, startAt: Date, endAt: Date): Promise<Array<Pick<Payment, 'method' | 'type' | 'amount'>>> {
     return tx.payment.findMany({
       where: { tenantId, deletedAt: null, paidAt: { gte: startAt, lt: endAt } },
+      select: { method: true, type: true, amount: true },
+    });
+  }
+
+  /**
+   * "Đa thu ngân" (2026-09-04) — mọi dòng thu/hoàn tiền gắn ĐÚNG `cashierShiftId` này (không lọc
+   * theo thời gian nữa — có thể nhiều ca mở song song nên khoảng thời gian không phân biệt được ca
+   * nào). Chỉ dùng khi `cashier_shift_multi_cashier_enabled=true`, xem `CashierShiftService.
+   * computeTotals()`.
+   */
+  listForShift(tx: Prisma.TransactionClient, tenantId: string, cashierShiftId: string): Promise<Array<Pick<Payment, 'method' | 'type' | 'amount'>>> {
+    return tx.payment.findMany({
+      where: { tenantId, deletedAt: null, cashierShiftId },
       select: { method: true, type: true, amount: true },
     });
   }

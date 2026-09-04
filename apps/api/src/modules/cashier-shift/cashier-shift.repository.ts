@@ -74,10 +74,20 @@ export class CashierShiftRepository {
     return tx.cashierShift.findFirst({ where: { tenantId, status: 'OPEN', deletedAt: null } });
   }
 
-  /** Ca CLOSED/APPROVED gần nhất TOÀN TENANT (bất kỳ ai) — nguồn "vốn ca trước để lại" cho lần Mở ca tiếp theo. */
-  findLastClosed(tx: Prisma.TransactionClient, tenantId: string): Promise<CashierShift | null> {
+  /** "Đa thu ngân" — ca đang mở CỦA ĐÚNG người này (khác `findOpen()` không lọc theo ai). */
+  findOpenForCashier(tx: Prisma.TransactionClient, tenantId: string, cashierId: string): Promise<CashierShift | null> {
+    return tx.cashierShift.findFirst({ where: { tenantId, cashierId, status: 'OPEN', deletedAt: null } });
+  }
+
+  /**
+   * Ca CLOSED/APPROVED gần nhất — nguồn "vốn ca trước để lại" cho lần Mở ca tiếp theo. `cashierId`
+   * bỏ trống (mặc định, chế độ 1 két dùng chung) → gần nhất TOÀN TENANT bất kỳ ai. "Đa thu ngân"
+   * (2026-09-04) truyền `cashierId` → CHỈ tính ca đóng gần nhất của CHÍNH người đó (mỗi người có
+   * két riêng, không kế thừa vốn từ két người khác).
+   */
+  findLastClosed(tx: Prisma.TransactionClient, tenantId: string, cashierId?: string): Promise<CashierShift | null> {
     return tx.cashierShift.findFirst({
-      where: { tenantId, status: { in: ['CLOSED', 'APPROVED'] }, deletedAt: null },
+      where: { tenantId, status: { in: ['CLOSED', 'APPROVED'] }, deletedAt: null, ...(cashierId ? { cashierId } : {}) },
       orderBy: { closedAt: 'desc' },
     });
   }

@@ -565,4 +565,117 @@ describe('HTTP e2e — /api/v1/cashier-shifts', () => {
       expect(res.body.error.code).toBe('CONCURRENT_MODIFICATION');
     });
   });
+
+  describe('"Đa thu ngân" (2026-09-04) — mỗi thu ngân mở ca RIÊNG, chạy song song', () => {
+    let cashierBToken: string;
+    let cashierBUserId: string;
+
+    beforeAll(async () => {
+      const b = await createUserWithRole(fixture.tenantA.id, 'receptionist');
+      cashierBToken = b.token;
+      cashierBUserId = b.userId;
+      const patch = await request(app.getHttpServer())
+        .patch('/api/v1/clinic-settings')
+        .set(authed(clinicAdminToken))
+        .send({ cashierShiftMultiCashierEnabled: true });
+      expect(patch.status).toBe(200);
+      expect(patch.body.data.cashierShiftMultiCashierEnabled).toBe(true);
+    });
+
+    afterAll(async () => {
+      const res = await request(app.getHttpServer())
+        .patch('/api/v1/clinic-settings')
+        .set(authed(clinicAdminToken))
+        .send({ cashierShiftMultiCashierEnabled: false });
+      expect(res.status).toBe(200);
+      expect(res.body.data.cashierShiftMultiCashierEnabled).toBe(false);
+    });
+
+    it('2 thu ngân khác nhau mở ca gần như đồng thời → CẢ HAI đều thành công (khác chế độ mặc định)', async () => {
+      const [r1, r2] = await Promise.all([
+        request(app.getHttpServer())
+          .post('/api/v1/cashier-shifts/open')
+          .set(authed(cashierAToken))
+          .send({ openingFloatActual: 300_000, openingDiscrepancyReason: 'Mở ca đa thu ngân' }),
+        request(app.getHttpServer()).post('/api/v1/cashier-shifts/open').set(authed(cashierBToken)).send({ openingFloatActual: 200_000 }),
+      ]);
+      expect(r1.status).toBe(200);
+      expect(r2.status).toBe(200);
+      expect(r1.body.data.cashierId).toBe(cashierAUserId);
+      expect(r2.body.data.cashierId).toBe(cashierBUserId);
+    });
+
+    it('GET current của mỗi người → chỉ thấy đúng ca CỦA CHÍNH MÌNH, không lẫn của người kia', async () => {
+      const curA = await request(app.getHttpServer()).get('/api/v1/cashier-shifts/current').set(authed(cashierAToken));
+      expect(curA.body.data.openShift.cashierId).toBe(cashierAUserId);
+
+      const curB = await request(app.getHttpServer()).get('/api/v1/cashier-shifts/current').set(authed(cashierBToken));
+      expect(curB.body.data.openShift.cashierId).toBe(cashierBUserId);
+      expect(curB.body.data.openShift.id).not.toBe(curA.body.data.openShift.id);
+    });
+
+    it('chính người đó mở ca lần 2 khi đang có ca của mình → vẫn 409 (chỉ nới cho NGƯỜI KHÁC, không nới cho chính mình)', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/cashier-shifts/open')
+        .set(authed(cashierAToken))
+        .send({ openingFloatActual: 100_000, openingDiscrepancyReason: 'Thử mở lần 2' });
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('CASHIER_SHIFT_ALREADY_OPEN');
+    });
+
+    it('mỗi người thu tiền → phiếu tự gắn đúng vào ca CỦA NGƯỜI ĐÓ, tổng kết ca không lẫn nhau dù cùng khung giờ', async () => {
+      await chargeCash(cashierAToken, doctorUserId, 111_000);
+      await chargeCash(cashierBToken, doctorUserId, 222_000);
+
+      const curA = await request(app.getHttpServer()).get('/api/v1/cashier-shifts/current').set(authed(cashierAToken));
+      const summaryA = await request(app.getHttpServer()).get(`/api/v1/cashier-shifts/${curA.body.data.openShift.id}/summary`).set(authed(cashierAToken));
+      expect(summaryA.body.data.cashInAmount).toBe(111_000);
+      expect(summaryA.body.data.cashInCount).toBe(1);
+
+      const curB = await request(app.getHttpServer()).get('/api/v1/cashier-shifts/current').set(authed(cashierBToken));
+      const summaryB = await request(app.getHttpServer()).get(`/api/v1/cashier-shifts/${curB.body.data.openShift.id}/summary`).set(authed(cashierBToken));
+      expect(summaryB.body.data.cashInAmount).toBe(222_000);
+      expect(summaryB.body.data.cashInCount).toBe(1);
+    });
+
+    it('chốt ca của A → chỉ đúng số của A (111.000đ), B vẫn còn ca mở riêng không bị ảnh hưởng', async () => {
+      const curA = await request(app.getHttpServer()).get('/api/v1/cashier-shifts/current').set(authed(cashierAToken));
+      const shiftA = curA.body.data.openShift;
+      const closeRes = await request(app.getHttpServer())
+        .post(`/api/v1/cashier-shifts/${shiftA.id}/close`)
+        .set(authed(cashierAToken))
+        .send({ countedCashAmount: shiftA.openingFloatActual + 111_000, keepForNextAmount: shiftA.openingFloatActual, version: shiftA.version });
+      expect(closeRes.status).toBe(200);
+      expect(closeRes.body.data.cashInAmount).toBe(111_000);
+      expect(closeRes.body.data.expectedCashAmount).toBe(shiftA.openingFloatActual + 111_000);
+
+      const curB = await request(app.getHttpServer()).get('/api/v1/cashier-shifts/current').set(authed(cashierBToken));
+      expect(curB.body.data.openShift).not.toBeNull();
+      expect(curB.body.data.openShift.cashierId).toBe(cashierBUserId);
+    });
+
+    it('mở lại được cho A (ca cũ đã đóng) trong khi B vẫn đang mở — xác nhận DB cho phép nhiều ca cùng lúc, không rơi về chỉ 1', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/cashier-shifts/open')
+        .set(authed(cashierAToken))
+        .send({ openingFloatActual: 300_000, openingDiscrepancyReason: 'Mở lại sau khi B vẫn đang mở' });
+      expect(res.status).toBe(200);
+
+      // Dọn lại: đóng ca A vừa mở + ca B còn treo, đưa cả 2 về "chưa có ca mở" cho test khác.
+      const closeA = await request(app.getHttpServer())
+        .post(`/api/v1/cashier-shifts/${res.body.data.id}/close`)
+        .set(authed(cashierAToken))
+        .send({ countedCashAmount: 300_000, keepForNextAmount: 300_000, version: res.body.data.version });
+      expect(closeA.status).toBe(200);
+
+      const curB = await request(app.getHttpServer()).get('/api/v1/cashier-shifts/current').set(authed(cashierBToken));
+      const shiftB = curB.body.data.openShift;
+      const closeB = await request(app.getHttpServer())
+        .post(`/api/v1/cashier-shifts/${shiftB.id}/close`)
+        .set(authed(cashierBToken))
+        .send({ countedCashAmount: shiftB.openingFloatActual + 222_000, keepForNextAmount: shiftB.openingFloatActual, version: shiftB.version });
+      expect(closeB.status).toBe(200);
+      expect(closeB.body.data.cashInAmount).toBe(222_000);
+    });
+  });
 });

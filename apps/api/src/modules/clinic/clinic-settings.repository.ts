@@ -10,6 +10,7 @@ import {
   DEFAULT_ALLOW_STAFF_SELF_SCHEDULE_ENABLED,
   DEFAULT_BLOCK_BOOKING_OUTSIDE_WORK_SHIFT_ENABLED,
   DEFAULT_CASHIER_SHIFT_BLIND_CLOSE_ENABLED,
+  DEFAULT_CASHIER_SHIFT_MULTI_CASHIER_ENABLED,
   DEFAULT_CASHIER_SHIFT_REQUIRED_ENABLED,
   DEFAULT_NO_SHOW_AUTO_ENABLED,
   DEFAULT_NO_SHOW_THRESHOLD_MINUTES,
@@ -63,6 +64,10 @@ const cashierShiftBlindCloseSchema = z.boolean();
 // "Thu tiền" chặn tới khi có ca thu ngân đang mở) cho tenant chưa từng cấu hình.
 const CASHIER_SHIFT_REQUIRED_KEY = 'cashier_shift_required_enabled';
 const cashierShiftRequiredSchema = z.boolean();
+// "Đa thu ngân" (2026-09-04) — tắt theo mặc định (an toàn — giữ nguyên "1 két dùng chung toàn
+// tenant" tới khi chủ động bật).
+const CASHIER_SHIFT_MULTI_CASHIER_KEY = 'cashier_shift_multi_cashier_enabled';
+const cashierShiftMultiCashierSchema = z.boolean();
 // "Cấu hình mẫu mã phát sinh" (docs/DECISIONS.md #114, 2026-09-03) — 1 object JSON duy nhất,
 // khoá theo loại mã (7 loại), chỉ chứa entry của loại mã ĐÃ được tenant chủ động sửa (loại chưa
 // đụng tới thì KHÔNG có key — service tự áp mặc định khớp hành vi cũ, xem `BusinessCodeService`).
@@ -223,6 +228,19 @@ export class ClinicSettingsRepository {
 
   upsertCashierShiftRequiredEnabled(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
     return this.upsert(tx, tenantId, actorId, CASHIER_SHIFT_REQUIRED_KEY, value);
+  }
+
+  async getCashierShiftMultiCashierEnabled(tx: Prisma.TransactionClient, tenantId: string): Promise<boolean> {
+    const setting = await tx.tenantSetting.findFirst({ where: { tenantId, key: CASHIER_SHIFT_MULTI_CASHIER_KEY } });
+    if (!setting) {
+      return DEFAULT_CASHIER_SHIFT_MULTI_CASHIER_ENABLED;
+    }
+    const parsed = cashierShiftMultiCashierSchema.safeParse(setting.valueJson);
+    return parsed.success ? parsed.data : DEFAULT_CASHIER_SHIFT_MULTI_CASHIER_ENABLED;
+  }
+
+  upsertCashierShiftMultiCashierEnabled(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
+    return this.upsert(tx, tenantId, actorId, CASHIER_SHIFT_MULTI_CASHIER_KEY, value);
   }
 
   /** Chỉ trả entry của loại mã tenant ĐÃ chủ động cấu hình — loại mã vắng mặt nghĩa là "dùng mặc

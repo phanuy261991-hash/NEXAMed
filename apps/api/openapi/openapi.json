@@ -4787,6 +4787,9 @@
                         },
                         "cashierShiftRequiredEnabled": {
                           "type": "boolean"
+                        },
+                        "cashierShiftMultiCashierEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -4802,7 +4805,8 @@
                         "allowStaffSelfScheduleEnabled",
                         "workShiftAssignmentLockGraceDays",
                         "cashierShiftBlindCloseEnabled",
-                        "cashierShiftRequiredEnabled"
+                        "cashierShiftRequiredEnabled",
+                        "cashierShiftMultiCashierEnabled"
                       ]
                     },
                     "meta": {
@@ -24480,6 +24484,9 @@
                         },
                         "cashierShiftRequiredEnabled": {
                           "type": "boolean"
+                        },
+                        "cashierShiftMultiCashierEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -24495,7 +24502,8 @@
                         "allowStaffSelfScheduleEnabled",
                         "workShiftAssignmentLockGraceDays",
                         "cashierShiftBlindCloseEnabled",
-                        "cashierShiftRequiredEnabled"
+                        "cashierShiftRequiredEnabled",
+                        "cashierShiftMultiCashierEnabled"
                       ]
                     },
                     "meta": {
@@ -24788,6 +24796,9 @@
                   },
                   "cashierShiftRequiredEnabled": {
                     "type": "boolean"
+                  },
+                  "cashierShiftMultiCashierEnabled": {
+                    "type": "boolean"
                   }
                 }
               }
@@ -25005,6 +25016,9 @@
                         },
                         "cashierShiftRequiredEnabled": {
                           "type": "boolean"
+                        },
+                        "cashierShiftMultiCashierEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -25020,7 +25034,8 @@
                         "allowStaffSelfScheduleEnabled",
                         "workShiftAssignmentLockGraceDays",
                         "cashierShiftBlindCloseEnabled",
-                        "cashierShiftRequiredEnabled"
+                        "cashierShiftRequiredEnabled",
+                        "cashierShiftMultiCashierEnabled"
                       ]
                     },
                     "meta": {

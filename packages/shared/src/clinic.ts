@@ -207,6 +207,19 @@ export const clinicSettingsSchema = z.object({
    * này thuần là ma sát, không có giá trị đối soát thật để giữ lại.
    */
   cashierShiftRequiredEnabled: z.boolean(),
+  /**
+   * "Đa thu ngân" (2026-09-04, `docs/DECISIONS.md`) — cho phép nhiều thu ngân cùng mở ca RIÊNG,
+   * chạy song song (mỗi người 1 két). TẮT (mặc định — giữ đúng hành vi hiện tại): cả tenant chỉ 1
+   * ca OPEN tại một thời điểm, tổng kết ca tính theo khoảng thời gian mở→đóng, không phân biệt
+   * người thao tác — đúng thiết kế gốc "Chốt ca" cho 1 két dùng chung. BẬT: mỗi thu ngân mở ca độc
+   * lập (ràng buộc DB đổi từ theo-tenant sang theo-từng-người), phiếu thu/hoàn tiền tự gắn vào
+   * đúng ca đang mở của người xử lý (`payment.cashierShiftId`), tổng kết ca CHỈ gồm giao dịch
+   * chính người đó xử lý — không đọc lẫn dữ liệu của người khác dù cùng khung giờ. "Vốn đầu ca"
+   * cũng đổi theo: kế thừa từ ca CLOSED gần nhất của CHÍNH người mở ca (không phải toàn tenant).
+   * Không có endpoint tự-phục vụ riêng — chỉ backend đọc để rẽ nhánh, admin cấu hình qua
+   * `GET/PATCH /clinic-settings` sẵn có.
+   */
+  cashierShiftMultiCashierEnabled: z.boolean(),
 });
 export type ClinicSettings = z.infer<typeof clinicSettingsSchema>;
 
@@ -230,6 +243,7 @@ export const updateClinicSettingsRequestSchema = z.object({
   workShiftAssignmentLockGraceDays: z.number().int().min(0).max(27).optional(),
   cashierShiftBlindCloseEnabled: z.boolean().optional(),
   cashierShiftRequiredEnabled: z.boolean().optional(),
+  cashierShiftMultiCashierEnabled: z.boolean().optional(),
 });
 export type UpdateClinicSettingsRequest = z.infer<typeof updateClinicSettingsRequestSchema>;
 
@@ -254,6 +268,8 @@ export const DEFAULT_WORK_SHIFT_ASSIGNMENT_LOCK_GRACE_DAYS = 0;
 export const DEFAULT_CASHIER_SHIFT_BLIND_CLOSE_ENABLED = true;
 /** Bật theo mặc định — giữ đúng hành vi hiện tại (Thu tiền đòi ca đang mở) tới khi chủ động tắt. */
 export const DEFAULT_CASHIER_SHIFT_REQUIRED_ENABLED = true;
+/** Tắt theo mặc định (an toàn — giữ nguyên "1 két dùng chung toàn tenant" tới khi chủ động bật). */
+export const DEFAULT_CASHIER_SHIFT_MULTI_CASHIER_ENABLED = false;
 
 /**
  * `GET /clinic-settings/cashier-shift-blind-close-enabled` — chiếu tối thiểu tự-phục vụ, cùng lý

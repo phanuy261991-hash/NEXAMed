@@ -35,6 +35,7 @@ export function PaymentConfigPane() {
 
   const blindCloseEnabled = settingsQuery.data?.cashierShiftBlindCloseEnabled ?? true;
   const shiftRequiredEnabled = settingsQuery.data?.cashierShiftRequiredEnabled ?? true;
+  const multiCashierEnabled = settingsQuery.data?.cashierShiftMultiCashierEnabled ?? false;
 
   return (
     <div className="space-y-8">
@@ -74,8 +75,8 @@ export function PaymentConfigPane() {
               Bật (mặc định): Phải mở ca trước khi thu tiền, phù hợp phòng khám có nhiều người thay ca và cần đối
               soát.
               <br />
-              Tắt: Thu tiền ngay, không cần mở/chốt ca. Phù hợp phòng khám nhỏ, không cần đối soát theo ca. Tính năng
-              Mở ca/Chốt ca sẽ được ẩn.
+              Tắt: Thu tiền ngay, không cần mở/chốt ca. Phù hợp phòng khám nhỏ, không cần đối soát theo ca. Vẫn dùng
+              được Mở ca/Chốt ca nếu muốn, chỉ là không bắt buộc.
             </p>
           </div>
           <label className="relative mt-0.5 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center">
@@ -110,6 +111,30 @@ export function PaymentConfigPane() {
               disabled={updateMutation.isPending}
               onChange={(e) => updateMutation.mutate({ cashierShiftBlindCloseEnabled: e.target.checked })}
               aria-label='Chế độ đối soát "Mù" khi Chốt ca'
+            />
+            <span className="absolute inset-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-brand-teal peer-disabled:opacity-60" />
+            <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
+          </label>
+        </div>
+
+        <div className="mt-4 flex items-start justify-between gap-5 border-t border-dashed border-slate-200 pt-4">
+          <div>
+            <p className="text-[14.5px] font-bold text-slate-900">Nhiều thu ngân cùng lúc</p>
+            <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
+              Tắt (mặc định): Cả phòng khám dùng chung 1 két, chỉ mở được 1 ca tại một thời điểm.
+              <br />
+              Bật: Mỗi thu ngân mở ca riêng, làm việc song song — phiếu thu/hoàn tiền tự gắn đúng vào ca của người xử
+              lý, chốt ca chỉ tính đúng giao dịch của người đó.
+            </p>
+          </div>
+          <label className="relative mt-0.5 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center">
+            <input
+              type="checkbox"
+              className="peer sr-only"
+              checked={multiCashierEnabled}
+              disabled={updateMutation.isPending}
+              onChange={(e) => updateMutation.mutate({ cashierShiftMultiCashierEnabled: e.target.checked })}
+              aria-label="Nhiều thu ngân cùng lúc"
             />
             <span className="absolute inset-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-brand-teal peer-disabled:opacity-60" />
             <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />

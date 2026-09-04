@@ -4,6 +4,18 @@
 
 ## 2026-09-04
 
+### "Đa thu ngân" — nhiều ca thu ngân chạy song song + sửa tương tác 2 công tắc
+
+Chủ dự án hỏi tiếp sau công tắc "Yêu cầu mở ca": phòng khám có 3 thu ngân làm việc CÙNG LÚC (mỗi người 1 két riêng) thì "Chốt ca" hiện tại (chỉ 1 két dùng chung, chỉ 1 ca OPEN toàn tenant) có đáp ứng được không. Lập kế hoạch qua `EnterPlanMode` trước khi code (chạm ràng buộc DB + cách gán tiền vào ca).
+
+Thêm `tenant_setting.cashier_shift_multi_cashier_enabled` (mặc định TẮT — giữ nguyên "1 két dùng chung"). Migration đổi partial unique index `cashier_shift` từ theo-tenant sang theo-từng-thu-ngân; `payment` thêm cột `cashier_shift_id` (nullable, gắn lúc thu/hoàn tiền). Giữ 2 luồng tính tổng kết ca song song (TẮT: theo thời gian, không đổi code; BẬT: theo FK) — tránh vỡ "Tính toán lại" cho ca cũ. An toàn đua tranh khi mở ca chuyển từ ràng buộc DB sang `pg_advisory_xact_lock` (lần đầu dùng trong dự án). `billing` ⇄ `cashier-shift` phụ thuộc module 2 chiều thật — dùng `forwardRef()` lần đầu trong dự án, đã xác nhận DI khởi động thật thành công.
+
+Ngay sau khi hỏi phân tích tương tác 2 công tắc, phát hiện lỗi: nút "Mở ca ngay" duy nhất bị ẩn theo công tắc "Yêu cầu mở ca" — bật "Đa thu ngân" cùng lúc tắt "Yêu cầu mở ca" thì không ai bấm mở ca được ở đâu cả, tính năng mới vô dụng. Đảo hướng 1 phần quyết định trước đó: "Yêu cầu mở ca" giờ chỉ gate "Thu tiền", không còn quyết định hiện/ẩn banner+nút — chỉ đổi câu chữ theo bắt buộc/tuỳ chọn. Tiện sửa khối "Đã hoàn" ở thanh tổng kết `/billing` luôn hiện (kể cả 0đ) thay vì ẩn gây lệch layout.
+
+Xem `docs/DECISIONS.md` #117, `docs/ERD.md` v1.43.
+
+Đã xác minh: `cashier-shift-http.spec.ts` +6 test (43/43, race 2 người khác nhau/cùng người, thu tiền song song không lẫn ca), `clinic-http.spec.ts` +2 test (34/34). Tổng 620 test `apps/api` (18 flake `role_permission` đã biết, pass riêng). `pnpm -w typecheck/lint/build` sạch toàn workspace, chunk web 481.62 kB (không đổi). Playwright qua Chrome thật xác nhận cả tổ hợp 4 trạng thái 2 công tắc + fix "Đã hoàn".
+
 ### "Yêu cầu mở ca trước khi thu tiền" — công tắc tắt gate Chốt ca cho phòng khám nhỏ
 
 Chủ dự án hỏi UX của "Chốt ca" (#112) với phòng khám nhỏ 1 người kiêm tiếp nhận/thu ngân/khám bệnh — gate "phải mở ca mới thu tiền được" chỉ là ma sát khi không có ai để đối soát chéo. Thêm công tắc `tenant_setting.cashier_shift_required_enabled` (mặc định BẬT, đúng khuôn `cashierShiftBlindCloseEnabled`), đặt trong pill "Cấu hình thanh toán" cạnh "Chế độ đối soát Mù".

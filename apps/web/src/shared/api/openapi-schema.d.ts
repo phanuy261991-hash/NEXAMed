@@ -1942,6 +1942,7 @@ export interface paths {
                                 workShiftAssignmentLockGraceDays: number;
                                 cashierShiftBlindCloseEnabled: boolean;
                                 cashierShiftRequiredEnabled: boolean;
+                                cashierShiftMultiCashierEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -10155,6 +10156,7 @@ export interface paths {
                                 workShiftAssignmentLockGraceDays: number;
                                 cashierShiftBlindCloseEnabled: boolean;
                                 cashierShiftRequiredEnabled: boolean;
+                                cashierShiftMultiCashierEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -10250,6 +10252,7 @@ export interface paths {
                         workShiftAssignmentLockGraceDays?: number;
                         cashierShiftBlindCloseEnabled?: boolean;
                         cashierShiftRequiredEnabled?: boolean;
+                        cashierShiftMultiCashierEnabled?: boolean;
                     };
                 };
             };
@@ -10304,6 +10307,7 @@ export interface paths {
                                 workShiftAssignmentLockGraceDays: number;
                                 cashierShiftBlindCloseEnabled: boolean;
                                 cashierShiftRequiredEnabled: boolean;
+                                cashierShiftMultiCashierEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };

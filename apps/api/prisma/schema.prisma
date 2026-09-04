@@ -1635,6 +1635,11 @@ model Payment {
   // Lý do hoàn tiền — bắt buộc ở tầng service khi type=REFUND, null với dòng PAYMENT. Khác
   // deletedReason (8 cột bắt buộc): đây là lý do nghiệp vụ in lên phiếu chi cho khách ký nhận.
   reason    String?
+  // "Đa thu ngân" (2026-09-04) — ca thu ngân đang mở của người xử lý phiếu này TẠI THỜI ĐIỂM thu/
+  // hoàn tiền, nếu có (NULL khi không có ca nào đang mở — không bắt buộc). CHỈ dùng khi tenant BẬT
+  // cashierShiftMultiCashierEnabled (CashierShiftService.computeTotals() rẽ nhánh theo cột này vs
+  // theo khoảng thời gian) — dòng tạo TRƯỚC khi có cột này luôn NULL, không backfill.
+  cashierShiftId String? @map("cashier_shift_id") @db.Uuid
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -1645,9 +1650,11 @@ model Payment {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
   // Composite FK (tenant_id, invoice_id) -> invoice(tenant_id, id): chống trỏ chéo tenant.
-  invoice Invoice @relation(fields: [tenantId, invoiceId], references: [tenantId, id])
+  invoice      Invoice       @relation(fields: [tenantId, invoiceId], references: [tenantId, id])
+  // Composite FK (tenant_id, cashier_shift_id) -> cashier_shift(tenant_id, id), NULLABLE.
+  cashierShift CashierShift? @relation(fields: [tenantId, cashierShiftId], references: [tenantId, id])
 
   @@unique([tenantId, id])
   @@map("payment")
@@ -1672,8 +1679,11 @@ enum CashierShiftDiscrepancyResolution {
 // "Chốt ca" (đối soát tiền mặt/két, ngoài kế hoạch, mockup duyệt 2026-09-03) — module
 // `cashier-shift`. KHÔNG liên quan `work_shift`/`work_shift_assignment` (đăng ký ca làm việc nhân
 // viên, #101) dù tên gần giống — đây là phiên làm việc CỦA KÉT TIỀN MẶT (mở/đóng/đối soát), một
-// khái niệm hoàn toàn khác. v1: 1 két dùng chung toàn tenant, chỉ 1 ca OPEN tại một thời điểm (xem
-// partial unique index trong migration) — vốn đầu ca kế thừa từ ca CLOSED gần nhất bất kỳ ai.
+// khái niệm hoàn toàn khác. Mặc định: 1 két dùng chung toàn tenant, chỉ 1 ca OPEN tại một thời
+// điểm — vốn đầu ca kế thừa từ ca CLOSED gần nhất bất kỳ ai. "Đa thu ngân" (2026-09-04,
+// `tenant_setting.cashier_shift_multi_cashier_enabled`, TẮT mặc định): mỗi thu ngân có ca RIÊNG,
+// chạy song song — partial unique index đổi từ theo tenant sang theo (tenant_id, cashier_id), vốn
+// đầu ca kế thừa từ ca CLOSED gần nhất của CHÍNH người đó.
 model CashierShift {
   id         String             @id @default(dbgenerated("uuidv7()")) @db.Uuid
   tenantId   String             @map("tenant_id") @db.Uuid
@@ -1732,8 +1742,9 @@ model CashierShift {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant  Tenant      @relation(fields: [tenantId], references: [id])
-  cashier UserAccount @relation(fields: [tenantId, cashierId], references: [tenantId, id])
+  tenant   Tenant      @relation(fields: [tenantId], references: [id])
+  cashier  UserAccount @relation(fields: [tenantId, cashierId], references: [tenantId, id])
+  payments Payment[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, shiftNo])

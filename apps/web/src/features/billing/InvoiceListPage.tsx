@@ -86,17 +86,20 @@ export function InvoiceListPage() {
   // công" + phiếu in của chính nó — bug thật phát hiện lúc verify Playwright (docs/CURRENT.md).
   const [closingShift, setClosingShift] = useState<CashierShiftDetail | null>(null);
   const [openShiftDialogVisible, setOpenShiftDialogVisible] = useState(false);
-  // "Yêu cầu mở ca trước khi thu tiền" (2026-09-04) — tắt thì ẨN HẲN banner "Mở ca"/nút "Chốt ca"
-  // khỏi trang này (chốt qua AskUserQuestion, phòng khám nhỏ 1 người không cần đối soát ca). Mặc
-  // định `true` trong lúc đang tải để giữ đúng hành vi an toàn cũ.
+  // "Yêu cầu mở ca trước khi thu tiền" (2026-09-04, đảo hướng cùng ngày sau khi thêm "Nhiều thu
+  // ngân") — CHỈ còn quyết định "Thu tiền" có bị CHẶN khi chưa mở ca hay không (xem
+  // `InvoiceDetailPage.handlePay()`), KHÔNG còn quyết định banner/nút "Mở ca"/"Chốt ca" ở trang
+  // này có hiện hay không. Lý do đảo hướng: bản trước ẩn hẳn nút "Mở ca" theo công tắc này khiến
+  // "Nhiều thu ngân cùng lúc" vô dụng khi bật cùng lúc với tắt công tắc này (không ai bấm mở ca
+  // được ở đâu cả) — nay tách hẳn 2 mối quan tâm, chỉ đổi CÂU CHỮ banner theo `shiftRequired`
+  // (bắt buộc/tuỳ chọn), không đổi việc HIỆN/ẨN.
   const shiftRequiredQuery = useCashierShiftRequiredEnabledQuery();
   const shiftRequired = shiftRequiredQuery.data?.enabled ?? true;
   const currentShiftQuery = useCurrentCashierShiftQuery();
   const openShift = currentShiftQuery.data?.openShift ?? null;
   // PERMISSION_DENIED nghĩa là vai trò này không có `cashier_shift.*` — không hiện gì thêm ở
   // Thu ngân, khác lỗi mạng thật (không chặn cả trang).
-  const shiftFeatureUnavailable =
-    !shiftRequired || (currentShiftQuery.isError && currentShiftQuery.error instanceof ApiError && currentShiftQuery.error.code === 'PERMISSION_DENIED');
+  const shiftFeatureUnavailable = currentShiftQuery.isError && currentShiftQuery.error instanceof ApiError && currentShiftQuery.error.code === 'PERMISSION_DENIED';
 
   return (
     <div className="flex h-full flex-col gap-2.5 p-3">
@@ -143,10 +146,9 @@ export function InvoiceListPage() {
           />
         </div>
 
-        {/* "Yêu cầu mở ca trước khi thu tiền" tắt (2026-09-04) — ẩn hẳn nút "Chốt ca" khỏi trang
-            này (chốt qua AskUserQuestion). Ca lỡ còn mở từ trước khi tắt vẫn đóng được bằng trang
-            "Phiếu chốt ca" riêng (/billing/cashier-shifts), không mất khả năng đóng. */}
-        {shiftRequired && openShift && (
+        {/* "Chốt ca" hiện bất cứ khi nào đang có ca mở, không phụ thuộc "Yêu cầu mở ca trước khi
+            thu tiền" (đảo hướng 2026-09-04 — xem comment khai báo `shiftFeatureUnavailable`). */}
+        {openShift && (
           <Button type="button" variant="amberSolid" onClick={() => setClosingShift(openShift)}>
             <LockKey size={16} weight="bold" aria-hidden="true" />
             Chốt ca
@@ -157,8 +159,9 @@ export function InvoiceListPage() {
       {/* Chưa có ca mở — banner CHỦ ĐỘNG, nổi bật hơn hẳn nút "Mở ca" cũ (trước đặt lẫn trong
           thanh công cụ, cùng hàng ngày/tìm kiếm, chủ dự án phản hồi trực tiếp "không nổi bật,
           không gây chú ý" 2026-09-03) — full-width, tông xanh đặc (`bg-blue-600`, cùng token
-          `primary` của Button) thay vì nút phụ nhỏ ở góc. Ẩn hẳn khi tắt "Yêu cầu mở ca trước khi
-          thu tiền" (gộp vào `shiftFeatureUnavailable`, xem khai báo ở trên). */}
+          `primary` của Button) thay vì nút phụ nhỏ ở góc. LUÔN hiện khi chưa có ca (không còn phụ
+          thuộc "Yêu cầu mở ca trước khi thu tiền", đảo hướng 2026-09-04) — chỉ câu mô tả đổi theo
+          bắt buộc/tuỳ chọn, để "Nhiều thu ngân cùng lúc" vẫn dùng được khi công tắc kia đang tắt. */}
       {!openShift && !shiftFeatureUnavailable && (
         <div className="flex flex-shrink-0 items-center justify-between gap-3 rounded-xl bg-blue-600 px-5 py-3.5 text-white shadow-sm">
           <div className="flex items-center gap-3">
@@ -167,7 +170,9 @@ export function InvoiceListPage() {
             </div>
             <div className="flex flex-col">
               <span className="text-sm font-bold">Chưa mở ca hôm nay</span>
-              <span className="text-xs font-medium text-blue-100">Cần mở ca trước khi thu tiền hoặc chốt ca.</span>
+              <span className="text-xs font-medium text-blue-100">
+                {shiftRequired ? 'Cần mở ca trước khi thu tiền hoặc chốt ca.' : 'Mở ca nếu muốn đối soát tiền mặt theo ca (không bắt buộc).'}
+              </span>
             </div>
           </div>
           <Button type="button" variant="secondary" onClick={() => setOpenShiftDialogVisible(true)}>
@@ -328,18 +333,20 @@ export function InvoiceListPage() {
           </div>
           {/* #085 — tách riêng "Đã hoàn"/"Thực thu" (paidTotalAmount VẪN gồm cả phiếu đã hoàn — xem
               computeDailyBillingTotals ở @nexamed/core — nên phải trừ ra ở đây mới đúng số tiền còn
-              lại trong két, tránh chủ phòng khám đối soát bị lệch không giải thích được). */}
-          {listQuery.data.refundedTotalAmount > 0 && (
-            <div className="flex min-w-[190px] flex-1 items-center justify-center gap-3 border-l border-slate-100 px-5 py-3.5">
-              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-violet-50 text-violet-600">
-                <ArrowCounterClockwise size={20} weight="bold" aria-hidden="true" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Đã hoàn ({listQuery.data.refundedCount})</span>
-                <span className="text-xl font-bold tabular-nums text-violet-700">-{formatVnd(listQuery.data.refundedTotalAmount)}</span>
-              </div>
+              lại trong két, tránh chủ phòng khám đối soát bị lệch không giải thích được). Luôn hiện
+              kể cả 0đ (2026-09-04, chủ dự án phản hồi trực tiếp) — ẩn theo điều kiện làm thanh tổng
+              kết lệch xấu khi chỉ còn 2/3 khối. */}
+          <div className="flex min-w-[190px] flex-1 items-center justify-center gap-3 border-l border-slate-100 px-5 py-3.5">
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-violet-50 text-violet-600">
+              <ArrowCounterClockwise size={20} weight="bold" aria-hidden="true" />
             </div>
-          )}
+            <div className="flex flex-col">
+              <span className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Đã hoàn ({listQuery.data.refundedCount})</span>
+              <span className="text-xl font-bold tabular-nums text-violet-700">
+                {listQuery.data.refundedTotalAmount > 0 ? `-${formatVnd(listQuery.data.refundedTotalAmount)}` : formatVnd(0)}
+              </span>
+            </div>
+          </div>
           {/* "Thực thu" (netTotalAmount) ẩn khỏi hiển thị theo yêu cầu chủ dự án — chỉ giữ 2 khối
               nguồn thô "Đã thu hôm nay"/"Đã hoàn" cho gọn, tránh 3 con số cạnh nhau gây rối. */}
           {/* Cố ý tô nền đặc (khác các khối trên) — đây là mục CẦN HÀNH ĐỘNG (còn phiếu chưa thu),

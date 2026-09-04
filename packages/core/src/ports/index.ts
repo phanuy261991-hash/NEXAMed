@@ -10,3 +10,4 @@ export * from './reference-catalog-reader.port';
 export * from './patient-reader.port';
 export * from './encounter-reader.port';
 export * from './work-shift-assignment-reader.port';
+export * from './cashier-shift-reader.port';
