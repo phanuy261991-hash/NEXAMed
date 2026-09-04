@@ -173,6 +173,7 @@ import {
   workShiftAssignmentMonthLockStatusResponseSchema,
   approveCashierShiftRequestSchema,
   cashierShiftBlindCloseStatusSchema,
+  cashierShiftRequiredStatusSchema,
   cashierShiftDetailSchema,
   cashierShiftSummarySchema,
   closeCashierShiftRequestSchema,
@@ -1707,6 +1708,18 @@ registry.registerPath({
   security: [{ bearerAuth: [] }],
   responses: {
     200: jsonResponse('Thành công', envelope(cashierShiftBlindCloseStatusSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/clinic-settings/cashier-shift-required-enabled',
+  tags: ['clinic'],
+  summary: '"Yêu cầu mở ca trước khi thu tiền" — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /clinic-settings/deferred-payment-enabled)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(cashierShiftRequiredStatusSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
   },
 });

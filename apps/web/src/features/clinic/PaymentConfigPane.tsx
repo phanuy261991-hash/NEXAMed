@@ -34,6 +34,7 @@ export function PaymentConfigPane() {
   }
 
   const blindCloseEnabled = settingsQuery.data?.cashierShiftBlindCloseEnabled ?? true;
+  const shiftRequiredEnabled = settingsQuery.data?.cashierShiftRequiredEnabled ?? true;
 
   return (
     <div className="space-y-8">
@@ -68,10 +69,37 @@ export function PaymentConfigPane() {
 
         <div className="flex items-start justify-between gap-5">
           <div>
-            <p className="text-[14.5px] font-bold text-slate-900">Chế độ đối soát &quot;Mù&quot;</p>
+            <p className="text-[14.5px] font-bold text-slate-900">Yêu cầu mở ca trước khi thu tiền</p>
             <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
-              Bật (mặc định, khuyến nghị chống gian lận): ẩn số tiền mặt dự kiến trong két tới khi thu ngân đã nhập
-              số đếm thực tế. Tắt: hiện luôn số dự kiến trước khi đếm.
+              Bật (mặc định): Phải mở ca trước khi thu tiền, phù hợp phòng khám có nhiều người thay ca và cần đối
+              soát.
+              <br />
+              Tắt: Thu tiền ngay, không cần mở/chốt ca. Phù hợp phòng khám nhỏ, không cần đối soát theo ca. Tính năng
+              Mở ca/Chốt ca sẽ được ẩn.
+            </p>
+          </div>
+          <label className="relative mt-0.5 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center">
+            <input
+              type="checkbox"
+              className="peer sr-only"
+              checked={shiftRequiredEnabled}
+              disabled={updateMutation.isPending}
+              onChange={(e) => updateMutation.mutate({ cashierShiftRequiredEnabled: e.target.checked })}
+              aria-label="Yêu cầu mở ca trước khi thu tiền"
+            />
+            <span className="absolute inset-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-brand-teal peer-disabled:opacity-60" />
+            <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
+          </label>
+        </div>
+
+        <div className="mt-4 flex items-start justify-between gap-5 border-t border-dashed border-slate-200 pt-4">
+          <div>
+            <p className="text-[14.5px] font-bold text-slate-900">Đối soát độc lập</p>
+            <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
+              Bật (mặc định): Ẩn số tiền dự kiến cho đến khi nhập số tiền thực tế, giúp đối soát khách quan và hạn
+              chế sai lệch.
+              <br />
+              Tắt: Hiển thị số tiền dự kiến trước khi nhập số tiền thực tế.
             </p>
           </div>
           <label className="relative mt-0.5 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center">

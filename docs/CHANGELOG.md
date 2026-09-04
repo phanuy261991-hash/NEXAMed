@@ -2,6 +2,20 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-04
+
+### "Yêu cầu mở ca trước khi thu tiền" — công tắc tắt gate Chốt ca cho phòng khám nhỏ
+
+Chủ dự án hỏi UX của "Chốt ca" (#112) với phòng khám nhỏ 1 người kiêm tiếp nhận/thu ngân/khám bệnh — gate "phải mở ca mới thu tiền được" chỉ là ma sát khi không có ai để đối soát chéo. Thêm công tắc `tenant_setting.cashier_shift_required_enabled` (mặc định BẬT, đúng khuôn `cashierShiftBlindCloseEnabled`), đặt trong pill "Cấu hình thanh toán" cạnh "Chế độ đối soát Mù".
+
+Tắt: `InvoiceDetailPage.handlePay()` bỏ hẳn gate đòi ca đang mở (backend vốn không đòi, gate thuần frontend); `InvoiceListPage.tsx` ẩn hoàn toàn banner "Chưa mở ca hôm nay" + nút "Chốt ca" (chốt qua `AskUserQuestion`: ẩn hẳn, không giữ dạng nút nhỏ tuỳ chọn). Trang "Phiếu chốt ca" riêng (`/billing/cashier-shifts`) giữ nguyên, vẫn đóng được ca lỡ còn mở từ trước.
+
+Xem `docs/DECISIONS.md` #116, `docs/ERD.md` v1.42.
+
+Đã xác minh: `clinic-http.spec.ts` +3 test (32/32), tổng 612 test `apps/api` (16 flake `role_permission` race đã biết, pass 100% khi chạy riêng). `pnpm -w typecheck/lint/build` sạch toàn workspace, chunk web 481.62 kB.
+
+Sau khi xem bản chạy thật, chủ dự án chỉnh lại văn bản 2 công tắc: rút gọn mô tả "Yêu cầu mở ca trước khi thu tiền", đổi tên "Chế độ đối soát Mù" → "Đối soát độc lập". Verify Playwright hoàn tất (Chrome thật, `dev.admin`): text đúng, ẩn/hiện banner+nút đúng cả 2 chiều — và **test thu tiền thật đầu-cuối**: tạo phiếu thu 250.000đ qua HTTP API, tắt công tắc, bấm "Thu tiền" → thành công ngay không bị chặn. Dữ liệu test đã dọn sạch qua đúng quy trình nghiệp vụ (đánh dấu chưa thu → huỷ lượt khám), không SQL trực tiếp.
+
 ## 2026-09-03
 
 ### Bug thật "Mở ca" crash 500 (tái phát từ #114) — sửa xong + redesign nút Mở ca/Chốt ca

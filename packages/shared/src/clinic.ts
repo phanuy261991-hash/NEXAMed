@@ -196,6 +196,17 @@ export const clinicSettingsSchema = z.object({
    * nhập số đếm thực tế) hay "Mở" (TẮT — hiện luôn số dự kiến). Đặt cạnh "Cấu hình thanh toán".
    */
   cashierShiftBlindCloseEnabled: z.boolean(),
+  /**
+   * "Yêu cầu mở ca trước khi thu tiền" (2026-09-04, chủ dự án yêu cầu trực tiếp — UX phòng khám
+   * nhỏ 1 người kiêm tiếp nhận/thu ngân/khám bệnh). BẬT (mặc định — giữ đúng hành vi hiện tại):
+   * `InvoiceDetailPage.handlePay()` chặn "Thu tiền" tới khi có ca thu ngân đang mở, đúng thiết kế
+   * gốc của "Chốt ca" (đối soát giữa các người khác nhau dùng chung 1 két). TẮT: bỏ hẳn gate này —
+   * "Thu tiền" chạy thẳng không cần mở ca — VÀ ẩn hoàn toàn banner "Chưa mở ca hôm nay"/nút "Chốt
+   * ca" khỏi `InvoiceListPage.tsx` (đã hỏi và chốt qua `AskUserQuestion`: ẩn hẳn, không giữ dạng
+   * nút nhỏ tuỳ chọn) — phòng khám không có khái niệm nhiều ca/nhiều người đối soát thì tính năng
+   * này thuần là ma sát, không có giá trị đối soát thật để giữ lại.
+   */
+  cashierShiftRequiredEnabled: z.boolean(),
 });
 export type ClinicSettings = z.infer<typeof clinicSettingsSchema>;
 
@@ -218,6 +229,7 @@ export const updateClinicSettingsRequestSchema = z.object({
   allowStaffSelfScheduleEnabled: z.boolean().optional(),
   workShiftAssignmentLockGraceDays: z.number().int().min(0).max(27).optional(),
   cashierShiftBlindCloseEnabled: z.boolean().optional(),
+  cashierShiftRequiredEnabled: z.boolean().optional(),
 });
 export type UpdateClinicSettingsRequest = z.infer<typeof updateClinicSettingsRequestSchema>;
 
@@ -240,6 +252,8 @@ export const DEFAULT_ALLOW_STAFF_SELF_SCHEDULE_ENABLED = true;
 export const DEFAULT_WORK_SHIFT_ASSIGNMENT_LOCK_GRACE_DAYS = 0;
 /** Bật theo mặc định — chế độ Mù được khuyến nghị chống gian lận cho tenant chưa từng cấu hình. */
 export const DEFAULT_CASHIER_SHIFT_BLIND_CLOSE_ENABLED = true;
+/** Bật theo mặc định — giữ đúng hành vi hiện tại (Thu tiền đòi ca đang mở) tới khi chủ động tắt. */
+export const DEFAULT_CASHIER_SHIFT_REQUIRED_ENABLED = true;
 
 /**
  * `GET /clinic-settings/cashier-shift-blind-close-enabled` — chiếu tối thiểu tự-phục vụ, cùng lý
@@ -247,6 +261,15 @@ export const DEFAULT_CASHIER_SHIFT_BLIND_CLOSE_ENABLED = true;
  * hiện đúng UI popup Chốt ca nhưng không có `clinic_config.read`.
  */
 export const cashierShiftBlindCloseStatusSchema = z.object({ enabled: z.boolean() });
+
+/**
+ * `GET /clinic-settings/cashier-shift-required-enabled` — chiếu tối thiểu tự-phục vụ, cùng lý do
+ * `cashierShiftBlindCloseStatusSchema` ngay trên: `InvoiceDetailPage.tsx`/`InvoiceListPage.tsx`
+ * cần biết công tắc này để gate "Thu tiền"/ẩn-hiện banner "Mở ca" đúng, nhưng lễ tân/bác sĩ không
+ * có `clinic_config.read`.
+ */
+export const cashierShiftRequiredStatusSchema = z.object({ enabled: z.boolean() });
+export type CashierShiftRequiredStatus = z.infer<typeof cashierShiftRequiredStatusSchema>;
 
 /**
  * `GET /clinic-settings/deferred-payment-enabled` — chiếu tối thiểu tự-phục vụ (Thu ngân cơ bản,

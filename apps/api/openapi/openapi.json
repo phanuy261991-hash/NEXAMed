@@ -4784,6 +4784,9 @@
                         },
                         "cashierShiftBlindCloseEnabled": {
                           "type": "boolean"
+                        },
+                        "cashierShiftRequiredEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -4798,7 +4801,8 @@
                         "blockBookingOutsideWorkShiftEnabled",
                         "allowStaffSelfScheduleEnabled",
                         "workShiftAssignmentLockGraceDays",
-                        "cashierShiftBlindCloseEnabled"
+                        "cashierShiftBlindCloseEnabled",
+                        "cashierShiftRequiredEnabled"
                       ]
                     },
                     "meta": {
@@ -24473,6 +24477,9 @@
                         },
                         "cashierShiftBlindCloseEnabled": {
                           "type": "boolean"
+                        },
+                        "cashierShiftRequiredEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -24487,7 +24494,8 @@
                         "blockBookingOutsideWorkShiftEnabled",
                         "allowStaffSelfScheduleEnabled",
                         "workShiftAssignmentLockGraceDays",
-                        "cashierShiftBlindCloseEnabled"
+                        "cashierShiftBlindCloseEnabled",
+                        "cashierShiftRequiredEnabled"
                       ]
                     },
                     "meta": {
@@ -24777,6 +24785,9 @@
                   },
                   "cashierShiftBlindCloseEnabled": {
                     "type": "boolean"
+                  },
+                  "cashierShiftRequiredEnabled": {
+                    "type": "boolean"
                   }
                 }
               }
@@ -24991,6 +25002,9 @@
                         },
                         "cashierShiftBlindCloseEnabled": {
                           "type": "boolean"
+                        },
+                        "cashierShiftRequiredEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -25005,7 +25019,8 @@
                         "blockBookingOutsideWorkShiftEnabled",
                         "allowStaffSelfScheduleEnabled",
                         "workShiftAssignmentLockGraceDays",
-                        "cashierShiftBlindCloseEnabled"
+                        "cashierShiftBlindCloseEnabled",
+                        "cashierShiftRequiredEnabled"
                       ]
                     },
                     "meta": {
@@ -25246,6 +25261,83 @@
           "clinic"
         ],
         "summary": "\"Chốt ca\" — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /clinic-settings/deferred-payment-enabled)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "enabled"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clinic-settings/cashier-shift-required-enabled": {
+      "get": {
+        "tags": [
+          "clinic"
+        ],
+        "summary": "\"Yêu cầu mở ca trước khi thu tiền\" — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /clinic-settings/deferred-payment-enabled)",
         "security": [
           {
             "bearerAuth": []
@@ -33664,6 +33756,12 @@
                             },
                             "keepForNextAmount": {
                               "type": "integer"
+                            },
+                            "handoverNote": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
                             }
                           },
                           "required": [
@@ -33671,7 +33769,8 @@
                             "cashierName",
                             "shiftLabel",
                             "closedAt",
-                            "keepForNextAmount"
+                            "keepForNextAmount",
+                            "handoverNote"
                           ]
                         }
                       },

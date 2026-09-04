@@ -17,6 +17,7 @@ import { Button } from '../../shared/ui/Button';
 import { CloseShiftDialog } from '../cashier-shift/CloseShiftDialog';
 import { OpenShiftDialog } from '../cashier-shift/OpenShiftDialog';
 import { useCurrentCashierShiftQuery } from '../cashier-shift/cashier-shift.queries';
+import { useCashierShiftRequiredEnabledQuery } from '../clinic/clinic.queries';
 import { useBillingInvoiceListQuery } from './invoice.queries';
 
 /** Cùng khuôn `ReceptionListPage.tsx` (List Screen Pattern, .claude/docs/ui-guidelines.md mục 9).
@@ -85,11 +86,17 @@ export function InvoiceListPage() {
   // công" + phiếu in của chính nó — bug thật phát hiện lúc verify Playwright (docs/CURRENT.md).
   const [closingShift, setClosingShift] = useState<CashierShiftDetail | null>(null);
   const [openShiftDialogVisible, setOpenShiftDialogVisible] = useState(false);
+  // "Yêu cầu mở ca trước khi thu tiền" (2026-09-04) — tắt thì ẨN HẲN banner "Mở ca"/nút "Chốt ca"
+  // khỏi trang này (chốt qua AskUserQuestion, phòng khám nhỏ 1 người không cần đối soát ca). Mặc
+  // định `true` trong lúc đang tải để giữ đúng hành vi an toàn cũ.
+  const shiftRequiredQuery = useCashierShiftRequiredEnabledQuery();
+  const shiftRequired = shiftRequiredQuery.data?.enabled ?? true;
   const currentShiftQuery = useCurrentCashierShiftQuery();
   const openShift = currentShiftQuery.data?.openShift ?? null;
   // PERMISSION_DENIED nghĩa là vai trò này không có `cashier_shift.*` — không hiện gì thêm ở
   // Thu ngân, khác lỗi mạng thật (không chặn cả trang).
-  const shiftFeatureUnavailable = currentShiftQuery.isError && currentShiftQuery.error instanceof ApiError && currentShiftQuery.error.code === 'PERMISSION_DENIED';
+  const shiftFeatureUnavailable =
+    !shiftRequired || (currentShiftQuery.isError && currentShiftQuery.error instanceof ApiError && currentShiftQuery.error.code === 'PERMISSION_DENIED');
 
   return (
     <div className="flex h-full flex-col gap-2.5 p-3">
@@ -136,7 +143,10 @@ export function InvoiceListPage() {
           />
         </div>
 
-        {openShift && (
+        {/* "Yêu cầu mở ca trước khi thu tiền" tắt (2026-09-04) — ẩn hẳn nút "Chốt ca" khỏi trang
+            này (chốt qua AskUserQuestion). Ca lỡ còn mở từ trước khi tắt vẫn đóng được bằng trang
+            "Phiếu chốt ca" riêng (/billing/cashier-shifts), không mất khả năng đóng. */}
+        {shiftRequired && openShift && (
           <Button type="button" variant="amberSolid" onClick={() => setClosingShift(openShift)}>
             <LockKey size={16} weight="bold" aria-hidden="true" />
             Chốt ca
@@ -147,7 +157,8 @@ export function InvoiceListPage() {
       {/* Chưa có ca mở — banner CHỦ ĐỘNG, nổi bật hơn hẳn nút "Mở ca" cũ (trước đặt lẫn trong
           thanh công cụ, cùng hàng ngày/tìm kiếm, chủ dự án phản hồi trực tiếp "không nổi bật,
           không gây chú ý" 2026-09-03) — full-width, tông xanh đặc (`bg-blue-600`, cùng token
-          `primary` của Button) thay vì nút phụ nhỏ ở góc. */}
+          `primary` của Button) thay vì nút phụ nhỏ ở góc. Ẩn hẳn khi tắt "Yêu cầu mở ca trước khi
+          thu tiền" (gộp vào `shiftFeatureUnavailable`, xem khai báo ở trên). */}
       {!openShift && !shiftFeatureUnavailable && (
         <div className="flex flex-shrink-0 items-center justify-between gap-3 rounded-xl bg-blue-600 px-5 py-3.5 text-white shadow-sm">
           <div className="flex items-center gap-3">

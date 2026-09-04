@@ -26,6 +26,7 @@ import {
   createFloor,
   createRoom,
   getAllowStaffSelfScheduleStatus,
+  getCashierShiftRequiredStatus,
   getClinicPrintHeader,
   getClinicProfile,
   getClinicSettings,
@@ -87,6 +88,19 @@ export function useAllowStaffSelfScheduleEnabledQuery() {
   });
 }
 
+/**
+ * "Yêu cầu mở ca trước khi thu tiền" — `InvoiceDetailPage.tsx`/`InvoiceListPage.tsx` dùng riêng
+ * hook này (KHÔNG dùng `useClinicSettingsQuery()`): lễ tân/bác sĩ không có `clinic_config.read`,
+ * cùng lý do `useDeferredPaymentEnabledQuery` ở trên.
+ */
+export function useCashierShiftRequiredEnabledQuery() {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'clinic', 'cashier-shift-required-enabled'),
+    queryFn: getCashierShiftRequiredStatus,
+  });
+}
+
 export function useUpdateClinicSettingsMutation() {
   const { tenantId } = useAppConfig();
   const queryClient = useQueryClient();
@@ -103,6 +117,8 @@ export function useUpdateClinicSettingsMutation() {
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'allow-staff-self-schedule-enabled') });
       // "Tạm nghỉ / Đóng ca" — TopBar/board đọc qua hook tự-phục vụ riêng (useDoctorAvailabilityPolicyQuery), làm mới luôn.
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'doctor-availability-policy') });
+      // "Yêu cầu mở ca trước khi thu tiền" — Thu ngân đọc qua hook tự-phục vụ riêng, làm mới luôn.
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'cashier-shift-required-enabled') });
     },
   });
 }

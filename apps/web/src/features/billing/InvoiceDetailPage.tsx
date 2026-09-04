@@ -16,6 +16,7 @@ import { useAuthStore } from '../auth/auth.store';
 import { useClinicPrintHeaderQuery } from '../clinic/clinic.queries';
 import { OpenShiftDialog } from '../cashier-shift/OpenShiftDialog';
 import { useCurrentCashierShiftQuery } from '../cashier-shift/cashier-shift.queries';
+import { useCashierShiftRequiredEnabledQuery } from '../clinic/clinic.queries';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { InvoicePrintView } from './InvoicePrintView';
 import {
@@ -67,7 +68,12 @@ export function InvoiceDetailPage() {
   const clinicQuery = useClinicPrintHeaderQuery();
   const paymentMethodQuery = useReferenceCatalogQuery('PAYMENT_METHOD');
   // "Thu tiền" đòi có ca thu ngân đang mở (đối soát tiền mặt, #chốt-ca) — không chặn cả trang, chỉ
-  // chặn đúng thao tác chạm tới tiền (chốt qua AskUserQuestion, đảo hướng 2026-09-03).
+  // chặn đúng thao tác chạm tới tiền (chốt qua AskUserQuestion, đảo hướng 2026-09-03). Công tắc
+  // "Yêu cầu mở ca trước khi thu tiền" (2026-09-04) cho phòng khám nhỏ tắt hẳn gate này — mặc định
+  // `true` trong lúc đang tải để giữ đúng hành vi an toàn cũ (chỉ suy đoán "không cần gate" sau khi
+  // biết chắc tenant đã chủ động tắt).
+  const shiftRequiredQuery = useCashierShiftRequiredEnabledQuery();
+  const shiftRequired = shiftRequiredQuery.data?.enabled ?? true;
   const currentShiftQuery = useCurrentCashierShiftQuery();
   const openShift = currentShiftQuery.data?.openShift ?? null;
   const shiftFeatureUnavailable = currentShiftQuery.isError && currentShiftQuery.error instanceof ApiError && currentShiftQuery.error.code === 'PERMISSION_DENIED';
@@ -109,8 +115,9 @@ export function InvoiceDetailPage() {
   async function handlePay() {
     if (!invoice) return;
     // Chưa có ca thu ngân nào đang mở — bật popup "Mở ca" trước, mở xong tự chạy lại đúng thao tác
-    // thu tiền này (không bắt bấm "Thu tiền" lại lần 2).
-    if (!shiftFeatureUnavailable && !openShift) {
+    // thu tiền này (không bắt bấm "Thu tiền" lại lần 2). Bỏ hẳn khi tenant đã tắt "Yêu cầu mở ca
+    // trước khi thu tiền" (phòng khám nhỏ 1 người kiêm tiếp nhận/thu ngân/khám).
+    if (shiftRequired && !shiftFeatureUnavailable && !openShift) {
       setOpenShiftDialogVisible(true);
       return;
     }

@@ -60,6 +60,18 @@ export class ClinicSettingsController {
     return { enabled };
   }
 
+  /**
+   * "Yêu cầu mở ca trước khi thu tiền" (2026-09-04) — tự-phục vụ, KHÔNG gắn `@RequirePermission`
+   * (đúng khuôn `getCashierShiftBlindCloseEnabled` ở trên): `InvoiceDetailPage.tsx`/
+   * `InvoiceListPage.tsx` cần biết công tắc này để gate "Thu tiền"/ẩn-hiện banner "Mở ca" đúng.
+   */
+  @Get('cashier-shift-required-enabled')
+  async getCashierShiftRequiredEnabled(@Req() req: Request) {
+    const { tenantId } = req.user!;
+    const enabled = await this.clinicSettingsService.getCashierShiftRequiredEnabled(tenantId);
+    return { enabled };
+  }
+
   @Patch()
   @RequirePermission('clinic_config', 'update')
   async update(@Body() body: unknown, @Req() req: Request) {
