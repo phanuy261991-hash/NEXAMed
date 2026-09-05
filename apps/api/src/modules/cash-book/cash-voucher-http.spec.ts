@@ -374,6 +374,35 @@ describe('HTTP e2e — /api/v1/cash-vouchers', () => {
       expect(res.status).toBe(404);
     });
 
+    it('tenant B thao tác trên id phiếu của tenant A → 404 ở mọi endpoint chạm bản ghi (sửa/huỷ/duyệt/từ chối/in)', async () => {
+      const patchRes = await request(app.getHttpServer())
+        .patch(`/api/v1/cash-vouchers/${expenseVoucherId}`)
+        .set(authed(tenantBClinicAdminToken))
+        .send({ description: 'Sửa xuyên tenant', version: 1 });
+      expect(patchRes.status).toBe(404);
+
+      const voidRes = await request(app.getHttpServer())
+        .post(`/api/v1/cash-vouchers/${expenseVoucherId}/void`)
+        .set(authed(tenantBClinicAdminToken))
+        .send({ reason: 'Huỷ xuyên tenant', version: 1 });
+      expect(voidRes.status).toBe(404);
+
+      const approveRes = await request(app.getHttpServer())
+        .post(`/api/v1/cash-vouchers/${expenseVoucherId}/approve`)
+        .set(authed(tenantBClinicAdminToken))
+        .send({ version: 1 });
+      expect(approveRes.status).toBe(404);
+
+      const rejectRes = await request(app.getHttpServer())
+        .post(`/api/v1/cash-vouchers/${expenseVoucherId}/reject`)
+        .set(authed(tenantBClinicAdminToken))
+        .send({ reason: 'Từ chối xuyên tenant', version: 1 });
+      expect(rejectRes.status).toBe(404);
+
+      const printRes = await request(app.getHttpServer()).post(`/api/v1/cash-vouchers/${expenseVoucherId}/print`).set(authed(tenantBClinicAdminToken)).send({});
+      expect(printRes.status).toBe(404);
+    });
+
     it('GET /cash-accounts bằng token tenant B → không thấy quỹ của tenant A', async () => {
       const res = await request(app.getHttpServer()).get('/api/v1/cash-accounts').set(authed(tenantBClinicAdminToken));
       expect(res.status).toBe(200);
