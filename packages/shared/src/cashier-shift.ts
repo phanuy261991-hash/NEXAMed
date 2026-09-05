@@ -38,6 +38,10 @@ export const cashierShiftSummarySchema = z.object({
   nonCashBreakdown: z.array(nonCashBreakdownItemSchema),
   /** = openingFloatActual + cashInAmount - cashOutAmount. */
   expectedCashAmount: z.number().int(),
+  /** "Thu chi tại quầy" GĐ1 — phần tiền mặt của riêng `cash_voucher` (đã POSTED), CỘNG DỒN SẴN
+   * trong `cashInAmount`/`cashOutAmount` ở trên — chỉ để tách bạch hiển thị, không cộng lại. */
+  otherCashInAmount: z.number().int(),
+  otherCashOutAmount: z.number().int(),
 });
 export type CashierShiftSummary = z.infer<typeof cashierShiftSummarySchema>;
 
@@ -57,6 +61,9 @@ export const cashierShiftDetailSchema = z.object({
   cashOutAmount: z.number().int().nullable(),
   nonCashBreakdown: z.array(nonCashBreakdownItemSchema),
   expectedCashAmount: z.number().int().nullable(),
+  /** "Thu chi tại quầy" GĐ1 — `null` cho ca CLOSED trước tính năng này (không backfill). */
+  otherCashInAmount: z.number().int().nullable(),
+  otherCashOutAmount: z.number().int().nullable(),
   countedCashAmount: z.number().int().nullable(),
   cashDiscrepancyReason: z.string().nullable(),
   keepForNextAmount: z.number().int().nullable(),

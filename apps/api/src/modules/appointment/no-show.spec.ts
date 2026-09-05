@@ -103,6 +103,7 @@ describe('markNoShowForAllTenants — S5-07, APP-05', () => {
       getAllowStaffSelfScheduleEnabled: () => Promise.reject(new Error('không dùng trong test này')),
       getWorkShiftAssignmentLockGraceDays: () => Promise.reject(new Error('không dùng trong test này')),
       getCashierShiftMultiCashierEnabled: () => Promise.reject(new Error('không dùng trong test này')),
+      getCashVoucherApprovalEnabled: () => Promise.reject(new Error('không dùng trong test này')),
     };
   }
 

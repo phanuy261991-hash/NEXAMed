@@ -1,10 +1,15 @@
-/** 1 dòng `payment` đã query sẵn (repository JOIN `reference_catalog` lấy `countsAsCash`/tên hiển thị). */
+/**
+ * 1 dòng `payment` (hoặc `cash_voucher`, "Thu chi tại quầy" GĐ1) đã query sẵn (repository JOIN
+ * `reference_catalog` lấy `countsAsCash`/tên hiển thị). `source` optional — bỏ trống = `'INVOICE'`
+ * (hành vi cũ, mọi lời gọi trước tính năng "Thu chi tại quầy" không có field này vẫn đúng nguyên).
+ */
 export interface CashierShiftPaymentInput {
   methodCode: string;
   methodLabel: string;
   isCash: boolean;
   type: 'PAYMENT' | 'REFUND';
   amount: number;
+  source?: 'INVOICE' | 'VOUCHER';
 }
 
 export interface CashierShiftNonCashBreakdown {
@@ -21,6 +26,15 @@ export interface CashierShiftTotals {
   cashOutCount: number;
   nonCashBreakdown: CashierShiftNonCashBreakdown[];
   expectedCashAmount: number;
+  /**
+   * "Thu chi tại quầy" (GĐ1) — phần TIỀN MẶT của riêng dòng `source==='VOUCHER'`, đã CỘNG DỒN SẴN
+   * vào `cashInAmount`/`cashOutAmount`/`expectedCashAmount` ở trên (không phải số tách biệt) — chỉ
+   * để phiếu in tách bạch hiển thị "thu khám" vs "thu/chi khác", không dùng để tính lại tổng.
+   */
+  otherCashInAmount: number;
+  otherCashInCount: number;
+  otherCashOutAmount: number;
+  otherCashOutCount: number;
 }
 
 /**
@@ -38,6 +52,10 @@ export function computeCashierShiftTotals(openingFloatActual: number, payments: 
   let cashInCount = 0;
   let cashOutAmount = 0;
   let cashOutCount = 0;
+  let otherCashInAmount = 0;
+  let otherCashInCount = 0;
+  let otherCashOutAmount = 0;
+  let otherCashOutCount = 0;
   const nonCashMap = new Map<string, CashierShiftNonCashBreakdown>();
 
   for (const payment of payments) {
@@ -45,9 +63,17 @@ export function computeCashierShiftTotals(openingFloatActual: number, payments: 
       if (payment.type === 'PAYMENT') {
         cashInAmount += payment.amount;
         cashInCount += 1;
+        if (payment.source === 'VOUCHER') {
+          otherCashInAmount += payment.amount;
+          otherCashInCount += 1;
+        }
       } else {
         cashOutAmount += payment.amount;
         cashOutCount += 1;
+        if (payment.source === 'VOUCHER') {
+          otherCashOutAmount += payment.amount;
+          otherCashOutCount += 1;
+        }
       }
       continue;
     }
@@ -69,5 +95,9 @@ export function computeCashierShiftTotals(openingFloatActual: number, payments: 
     cashOutCount,
     nonCashBreakdown: Array.from(nonCashMap.values()),
     expectedCashAmount: openingFloatActual + cashInAmount - cashOutAmount,
+    otherCashInAmount,
+    otherCashInCount,
+    otherCashOutAmount,
+    otherCashOutCount,
   };
 }

@@ -220,6 +220,14 @@ export const clinicSettingsSchema = z.object({
    * `GET/PATCH /clinic-settings` sẵn có.
    */
   cashierShiftMultiCashierEnabled: z.boolean(),
+  /**
+   * "Thu chi tại quầy" (Sổ quỹ & Thu chi GĐ1) — TẮT (mặc định, giữ đúng hành vi mặc định "thu ngân
+   * tự lập phiếu, hiệu lực ngay"). BẬT: phiếu CHI mới lập vào trạng thái `PENDING_APPROVAL` — chưa
+   * tính vào tiền mặt dự kiến của ca (`CashierShiftService.computeTotals()` chỉ gộp status=`POSTED`)
+   * tới khi `clinic_admin` duyệt (`cash_voucher.approve`). Phiếu THU không bị ảnh hưởng (chỉ chi
+   * tiền ra khỏi két mới cần kiểm soát chặt).
+   */
+  cashVoucherApprovalEnabled: z.boolean(),
 });
 export type ClinicSettings = z.infer<typeof clinicSettingsSchema>;
 
@@ -244,6 +252,7 @@ export const updateClinicSettingsRequestSchema = z.object({
   cashierShiftBlindCloseEnabled: z.boolean().optional(),
   cashierShiftRequiredEnabled: z.boolean().optional(),
   cashierShiftMultiCashierEnabled: z.boolean().optional(),
+  cashVoucherApprovalEnabled: z.boolean().optional(),
 });
 export type UpdateClinicSettingsRequest = z.infer<typeof updateClinicSettingsRequestSchema>;
 
@@ -270,6 +279,8 @@ export const DEFAULT_CASHIER_SHIFT_BLIND_CLOSE_ENABLED = true;
 export const DEFAULT_CASHIER_SHIFT_REQUIRED_ENABLED = true;
 /** Tắt theo mặc định (an toàn — giữ nguyên "1 két dùng chung toàn tenant" tới khi chủ động bật). */
 export const DEFAULT_CASHIER_SHIFT_MULTI_CASHIER_ENABLED = false;
+/** Tắt theo mặc định — thu ngân tự lập phiếu thu/chi, hiệu lực ngay, tới khi chủ động bật. */
+export const DEFAULT_CASH_VOUCHER_APPROVAL_ENABLED = false;
 
 /**
  * `GET /clinic-settings/cashier-shift-blind-close-enabled` — chiếu tối thiểu tự-phục vụ, cùng lý

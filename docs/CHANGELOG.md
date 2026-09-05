@@ -4,6 +4,22 @@
 
 ## 2026-09-05
 
+### Seed sẵn 13 "Nghề nghiệp" mặc định (mã chính thức, cùng mục đích "build cho khách luôn sẵn danh mục" như Đơn vị tính)
+
+Chủ dự án gửi `NgheNghiep.md` (13 dòng, có sẵn mã chính thức — khác Đơn vị tính) copy byte-for-byte vào `docs/data/nghe-nghiep.md`. Thêm `OCCUPATION_ITEMS` vào `packages/core/src/reference-catalog/data.ts` (cùng mảng với `ETHNICITY_ITEMS`/`NATIONALITY_ITEMS`/`EMPLOYMENT_TYPE_ITEMS` — category này KHÔNG có trong `REFERENCE_CATALOG_SHORT_CODE_PREFIXES` nên giữ nguyên `code` cho trước thay vì tự sinh mã ngắn tuần tự) + vòng lặp seed mới trong `seed-reference-catalog.ts`, upsert theo `(category, code)` đúng khuôn `EMPLOYMENT_TYPE_ITEMS`. Cập nhật lại comment enum `OCCUPATION`/`UNIT` ở `schema.prisma` (trước ghi "không seed cứng", nay đã seed).
+
+Không migration/API/frontend nào đổi — category `OCCUPATION` đã có UI quản lý + Combobox ở form bệnh nhân từ #061.
+
+Đã xác minh: `packages/core` 155/155 test (+1 `data.spec.ts`), `apps/api` `reference-catalog-http.spec.ts` 15/15 không regression, `pnpm -w typecheck/lint/build` sạch (chunk web không đổi, 486.66 kB). Chạy `db:seed` thật trên Postgres dev, xác nhận qua query trực tiếp: đúng 13 dòng mới upsert theo mã (1 dòng dữ liệu test cũ có sẵn từ trước không bị đụng), chạy lại lần 2 xác nhận không tạo trùng.
+
+### Seed sẵn 47 "Đơn vị tính" mặc định (build cho khách luôn có sẵn danh mục)
+
+Chủ dự án gửi `Donvitinh.md` (47 đơn vị duy nhất — file gốc 48 dòng nhưng "Gói" lặp lại 1 lần, đã bỏ dòng lặp), copy byte-for-byte vào `docs/data/don-vi-tinh.md` (đúng tiền lệ `allergen-catalog.md`). Thêm `UNIT_SEED_ITEMS` (`packages/core/src/reference-catalog/unit-seed-data.ts`) và `seedUnits()` trong `seed-reference-catalog.ts` — idempotent THEO TÊN (không theo `code`, đúng khuôn `seedAllergenCatalog()`, vì nguồn dữ liệu này không có mã chính thức): mục đã tồn tại (kể cả do `clinic_admin` tự tạo trùng tên trước khi seed chạy) được bỏ qua, không ghi đè. Mã tự sinh NGẮN, TUẦN TỰ qua `GlobalCodeSequenceRepository` (tiền tố `DV` có sẵn từ #113), cột "Mô tả" của file gốc (ký hiệu viết tắt, ví dụ "Microgam"→"µg") map thẳng vào cột `reference_catalog.description` có sẵn. Chạy `pnpm db:seed` là danh mục có sẵn ngay — không cần thao tác tay, đúng yêu cầu "build source cho khách luôn sẵn danh mục".
+
+Không migration/API/frontend nào đổi — thuần seed data cho category `UNIT` đã có UI quản lý từ trước (#078). Người dùng vẫn thêm được đơn vị mới qua chức năng "Thêm mới" bình thường, tiếp đúng mạch số đếm (không trùng mã).
+
+Đã xác minh: `packages/core` 154/154 test (+3 `unit-seed-data.spec.ts`), `apps/api` `reference-catalog-http.spec.ts` 15/15 không regression, `pnpm -w typecheck/lint/build` sạch (chunk web không đổi, 486.66 kB — thuần backend). Chạy `db:seed` thật trên Postgres dev, xác nhận qua query trực tiếp: 46 dòng mới tạo (1 dòng "Lần" đã tồn tại sẵn từ trước nên bỏ qua đúng thiết kế), mã `DV00003`..`DV00048` không trùng, chạy lại lần 2 xác nhận không tạo trùng (idempotent).
+
 ### Danh mục "Loại thu chi" + chuẩn "Lưu và nhập tiếp" cho mọi form Thêm mới Quản trị + `ModalHeader` dùng chung
 
 Danh mục dùng chung mới `INCOME_EXPENSE_TYPE` (mã tự sinh `TC00001`..., cột `direction` Chi tiền/Thu tiền) chuẩn bị cho chức năng "Thu chi tại quầy"/Sổ quỹ sắp làm (chưa xây). Thêm chuẩn mới **"Lưu và nhập tiếp"** cho toàn bộ 8 nhóm form Thêm mới ở Quản trị (danh mục dùng chung, Phòng/Tầng, Khoa/Phòng, Thuốc, Dị nguyên, Ca làm việc, Tài khoản) — lưu xong không đóng modal, tự làm trống để nhập tiếp bản ghi khác, kèm banner xanh báo đã lưu (`useSaveFlash`/`SaveFlashBanner`). Rà soát phát hiện + sửa 2 nợ kỹ thuật cũ: các modal nhỏ từng xếp input 1 cột dọc (vi phạm mục 4.1) nay chuyển lưới ngang; header modal đổi sang dùng chung `ModalHeader.tsx` (badge icon đặc + tiêu đề đậm + phụ đề dạng pill). Tiện sửa 2 lỗi bố cục khác: "Ca làm việc" hết sinh thanh cuộn dọc thừa (nới rộng modal + 2 khối giờ làm việc/giờ nghỉ cạnh nhau), thanh pill "Danh mục dùng chung"/"Cấu hình hệ thống" đổi từ cuộn ngang sang xuống dòng (tránh xót cấu hình khi danh sách pill dài).

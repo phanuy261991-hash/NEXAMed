@@ -32,6 +32,8 @@ export const businessCodeTypeSchema = z.enum([
   'ENCOUNTER',
   'INVOICE',
   'CASHIER_SHIFT',
+  'CASH_RECEIPT',
+  'CASH_PAYMENT',
 ]);
 export type BusinessCodeType = z.infer<typeof businessCodeTypeSchema>;
 
@@ -49,6 +51,10 @@ export const BUSINESS_CODE_TYPE_REGISTRY: Record<BusinessCodeType, { label: stri
   ENCOUNTER: { label: 'Mã lượt khám', internalPrefix: 'LK' },
   INVOICE: { label: 'Mã phiếu thu', internalPrefix: 'PT' },
   CASHIER_SHIFT: { label: 'Mã phiếu chốt ca', internalPrefix: 'PCC' },
+  // "Thu chi tại quầy" (Sổ quỹ & Thu chi GĐ1) — không trùng "PT" (phiếu thu viện phí)/"PCC" (phiếu
+  // chốt ca) đã dùng.
+  CASH_RECEIPT: { label: 'Mã phiếu thu quỹ', internalPrefix: 'PTQ' },
+  CASH_PAYMENT: { label: 'Mã phiếu chi quỹ', internalPrefix: 'PCQ' },
 };
 
 export const DEFAULT_BUSINESS_CODE_COUNTER_DIGITS = 6;

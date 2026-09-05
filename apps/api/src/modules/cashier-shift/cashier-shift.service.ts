@@ -36,6 +36,7 @@ import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
 import type { RequestMeta } from '../../common/request-meta';
 import { PaymentRepository } from '../billing/payment.repository';
+import { CashVoucherRepository, type CashVoucherCashierShiftRow } from '../cash-book/cash-voucher.repository';
 import { CashierShiftRepository, type EditCashierShiftData } from './cashier-shift.repository';
 
 type PaymentMethodMap = Map<string, { name: string; countsAsCash: boolean }>;
@@ -55,6 +56,7 @@ export class CashierShiftService implements CashierShiftReaderPort {
     private readonly unitOfWork: UnitOfWorkService,
     private readonly cashierShiftRepository: CashierShiftRepository,
     private readonly paymentRepository: PaymentRepository,
+    private readonly cashVoucherRepository: CashVoucherRepository,
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
     @Inject(REFERENCE_CATALOG_READER_PORT) private readonly referenceCatalogReader: ReferenceCatalogReaderPort,
     @Inject(CLINIC_CONFIG_READER_PORT) private readonly clinicConfigReader: ClinicConfigReaderPort,
@@ -67,6 +69,12 @@ export class CashierShiftService implements CashierShiftReaderPort {
       multiCashierEnabled ? this.cashierShiftRepository.findOpenForCashier(tx, tenantId, actorId) : this.cashierShiftRepository.findOpen(tx, tenantId),
     );
     return row?.id ?? null;
+  }
+
+  /** `CashierShiftReaderPort` ("Thu chi tại quầy" GĐ1) — `cash-book` gọi để khoá sửa/huỷ phiếu gắn ca đã chốt. */
+  async isCashierShiftOpen(tenantId: string, cashierShiftId: string): Promise<boolean> {
+    const row = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.cashierShiftRepository.findById(tx, tenantId, cashierShiftId));
+    return row?.status === 'OPEN';
   }
 
   async getCurrent(tenantId: string, actorId: string): Promise<CurrentCashierShiftResponse> {
@@ -202,6 +210,8 @@ export class CashierShiftService implements CashierShiftReaderPort {
         submittedAmount,
         handoverNote: dto.handoverNote ?? null,
         closedAt,
+        otherCashInAmount: totals.otherCashInAmount,
+        otherCashOutAmount: totals.otherCashOutAmount,
       });
       if (count === 0) {
         throw new ConcurrentModificationError();
@@ -378,6 +388,8 @@ export class CashierShiftService implements CashierShiftReaderPort {
         editData.cashOutAmount = totals.cashOutAmount;
         editData.nonCashBreakdownJson = totals.nonCashBreakdown;
         editData.expectedCashAmount = totals.expectedCashAmount;
+        editData.otherCashInAmount = totals.otherCashInAmount;
+        editData.otherCashOutAmount = totals.otherCashOutAmount;
       }
 
       const count = await this.cashierShiftRepository.edit(tx, tenantId, id, dto.version, actorId, editData);
@@ -423,6 +435,23 @@ export class CashierShiftService implements CashierShiftReaderPort {
     });
   }
 
+  /** "Thu chi tại quầy" GĐ1 — `direction` INCOME/EXPENSE ánh xạ sang `type` PAYMENT/REFUND đúng
+   * chiều tiền (thu vào/chi ra khỏi két), `source:'VOUCHER'` để `computeCashierShiftTotals()` tách
+   * riêng được ở `otherCashIn/OutAmount` (vẫn cộng vào tổng gộp `cashIn/OutAmount` như bình thường). */
+  private buildVoucherInputs(rows: CashVoucherCashierShiftRow[], methodMap: PaymentMethodMap): CashierShiftPaymentInput[] {
+    return rows.map((row) => {
+      const meta = methodMap.get(row.paymentMethodCode);
+      return {
+        methodCode: row.paymentMethodCode,
+        methodLabel: meta?.name ?? row.paymentMethodCode,
+        isCash: meta?.countsAsCash ?? false,
+        type: row.direction === 'INCOME' ? 'PAYMENT' : 'REFUND',
+        amount: Number(row.amount),
+        source: 'VOUCHER',
+      };
+    });
+  }
+
   /**
    * "Đa thu ngân" — rẽ nhánh nguồn `payment` theo công tắc HIỆN TẠI (đọc lại mỗi lần gọi, không
    * snapshot theo ca): TẮT dùng `listForWindow()` (theo khoảng thời gian, code KHÔNG đổi so với
@@ -437,10 +466,13 @@ export class CashierShiftService implements CashierShiftReaderPort {
     endAtOverride?: Date,
   ): Promise<CashierShiftTotals> {
     const multiCashierEnabled = await this.clinicConfigReader.getCashierShiftMultiCashierEnabled(tenantId);
-    const paymentRows = multiCashierEnabled
-      ? await this.paymentRepository.listForShift(tx, tenantId, row.id)
-      : await this.paymentRepository.listForWindow(tx, tenantId, row.openedAt, endAtOverride ?? row.closedAt ?? new Date());
-    return computeCashierShiftTotals(Number(row.openingFloatActual), this.buildPaymentInputs(paymentRows, methodMap));
+    const endAt = endAtOverride ?? row.closedAt ?? new Date();
+    const [paymentRows, voucherRows] = await Promise.all([
+      multiCashierEnabled ? this.paymentRepository.listForShift(tx, tenantId, row.id) : this.paymentRepository.listForWindow(tx, tenantId, row.openedAt, endAt),
+      multiCashierEnabled ? this.cashVoucherRepository.listPostedForShift(tx, tenantId, row.id) : this.cashVoucherRepository.listPostedForWindow(tx, tenantId, row.openedAt, endAt),
+    ]);
+    const inputs = [...this.buildPaymentInputs(paymentRows, methodMap), ...this.buildVoucherInputs(voucherRows, methodMap)];
+    return computeCashierShiftTotals(Number(row.openingFloatActual), inputs);
   }
 
   private toSummaryDto(totals: CashierShiftTotals): CashierShiftSummary {
@@ -451,6 +483,8 @@ export class CashierShiftService implements CashierShiftReaderPort {
       cashOutCount: totals.cashOutCount,
       nonCashBreakdown: totals.nonCashBreakdown as NonCashBreakdownItem[],
       expectedCashAmount: totals.expectedCashAmount,
+      otherCashInAmount: totals.otherCashInAmount,
+      otherCashOutAmount: totals.otherCashOutAmount,
     };
   }
 
@@ -486,6 +520,8 @@ export class CashierShiftService implements CashierShiftReaderPort {
       cashOutAmount: row.cashOutAmount !== null ? Number(row.cashOutAmount) : null,
       nonCashBreakdown,
       expectedCashAmount: row.expectedCashAmount !== null ? Number(row.expectedCashAmount) : null,
+      otherCashInAmount: row.otherCashInAmount !== null ? Number(row.otherCashInAmount) : null,
+      otherCashOutAmount: row.otherCashOutAmount !== null ? Number(row.otherCashOutAmount) : null,
       countedCashAmount: row.countedCashAmount !== null ? Number(row.countedCashAmount) : null,
       cashDiscrepancyReason: row.cashDiscrepancyReason,
       keepForNextAmount: row.keepForNextAmount !== null ? Number(row.keepForNextAmount) : null,

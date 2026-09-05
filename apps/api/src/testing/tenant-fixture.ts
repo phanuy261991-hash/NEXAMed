@@ -56,6 +56,11 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       await prisma.payment.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.invoiceLine.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.invoice.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // cash_voucher/cash_account ("Thu chi tại quầy", Sổ quỹ & Thu chi GĐ1) — cash_voucher tham
+      // chiếu CẢ cash_account LẪN cashier_shift (FK RESTRICT), phải xoá TRƯỚC cashier_shift (dưới
+      // đây) và trước cash_account. payment cũng tham chiếu cash_account (đã xoá ở trên rồi).
+      await prisma.cashVoucher.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await prisma.cashAccount.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // encounter_service_item (docs/DECISIONS.md #080) — cùng lý do vital_sign, sub-resource của
       // encounter, không có self-reference nên xoá thẳng, không cần vòng lặp theo tầng.
       await prisma.encounterServiceItem.deleteMany({ where: { tenantId: { in: tenantIds } } });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EMPLOYMENT_STATUS_ITEMS, EMPLOYMENT_TYPE_ITEMS, ETHNICITY_ITEMS, NATIONALITY_ITEMS } from './data';
+import { EMPLOYMENT_STATUS_ITEMS, EMPLOYMENT_TYPE_ITEMS, ETHNICITY_ITEMS, NATIONALITY_ITEMS, OCCUPATION_ITEMS } from './data';
 
 describe('reference-catalog seed data', () => {
   it('có đúng 54 dân tộc, không trùng code', () => {
@@ -24,5 +24,11 @@ describe('reference-catalog seed data', () => {
   it('EMPLOYMENT_TYPE_ITEMS: đúng 4 hình thức làm việc, không trùng code', () => {
     expect(EMPLOYMENT_TYPE_ITEMS).toHaveLength(4);
     expect(new Set(EMPLOYMENT_TYPE_ITEMS.map((i) => i.code)).size).toBe(4);
+  });
+
+  it('OCCUPATION_ITEMS: đúng 13 nghề nghiệp, không trùng code, "Khác" đứng cuối', () => {
+    expect(OCCUPATION_ITEMS).toHaveLength(13);
+    expect(new Set(OCCUPATION_ITEMS.map((i) => i.code)).size).toBe(13);
+    expect(OCCUPATION_ITEMS[OCCUPATION_ITEMS.length - 1]).toMatchObject({ code: 'KHAC', name: 'Khác' });
   });
 });

@@ -16,9 +16,10 @@ export class PaymentRepository {
     amount: bigint,
     paidAt: Date,
     cashierShiftId: string | null = null,
+    cashAccountId: string | null = null,
   ): Promise<Payment> {
     return tx.payment.create({
-      data: { tenantId, invoiceId, method, amount, paidAt, type: 'PAYMENT', cashierShiftId, createdBy: actorId, updatedBy: actorId },
+      data: { tenantId, invoiceId, method, amount, paidAt, type: 'PAYMENT', cashierShiftId, cashAccountId, createdBy: actorId, updatedBy: actorId },
     });
   }
 
@@ -37,9 +38,10 @@ export class PaymentRepository {
     refundedAt: Date,
     reason: string,
     cashierShiftId: string | null = null,
+    cashAccountId: string | null = null,
   ): Promise<Payment> {
     return tx.payment.create({
-      data: { tenantId, invoiceId, method, amount, paidAt: refundedAt, type: 'REFUND', reason, cashierShiftId, createdBy: actorId, updatedBy: actorId },
+      data: { tenantId, invoiceId, method, amount, paidAt: refundedAt, type: 'REFUND', reason, cashierShiftId, cashAccountId, createdBy: actorId, updatedBy: actorId },
     });
   }
 

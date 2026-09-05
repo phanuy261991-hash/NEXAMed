@@ -4,6 +4,7 @@ import { IamModule } from '../iam/iam.module';
 import { BillingModule } from '../billing/billing.module';
 import { ReferenceCatalogModule } from '../reference-catalog/reference-catalog.module';
 import { ClinicModule } from '../clinic/clinic.module';
+import { CashBookModule } from '../cash-book/cash-book.module';
 import { CashierShiftController } from './cashier-shift.controller';
 import { CashierShiftService } from './cashier-shift.service';
 import { CashierShiftRepository } from './cashier-shift.repository';
@@ -24,9 +25,14 @@ import { CashierShiftRepository } from './cashier-shift.repository';
  * liệu của bên kia) — xem comment ở `packages/core/src/ports/cashier-shift-reader.port.ts`.
  * `CashierShiftService` export qua token `CASHIER_SHIFT_READER_PORT` (không export thẳng class,
  * đúng khuôn mọi port khác trong dự án).
+ *
+ * `forwardRef(() => CashBookModule)` (2026-09-05, "Thu chi tại quầy" GĐ1) — vòng phụ thuộc 2
+ * chiều CÓ THẬT giống hệt `BillingModule` ở trên: `cash-book` cần `CASHIER_SHIFT_READER_PORT`
+ * (gắn ca lúc lập phiếu, kiểm ca còn mở trước khi cho sửa/huỷ); `cashier-shift` cần
+ * `CashVoucherRepository` (gộp phiếu ĐÃ DUYỆT vào tổng kết ca, `computeTotals()`).
  */
 @Module({
-  imports: [IamModule, forwardRef(() => BillingModule), ReferenceCatalogModule, ClinicModule],
+  imports: [IamModule, forwardRef(() => BillingModule), ReferenceCatalogModule, ClinicModule, forwardRef(() => CashBookModule)],
   controllers: [CashierShiftController],
   providers: [CashierShiftService, CashierShiftRepository, { provide: CASHIER_SHIFT_READER_PORT, useExisting: CashierShiftService }],
   exports: [CASHIER_SHIFT_READER_PORT],

@@ -10,6 +10,7 @@ import {
   DEFAULT_ALLOW_STAFF_SELF_SCHEDULE_ENABLED,
   DEFAULT_BLOCK_BOOKING_OUTSIDE_WORK_SHIFT_ENABLED,
   DEFAULT_CASHIER_SHIFT_BLIND_CLOSE_ENABLED,
+  DEFAULT_CASH_VOUCHER_APPROVAL_ENABLED,
   DEFAULT_CASHIER_SHIFT_MULTI_CASHIER_ENABLED,
   DEFAULT_CASHIER_SHIFT_REQUIRED_ENABLED,
   DEFAULT_NO_SHOW_AUTO_ENABLED,
@@ -68,6 +69,10 @@ const cashierShiftRequiredSchema = z.boolean();
 // tenant" tới khi chủ động bật).
 const CASHIER_SHIFT_MULTI_CASHIER_KEY = 'cashier_shift_multi_cashier_enabled';
 const cashierShiftMultiCashierSchema = z.boolean();
+// "Thu chi tại quầy" (Sổ quỹ & Thu chi GĐ1) — tắt theo mặc định (thu ngân tự lập phiếu, hiệu lực
+// ngay) cho tenant chưa từng cấu hình.
+const CASH_VOUCHER_APPROVAL_ENABLED_KEY = 'cash_voucher_approval_enabled';
+const cashVoucherApprovalEnabledSchema = z.boolean();
 // "Cấu hình mẫu mã phát sinh" (docs/DECISIONS.md #114, 2026-09-03) — 1 object JSON duy nhất,
 // khoá theo loại mã (7 loại), chỉ chứa entry của loại mã ĐÃ được tenant chủ động sửa (loại chưa
 // đụng tới thì KHÔNG có key — service tự áp mặc định khớp hành vi cũ, xem `BusinessCodeService`).
@@ -241,6 +246,19 @@ export class ClinicSettingsRepository {
 
   upsertCashierShiftMultiCashierEnabled(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
     return this.upsert(tx, tenantId, actorId, CASHIER_SHIFT_MULTI_CASHIER_KEY, value);
+  }
+
+  async getCashVoucherApprovalEnabled(tx: Prisma.TransactionClient, tenantId: string): Promise<boolean> {
+    const setting = await tx.tenantSetting.findFirst({ where: { tenantId, key: CASH_VOUCHER_APPROVAL_ENABLED_KEY } });
+    if (!setting) {
+      return DEFAULT_CASH_VOUCHER_APPROVAL_ENABLED;
+    }
+    const parsed = cashVoucherApprovalEnabledSchema.safeParse(setting.valueJson);
+    return parsed.success ? parsed.data : DEFAULT_CASH_VOUCHER_APPROVAL_ENABLED;
+  }
+
+  upsertCashVoucherApprovalEnabled(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
+    return this.upsert(tx, tenantId, actorId, CASH_VOUCHER_APPROVAL_ENABLED_KEY, value);
   }
 
   /** Chỉ trả entry của loại mã tenant ĐÃ chủ động cấu hình — loại mã vắng mặt nghĩa là "dùng mặc

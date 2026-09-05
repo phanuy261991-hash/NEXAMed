@@ -83,10 +83,10 @@ describe('HTTP e2e — /api/v1/clinic-settings/code-templates', () => {
     expect(res.status).toBe(403);
   });
 
-  it('tenant chưa cấu hình gì → 7 loại mã đúng khuôn mặc định, KHÔNG locked, số bắt đầu = 1', async () => {
+  it('tenant chưa cấu hình gì → 9 loại mã đúng khuôn mặc định, KHÔNG locked, số bắt đầu = 1', async () => {
     const res = await request(app.getHttpServer()).get('/api/v1/clinic-settings/code-templates').set(authed(clinicAdminToken));
     expect(res.status).toBe(200);
-    expect(res.body.data.items).toHaveLength(7);
+    expect(res.body.data.items).toHaveLength(9);
 
     const patient = res.body.data.items.find((i: { codeType: string }) => i.codeType === 'PATIENT');
     expect(patient).toMatchObject({
@@ -99,7 +99,9 @@ describe('HTTP e2e — /api/v1/clinic-settings/code-templates', () => {
     expect(patient.exampleNextCode).toMatch(/^BN\d{4}\d{6}$/);
 
     const employment = res.body.data.items.map((i: { codeType: string }) => i.codeType).sort();
-    expect(employment).toEqual(['APPOINTMENT_BOOKING', 'CASHIER_SHIFT', 'DEPARTMENT', 'EMPLOYEE', 'ENCOUNTER', 'INVOICE', 'PATIENT'].sort());
+    expect(employment).toEqual(
+      ['APPOINTMENT_BOOKING', 'CASHIER_SHIFT', 'CASH_PAYMENT', 'CASH_RECEIPT', 'DEPARTMENT', 'EMPLOYEE', 'ENCOUNTER', 'INVOICE', 'PATIENT'].sort(),
+    );
   });
 
   it('PATCH sửa khuôn mẫu — thiếu [Số đếm] → 400 BUSINESS_CODE_TEMPLATE_INVALID', async () => {

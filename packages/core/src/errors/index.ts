@@ -13,3 +13,4 @@ export * from './prescription-errors';
 export * from './billing-errors';
 export * from './work-shift-assignment-errors';
 export * from './cashier-shift-errors';
+export * from './cash-book-errors';

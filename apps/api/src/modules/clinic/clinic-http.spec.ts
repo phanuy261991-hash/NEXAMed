@@ -304,6 +304,35 @@ describe('HTTP e2e — /api/v1/rooms và /api/v1/clinic-settings', () => {
       expect(restore.body.data.cashierShiftMultiCashierEnabled).toBe(false);
     });
 
+    it('GET lúc chưa cấu hình → cashVoucherApprovalEnabled mặc định false ("Thu chi tại quầy")', async () => {
+      const res = await request(app.getHttpServer()).get('/api/v1/clinic-settings').set(authed(tenantBAdminToken));
+      expect(res.status).toBe(200);
+      expect(res.body.data.cashVoucherApprovalEnabled).toBe(false);
+    });
+
+    it('PATCH cashVoucherApprovalEnabled → 200, GET phản ánh đúng giá trị mới, độc lập với tenant khác', async () => {
+      const patch = await request(app.getHttpServer())
+        .patch('/api/v1/clinic-settings')
+        .set(authed(clinicAdminToken))
+        .send({ cashVoucherApprovalEnabled: true });
+      expect(patch.status).toBe(200);
+      expect(patch.body.data.cashVoucherApprovalEnabled).toBe(true);
+
+      const get = await request(app.getHttpServer()).get('/api/v1/clinic-settings').set(authed(clinicAdminToken));
+      expect(get.body.data.cashVoucherApprovalEnabled).toBe(true);
+
+      const tenantBGet = await request(app.getHttpServer()).get('/api/v1/clinic-settings').set(authed(tenantBAdminToken));
+      expect(tenantBGet.body.data.cashVoucherApprovalEnabled).toBe(false);
+
+      // Khôi phục về mặc định — tenant A dùng chung cho các describe khác trong file này.
+      const restore = await request(app.getHttpServer())
+        .patch('/api/v1/clinic-settings')
+        .set(authed(clinicAdminToken))
+        .send({ cashVoucherApprovalEnabled: false });
+      expect(restore.status).toBe(200);
+      expect(restore.body.data.cashVoucherApprovalEnabled).toBe(false);
+    });
+
     it('PATCH slotDurationMinutes → 200, GET phản ánh đúng giá trị mới', async () => {
       const patch = await request(app.getHttpServer())
         .patch('/api/v1/clinic-settings')

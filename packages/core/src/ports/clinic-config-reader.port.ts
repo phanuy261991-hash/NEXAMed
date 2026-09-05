@@ -93,6 +93,14 @@ export interface ClinicConfigReaderPort {
    * `tenant_setting`), cùng lý do các cấu hình khác ở trên.
    */
   getCashierShiftMultiCashierEnabled(tenantId: string): Promise<boolean>;
+
+  /**
+   * "Thu chi tại quầy" (Sổ quỹ & Thu chi GĐ1) — bật/tắt bắt buộc duyệt phiếu CHI trước khi tính
+   * vào tiền mặt dự kiến của ca (`tenant_setting` key `cash_voucher_approval_enabled`, mặc định
+   * `false` — thu ngân tự lập phiếu, hiệu lực ngay). Module `cash-book` đọc qua port này (module
+   * `clinic` sở hữu `tenant_setting`), cùng lý do các cấu hình khác ở trên.
+   */
+  getCashVoucherApprovalEnabled(tenantId: string): Promise<boolean>;
 }
 
 export const CLINIC_CONFIG_READER_PORT = Symbol('CLINIC_CONFIG_READER_PORT');

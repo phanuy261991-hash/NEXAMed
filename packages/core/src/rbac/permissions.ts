@@ -118,6 +118,21 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   // Duyệt phiếu / Xử lý chênh lệch / Mở khoá sửa sau khi chốt — nhóm hành động của Quản lý, mặc
   // định CHỈ clinic_admin (đúng tinh thần `invoice.refund`).
   { module: 'cashier_shift', action: 'manage', description: 'Duyệt phiếu, xử lý chênh lệch, mở khoá sửa phiếu chốt ca' },
+  // "Thu chi tại quầy" (Sổ quỹ & Thu chi GĐ1, mockup Artifact duyệt trước khi code) — `cash_account`
+  // (Quỹ) tách `read`/`manage` đúng khuôn `reference_catalog`: mọi vai trò lập phiếu cần đọc danh
+  // sách quỹ để chọn, chỉ clinic_admin quản lý (thêm/sửa/ẩn quỹ).
+  { module: 'cash_account', action: 'read', description: 'Xem danh sách Quỹ (tiền mặt/ngân hàng)' },
+  { module: 'cash_account', action: 'manage', description: 'Thêm/sửa/ẩn Quỹ' },
+  // `cash_voucher.update` mặc định `personal` cho receptionist (chỉ sửa/huỷ phiếu do CHÍNH mình
+  // lập, kiểm ở Service — cùng khuôn `work_shift_assignment`/`cashier_shift`, RBAC chỉ gác "được
+  // thử"), `global` cho clinic_admin (sửa/huỷ phiếu của bất kỳ ai).
+  { module: 'cash_voucher', action: 'create', description: 'Lập phiếu thu/chi ngoài dịch vụ khám' },
+  { module: 'cash_voucher', action: 'read', description: 'Xem danh sách/chi tiết phiếu thu/chi' },
+  { module: 'cash_voucher', action: 'update', description: 'Sửa/huỷ phiếu thu/chi' },
+  // Duyệt/Từ chối phiếu chờ duyệt — chỉ có ý nghĩa khi tenant bật công tắc
+  // `cashVoucherApprovalEnabled` (mặc định TẮT); mặc định CHỈ clinic_admin, đúng tinh thần
+  // `cashier_shift.manage`/`invoice.refund`.
+  { module: 'cash_voucher', action: 'approve', description: 'Duyệt/Từ chối phiếu thu/chi đang chờ duyệt' },
 ] as const;
 
 export function permissionKey(p: Pick<PermissionDefinition, 'module' | 'action'>): string {
@@ -170,6 +185,10 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     // `CashierShiftService`), không xem lịch sử toàn phòng khám (đó là màn Quản lý, dưới đây).
     'cashier_shift.create': 'personal',
     'cashier_shift.read': 'personal',
+    'cash_account.read': 'global',
+    'cash_voucher.create': 'global',
+    'cash_voucher.read': 'global',
+    'cash_voucher.update': 'personal',
   },
   nurse: {
     'patient.read': 'global',
@@ -278,6 +297,12 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'cashier_shift.create': 'personal',
     'cashier_shift.read': 'global',
     'cashier_shift.manage': 'global',
+    'cash_account.read': 'global',
+    'cash_account.manage': 'global',
+    'cash_voucher.create': 'global',
+    'cash_voucher.read': 'global',
+    'cash_voucher.update': 'global',
+    'cash_voucher.approve': 'global',
   },
   system_admin: {
     'user_account.read': 'global',

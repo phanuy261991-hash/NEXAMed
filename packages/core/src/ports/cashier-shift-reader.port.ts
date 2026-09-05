@@ -15,6 +15,13 @@ export interface CashierShiftReaderPort {
    * khi thu tiền"), chỉ đơn thuần không gắn `cashierShiftId`.
    */
   getRelevantOpenShiftId(tenantId: string, actorId: string): Promise<string | null>;
+
+  /**
+   * "Thu chi tại quầy" (GĐ1) — ca này còn `OPEN` không, dùng để khoá sửa/huỷ `cash_voucher` gắn
+   * với ca đã chốt (cùng nguyên tắc "Chốt ca" tự khoá số liệu của chính nó sau khi CLOSED). `false`
+   * nếu không tìm thấy ca (không nên xảy ra — `cash_voucher.cashierShiftId` luôn trỏ ca có thật).
+   */
+  isCashierShiftOpen(tenantId: string, cashierShiftId: string): Promise<boolean>;
 }
 
 export const CASHIER_SHIFT_READER_PORT = Symbol('CASHIER_SHIFT_READER_PORT');

@@ -99,6 +99,10 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   // sửa "Số bắt đầu đếm" khi đã khoá là xung đột trạng thái (loại mã đó đã phát sinh mã đầu tiên).
   BUSINESS_CODE_TEMPLATE_INVALID: HttpStatus.BAD_REQUEST,
   BUSINESS_CODE_TEMPLATE_STARTING_VALUE_LOCKED: HttpStatus.CONFLICT,
+  // "Thu chi tại quầy" (Sổ quỹ & Thu chi GĐ1) — cùng nhóm CONFLICT: trạng thái hiện tại của phiếu
+  // (đã duyệt/không còn chờ duyệt) không cho phép thao tác này, không phải lỗi input.
+  CASH_VOUCHER_NOT_EDITABLE: HttpStatus.CONFLICT,
+  CASH_VOUCHER_NOT_PENDING_APPROVAL: HttpStatus.CONFLICT,
 };
 
 /**

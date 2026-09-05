@@ -1,6 +1,14 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
-import { DEFAULT_ROLE_PERMISSIONS, permissionKey } from '@nexamed/core';
+import { DEFAULT_ROLE_PERMISSIONS, formatShortSequentialCode, permissionKey } from '@nexamed/core';
 import { USER_ROLES } from '@nexamed/shared';
+import { CodeSequenceRepository } from './code-sequence.repository';
+
+/** "Thu chi tại quầy" (Sổ quỹ & Thu chi GĐ1) — tiền tố mã `cash_account`, theo tenant (khác 6
+ * category `reference_catalog` toàn hệ thống ở #113), đúng khuôn `WorkShiftService`. */
+const CASH_ACCOUNT_CODE_PREFIX = 'QU';
+// Stateless (không phụ thuộc DI nào) — cùng cách khởi tạo tay đã dùng ở `seed-allergen-catalog.ts`
+// cho `GlobalCodeSequenceRepository`, vì hàm này chạy ngoài NestJS container (seed script/test).
+const codeSequenceRepository = new CodeSequenceRepository();
 
 /**
  * Seed 5 vai trò mặc định (is_system_default = true) + ma trận role_permission, VÀ Khoa mặc định
@@ -22,6 +30,29 @@ export async function seedDefaultRolesForTenant(
   if (!existingDefaultDepartment) {
     await tx.department.create({
       data: { tenantId, name: 'Khoa chung', code: null, isDefault: true, isActive: true, createdBy: actorId, updatedBy: actorId },
+    });
+  }
+
+  // "Thu chi tại quầy" (Sổ quỹ & Thu chi GĐ1) — quỹ tiền mặt mặc định, điều kiện tiên quyết để
+  // `InvoiceService.resolveCashAccountId()` gắn được `payment.cashAccountId` ngay từ lượt thu tiền
+  // đầu tiên của tenant. Quỹ ngân hàng KHÔNG seed sẵn — `clinic_admin` tự tạo khi cần.
+  const existingDefaultCashAccount = await tx.cashAccount.findFirst({ where: { tenantId, type: 'CASH', isDefault: true } });
+  if (!existingDefaultCashAccount) {
+    const seq = await codeSequenceRepository.next(tx as Prisma.TransactionClient, tenantId, CASH_ACCOUNT_CODE_PREFIX, actorId);
+    const code = formatShortSequentialCode(CASH_ACCOUNT_CODE_PREFIX, seq);
+    await tx.cashAccount.create({
+      data: {
+        tenantId,
+        code,
+        name: 'Quỹ tiền mặt',
+        type: 'CASH',
+        openingBalance: 0n,
+        openingBalanceAt: new Date(),
+        isDefault: true,
+        isActive: true,
+        createdBy: actorId,
+        updatedBy: actorId,
+      },
     });
   }
 

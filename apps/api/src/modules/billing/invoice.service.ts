@@ -1,4 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 import {
   canRefundInvoice,
   CASHIER_SHIFT_READER_PORT,
@@ -11,8 +12,10 @@ import {
   InvoiceNotRefundableError,
   isInvoiceClosed,
   needsRefund as computeNeedsRefund,
+  REFERENCE_CATALOG_READER_PORT,
   vietnamDayRange,
   type CashierShiftReaderPort,
+  type ReferenceCatalogReaderPort,
 } from '@nexamed/core';
 import type {
   Invoice as InvoiceDto,
@@ -27,6 +30,7 @@ import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper
 import type { RequestMeta } from '../../common/request-meta';
 import { InvoiceRepository, type BillingListRow, type InvoiceWithLines } from './invoice.repository';
 import { PaymentRepository } from './payment.repository';
+import { CashAccountRepository } from '../cash-book/cash-account.repository';
 
 function toInvoiceResponse(row: InvoiceWithLines): InvoiceDto {
   const encounterCancelled = row.encounter.status === 'CANCELLED';
@@ -79,8 +83,27 @@ export class InvoiceService {
     private readonly unitOfWork: UnitOfWorkService,
     private readonly invoiceRepository: InvoiceRepository,
     private readonly paymentRepository: PaymentRepository,
+    private readonly cashAccountRepository: CashAccountRepository,
     @Inject(CASHIER_SHIFT_READER_PORT) private readonly cashierShiftReader: CashierShiftReaderPort,
+    @Inject(REFERENCE_CATALOG_READER_PORT) private readonly referenceCatalogReader: ReferenceCatalogReaderPort,
   ) {}
+
+  /**
+   * "Thu chi tại quầy" (Sổ quỹ & Thu chi GĐ1) — quỹ nhận/xuất tiền của dòng thu/hoàn tiền khám.
+   * CHỈ resolve khi hình thức thanh toán là TIỀN MẶT (`countsAsCash`) — với hình thức khác (chuyển
+   * khoản/thẻ), không có tín hiệu đáng tin cậy để biết tiền vào ĐÚNG tài khoản ngân hàng nào nếu
+   * tenant có nhiều tài khoản, nên để `null` (chấp nhận, xem plan). `null` nếu tenant chưa có quỹ
+   * tiền mặt mặc định — KHÔNG chặn thu tiền.
+   */
+  private async resolveCashAccountId(tx: Prisma.TransactionClient, tenantId: string, method: string): Promise<string | null> {
+    const meta = await this.referenceCatalogReader.listByCategory(tenantId, 'PAYMENT_METHOD');
+    const isCash = meta.find((m) => m.code === method)?.countsAsCash ?? false;
+    if (!isCash) {
+      return null;
+    }
+    const account = await this.cashAccountRepository.findDefault(tx, tenantId, 'CASH');
+    return account?.id ?? null;
+  }
 
   async getByEncounterId(tenantId: string, encounterId: string): Promise<InvoiceDto | null> {
     const row = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId));
@@ -149,7 +172,8 @@ export class InvoiceService {
         }
         throw new ConcurrentModificationError();
       }
-      await this.paymentRepository.create(tx, tenantId, actorId, invoice.id, dto.method, invoice.totalAmount, paidAt, cashierShiftId);
+      const cashAccountId = await this.resolveCashAccountId(tx, tenantId, dto.method);
+      await this.paymentRepository.create(tx, tenantId, actorId, invoice.id, dto.method, invoice.totalAmount, paidAt, cashierShiftId, cashAccountId);
 
       await writeAuditLog(tx, tenantId, {
         actorId,
@@ -233,6 +257,7 @@ export class InvoiceService {
       }
       // `activePayment` chắc chắn tồn tại ở đây — `canRefundInvoice` đã xác nhận `status='PAID'`,
       // mà phiếu PAID luôn có đúng 1 dòng payment type PAYMENT hiệu lực (xem markPaid()).
+      const cashAccountId = await this.resolveCashAccountId(tx, tenantId, invoice.activePayment!.method);
       await this.paymentRepository.createRefund(
         tx,
         tenantId,
@@ -243,6 +268,7 @@ export class InvoiceService {
         refundedAt,
         dto.reason,
         cashierShiftId,
+        cashAccountId,
       );
 
       await writeAuditLog(tx, tenantId, {

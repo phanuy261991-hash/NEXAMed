@@ -88,6 +88,8 @@ model Tenant {
   invoiceLines           InvoiceLine[]
   payments               Payment[]
   cashierShifts          CashierShift[]
+  cashAccounts           CashAccount[]
+  cashVouchers           CashVoucher[]
 
   @@map("tenant")
 }
@@ -598,20 +600,23 @@ enum ReferenceCatalogCategory {
   PRIORITY_REASON
   PRICE_TYPE
   // Nghề nghiệp — đảo ngược tiếp phần `occupation` của docs/DECISIONS.md #034 (trước đây cố ý để
-  // text tự do, không danh mục hoá). Không có nguồn dữ liệu chính thức (khác Dân tộc/Quốc tịch) —
-  // không seed cứng, quản lý qua UI (thêm/sửa/ẩn) như PATIENT_SOURCE/EXAM_TYPE.
+  // text tự do, không danh mục hoá). Ban đầu (#061) không seed cứng vì thiếu nguồn dữ liệu chính
+  // thức; 2026-09-05 chủ dự án gửi `docs/data/nghe-nghiep.md` (13 mã, packages/core/src/
+  // reference-catalog/data.ts OCCUPATION_ITEMS) — seed sẵn, vẫn quản lý thêm/sửa/ẩn được qua UI.
   OCCUPATION
   // Danh mục quản lý tài khoản nhân sự (mở rộng ADM-01) — Học vị/học hàm và Chức danh không có
-  // nguồn dữ liệu chính thức, không seed cứng (cùng lý do OCCUPATION). Trạng thái làm việc và
-  // Hình thức làm việc CÓ seed 3/4 giá trị mặc định (packages/core/src/reference-catalog/data.ts)
-  // vì chủ dự án đã cho sẵn giá trị chuẩn, nhưng vẫn quản lý được qua UI (clinic_admin thêm được
-  // trạng thái/hình thức khác nếu cần).
+  // nguồn dữ liệu chính thức, không seed cứng. Trạng thái làm việc và Hình thức làm việc CÓ seed
+  // 3/4 giá trị mặc định (packages/core/src/reference-catalog/data.ts) vì chủ dự án đã cho sẵn
+  // giá trị chuẩn, nhưng vẫn quản lý được qua UI (clinic_admin thêm được trạng thái/hình thức
+  // khác nếu cần).
   ACADEMIC_TITLE
   STAFF_POSITION
   EMPLOYMENT_STATUS
   EMPLOYMENT_TYPE
   // Đơn vị tính (ví dụ "Viên", "Lọ", "Chai") — chủ dự án yêu cầu trực tiếp 2026-08-26. Không có
-  // nguồn dữ liệu chính thức, không seed cứng, quản lý qua UI như OCCUPATION.
+  // nguồn dữ liệu chính thức để giữ mã cố định (khác OCCUPATION) — seed sẵn 47 đơn vị mặc định
+  // (2026-09-05, packages/core/src/reference-catalog/unit-seed-data.ts) nhưng mã tự sinh ngắn
+  // tuần tự (#113, tiền tố "DV") thay vì mã cho trước, vẫn quản lý qua UI.
   UNIT
   // Hình thức thanh toán (Thu ngân, chủ dự án yêu cầu trực tiếp 2026-08-27) — thay Postgres enum
   // `payment_method` cố định (CASH/BANK_TRANSFER) trước đây trên Payment.method/
@@ -646,12 +651,12 @@ enum ReferenceCatalogDirection {
 // patient.ethnicity/patient.nationality/patient.occupation (docs/DECISIONS.md, đảo ngược #034
 // phần ethnicity/nationality; occupation đảo ngược tiếp sau đó — xem entry OCCUPATION).
 model ReferenceCatalog {
-  id                 String                   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  id                 String                     @id @default(dbgenerated("uuidv7()")) @db.Uuid
   category           ReferenceCatalogCategory
   code               String
   name               String
-  sortOrder          Int                      @default(0) @map("sort_order")
-  isActive           Boolean                  @default(true) @map("is_active")
+  sortOrder          Int                        @default(0) @map("sort_order")
+  isActive           Boolean                    @default(true) @map("is_active")
   // Giá tham khảo (đồng) — CHỈ có ý nghĩa với category EXAM_TYPE, NULL với category khác. v1 chỉ
   // lưu để hiển thị, không tính toán/xuất hoá đơn (viện phí ngoài phạm vi CLAUDE.md).
   price              BigInt?
@@ -661,14 +666,14 @@ model ReferenceCatalog {
   // có ý nghĩa với category EMPLOYMENT_STATUS (giống price/unit chỉ có ý nghĩa với EXAM_TYPE).
   // Tách thành cột riêng thay vì so khớp `code` cố định ("NGHI_VIEC"...) vì `code` sửa được qua
   // UI (ReferenceCatalogPane) — so khớp chuỗi sẽ hỏng ngầm khi admin đổi mã.
-  deactivatesAccount Boolean                  @default(false) @map("deactivates_account")
+  deactivatesAccount Boolean                    @default(false) @map("deactivates_account")
   // Mô tả tự do — CHỈ có ý nghĩa với category UNIT (Đơn vị tính, chủ dự án yêu cầu trực tiếp
   // 2026-08-26), NULL với category khác (cùng bản chất price/unit/deactivatesAccount ở trên).
   description        String?
   // "Chốt ca" (2026-09-03) — CHỈ có ý nghĩa với category PAYMENT_METHOD: đánh dấu hình thức thanh
   // toán nào gộp vào đối soát đếm két tiền mặt. Tách thành cột riêng thay vì so khớp cứng
   // code='CASH' — cùng lý do deactivatesAccount ở trên (`code` sửa được qua UI).
-  countsAsCash       Boolean                  @default(false) @map("counts_as_cash")
+  countsAsCash       Boolean                    @default(false) @map("counts_as_cash")
   // "Loại thu chi" (2026-09-05) — CHỈ có ý nghĩa với category INCOME_EXPENSE_TYPE: Chi tiền/Thu
   // tiền. `null` với category khác, cùng bản chất price/unit/description ở trên.
   direction          ReferenceCatalogDirection?
@@ -914,9 +919,9 @@ model BreakGlassSession {
 }
 
 model CodeSequence {
-  id       String @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId String @map("tenant_id") @db.Uuid
-  prefix   String
+  id           String @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String @map("tenant_id") @db.Uuid
+  prefix       String
   // "Cấu hình mẫu mã phát sinh" (docs/DECISIONS.md #114, 2026-09-03) — chu kỳ reset bộ đếm khi
   // khuôn mẫu có token ngày/tháng/năm ('' = không reset, chạy liên tục — ĐÚNG hành vi mặc định
   // cũ trước #114, mọi dòng hiện có tự nhận '' qua @default nên không cần backfill). Ví dụ
@@ -1634,28 +1639,32 @@ model InvoiceLine {
 // thanh toán/công nợ. "Đánh dấu chưa thu" (huỷ nhầm) = soft-delete dòng payment (deletedReason bắt
 // buộc) + Invoice.status quay lại UNPAID — không xoá cứng theo CLAUDE.md.
 model Payment {
-  id        String      @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId  String      @map("tenant_id") @db.Uuid
-  invoiceId String      @map("invoice_id") @db.Uuid
+  id             String      @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId       String      @map("tenant_id") @db.Uuid
+  invoiceId      String      @map("invoice_id") @db.Uuid
   // Mã tham chiếu reference_catalog category PAYMENT_METHOD (text, không FK — xem comment Invoice.pendingPaymentMethod).
-  method    String
+  method         String
   // #085 — PAYMENT = tiền khách trả vào; REFUND = tiền hoàn lại khách khi huỷ lượt khám đã thu.
   // Dòng REFUND là dòng SỐNG (deleted_at IS NULL) đối ứng dòng PAYMENT gốc — KHÔNG soft-delete
   // dòng gốc (đó là cơ chế "Đánh dấu chưa thu" cho thao tác BẤM NHẦM, nghĩa hoàn toàn khác).
-  type      PaymentType @default(PAYMENT)
+  type           PaymentType @default(PAYMENT)
   // amount LUÔN dương kể cả dòng REFUND (chiều tiền đọc từ `type`) — v1 chỉ hoàn TOÀN PHẦN nên
   // amount dòng REFUND luôn bằng đúng amount dòng PAYMENT gốc; cột vẫn lưu số thật để mở hoàn một
   // phần sau này không phải đổi schema.
-  amount    BigInt
-  paidAt    DateTime    @map("paid_at") @db.Timestamptz(6)
+  amount         BigInt
+  paidAt         DateTime    @map("paid_at") @db.Timestamptz(6)
   // Lý do hoàn tiền — bắt buộc ở tầng service khi type=REFUND, null với dòng PAYMENT. Khác
   // deletedReason (8 cột bắt buộc): đây là lý do nghiệp vụ in lên phiếu chi cho khách ký nhận.
-  reason    String?
+  reason         String?
   // "Đa thu ngân" (2026-09-04) — ca thu ngân đang mở của người xử lý phiếu này TẠI THỜI ĐIỂM thu/
   // hoàn tiền, nếu có (NULL khi không có ca nào đang mở — không bắt buộc). CHỈ dùng khi tenant BẬT
   // cashierShiftMultiCashierEnabled (CashierShiftService.computeTotals() rẽ nhánh theo cột này vs
   // theo khoảng thời gian) — dòng tạo TRƯỚC khi có cột này luôn NULL, không backfill.
-  cashierShiftId String? @map("cashier_shift_id") @db.Uuid
+  cashierShiftId String?     @map("cashier_shift_id") @db.Uuid
+  // "Thu chi tại quầy" (Sổ quỹ & Thu chi GĐ1) — quỹ nhận/xuất tiền của dòng này, resolve theo
+  // `countsAsCash` của `method` lúc thu/hoàn tiền (xem InvoiceService). NULL cho mọi dòng tạo
+  // TRƯỚC tính năng này — không backfill, xem comment model CashAccount.
+  cashAccountId  String?     @map("cash_account_id") @db.Uuid
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -1671,9 +1680,117 @@ model Payment {
   invoice      Invoice       @relation(fields: [tenantId, invoiceId], references: [tenantId, id])
   // Composite FK (tenant_id, cashier_shift_id) -> cashier_shift(tenant_id, id), NULLABLE.
   cashierShift CashierShift? @relation(fields: [tenantId, cashierShiftId], references: [tenantId, id])
+  // Composite FK (tenant_id, cash_account_id) -> cash_account(tenant_id, id), NULLABLE.
+  cashAccount  CashAccount?  @relation(fields: [tenantId, cashAccountId], references: [tenantId, id])
 
   @@unique([tenantId, id])
   @@map("payment")
+}
+
+// "Quỹ" (Sổ quỹ & Thu chi GĐ1) — nơi giữ tiền THEO TENANT: quỹ tiền mặt hoặc tài khoản ngân hàng.
+// `type` khai sẵn giá trị `DRAWER` (két thu ngân) dù GĐ1 chưa dùng tới — chỉ để GĐ2 bật công tắc
+// "Thủ quỹ riêng" (tách két ca khỏi quỹ chính) mà không phải `ALTER TYPE` thêm giá trị enum giữa
+// chừng (Postgres không cho dùng giá trị enum mới thêm trong CÙNG transaction đã thêm nó).
+// `openingBalance`/`openingBalanceAt` là mốc số dư ban đầu do `clinic_admin` tự khai khi tạo quỹ
+// (ví dụ số dư đã có sẵn trước khi dùng phần mềm) — Sổ quỹ (GĐ2) cộng dồn thu/chi TỪ mốc này.
+model CashAccount {
+  id               String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String          @map("tenant_id") @db.Uuid
+  // Mã ngắn tự sinh qua CodeSequenceRepository (tenant-scoped, tiền tố "QU"), không nhập tay —
+  // đúng khuôn WorkShift.code (docs/DECISIONS.md #113).
+  code             String
+  name             String
+  type             CashAccountType
+  bankName         String?         @map("bank_name")
+  bankAccountNo    String?         @map("bank_account_no")
+  openingBalance   BigInt          @default(0) @map("opening_balance")
+  openingBalanceAt DateTime        @map("opening_balance_at") @db.Timestamptz(6)
+  isDefault        Boolean         @default(false) @map("is_default")
+  isActive         Boolean         @default(true) @map("is_active")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant   Tenant        @relation(fields: [tenantId], references: [id])
+  payments Payment[]
+  vouchers CashVoucher[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, code])
+  @@map("cash_account")
+}
+
+enum CashAccountType {
+  CASH
+  BANK
+  // Chưa dùng ở GĐ1 — để sẵn cho công tắc "Thủ quỹ riêng" (GĐ2), xem comment model CashAccount.
+  DRAWER
+
+  @@map("cash_account_type")
+}
+
+// "Phiếu thu / Phiếu chi" ngoài dịch vụ khám (Sổ quỹ & Thu chi GĐ1, docs/DECISIONS.md) — MỘT bảng
+// cho cả 2 chiều tiền, phân biệt bằng `direction` (dùng lại enum `ReferenceCatalogDirection` của
+// danh mục "Loại thu chi" — cùng một khái niệm Thu/Chi, giữ một nguồn sự thật, không tạo enum thứ
+// hai trùng lặp). Ví dụ: thu tiền bán phế liệu, chi tiền điện/nước — những khoản tiền mặt/chuyển
+// khoản KHÔNG gắn với một lượt khám nào (khác `payment`, luôn bắt buộc có `invoice_id`).
+model CashVoucher {
+  id                    String                    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId              String                    @map("tenant_id") @db.Uuid
+  voucherNo             String                    @map("voucher_no")
+  direction             ReferenceCatalogDirection
+  // Mã tham chiếu reference_catalog category INCOME_EXPENSE_TYPE (text, KHÔNG FK — bảng đó toàn
+  // hệ thống không có tenant_id, cùng khuôn payment.method/invoiceLine.examTypeCode).
+  incomeExpenseTypeCode String                    @map("income_expense_type_code")
+  cashAccountId         String                    @map("cash_account_id") @db.Uuid
+  // Mã tham chiếu reference_catalog category PAYMENT_METHOD — countsAsCash của mã này quyết định
+  // phiếu có gộp vào tiền mặt đối soát của ca hay không, đúng cơ chế payment.method.
+  paymentMethodCode     String                    @map("payment_method_code")
+  amount                BigInt
+  occurredAt            DateTime                  @map("occurred_at") @db.Timestamptz(6)
+  partnerName           String?                   @map("partner_name")
+  description           String
+  note                  String?
+  status                CashVoucherStatus         @default(POSTED)
+  approvedBy            String?                   @map("approved_by") @db.Uuid
+  approvedAt            DateTime?                 @map("approved_at") @db.Timestamptz(6)
+  rejectionReason       String?                   @map("rejection_reason")
+  // "Đa thu ngân" — ca thu ngân đang mở của người lập phiếu, nếu có (đúng khuôn payment.cashierShiftId).
+  cashierShiftId        String?                   @map("cashier_shift_id") @db.Uuid
+  printedAt             DateTime?                 @map("printed_at") @db.Timestamptz(6)
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  // Composite FK (tenant_id, cash_account_id) -> cash_account(tenant_id, id).
+  cashAccount  CashAccount   @relation(fields: [tenantId, cashAccountId], references: [tenantId, id])
+  // Composite FK (tenant_id, cashier_shift_id) -> cashier_shift(tenant_id, id), NULLABLE.
+  cashierShift CashierShift? @relation(fields: [tenantId, cashierShiftId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, voucherNo])
+  @@map("cash_voucher")
+}
+
+enum CashVoucherStatus {
+  POSTED
+  PENDING_APPROVAL
+  REJECTED
+
+  @@map("cash_voucher_status")
 }
 
 enum CashierShiftStatus {
@@ -1728,6 +1845,12 @@ model CashierShift {
   // (patient.address_json).
   nonCashBreakdownJson Json?     @map("non_cash_breakdown_json") @db.JsonB
   expectedCashAmount   BigInt?   @map("expected_cash_amount")
+  // "Thu chi tại quầy" (Sổ quỹ & Thu chi GĐ1) — snapshot lúc chốt, tách riêng phần tiền mặt của
+  // `cash_voucher` (status=POSTED) khỏi phần tiền mặt của `payment` (thu/hoàn tiền khám) đã gộp
+  // sẵn ở cashInAmount/cashOutAmount — CHỈ để hiển thị tách bạch trên phiếu in, KHÔNG dùng để tính
+  // lại expectedCashAmount (công thức đó không đổi). NULL cho ca CLOSED trước tính năng này.
+  otherCashInAmount    BigInt?   @map("other_cash_in_amount")
+  otherCashOutAmount   BigInt?   @map("other_cash_out_amount")
 
   // 4 trường sửa được khi mở khoá (POST .../edit) sau khi CLOSED.
   countedCashAmount     BigInt? @map("counted_cash_amount")
@@ -1758,9 +1881,10 @@ model CashierShift {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant   Tenant      @relation(fields: [tenantId], references: [id])
-  cashier  UserAccount @relation(fields: [tenantId, cashierId], references: [tenantId, id])
+  tenant   Tenant        @relation(fields: [tenantId], references: [id])
+  cashier  UserAccount   @relation(fields: [tenantId, cashierId], references: [tenantId, id])
   payments Payment[]
+  vouchers CashVoucher[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, shiftNo])

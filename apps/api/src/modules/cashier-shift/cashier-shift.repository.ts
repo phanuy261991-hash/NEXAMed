@@ -21,6 +21,9 @@ export interface CloseCashierShiftData {
   submittedAmount: number;
   handoverNote: string | null;
   closedAt: Date;
+  /** "Thu chi tại quầy" GĐ1 — snapshot tách bạch "thu/chi khác" khỏi cashInAmount/cashOutAmount đã gộp sẵn. */
+  otherCashInAmount: number;
+  otherCashOutAmount: number;
 }
 
 export interface ListCashierShiftFilters {
@@ -39,6 +42,8 @@ export interface EditCashierShiftData {
   cashOutAmount?: number;
   nonCashBreakdownJson?: unknown;
   expectedCashAmount?: number;
+  otherCashInAmount?: number;
+  otherCashOutAmount?: number;
   editedBy: string;
   editedAt: Date;
 }
@@ -127,6 +132,8 @@ export class CashierShiftRepository {
           keepForNextAmount: BigInt(data.keepForNextAmount),
           submittedAmount: BigInt(data.submittedAmount),
           handoverNote: data.handoverNote,
+          otherCashInAmount: BigInt(data.otherCashInAmount),
+          otherCashOutAmount: BigInt(data.otherCashOutAmount),
           updatedBy: actorId,
           version: { increment: 1 },
         },
@@ -184,6 +191,8 @@ export class CashierShiftRepository {
     if (data.cashOutAmount !== undefined) update.cashOutAmount = BigInt(data.cashOutAmount);
     if (data.nonCashBreakdownJson !== undefined) update.nonCashBreakdownJson = data.nonCashBreakdownJson as Prisma.InputJsonValue;
     if (data.expectedCashAmount !== undefined) update.expectedCashAmount = BigInt(data.expectedCashAmount);
+    if (data.otherCashInAmount !== undefined) update.otherCashInAmount = BigInt(data.otherCashInAmount);
+    if (data.otherCashOutAmount !== undefined) update.otherCashOutAmount = BigInt(data.otherCashOutAmount);
 
     return tx.cashierShift
       .updateMany({

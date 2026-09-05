@@ -9,8 +9,11 @@
  * - NATIONALITY_ITEMS: "Master_Data_Quoc_Tich_ISO3166.md" — code = cột "Mã ISO Alpha-3", name =
  *   cột "Tên Quốc Gia (Tiếng Việt)". Cột "Mã số Numeric" (704, 840...) trong file gốc KHÔNG được
  *   dùng — chưa có nhu cầu nghiệp vụ, bỏ có chủ đích (không phải bỏ sót).
+ * - OCCUPATION_ITEMS: "docs/data/nghe-nghiep.md" (13 dòng) — code = cột "Mã (Code)", name = cột
+ *   "Tên nghề nghiệp".
  *
- * sortOrder khớp đúng thứ tự trong file gốc: dân tộc = chính mã số, quốc tịch = thứ tự dòng.
+ * sortOrder khớp đúng thứ tự trong file gốc: dân tộc = chính mã số, quốc tịch/nghề nghiệp = thứ
+ * tự dòng.
  */
 
 export interface ReferenceCatalogSeedItem {
@@ -127,4 +130,26 @@ export const EMPLOYMENT_TYPE_ITEMS: readonly ReferenceCatalogSeedItem[] = [
   { code: 'COLLABORATOR', name: 'Cộng tác viên', sortOrder: 2 },
   { code: 'INTERN', name: 'Thực tập', sortOrder: 3 },
   { code: 'PROBATION', name: 'Thử việc', sortOrder: 4 },
+];
+
+/**
+ * Danh mục "Nghề nghiệp" (đảo ngược tiếp #034/#061) — chủ dự án cung cấp `docs/data/nghe-nghiep.md`
+ * kèm mã chính thức (khác ETHNICITY/NATIONALITY về nguồn nhưng CÙNG cách seed: giữ nguyên `code`
+ * cho trước, không tự sinh mã ngắn tuần tự #113 — category này KHÔNG có trong
+ * `REFERENCE_CATALOG_SHORT_CODE_PREFIXES`). Thứ tự khớp đúng thứ tự dòng trong file gốc.
+ */
+export const OCCUPATION_ITEMS: readonly ReferenceCatalogSeedItem[] = [
+  { code: 'CCVC', name: 'Cán bộ, công chức, viên chức', sortOrder: 1 },
+  { code: 'NV_VP', name: 'Nhân viên văn phòng', sortOrder: 2 },
+  { code: 'KINH_DOANH', name: 'Kinh doanh / Buôn bán', sortOrder: 3 },
+  { code: 'CONG_NHAN', name: 'Công nhân', sortOrder: 4 },
+  { code: 'NONG_DAN', name: 'Nông dân', sortOrder: 5 },
+  { code: 'HSSV', name: 'Học sinh / Sinh viên', sortOrder: 6 },
+  { code: 'LLVT', name: 'Lực lượng vũ trang (Quân đội, Công an)', sortOrder: 7 },
+  { code: 'TRE_EM', name: 'Trẻ em (Dưới 6 tuổi)', sortOrder: 8 },
+  { code: 'HUU_TRI', name: 'Hưu trí', sortOrder: 9 },
+  { code: 'LDTD', name: 'Lao động tự do', sortOrder: 10 },
+  { code: 'NOI_TRO', name: 'Nội trợ', sortOrder: 11 },
+  { code: 'THAT_NGHIEP', name: 'Không có việc làm / Thất nghiệp', sortOrder: 12 },
+  { code: 'KHAC', name: 'Khác', sortOrder: 13 },
 ];
