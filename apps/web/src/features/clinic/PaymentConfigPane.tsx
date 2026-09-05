@@ -36,6 +36,7 @@ export function PaymentConfigPane() {
   const blindCloseEnabled = settingsQuery.data?.cashierShiftBlindCloseEnabled ?? true;
   const shiftRequiredEnabled = settingsQuery.data?.cashierShiftRequiredEnabled ?? true;
   const multiCashierEnabled = settingsQuery.data?.cashierShiftMultiCashierEnabled ?? false;
+  const cashVoucherApprovalEnabled = settingsQuery.data?.cashVoucherApprovalEnabled ?? false;
 
   return (
     <div className="space-y-8">
@@ -135,6 +136,34 @@ export function PaymentConfigPane() {
               disabled={updateMutation.isPending}
               onChange={(e) => updateMutation.mutate({ cashierShiftMultiCashierEnabled: e.target.checked })}
               aria-label="Nhiều thu ngân cùng lúc"
+            />
+            <span className="absolute inset-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-brand-teal peer-disabled:opacity-60" />
+            <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
+          </label>
+        </div>
+      </div>
+
+      <div className={sectionBoxClassName}>
+        <span className={sectionBadgeClassName}>Sổ quỹ & Thu chi</span>
+
+        <div className="flex items-start justify-between gap-5">
+          <div>
+            <p className="text-[14.5px] font-bold text-slate-900">Phiếu chi phải được duyệt</p>
+            <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
+              Tắt (mặc định): Thu ngân tự lập phiếu chi, có hiệu lực ngay.
+              <br />
+              Bật: Phiếu chi mới lập ở trạng thái &quot;Chờ duyệt&quot;, chỉ tính vào tiền mặt dự kiến sau khi Quản lý
+              duyệt. Phiếu thu không bị ảnh hưởng, luôn có hiệu lực ngay.
+            </p>
+          </div>
+          <label className="relative mt-0.5 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center">
+            <input
+              type="checkbox"
+              className="peer sr-only"
+              checked={cashVoucherApprovalEnabled}
+              disabled={updateMutation.isPending}
+              onChange={(e) => updateMutation.mutate({ cashVoucherApprovalEnabled: e.target.checked })}
+              aria-label="Phiếu chi phải được duyệt"
             />
             <span className="absolute inset-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-brand-teal peer-disabled:opacity-60" />
             <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />

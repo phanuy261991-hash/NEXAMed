@@ -48,6 +48,8 @@ const InvoiceDetailPage = lazy(() => import('../features/billing/InvoiceDetailPa
 const CashierShiftListPage = lazy(() =>
   import('../features/cashier-shift/CashierShiftListPage').then((m) => ({ default: m.CashierShiftListPage })),
 );
+// Sổ quỹ & Thu chi (GĐ1, ngoài kế hoạch, 2026-09-05).
+const CashVoucherListPage = lazy(() => import('../features/cash-book/CashVoucherListPage').then((m) => ({ default: m.CashVoucherListPage })));
 // Nhóm Quản trị — chỉ `clinic_admin` dùng tới; lễ tân/điều dưỡng/bác sĩ không bao giờ tải các
 // chunk này (gồm cả trang tra cứu ICD-10 và toàn bộ màn hình danh mục).
 const CatalogAdminPage = lazy(() => import('../features/catalog/CatalogAdminPage').then((m) => ({ default: m.CatalogAdminPage })));
@@ -106,6 +108,8 @@ export const router = createBrowserRouter([
       { path: 'billing', element: <RequirePermissionRoute module="invoice" action="read"><InvoiceListPage /></RequirePermissionRoute> },
       { path: 'billing/cashier-shifts', element: <RequirePermissionRoute module="cashier_shift" action="read"><CashierShiftListPage /></RequirePermissionRoute> },
       { path: 'billing/:encounterId', element: <RequirePermissionRoute module="invoice" action="read"><InvoiceDetailPage /></RequirePermissionRoute> },
+      // Sổ quỹ & Thu chi (GĐ1) — không có mục sidebar riêng cho chi tiết (mở bằng dialog tại chỗ).
+      { path: 'cash-book/vouchers', element: <RequirePermissionRoute module="cash_voucher" action="read"><CashVoucherListPage /></RequirePermissionRoute> },
       // "Đăng ký ca làm việc" (Giai đoạn 2 #101).
       { path: 'work-schedule/mine', element: <RequirePermissionRoute module="work_shift_assignment" action="read"><MyWorkSchedulePage /></RequirePermissionRoute> },
       { path: 'work-schedule/staff', element: <RequirePermissionRoute module="work_shift_assignment" action="read"><StaffWorkSchedulePage /></RequirePermissionRoute> },

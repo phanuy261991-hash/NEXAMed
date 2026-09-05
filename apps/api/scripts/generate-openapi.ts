@@ -38,6 +38,18 @@ import {
   savePrescriptionItemsRequestSchema,
   signPrescriptionRequestSchema,
   updateDrugRequestSchema,
+  cashAccountSchema,
+  createCashAccountRequestSchema,
+  updateCashAccountRequestSchema,
+  listCashAccountsResponseSchema,
+  cashVoucherSchema,
+  createCashVoucherRequestSchema,
+  updateCashVoucherRequestSchema,
+  voidCashVoucherRequestSchema,
+  approveCashVoucherRequestSchema,
+  rejectCashVoucherRequestSchema,
+  listCashVouchersQuerySchema,
+  listCashVouchersResponseSchema,
   changePasswordRequestSchema,
   changePasswordResponseSchema,
   checkInRequestSchema,
@@ -2560,6 +2572,178 @@ registry.registerPath({
     403: errorResponse('Không có quyền cashier_shift.manage'),
     404: errorResponse('Không tìm thấy'),
     409: errorResponse('version không khớp (CONCURRENT_MODIFICATION), hoặc ca chưa chốt (CASHIER_SHIFT_NOT_CLOSED)'),
+  },
+});
+
+// ---------------- cash-book ("Thu chi tại quầy" GĐ1, mockup duyệt 2026-09-05) ----------------
+
+const cashAccountIdParams = z.object({ id: z.string().uuid() });
+const cashVoucherIdParams = z.object({ id: z.string().uuid() });
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/cash-accounts',
+  tags: ['cash-book'],
+  summary: 'Danh sách Quỹ (tiền mặt/ngân hàng) — form lập phiếu thu/chi cần',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(listCashAccountsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền cash_account.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/cash-accounts',
+  tags: ['cash-book'],
+  summary: 'Thêm Quỹ mới — quỹ ngân hàng bắt buộc số tài khoản',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createCashAccountRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(cashAccountSchema)),
+    400: errorResponse('Thiếu số tài khoản với quỹ ngân hàng'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền cash_account.manage'),
+  },
+});
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/cash-accounts/{id}',
+  tags: ['cash-book'],
+  summary: 'Sửa Quỹ — đổi tên/số tài khoản/mặc định/ẩn-hiện, không đổi loại quỹ',
+  security: [{ bearerAuth: [] }],
+  request: { params: cashAccountIdParams, body: { content: { 'application/json': { schema: updateCashAccountRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(cashAccountSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền cash_account.manage'),
+    404: errorResponse('Không tìm thấy'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION)'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/cash-vouchers',
+  tags: ['cash-book'],
+  summary: 'Danh sách Phiếu thu/chi — lọc theo khoảng ngày/loại/trạng thái/ca, kèm tổng kết',
+  security: [{ bearerAuth: [] }],
+  request: { query: listCashVouchersQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listCashVouchersResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền cash_voucher.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/cash-vouchers/{id}',
+  tags: ['cash-book'],
+  summary: 'Chi tiết 1 phiếu thu/chi — phiếu đã huỷ vẫn xem được (voided=true)',
+  security: [{ bearerAuth: [] }],
+  request: { params: cashVoucherIdParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(cashVoucherSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền cash_voucher.read'),
+    404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/cash-vouchers',
+  tags: ['cash-book'],
+  summary: 'Lập phiếu thu/chi — status POSTED hoặc PENDING_APPROVAL theo công tắc "Phiếu chi phải được duyệt"',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createCashVoucherRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(cashVoucherSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền cash_voucher.create'),
+    404: errorResponse('Quỹ tham chiếu không tồn tại'),
+  },
+});
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/cash-vouchers/{id}',
+  tags: ['cash-book'],
+  summary: 'Sửa phiếu — chỉ khi chưa duyệt/chưa huỷ và ca gắn với phiếu (nếu có) chưa chốt',
+  security: [{ bearerAuth: [] }],
+  request: { params: cashVoucherIdParams, body: { content: { 'application/json': { schema: updateCashVoucherRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(cashVoucherSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền cash_voucher.update, hoặc scope personal mà không phải người lập phiếu'),
+    404: errorResponse('Không tìm thấy'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION), hoặc phiếu không còn sửa được (CASH_VOUCHER_NOT_EDITABLE)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/cash-vouchers/{id}/void',
+  tags: ['cash-book'],
+  summary: 'Huỷ phiếu (soft-delete) — lý do bắt buộc',
+  security: [{ bearerAuth: [] }],
+  request: { params: cashVoucherIdParams, body: { content: { 'application/json': { schema: voidCashVoucherRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(cashVoucherSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền cash_voucher.update, hoặc scope personal mà không phải người lập phiếu'),
+    404: errorResponse('Không tìm thấy'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION), hoặc phiếu không còn sửa được (CASH_VOUCHER_NOT_EDITABLE)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/cash-vouchers/{id}/approve',
+  tags: ['cash-book'],
+  summary: 'Duyệt phiếu chi đang chờ duyệt',
+  security: [{ bearerAuth: [] }],
+  request: { params: cashVoucherIdParams, body: { content: { 'application/json': { schema: approveCashVoucherRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(cashVoucherSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền cash_voucher.approve'),
+    404: errorResponse('Không tìm thấy'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION), hoặc phiếu không ở trạng thái chờ duyệt (CASH_VOUCHER_NOT_PENDING_APPROVAL)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/cash-vouchers/{id}/reject',
+  tags: ['cash-book'],
+  summary: 'Từ chối phiếu chi đang chờ duyệt — lý do bắt buộc',
+  security: [{ bearerAuth: [] }],
+  request: { params: cashVoucherIdParams, body: { content: { 'application/json': { schema: rejectCashVoucherRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(cashVoucherSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền cash_voucher.approve'),
+    404: errorResponse('Không tìm thấy'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION), hoặc phiếu không ở trạng thái chờ duyệt (CASH_VOUCHER_NOT_PENDING_APPROVAL)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/cash-vouchers/{id}/print',
+  tags: ['cash-book'],
+  summary: 'Đánh dấu đã in (ghi printedAt lần đầu, gọi lại không đổi)',
+  security: [{ bearerAuth: [] }],
+  request: { params: cashVoucherIdParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(cashVoucherSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền cash_voucher.read, hoặc scope personal mà không phải người lập phiếu'),
+    404: errorResponse('Không tìm thấy'),
   },
 });
 

@@ -104,6 +104,10 @@ describe('AuthService — login/refresh/logout', () => {
     // "Hàng đợi ảo" (#064) — seedDefaultRolesForTenant() nay cũng seed Khoa mặc định ("Khoa
     // chung"), FK RESTRICT department→tenant nên phải xoá trước tenant.
     await privileged.department.deleteMany({ where: { tenantId: { in: [tenantAId, tenantBId] } } });
+    // "Thu chi tại quầy" GĐ1 — seedDefaultRolesForTenant() nay cũng seed 1 quỹ tiền mặt mặc định
+    // (cash_account) qua CodeSequenceRepository (code_sequence) — cả hai FK RESTRICT→tenant.
+    await privileged.cashAccount.deleteMany({ where: { tenantId: { in: [tenantAId, tenantBId] } } });
+    await privileged.codeSequence.deleteMany({ where: { tenantId: { in: [tenantAId, tenantBId] } } });
     await privileged.tenant.deleteMany({ where: { id: { in: [tenantAId, tenantBId] } } });
     await privileged.$disconnect();
     await appPrisma.$disconnect();

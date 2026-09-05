@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowCounterClockwise, Bank, CaretLeft, CaretRight, Clock, LockKey, MagnifyingGlass, Receipt, Wallet, Warning } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, Bank, CaretLeft, CaretRight, ClockCounterClockwise, Clock, LockKey, MagnifyingGlass, Receipt, Vault, Wallet, Warning } from '@phosphor-icons/react';
 import type { BillingListItem, CashierShiftDetail } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
@@ -18,6 +18,10 @@ import { CloseShiftDialog } from '../cashier-shift/CloseShiftDialog';
 import { OpenShiftDialog } from '../cashier-shift/OpenShiftDialog';
 import { useCurrentCashierShiftQuery } from '../cashier-shift/cashier-shift.queries';
 import { useCashierShiftRequiredEnabledQuery } from '../clinic/clinic.queries';
+import { useHasPermission } from '../auth/usePermission';
+import { CashVoucherFormDialog, type CashVoucherSubmitDto } from '../cash-book/CashVoucherFormDialog';
+import { MyShiftVouchersDialog } from '../cash-book/MyShiftVouchersDialog';
+import { useCreateCashVoucherMutation } from '../cash-book/cash-voucher.queries';
 import { useBillingInvoiceListQuery } from './invoice.queries';
 
 /** Cùng khuôn `ReceptionListPage.tsx` (List Screen Pattern, .claude/docs/ui-guidelines.md mục 9).
@@ -101,6 +105,30 @@ export function InvoiceListPage() {
   // Thu ngân, khác lỗi mạng thật (không chặn cả trang).
   const shiftFeatureUnavailable = currentShiftQuery.isError && currentShiftQuery.error instanceof ApiError && currentShiftQuery.error.code === 'PERMISSION_DENIED';
 
+  // "Sổ quỹ & Thu chi" GĐ1 — nút tắt lập phiếu thu/chi NGOÀI dịch vụ khám ngay từ trang Thu ngân
+  // (yêu cầu #5 mockup), tránh phải điều hướng sang mục sidebar riêng cho thao tác hay dùng.
+  const canCreateCashVoucher = useHasPermission('cash_voucher', 'create');
+  const [cashVoucherModalOpen, setCashVoucherModalOpen] = useState(false);
+  const createCashVoucherMutation = useCreateCashVoucherMutation();
+  // "Phiếu trong ca của tôi" (yêu cầu trực tiếp 2026-09-05) — xem lại thuần tuý (không tính tổng)
+  // mọi phiếu (khám + ngoài khám) đã lập trong ca đang mở. Chỉ hiện khi có ca đang mở — xem lại
+  // ca đã chốt không thuộc phạm vi yêu cầu này.
+  const [myShiftVouchersOpen, setMyShiftVouchersOpen] = useState(false);
+
+  async function handleCreateCashVoucher(dto: CashVoucherSubmitDto) {
+    await createCashVoucherMutation.mutateAsync({
+      direction: dto.direction!,
+      incomeExpenseTypeCode: dto.incomeExpenseTypeCode,
+      cashAccountId: dto.cashAccountId,
+      paymentMethodCode: dto.paymentMethodCode,
+      amount: dto.amount,
+      occurredAt: dto.occurredAt,
+      partnerName: dto.partnerName,
+      description: dto.description,
+      note: dto.note,
+    });
+  }
+
   return (
     <div className="flex h-full flex-col gap-2.5 p-3">
       <h1 className="sr-only">Thu ngân</h1>
@@ -152,6 +180,18 @@ export function InvoiceListPage() {
           <Button type="button" variant="amberSolid" onClick={() => setClosingShift(openShift)}>
             <LockKey size={16} weight="bold" aria-hidden="true" />
             Chốt ca
+          </Button>
+        )}
+        {canCreateCashVoucher && (
+          <Button type="button" variant="secondary" onClick={() => setCashVoucherModalOpen(true)}>
+            <Vault size={16} weight="bold" aria-hidden="true" />
+            Tạo phiếu thu/chi
+          </Button>
+        )}
+        {openShift && (
+          <Button type="button" variant="secondary" onClick={() => setMyShiftVouchersOpen(true)}>
+            <ClockCounterClockwise size={16} weight="bold" aria-hidden="true" />
+            Phiếu trong ca của tôi
           </Button>
         )}
       </div>
@@ -389,6 +429,15 @@ export function InvoiceListPage() {
         />
       )}
       {closingShift && <CloseShiftDialog shift={closingShift} onClose={() => setClosingShift(null)} />}
+      {cashVoucherModalOpen && (
+        <CashVoucherFormDialog
+          mode="create"
+          submitting={createCashVoucherMutation.isPending}
+          onCancel={() => setCashVoucherModalOpen(false)}
+          onSubmit={handleCreateCashVoucher}
+        />
+      )}
+      {myShiftVouchersOpen && openShift && <MyShiftVouchersDialog shift={openShift} onClose={() => setMyShiftVouchersOpen(false)} />}
     </div>
   );
 }

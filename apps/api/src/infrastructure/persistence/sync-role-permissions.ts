@@ -2,6 +2,7 @@ import type { Prisma, PrismaClient } from '@prisma/client';
 import { DEFAULT_ROLE_PERMISSIONS, permissionKey } from '@nexamed/core';
 import { USER_ROLES, type DataScope, type UserRole } from '@nexamed/shared';
 import type { UnitOfWorkService } from './unit-of-work.service';
+import { ensureDefaultCashAccount } from './seed-tenant-roles';
 
 /**
  * Đồng bộ `role_permission` còn thiếu cho MỘT tenant, so với `DEFAULT_ROLE_PERMISSIONS`
@@ -88,9 +89,13 @@ export async function syncRolePermissionsForAllTenants(
 
   const added: string[] = [];
   for (const tenant of tenants) {
-    const result = await unitOfWork.runInTenantScope(tenant.id, (tx) =>
-      syncRolePermissionsForTenant(tx, tenant.id, actorId),
-    );
+    const result = await unitOfWork.runInTenantScope(tenant.id, async (tx) => {
+      const syncResult = await syncRolePermissionsForTenant(tx, tenant.id, actorId);
+      // "Thu chi tại quầy" GĐ1 — backfill quỹ tiền mặt mặc định cho tenant TẠO TRƯỚC tính năng
+      // này (seedDefaultRolesForTenant chỉ chạy lúc tạo tenant mới, không tự chạy lại cho tenant cũ).
+      await ensureDefaultCashAccount(tx, tenant.id, actorId);
+      return syncResult;
+    });
     added.push(...result);
   }
   return added;

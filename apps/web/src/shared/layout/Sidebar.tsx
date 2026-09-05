@@ -19,6 +19,7 @@ import {
   Stethoscope,
   UserPlus,
   Users,
+  Vault,
   Wallet,
   type Icon,
 } from '@phosphor-icons/react';
@@ -49,6 +50,8 @@ const RECEPTION_GROUP_PATHS = ['/patients', '/appointments', '/reception'];
 /** Đường dẫn thuộc nhóm "Thu ngân" — hiện chỉ có "Danh sách cần thu" (`/billing`), tách nhóm cha/con
  * cùng khuôn "Khám bệnh" để sau này thêm mục con (vd tổng kết ca) không phải đổi lại cấu trúc. */
 const BILLING_GROUP_PATHS = ['/billing'];
+/** Đường dẫn thuộc nhóm "Sổ quỹ & Thu chi" (Sổ quỹ & Thu chi GĐ1, ngoài kế hoạch, 2026-09-05). */
+const CASH_BOOK_GROUP_PATHS = ['/cash-book'];
 /** Đường dẫn thuộc nhóm "Lịch làm việc" (Giai đoạn 2 #101). */
 const WORK_SCHEDULE_GROUP_PATHS = ['/work-schedule'];
 /** Đường dẫn thuộc nhóm "Quản trị" — có 2 mục con thật (Danh mục dùng chung, Cấu hình hệ thống) và
@@ -113,6 +116,9 @@ export function Sidebar() {
   const [billingGroupOpen, setBillingGroupOpen] = useState(
     BILLING_GROUP_PATHS.some((path) => location.pathname.startsWith(path)),
   );
+  const [cashBookGroupOpen, setCashBookGroupOpen] = useState(
+    CASH_BOOK_GROUP_PATHS.some((path) => location.pathname.startsWith(path)),
+  );
   const [workScheduleGroupOpen, setWorkScheduleGroupOpen] = useState(
     WORK_SCHEDULE_GROUP_PATHS.some((path) => location.pathname.startsWith(path)),
   );
@@ -136,6 +142,7 @@ export function Sidebar() {
   // "Hàng đợi khám" — quyết định workflow (không phải quyền), giữ theo tên vai trò, xem DOCTOR_QUEUE_ROLES.
   const canSeeDoctorQueue = user?.roles.some((role) => DOCTOR_QUEUE_ROLES.includes(role)) ?? false;
   const canSeeBilling = useHasPermission('invoice', 'read');
+  const canSeeCashBook = useHasPermission('cash_voucher', 'read');
   const canSeeWorkSchedule = useHasPermission('work_shift_assignment', 'create');
   // "Lịch làm việc nhân viên" — chỉ actor có scope GLOBAL (quản lý toàn phòng khám) mới thấy mục
   // này, khác canSeeWorkSchedule (personal cũng đủ để thấy "Lịch làm việc của tôi").
@@ -144,6 +151,7 @@ export function Sidebar() {
   const examinationGroupExpanded = examinationGroupOpen && !collapsed;
   const adminGroupExpanded = adminGroupOpen && !collapsed;
   const billingGroupExpanded = billingGroupOpen && !collapsed;
+  const cashBookGroupExpanded = cashBookGroupOpen && !collapsed;
   const workScheduleGroupExpanded = workScheduleGroupOpen && !collapsed;
 
   return (
@@ -285,6 +293,48 @@ export function Sidebar() {
                 <ul className="mt-0.5 flex flex-col gap-0.5 border-l border-slate-800 pl-3.5">
                   <NavItem to="/billing" label="Danh sách cần thu" icon={Receipt} end collapsed={false} indent />
                   <NavItem to="/billing/cashier-shifts" label="Phiếu chốt ca" icon={FileText} collapsed={false} indent />
+                </ul>
+              )}
+            </li>
+          )}
+
+          {/* "Sổ quỹ & Thu chi" (Sổ quỹ & Thu chi GĐ1, ngoài kế hoạch, 2026-09-05) — phiếu thu/chi
+              ngoài dịch vụ khám (tiền điện/nước, bán phế liệu...), tách nhóm riêng khỏi "Thu ngân"
+              (là dòng tiền khám bệnh, khác bản chất). */}
+          {canSeeCashBook && (
+            <li>
+              <button
+                type="button"
+                title={collapsed ? 'Sổ quỹ & Thu chi' : undefined}
+                onClick={() => {
+                  if (collapsed) {
+                    setCollapsed(false);
+                    setCashBookGroupOpen(true);
+                  } else {
+                    setCashBookGroupOpen((v) => !v);
+                  }
+                }}
+                aria-expanded={cashBookGroupExpanded}
+                className={`flex w-full items-center gap-3 rounded-md py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800/60 hover:text-white ${
+                  collapsed ? 'justify-center px-2' : 'px-3'
+                }`}
+              >
+                <Vault size={collapsed ? 20 : 18} weight="regular" aria-hidden="true" className="flex-shrink-0" />
+                {!collapsed && (
+                  <>
+                    <span className="truncate text-left">Sổ quỹ & Thu chi</span>
+                    <CaretRight
+                      size={13}
+                      weight="bold"
+                      aria-hidden="true"
+                      className={`ml-auto flex-shrink-0 transition-transform ${cashBookGroupExpanded ? 'rotate-90' : ''}`}
+                    />
+                  </>
+                )}
+              </button>
+              {cashBookGroupExpanded && (
+                <ul className="mt-0.5 flex flex-col gap-0.5 border-l border-slate-800 pl-3.5">
+                  <NavItem to="/cash-book/vouchers" label="Phiếu thu / Phiếu chi" icon={Vault} end collapsed={false} indent />
                 </ul>
               )}
             </li>

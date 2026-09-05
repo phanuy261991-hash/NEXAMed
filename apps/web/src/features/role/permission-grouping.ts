@@ -28,6 +28,10 @@ const MODULE_LABELS: Record<string, string> = {
   work_shift_assignment: 'Đăng ký ca làm việc',
   work_shift: 'Danh mục Ca làm việc',
   cashier_shift: 'Chốt ca',
+  // "Thu chi tại quầy" GĐ1 (2026-09-05) — cùng lỗ hổng đã ghi chú ở trên: module mới thêm permission
+  // nhưng quên thêm nhãn ở đây, chủ dự án phát hiện qua ảnh chụp trang Vai trò & Phân quyền.
+  cash_account: 'Quỹ',
+  cash_voucher: 'Phiếu thu/chi',
 };
 
 export function moduleLabel(module: string): string {

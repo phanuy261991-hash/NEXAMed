@@ -1,7 +1,8 @@
 import { lazy, Suspense, useState } from 'react';
-import { Buildings, CalendarBlank, CalendarCheck, Clock, MapPinLine, SlidersHorizontal } from '@phosphor-icons/react';
+import { Buildings, CalendarBlank, CalendarCheck, Clock, CreditCard, MapPinLine, SlidersHorizontal, Vault } from '@phosphor-icons/react';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { ConfigScreenShell, type ConfigScreenPill } from '../../shared/ui/ConfigScreenShell';
+import { CashAccountPane } from '../cash-book/CashAccountPane';
 import { AppointmentConfigPane } from './AppointmentConfigPane';
 import { ClinicHoursPane } from './ClinicHoursPane';
 import { ClinicInfoPane } from './ClinicInfoPane';
@@ -50,7 +51,14 @@ const PILLS: ConfigScreenPill[] = [
       { key: 'general', label: 'Cấu hình chung', icon: SlidersHorizontal },
     ],
   },
-  { key: 'payment', label: 'Cấu hình thanh toán' },
+  {
+    key: 'payment',
+    label: 'Cấu hình thanh toán',
+    items: [
+      { key: 'config', label: 'Cấu hình', icon: CreditCard },
+      { key: 'cash-accounts', label: 'Quỹ', icon: Vault },
+    ],
+  },
   { key: 'exam', label: 'Cấu hình khám' },
   { key: 'code-templates', label: 'Cấu hình mẫu mã phát sinh' },
 ];
@@ -100,7 +108,8 @@ export function ClinicConfigPage() {
       {activePillKey === 'clinic' && activeItemKey === 'appointments' && <AppointmentConfigPane />}
       {activePillKey === 'clinic' && activeItemKey === 'shifts' && <WorkShiftPane />}
       {activePillKey === 'clinic' && activeItemKey === 'general' && <GeneralConfigPane />}
-      {activePillKey === 'payment' && <PaymentConfigPane />}
+      {activePillKey === 'payment' && activeItemKey === 'config' && <PaymentConfigPane />}
+      {activePillKey === 'payment' && activeItemKey === 'cash-accounts' && <CashAccountPane />}
       {activePillKey === 'exam' && <ExamConfigPane />}
       {activePillKey === 'code-templates' && (
         <Suspense fallback={null}>

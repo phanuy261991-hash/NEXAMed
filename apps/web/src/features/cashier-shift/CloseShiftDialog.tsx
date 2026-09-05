@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bank, Check, CreditCard, Wallet, X } from '@phosphor-icons/react';
+import { Bank, Check, CreditCard, Vault, Wallet, X } from '@phosphor-icons/react';
 import type { CashierShiftDetail } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { formatVnd } from '../../shared/format/currency';
@@ -7,6 +7,9 @@ import { Button } from '../../shared/ui/Button';
 import { MoneyInput } from '../../shared/ui/MoneyInput';
 import { DenominationCounter } from '../../shared/ui/DenominationCounter';
 import { Skeleton } from '../../shared/ui/Skeleton';
+import { useHasPermission } from '../auth/usePermission';
+import { CashVoucherFormDialog, type CashVoucherSubmitDto } from '../cash-book/CashVoucherFormDialog';
+import { useCreateCashVoucherMutation } from '../cash-book/cash-voucher.queries';
 import { useClinicPrintHeaderQuery } from '../clinic/clinic.queries';
 import { CashierShiftReceiptView } from './CashierShiftReceiptView';
 import { useCashierShiftBlindCloseEnabledQuery, useCashierShiftSummaryQuery, useCloseCashierShiftMutation } from './cashier-shift.queries';
@@ -23,11 +26,31 @@ export function CloseShiftDialog({ shift, onClose }: { shift: CashierShiftDetail
   const [handoverNote, setHandoverNote] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [closedShift, setClosedShift] = useState<CashierShiftDetail | null>(null);
+  // "Sổ quỹ & Thu chi" GĐ1 — nút tắt lập phiếu thu/chi ngay trong bước đếm tiền (yêu cầu #5 mockup):
+  // lập xong tự invalidate `cashier-shift` (xem cash-voucher.queries.ts) nên "Tiền mặt dự kiến" ở
+  // Bước 1/3 cập nhật ngay, không cần đóng wizard rồi mở lại.
+  const canCreateCashVoucher = useHasPermission('cash_voucher', 'create');
+  const [cashVoucherModalOpen, setCashVoucherModalOpen] = useState(false);
+  const createCashVoucherMutation = useCreateCashVoucherMutation();
 
   const blindQuery = useCashierShiftBlindCloseEnabledQuery();
   const summaryQuery = useCashierShiftSummaryQuery(shift.id);
   const clinicHeaderQuery = useClinicPrintHeaderQuery();
   const closeMutation = useCloseCashierShiftMutation(shift.id);
+
+  async function handleCreateCashVoucher(dto: CashVoucherSubmitDto) {
+    await createCashVoucherMutation.mutateAsync({
+      direction: dto.direction!,
+      incomeExpenseTypeCode: dto.incomeExpenseTypeCode,
+      cashAccountId: dto.cashAccountId,
+      paymentMethodCode: dto.paymentMethodCode,
+      amount: dto.amount,
+      occurredAt: dto.occurredAt,
+      partnerName: dto.partnerName,
+      description: dto.description,
+      note: dto.note,
+    });
+  }
 
   const blind = blindQuery.data ?? true;
   const expected = summaryQuery.data?.expectedCashAmount ?? 0;
@@ -232,11 +255,23 @@ export function CloseShiftDialog({ shift, onClose }: { shift: CashierShiftDetail
 
               {step === 2 && (
                 <div>
-                  <div className="mb-3 flex items-center justify-between">
+                  <div className="mb-3 flex items-center justify-between gap-3">
                     <p className="text-sm font-medium text-slate-500">Đếm từng mệnh giá — hệ thống tự cộng tổng.</p>
-                    <button type="button" onClick={() => setDirectEntry((v) => !v)} className="text-xs font-semibold text-blue-600 hover:text-blue-700">
-                      {directEntry ? 'Dùng máy tính mệnh giá' : 'Nhập trực tiếp tổng số tiền'}
-                    </button>
+                    <div className="flex flex-shrink-0 items-center gap-3">
+                      {canCreateCashVoucher && (
+                        <button
+                          type="button"
+                          onClick={() => setCashVoucherModalOpen(true)}
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700"
+                        >
+                          <Vault size={13} weight="bold" aria-hidden="true" />
+                          Lập phiếu thu/chi
+                        </button>
+                      )}
+                      <button type="button" onClick={() => setDirectEntry((v) => !v)} className="text-xs font-semibold text-blue-600 hover:text-blue-700">
+                        {directEntry ? 'Dùng máy tính mệnh giá' : 'Nhập trực tiếp tổng số tiền'}
+                      </button>
+                    </div>
                   </div>
                   {directEntry ? (
                     <div>
@@ -360,6 +395,14 @@ export function CloseShiftDialog({ shift, onClose }: { shift: CashierShiftDetail
           </div>
         )}
       </div>
+      {cashVoucherModalOpen && (
+        <CashVoucherFormDialog
+          mode="create"
+          submitting={createCashVoucherMutation.isPending}
+          onCancel={() => setCashVoucherModalOpen(false)}
+          onSubmit={handleCreateCashVoucher}
+        />
+      )}
     </div>
   );
 }

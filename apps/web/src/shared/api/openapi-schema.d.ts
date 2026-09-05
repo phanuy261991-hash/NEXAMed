@@ -1949,6 +1949,7 @@ export interface paths {
                                 cashierShiftBlindCloseEnabled: boolean;
                                 cashierShiftRequiredEnabled: boolean;
                                 cashierShiftMultiCashierEnabled: boolean;
+                                cashVoucherApprovalEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -10163,6 +10164,7 @@ export interface paths {
                                 cashierShiftBlindCloseEnabled: boolean;
                                 cashierShiftRequiredEnabled: boolean;
                                 cashierShiftMultiCashierEnabled: boolean;
+                                cashVoucherApprovalEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -10259,6 +10261,7 @@ export interface paths {
                         cashierShiftBlindCloseEnabled?: boolean;
                         cashierShiftRequiredEnabled?: boolean;
                         cashierShiftMultiCashierEnabled?: boolean;
+                        cashVoucherApprovalEnabled?: boolean;
                     };
                 };
             };
@@ -10314,6 +10317,7 @@ export interface paths {
                                 cashierShiftBlindCloseEnabled: boolean;
                                 cashierShiftRequiredEnabled: boolean;
                                 cashierShiftMultiCashierEnabled: boolean;
+                                cashVoucherApprovalEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -10604,7 +10608,7 @@ export interface paths {
                             data: {
                                 items: {
                                     /** @enum {string} */
-                                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT";
+                                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT";
                                     label: string;
                                     prefix: string;
                                     template: string;
@@ -10677,7 +10681,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT";
+                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT";
                 };
                 cookie?: never;
             };
@@ -10700,7 +10704,7 @@ export interface paths {
                         "application/json": {
                             data: {
                                 /** @enum {string} */
-                                codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT";
+                                codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT";
                                 label: string;
                                 prefix: string;
                                 template: string;
@@ -14555,6 +14559,8 @@ export interface paths {
                                         amount: number;
                                     }[];
                                     expectedCashAmount: number | null;
+                                    otherCashInAmount: number | null;
+                                    otherCashOutAmount: number | null;
                                     countedCashAmount: number | null;
                                     cashDiscrepancyReason: string | null;
                                     keepForNextAmount: number | null;
@@ -14681,6 +14687,8 @@ export interface paths {
                                     amount: number;
                                 }[];
                                 expectedCashAmount: number | null;
+                                otherCashInAmount: number | null;
+                                otherCashOutAmount: number | null;
                                 countedCashAmount: number | null;
                                 cashDiscrepancyReason: string | null;
                                 keepForNextAmount: number | null;
@@ -14903,6 +14911,8 @@ export interface paths {
                                     amount: number;
                                 }[];
                                 expectedCashAmount: number;
+                                otherCashInAmount: number;
+                                otherCashOutAmount: number;
                             };
                             meta: Record<string, never>;
                         };
@@ -15013,6 +15023,8 @@ export interface paths {
                                     amount: number;
                                 }[];
                                 expectedCashAmount: number | null;
+                                otherCashInAmount: number | null;
+                                otherCashOutAmount: number | null;
                                 countedCashAmount: number | null;
                                 cashDiscrepancyReason: string | null;
                                 keepForNextAmount: number | null;
@@ -15150,6 +15162,8 @@ export interface paths {
                                     amount: number;
                                 }[];
                                 expectedCashAmount: number | null;
+                                otherCashInAmount: number | null;
+                                otherCashOutAmount: number | null;
                                 countedCashAmount: number | null;
                                 cashDiscrepancyReason: string | null;
                                 keepForNextAmount: number | null;
@@ -15291,6 +15305,8 @@ export interface paths {
                                     amount: number;
                                 }[];
                                 expectedCashAmount: number;
+                                otherCashInAmount: number;
+                                otherCashOutAmount: number;
                             };
                             meta: Record<string, never>;
                         };
@@ -15412,6 +15428,8 @@ export interface paths {
                                     amount: number;
                                 }[];
                                 expectedCashAmount: number | null;
+                                otherCashInAmount: number | null;
+                                otherCashOutAmount: number | null;
                                 countedCashAmount: number | null;
                                 cashDiscrepancyReason: string | null;
                                 keepForNextAmount: number | null;
@@ -15558,6 +15576,8 @@ export interface paths {
                                     amount: number;
                                 }[];
                                 expectedCashAmount: number | null;
+                                otherCashInAmount: number | null;
+                                otherCashOutAmount: number | null;
                                 countedCashAmount: number | null;
                                 cashDiscrepancyReason: string | null;
                                 keepForNextAmount: number | null;
@@ -15710,6 +15730,8 @@ export interface paths {
                                     amount: number;
                                 }[];
                                 expectedCashAmount: number | null;
+                                otherCashInAmount: number | null;
+                                otherCashOutAmount: number | null;
                                 countedCashAmount: number | null;
                                 cashDiscrepancyReason: string | null;
                                 keepForNextAmount: number | null;
@@ -15777,6 +15799,1264 @@ export interface paths {
                 };
                 /** @description version không khớp (CONCURRENT_MODIFICATION), hoặc ca chưa chốt (CASHIER_SHIFT_NOT_CLOSED) */
                 409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cash-accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Danh sách Quỹ (tiền mặt/ngân hàng) — form lập phiếu thu/chi cần */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    type: "CASH" | "BANK" | "DRAWER";
+                                    bankName: string | null;
+                                    bankAccountNo: string | null;
+                                    openingBalance: number;
+                                    openingBalanceAt: string;
+                                    isDefault: boolean;
+                                    isActive: boolean;
+                                    version: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền cash_account.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Thêm Quỹ mới — quỹ ngân hàng bắt buộc số tài khoản */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        name: string;
+                        /** @enum {string} */
+                        type: "CASH" | "BANK" | "DRAWER";
+                        bankName?: string | null;
+                        bankAccountNo?: string | null;
+                        /** @default 0 */
+                        openingBalance?: number;
+                        openingBalanceAt: string;
+                        isDefault?: boolean;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                code: string;
+                                name: string;
+                                /** @enum {string} */
+                                type: "CASH" | "BANK" | "DRAWER";
+                                bankName: string | null;
+                                bankAccountNo: string | null;
+                                openingBalance: number;
+                                openingBalanceAt: string;
+                                isDefault: boolean;
+                                isActive: boolean;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu số tài khoản với quỹ ngân hàng */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền cash_account.manage */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cash-accounts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Sửa Quỹ — đổi tên/số tài khoản/mặc định/ẩn-hiện, không đổi loại quỹ */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        name?: string;
+                        bankName?: string | null;
+                        bankAccountNo?: string | null;
+                        isDefault?: boolean;
+                        isActive?: boolean;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                code: string;
+                                name: string;
+                                /** @enum {string} */
+                                type: "CASH" | "BANK" | "DRAWER";
+                                bankName: string | null;
+                                bankAccountNo: string | null;
+                                openingBalance: number;
+                                openingBalanceAt: string;
+                                isDefault: boolean;
+                                isActive: boolean;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền cash_account.manage */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/cash-vouchers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Danh sách Phiếu thu/chi — lọc theo khoảng ngày/loại/trạng thái/ca, kèm tổng kết */
+        get: {
+            parameters: {
+                query?: {
+                    from?: string;
+                    to?: string;
+                    direction?: "EXPENSE" | "INCOME";
+                    status?: "POSTED" | "PENDING_APPROVAL" | "REJECTED";
+                    cashierShiftId?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    voucherNo: string;
+                                    /** @enum {string} */
+                                    direction: "EXPENSE" | "INCOME";
+                                    incomeExpenseTypeCode: string;
+                                    /** Format: uuid */
+                                    cashAccountId: string;
+                                    paymentMethodCode: string;
+                                    amount: number;
+                                    occurredAt: string;
+                                    partnerName: string | null;
+                                    description: string;
+                                    note: string | null;
+                                    /** @enum {string} */
+                                    status: "POSTED" | "PENDING_APPROVAL" | "REJECTED";
+                                    voided: boolean;
+                                    approvedByName: string | null;
+                                    approvedAt: string | null;
+                                    rejectionReason: string | null;
+                                    createdByName: string;
+                                    printedAt: string | null;
+                                    version: number;
+                                }[];
+                                totalIncomeAmount: number;
+                                totalExpenseAmount: number;
+                                pendingApprovalCount: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền cash_voucher.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Lập phiếu thu/chi — status POSTED hoặc PENDING_APPROVAL theo công tắc "Phiếu chi phải được duyệt" */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        direction: "EXPENSE" | "INCOME";
+                        incomeExpenseTypeCode: string;
+                        /** Format: uuid */
+                        cashAccountId: string;
+                        paymentMethodCode: string;
+                        amount: number;
+                        occurredAt?: string;
+                        partnerName?: string | null;
+                        description: string;
+                        note?: string | null;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                voucherNo: string;
+                                /** @enum {string} */
+                                direction: "EXPENSE" | "INCOME";
+                                incomeExpenseTypeCode: string;
+                                /** Format: uuid */
+                                cashAccountId: string;
+                                paymentMethodCode: string;
+                                amount: number;
+                                occurredAt: string;
+                                partnerName: string | null;
+                                description: string;
+                                note: string | null;
+                                /** @enum {string} */
+                                status: "POSTED" | "PENDING_APPROVAL" | "REJECTED";
+                                voided: boolean;
+                                approvedByName: string | null;
+                                approvedAt: string | null;
+                                rejectionReason: string | null;
+                                createdByName: string;
+                                printedAt: string | null;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền cash_voucher.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Quỹ tham chiếu không tồn tại */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cash-vouchers/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Chi tiết 1 phiếu thu/chi — phiếu đã huỷ vẫn xem được (voided=true) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                voucherNo: string;
+                                /** @enum {string} */
+                                direction: "EXPENSE" | "INCOME";
+                                incomeExpenseTypeCode: string;
+                                /** Format: uuid */
+                                cashAccountId: string;
+                                paymentMethodCode: string;
+                                amount: number;
+                                occurredAt: string;
+                                partnerName: string | null;
+                                description: string;
+                                note: string | null;
+                                /** @enum {string} */
+                                status: "POSTED" | "PENDING_APPROVAL" | "REJECTED";
+                                voided: boolean;
+                                approvedByName: string | null;
+                                approvedAt: string | null;
+                                rejectionReason: string | null;
+                                createdByName: string;
+                                printedAt: string | null;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền cash_voucher.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại hoặc thuộc tenant khác) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Sửa phiếu — chỉ khi chưa duyệt/chưa huỷ và ca gắn với phiếu (nếu có) chưa chốt */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        incomeExpenseTypeCode?: string;
+                        /** Format: uuid */
+                        cashAccountId?: string;
+                        paymentMethodCode?: string;
+                        amount?: number;
+                        occurredAt?: string;
+                        partnerName?: string | null;
+                        description?: string;
+                        note?: string | null;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                voucherNo: string;
+                                /** @enum {string} */
+                                direction: "EXPENSE" | "INCOME";
+                                incomeExpenseTypeCode: string;
+                                /** Format: uuid */
+                                cashAccountId: string;
+                                paymentMethodCode: string;
+                                amount: number;
+                                occurredAt: string;
+                                partnerName: string | null;
+                                description: string;
+                                note: string | null;
+                                /** @enum {string} */
+                                status: "POSTED" | "PENDING_APPROVAL" | "REJECTED";
+                                voided: boolean;
+                                approvedByName: string | null;
+                                approvedAt: string | null;
+                                rejectionReason: string | null;
+                                createdByName: string;
+                                printedAt: string | null;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền cash_voucher.update, hoặc scope personal mà không phải người lập phiếu */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION), hoặc phiếu không còn sửa được (CASH_VOUCHER_NOT_EDITABLE) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/cash-vouchers/{id}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Huỷ phiếu (soft-delete) — lý do bắt buộc */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        reason: string;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                voucherNo: string;
+                                /** @enum {string} */
+                                direction: "EXPENSE" | "INCOME";
+                                incomeExpenseTypeCode: string;
+                                /** Format: uuid */
+                                cashAccountId: string;
+                                paymentMethodCode: string;
+                                amount: number;
+                                occurredAt: string;
+                                partnerName: string | null;
+                                description: string;
+                                note: string | null;
+                                /** @enum {string} */
+                                status: "POSTED" | "PENDING_APPROVAL" | "REJECTED";
+                                voided: boolean;
+                                approvedByName: string | null;
+                                approvedAt: string | null;
+                                rejectionReason: string | null;
+                                createdByName: string;
+                                printedAt: string | null;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền cash_voucher.update, hoặc scope personal mà không phải người lập phiếu */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION), hoặc phiếu không còn sửa được (CASH_VOUCHER_NOT_EDITABLE) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cash-vouchers/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Duyệt phiếu chi đang chờ duyệt */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                voucherNo: string;
+                                /** @enum {string} */
+                                direction: "EXPENSE" | "INCOME";
+                                incomeExpenseTypeCode: string;
+                                /** Format: uuid */
+                                cashAccountId: string;
+                                paymentMethodCode: string;
+                                amount: number;
+                                occurredAt: string;
+                                partnerName: string | null;
+                                description: string;
+                                note: string | null;
+                                /** @enum {string} */
+                                status: "POSTED" | "PENDING_APPROVAL" | "REJECTED";
+                                voided: boolean;
+                                approvedByName: string | null;
+                                approvedAt: string | null;
+                                rejectionReason: string | null;
+                                createdByName: string;
+                                printedAt: string | null;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền cash_voucher.approve */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION), hoặc phiếu không ở trạng thái chờ duyệt (CASH_VOUCHER_NOT_PENDING_APPROVAL) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cash-vouchers/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Từ chối phiếu chi đang chờ duyệt — lý do bắt buộc */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        reason: string;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                voucherNo: string;
+                                /** @enum {string} */
+                                direction: "EXPENSE" | "INCOME";
+                                incomeExpenseTypeCode: string;
+                                /** Format: uuid */
+                                cashAccountId: string;
+                                paymentMethodCode: string;
+                                amount: number;
+                                occurredAt: string;
+                                partnerName: string | null;
+                                description: string;
+                                note: string | null;
+                                /** @enum {string} */
+                                status: "POSTED" | "PENDING_APPROVAL" | "REJECTED";
+                                voided: boolean;
+                                approvedByName: string | null;
+                                approvedAt: string | null;
+                                rejectionReason: string | null;
+                                createdByName: string;
+                                printedAt: string | null;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền cash_voucher.approve */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION), hoặc phiếu không ở trạng thái chờ duyệt (CASH_VOUCHER_NOT_PENDING_APPROVAL) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cash-vouchers/{id}/print": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Đánh dấu đã in (ghi printedAt lần đầu, gọi lại không đổi) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                voucherNo: string;
+                                /** @enum {string} */
+                                direction: "EXPENSE" | "INCOME";
+                                incomeExpenseTypeCode: string;
+                                /** Format: uuid */
+                                cashAccountId: string;
+                                paymentMethodCode: string;
+                                amount: number;
+                                occurredAt: string;
+                                partnerName: string | null;
+                                description: string;
+                                note: string | null;
+                                /** @enum {string} */
+                                status: "POSTED" | "PENDING_APPROVAL" | "REJECTED";
+                                voided: boolean;
+                                approvedByName: string | null;
+                                approvedAt: string | null;
+                                rejectionReason: string | null;
+                                createdByName: string;
+                                printedAt: string | null;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền cash_voucher.read, hoặc scope personal mà không phải người lập phiếu */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy */
+                404: {
                     headers: {
                         [name: string]: unknown;
                     };

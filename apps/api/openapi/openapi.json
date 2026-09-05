@@ -4816,6 +4816,9 @@
                         },
                         "cashierShiftMultiCashierEnabled": {
                           "type": "boolean"
+                        },
+                        "cashVoucherApprovalEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -4832,7 +4835,8 @@
                         "workShiftAssignmentLockGraceDays",
                         "cashierShiftBlindCloseEnabled",
                         "cashierShiftRequiredEnabled",
-                        "cashierShiftMultiCashierEnabled"
+                        "cashierShiftMultiCashierEnabled",
+                        "cashVoucherApprovalEnabled"
                       ]
                     },
                     "meta": {
@@ -24513,6 +24517,9 @@
                         },
                         "cashierShiftMultiCashierEnabled": {
                           "type": "boolean"
+                        },
+                        "cashVoucherApprovalEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -24529,7 +24536,8 @@
                         "workShiftAssignmentLockGraceDays",
                         "cashierShiftBlindCloseEnabled",
                         "cashierShiftRequiredEnabled",
-                        "cashierShiftMultiCashierEnabled"
+                        "cashierShiftMultiCashierEnabled",
+                        "cashVoucherApprovalEnabled"
                       ]
                     },
                     "meta": {
@@ -24825,6 +24833,9 @@
                   },
                   "cashierShiftMultiCashierEnabled": {
                     "type": "boolean"
+                  },
+                  "cashVoucherApprovalEnabled": {
+                    "type": "boolean"
                   }
                 }
               }
@@ -25045,6 +25056,9 @@
                         },
                         "cashierShiftMultiCashierEnabled": {
                           "type": "boolean"
+                        },
+                        "cashVoucherApprovalEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -25061,7 +25075,8 @@
                         "workShiftAssignmentLockGraceDays",
                         "cashierShiftBlindCloseEnabled",
                         "cashierShiftRequiredEnabled",
-                        "cashierShiftMultiCashierEnabled"
+                        "cashierShiftMultiCashierEnabled",
+                        "cashVoucherApprovalEnabled"
                       ]
                     },
                     "meta": {
@@ -25486,7 +25501,9 @@
                                   "APPOINTMENT_BOOKING",
                                   "ENCOUNTER",
                                   "INVOICE",
-                                  "CASHIER_SHIFT"
+                                  "CASHIER_SHIFT",
+                                  "CASH_RECEIPT",
+                                  "CASH_PAYMENT"
                                 ]
                               },
                               "label": {
@@ -25631,7 +25648,9 @@
                 "APPOINTMENT_BOOKING",
                 "ENCOUNTER",
                 "INVOICE",
-                "CASHIER_SHIFT"
+                "CASHIER_SHIFT",
+                "CASH_RECEIPT",
+                "CASH_PAYMENT"
               ]
             },
             "required": true,
@@ -25687,7 +25706,9 @@
                             "APPOINTMENT_BOOKING",
                             "ENCOUNTER",
                             "INVOICE",
-                            "CASHIER_SHIFT"
+                            "CASHIER_SHIFT",
+                            "CASH_RECEIPT",
+                            "CASH_PAYMENT"
                           ]
                         },
                         "label": {
@@ -33917,6 +33938,18 @@
                                 "null"
                               ]
                             },
+                            "otherCashInAmount": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
+                            "otherCashOutAmount": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
                             "countedCashAmount": {
                               "type": [
                                 "integer",
@@ -34020,6 +34053,8 @@
                             "cashOutAmount",
                             "nonCashBreakdown",
                             "expectedCashAmount",
+                            "otherCashInAmount",
+                            "otherCashOutAmount",
                             "countedCashAmount",
                             "cashDiscrepancyReason",
                             "keepForNextAmount",
@@ -34293,6 +34328,18 @@
                             "null"
                           ]
                         },
+                        "otherCashInAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "otherCashOutAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
                         "countedCashAmount": {
                           "type": [
                             "integer",
@@ -34396,6 +34443,8 @@
                         "cashOutAmount",
                         "nonCashBreakdown",
                         "expectedCashAmount",
+                        "otherCashInAmount",
+                        "otherCashOutAmount",
                         "countedCashAmount",
                         "cashDiscrepancyReason",
                         "keepForNextAmount",
@@ -34870,6 +34919,12 @@
                         },
                         "expectedCashAmount": {
                           "type": "integer"
+                        },
+                        "otherCashInAmount": {
+                          "type": "integer"
+                        },
+                        "otherCashOutAmount": {
+                          "type": "integer"
                         }
                       },
                       "required": [
@@ -34878,7 +34933,9 @@
                         "cashOutAmount",
                         "cashOutCount",
                         "nonCashBreakdown",
-                        "expectedCashAmount"
+                        "expectedCashAmount",
+                        "otherCashInAmount",
+                        "otherCashOutAmount"
                       ]
                     },
                     "meta": {
@@ -35116,6 +35173,18 @@
                             "null"
                           ]
                         },
+                        "otherCashInAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "otherCashOutAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
                         "countedCashAmount": {
                           "type": [
                             "integer",
@@ -35219,6 +35288,8 @@
                         "cashOutAmount",
                         "nonCashBreakdown",
                         "expectedCashAmount",
+                        "otherCashInAmount",
+                        "otherCashOutAmount",
                         "countedCashAmount",
                         "cashDiscrepancyReason",
                         "keepForNextAmount",
@@ -35503,6 +35574,18 @@
                             "null"
                           ]
                         },
+                        "otherCashInAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "otherCashOutAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
                         "countedCashAmount": {
                           "type": [
                             "integer",
@@ -35606,6 +35689,8 @@
                         "cashOutAmount",
                         "nonCashBreakdown",
                         "expectedCashAmount",
+                        "otherCashInAmount",
+                        "otherCashOutAmount",
                         "countedCashAmount",
                         "cashDiscrepancyReason",
                         "keepForNextAmount",
@@ -35866,6 +35951,12 @@
                         },
                         "expectedCashAmount": {
                           "type": "integer"
+                        },
+                        "otherCashInAmount": {
+                          "type": "integer"
+                        },
+                        "otherCashOutAmount": {
+                          "type": "integer"
                         }
                       },
                       "required": [
@@ -35874,7 +35965,9 @@
                         "cashOutAmount",
                         "cashOutCount",
                         "nonCashBreakdown",
-                        "expectedCashAmount"
+                        "expectedCashAmount",
+                        "otherCashInAmount",
+                        "otherCashOutAmount"
                       ]
                     },
                     "meta": {
@@ -36141,6 +36234,18 @@
                             "null"
                           ]
                         },
+                        "otherCashInAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "otherCashOutAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
                         "countedCashAmount": {
                           "type": [
                             "integer",
@@ -36244,6 +36349,8 @@
                         "cashOutAmount",
                         "nonCashBreakdown",
                         "expectedCashAmount",
+                        "otherCashInAmount",
+                        "otherCashOutAmount",
                         "countedCashAmount",
                         "cashDiscrepancyReason",
                         "keepForNextAmount",
@@ -36543,6 +36650,18 @@
                             "null"
                           ]
                         },
+                        "otherCashInAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "otherCashOutAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
                         "countedCashAmount": {
                           "type": [
                             "integer",
@@ -36646,6 +36765,8 @@
                         "cashOutAmount",
                         "nonCashBreakdown",
                         "expectedCashAmount",
+                        "otherCashInAmount",
+                        "otherCashOutAmount",
                         "countedCashAmount",
                         "cashDiscrepancyReason",
                         "keepForNextAmount",
@@ -36967,6 +37088,18 @@
                             "null"
                           ]
                         },
+                        "otherCashInAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "otherCashOutAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
                         "countedCashAmount": {
                           "type": [
                             "integer",
@@ -37070,6 +37203,8 @@
                         "cashOutAmount",
                         "nonCashBreakdown",
                         "expectedCashAmount",
+                        "otherCashInAmount",
+                        "otherCashOutAmount",
                         "countedCashAmount",
                         "cashDiscrepancyReason",
                         "keepForNextAmount",
@@ -37194,6 +37329,3023 @@
           },
           "409": {
             "description": "version không khớp (CONCURRENT_MODIFICATION), hoặc ca chưa chốt (CASHIER_SHIFT_NOT_CLOSED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cash-accounts": {
+      "get": {
+        "tags": [
+          "cash-book"
+        ],
+        "summary": "Danh sách Quỹ (tiền mặt/ngân hàng) — form lập phiếu thu/chi cần",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "CASH",
+                                  "BANK",
+                                  "DRAWER"
+                                ]
+                              },
+                              "bankName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "bankAccountNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "openingBalance": {
+                                "type": "integer"
+                              },
+                              "openingBalanceAt": {
+                                "type": "string"
+                              },
+                              "isDefault": {
+                                "type": "boolean"
+                              },
+                              "isActive": {
+                                "type": "boolean"
+                              },
+                              "version": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "code",
+                              "name",
+                              "type",
+                              "bankName",
+                              "bankAccountNo",
+                              "openingBalance",
+                              "openingBalanceAt",
+                              "isDefault",
+                              "isActive",
+                              "version"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền cash_account.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "cash-book"
+        ],
+        "summary": "Thêm Quỹ mới — quỹ ngân hàng bắt buộc số tài khoản",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "CASH",
+                      "BANK",
+                      "DRAWER"
+                    ]
+                  },
+                  "bankName": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "bankAccountNo": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "openingBalance": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "default": 0
+                  },
+                  "openingBalanceAt": {
+                    "type": "string"
+                  },
+                  "isDefault": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "name",
+                  "type",
+                  "openingBalanceAt"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "CASH",
+                            "BANK",
+                            "DRAWER"
+                          ]
+                        },
+                        "bankName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "bankAccountNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "openingBalance": {
+                          "type": "integer"
+                        },
+                        "openingBalanceAt": {
+                          "type": "string"
+                        },
+                        "isDefault": {
+                          "type": "boolean"
+                        },
+                        "isActive": {
+                          "type": "boolean"
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "code",
+                        "name",
+                        "type",
+                        "bankName",
+                        "bankAccountNo",
+                        "openingBalance",
+                        "openingBalanceAt",
+                        "isDefault",
+                        "isActive",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Thiếu số tài khoản với quỹ ngân hàng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền cash_account.manage",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cash-accounts/{id}": {
+      "patch": {
+        "tags": [
+          "cash-book"
+        ],
+        "summary": "Sửa Quỹ — đổi tên/số tài khoản/mặc định/ẩn-hiện, không đổi loại quỹ",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "bankName": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "bankAccountNo": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "isDefault": {
+                    "type": "boolean"
+                  },
+                  "isActive": {
+                    "type": "boolean"
+                  },
+                  "version": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "CASH",
+                            "BANK",
+                            "DRAWER"
+                          ]
+                        },
+                        "bankName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "bankAccountNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "openingBalance": {
+                          "type": "integer"
+                        },
+                        "openingBalanceAt": {
+                          "type": "string"
+                        },
+                        "isDefault": {
+                          "type": "boolean"
+                        },
+                        "isActive": {
+                          "type": "boolean"
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "code",
+                        "name",
+                        "type",
+                        "bankName",
+                        "bankAccountNo",
+                        "openingBalance",
+                        "openingBalanceAt",
+                        "isDefault",
+                        "isActive",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền cash_account.manage",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp (CONCURRENT_MODIFICATION)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cash-vouchers": {
+      "get": {
+        "tags": [
+          "cash-book"
+        ],
+        "summary": "Danh sách Phiếu thu/chi — lọc theo khoảng ngày/loại/trạng thái/ca, kèm tổng kết",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": false,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": false,
+            "name": "to",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "EXPENSE",
+                "INCOME"
+              ]
+            },
+            "required": false,
+            "name": "direction",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "POSTED",
+                "PENDING_APPROVAL",
+                "REJECTED"
+              ]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "cashierShiftId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "voucherNo": {
+                                "type": "string"
+                              },
+                              "direction": {
+                                "type": "string",
+                                "enum": [
+                                  "EXPENSE",
+                                  "INCOME"
+                                ]
+                              },
+                              "incomeExpenseTypeCode": {
+                                "type": "string"
+                              },
+                              "cashAccountId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "paymentMethodCode": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "amount": {
+                                "type": "integer"
+                              },
+                              "occurredAt": {
+                                "type": "string"
+                              },
+                              "partnerName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "description": {
+                                "type": "string"
+                              },
+                              "note": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "POSTED",
+                                  "PENDING_APPROVAL",
+                                  "REJECTED"
+                                ]
+                              },
+                              "voided": {
+                                "type": "boolean"
+                              },
+                              "approvedByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "approvedAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "rejectionReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdByName": {
+                                "type": "string"
+                              },
+                              "printedAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "version": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "voucherNo",
+                              "direction",
+                              "incomeExpenseTypeCode",
+                              "cashAccountId",
+                              "paymentMethodCode",
+                              "amount",
+                              "occurredAt",
+                              "partnerName",
+                              "description",
+                              "note",
+                              "status",
+                              "voided",
+                              "approvedByName",
+                              "approvedAt",
+                              "rejectionReason",
+                              "createdByName",
+                              "printedAt",
+                              "version"
+                            ]
+                          }
+                        },
+                        "totalIncomeAmount": {
+                          "type": "integer"
+                        },
+                        "totalExpenseAmount": {
+                          "type": "integer"
+                        },
+                        "pendingApprovalCount": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "totalIncomeAmount",
+                        "totalExpenseAmount",
+                        "pendingApprovalCount"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền cash_voucher.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "cash-book"
+        ],
+        "summary": "Lập phiếu thu/chi — status POSTED hoặc PENDING_APPROVAL theo công tắc \"Phiếu chi phải được duyệt\"",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "direction": {
+                    "type": "string",
+                    "enum": [
+                      "EXPENSE",
+                      "INCOME"
+                    ]
+                  },
+                  "incomeExpenseTypeCode": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "cashAccountId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "paymentMethodCode": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "amount": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "occurredAt": {
+                    "type": "string"
+                  },
+                  "partnerName": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "note": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "direction",
+                  "incomeExpenseTypeCode",
+                  "cashAccountId",
+                  "paymentMethodCode",
+                  "amount",
+                  "description"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "voucherNo": {
+                          "type": "string"
+                        },
+                        "direction": {
+                          "type": "string",
+                          "enum": [
+                            "EXPENSE",
+                            "INCOME"
+                          ]
+                        },
+                        "incomeExpenseTypeCode": {
+                          "type": "string"
+                        },
+                        "cashAccountId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "paymentMethodCode": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "amount": {
+                          "type": "integer"
+                        },
+                        "occurredAt": {
+                          "type": "string"
+                        },
+                        "partnerName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "POSTED",
+                            "PENDING_APPROVAL",
+                            "REJECTED"
+                          ]
+                        },
+                        "voided": {
+                          "type": "boolean"
+                        },
+                        "approvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdByName": {
+                          "type": "string"
+                        },
+                        "printedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "voucherNo",
+                        "direction",
+                        "incomeExpenseTypeCode",
+                        "cashAccountId",
+                        "paymentMethodCode",
+                        "amount",
+                        "occurredAt",
+                        "partnerName",
+                        "description",
+                        "note",
+                        "status",
+                        "voided",
+                        "approvedByName",
+                        "approvedAt",
+                        "rejectionReason",
+                        "createdByName",
+                        "printedAt",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền cash_voucher.create",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Quỹ tham chiếu không tồn tại",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cash-vouchers/{id}": {
+      "get": {
+        "tags": [
+          "cash-book"
+        ],
+        "summary": "Chi tiết 1 phiếu thu/chi — phiếu đã huỷ vẫn xem được (voided=true)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "voucherNo": {
+                          "type": "string"
+                        },
+                        "direction": {
+                          "type": "string",
+                          "enum": [
+                            "EXPENSE",
+                            "INCOME"
+                          ]
+                        },
+                        "incomeExpenseTypeCode": {
+                          "type": "string"
+                        },
+                        "cashAccountId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "paymentMethodCode": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "amount": {
+                          "type": "integer"
+                        },
+                        "occurredAt": {
+                          "type": "string"
+                        },
+                        "partnerName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "POSTED",
+                            "PENDING_APPROVAL",
+                            "REJECTED"
+                          ]
+                        },
+                        "voided": {
+                          "type": "boolean"
+                        },
+                        "approvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdByName": {
+                          "type": "string"
+                        },
+                        "printedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "voucherNo",
+                        "direction",
+                        "incomeExpenseTypeCode",
+                        "cashAccountId",
+                        "paymentMethodCode",
+                        "amount",
+                        "occurredAt",
+                        "partnerName",
+                        "description",
+                        "note",
+                        "status",
+                        "voided",
+                        "approvedByName",
+                        "approvedAt",
+                        "rejectionReason",
+                        "createdByName",
+                        "printedAt",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền cash_voucher.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy (không tồn tại hoặc thuộc tenant khác)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "cash-book"
+        ],
+        "summary": "Sửa phiếu — chỉ khi chưa duyệt/chưa huỷ và ca gắn với phiếu (nếu có) chưa chốt",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "incomeExpenseTypeCode": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "cashAccountId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "paymentMethodCode": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "amount": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "occurredAt": {
+                    "type": "string"
+                  },
+                  "partnerName": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "note": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "version": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "voucherNo": {
+                          "type": "string"
+                        },
+                        "direction": {
+                          "type": "string",
+                          "enum": [
+                            "EXPENSE",
+                            "INCOME"
+                          ]
+                        },
+                        "incomeExpenseTypeCode": {
+                          "type": "string"
+                        },
+                        "cashAccountId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "paymentMethodCode": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "amount": {
+                          "type": "integer"
+                        },
+                        "occurredAt": {
+                          "type": "string"
+                        },
+                        "partnerName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "POSTED",
+                            "PENDING_APPROVAL",
+                            "REJECTED"
+                          ]
+                        },
+                        "voided": {
+                          "type": "boolean"
+                        },
+                        "approvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdByName": {
+                          "type": "string"
+                        },
+                        "printedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "voucherNo",
+                        "direction",
+                        "incomeExpenseTypeCode",
+                        "cashAccountId",
+                        "paymentMethodCode",
+                        "amount",
+                        "occurredAt",
+                        "partnerName",
+                        "description",
+                        "note",
+                        "status",
+                        "voided",
+                        "approvedByName",
+                        "approvedAt",
+                        "rejectionReason",
+                        "createdByName",
+                        "printedAt",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền cash_voucher.update, hoặc scope personal mà không phải người lập phiếu",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp (CONCURRENT_MODIFICATION), hoặc phiếu không còn sửa được (CASH_VOUCHER_NOT_EDITABLE)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cash-vouchers/{id}/void": {
+      "post": {
+        "tags": [
+          "cash-book"
+        ],
+        "summary": "Huỷ phiếu (soft-delete) — lý do bắt buộc",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "version": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "reason",
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "voucherNo": {
+                          "type": "string"
+                        },
+                        "direction": {
+                          "type": "string",
+                          "enum": [
+                            "EXPENSE",
+                            "INCOME"
+                          ]
+                        },
+                        "incomeExpenseTypeCode": {
+                          "type": "string"
+                        },
+                        "cashAccountId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "paymentMethodCode": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "amount": {
+                          "type": "integer"
+                        },
+                        "occurredAt": {
+                          "type": "string"
+                        },
+                        "partnerName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "POSTED",
+                            "PENDING_APPROVAL",
+                            "REJECTED"
+                          ]
+                        },
+                        "voided": {
+                          "type": "boolean"
+                        },
+                        "approvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdByName": {
+                          "type": "string"
+                        },
+                        "printedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "voucherNo",
+                        "direction",
+                        "incomeExpenseTypeCode",
+                        "cashAccountId",
+                        "paymentMethodCode",
+                        "amount",
+                        "occurredAt",
+                        "partnerName",
+                        "description",
+                        "note",
+                        "status",
+                        "voided",
+                        "approvedByName",
+                        "approvedAt",
+                        "rejectionReason",
+                        "createdByName",
+                        "printedAt",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền cash_voucher.update, hoặc scope personal mà không phải người lập phiếu",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp (CONCURRENT_MODIFICATION), hoặc phiếu không còn sửa được (CASH_VOUCHER_NOT_EDITABLE)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cash-vouchers/{id}/approve": {
+      "post": {
+        "tags": [
+          "cash-book"
+        ],
+        "summary": "Duyệt phiếu chi đang chờ duyệt",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "voucherNo": {
+                          "type": "string"
+                        },
+                        "direction": {
+                          "type": "string",
+                          "enum": [
+                            "EXPENSE",
+                            "INCOME"
+                          ]
+                        },
+                        "incomeExpenseTypeCode": {
+                          "type": "string"
+                        },
+                        "cashAccountId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "paymentMethodCode": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "amount": {
+                          "type": "integer"
+                        },
+                        "occurredAt": {
+                          "type": "string"
+                        },
+                        "partnerName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "POSTED",
+                            "PENDING_APPROVAL",
+                            "REJECTED"
+                          ]
+                        },
+                        "voided": {
+                          "type": "boolean"
+                        },
+                        "approvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdByName": {
+                          "type": "string"
+                        },
+                        "printedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "voucherNo",
+                        "direction",
+                        "incomeExpenseTypeCode",
+                        "cashAccountId",
+                        "paymentMethodCode",
+                        "amount",
+                        "occurredAt",
+                        "partnerName",
+                        "description",
+                        "note",
+                        "status",
+                        "voided",
+                        "approvedByName",
+                        "approvedAt",
+                        "rejectionReason",
+                        "createdByName",
+                        "printedAt",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền cash_voucher.approve",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp (CONCURRENT_MODIFICATION), hoặc phiếu không ở trạng thái chờ duyệt (CASH_VOUCHER_NOT_PENDING_APPROVAL)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cash-vouchers/{id}/reject": {
+      "post": {
+        "tags": [
+          "cash-book"
+        ],
+        "summary": "Từ chối phiếu chi đang chờ duyệt — lý do bắt buộc",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "version": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "reason",
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "voucherNo": {
+                          "type": "string"
+                        },
+                        "direction": {
+                          "type": "string",
+                          "enum": [
+                            "EXPENSE",
+                            "INCOME"
+                          ]
+                        },
+                        "incomeExpenseTypeCode": {
+                          "type": "string"
+                        },
+                        "cashAccountId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "paymentMethodCode": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "amount": {
+                          "type": "integer"
+                        },
+                        "occurredAt": {
+                          "type": "string"
+                        },
+                        "partnerName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "POSTED",
+                            "PENDING_APPROVAL",
+                            "REJECTED"
+                          ]
+                        },
+                        "voided": {
+                          "type": "boolean"
+                        },
+                        "approvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdByName": {
+                          "type": "string"
+                        },
+                        "printedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "voucherNo",
+                        "direction",
+                        "incomeExpenseTypeCode",
+                        "cashAccountId",
+                        "paymentMethodCode",
+                        "amount",
+                        "occurredAt",
+                        "partnerName",
+                        "description",
+                        "note",
+                        "status",
+                        "voided",
+                        "approvedByName",
+                        "approvedAt",
+                        "rejectionReason",
+                        "createdByName",
+                        "printedAt",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền cash_voucher.approve",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp (CONCURRENT_MODIFICATION), hoặc phiếu không ở trạng thái chờ duyệt (CASH_VOUCHER_NOT_PENDING_APPROVAL)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cash-vouchers/{id}/print": {
+      "post": {
+        "tags": [
+          "cash-book"
+        ],
+        "summary": "Đánh dấu đã in (ghi printedAt lần đầu, gọi lại không đổi)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "voucherNo": {
+                          "type": "string"
+                        },
+                        "direction": {
+                          "type": "string",
+                          "enum": [
+                            "EXPENSE",
+                            "INCOME"
+                          ]
+                        },
+                        "incomeExpenseTypeCode": {
+                          "type": "string"
+                        },
+                        "cashAccountId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "paymentMethodCode": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "amount": {
+                          "type": "integer"
+                        },
+                        "occurredAt": {
+                          "type": "string"
+                        },
+                        "partnerName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "POSTED",
+                            "PENDING_APPROVAL",
+                            "REJECTED"
+                          ]
+                        },
+                        "voided": {
+                          "type": "boolean"
+                        },
+                        "approvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdByName": {
+                          "type": "string"
+                        },
+                        "printedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "voucherNo",
+                        "direction",
+                        "incomeExpenseTypeCode",
+                        "cashAccountId",
+                        "paymentMethodCode",
+                        "amount",
+                        "occurredAt",
+                        "partnerName",
+                        "description",
+                        "note",
+                        "status",
+                        "voided",
+                        "approvedByName",
+                        "approvedAt",
+                        "rejectionReason",
+                        "createdByName",
+                        "printedAt",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền cash_voucher.read, hoặc scope personal mà không phải người lập phiếu",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy",
             "content": {
               "application/json": {
                 "schema": {
