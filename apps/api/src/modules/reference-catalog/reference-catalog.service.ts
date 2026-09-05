@@ -109,6 +109,7 @@ export class ReferenceCatalogService {
           deactivatesAccount: dto.deactivatesAccount ?? false,
           countsAsCash: dto.countsAsCash ?? false,
           description: dto.description ?? null,
+          direction: dto.direction ?? null,
           isActive: dto.isActive ?? true,
         });
       } catch (err) {
@@ -212,6 +213,7 @@ export class ReferenceCatalogService {
         dto.deactivatesAccount !== undefined ||
         dto.countsAsCash !== undefined ||
         dto.description !== undefined ||
+        dto.direction !== undefined ||
         dto.isActive !== undefined;
 
       if (hasCatalogFieldChanges) {
@@ -226,6 +228,7 @@ export class ReferenceCatalogService {
             deactivatesAccount: dto.deactivatesAccount,
             countsAsCash: dto.countsAsCash,
             description: dto.description,
+            direction: dto.direction,
             isActive: dto.isActive,
           });
         } catch (err) {
@@ -316,6 +319,7 @@ export class ReferenceCatalogService {
       deactivatesAccount: row.deactivatesAccount,
       countsAsCash: row.countsAsCash,
       description: row.description,
+      direction: row.direction,
       // Category khác luôn `undefined` (field không áp dụng). EXAM_TYPE luôn là MẢNG thật (kể cả
       // rỗng — ví dụ tenant khác chưa tạo đơn giá cho mục dùng chung này) chứ không phải
       // `undefined`, để frontend không phải phân biệt 2 trạng thái "chưa tải"/"không có dòng nào".

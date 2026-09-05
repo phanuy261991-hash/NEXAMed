@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { ChairIcon, MagnifyingGlass, PencilSimple, Plus } from '@phosphor-icons/react';
+import { useMemo, useRef, useState } from 'react';
+import { Buildings, ChairIcon, MagnifyingGlass, PencilSimple, Plus } from '@phosphor-icons/react';
 import type { FloorSummary, RoomSummary } from '@nexamed/shared';
 import { useHasPermission } from '../auth/usePermission';
 import { Button } from '../../shared/ui/Button';
@@ -8,9 +8,12 @@ import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
+import { SaveFlashBanner } from '../../shared/ui/SaveFlashBanner';
+import { ModalHeader } from '../../shared/ui/ModalHeader';
 import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
 import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
 import { useRowSelection } from '../../shared/hooks/useRowSelection';
+import { useSaveFlash } from '../../shared/hooks/useSaveFlash';
 import { ExamStationDialog } from './ExamStationDialog';
 import {
   useCreateFloorMutation,
@@ -267,15 +270,13 @@ export function RoomPane() {
           floor={floorModal.floor}
           submitting={createFloorMutation.isPending || updateFloorMutation.isPending}
           onCancel={() => setFloorModal(null)}
-          onSubmit={(dto) => {
-            const onSettled = () => setFloorModal(null);
+          onSubmit={async (dto) => {
+            // "Lưu và nhập tiếp" (.claude/docs/ui-guidelines.md mục 4.7) — đóng modal hay giữ để
+            // nhập tiếp thuộc về form con (nó await Promise này), nơi này chỉ lo gửi request.
             if (floorModal.mode === 'create') {
-              createFloorMutation.mutate({ name: dto.name }, { onSuccess: onSettled });
+              await createFloorMutation.mutateAsync({ name: dto.name });
             } else if (floorModal.floor) {
-              updateFloorMutation.mutate(
-                { id: floorModal.floor.id, body: { name: dto.name, isActive: dto.isActive, version: floorModal.floor.version } },
-                { onSuccess: onSettled },
-              );
+              await updateFloorMutation.mutateAsync({ id: floorModal.floor.id, body: { name: dto.name, isActive: dto.isActive, version: floorModal.floor.version } });
             }
           }}
         />
@@ -288,15 +289,14 @@ export function RoomPane() {
           floors={floors}
           submitting={createRoomMutation.isPending || updateRoomMutation.isPending}
           onCancel={() => setRoomModal(null)}
-          onSubmit={(dto) => {
-            const onSettled = () => setRoomModal(null);
+          onSubmit={async (dto) => {
             if (roomModal.mode === 'create') {
-              createRoomMutation.mutate({ name: dto.name, floorId: dto.floorId }, { onSuccess: onSettled });
+              await createRoomMutation.mutateAsync({ name: dto.name, floorId: dto.floorId });
             } else if (roomModal.room) {
-              updateRoomMutation.mutate(
-                { id: roomModal.room.id, body: { name: dto.name, floorId: dto.floorId, isActive: dto.isActive, version: roomModal.room.version } },
-                { onSuccess: onSettled },
-              );
+              await updateRoomMutation.mutateAsync({
+                id: roomModal.room.id,
+                body: { name: dto.name, floorId: dto.floorId, isActive: dto.isActive, version: roomModal.room.version },
+              });
             }
           }}
         />
@@ -318,43 +318,67 @@ function FloorFormModal({
   floor?: FloorSummary;
   submitting: boolean;
   onCancel: () => void;
-  onSubmit: (dto: { name: string; isActive: boolean }) => void;
+  /** Trả `Promise` — `handleSubmit`/`handleSaveAndContinue` await để biết lưu xong mới đóng modal
+   * hoặc làm trống form (`.claude/docs/ui-guidelines.md` mục 4.7). */
+  onSubmit: (dto: { name: string; isActive: boolean }) => Promise<void>;
 }) {
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState(floor?.name ?? '');
   const [isActive, setIsActive] = useState(floor?.isActive ?? true);
+  const { flashVisible, triggerFlash } = useSaveFlash();
   const isInvalid = name.trim() === '';
 
-  // Bọc `<form>` để Enter trong ô nhập tự submit — bắt buộc cho mọi form Thêm/Sửa (`.claude/docs/
-  // ui-guidelines.md` mục 4.4).
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
+    // Bọc `<form>` để Enter trong ô nhập tự submit — bắt buộc cho mọi form Thêm/Sửa (`.claude/docs/
+    // ui-guidelines.md` mục 4.4).
     e.preventDefault();
     if (isInvalid) return;
-    onSubmit({ name: name.trim(), isActive });
+    await onSubmit({ name: name.trim(), isActive });
+    onCancel();
+  }
+
+  // "Lưu và nhập tiếp" (mục 4.7) — nút `type="button"` riêng, không đụng nút submit mặc định.
+  async function handleSaveAndContinue() {
+    if (isInvalid) return;
+    await onSubmit({ name: name.trim(), isActive });
+    setName('');
+    nameInputRef.current?.focus();
+    triggerFlash();
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
-      <form className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl" onSubmit={handleSubmit}>
-        <h2 className="text-[15px] font-semibold text-slate-900">{mode === 'create' ? 'Thêm tầng' : 'Sửa tầng'}</h2>
+      <form className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl" onSubmit={handleSubmit}>
+        <ModalHeader icon={Buildings} title={mode === 'create' ? 'Thêm tầng' : 'Sửa tầng'} onClose={onCancel} />
 
-        <div className="mb-3.5 mt-4 flex flex-col gap-1.5">
-          <label htmlFor="floor-name" className="text-sm font-semibold text-slate-800">
-            Tên tầng
-          </label>
-          <input id="floor-name" placeholder="Ví dụ: Tầng 1" value={name} onChange={(e) => setName(e.target.value)} className={inputClassName} />
+        <SaveFlashBanner visible={flashVisible} />
+
+        {/* Bố cục lưới ngang bắt buộc cho mọi form (.claude/docs/ui-guidelines.md mục 4.1). */}
+        <div className="mb-4 mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="floor-name" className="text-sm font-semibold text-slate-800">
+              Tên tầng
+            </label>
+            <input id="floor-name" ref={nameInputRef} placeholder="Ví dụ: Tầng 1" value={name} onChange={(e) => setName(e.target.value)} className={inputClassName} />
+          </div>
+
+          {mode === 'edit' && (
+            <label className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+              <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
+              Đang hoạt động
+            </label>
+          )}
         </div>
-
-        {mode === 'edit' && (
-          <label className="mb-4 flex items-center gap-2 text-sm text-slate-600">
-            <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
-            Đang hoạt động
-          </label>
-        )}
 
         <div className="mt-4 flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onCancel}>
             Huỷ
           </Button>
+          {mode === 'create' && (
+            <Button type="button" variant="secondary" loading={submitting} disabled={isInvalid} onClick={handleSaveAndContinue}>
+              Lưu và nhập tiếp
+            </Button>
+          )}
           <Button type="submit" loading={submitting} disabled={isInvalid}>
             Lưu
           </Button>
@@ -377,59 +401,88 @@ function RoomFormModal({
   floors: FloorSummary[];
   submitting: boolean;
   onCancel: () => void;
-  onSubmit: (dto: { name: string; floorId: string | null; isActive: boolean }) => void;
+  /** Trả `Promise` — `handleSubmit`/`handleSaveAndContinue` await để biết lưu xong mới đóng modal
+   * hoặc làm trống form (`.claude/docs/ui-guidelines.md` mục 4.7). */
+  onSubmit: (dto: { name: string; floorId: string | null; isActive: boolean }) => Promise<void>;
 }) {
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState(room?.name ?? '');
   const [floorId, setFloorId] = useState(room?.floorId ?? NO_FLOOR_VALUE);
   const [isActive, setIsActive] = useState(room?.isActive ?? true);
+  const { flashVisible, triggerFlash } = useSaveFlash();
 
   const floorOptions = [{ value: NO_FLOOR_VALUE, label: 'Không thuộc tầng nào' }, ...floors.map((f) => ({ value: f.id, label: f.name }))];
   const isInvalid = name.trim() === '';
 
-  function handleSubmit(e: React.FormEvent) {
+  function buildDto() {
+    return { name: name.trim(), floorId: floorId === NO_FLOOR_VALUE ? null : floorId, isActive };
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (isInvalid) return;
-    onSubmit({ name: name.trim(), floorId: floorId === NO_FLOOR_VALUE ? null : floorId, isActive });
+    await onSubmit(buildDto());
+    onCancel();
+  }
+
+  // "Lưu và nhập tiếp" (mục 4.7) — nút `type="button"` riêng, không đụng nút submit mặc định.
+  async function handleSaveAndContinue() {
+    if (isInvalid) return;
+    await onSubmit(buildDto());
+    setName('');
+    nameInputRef.current?.focus();
+    triggerFlash();
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
-      <form className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl" onSubmit={handleSubmit}>
-        <h2 className="text-[15px] font-semibold text-slate-900">{mode === 'create' ? 'Thêm phòng khám' : 'Sửa phòng khám'}</h2>
+      <form className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl" onSubmit={handleSubmit}>
+        <ModalHeader icon={ChairIcon} title={mode === 'create' ? 'Thêm phòng khám' : 'Sửa phòng khám'} onClose={onCancel} />
 
-        <div className="mb-3.5 mt-4 flex flex-col gap-1.5">
-          <label htmlFor="room-name" className="text-sm font-semibold text-slate-800">
-            Tên phòng
-          </label>
-          <input
-            id="room-name"
-            placeholder="Ví dụ: Phòng Nội 1"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className={inputClassName}
-          />
-        </div>
+        <SaveFlashBanner visible={flashVisible} />
 
-        {floors.length > 0 && (
-          <div className="mb-3.5 flex flex-col gap-1.5">
-            <label htmlFor="room-floor" className="text-sm font-semibold text-slate-800">
-              Tầng
+        {/* Bố cục lưới ngang bắt buộc cho mọi form (.claude/docs/ui-guidelines.md mục 4.1). */}
+        <div className="mb-4 mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="room-name" className="text-sm font-semibold text-slate-800">
+              Tên phòng
             </label>
-            <Combobox id="room-floor" value={floorId} onChange={setFloorId} options={floorOptions} />
+            <input
+              id="room-name"
+              ref={nameInputRef}
+              placeholder="Ví dụ: Phòng Nội 1"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className={inputClassName}
+            />
           </div>
-        )}
 
-        {mode === 'edit' && (
-          <label className="mb-4 flex items-center gap-2 text-sm text-slate-600">
-            <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
-            Đang hoạt động
-          </label>
-        )}
+          {floors.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="room-floor" className="text-sm font-semibold text-slate-800">
+                Tầng
+              </label>
+              <Combobox id="room-floor" value={floorId} onChange={setFloorId} options={floorOptions} />
+            </div>
+          )}
+
+          {mode === 'edit' && (
+            <label className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+              <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
+              Đang hoạt động
+            </label>
+          )}
+        </div>
 
         <div className="mt-4 flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onCancel}>
             Huỷ
           </Button>
+          {mode === 'create' && (
+            <Button type="button" variant="secondary" loading={submitting} disabled={isInvalid} onClick={handleSaveAndContinue}>
+              Lưu và nhập tiếp
+            </Button>
+          )}
           <Button type="submit" loading={submitting} disabled={isInvalid}>
             Lưu
           </Button>

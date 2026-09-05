@@ -25,6 +25,9 @@ const PILLS: ConfigScreenPill[] = [
   { key: 'price-type', label: 'Loại giá dịch vụ' },
   { key: 'unit', label: 'Đơn vị tính' },
   { key: 'payment-method', label: 'Hình thức thanh toán' },
+  // Chuẩn bị cho chức năng "Thu chi tại quầy"/Sổ quỹ sắp làm (chủ dự án yêu cầu trực tiếp
+  // 2026-09-05) — CHỈ danh mục, chức năng thu chi thật chưa xây.
+  { key: 'income-expense-type', label: 'Loại thu chi' },
 ];
 const FIRST_PILL = PILLS[0]!;
 
@@ -65,6 +68,7 @@ export function CatalogAdminPage() {
       {activePillKey === 'price-type' && <ReferenceCatalogPane category="PRICE_TYPE" categoryLabel="Loại giá dịch vụ" />}
       {activePillKey === 'unit' && <ReferenceCatalogPane category="UNIT" categoryLabel="Đơn vị tính" />}
       {activePillKey === 'payment-method' && <ReferenceCatalogPane category="PAYMENT_METHOD" categoryLabel="Hình thức thanh toán" />}
+      {activePillKey === 'income-expense-type' && <ReferenceCatalogPane category="INCOME_EXPENSE_TYPE" categoryLabel="Loại thu chi" />}
       {activePillKey === 'province' && <GeoPane mode="province" />}
       {activePillKey === 'ward' && <GeoPane mode="ward" />}
     </ConfigScreenShell>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Buildings, MagnifyingGlass, PencilSimple, Plus } from '@phosphor-icons/react';
 import type { DepartmentSummary, DepartmentTypeSummary } from '@nexamed/shared';
 import { useHasPermission } from '../auth/usePermission';
@@ -8,9 +8,12 @@ import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
+import { SaveFlashBanner } from '../../shared/ui/SaveFlashBanner';
+import { ModalHeader } from '../../shared/ui/ModalHeader';
 import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
 import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
 import { useRowSelection } from '../../shared/hooks/useRowSelection';
+import { useSaveFlash } from '../../shared/hooks/useSaveFlash';
 import { useCreateDepartmentMutation, useDepartmentsQuery, useUpdateDepartmentMutation } from './department.queries';
 import { useCreateDepartmentTypeMutation, useDepartmentTypesQuery, useUpdateDepartmentTypeMutation } from './department-type.queries';
 
@@ -247,15 +250,13 @@ export function DepartmentPane() {
           type={typeModal.type}
           submitting={createTypeMutation.isPending || updateTypeMutation.isPending}
           onCancel={() => setTypeModal(null)}
-          onSubmit={(dto) => {
-            const onSettled = () => setTypeModal(null);
+          onSubmit={async (dto) => {
+            // "Lưu và nhập tiếp" (.claude/docs/ui-guidelines.md mục 4.7) — đóng modal hay giữ để
+            // nhập tiếp thuộc về form con (nó await Promise này), nơi này chỉ lo gửi request.
             if (typeModal.mode === 'create') {
-              createTypeMutation.mutate({ name: dto.name }, { onSuccess: onSettled });
+              await createTypeMutation.mutateAsync({ name: dto.name });
             } else if (typeModal.type) {
-              updateTypeMutation.mutate(
-                { id: typeModal.type.id, body: { name: dto.name, isActive: dto.isActive, version: typeModal.type.version } },
-                { onSuccess: onSettled },
-              );
+              await updateTypeMutation.mutateAsync({ id: typeModal.type.id, body: { name: dto.name, isActive: dto.isActive, version: typeModal.type.version } });
             }
           }}
         />
@@ -268,27 +269,20 @@ export function DepartmentPane() {
           types={types}
           submitting={createMutation.isPending || updateMutation.isPending}
           onCancel={() => setModal(null)}
-          onSubmit={(dto) => {
-            const onSettled = () => setModal(null);
+          onSubmit={async (dto) => {
             if (modal.mode === 'create') {
-              createMutation.mutate(
-                { name: dto.name, departmentTypeId: dto.departmentTypeId, participatesInQueue: dto.participatesInQueue },
-                { onSuccess: onSettled },
-              );
+              await createMutation.mutateAsync({ name: dto.name, departmentTypeId: dto.departmentTypeId, participatesInQueue: dto.participatesInQueue });
             } else if (modal.department) {
-              updateMutation.mutate(
-                {
-                  id: modal.department.id,
-                  body: {
-                    name: dto.name,
-                    departmentTypeId: dto.departmentTypeId ?? null,
-                    participatesInQueue: dto.participatesInQueue,
-                    isActive: dto.isActive,
-                    version: modal.department.version,
-                  },
+              await updateMutation.mutateAsync({
+                id: modal.department.id,
+                body: {
+                  name: dto.name,
+                  departmentTypeId: dto.departmentTypeId ?? null,
+                  participatesInQueue: dto.participatesInQueue,
+                  isActive: dto.isActive,
+                  version: modal.department.version,
                 },
-                { onSuccess: onSettled },
-              );
+              });
             }
           }}
         />
@@ -308,49 +302,74 @@ function DepartmentTypeFormModal({
   type?: DepartmentTypeSummary;
   submitting: boolean;
   onCancel: () => void;
-  onSubmit: (dto: { name: string; isActive: boolean }) => void;
+  /** Trả `Promise` — `handleSubmit`/`handleSaveAndContinue` await để biết lưu xong mới đóng modal
+   * hoặc làm trống form (`.claude/docs/ui-guidelines.md` mục 4.7). */
+  onSubmit: (dto: { name: string; isActive: boolean }) => Promise<void>;
 }) {
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState(type?.name ?? '');
   const [isActive, setIsActive] = useState(type?.isActive ?? true);
+  const { flashVisible, triggerFlash } = useSaveFlash();
   const isInvalid = name.trim() === '';
 
-  // Bọc `<form>` để Enter trong ô nhập tự submit — bắt buộc cho mọi form Thêm/Sửa (`.claude/docs/
-  // ui-guidelines.md` mục 4.4).
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
+    // Bọc `<form>` để Enter trong ô nhập tự submit — bắt buộc cho mọi form Thêm/Sửa (`.claude/docs/
+    // ui-guidelines.md` mục 4.4).
     e.preventDefault();
     if (isInvalid) return;
-    onSubmit({ name: name.trim(), isActive });
+    await onSubmit({ name: name.trim(), isActive });
+    onCancel();
+  }
+
+  // "Lưu và nhập tiếp" (mục 4.7) — nút `type="button"` riêng, không đụng nút submit mặc định.
+  async function handleSaveAndContinue() {
+    if (isInvalid) return;
+    await onSubmit({ name: name.trim(), isActive });
+    setName('');
+    nameInputRef.current?.focus();
+    triggerFlash();
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
-      <form className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl" onSubmit={handleSubmit}>
-        <h2 className="text-[15px] font-semibold text-slate-900">{mode === 'create' ? 'Thêm Loại Khoa/Phòng' : 'Sửa Loại Khoa/Phòng'}</h2>
+      <form className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl" onSubmit={handleSubmit}>
+        <ModalHeader icon={Buildings} title={mode === 'create' ? 'Thêm Loại Khoa/Phòng' : 'Sửa Loại Khoa/Phòng'} onClose={onCancel} />
 
-        <div className="mb-3.5 mt-4 flex flex-col gap-1.5">
-          <label htmlFor="dept-type-name" className="text-sm font-semibold text-slate-800">
-            Tên loại
-          </label>
-          <input
-            id="dept-type-name"
-            placeholder="Ví dụ: Khối Lâm sàng"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className={inputClassName}
-          />
+        <SaveFlashBanner visible={flashVisible} />
+
+        {/* Bố cục lưới ngang bắt buộc cho mọi form (.claude/docs/ui-guidelines.md mục 4.1). */}
+        <div className="mb-4 mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="dept-type-name" className="text-sm font-semibold text-slate-800">
+              Tên loại
+            </label>
+            <input
+              id="dept-type-name"
+              ref={nameInputRef}
+              placeholder="Ví dụ: Khối Lâm sàng"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className={inputClassName}
+            />
+          </div>
+
+          {mode === 'edit' && (
+            <label className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+              <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
+              Đang hoạt động
+            </label>
+          )}
         </div>
-
-        {mode === 'edit' && (
-          <label className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800">
-            <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
-            Đang hoạt động
-          </label>
-        )}
 
         <div className="mt-4 flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onCancel}>
             Huỷ
           </Button>
+          {mode === 'create' && (
+            <Button type="button" variant="secondary" loading={submitting} disabled={isInvalid} onClick={handleSaveAndContinue}>
+              Lưu và nhập tiếp
+            </Button>
+          )}
           <Button type="submit" loading={submitting} disabled={isInvalid}>
             Lưu
           </Button>
@@ -373,67 +392,97 @@ function DepartmentFormModal({
   types: DepartmentTypeSummary[];
   submitting: boolean;
   onCancel: () => void;
-  onSubmit: (dto: { name: string; departmentTypeId?: string; participatesInQueue: boolean; isActive: boolean }) => void;
+  /** Trả `Promise` — `handleSubmit`/`handleSaveAndContinue` await để biết lưu xong mới đóng modal
+   * hoặc làm trống form (`.claude/docs/ui-guidelines.md` mục 4.7). */
+  onSubmit: (dto: { name: string; departmentTypeId?: string; participatesInQueue: boolean; isActive: boolean }) => Promise<void>;
 }) {
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState(department?.name ?? '');
   const [departmentTypeId, setDepartmentTypeId] = useState(department?.departmentTypeId ?? NO_TYPE_VALUE);
   const [participatesInQueue, setParticipatesInQueue] = useState(department?.participatesInQueue ?? true);
   const [isActive, setIsActive] = useState(department?.isActive ?? true);
+  const { flashVisible, triggerFlash } = useSaveFlash();
 
   const typeOptions = [{ value: NO_TYPE_VALUE, label: 'Không phân loại' }, ...types.filter((t) => t.isActive).map((t) => ({ value: t.id, label: t.name }))];
   const isInvalid = name.trim() === '';
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (isInvalid) return;
-    onSubmit({
+  function buildDto() {
+    return {
       name: name.trim(),
       departmentTypeId: departmentTypeId === NO_TYPE_VALUE ? undefined : departmentTypeId,
       participatesInQueue,
       isActive,
-    });
+    };
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (isInvalid) return;
+    await onSubmit(buildDto());
+    onCancel();
+  }
+
+  // "Lưu và nhập tiếp" (mục 4.7) — nút `type="button"` riêng, không đụng nút submit mặc định.
+  async function handleSaveAndContinue() {
+    if (isInvalid) return;
+    await onSubmit(buildDto());
+    setName('');
+    setDepartmentTypeId(NO_TYPE_VALUE);
+    setParticipatesInQueue(true);
+    nameInputRef.current?.focus();
+    triggerFlash();
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
-      <form className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl" onSubmit={handleSubmit}>
-        <h2 className="text-[15px] font-semibold text-slate-900">{mode === 'create' ? 'Thêm Khoa/Phòng' : 'Sửa Khoa/Phòng'}</h2>
+      <form className="w-full max-w-lg rounded-lg bg-white p-5 shadow-xl" onSubmit={handleSubmit}>
+        <ModalHeader icon={Buildings} title={mode === 'create' ? 'Thêm Khoa/Phòng' : 'Sửa Khoa/Phòng'} onClose={onCancel} />
 
-        <div className="mb-3.5 mt-4 flex flex-col gap-1.5">
-          <label htmlFor="dept-name" className="text-sm font-semibold text-slate-800">
-            Tên Khoa/Phòng
-          </label>
-          <input id="dept-name" placeholder="Ví dụ: Khoa Nội" value={name} onChange={(e) => setName(e.target.value)} className={inputClassName} />
-        </div>
+        <SaveFlashBanner visible={flashVisible} />
 
-        {types.length > 0 && (
-          <div className="mb-3.5 flex flex-col gap-1.5">
-            <label htmlFor="dept-type" className="text-sm font-semibold text-slate-800">
-              Phân loại
+        {/* Bố cục lưới ngang bắt buộc cho mọi form (.claude/docs/ui-guidelines.md mục 4.1). */}
+        <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="dept-name" className="text-sm font-semibold text-slate-800">
+              Tên Khoa/Phòng
             </label>
-            <Combobox id="dept-type" value={departmentTypeId} onChange={setDepartmentTypeId} options={typeOptions} />
+            <input id="dept-name" ref={nameInputRef} placeholder="Ví dụ: Khoa Nội" value={name} onChange={(e) => setName(e.target.value)} className={inputClassName} />
           </div>
-        )}
 
-        <div className="mb-3.5 flex flex-col gap-1">
-          <label className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-            <input type="checkbox" checked={participatesInQueue} onChange={(e) => setParticipatesInQueue(e.target.checked)} />
-            Nhận bệnh nhân / hiện trong Hàng đợi khám
-          </label>
-          <p className="pl-6 text-xs text-slate-500">Tắt cho bộ phận không tiếp nhận trực tiếp bệnh nhân (ví dụ Lễ tân, Kế toán).</p>
+          {types.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="dept-type" className="text-sm font-semibold text-slate-800">
+                Phân loại
+              </label>
+              <Combobox id="dept-type" value={departmentTypeId} onChange={setDepartmentTypeId} options={typeOptions} />
+            </div>
+          )}
+
+          <div className="flex flex-col gap-1 sm:col-span-2">
+            <label className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+              <input type="checkbox" checked={participatesInQueue} onChange={(e) => setParticipatesInQueue(e.target.checked)} />
+              Nhận bệnh nhân / hiện trong Hàng đợi khám
+            </label>
+            <p className="pl-6 text-xs text-slate-500">Tắt cho bộ phận không tiếp nhận trực tiếp bệnh nhân (ví dụ Lễ tân, Kế toán).</p>
+          </div>
+
+          {mode === 'edit' && (
+            <label className="flex items-center gap-2 text-sm font-semibold text-slate-800 sm:col-span-2">
+              <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
+              Đang hoạt động
+            </label>
+          )}
         </div>
-
-        {mode === 'edit' && (
-          <label className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800">
-            <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
-            Đang hoạt động
-          </label>
-        )}
 
         <div className="mt-4 flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onCancel}>
             Huỷ
           </Button>
+          {mode === 'create' && (
+            <Button type="button" variant="secondary" loading={submitting} disabled={isInvalid} onClick={handleSaveAndContinue}>
+              Lưu và nhập tiếp
+            </Button>
+          )}
           <Button type="submit" loading={submitting} disabled={isInvalid}>
             Lưu
           </Button>

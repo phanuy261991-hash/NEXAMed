@@ -59,7 +59,7 @@ Claude PHẢI luôn code đủ 4 trạng thái này cho mọi màn hình/compone
 ## 4. CHI TIẾT THÀNH PHẦN (ATOMIC COMPONENTS)
 
 ### 4.1. Bố cục Form & Nhập liệu (Form Layouts & Inputs)
-- **Bố cục lưới ngang (Horizontal Grid Layout):** TUYỆT ĐỐI KHÔNG xếp tất cả input thành một cột dọc đơn điệu. Mặc định trên Desktop/Tablet phải dàn đều form sang hai bên bằng CSS Grid (sử dụng class `grid grid-cols-1 md:grid-cols-2` hoặc `md:grid-cols-3` kèm khoảng cách `gap-6`).
+- **Bố cục lưới ngang (Horizontal Grid Layout):** TUYỆT ĐỐI KHÔNG xếp tất cả input thành một cột dọc đơn điệu. Mặc định trên Desktop/Tablet phải dàn đều form sang hai bên bằng CSS Grid (sử dụng class `grid grid-cols-1 md:grid-cols-2` hoặc `md:grid-cols-3` kèm khoảng cách `gap-6`). **Rà soát 2026-09-05**: các modal Thêm/Sửa nhỏ ở Quản trị (`ReferenceCatalogPane`/`RoomPane`/`DepartmentPane`/`DrugCatalogPane`/`AllergenPane`) từng xếp dọc từng ô — đã sửa lại đúng lưới `sm:grid-cols-2`, nới rộng `max-w-sm` lên `max-w-md`/`max-w-lg`/`max-w-xl` tuỳ số trường để lưới có đủ chỗ. Modal Thêm mới phát sinh sau này bắt buộc dùng lưới ngang ngay từ đầu, không đợi phản hồi mới sửa.
 - **Cân bằng & Đồng điệu thị giác (Visual Balance):** 
   - Các ô nhập liệu phải lấp đầy không gian của cột, đảm bảo mép trái và mép phải của các dòng luôn thẳng hàng với nhau.
   - Không để tình trạng ô quá ngắn, ô quá dài lộn xộn. Form phải là một khối hình chữ nhật vuông vức, gọn gàng.
@@ -119,6 +119,14 @@ Props: `id`, `value`/`onChange` (chuỗi `value` của `ComboboxOption`), `optio
 
 Ví dụ đã áp dụng: "Đơn vị tính" trong khối "Đơn giá dịch vụ" (`ExamTypeFormModal.tsx`, docs/DECISIONS.md #079).
 
+### 4.1g. `ModalHeader` — tiêu đề modal Thêm/Sửa DÙNG CHUNG (chốt 2026-09-05)
+
+**Cấm viết header modal tay riêng từng nơi** (`<h2>` + dòng chữ phụ nhạt) — dùng `shared/ui/ModalHeader.tsx` cho MỌI modal Thêm/Sửa: badge icon vuông bo góc `bg-blue-600 text-white` (icon Phosphor `weight="fill"`, 20px) đứng cạnh tiêu đề `text-[17px] font-bold`, phụ đề (ví dụ "Danh mục: Dân tộc") hiện dạng pill xám `bg-slate-100 rounded-full` thay vì dòng chữ nhạt cũ, có viền dưới `border-slate-100` ngăn với phần thân form. Props: `icon` (component Phosphor), `title`, `subtitle?`, `right?` (nội dung phụ bên phải, ví dụ badge "Mã: CA00001" chỉ đọc — đặt trước nút đóng), `onClose?` (hiện nút X góc phải).
+
+Chọn icon theo đúng bản chất thực thể của modal (không dùng chung 1 icon cho mọi nơi) — ví dụ: danh mục dùng chung `ListBullets`, Phòng khám `ChairIcon`, Tầng/Khoa-Phòng `Buildings`, Thuốc `Pill`, Dị nguyên `Warning`, Ca làm việc `Clock`, Dịch vụ khám `Stethoscope`, Tài khoản `UserCircle`.
+
+Modal có bố cục đặc thù (ví dụ `UserAccountFormDialog.tsx` có thanh Tab ngay dưới tiêu đề, không dùng được viền-dưới mặc định của `ModalHeader`) được phép tự dựng lại ĐÚNG ngôn ngữ thị giác này (badge icon đặc + tiêu đề đậm) thay vì gọi thẳng component, miễn giữ nhất quán — không quay lại kiểu `<h2>` phẳng cũ.
+
 ### 4.2. Bảng dữ liệu y tế (Medical Data Tables)
 - **Cột:** Phải có tính năng cố định (sticky) cột "Tên bệnh nhân" ở bên trái và cột "Hành động" ở bên phải.
 - **Hàng (Row):** Có thể click vào bất cứ đâu trên hàng để xem chi tiết (không chỉ click vào nút xem).
@@ -165,6 +173,18 @@ Dùng `ActionMenu` cho MỌI trường hợp cần gộp ≥2 hành động ph�
 `shared/hooks/useRowSelection.ts` — state chọn dòng dùng chung (`toggle`/`toggleAll`/`clear`/`isSelected`/`allLoadedSelected`/`someLoadedSelected`). "Chọn tất cả" ở tiêu đề CHỈ tác động các dòng **đã tải** (trang hiện tại/đã tải qua cuộn vô hạn) — không gọi API để chọn hết mọi bản ghi khớp bộ lọc trên server (phức tạp hơn, để dành khi có hành động hàng loạt thật cần tới). `shared/ui/SelectionToolbar.tsx` — thanh nổi cố định dưới màn hình khi có ≥1 dòng được chọn (đúng mục 4.2 "Bulk Actions"), hiện tại CHỈ hiện số lượng + nút "Bỏ chọn" vì **chưa có hành động hàng loạt nào được chốt** — thêm nút hành động thật vào `children` của component này khi có yêu cầu cụ thể, không tự phát minh hành động.
 
 **Phạm vi áp dụng**: mọi bảng CRUD/quản lý thật (9 bảng: `AllergenPane`/`RoomPane`/`DepartmentPane`/`DrugCatalogPane`/`ReferenceCatalogPane`/`UserAccountPane`/`PatientListPage`/`AppointmentListView`/`ReceptionListPage`/`InvoiceListPage`). **Không áp dụng** cho danh mục chỉ đọc không có CRUD nào (ICD-10, Tỉnh/Thành-Phường/Xã) — không có hành động hàng loạt nào khả dĩ cho dữ liệu không sửa được.
+
+### 4.7. "Lưu và nhập tiếp" — chuẩn bắt buộc cho MỌI form Thêm mới trong Quản trị (chốt 2026-09-05)
+
+Chủ dự án yêu cầu: form "Thêm mới" phải có thêm nút lưu xong KHÔNG đóng modal mà làm trống lại để nhập tiếp bản ghi khác ngay, không phải bấm "Thêm mới" lại từ đầu mỗi lần — hữu ích khi nhập hàng loạt (ví dụ nhiều dòng danh mục liên tiếp).
+
+**Cơ chế** (áp dụng đồng nhất, không viết lại logic riêng từng form):
+- `onSubmit` prop của mọi modal Thêm/Sửa đổi kiểu trả về `Promise<void>` — cha (`XxxPane.tsx`) gọi `mutation.mutateAsync(...)` thay vì `mutation.mutate(..., {onSuccess})`, KHÔNG tự đóng modal nữa. Quyết định đóng modal (nút "Lưu") hay làm trống form (nút "Lưu và nhập tiếp") chuyển hẳn cho form CON, vì chỉ form con biết khi nào cần reset field nào.
+- Nút "Lưu và nhập tiếp": `variant="secondary"`, đặt giữa "Huỷ" và "Lưu" (DOM order: Huỷ → Lưu → Lưu và nhập tiếp — "Lưu" vẫn đứng trước để giữ nguyên hành vi Enter-to-submit hiện có, mục 4.4). **CHỈ hiện khi `mode === 'create'`** — không có ý nghĩa lúc Sửa. **Bắt buộc `type="button"`**, KHÔNG phải submit thứ 2 của `<form>` — gọi thẳng hàm `handleSaveAndContinue()` (await `onSubmit(dto)` rồi tự reset field + focus lại ô đầu tiên), tách hẳn khỏi `handleSubmit(e)` (submit thật của `<form>`, vẫn gọi `onCancel()` để đóng sau khi lưu) — cách này giữ Enter luôn map đúng vào "Lưu" (đóng), không bao giờ vô tình đổi ý nghĩa phím Enter.
+- Phản hồi "đã lưu" khi form không đóng: banner xanh thoáng qua `shared/ui/SaveFlashBanner.tsx` (hook `shared/hooks/useSaveFlash.ts`, tự ẩn sau ~2 giây) — dự án không dùng Toast cho form nhập liệu (mục 4.3), nên cần tín hiệu tại chỗ ngay trong modal.
+- Lỗi khi lưu (validate/conflict) vẫn hiển thị qua cơ chế phản ứng có sẵn của từng form (không đổi) — `handleSaveAndContinue()` chỉ cần không tiếp tục reset nếu `onSubmit` throw (không bọc `.catch()` nuốt lỗi).
+
+**Đã áp dụng cho toàn bộ 8 nhóm form Thêm mới trong Quản trị**: `ReferenceCatalogPane.tsx` (`ItemFormModal`, mọi category dùng chung, gồm cả `ExamTypeFormModal.tsx` riêng), `RoomPane.tsx` (Tầng + Phòng), `DepartmentPane.tsx` (Loại Khoa/Phòng + Khoa/Phòng), `DrugCatalogPane.tsx`, `AllergenPane.tsx` (Nhóm dị nguyên + Dị nguyên), `WorkShiftFormModal.tsx`, `UserAccountFormDialog.tsx`. Form Thêm mới phát sinh sau này trong Quản trị PHẢI theo đúng khuôn này ngay từ đầu.
 
 ## 5. TIÊU CHUẨN TRUY CẬP (ACCESSIBILITY - A11y)
 - Mọi thẻ `<img>` và `<svg>` (Icon) đều phải có `alt` hoặc `aria-label` mô tả bằng tiếng Việt (VD: `aria-label="Đóng cửa sổ"`).
@@ -312,7 +332,7 @@ Dựng mockup Artifact trước, chọn qua hỏi-đáp giữa 2 kiểu (đã ch
 **Không phải mặc định/bắt buộc cho mọi trang Quản trị.** Đây là một mẫu bố cục có sẵn để dùng KHI PHÙ HỢP (nhiều màn hình con nhỏ, cùng bản chất "xem/quản lý danh mục hay cấu hình"). Việc một tính năng mới có mục sidebar riêng hay gộp vào một trang dạng này **do chủ dự án quyết định lúc tạo menu** — không tự ý gộp mọi trang Quản trị tương lai vào chung một hub "Cấu hình". Đã hỏi và chốt rõ điểm này (xem `docs/DECISIONS.md` #039) sau khi chủ dự án phản hồi "phân bố menu thế nào sẽ do tôi quyết định".
 
 Cấu trúc (dưới `TopBar`, trong `content`):
-1. **Thanh nhóm (pill bar)**: dải ngang `bg-slate-50 border-b border-slate-200`, mỗi pill là một nhóm màn hình con **thật đã có backend** — không dựng pill "Sắp có" cho tính năng chưa xây (khác cách làm ở sidebar chính, nơi mục chưa có backend đơn giản là không hiện — ở đây cũng vậy). Pill đang chọn: nền `bg-blue-600` chữ trắng bo tròn `rounded-full`; pill khác: nền trắng viền `border-slate-200` chữ `text-slate-500`.
+1. **Thanh nhóm (pill bar)**: dải ngang `bg-slate-50 border-b border-slate-200`, mỗi pill là một nhóm màn hình con **thật đã có backend** — không dựng pill "Sắp có" cho tính năng chưa xây (khác cách làm ở sidebar chính, nơi mục chưa có backend đơn giản là không hiện — ở đây cũng vậy). Pill đang chọn: nền `bg-blue-600` chữ trắng bo tròn `rounded-full`; pill khác: nền trắng viền `border-slate-200` chữ `text-slate-500`. **Xuống dòng (`flex-wrap`) khi tràn hàng, KHÔNG cuộn ngang** (chốt 2026-09-05, đảo ngược cách làm cũ `overflow-x-auto`+`scroll-hover`) — cuộn ngang có rủi ro người dùng không biết còn pill ẩn bên phải, dẫn tới bỏ sót mục cấu hình; xuống dòng luôn hiện đủ mọi pill cùng lúc, đánh đổi chỉ là chiếm thêm chiều cao khi danh sách dài.
 2. **Cột trái — danh sách màn hình con** (`w-56`–`w-60`, `border-r border-slate-200`): ô tìm kiếm nhỏ trên cùng (tuỳ chọn, chỉ cần khi danh sách dài); mỗi mục là icon Phosphor 15px + label, viền trái `border-l-2` trong suốt, khi active đổi `border-l-blue-600 bg-blue-50 text-blue-700 font-semibold`. Không dùng nền đặc kín hàng như menu sidebar chính (khác `Sidebar.tsx` — đây là điều hướng cấp 2, cần nhẹ hơn).
 3. **Cột phải — nội dung màn hình đã chọn**: toolbar (tìm kiếm/toggle/nút hành động chính góc phải) + bảng dữ liệu, theo đúng style bảng đã chốt (`thead` `bg-slate-100 border-b-2 border-blue-600`) hoặc form theo mục 4.1 nếu màn hình đó là cấu hình dạng form (không phải danh sách).
 4. **Khung phụ "Nhóm" (group sub-panel)** — CHỈ dựng thêm khi một màn hình con thật sự cần quản lý nhiều nhóm dữ liệu con **động** (số nhóm không cố định, có thể thêm mới qua UI). Khung này là cột hẹp (`w-52`, `border rounded-lg p-2 bg-slate-50` — kiểu Kiểu 2 đã chọn) nằm bên trái bảng dữ liệu, mỗi dòng nhóm hiện kèm số lượng mục (`count`), có "+ Thêm nhóm mới" dạng viền đứt nếu nhóm quản lý được qua UI. **Không dùng khung này khi màn hình con đã là danh mục cố định** (ví dụ Dân tộc và Quốc tịch mỗi cái đã là 1 mục riêng trong danh sách cấp 2 — không cần lồng thêm khung Nhóm bên trong nữa, tránh phân cấp thừa).

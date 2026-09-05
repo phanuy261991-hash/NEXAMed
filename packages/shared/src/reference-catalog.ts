@@ -40,8 +40,21 @@ export const referenceCatalogCategorySchema = z.enum([
   // cố định trước đây trên `payment.method`/`invoice.pendingPaymentMethod`. Mã tự sinh, seed sẵn
   // 2 dòng mặc định (CASH/BANK_TRANSFER, xem migration `20260827121000_seed_payment_method_catalog`).
   'PAYMENT_METHOD',
+  // Loại thu chi (chủ dự án yêu cầu trực tiếp 2026-09-05) — chuẩn bị cho chức năng "Thu chi tại
+  // quầy" (Sổ quỹ) sắp làm, mã tự sinh như UNIT/PAYMENT_METHOD. KHÔNG seed cứng (không có nguồn dữ
+  // liệu chính thức). Có thêm `direction` (Chi tiền/Thu tiền, 2 giá trị CỐ ĐỊNH — xem
+  // `referenceCatalogDirectionSchema` bên dưới), khác các category khác không có trường này.
+  'INCOME_EXPENSE_TYPE',
 ]);
 export type ReferenceCatalogCategory = z.infer<typeof referenceCatalogCategorySchema>;
+
+/**
+ * "Loại" của một mục `INCOME_EXPENSE_TYPE` — CHỈ 2 giá trị cố định, không quản lý/mở rộng được qua
+ * UI (khác `code`/`name` của chính category này) — đại diện dòng tiền ra (`EXPENSE`, "Chi tiền")
+ * hay vào (`INCOME`, "Thu tiền") khi mục này được chọn ở chức năng Thu chi tại quầy.
+ */
+export const referenceCatalogDirectionSchema = z.enum(['EXPENSE', 'INCOME']);
+export type ReferenceCatalogDirection = z.infer<typeof referenceCatalogDirectionSchema>;
 
 /**
  * 1 dòng "Đơn giá dịch vụ" (`exam_type_price`, docs/DECISIONS.md #079, 2026-08-26) — thuộc về
@@ -97,6 +110,9 @@ export const referenceCatalogItemSchema = z.object({
    * cùng lý do `deactivatesAccount` (code sửa được qua UI).
    */
   countsAsCash: z.boolean(),
+  /** Chỉ có ý nghĩa với category INCOME_EXPENSE_TYPE (Loại thu chi, 2026-09-05) — xem
+   * `referenceCatalogDirectionSchema`. `null` với category khác. */
+  direction: referenceCatalogDirectionSchema.nullable(),
 });
 export type ReferenceCatalogItem = z.infer<typeof referenceCatalogItemSchema>;
 
@@ -121,6 +137,8 @@ export const createReferenceCatalogRequestSchema = z.object({
   deactivatesAccount: z.boolean().optional(),
   countsAsCash: z.boolean().optional(),
   description: z.string().min(1).optional(),
+  /** Chỉ category INCOME_EXPENSE_TYPE gửi field này (Loại thu chi, 2026-09-05). */
+  direction: referenceCatalogDirectionSchema.optional(),
   /** Chỉ ItemFormModal của category UNIT/ACADEMIC_TITLE/STAFF_POSITION gửi field này (select "Đang
    * sử dụng"/"Ngưng sử dụng" ngay trong form, cùng mẫu RoomPane/DepartmentPane) — category khác
    * vẫn quản lý trạng thái qua action Xoá/Khôi phục riêng (deactivate/reactivate), không đổi hành
@@ -144,6 +162,7 @@ export const updateReferenceCatalogRequestSchema = z.object({
   deactivatesAccount: z.boolean().optional(),
   countsAsCash: z.boolean().optional(),
   description: z.string().min(1).optional(),
+  direction: referenceCatalogDirectionSchema.optional(),
   isActive: z.boolean().optional(),
   /** Bulk-replace đơn giá, đúng ngữ nghĩa như `createReferenceCatalogRequestSchema` — `undefined`
    * (không gửi field) = không đụng tới đơn giá hiện có, mảng rỗng = xoá hết. */

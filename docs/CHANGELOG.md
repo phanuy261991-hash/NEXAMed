@@ -4,6 +4,14 @@
 
 ## 2026-09-05
 
+### Danh mục "Loại thu chi" + chuẩn "Lưu và nhập tiếp" cho mọi form Thêm mới Quản trị + `ModalHeader` dùng chung
+
+Danh mục dùng chung mới `INCOME_EXPENSE_TYPE` (mã tự sinh `TC00001`..., cột `direction` Chi tiền/Thu tiền) chuẩn bị cho chức năng "Thu chi tại quầy"/Sổ quỹ sắp làm (chưa xây). Thêm chuẩn mới **"Lưu và nhập tiếp"** cho toàn bộ 8 nhóm form Thêm mới ở Quản trị (danh mục dùng chung, Phòng/Tầng, Khoa/Phòng, Thuốc, Dị nguyên, Ca làm việc, Tài khoản) — lưu xong không đóng modal, tự làm trống để nhập tiếp bản ghi khác, kèm banner xanh báo đã lưu (`useSaveFlash`/`SaveFlashBanner`). Rà soát phát hiện + sửa 2 nợ kỹ thuật cũ: các modal nhỏ từng xếp input 1 cột dọc (vi phạm mục 4.1) nay chuyển lưới ngang; header modal đổi sang dùng chung `ModalHeader.tsx` (badge icon đặc + tiêu đề đậm + phụ đề dạng pill). Tiện sửa 2 lỗi bố cục khác: "Ca làm việc" hết sinh thanh cuộn dọc thừa (nới rộng modal + 2 khối giờ làm việc/giờ nghỉ cạnh nhau), thanh pill "Danh mục dùng chung"/"Cấu hình hệ thống" đổi từ cuộn ngang sang xuống dòng (tránh xót cấu hình khi danh sách pill dài).
+
+Xem `docs/DECISIONS.md` #121.
+
+Đã xác minh: `pnpm -w typecheck/lint/build` sạch, `apps/api` 629/629 test pass, migration đã áp lên Postgres dev, smoke test HTTP thật + Playwright qua Chrome thật (`playwright-core` trỏ thẳng Chrome cài sẵn, né tải Chromium bundled) xác nhận toàn bộ luồng đúng thiết kế, không phát hiện bug.
+
 ### Redesign hộp thoại "Chốt ca" (Thu ngân) + trường "Tổng doanh thu ca" mới
 
 Chủ dự án yêu cầu dựng lại giao diện hộp thoại "Chốt ca" bằng mockup Artifact tương tác trước khi code (giữ nguyên luồng 4 bước + màn xác nhận/in phiếu, chỉ đổi cách trình bày). Sau khi chốt mockup, code thẳng vào `CloseShiftDialog.tsx`/`DenominationCounter.tsx`/`CashierShiftReceiptView.tsx`.

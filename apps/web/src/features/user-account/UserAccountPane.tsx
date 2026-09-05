@@ -100,11 +100,13 @@ export function UserAccountPane() {
     return item.roleNames.map((name) => roleIdByName.get(name)).filter((id): id is string => id !== undefined);
   }
 
-  function handleSubmit(values: UserAccountFormValues) {
+  // "Lưu và nhập tiếp" (.claude/docs/ui-guidelines.md mục 4.7) — đóng modal hay giữ để nhập tiếp
+  // thuộc về form con (nó await Promise này), nơi này chỉ lo gửi request + set lỗi hiển thị.
+  async function handleSubmit(values: UserAccountFormValues): Promise<void> {
     setActionError(null);
-    if (modal?.mode === 'create') {
-      createMutation.mutate(
-        {
+    try {
+      if (modal?.mode === 'create') {
+        await createMutation.mutateAsync({
           username: values.username.trim(),
           password: values.password,
           fullName: values.fullName.trim(),
@@ -125,22 +127,19 @@ export function UserAccountPane() {
           departmentId: values.departmentId || undefined,
           defaultRoomId: values.defaultRoomId || undefined,
           roleIds: values.roleIds,
-        },
-        { onSuccess: () => setModal(null), onError: (err) => setActionError(errorMessage(err)) },
-      );
-    } else if (modal?.item) {
-      // Trạng thái làm việc tự-vô-hiệu-hoá (toggle "Đang hoạt động" đã bị khoá/disabled trong
-      // form, xem UserAccountFormDialog) — KHÔNG gửi `isActive` trong trường hợp này. Form React
-      // luôn giữ `values.isActive` là boolean cụ thể (không có khái niệm "chưa đụng tới" như
-      // field text rỗng), gửi thẳng `true` sẽ bị backend hiểu là client cố ép kích hoạt lại →
-      // 409 ACCOUNT_CANNOT_REACTIVATE_WHILE_RESIGNED dù người dùng không hề đụng vào toggle đó
-      // (bug thật phát hiện lúc kiểm bằng Playwright, không phải suy đoán) — để trống cho backend
-      // tự lặng lẽ ép `false` (`resolveAccountActiveState`, `user-account.service.ts`).
-      const statusDeactivates = values.employmentStatusCode
-        ? (employmentStatusDeactivatesByCode.get(values.employmentStatusCode) ?? false)
-        : false;
-      updateMutation.mutate(
-        {
+        });
+      } else if (modal?.item) {
+        // Trạng thái làm việc tự-vô-hiệu-hoá (toggle "Đang hoạt động" đã bị khoá/disabled trong
+        // form, xem UserAccountFormDialog) — KHÔNG gửi `isActive` trong trường hợp này. Form React
+        // luôn giữ `values.isActive` là boolean cụ thể (không có khái niệm "chưa đụng tới" như
+        // field text rỗng), gửi thẳng `true` sẽ bị backend hiểu là client cố ép kích hoạt lại →
+        // 409 ACCOUNT_CANNOT_REACTIVATE_WHILE_RESIGNED dù người dùng không hề đụng vào toggle đó
+        // (bug thật phát hiện lúc kiểm bằng Playwright, không phải suy đoán) — để trống cho backend
+        // tự lặng lẽ ép `false` (`resolveAccountActiveState`, `user-account.service.ts`).
+        const statusDeactivates = values.employmentStatusCode
+          ? (employmentStatusDeactivatesByCode.get(values.employmentStatusCode) ?? false)
+          : false;
+        await updateMutation.mutateAsync({
           id: modal.item.id,
           body: {
             fullName: values.fullName.trim(),
@@ -163,9 +162,11 @@ export function UserAccountPane() {
             roleIds: values.roleIds,
             version: modal.item.version,
           },
-        },
-        { onSuccess: () => setModal(null), onError: (err) => setActionError(errorMessage(err)) },
-      );
+        });
+      }
+    } catch (err) {
+      setActionError(errorMessage(err));
+      throw err;
     }
   }
 

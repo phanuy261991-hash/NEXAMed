@@ -52,12 +52,13 @@ export function WorkShiftPane() {
   const itemIds = useMemo(() => items.map((i) => i.id), [items]);
   const rowSelection = useRowSelection(itemIds);
 
-  function handleSubmit(dto: WorkShiftSubmitDto) {
-    const onSettled = () => setModal(null);
+  // "Lưu và nhập tiếp" (.claude/docs/ui-guidelines.md mục 4.7) — đóng modal hay giữ để nhập tiếp
+  // thuộc về form con (nó await Promise này), nơi này chỉ lo gửi request.
+  async function handleSubmit(dto: WorkShiftSubmitDto) {
     if (modal?.mode === 'create') {
-      createMutation.mutate(dto, { onSuccess: onSettled });
+      await createMutation.mutateAsync(dto);
     } else if (modal?.item) {
-      updateMutation.mutate({ id: modal.item.id, body: { ...dto, version: modal.item.version } }, { onSuccess: onSettled });
+      await updateMutation.mutateAsync({ id: modal.item.id, body: { ...dto, version: modal.item.version } });
     }
   }
 

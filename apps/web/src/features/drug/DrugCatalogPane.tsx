@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { MagnifyingGlass, PencilSimple, Plus } from '@phosphor-icons/react';
+import { useMemo, useRef, useState } from 'react';
+import { MagnifyingGlass, PencilSimple, Pill, Plus } from '@phosphor-icons/react';
 import type { DrugSummary } from '@nexamed/shared';
 import { useHasPermission } from '../auth/usePermission';
 import { Button } from '../../shared/ui/Button';
@@ -7,10 +7,13 @@ import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
+import { SaveFlashBanner } from '../../shared/ui/SaveFlashBanner';
+import { ModalHeader } from '../../shared/ui/ModalHeader';
 import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
 import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
 import { useRowSelection } from '../../shared/hooks/useRowSelection';
+import { useSaveFlash } from '../../shared/hooks/useSaveFlash';
 import { useCreateDrugMutation, useDrugsQuery, useUpdateDrugMutation } from './drug.queries';
 
 const inputClassName =
@@ -152,29 +155,24 @@ export function DrugCatalogPane() {
           item={modal.item}
           submitting={createMutation.isPending || updateMutation.isPending}
           onCancel={() => setModal(null)}
-          onSubmit={(dto) => {
-            const onSettled = () => setModal(null);
+          onSubmit={async (dto) => {
+            // "Lưu và nhập tiếp" (.claude/docs/ui-guidelines.md mục 4.7) — đóng modal hay giữ để
+            // nhập tiếp thuộc về form con (nó await Promise này), nơi này chỉ lo gửi request.
             if (modal.mode === 'create') {
-              createMutation.mutate(
-                { code: dto.code, name: dto.name, activeIngredient: dto.activeIngredient, unit: dto.unit, concentration: dto.concentration },
-                { onSuccess: onSettled },
-              );
+              await createMutation.mutateAsync({ code: dto.code, name: dto.name, activeIngredient: dto.activeIngredient, unit: dto.unit, concentration: dto.concentration });
             } else if (modal.item) {
-              updateMutation.mutate(
-                {
-                  id: modal.item.id,
-                  body: {
-                    code: dto.code,
-                    name: dto.name,
-                    activeIngredient: dto.activeIngredient ?? null,
-                    unit: dto.unit ?? null,
-                    concentration: dto.concentration ?? null,
-                    isActive: dto.isActive,
-                    version: modal.item.version,
-                  },
+              await updateMutation.mutateAsync({
+                id: modal.item.id,
+                body: {
+                  code: dto.code,
+                  name: dto.name,
+                  activeIngredient: dto.activeIngredient ?? null,
+                  unit: dto.unit ?? null,
+                  concentration: dto.concentration ?? null,
+                  isActive: dto.isActive,
+                  version: modal.item.version,
                 },
-                { onSuccess: onSettled },
-              );
+              });
             }
           }}
         />
@@ -194,64 +192,93 @@ function DrugFormModal({
   item?: DrugSummary;
   submitting: boolean;
   onCancel: () => void;
-  onSubmit: (dto: { code: string; name: string; activeIngredient?: string; unit?: string; concentration?: string; isActive: boolean }) => void;
+  /** Trả `Promise` — `handleSubmit`/`handleSaveAndContinue` await để biết lưu xong mới đóng modal
+   * hoặc làm trống form (`.claude/docs/ui-guidelines.md` mục 4.7). */
+  onSubmit: (dto: { code: string; name: string; activeIngredient?: string; unit?: string; concentration?: string; isActive: boolean }) => Promise<void>;
 }) {
+  const codeInputRef = useRef<HTMLInputElement>(null);
   const [code, setCode] = useState(item?.code ?? '');
   const [name, setName] = useState(item?.name ?? '');
   const [activeIngredient, setActiveIngredient] = useState(item?.activeIngredient ?? '');
   const [unit, setUnit] = useState(item?.unit ?? '');
   const [concentration, setConcentration] = useState(item?.concentration ?? '');
   const [isActive, setIsActive] = useState(item?.isActive ?? true);
+  const { flashVisible, triggerFlash } = useSaveFlash();
   const isInvalid = code.trim() === '' || name.trim() === '';
 
-  // Bọc `<form>` để Enter trong ô nhập tự submit — bắt buộc cho mọi form Thêm/Sửa trong app
-  // (.claude/docs/ui-guidelines.md mục 4.4).
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (isInvalid) return;
-    onSubmit({
+  function buildDto() {
+    return {
       code: code.trim(),
       name: name.trim(),
       activeIngredient: activeIngredient.trim() || undefined,
       unit: unit.trim() || undefined,
       concentration: concentration.trim() || undefined,
       isActive,
-    });
+    };
+  }
+
+  function resetForNextEntry() {
+    setCode('');
+    setName('');
+    setActiveIngredient('');
+    setUnit('');
+    setConcentration('');
+    codeInputRef.current?.focus();
+  }
+
+  // Bọc `<form>` để Enter trong ô nhập tự submit — bắt buộc cho mọi form Thêm/Sửa trong app
+  // (.claude/docs/ui-guidelines.md mục 4.4).
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (isInvalid) return;
+    await onSubmit(buildDto());
+    onCancel();
+  }
+
+  // "Lưu và nhập tiếp" (mục 4.7) — nút `type="button"` riêng, không đụng nút submit mặc định.
+  async function handleSaveAndContinue() {
+    if (isInvalid) return;
+    await onSubmit(buildDto());
+    resetForNextEntry();
+    triggerFlash();
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
-      <form className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl" onSubmit={handleSubmit}>
-        <h2 className="text-[15px] font-semibold text-slate-900">{mode === 'create' ? 'Thêm thuốc mới' : 'Sửa thuốc'}</h2>
+      <form className="w-full max-w-lg rounded-lg bg-white p-5 shadow-xl" onSubmit={handleSubmit}>
+        <ModalHeader icon={Pill} title={mode === 'create' ? 'Thêm thuốc mới' : 'Sửa thuốc'} onClose={onCancel} />
 
-        <div className="mb-3.5 mt-4 flex flex-col gap-1.5">
-          <label htmlFor="drug-code" className="text-sm font-semibold text-slate-800">
-            Mã thuốc
-          </label>
-          <input id="drug-code" value={code} onChange={(e) => setCode(e.target.value)} className={inputClassName} />
-        </div>
+        <SaveFlashBanner visible={flashVisible} />
 
-        <div className="mb-3.5 flex flex-col gap-1.5">
-          <label htmlFor="drug-name" className="text-sm font-semibold text-slate-800">
-            Tên thuốc
-          </label>
-          <input id="drug-name" value={name} onChange={(e) => setName(e.target.value)} className={inputClassName} />
-        </div>
+        {/* Bố cục lưới ngang bắt buộc cho mọi form (.claude/docs/ui-guidelines.md mục 4.1). */}
+        <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="drug-code" className="text-sm font-semibold text-slate-800">
+              Mã thuốc
+            </label>
+            <input id="drug-code" ref={codeInputRef} value={code} onChange={(e) => setCode(e.target.value)} className={inputClassName} />
+          </div>
 
-        <div className="mb-3.5 flex flex-col gap-1.5">
-          <label htmlFor="drug-ingredient" className="text-sm font-semibold text-slate-800">
-            Hoạt chất
-          </label>
-          <input
-            id="drug-ingredient"
-            placeholder="Ví dụ: Paracetamol"
-            value={activeIngredient}
-            onChange={(e) => setActiveIngredient(e.target.value)}
-            className={inputClassName}
-          />
-        </div>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="drug-name" className="text-sm font-semibold text-slate-800">
+              Tên thuốc
+            </label>
+            <input id="drug-name" value={name} onChange={(e) => setName(e.target.value)} className={inputClassName} />
+          </div>
 
-        <div className="mb-3.5 grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-1.5 sm:col-span-2">
+            <label htmlFor="drug-ingredient" className="text-sm font-semibold text-slate-800">
+              Hoạt chất
+            </label>
+            <input
+              id="drug-ingredient"
+              placeholder="Ví dụ: Paracetamol"
+              value={activeIngredient}
+              onChange={(e) => setActiveIngredient(e.target.value)}
+              className={inputClassName}
+            />
+          </div>
+
           <div className="flex flex-col gap-1.5">
             <label htmlFor="drug-concentration" className="text-sm font-semibold text-slate-800">
               Hàm lượng
@@ -270,19 +297,24 @@ function DrugFormModal({
             </label>
             <input id="drug-unit" placeholder="Ví dụ: Viên" value={unit} onChange={(e) => setUnit(e.target.value)} className={inputClassName} />
           </div>
-        </div>
 
-        {mode === 'edit' && (
-          <label className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800">
-            <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
-            Đang dùng (bỏ chọn để ẩn khỏi tìm kiếm lúc kê đơn)
-          </label>
-        )}
+          {mode === 'edit' && (
+            <label className="flex items-center gap-2 text-sm font-semibold text-slate-800 sm:col-span-2">
+              <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
+              Đang dùng (bỏ chọn để ẩn khỏi tìm kiếm lúc kê đơn)
+            </label>
+          )}
+        </div>
 
         <div className="mt-4 flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onCancel}>
             Huỷ
           </Button>
+          {mode === 'create' && (
+            <Button type="button" variant="secondary" loading={submitting} disabled={isInvalid} onClick={handleSaveAndContinue}>
+              Lưu và nhập tiếp
+            </Button>
+          )}
           <Button type="submit" loading={submitting} disabled={isInvalid}>
             Lưu
           </Button>

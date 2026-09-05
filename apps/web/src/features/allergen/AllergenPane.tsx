@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { MagnifyingGlass, PencilSimple, Plus, Warning } from '@phosphor-icons/react';
 import type { AllergenGroupSummary, AllergenItem } from '@nexamed/shared';
 import { useHasPermission } from '../auth/usePermission';
@@ -8,9 +8,12 @@ import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
+import { SaveFlashBanner } from '../../shared/ui/SaveFlashBanner';
+import { ModalHeader } from '../../shared/ui/ModalHeader';
 import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
 import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
 import { useRowSelection } from '../../shared/hooks/useRowSelection';
+import { useSaveFlash } from '../../shared/hooks/useSaveFlash';
 import {
   useAllergenGroupsQuery,
   useAllergensQuery,
@@ -268,12 +271,13 @@ export function AllergenPane() {
           submitting={createGroupMutation.isPending || updateGroupMutation.isPending || deactivateGroupMutation.isPending || reactivateGroupMutation.isPending}
           onCancel={() => setGroupModal(null)}
           onToggleActive={groupModal.group ? () => toggleGroupActive(groupModal.group!) : undefined}
-          onSubmit={(dto) => {
-            const onSettled = () => setGroupModal(null);
+          onSubmit={async (dto) => {
+            // "Lưu và nhập tiếp" (.claude/docs/ui-guidelines.md mục 4.7) — đóng modal hay giữ để
+            // nhập tiếp thuộc về form con (nó await Promise này), nơi này chỉ lo gửi request.
             if (groupModal.mode === 'create') {
-              createGroupMutation.mutate({ name: dto.name }, { onSuccess: onSettled });
+              await createGroupMutation.mutateAsync({ name: dto.name });
             } else if (groupModal.group) {
-              updateGroupMutation.mutate({ id: groupModal.group.id, body: { name: dto.name } }, { onSuccess: onSettled });
+              await updateGroupMutation.mutateAsync({ id: groupModal.group.id, body: { name: dto.name } });
             }
           }}
         />
@@ -288,15 +292,11 @@ export function AllergenPane() {
           submitting={createMutation.isPending || updateMutation.isPending || deactivateMutation.isPending || reactivateMutation.isPending}
           onCancel={() => setModal(null)}
           onToggleActive={modal.allergen ? () => toggleActive(modal.allergen!) : undefined}
-          onSubmit={(dto) => {
-            const onSettled = () => setModal(null);
+          onSubmit={async (dto) => {
             if (modal.mode === 'create') {
-              createMutation.mutate({ allergenGroupId: dto.allergenGroupId, name: dto.name }, { onSuccess: onSettled });
+              await createMutation.mutateAsync({ allergenGroupId: dto.allergenGroupId, name: dto.name });
             } else if (modal.allergen) {
-              updateMutation.mutate(
-                { id: modal.allergen.id, body: { allergenGroupId: dto.allergenGroupId, name: dto.name } },
-                { onSuccess: onSettled },
-              );
+              await updateMutation.mutateAsync({ id: modal.allergen.id, body: { allergenGroupId: dto.allergenGroupId, name: dto.name } });
             }
           }}
         />
@@ -317,36 +317,56 @@ function AllergenGroupFormModal({
   group?: AllergenGroupSummary;
   submitting: boolean;
   onCancel: () => void;
-  onSubmit: (dto: { name: string }) => void;
+  /** Trả `Promise` — `handleSubmit`/`handleSaveAndContinue` await để biết lưu xong mới đóng modal
+   * hoặc làm trống form (`.claude/docs/ui-guidelines.md` mục 4.7). */
+  onSubmit: (dto: { name: string }) => Promise<void>;
   onToggleActive?: () => void;
 }) {
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState(group?.name ?? '');
+  const { flashVisible, triggerFlash } = useSaveFlash();
   const isInvalid = name.trim() === '';
 
-  // Bọc `<form>` để Enter trong ô nhập tự submit — bắt buộc cho mọi form Thêm/Sửa (`.claude/docs/
-  // ui-guidelines.md` mục 4.4).
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
+    // Bọc `<form>` để Enter trong ô nhập tự submit — bắt buộc cho mọi form Thêm/Sửa (`.claude/docs/
+    // ui-guidelines.md` mục 4.4).
     e.preventDefault();
     if (isInvalid) return;
-    onSubmit({ name: name.trim() });
+    await onSubmit({ name: name.trim() });
+    onCancel();
+  }
+
+  // "Lưu và nhập tiếp" (mục 4.7) — nút `type="button"` riêng, không đụng nút submit mặc định.
+  async function handleSaveAndContinue() {
+    if (isInvalid) return;
+    await onSubmit({ name: name.trim() });
+    setName('');
+    nameInputRef.current?.focus();
+    triggerFlash();
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
-      <form className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl" onSubmit={handleSubmit}>
-        <h2 className="text-[15px] font-semibold text-slate-900">{mode === 'create' ? 'Thêm Nhóm dị nguyên' : 'Sửa Nhóm dị nguyên'}</h2>
+      <form className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl" onSubmit={handleSubmit}>
+        <ModalHeader icon={Warning} title={mode === 'create' ? 'Thêm Nhóm dị nguyên' : 'Sửa Nhóm dị nguyên'} onClose={onCancel} />
 
-        <div className="mb-3.5 mt-4 flex flex-col gap-1.5">
-          <label htmlFor="allergen-group-name" className="text-sm font-semibold text-slate-800">
-            Tên nhóm
-          </label>
-          <input
-            id="allergen-group-name"
-            placeholder="Ví dụ: Nhóm thuốc"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className={inputClassName}
-          />
+        <SaveFlashBanner visible={flashVisible} />
+
+        {/* Bố cục lưới ngang bắt buộc cho mọi form (.claude/docs/ui-guidelines.md mục 4.1). */}
+        <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="allergen-group-name" className="text-sm font-semibold text-slate-800">
+              Tên nhóm
+            </label>
+            <input
+              id="allergen-group-name"
+              ref={nameInputRef}
+              placeholder="Ví dụ: Nhóm thuốc"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className={inputClassName}
+            />
+          </div>
         </div>
 
         <div className="mt-4 flex items-center justify-between gap-2">
@@ -361,6 +381,11 @@ function AllergenGroupFormModal({
             <Button type="button" variant="secondary" onClick={onCancel}>
               Huỷ
             </Button>
+            {mode === 'create' && (
+              <Button type="button" variant="secondary" loading={submitting} disabled={isInvalid} onClick={handleSaveAndContinue}>
+                Lưu và nhập tiếp
+              </Button>
+            )}
             <Button type="submit" loading={submitting} disabled={isInvalid}>
               Lưu
             </Button>
@@ -388,44 +413,65 @@ function AllergenFormModal({
   defaultGroupId?: string;
   submitting: boolean;
   onCancel: () => void;
-  onSubmit: (dto: { name: string; allergenGroupId: string }) => void;
+  /** Trả `Promise` — `handleSubmit`/`handleSaveAndContinue` await để biết lưu xong mới đóng modal
+   * hoặc làm trống form (`.claude/docs/ui-guidelines.md` mục 4.7). */
+  onSubmit: (dto: { name: string; allergenGroupId: string }) => Promise<void>;
   onToggleActive?: () => void;
 }) {
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState(allergen?.name ?? '');
   const [allergenGroupId, setAllergenGroupId] = useState(allergen?.allergenGroupId ?? defaultGroupId ?? groups[0]?.id ?? '');
+  const { flashVisible, triggerFlash } = useSaveFlash();
 
   const groupOptions = groups.map((g) => ({ value: g.id, label: g.name }));
   const isInvalid = name.trim() === '' || allergenGroupId === '';
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (isInvalid) return;
-    onSubmit({ name: name.trim(), allergenGroupId });
+    await onSubmit({ name: name.trim(), allergenGroupId });
+    onCancel();
+  }
+
+  // "Lưu và nhập tiếp" (mục 4.7) — nút `type="button"` riêng, không đụng nút submit mặc định. Giữ
+  // nguyên nhóm đang chọn (thường thêm liên tiếp nhiều dị nguyên cùng 1 nhóm).
+  async function handleSaveAndContinue() {
+    if (isInvalid) return;
+    await onSubmit({ name: name.trim(), allergenGroupId });
+    setName('');
+    nameInputRef.current?.focus();
+    triggerFlash();
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
-      <form className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl" onSubmit={handleSubmit}>
-        <h2 className="text-[15px] font-semibold text-slate-900">{mode === 'create' ? 'Thêm Dị nguyên' : 'Sửa Dị nguyên'}</h2>
+      <form className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl" onSubmit={handleSubmit}>
+        <ModalHeader icon={Warning} title={mode === 'create' ? 'Thêm Dị nguyên' : 'Sửa Dị nguyên'} onClose={onCancel} />
 
-        <div className="mb-3.5 mt-4 flex flex-col gap-1.5">
-          <label htmlFor="allergen-group" className="text-sm font-semibold text-slate-800">
-            Nhóm dị nguyên
-          </label>
-          <Combobox id="allergen-group" value={allergenGroupId} onChange={setAllergenGroupId} options={groupOptions} />
-        </div>
+        <SaveFlashBanner visible={flashVisible} />
 
-        <div className="mb-3.5 flex flex-col gap-1.5">
-          <label htmlFor="allergen-name" className="text-sm font-semibold text-slate-800">
-            Tên Dị nguyên
-          </label>
-          <input
-            id="allergen-name"
-            placeholder="Ví dụ: Penicillin"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className={inputClassName}
-          />
+        {/* Bố cục lưới ngang bắt buộc cho mọi form (.claude/docs/ui-guidelines.md mục 4.1). */}
+        <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="allergen-group" className="text-sm font-semibold text-slate-800">
+              Nhóm dị nguyên
+            </label>
+            <Combobox id="allergen-group" value={allergenGroupId} onChange={setAllergenGroupId} options={groupOptions} />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="allergen-name" className="text-sm font-semibold text-slate-800">
+              Tên Dị nguyên
+            </label>
+            <input
+              id="allergen-name"
+              ref={nameInputRef}
+              placeholder="Ví dụ: Penicillin"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className={inputClassName}
+            />
+          </div>
         </div>
 
         <div className="mt-4 flex items-center justify-between gap-2">
@@ -440,6 +486,11 @@ function AllergenFormModal({
             <Button type="button" variant="secondary" onClick={onCancel}>
               Huỷ
             </Button>
+            {mode === 'create' && (
+              <Button type="button" variant="secondary" loading={submitting} disabled={isInvalid} onClick={handleSaveAndContinue}>
+                Lưu và nhập tiếp
+              </Button>
+            )}
             <Button type="submit" loading={submitting} disabled={isInvalid}>
               Lưu
             </Button>

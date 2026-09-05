@@ -1,15 +1,18 @@
-import { useMemo, useState } from 'react';
-import { ArrowCounterClockwise, MagnifyingGlass, PencilSimple, Plus, Trash } from '@phosphor-icons/react';
-import type { ReferenceCatalogCategory, ReferenceCatalogItem } from '@nexamed/shared';
+import { useMemo, useRef, useState } from 'react';
+import { ArrowCounterClockwise, ListBullets, MagnifyingGlass, PencilSimple, Plus, Trash } from '@phosphor-icons/react';
+import type { ReferenceCatalogCategory, ReferenceCatalogDirection, ReferenceCatalogItem } from '@nexamed/shared';
 import { useHasPermission } from '../auth/usePermission';
 import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
+import { SaveFlashBanner } from '../../shared/ui/SaveFlashBanner';
+import { ModalHeader } from '../../shared/ui/ModalHeader';
 import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
 import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
 import { useRowSelection } from '../../shared/hooks/useRowSelection';
+import { useSaveFlash } from '../../shared/hooks/useSaveFlash';
 import { ApiError } from '../../shared/api/client';
 import {
   useCreateReferenceCatalogItemMutation,
@@ -33,6 +36,7 @@ const AUTO_CODE_CATEGORIES: ReferenceCatalogCategory[] = [
   'EMPLOYMENT_TYPE',
   'UNIT',
   'PAYMENT_METHOD',
+  'INCOME_EXPENSE_TYPE',
 ];
 
 /**
@@ -42,7 +46,13 @@ const AUTO_CODE_CATEGORIES: ReferenceCatalogCategory[] = [
  * đã là cột dùng chung toàn bảng `reference_catalog` (không migration riêng) — chỉ cần bật hiển
  * thị/gửi field ở đây.
  */
-const DESCRIPTION_STATUS_CATEGORIES: ReferenceCatalogCategory[] = ['UNIT', 'ACADEMIC_TITLE', 'STAFF_POSITION', 'PAYMENT_METHOD'];
+const DESCRIPTION_STATUS_CATEGORIES: ReferenceCatalogCategory[] = [
+  'UNIT',
+  'ACADEMIC_TITLE',
+  'STAFF_POSITION',
+  'PAYMENT_METHOD',
+  'INCOME_EXPENSE_TYPE',
+];
 
 const inputClassName =
   'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
@@ -159,6 +169,7 @@ export function ReferenceCatalogPane({
                   <th className="w-24 px-4 py-2.5 text-center">Mã</th>
                   <th className="px-4 py-2.5 text-left">Tên hiển thị</th>
                   {category === 'EXAM_TYPE' && <th className="w-32 px-4 py-2.5 text-center">Đơn giá</th>}
+                  {category === 'INCOME_EXPENSE_TYPE' && <th className="w-28 px-4 py-2.5 text-center">Loại</th>}
                   {DESCRIPTION_STATUS_CATEGORIES.includes(category) && <th className="px-4 py-2.5 text-left">Mô tả</th>}
                   {DESCRIPTION_STATUS_CATEGORIES.includes(category) && <th className="w-32 px-4 py-2.5 text-center">Trạng thái</th>}
                   <th className="w-24 px-4 py-2.5 text-center">Thứ tự</th>
@@ -188,6 +199,13 @@ export function ReferenceCatalogPane({
                         ) : (
                           <span className="text-slate-400">Chưa có giá</span>
                         )}
+                      </td>
+                    )}
+                    {category === 'INCOME_EXPENSE_TYPE' && (
+                      <td className="px-4 py-2 text-center">
+                        <StatusBadge tone={item.direction === 'INCOME' ? 'success' : 'warning'}>
+                          {item.direction === 'INCOME' ? 'Thu tiền' : 'Chi tiền'}
+                        </StatusBadge>
                       </td>
                     )}
                     {DESCRIPTION_STATUS_CATEGORIES.includes(category) && (
@@ -251,12 +269,14 @@ export function ReferenceCatalogPane({
           submitting={createMutation.isPending || updateMutation.isPending}
           submitError={mutationErrorMessage}
           onCancel={() => setModal(null)}
-          onSubmit={(dto) => {
-            const onSettled = () => setModal(null);
+          onSubmit={async (dto) => {
+            // "Lưu và nhập tiếp" (.claude/docs/ui-guidelines.md mục 4.7) — quyết định đóng modal
+            // hay giữ nguyên để nhập tiếp thuộc về form con (nó await Promise này), nơi này CHỈ lo
+            // gửi request, không tự đóng modal nữa.
             if (modal.mode === 'create') {
-              createMutation.mutate({ category, ...dto }, { onSuccess: onSettled });
+              await createMutation.mutateAsync({ category, ...dto });
             } else if (modal.item) {
-              updateMutation.mutate({ id: modal.item.id, body: dto }, { onSuccess: onSettled });
+              await updateMutation.mutateAsync({ id: modal.item.id, body: dto });
             }
           }}
         />
@@ -271,12 +291,11 @@ export function ReferenceCatalogPane({
           item={modal.item}
           submitting={createMutation.isPending || updateMutation.isPending}
           onCancel={() => setModal(null)}
-          onSubmit={(dto) => {
-            const onSettled = () => setModal(null);
+          onSubmit={async (dto) => {
             if (modal.mode === 'create') {
-              createMutation.mutate({ category, ...dto }, { onSuccess: onSettled });
+              await createMutation.mutateAsync({ category, ...dto });
             } else if (modal.item) {
-              updateMutation.mutate({ id: modal.item.id, body: dto }, { onSuccess: onSettled });
+              await updateMutation.mutateAsync({ id: modal.item.id, body: dto });
             }
           }}
         />
@@ -328,6 +347,8 @@ function ItemFormModal({
   item?: ReferenceCatalogItem;
   submitting: boolean;
   onCancel: () => void;
+  /** Trả `Promise` — `handleSubmit`/`handleSaveAndContinue` await để biết lưu xong mới đóng modal
+   * hoặc làm trống form (`.claude/docs/ui-guidelines.md` mục 4.7). */
   onSubmit: (dto: {
     code?: string;
     name: string;
@@ -335,144 +356,211 @@ function ItemFormModal({
     deactivatesAccount?: boolean;
     countsAsCash?: boolean;
     description?: string;
+    direction?: ReferenceCatalogDirection;
     isActive?: boolean;
-  }) => void;
+  }) => Promise<void>;
 }) {
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const [code, setCode] = useState(item?.code ?? '');
   const [name, setName] = useState(item?.name ?? '');
   const [sortOrder, setSortOrder] = useState(item?.sortOrder ?? 0);
   const [deactivatesAccount, setDeactivatesAccount] = useState(item?.deactivatesAccount ?? false);
   const [countsAsCash, setCountsAsCash] = useState(item?.countsAsCash ?? false);
   const [description, setDescription] = useState(item?.description ?? '');
+  const [direction, setDirection] = useState<ReferenceCatalogDirection>(item?.direction ?? 'EXPENSE');
   const [isActive, setIsActive] = useState(item?.isActive ?? true);
+  const { flashVisible, triggerFlash } = useSaveFlash();
   // Mở rộng ADM-01 — chỉ EMPLOYMENT_STATUS có ý nghĩa với deactivatesAccount.
   const isEmploymentStatus = category === 'EMPLOYMENT_STATUS';
   // "Chốt ca" (2026-09-03) — chỉ PAYMENT_METHOD có ý nghĩa với countsAsCash.
   const isPaymentMethod = category === 'PAYMENT_METHOD';
   // "Đơn vị tính" (2026-08-26) — chỉ category này đổi nhãn trường Tên.
   const isUnit = category === 'UNIT';
+  // "Loại thu chi" (2026-09-05) — chỉ category này có "Loại" (Chi tiền/Thu tiền).
+  const isIncomeExpenseType = category === 'INCOME_EXPENSE_TYPE';
   // Mô tả + Trạng thái ngay trong form — UNIT (#078) + "Chức danh"/"Học hàm học vị" (2026-08-27).
   const hasDescriptionAndStatus = DESCRIPTION_STATUS_CATEGORIES.includes(category);
   const isInvalid = (!hideCode && code.trim() === '') || name.trim() === '';
 
-  // Bọc `<form>` để Enter trong ô nhập tự submit (chuẩn HTML, không cần tự bắt phím) — mọi form
-  // Thêm/Sửa trong app PHẢI theo mẫu này (`.claude/docs/ui-guidelines.md` mục 4.4, bắt buộc từ
-  // 2026-08-21, phản hồi thật: trước đây chỉ bấm chuột được, không bấm Enter được).
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (isInvalid) return;
-    onSubmit({
+  function buildDto() {
+    return {
       code: hideCode ? undefined : code.trim(),
       name: name.trim(),
       sortOrder,
       deactivatesAccount: isEmploymentStatus ? deactivatesAccount : undefined,
       countsAsCash: isPaymentMethod ? countsAsCash : undefined,
       description: hasDescriptionAndStatus && description.trim() !== '' ? description.trim() : undefined,
+      direction: isIncomeExpenseType ? direction : undefined,
       isActive: hasDescriptionAndStatus ? isActive : undefined,
-    });
+    };
+  }
+
+  /** Làm trống lại về đúng trạng thái "Thêm mới" ban đầu — chỉ gọi sau khi lưu thành công, để nhập
+   * tiếp mục khác không phải mở lại modal (`.claude/docs/ui-guidelines.md` mục 4.7). Giữ nguyên
+   * `sortOrder` (thường tăng dần liên tiếp khi thêm hàng loạt, không cần gõ lại mỗi lần). */
+  function resetForNextEntry() {
+    setCode('');
+    setName('');
+    setDeactivatesAccount(false);
+    setCountsAsCash(false);
+    setDescription('');
+    setDirection('EXPENSE');
+    setIsActive(true);
+    nameInputRef.current?.focus();
+  }
+
+  // Bọc `<form>` để Enter trong ô nhập tự submit (chuẩn HTML, không cần tự bắt phím) — mọi form
+  // Thêm/Sửa trong app PHẢI theo mẫu này (`.claude/docs/ui-guidelines.md` mục 4.4, bắt buộc từ
+  // 2026-08-21, phản hồi thật: trước đây chỉ bấm chuột được, không bấm Enter được).
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (isInvalid) return;
+    await onSubmit(buildDto());
+    onCancel();
+  }
+
+  // "Lưu và nhập tiếp" (mục 4.7) — nút `type="button"` RIÊNG, không phải submit thứ hai của cùng
+  // `<form>`, để KHÔNG đụng tới nút submit mặc định mà Enter kích hoạt (vẫn là "Lưu" ở trên, hành
+  // vi Enter giữ nguyên như trước — chỉ chuột mới bấm được nút này).
+  async function handleSaveAndContinue() {
+    if (isInvalid) return;
+    await onSubmit(buildDto());
+    resetForNextEntry();
+    triggerFlash();
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
-      <form className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl" onSubmit={handleSubmit}>
-        <h2 className="text-[15px] font-semibold text-slate-900">{mode === 'create' ? 'Thêm mục mới' : 'Sửa mục'}</h2>
-        <p className="mb-4 mt-0.5 text-xs text-slate-500">Danh mục: {categoryLabel}</p>
+      <form className="w-full max-w-xl rounded-lg bg-white p-5 shadow-xl" onSubmit={handleSubmit}>
+        <ModalHeader
+          icon={ListBullets}
+          title={mode === 'create' ? 'Thêm mục mới' : 'Sửa mục'}
+          subtitle={`Danh mục: ${categoryLabel}`}
+          onClose={onCancel}
+        />
 
-        {!hideCode && (
-          <div className="mb-3.5 flex flex-col gap-1.5">
-            <label htmlFor="rc-code" className="text-sm font-semibold text-slate-800">
-              Mã <span className="text-rose-500">*</span>
+        <SaveFlashBanner visible={flashVisible} />
+
+        {/* Bố cục lưới ngang bắt buộc cho mọi form (.claude/docs/ui-guidelines.md mục 4.1) — không
+            xếp từng trường thành 1 cột dọc đơn điệu. */}
+        <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {!hideCode && (
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="rc-code" className="text-sm font-semibold text-slate-800">
+                Mã <span className="text-rose-500">*</span>
+              </label>
+              <input id="rc-code" value={code} onChange={(e) => setCode(e.target.value)} className={inputClassName} />
+            </div>
+          )}
+
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="rc-name" className="text-sm font-semibold text-slate-800">
+              {isUnit ? 'Tên đơn vị' : 'Tên hiển thị'} <span className="text-rose-500">*</span>
             </label>
-            <input id="rc-code" value={code} onChange={(e) => setCode(e.target.value)} className={inputClassName} />
+            <input id="rc-name" ref={nameInputRef} value={name} onChange={(e) => setName(e.target.value)} className={inputClassName} />
           </div>
-        )}
 
-        <div className="mb-3.5 flex flex-col gap-1.5">
-          <label htmlFor="rc-name" className="text-sm font-semibold text-slate-800">
-            {isUnit ? 'Tên đơn vị' : 'Tên hiển thị'} <span className="text-rose-500">*</span>
-          </label>
-          <input id="rc-name" value={name} onChange={(e) => setName(e.target.value)} className={inputClassName} />
-        </div>
+          {isIncomeExpenseType && (
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="rc-direction" className="text-sm font-semibold text-slate-800">
+                Loại <span className="text-rose-500">*</span>
+              </label>
+              <select
+                id="rc-direction"
+                value={direction}
+                onChange={(e) => setDirection(e.target.value as ReferenceCatalogDirection)}
+                className={inputClassName}
+              >
+                <option value="EXPENSE">Chi tiền</option>
+                <option value="INCOME">Thu tiền</option>
+              </select>
+            </div>
+          )}
 
-        {hasDescriptionAndStatus && (
-          <div className="mb-3.5 flex flex-col gap-1.5">
-            <label htmlFor="rc-description" className="text-sm font-semibold text-slate-800">
-              Mô tả
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="rc-sort-order" className="text-sm font-semibold text-slate-800">
+              Thứ tự hiển thị
             </label>
-            <textarea
-              id="rc-description"
-              rows={2}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className={inputClassName}
-            />
-          </div>
-        )}
-
-
-        <div className="mb-4 flex flex-col gap-1.5">
-          <label htmlFor="rc-sort-order" className="text-sm font-semibold text-slate-800">
-            Thứ tự hiển thị
-          </label>
-          <input
-            id="rc-sort-order"
-            type="number"
-            value={sortOrder}
-            onChange={(e) => setSortOrder(Number(e.target.value))}
-            className={inputClassName}
-          />
-        </div>
-
-        {hasDescriptionAndStatus && (
-          <div className="mb-4 flex flex-col gap-1.5">
-            <label htmlFor="rc-is-active" className="text-sm font-semibold text-slate-800">
-              Trạng thái
-            </label>
-            <select
-              id="rc-is-active"
-              value={isActive ? '1' : '0'}
-              onChange={(e) => setIsActive(e.target.value === '1')}
-              className={inputClassName}
-            >
-              <option value="1">Đang sử dụng</option>
-              <option value="0">Ngưng sử dụng</option>
-            </select>
-          </div>
-        )}
-
-        {isEmploymentStatus && (
-          <label className="mb-4 flex items-start gap-2 text-sm font-semibold text-slate-800">
             <input
-              type="checkbox"
-              checked={deactivatesAccount}
-              onChange={(e) => setDeactivatesAccount(e.target.checked)}
-              className="mt-0.5"
+              id="rc-sort-order"
+              type="number"
+              value={sortOrder}
+              onChange={(e) => setSortOrder(Number(e.target.value))}
+              className={inputClassName}
             />
-            <span>
-              Tự động vô hiệu hoá tài khoản khi chọn trạng thái này
-              <span className="mt-0.5 block text-xs font-normal text-slate-500">
-                Ví dụ &quot;Nghỉ việc&quot; — tài khoản gán trạng thái này sẽ tự chuyển sang &quot;Vô hiệu hoá&quot;, không đăng nhập được nữa.
-              </span>
-            </span>
-          </label>
-        )}
+          </div>
 
-        {isPaymentMethod && (
-          <label className="mb-4 flex items-start gap-2 text-sm font-semibold text-slate-800">
-            <input type="checkbox" checked={countsAsCash} onChange={(e) => setCountsAsCash(e.target.checked)} className="mt-0.5" />
-            <span>
-              Tính là tiền mặt
-              <span className="mt-0.5 block text-xs font-normal text-slate-500">
-                Gộp vào đối soát đếm két khi Chốt ca. Ví dụ &quot;Tiền mặt&quot; — bật; &quot;Chuyển khoản&quot;/&quot;Quẹt thẻ&quot; — tắt.
+          {hasDescriptionAndStatus && (
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="rc-is-active" className="text-sm font-semibold text-slate-800">
+                Trạng thái
+              </label>
+              <select
+                id="rc-is-active"
+                value={isActive ? '1' : '0'}
+                onChange={(e) => setIsActive(e.target.value === '1')}
+                className={inputClassName}
+              >
+                <option value="1">Đang sử dụng</option>
+                <option value="0">Ngưng sử dụng</option>
+              </select>
+            </div>
+          )}
+
+          {hasDescriptionAndStatus && (
+            <div className="flex flex-col gap-1.5 sm:col-span-2">
+              <label htmlFor="rc-description" className="text-sm font-semibold text-slate-800">
+                Mô tả
+              </label>
+              <textarea
+                id="rc-description"
+                rows={2}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className={inputClassName}
+              />
+            </div>
+          )}
+
+          {isEmploymentStatus && (
+            <label className="flex items-start gap-2 text-sm font-semibold text-slate-800 sm:col-span-2">
+              <input
+                type="checkbox"
+                checked={deactivatesAccount}
+                onChange={(e) => setDeactivatesAccount(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span>
+                Tự động vô hiệu hoá tài khoản khi chọn trạng thái này
+                <span className="mt-0.5 block text-xs font-normal text-slate-500">
+                  Ví dụ &quot;Nghỉ việc&quot; — tài khoản gán trạng thái này sẽ tự chuyển sang &quot;Vô hiệu hoá&quot;, không đăng nhập được nữa.
+                </span>
               </span>
-            </span>
-          </label>
-        )}
+            </label>
+          )}
+
+          {isPaymentMethod && (
+            <label className="flex items-start gap-2 text-sm font-semibold text-slate-800 sm:col-span-2">
+              <input type="checkbox" checked={countsAsCash} onChange={(e) => setCountsAsCash(e.target.checked)} className="mt-0.5" />
+              <span>
+                Tính là tiền mặt
+                <span className="mt-0.5 block text-xs font-normal text-slate-500">
+                  Gộp vào đối soát đếm két khi Chốt ca. Ví dụ &quot;Tiền mặt&quot; — bật; &quot;Chuyển khoản&quot;/&quot;Quẹt thẻ&quot; — tắt.
+                </span>
+              </span>
+            </label>
+          )}
+        </div>
 
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onCancel}>
             Huỷ
           </Button>
+          {mode === 'create' && (
+            <Button type="button" variant="secondary" loading={submitting} disabled={isInvalid} onClick={handleSaveAndContinue}>
+              Lưu và nhập tiếp
+            </Button>
+          )}
           <Button type="submit" loading={submitting} disabled={isInvalid}>
             Lưu
           </Button>

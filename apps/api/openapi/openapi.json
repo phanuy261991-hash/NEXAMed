@@ -27016,7 +27016,8 @@
                 "EMPLOYMENT_STATUS",
                 "EMPLOYMENT_TYPE",
                 "UNIT",
-                "PAYMENT_METHOD"
+                "PAYMENT_METHOD",
+                "INCOME_EXPENSE_TYPE"
               ]
             },
             "required": true,
@@ -27073,7 +27074,8 @@
                                   "EMPLOYMENT_STATUS",
                                   "EMPLOYMENT_TYPE",
                                   "UNIT",
-                                  "PAYMENT_METHOD"
+                                  "PAYMENT_METHOD",
+                                  "INCOME_EXPENSE_TYPE"
                                 ]
                               },
                               "code": {
@@ -27162,6 +27164,16 @@
                               },
                               "countsAsCash": {
                                 "type": "boolean"
+                              },
+                              "direction": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "EXPENSE",
+                                  "INCOME"
+                                ]
                               }
                             },
                             "required": [
@@ -27175,7 +27187,8 @@
                               "unit",
                               "deactivatesAccount",
                               "description",
-                              "countsAsCash"
+                              "countsAsCash",
+                              "direction"
                             ]
                           }
                         }
@@ -27327,7 +27340,8 @@
                       "EMPLOYMENT_STATUS",
                       "EMPLOYMENT_TYPE",
                       "UNIT",
-                      "PAYMENT_METHOD"
+                      "PAYMENT_METHOD",
+                      "INCOME_EXPENSE_TYPE"
                     ]
                   },
                   "code": {
@@ -27359,6 +27373,13 @@
                   "description": {
                     "type": "string",
                     "minLength": 1
+                  },
+                  "direction": {
+                    "type": "string",
+                    "enum": [
+                      "EXPENSE",
+                      "INCOME"
+                    ]
                   },
                   "isActive": {
                     "type": "boolean"
@@ -27438,7 +27459,8 @@
                             "EMPLOYMENT_STATUS",
                             "EMPLOYMENT_TYPE",
                             "UNIT",
-                            "PAYMENT_METHOD"
+                            "PAYMENT_METHOD",
+                            "INCOME_EXPENSE_TYPE"
                           ]
                         },
                         "code": {
@@ -27527,6 +27549,16 @@
                         },
                         "countsAsCash": {
                           "type": "boolean"
+                        },
+                        "direction": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "EXPENSE",
+                            "INCOME"
+                          ]
                         }
                       },
                       "required": [
@@ -27540,7 +27572,8 @@
                         "unit",
                         "deactivatesAccount",
                         "description",
-                        "countsAsCash"
+                        "countsAsCash",
+                        "direction"
                       ]
                     },
                     "meta": {
@@ -27709,6 +27742,13 @@
                     "type": "string",
                     "minLength": 1
                   },
+                  "direction": {
+                    "type": "string",
+                    "enum": [
+                      "EXPENSE",
+                      "INCOME"
+                    ]
+                  },
                   "isActive": {
                     "type": "boolean"
                   },
@@ -27783,7 +27823,8 @@
                             "EMPLOYMENT_STATUS",
                             "EMPLOYMENT_TYPE",
                             "UNIT",
-                            "PAYMENT_METHOD"
+                            "PAYMENT_METHOD",
+                            "INCOME_EXPENSE_TYPE"
                           ]
                         },
                         "code": {
@@ -27872,6 +27913,16 @@
                         },
                         "countsAsCash": {
                           "type": "boolean"
+                        },
+                        "direction": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "EXPENSE",
+                            "INCOME"
+                          ]
                         }
                       },
                       "required": [
@@ -27885,7 +27936,8 @@
                         "unit",
                         "deactivatesAccount",
                         "description",
-                        "countsAsCash"
+                        "countsAsCash",
+                        "direction"
                       ]
                     },
                     "meta": {
@@ -28080,7 +28132,8 @@
                             "EMPLOYMENT_STATUS",
                             "EMPLOYMENT_TYPE",
                             "UNIT",
-                            "PAYMENT_METHOD"
+                            "PAYMENT_METHOD",
+                            "INCOME_EXPENSE_TYPE"
                           ]
                         },
                         "code": {
@@ -28169,6 +28222,16 @@
                         },
                         "countsAsCash": {
                           "type": "boolean"
+                        },
+                        "direction": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "EXPENSE",
+                            "INCOME"
+                          ]
                         }
                       },
                       "required": [
@@ -28182,7 +28245,8 @@
                         "unit",
                         "deactivatesAccount",
                         "description",
-                        "countsAsCash"
+                        "countsAsCash",
+                        "direction"
                       ]
                     },
                     "meta": {
@@ -28348,7 +28412,8 @@
                             "EMPLOYMENT_STATUS",
                             "EMPLOYMENT_TYPE",
                             "UNIT",
-                            "PAYMENT_METHOD"
+                            "PAYMENT_METHOD",
+                            "INCOME_EXPENSE_TYPE"
                           ]
                         },
                         "code": {
@@ -28437,6 +28502,16 @@
                         },
                         "countsAsCash": {
                           "type": "boolean"
+                        },
+                        "direction": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "EXPENSE",
+                            "INCOME"
+                          ]
                         }
                       },
                       "required": [
@@ -28450,7 +28525,8 @@
                         "unit",
                         "deactivatesAccount",
                         "description",
-                        "countsAsCash"
+                        "countsAsCash",
+                        "direction"
                       ]
                     },
                     "meta": {

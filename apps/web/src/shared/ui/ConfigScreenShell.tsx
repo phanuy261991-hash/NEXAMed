@@ -52,7 +52,10 @@ export function ConfigScreenShell({
     <div className="flex h-full flex-col">
       <h1 className="sr-only">{pageLabel}</h1>
 
-      <div className="scroll-hover flex flex-shrink-0 gap-2 overflow-x-auto border-b border-slate-200 bg-slate-50 px-6 py-3">
+      {/* Xuống dòng (flex-wrap) thay cuộn ngang (chốt 2026-09-05, phản hồi trực tiếp) — cuộn ngang
+          có rủi ro người dùng không biết còn pill ẩn bên phải, "xót" mất mục cấu hình; xuống dòng
+          luôn hiện đủ 100% pill cùng lúc, đổi lại chỉ tốn thêm chiều cao khi danh sách dài. */}
+      <div className="flex flex-shrink-0 flex-wrap gap-2 border-b border-slate-200 bg-slate-50 px-6 py-3">
         {pills.map((pill) => (
           <button
             key={pill.key}

@@ -1,7 +1,11 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { Clock } from '@phosphor-icons/react';
 import type { WorkShiftColor, WorkShiftItem } from '@nexamed/shared';
 import { Button } from '../../shared/ui/Button';
 import { TimeInput } from '../../shared/ui/TimeInput';
+import { ModalHeader } from '../../shared/ui/ModalHeader';
+import { SaveFlashBanner } from '../../shared/ui/SaveFlashBanner';
+import { useSaveFlash } from '../../shared/hooks/useSaveFlash';
 
 const inputClassName =
   'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
@@ -86,9 +90,13 @@ export function WorkShiftFormModal({
   submitting: boolean;
   submitError?: string;
   onCancel: () => void;
-  onSubmit: (dto: WorkShiftSubmitDto) => void;
+  /** Trả `Promise` — `handleSubmit`/`handleSaveAndContinue` await để biết lưu xong mới đóng modal
+   * hoặc làm trống form (`.claude/docs/ui-guidelines.md` mục 4.7). */
+  onSubmit: (dto: WorkShiftSubmitDto) => Promise<void>;
 }) {
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const [values, setValues] = useState<WorkShiftFormValues>(() => toFormValues(item));
+  const { flashVisible, triggerFlash } = useSaveFlash();
 
   function set<K extends keyof WorkShiftFormValues>(key: K, value: WorkShiftFormValues[K]) {
     setValues((v) => ({ ...v, [key]: value }));
@@ -96,13 +104,11 @@ export function WorkShiftFormModal({
 
   const isValid = values.name.trim() !== '' && values.startTime !== '' && values.endTime !== '';
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!isValid) return;
+  function buildDto(): WorkShiftSubmitDto {
     const restTotalNum = values.restTotal.trim() === '' ? null : Number(values.restTotal);
     const restMinutes = restTotalNum === null ? null : Math.round(values.restUnit === 'hour' ? restTotalNum * 60 : restTotalNum);
     const standardHoursNum = values.standardWorkHours.trim() === '' ? null : Number(values.standardWorkHours);
-    onSubmit({
+    return {
       name: values.name.trim(),
       startTime: values.startTime,
       endTime: values.endTime,
@@ -112,26 +118,46 @@ export function WorkShiftFormModal({
       restMinutes,
       standardWorkMinutes: standardHoursNum === null ? null : Math.round(standardHoursNum * 60),
       sortOrder: values.sortOrder,
-    });
+    };
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!isValid) return;
+    await onSubmit(buildDto());
+    onCancel();
+  }
+
+  // "Lưu và nhập tiếp" (mục 4.7) — nút `type="button"` riêng, không đụng nút submit mặc định.
+  async function handleSaveAndContinue() {
+    if (!isValid) return;
+    await onSubmit(buildDto());
+    setValues(toFormValues(undefined));
+    nameInputRef.current?.focus();
+    triggerFlash();
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
-      <form className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-6 shadow-xl" onSubmit={handleSubmit}>
-        <div className="mb-5 flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-[15px] font-semibold text-slate-900">{mode === 'create' ? 'Thêm ca làm việc' : 'Sửa ca làm việc'}</h2>
-            <p className="mt-0.5 text-xs text-slate-500">Danh mục: Ca làm việc</p>
-          </div>
-          {mode === 'edit' && item && (
-            <span
-              className="rounded-md border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600"
-              title="Mã tự sinh, không sửa được"
-            >
-              Mã: {item.code}
-            </span>
-          )}
-        </div>
+      <form className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-lg bg-white p-6 shadow-xl" onSubmit={handleSubmit}>
+        <ModalHeader
+          icon={Clock}
+          title={mode === 'create' ? 'Thêm ca làm việc' : 'Sửa ca làm việc'}
+          subtitle="Danh mục: Ca làm việc"
+          onClose={onCancel}
+          right={
+            mode === 'edit' && item ? (
+              <span
+                className="rounded-md border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600"
+                title="Mã tự sinh, không sửa được"
+              >
+                Mã: {item.code}
+              </span>
+            ) : undefined
+          }
+        />
+
+        <SaveFlashBanner visible={flashVisible} />
 
         <div className="space-y-5">
           <div className={boxedSectionClassName}>
@@ -177,9 +203,13 @@ export function WorkShiftFormModal({
             </div>
           </div>
 
+          {/* "Giờ làm việc" + "Giờ nghỉ giữa ca" dàn 2 bên (dùng hết chiều rộng modal đã nới rộng)
+              thay vì xếp chồng dọc — tránh sinh thanh cuộn dọc không cần thiết (phản hồi trực tiếp
+              2026-09-05). */}
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           <div className={boxedSectionClassName}>
             <span className={boxedBadgeClassName}>Giờ làm việc</span>
-            <div className="grid grid-cols-1 gap-x-5 gap-y-4 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="ws-start" className="text-sm font-semibold text-slate-800">
                   Giờ bắt đầu <span className="text-rose-500">*</span>
@@ -192,7 +222,7 @@ export function WorkShiftFormModal({
                 </label>
                 <TimeInput id="ws-end" value={values.endTime} onChange={(v) => set('endTime', v)} className={`${inputClassName} text-center`} />
               </div>
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1.5 sm:col-span-2">
                 <label htmlFor="ws-standard" className="text-sm font-semibold text-slate-800">
                   Số giờ công chuẩn
                 </label>
@@ -214,7 +244,7 @@ export function WorkShiftFormModal({
 
           <div className={boxedSectionClassName}>
             <span className={boxedBadgeClassName}>Giờ nghỉ giữa ca · Tuỳ chọn</span>
-            <div className="grid grid-cols-1 gap-x-5 gap-y-4 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="ws-rest-start" className="text-sm font-semibold text-slate-800">
                   Bắt đầu giờ nghỉ
@@ -237,7 +267,7 @@ export function WorkShiftFormModal({
                   className={`${inputClassName} text-center`}
                 />
               </div>
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1.5 sm:col-span-2">
                 <label htmlFor="ws-rest-total" className="text-sm font-semibold text-slate-800">
                   Tổng thời gian nghỉ
                 </label>
@@ -273,6 +303,7 @@ export function WorkShiftFormModal({
               Có thể nhập khung giờ nghỉ cố định, tổng thời gian nghỉ linh động, hoặc cả hai — không bắt buộc khớp nhau.
             </p>
           </div>
+          </div>
         </div>
 
         {submitError && <p className="mt-4 text-xs font-medium text-rose-600">{submitError}</p>}
@@ -281,6 +312,11 @@ export function WorkShiftFormModal({
           <Button type="button" variant="secondary" onClick={onCancel} disabled={submitting}>
             Huỷ
           </Button>
+          {mode === 'create' && (
+            <Button type="button" variant="secondary" loading={submitting} disabled={!isValid} onClick={handleSaveAndContinue}>
+              Lưu và nhập tiếp
+            </Button>
+          )}
           <Button type="submit" loading={submitting} disabled={!isValid}>
             Lưu
           </Button>

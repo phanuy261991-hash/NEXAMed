@@ -1,9 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { UserCircle } from '@phosphor-icons/react';
 import type { UserAccountGender, UserAccountSummary } from '@nexamed/shared';
 import { Combobox, withLegacyValueOption, type ComboboxOption } from '../../shared/ui/Combobox';
 import { MultiSelectCombobox } from '../../shared/ui/MultiSelectCombobox';
 import { PasswordInput } from '../../shared/ui/PasswordInput';
 import { Button } from '../../shared/ui/Button';
+import { SaveFlashBanner } from '../../shared/ui/SaveFlashBanner';
+import { useSaveFlash } from '../../shared/hooks/useSaveFlash';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { useDepartmentsQuery, useCreateDepartmentMutation } from '../department/department.queries';
 import { useRoomsQuery } from '../clinic/clinic.queries';
@@ -126,10 +129,13 @@ export function UserAccountFormDialog({
   currentRoleIds: string[];
   submitting: boolean;
   onCancel: () => void;
-  onSubmit: (values: UserAccountFormValues) => void;
+  /** Trả `Promise` — `handleSubmit`/`handleSaveAndContinue` await để biết lưu xong mới đóng modal
+   * hoặc làm trống form (`.claude/docs/ui-guidelines.md` mục 4.7). */
+  onSubmit: (values: UserAccountFormValues) => Promise<void>;
   /** Mở dialog "Đặt lại mật khẩu" riêng (quản lý bởi `UserAccountPane.tsx` — cần `version` mới nhất, không phải `item` chụp lúc mở form sửa). Chỉ có ở `mode='edit'`. */
   onResetPassword?: () => void;
 }) {
+  const fullNameInputRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState<TabId>('general');
   const [values, setValues] = useState<UserAccountFormValues>(() => ({
     ...toFormValues(item),
@@ -140,6 +146,7 @@ export function UserAccountFormDialog({
   // lúc tạo mới, không phải cứ ở chế độ Sửa là khoá gợi ý (bug thật: mở Sửa một tài khoản cũ,
   // "Tên hiển thị" đứng im ở placeholder dù đã có Họ tên).
   const [displayNameTouched, setDisplayNameTouched] = useState(Boolean(item?.displayName));
+  const { flashVisible, triggerFlash } = useSaveFlash();
 
   function set<K extends keyof UserAccountFormValues>(key: K, value: UserAccountFormValues[K]) {
     setValues((prev) => ({ ...prev, [key]: value }));
@@ -241,10 +248,23 @@ export function UserAccountFormDialog({
   // ui-guidelines.md` mục 4.4). `Combobox`/`PasswordInput` đã tự `preventDefault()` trên Enter
   // (chọn giá trị/không có tác dụng phụ) nên không đụng submit ngoài ý muốn; riêng ô "Tên khoa/phòng
   // mới" (thêm nhanh, chưa phải submit cuối) cần chặn tay — xem `handleAddDepartmentKeyDown`.
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!canSubmit) return;
-    onSubmit(values);
+    await onSubmit(values);
+    onCancel();
+  }
+
+  // "Lưu và nhập tiếp" (mục 4.7) — nút `type="button"` riêng, không đụng nút submit mặc định. Chỉ
+  // áp dụng lúc TẠO tài khoản mới (mode === 'create', nút chỉ hiện ở đó).
+  async function handleSaveAndContinue() {
+    if (!canSubmit) return;
+    await onSubmit(values);
+    setValues({ ...toFormValues(undefined), roleIds: [] });
+    setDisplayNameTouched(false);
+    setActiveTab('general');
+    fullNameInputRef.current?.focus();
+    triggerFlash();
   }
 
   function handleAddDepartmentKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -267,7 +287,12 @@ export function UserAccountFormDialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
       <form className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg bg-white shadow-xl" onSubmit={handleSubmit}>
         <div className="flex-shrink-0 border-b border-slate-200 px-6 pt-5">
-          <h2 className="text-[15px] font-bold text-slate-900">{mode === 'create' ? 'Thêm tài khoản' : 'Sửa tài khoản'}</h2>
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 flex-none items-center justify-center rounded-lg bg-blue-600 text-white">
+              <UserCircle size={20} weight="fill" aria-hidden="true" />
+            </span>
+            <h2 className="text-[17px] font-bold text-slate-900">{mode === 'create' ? 'Thêm tài khoản' : 'Sửa tài khoản'}</h2>
+          </div>
           <nav className="mt-3 flex gap-1" role="tablist" aria-label="Nhóm thông tin tài khoản">
             {TABS.map((tab) => (
               <button
@@ -295,6 +320,7 @@ export function UserAccountFormDialog({
                 <Field id="ua-fullname" label="Họ và tên" required className="sm:col-span-2">
                   <input
                     id="ua-fullname"
+                    ref={fullNameInputRef}
                     value={values.fullName}
                     onChange={(e) => handleFullNameChange(e.target.value)}
                     placeholder="VD: Nguyễn Văn An"
@@ -603,10 +629,18 @@ export function UserAccountFormDialog({
           </div>
         </div>
 
-        <div className="flex flex-shrink-0 justify-end gap-2 border-t border-slate-200 px-6 py-4">
+        <div className="flex flex-shrink-0 items-center justify-end gap-2 border-t border-slate-200 px-6 py-4">
+          <div className="mr-auto">
+            <SaveFlashBanner visible={flashVisible} />
+          </div>
           <Button type="button" variant="secondary" onClick={onCancel}>
             Huỷ
           </Button>
+          {mode === 'create' && (
+            <Button type="button" variant="secondary" loading={submitting} disabled={!canSubmit} onClick={handleSaveAndContinue}>
+              Lưu và nhập tiếp
+            </Button>
+          )}
           <Button type="submit" loading={submitting} disabled={!canSubmit}>
             {mode === 'create' ? 'Tạo tài khoản' : 'Lưu thay đổi'}
           </Button>

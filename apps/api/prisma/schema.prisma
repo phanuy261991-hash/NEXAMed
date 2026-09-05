@@ -618,8 +618,21 @@ enum ReferenceCatalogCategory {
   // Invoice.pendingPaymentMethod. Seed đúng 2 code cũ (migration kế tiếp, sau khi giá trị enum
   // này commit) để dữ liệu hiện có resolve đúng tên, quản lý thêm/sửa/ẩn qua UI như UNIT.
   PAYMENT_METHOD
+  // Loại thu chi (chủ dự án yêu cầu trực tiếp 2026-09-05) — chuẩn bị cho chức năng "Thu chi tại
+  // quầy"/Sổ quỹ sắp làm (CHƯA xây ở migration này, chỉ danh mục). Không seed cứng, mã tự sinh như
+  // UNIT/PAYMENT_METHOD. Có thêm cột `direction` riêng (xem enum ReferenceCatalogDirection).
+  INCOME_EXPENSE_TYPE
 
   @@map("reference_catalog_category")
+}
+
+// "Loại" của một mục INCOME_EXPENSE_TYPE — CHỈ 2 giá trị cố định (Chi tiền/Thu tiền), không quản
+// lý/mở rộng qua UI (khác code/name của chính category này).
+enum ReferenceCatalogDirection {
+  EXPENSE
+  INCOME
+
+  @@map("reference_catalog_direction")
 }
 
 // Danh mục dùng chung — TOÀN HỆ THỐNG (cùng bản chất permission/icd10_catalog), không có
@@ -656,6 +669,9 @@ model ReferenceCatalog {
   // toán nào gộp vào đối soát đếm két tiền mặt. Tách thành cột riêng thay vì so khớp cứng
   // code='CASH' — cùng lý do deactivatesAccount ở trên (`code` sửa được qua UI).
   countsAsCash       Boolean                  @default(false) @map("counts_as_cash")
+  // "Loại thu chi" (2026-09-05) — CHỈ có ý nghĩa với category INCOME_EXPENSE_TYPE: Chi tiền/Thu
+  // tiền. `null` với category khác, cùng bản chất price/unit/description ở trên.
+  direction          ReferenceCatalogDirection?
 
   @@unique([category, code])
   @@map("reference_catalog")

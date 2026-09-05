@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { Prisma, ReferenceCatalog, ReferenceCatalogCategory } from '@prisma/client';
+import type { Prisma, ReferenceCatalog, ReferenceCatalogCategory, ReferenceCatalogDirection } from '@prisma/client';
 
 export interface CreateReferenceCatalogData {
   category: ReferenceCatalogCategory;
@@ -16,6 +16,8 @@ export interface CreateReferenceCatalogData {
   countsAsCash?: boolean;
   /** Chỉ có ý nghĩa với category UNIT (Đơn vị tính) — xem schema.prisma. */
   description?: string | null;
+  /** Chỉ có ý nghĩa với category INCOME_EXPENSE_TYPE ("Loại thu chi", 2026-09-05) — xem schema.prisma. */
+  direction?: ReferenceCatalogDirection | null;
   /** Chỉ ItemFormModal category UNIT gửi — category khác luôn tạo mới ở trạng thái hoạt động
    * (mặc định Prisma `true`), quản lý qua action Xoá/Khôi phục riêng như trước. */
   isActive?: boolean;
@@ -30,6 +32,7 @@ export interface UpdateReferenceCatalogData {
   deactivatesAccount?: boolean;
   countsAsCash?: boolean;
   description?: string | null;
+  direction?: ReferenceCatalogDirection | null;
   isActive?: boolean;
 }
 

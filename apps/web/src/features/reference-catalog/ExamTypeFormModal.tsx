@@ -1,10 +1,12 @@
-import { useMemo, useState } from 'react';
-import { Plus, Trash, Warning, X } from '@phosphor-icons/react';
+import { useMemo, useRef, useState } from 'react';
+import { Plus, Stethoscope, Trash, Warning, X } from '@phosphor-icons/react';
 import type { ComboboxOption } from '../../shared/ui/Combobox';
 import { SearchableCombobox } from '../../shared/ui/SearchableCombobox';
 import { MoneyInput } from '../../shared/ui/MoneyInput';
 import { Textarea } from '../../shared/ui/Textarea';
 import { Button } from '../../shared/ui/Button';
+import { SaveFlashBanner } from '../../shared/ui/SaveFlashBanner';
+import { useSaveFlash } from '../../shared/hooks/useSaveFlash';
 import { formatVnd } from '../../shared/format/currency';
 import { makeDraftId } from '../../shared/make-draft-id';
 import { useReferenceCatalogQuery } from './reference-catalog.queries';
@@ -49,13 +51,17 @@ export function ExamTypeFormModal({
   submitting: boolean;
   submitError?: string;
   onCancel: () => void;
-  onSubmit: (dto: { name: string; sortOrder: number; isActive: boolean; description?: string; examTypePrices: ExamTypePriceInput[] }) => void;
+  /** Trả `Promise` — `handleSubmit`/`handleSaveAndContinue` await để biết lưu xong mới đóng modal
+   * hoặc làm trống form (`.claude/docs/ui-guidelines.md` mục 4.7). */
+  onSubmit: (dto: { name: string; sortOrder: number; isActive: boolean; description?: string; examTypePrices: ExamTypePriceInput[] }) => Promise<void>;
 }) {
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState(item?.name ?? '');
   const [isActive, setIsActive] = useState(item?.isActive ?? true);
   const [description, setDescription] = useState(item?.description ?? '');
   const [sortOrder, setSortOrder] = useState(item?.sortOrder ?? 0);
   const [rows, setRows] = useState<PriceDraftRow[]>((item?.prices ?? []).map((p) => ({ ...p, draftId: makeDraftId() })));
+  const { flashVisible, triggerFlash } = useSaveFlash();
 
   // Hàng nhập "thêm dòng đơn giá mới" — tách khỏi state của các dòng đã thêm ở trên.
   const [draftPriceType, setDraftPriceType] = useState('');
@@ -118,27 +124,60 @@ export function ExamTypeFormModal({
     setRows((prev) => prev.filter((r) => r.draftId !== draftId));
   }
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (isNameInvalid) return;
-    onSubmit({
+  function buildDto() {
+    return {
       name: name.trim(),
       sortOrder,
       isActive,
       description: description.trim() !== '' ? description.trim() : undefined,
       examTypePrices: rows.map(({ draftId: _draftId, ...rest }) => rest),
-    });
+    };
+  }
+
+  /** Làm trống lại về đúng trạng thái "Thêm mới" ban đầu — chỉ gọi sau khi lưu thành công, để nhập
+   * tiếp dịch vụ khác không phải mở lại modal (`.claude/docs/ui-guidelines.md` mục 4.7). */
+  function resetForNextEntry() {
+    setName('');
+    setIsActive(true);
+    setDescription('');
+    setRows([]);
+    resetDraftRowInputs();
+    setRowError(null);
+    nameInputRef.current?.focus();
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (isNameInvalid) return;
+    await onSubmit(buildDto());
+    onCancel();
+  }
+
+  // "Lưu và nhập tiếp" (mục 4.7) — nút `type="button"` riêng, không đụng nút submit mặc định
+  // (Enter vẫn kích hoạt "Lưu" như trước).
+  async function handleSaveAndContinue() {
+    if (isNameInvalid) return;
+    await onSubmit(buildDto());
+    resetForNextEntry();
+    triggerFlash();
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/55 p-4 py-8" role="dialog" aria-modal="true" aria-labelledby="exam-type-modal-title">
       <form className="w-full max-w-6xl overflow-hidden rounded-xl bg-white shadow-2xl" onSubmit={handleSubmit}>
         <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-6 py-4">
-          <div>
-            <h2 id="exam-type-modal-title" className="text-[16px] font-bold text-slate-900">
-              {mode === 'create' ? 'Thêm mới Dịch vụ khám' : 'Sửa Dịch vụ khám'}
-            </h2>
-            <p className="mt-0.5 text-xs text-slate-500">Danh mục Chuyên môn · Dịch vụ khám</p>
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 flex-none items-center justify-center rounded-lg bg-blue-600 text-white">
+              <Stethoscope size={20} weight="fill" aria-hidden="true" />
+            </span>
+            <div>
+              <h2 id="exam-type-modal-title" className="text-[17px] font-bold text-slate-900">
+                {mode === 'create' ? 'Thêm mới Dịch vụ khám' : 'Sửa Dịch vụ khám'}
+              </h2>
+              <span className="mt-1 inline-block rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-600">
+                Danh mục Chuyên môn · Dịch vụ khám
+              </span>
+            </div>
           </div>
           <button
             type="button"
@@ -151,6 +190,7 @@ export function ExamTypeFormModal({
         </div>
 
         <div className="flex max-h-[72vh] flex-col gap-7 overflow-y-auto p-6">
+          <SaveFlashBanner visible={flashVisible} />
           {/* Nhóm 1: Thông tin dịch vụ khám bệnh */}
           <div className={sectionBoxClassName}>
             <span className={sectionBadgeClassName}>Thông tin Dịch vụ khám bệnh</span>
@@ -165,7 +205,14 @@ export function ExamTypeFormModal({
                 <label htmlFor="et-name" className="text-sm font-semibold text-slate-800">
                   Tên dịch vụ <span className="text-rose-500">*</span>
                 </label>
-                <input id="et-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ví dụ: Khám tổng quát" className={inputClassName} />
+                <input
+                  id="et-name"
+                  ref={nameInputRef}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Ví dụ: Khám tổng quát"
+                  className={inputClassName}
+                />
               </div>
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="et-status" className="text-sm font-semibold text-slate-800">
@@ -304,6 +351,11 @@ export function ExamTypeFormModal({
           <Button type="button" variant="secondary" onClick={onCancel}>
             Huỷ
           </Button>
+          {mode === 'create' && (
+            <Button type="button" variant="secondary" loading={submitting} disabled={isNameInvalid} onClick={handleSaveAndContinue}>
+              Lưu và nhập tiếp
+            </Button>
+          )}
           <Button type="submit" loading={submitting} disabled={isNameInvalid}>
             Lưu
           </Button>
