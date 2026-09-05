@@ -2,6 +2,22 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-05
+
+### Redesign hộp thoại "Chốt ca" (Thu ngân) + trường "Tổng doanh thu ca" mới
+
+Chủ dự án yêu cầu dựng lại giao diện hộp thoại "Chốt ca" bằng mockup Artifact tương tác trước khi code (giữ nguyên luồng 4 bước + màn xác nhận/in phiếu, chỉ đổi cách trình bày). Sau khi chốt mockup, code thẳng vào `CloseShiftDialog.tsx`/`DenominationCounter.tsx`/`CashierShiftReceiptView.tsx`.
+
+Thêm trường tính toán mới **"Tổng doanh thu ca"** = Tiền mặt (đã trừ hoàn) + Phi tiền mặt (đã trừ hoàn theo từng phương thức, dữ liệu backend `computeCashierShiftTotals()` đã netted sẵn — không đổi API/schema) — KHÔNG cộng Vốn đầu ca. Trở thành hero chính ở Bước 1 (Tổng kết hệ thống), có thanh tỷ lệ trực quan tiền mặt/phi tiền mặt, thêm vào đầu phiếu in. "Tiền mặt dự kiến trong két" cũ lùi thành ô phụ.
+
+Chuỗi chỉnh sửa qua nhiều vòng phản hồi trực tiếp trên `pnpm dev`: cột "Số tờ" đổi capsule trắng/xám nhẹ; dòng tổng đổi màu thương hiệu `bg-blue-600`; khung popup dãn +20%; dựng lại stepper 4 bước thành lưới `grid-cols-4` (sửa lỗi số/chữ không thẳng hàng do 2 công thức `flex-1` khác nhau) kèm dấu tick cho bước đã qua và đổi màu sang `emerald-600`.
+
+**2 bug thật phát hiện + sửa lúc chủ dự án tự xem**: (1) "Đối soát mù" bật chỉ ẩn ô "tiền mặt dự kiến trong két" nhưng để lộ "Tổng thu tiền mặt"/"Chi tiền mặt" — cộng trừ tay với "Vốn đầu ca" (luôn hiện) suy ra ngay số cần giấu, mất tác dụng đối soát mù — đã ẩn luôn 2 ô đó khi bật. (2) Nút trừ/cộng ép `Button` dùng chung với `className="px-0"` thua trận CSS specificity trước `px-4` mặc định của variant, khiến icon `Minus`/`Plus` bị nuốt mất (nút hiện ô trắng rỗng) — sửa bằng `<button>` tay riêng cho control đổi giá trị này.
+
+Xem `docs/DECISIONS.md` #120.
+
+Đã xác minh: `pnpm -w typecheck/lint` sạch, `pnpm --filter @nexamed/web run build` sạch, chunk khởi động không đổi (486.54 kB, `cashier-shift` vốn đã lazy). Không migration/schema/API contract nào đổi. Chưa verify Playwright — toàn bộ xác nhận qua chủ dự án tự xem trực tiếp trên `pnpm dev`.
+
 ## 2026-09-04
 
 ### Bảo mật: thu hồi quyền qua "Vai trò & Phân quyền" không có tác dụng (backend) + menu/route không theo quyền thật (frontend)

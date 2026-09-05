@@ -44,6 +44,10 @@ export function CashierShiftReceiptView({
 }) {
   const [format, setFormat] = useState<ReceiptFormat>('roll');
   const diff = (shift.countedCashAmount ?? 0) - (shift.expectedCashAmount ?? 0);
+  /** "Tổng doanh thu ca" (`docs/DECISIONS.md` #120) — cùng công thức `CloseShiftDialog.tsx`. */
+  const cashNet = (shift.cashInAmount ?? 0) - (shift.cashOutAmount ?? 0);
+  const nonCashNet = shift.nonCashBreakdown.reduce((sum, item) => sum + item.amount, 0);
+  const totalRevenue = cashNet + nonCashNet;
 
   function handlePrint() {
     window.print();
@@ -68,8 +72,10 @@ export function CashierShiftReceiptView({
       </div>
 
       <div className="scroll-hover flex justify-center overflow-x-auto rounded-lg bg-slate-100 py-6">
-        {format === 'roll' && <RollReceipt shift={shift} clinicHeader={clinicHeader} diff={diff} />}
-        {(format === 'a5' || format === 'a4') && <FormalReceipt shift={shift} clinicHeader={clinicHeader} diff={diff} width={format === 'a5' ? '128mm' : '190mm'} />}
+        {format === 'roll' && <RollReceipt shift={shift} clinicHeader={clinicHeader} diff={diff} totalRevenue={totalRevenue} />}
+        {(format === 'a5' || format === 'a4') && (
+          <FormalReceipt shift={shift} clinicHeader={clinicHeader} diff={diff} totalRevenue={totalRevenue} width={format === 'a5' ? '128mm' : '190mm'} />
+        )}
       </div>
 
       <div className="mt-4 flex justify-center">
@@ -82,7 +88,17 @@ export function CashierShiftReceiptView({
   );
 }
 
-function RollReceipt({ shift, clinicHeader, diff }: { shift: CashierShiftDetail; clinicHeader: ClinicPrintHeader; diff: number }) {
+function RollReceipt({
+  shift,
+  clinicHeader,
+  diff,
+  totalRevenue,
+}: {
+  shift: CashierShiftDetail;
+  clinicHeader: ClinicPrintHeader;
+  diff: number;
+  totalRevenue: number;
+}) {
   return (
     <div
       className="print-area relative border border-slate-200 bg-white px-4 pt-5 pb-4"
@@ -90,6 +106,8 @@ function RollReceipt({ shift, clinicHeader, diff }: { shift: CashierShiftDetail;
     >
       <div className="text-center font-bold">PHIẾU BÀN GIAO CA</div>
       <div className="mb-2 text-center text-[11px] text-slate-500">{clinicHeader.name}</div>
+      <div className="my-2 border-t border-dashed border-slate-300" />
+      <Row label="Doanh thu ca" value={String(totalRevenue)} bold />
       <div className="my-2 border-t border-dashed border-slate-300" />
       <Row label="Ca" value={shift.shiftLabel} />
       <Row label="Thu ngân" value={shift.cashierName} />
@@ -120,7 +138,19 @@ function Row({ label, value, bold, className }: { label: string; value: string; 
   );
 }
 
-function FormalReceipt({ shift, clinicHeader, diff, width }: { shift: CashierShiftDetail; clinicHeader: ClinicPrintHeader; diff: number; width: string }) {
+function FormalReceipt({
+  shift,
+  clinicHeader,
+  diff,
+  totalRevenue,
+  width,
+}: {
+  shift: CashierShiftDetail;
+  clinicHeader: ClinicPrintHeader;
+  diff: number;
+  totalRevenue: number;
+  width: string;
+}) {
   return (
     <div className="print-area shrink-0 bg-white shadow-sm" style={{ width }}>
       <div className="p-8">
@@ -156,6 +186,10 @@ function FormalReceipt({ shift, clinicHeader, diff, width }: { shift: CashierShi
 
         <table className="mb-6 w-full text-sm">
           <tbody>
+            <tr className="border-b-2 border-slate-300">
+              <td className="py-2 font-bold text-slate-900">Tổng doanh thu ca</td>
+              <td className="py-2 text-right text-base font-bold text-brand-teal-active">{formatVnd(totalRevenue)}</td>
+            </tr>
             <tr className="border-b border-slate-100">
               <td className="py-1.5 text-slate-600">Vốn đầu ca</td>
               <td className="py-1.5 text-right font-semibold text-slate-900">{formatVnd(shift.openingFloatActual)}</td>

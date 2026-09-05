@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bank, CreditCard, X } from '@phosphor-icons/react';
+import { Bank, Check, CreditCard, Wallet, X } from '@phosphor-icons/react';
 import type { CashierShiftDetail } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { formatVnd } from '../../shared/format/currency';
@@ -34,6 +34,21 @@ export function CloseShiftDialog({ shift, onClose }: { shift: CashierShiftDetail
   const diff = countedAmount - expected;
   const submittedAmount = Math.max(countedAmount - keepAmount, 0);
 
+  /**
+   * "Tổng doanh thu ca" (`docs/DECISIONS.md` #120) — tiền mặt ròng + phi tiền mặt ròng, KHÔNG cộng
+   * vốn đầu ca (không phải doanh thu phát sinh trong ca này). `nonCashBreakdown[].amount` đã trừ
+   * hoàn tiền theo từng phương thức sẵn từ `computeCashierShiftTotals()` (`packages/core`) — không
+   * cần gọi API/tính lại gì thêm ở đây.
+   */
+  const cashInAmount = summaryQuery.data?.cashInAmount ?? 0;
+  const cashOutAmount = summaryQuery.data?.cashOutAmount ?? 0;
+  const cashNet = cashInAmount - cashOutAmount;
+  const nonCashBreakdown = summaryQuery.data?.nonCashBreakdown ?? [];
+  const nonCashNet = nonCashBreakdown.reduce((sum, item) => sum + item.amount, 0);
+  const totalRevenue = cashNet + nonCashNet;
+  const cashPct = totalRevenue !== 0 ? Math.round((cashNet / totalRevenue) * 100) : 0;
+  const nonCashPct = 100 - cashPct;
+
   async function handleConfirm() {
     setError(null);
     try {
@@ -55,7 +70,8 @@ export function CloseShiftDialog({ shift, onClose }: { shift: CashierShiftDetail
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4" role="dialog" aria-modal="true" aria-labelledby="close-shift-title">
-      <div className="flex max-h-[92vh] w-full max-w-2xl flex-col rounded-xl bg-white shadow-xl">
+      {/* max-w-2xl (672px) x1.2 ≈ 806px — dãn thêm 20% theo yêu cầu chủ dự án khi xem trên bản chạy thật (2026-09-05). */}
+      <div className="flex max-h-[92vh] w-full max-w-[806px] flex-col rounded-xl bg-white shadow-xl">
         <div className="flex-shrink-0 border-b border-slate-100 px-6 pt-6 pb-4">
           <div className="flex items-start justify-between">
             <div>
@@ -71,30 +87,32 @@ export function CloseShiftDialog({ shift, onClose }: { shift: CashierShiftDetail
             </button>
           </div>
 
+          {/* Lưới 4 cột ĐỀU NHAU — số và chữ nhãn dùng chung một cột nên luôn thẳng hàng (bản cũ
+              tính 2 hàng riêng theo 2 công thức flex khác nhau — hàng số trừ đúng 26px của circle
+              cuối, hàng chữ trừ theo bề rộng chữ "Bàn giao" — 2 mốc chia khác nhau nên bị lệch,
+              phản hồi trực tiếp 2026-09-05). Đường nối vẽ NGẦM phía sau bằng 2 nửa mỗi cột (nửa
+              trái nối cột trước, nửa phải nối cột sau), circle đè `z-10` lên trên. */}
           {!closedShift && (
-            <>
-              <div className="mt-5 flex items-center gap-1.5">
-                {[1, 2, 3, 4].map((s, i) => (
-                  <div key={s} className={`flex items-center gap-1.5 ${i < 3 ? 'flex-1' : ''}`}>
+            <div className="mt-5 grid grid-cols-4">
+              {[1, 2, 3, 4].map((s, i) => {
+                const isDone = s < step;
+                const isActive = s === step;
+                return (
+                  <div key={s} className="relative flex flex-col items-center gap-2">
+                    {i > 0 && <div className={`absolute left-0 right-1/2 top-3.75 h-0.5 ${s <= step ? 'bg-emerald-600' : 'bg-slate-200'}`} />}
+                    {i < 3 && <div className={`absolute left-1/2 right-0 top-3.75 h-0.5 ${isDone ? 'bg-emerald-600' : 'bg-slate-200'}`} />}
                     <div
-                      className={`flex h-[26px] w-[26px] flex-shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                        s < step ? 'bg-blue-600 text-white' : s === step ? 'bg-blue-600 text-white ring-4 ring-blue-100' : 'bg-slate-200 text-slate-500'
+                      className={`relative z-10 flex h-7.5 w-7.5 flex-shrink-0 items-center justify-center rounded-full text-[13px] font-bold ${
+                        isDone ? 'bg-emerald-600 text-white' : isActive ? 'bg-emerald-600 text-white ring-4 ring-emerald-100' : 'bg-slate-200 text-slate-500'
                       }`}
                     >
-                      {s}
+                      {isDone ? <Check size={14} weight="bold" aria-hidden="true" /> : s}
                     </div>
-                    {i < 3 && <div className={`h-0.5 flex-1 ${s < step ? 'bg-blue-600' : 'bg-slate-200'}`} />}
+                    <span className={`text-center text-[12.5px] font-semibold ${isActive ? 'text-emerald-600' : 'text-slate-500'}`}>{STEP_LABELS[i]}</span>
                   </div>
-                ))}
-              </div>
-              <div className="mt-1.5 flex text-[11px] font-semibold text-slate-500">
-                {STEP_LABELS.map((label, i) => (
-                  <span key={label} className={i < 3 ? 'flex-1' : ''}>
-                    {label}
-                  </span>
-                ))}
-              </div>
-            </>
+                );
+              })}
+            </div>
           )}
         </div>
 
@@ -115,40 +133,95 @@ export function CloseShiftDialog({ shift, onClose }: { shift: CashierShiftDetail
                     <Skeleton className="h-40 w-full" />
                   ) : (
                     <>
-                      <div className="grid grid-cols-2 gap-3">
-                        <SummaryCard label="Vốn đầu ca" value={formatVnd(shift.openingFloatActual)} />
-                        <SummaryCard label={`Tổng thu tiền mặt (${summaryQuery.data?.cashInCount ?? 0} phiếu)`} value={`+${formatVnd(summaryQuery.data?.cashInAmount ?? 0)}`} valueClassName="text-emerald-600" />
-                        <SummaryCard label={`Chi tiền mặt — hoàn tiền (${summaryQuery.data?.cashOutCount ?? 0} phiếu)`} value={`−${formatVnd(summaryQuery.data?.cashOutAmount ?? 0)}`} valueClassName="text-rose-600" />
-                        <div className="rounded-lg border-2 border-blue-200 bg-blue-50 p-4">
-                          <div className="text-[11px] font-bold uppercase tracking-wide text-blue-500">Tiền mặt dự kiến trong két</div>
-                          {blind ? (
-                            <div className="mt-1 flex items-baseline gap-1.5">
-                              <span className="text-xl font-bold tracking-widest text-blue-300">*.***.***</span>
-                              <span className="text-xs font-semibold text-blue-300">đ — hiện sau khi đếm</span>
-                            </div>
-                          ) : (
-                            <div className="mt-1 text-xl font-bold text-blue-700">{formatVnd(expected)}</div>
-                          )}
+                      {/* "Tổng doanh thu ca" (`docs/DECISIONS.md` #120) — hero chính của Bước 1, dùng
+                          đúng khuôn panel "hệ thống tự tổng hợp" đã có tiền lệ ở `DoctorEndShiftDialog.tsx`. */}
+                      {/* Kích thước thu nhỏ ~10% so với bản đầu theo phản hồi trực tiếp 2026-09-05
+                          (padding/cỡ chữ/khoảng cách đều giảm 1 nấc). */}
+                      <div className="rounded-xl border border-brand-teal/20 bg-brand-teal-panel px-4.5 py-4">
+                        <div className="flex items-center gap-2.5">
+                          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[1.5px] border-brand-teal/30 bg-white text-brand-teal-active">
+                            <Wallet size={18} weight="regular" aria-hidden="true" />
+                          </div>
+                          <div>
+                            <div className="text-[11px] font-bold uppercase tracking-wide text-brand-teal-active">Tổng doanh thu ca</div>
+                            <div className="text-[10px] font-medium text-brand-teal-active">Tiền mặt + các hình thức khác, đã trừ hoàn tiền</div>
+                          </div>
+                        </div>
+
+                        {blind ? (
+                          <div className="mt-3 text-[23px] font-bold tracking-[0.12em] text-brand-teal-active/60">*.***.*** đ</div>
+                        ) : (
+                          <div className="mt-3 text-[29px] font-bold text-slate-900">{formatVnd(totalRevenue)}</div>
+                        )}
+
+                        {!blind && totalRevenue > 0 && (
+                          <div className="mt-3.5 flex h-2 overflow-hidden rounded-full bg-white/60" aria-hidden="true">
+                            <div className="bg-blue-600" style={{ width: `${Math.max(0, Math.min(100, cashPct))}%` }} />
+                            <div className="bg-brand-teal-active" style={{ width: `${Math.max(0, Math.min(100, nonCashPct))}%` }} />
+                          </div>
+                        )}
+
+                        <div className="mt-2.75 flex flex-wrap gap-4.5">
+                          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-brand-teal-active">
+                            <span className="h-2 w-2 flex-shrink-0 rounded-full bg-blue-600" aria-hidden="true" />
+                            Tiền mặt{' '}
+                            <span className="font-bold text-slate-900">{blind ? 'ẩn — hiện sau khi đếm' : `${formatVnd(cashNet)} · ${cashPct}%`}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-brand-teal-active">
+                            <span className="h-2 w-2 flex-shrink-0 rounded-full bg-brand-teal-active" aria-hidden="true" />
+                            Phi tiền mặt <span className="font-bold text-slate-900">{formatVnd(nonCashNet)} · {nonCashPct}%</span>
+                          </div>
                         </div>
                       </div>
 
-                      {(summaryQuery.data?.nonCashBreakdown.length ?? 0) > 0 && (
+                      <div className="mt-5 mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-400">Tiền mặt — cần đếm tay để đối soát</div>
+                      <div className="grid grid-cols-3 gap-3">
+                        <SummaryCard label="Vốn đầu ca" value={formatVnd(shift.openingFloatActual)} />
+                        <SummaryCard
+                          label={`Tổng thu tiền mặt (${summaryQuery.data?.cashInCount ?? 0} phiếu)`}
+                          value={blind ? '*.***.*** đ' : `+${formatVnd(cashInAmount)}`}
+                          valueClassName={blind ? 'tracking-widest text-slate-300' : 'text-emerald-600'}
+                        />
+                        <SummaryCard
+                          label={`Chi tiền mặt — hoàn tiền (${summaryQuery.data?.cashOutCount ?? 0} phiếu)`}
+                          value={blind ? '*.***.*** đ' : `−${formatVnd(cashOutAmount)}`}
+                          valueClassName={blind ? 'tracking-widest text-slate-300' : 'text-rose-600'}
+                        />
+                      </div>
+                      <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
+                        <div>
+                          <div className="text-[11px] font-bold uppercase tracking-wide text-blue-600">Tiền mặt dự kiến trong két</div>
+                          <div className="text-xs font-medium text-slate-500">Gồm {formatVnd(shift.openingFloatActual)} vốn đầu ca</div>
+                        </div>
+                        {blind ? (
+                          <span className="text-lg font-bold tracking-widest text-blue-300">*.***.***</span>
+                        ) : (
+                          <span className="text-lg font-bold text-blue-700">{formatVnd(expected)}</span>
+                        )}
+                      </div>
+
+                      {nonCashBreakdown.length > 0 && (
                         <>
                           <div className="mt-5 mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-400">Phi tiền mặt — đối chiếu qua sao kê, không cần đếm tay</div>
                           <div className="grid grid-cols-2 gap-3">
-                            {summaryQuery.data!.nonCashBreakdown.map((item) => (
-                              <div key={item.method} className="flex items-center gap-3 rounded-lg border border-slate-200 p-4">
-                                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
-                                  {item.method === 'BANK_TRANSFER' ? <Bank size={18} weight="regular" aria-hidden="true" /> : <CreditCard size={18} weight="regular" aria-hidden="true" />}
-                                </div>
-                                <div className="min-w-0">
-                                  <div className="truncate text-xs font-semibold text-slate-500">
-                                    {item.methodLabel} · {item.count} giao dịch
+                            {nonCashBreakdown.map((item) => {
+                              const negative = item.amount < 0;
+                              return (
+                                <div key={item.method} className={`flex items-center gap-3 rounded-lg border p-4 ${negative ? 'border-rose-200 bg-rose-50' : 'border-slate-200'}`}>
+                                  <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ${negative ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-500'}`}>
+                                    {item.method === 'BANK_TRANSFER' ? <Bank size={18} weight="regular" aria-hidden="true" /> : <CreditCard size={18} weight="regular" aria-hidden="true" />}
                                   </div>
-                                  <div className="text-lg font-bold text-slate-900">{formatVnd(item.amount)}</div>
+                                  <div className="min-w-0">
+                                    <div className="truncate text-xs font-semibold text-slate-500">
+                                      {item.methodLabel} · {item.count} giao dịch
+                                    </div>
+                                    <div className={`text-lg font-bold ${negative ? 'text-rose-600' : 'text-slate-900'}`}>
+                                      {negative ? `−${formatVnd(Math.abs(item.amount))}` : formatVnd(item.amount)}
+                                    </div>
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </>
                       )}
