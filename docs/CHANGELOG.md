@@ -2,6 +2,22 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-06
+
+### Redesign "Lập phiếu thu/chi" + "Lưu và in phiếu" + cố định header/footer modal
+
+Chuỗi phản hồi trực tiếp trên ảnh chụp (`CashVoucherFormDialog.tsx`/`CashVoucherListPage.tsx`, tiếp nối #122). Xem `docs/DECISIONS.md` #123.
+
+**Redesign form**: lưới dọc cũ → Boxed Section Form Pattern 2 khối ("Thông tin phiếu" 6 trường lưới 3×2, "Chi tiết" 2 trường full-width), modal nới `max-w-xl`→`max-w-4xl`, tab Thu/Chi đổi sang segmented control có icon `ArrowCircleDown`/`ArrowCircleUp`. Trích xuất `shared/ui/BoxedSection.tsx` dùng chung (trùng lặp lần 3 với `WorkShiftFormModal.tsx`/`BusinessCodeTemplateFormModal.tsx`), retrofit cả 2 file cũ không đổi giao diện.
+
+**Bug thật phát hiện qua ảnh chụp**: header/nút hành động cuộn chung với nội dung form, trôi mất khỏi khung nhìn khi nội dung dài — sửa bằng tách 3 vùng cố định-cuộn-cố định (`flex-shrink-0`/`min-h-0 flex-1 overflow-y-auto`/`flex-shrink-0`), đúng khuôn `ExamTypeFormModal.tsx`.
+
+**Khối tổng kết Thu/Chi/Chênh lệch** (`CashVoucherListPage.tsx`): đổi sang 3 thẻ tách rời nền màu nhạt. 2 vòng chỉnh chữ đối lập trong cùng phiên — thử nhạt/mảnh hơn theo yêu cầu đầu ("không quá đậm gây vỡ"), phản hồi ngay "chữ mỏng quá" → chốt lại `text-2xl font-bold`/`text-xs font-bold` màu đặc.
+
+**Tính năng mới — "Lưu và in phiếu"**: `CashVoucherFormDialog.onSubmit` đổi trả về `Promise<CashVoucher>` (thay `Promise<void>`, cập nhật cả 4 nơi gọi) để form tự lấy `id` phiếu vừa lưu, gọi `POST .../print` (tái dùng `usePrintCashVoucherMutation`) → render `CashVoucherPrintView` → `window.print()` → tự đóng — đúng nguyên kỹ thuật `CashVoucherDetailDialog.handlePrint()` có sẵn.
+
+**Đã xác minh thật**: `pnpm --filter @nexamed/web run typecheck/build` sạch, chunk khởi động không đổi (490.55 kB). Playwright qua Chrome thật cài sẵn trên máy (headless, `playwright-core` cài tạm ngoài repo) — header/footer cố định đúng (toạ độ không đổi khi cuộn nội dung), luồng "Lưu và in phiếu" đúng end-to-end (tạo phiếu → đánh dấu đã in → `window.print()` gọi đúng 1 lần, stub no-op vì hộp thoại in là native OS không tự động hoá được → dialog tự đóng), xác nhận `printedAt` đã ghi qua API. Không lỗi console ngoài `401 /auth/refresh` đã biết + 1 lỗi `404 /favicon.ico` độc lập xác nhận không liên quan (file favicon vốn chưa từng có). 2 phiếu test đã huỷ qua HTTP API, không để lại dữ liệu rác.
+
 ## 2026-09-05
 
 ### "Thu chi tại quầy" (Sổ quỹ & Thu chi Giai đoạn 1) — hoàn tất backend + frontend

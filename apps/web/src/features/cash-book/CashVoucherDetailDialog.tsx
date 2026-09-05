@@ -79,8 +79,8 @@ export function CashVoucherDetailDialog({ voucherId, onClose }: { voucherId: str
   const printMutation = usePrintCashVoucherMutation();
 
   async function handleUpdateSubmit(dto: CashVoucherSubmitDto) {
-    if (!voucher) return;
-    await updateMutation.mutateAsync({
+    if (!voucher) throw new Error('Không có phiếu để sửa.');
+    return updateMutation.mutateAsync({
       id: voucher.id,
       body: {
         incomeExpenseTypeCode: dto.incomeExpenseTypeCode,

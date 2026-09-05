@@ -78,7 +78,7 @@ export function CashVoucherListPage() {
   }, [incomeExpenseTypeQuery.data]);
 
   async function handleCreateSubmit(dto: CashVoucherSubmitDto) {
-    await createMutation.mutateAsync({
+    return createMutation.mutateAsync({
       direction: dto.direction!,
       incomeExpenseTypeCode: dto.incomeExpenseTypeCode,
       cashAccountId: dto.cashAccountId,
@@ -149,39 +149,43 @@ export function CashVoucherListPage() {
         )}
       </div>
 
+      {/* Thẻ số liệu tách rời (thay dải liền viền chia đôi cũ) — mỗi thẻ nền màu nhạt riêng để
+          phân biệt rõ hơn theo mắt lướt qua. Số tiền `text-2xl font-bold`, nhãn `text-xs font-bold`
+          màu đặc (không opacity) — thử `font-semibold`/nhạt hơn trước đó bị phản hồi "mỏng", chốt
+          lại đậm/to rõ ràng (2026-09-06). */}
       {listQuery.isSuccess && (
-        <div className="flex flex-shrink-0 flex-wrap items-stretch overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          <div className="flex min-w-[190px] flex-1 items-center justify-center gap-3 px-5 py-3.5">
-            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
-              <ArrowCircleDown size={20} weight="bold" aria-hidden="true" />
+        <div className="flex flex-shrink-0 flex-wrap items-stretch gap-3">
+          <div className="flex min-w-[210px] flex-1 items-center gap-3.5 rounded-xl border border-emerald-100 bg-emerald-50/50 px-5 py-4">
+            <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-white text-emerald-600 shadow-sm ring-1 ring-emerald-100">
+              <ArrowCircleDown size={22} weight="bold" aria-hidden="true" />
             </div>
-            <div className="flex flex-col">
-              <span className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Tổng thu</span>
-              <span className="text-xl font-bold tabular-nums text-emerald-700">{formatVnd(listQuery.data.totalIncomeAmount)}</span>
-            </div>
-          </div>
-          <div className="flex min-w-[190px] flex-1 items-center justify-center gap-3 border-l border-slate-100 px-5 py-3.5">
-            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-rose-50 text-rose-600">
-              <ArrowCircleUp size={20} weight="bold" aria-hidden="true" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Tổng chi</span>
-              <span className="text-xl font-bold tabular-nums text-rose-700">{formatVnd(listQuery.data.totalExpenseAmount)}</span>
+            <div className="flex min-w-0 flex-col">
+              <span className="text-xs font-bold uppercase tracking-wide text-emerald-700">Tổng thu</span>
+              <span className="truncate text-2xl font-bold tabular-nums text-emerald-700">{formatVnd(listQuery.data.totalIncomeAmount)}</span>
             </div>
           </div>
-          <div className="flex min-w-[190px] flex-1 items-center justify-center gap-3 border-l border-slate-100 px-5 py-3.5">
-            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
-              <Scales size={20} weight="bold" aria-hidden="true" />
+          <div className="flex min-w-[210px] flex-1 items-center gap-3.5 rounded-xl border border-rose-100 bg-rose-50/50 px-5 py-4">
+            <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-white text-rose-600 shadow-sm ring-1 ring-rose-100">
+              <ArrowCircleUp size={22} weight="bold" aria-hidden="true" />
             </div>
-            <div className="flex flex-col">
-              <span className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Chênh lệch</span>
-              <span className="text-xl font-bold tabular-nums text-slate-900">
+            <div className="flex min-w-0 flex-col">
+              <span className="text-xs font-bold uppercase tracking-wide text-rose-700">Tổng chi</span>
+              <span className="truncate text-2xl font-bold tabular-nums text-rose-700">{formatVnd(listQuery.data.totalExpenseAmount)}</span>
+            </div>
+          </div>
+          <div className="flex min-w-[210px] flex-1 items-center gap-3.5 rounded-xl border border-blue-100 bg-blue-50/50 px-5 py-4">
+            <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-white text-blue-600 shadow-sm ring-1 ring-blue-100">
+              <Scales size={22} weight="bold" aria-hidden="true" />
+            </div>
+            <div className="flex min-w-0 flex-col">
+              <span className="text-xs font-bold uppercase tracking-wide text-blue-700">Chênh lệch</span>
+              <span className="truncate text-2xl font-bold tabular-nums text-slate-900">
                 {formatVnd(listQuery.data.totalIncomeAmount - listQuery.data.totalExpenseAmount)}
               </span>
             </div>
           </div>
           {listQuery.data.pendingApprovalCount > 0 && (
-            <div className="flex flex-none items-center gap-3 self-stretch bg-amber-500 px-5 py-3.5 text-white">
+            <div className="flex flex-none items-center gap-3 self-stretch rounded-xl bg-amber-500 px-5 py-4 text-white">
               <span className="whitespace-nowrap text-sm font-bold">{listQuery.data.pendingApprovalCount} phiếu chờ duyệt</span>
             </div>
           )}

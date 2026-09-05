@@ -1,13 +1,11 @@
 import { useMemo, useRef, useState } from 'react';
 import type { BusinessCodeTemplateItem } from '@nexamed/shared';
 import { Button } from '../../shared/ui/Button';
+import { BoxedSection } from '../../shared/ui/BoxedSection';
 import { BUSINESS_CODE_TOKEN_PREVIEW, formatBusinessCodePreview, parseBusinessCodeTemplatePreview } from './business-code-preview';
 
 const inputClassName =
   'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
-
-const boxedSectionClassName = 'relative rounded-lg border border-slate-200 p-6 pt-8';
-const boxedBadgeClassName = 'absolute -top-3 left-4 rounded-md bg-blue-600 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white';
 
 /** Nút chèn nhanh — nhãn ngắn gọn, giá trị chèn đúng token thật (xem `business-code-preview.ts`). */
 const TOKEN_BUTTONS: { label: string; token: string }[] = [
@@ -99,8 +97,7 @@ export function BusinessCodeTemplateFormModal({
         </div>
 
         <div className="space-y-5">
-          <div className={boxedSectionClassName}>
-            <span className={boxedBadgeClassName}>Khuôn mẫu</span>
+          <BoxedSection badge="Khuôn mẫu">
             <div className="flex flex-col gap-1.5">
               <label htmlFor="bct-template" className="text-sm font-semibold text-slate-800">
                 Cú pháp mã <span className="text-rose-500">*</span>
@@ -164,7 +161,7 @@ export function BusinessCodeTemplateFormModal({
                 {item.locked && <p className="text-[11px] text-slate-400">Đã khoá — loại mã này đã phát sinh mã đầu tiên.</p>}
               </div>
             </div>
-          </div>
+          </BoxedSection>
         </div>
 
         {submitError && <p className="mt-4 text-xs font-medium text-rose-600">{submitError}</p>}

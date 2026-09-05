@@ -116,7 +116,7 @@ export function InvoiceListPage() {
   const [myShiftVouchersOpen, setMyShiftVouchersOpen] = useState(false);
 
   async function handleCreateCashVoucher(dto: CashVoucherSubmitDto) {
-    await createCashVoucherMutation.mutateAsync({
+    return createCashVoucherMutation.mutateAsync({
       direction: dto.direction!,
       incomeExpenseTypeCode: dto.incomeExpenseTypeCode,
       cashAccountId: dto.cashAccountId,

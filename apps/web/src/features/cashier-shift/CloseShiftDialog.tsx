@@ -39,7 +39,7 @@ export function CloseShiftDialog({ shift, onClose }: { shift: CashierShiftDetail
   const closeMutation = useCloseCashierShiftMutation(shift.id);
 
   async function handleCreateCashVoucher(dto: CashVoucherSubmitDto) {
-    await createCashVoucherMutation.mutateAsync({
+    return createCashVoucherMutation.mutateAsync({
       direction: dto.direction!,
       incomeExpenseTypeCode: dto.incomeExpenseTypeCode,
       cashAccountId: dto.cashAccountId,

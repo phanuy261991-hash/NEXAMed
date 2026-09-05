@@ -4,14 +4,12 @@ import type { WorkShiftColor, WorkShiftItem } from '@nexamed/shared';
 import { Button } from '../../shared/ui/Button';
 import { TimeInput } from '../../shared/ui/TimeInput';
 import { ModalHeader } from '../../shared/ui/ModalHeader';
+import { BoxedSection } from '../../shared/ui/BoxedSection';
 import { SaveFlashBanner } from '../../shared/ui/SaveFlashBanner';
 import { useSaveFlash } from '../../shared/hooks/useSaveFlash';
 
 const inputClassName =
   'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
-
-const boxedSectionClassName = 'relative rounded-lg border border-slate-200 p-6 pt-8';
-const boxedBadgeClassName = 'absolute -top-3 left-4 rounded-md bg-blue-600 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white';
 
 /** 8 màu cố định — không color-picker tự do (tránh chọn hex lệch tông với giao diện app). */
 const COLOR_OPTIONS: { value: WorkShiftColor; hex: string; label: string }[] = [
@@ -160,8 +158,7 @@ export function WorkShiftFormModal({
         <SaveFlashBanner visible={flashVisible} />
 
         <div className="space-y-5">
-          <div className={boxedSectionClassName}>
-            <span className={boxedBadgeClassName}>Thông tin chung</span>
+          <BoxedSection badge="Thông tin chung">
             <div className="grid grid-cols-1 gap-x-5 gap-y-4 md:grid-cols-3">
               <div className="flex flex-col gap-1.5 md:col-span-2">
                 <label htmlFor="ws-name" className="text-sm font-semibold text-slate-800">
@@ -201,14 +198,13 @@ export function WorkShiftFormModal({
                 </div>
               </div>
             </div>
-          </div>
+          </BoxedSection>
 
           {/* "Giờ làm việc" + "Giờ nghỉ giữa ca" dàn 2 bên (dùng hết chiều rộng modal đã nới rộng)
               thay vì xếp chồng dọc — tránh sinh thanh cuộn dọc không cần thiết (phản hồi trực tiếp
               2026-09-05). */}
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-          <div className={boxedSectionClassName}>
-            <span className={boxedBadgeClassName}>Giờ làm việc</span>
+          <BoxedSection badge="Giờ làm việc">
             <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="ws-start" className="text-sm font-semibold text-slate-800">
@@ -240,10 +236,9 @@ export function WorkShiftFormModal({
                 </div>
               </div>
             </div>
-          </div>
+          </BoxedSection>
 
-          <div className={boxedSectionClassName}>
-            <span className={boxedBadgeClassName}>Giờ nghỉ giữa ca · Tuỳ chọn</span>
+          <BoxedSection badge="Giờ nghỉ giữa ca · Tuỳ chọn">
             <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="ws-rest-start" className="text-sm font-semibold text-slate-800">
@@ -302,7 +297,7 @@ export function WorkShiftFormModal({
             <p className="mt-3 text-[11px] text-slate-400">
               Có thể nhập khung giờ nghỉ cố định, tổng thời gian nghỉ linh động, hoặc cả hai — không bắt buộc khớp nhau.
             </p>
-          </div>
+          </BoxedSection>
           </div>
         </div>
 
