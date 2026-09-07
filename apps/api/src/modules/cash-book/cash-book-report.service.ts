@@ -17,6 +17,16 @@ function startOfDayVn(date: string): Date {
   return new Date(`${date}T00:00:00+07:00`);
 }
 
+/** Ngày lịch Việt Nam dạng `YYYY-MM-DD` — dùng để nhóm 2 nguồn dữ liệu có bản chất thời gian khác
+ * hẳn nhau vào cùng 1 "ngày" trước khi so sánh thời gian thật. `cash_voucher.occurredAt` là NGÀY
+ * người dùng chọn tay ("Ngày phát sinh"), lưu ở nửa đêm UTC — không mang ý nghĩa giờ-phút thật nào
+ * cả; `payment.paidAt` là mốc thời gian thật của giao dịch. So thẳng 2 giá trị này bằng
+ * `getTime()` sẽ luôn xếp phiếu (nửa đêm) lên TRƯỚC bất kỳ khoản thu nào cùng ngày có giờ sau 00:00
+ * — dù phiếu đó lập SAU về mặt thời gian thực (chủ dự án phát hiện 2026-09-07). */
+function vnDateKey(d: Date): string {
+  return new Date(d.getTime() + 7 * 60 * 60_000).toISOString().slice(0, 10);
+}
+
 /**
  * "Sổ quỹ & Thu chi" Giai đoạn 2 — Sổ quỹ (liệt kê chứng từ + số dư luỹ kế theo 1 quỹ) + Báo cáo
  * dòng tiền (tổng hợp toàn phòng khám). Gộp dữ liệu từ CẢ `payment` (tiền lượt khám, module
@@ -60,7 +70,15 @@ export class CashBookReportService {
         this.paymentRepository.listForCashAccount(tx, tenantId, cashAccountId, fromAt, toAt),
       ]);
 
-      type Entry = { occurredAt: Date; entryType: CashBookLedgerResponse['entries'][number]['entryType']; description: string; referenceNo: string; amountSigned: number; sortKey: string };
+      type Entry = {
+        occurredAt: Date;
+        createdAt: Date;
+        entryType: CashBookLedgerResponse['entries'][number]['entryType'];
+        description: string;
+        referenceNo: string;
+        amountSigned: number;
+        sortKey: string;
+      };
       const entries: Entry[] = [];
       for (const row of voucherRows) {
         const isTransferOut = row.cashAccountId === cashAccountId && row.counterAccountId !== null;
@@ -80,12 +98,13 @@ export class CashBookReportService {
           entryType = 'VOUCHER_EXPENSE';
           amountSigned = -Number(row.amount);
         }
-        entries.push({ occurredAt: row.occurredAt, entryType, description: row.description, referenceNo: row.voucherNo, amountSigned, sortKey: row.id });
+        entries.push({ occurredAt: row.occurredAt, createdAt: row.createdAt, entryType, description: row.description, referenceNo: row.voucherNo, amountSigned, sortKey: row.id });
       }
       for (const row of paymentRows) {
         const isPayment = row.type === 'PAYMENT';
         entries.push({
           occurredAt: row.paidAt,
+          createdAt: row.createdAt,
           entryType: isPayment ? 'INVOICE_PAYMENT' : 'INVOICE_REFUND',
           description: isPayment ? 'Thu tiền khám' : 'Hoàn tiền khám',
           referenceNo: row.invoice.invoiceNo,
@@ -93,7 +112,17 @@ export class CashBookReportService {
           sortKey: row.id,
         });
       }
-      entries.sort((a, b) => a.occurredAt.getTime() - b.occurredAt.getTime() || a.sortKey.localeCompare(b.sortKey));
+      // So NGÀY lịch VN trước (tôn trọng "Ngày phát sinh" backdate/postdate của phiếu thu/chi thủ
+      // công) — CÙNG ngày thì so `createdAt` thật (thời điểm ghi nhận), không so thẳng `occurredAt`
+      // (xem giải thích ở `vnDateKey`).
+      // So NGÀY lịch VN trước (tôn trọng "Ngày phát sinh" backdate/postdate của phiếu thu/chi thủ
+      // công) — CÙNG ngày thì so `createdAt` thật (thời điểm ghi nhận), không so thẳng `occurredAt`
+      // (xem giải thích ở `vnDateKey`).
+      entries.sort((a, b) => {
+        const dayCompare = vnDateKey(a.occurredAt).localeCompare(vnDateKey(b.occurredAt));
+        if (dayCompare !== 0) return dayCompare;
+        return a.createdAt.getTime() - b.createdAt.getTime() || a.sortKey.localeCompare(b.sortKey);
+      });
 
       let runningBalance = openingBalance;
       const dtoEntries = entries.map((e) => {

@@ -20,6 +20,20 @@ Tiện vá: `tenant-fixture.ts` đổi thứ tự xoá `cashier_shift` lên trư
 
 **Đã xác minh thật**: `apps/api` 697/697 test pass (34 test mới, gồm kịch bản end-to-end Thủ quỹ riêng đầy đủ), `packages/core` 157/157, `packages/shared` 20/20, `apps/web` 5/5. `pnpm -w typecheck/lint/build` sạch toàn workspace, chunk khởi động 496.00 kB (dưới ngưỡng 500kB). Migration đã áp thật lên Postgres dev. **Chưa verify Playwright/trình duyệt thật.** Xem `docs/DECISIONS.md` #124.
 
+### Verify Playwright #124 (Sổ quỹ, Chuyển quỹ, Báo cáo dòng tiền) + 5 bug thật phát hiện + sửa
+
+Verify qua Chrome thật + chủ dự án tự dùng `pnpm dev` song song, phản hồi trực tiếp nhiều vòng. Xác nhận đúng thiết kế: Thu tiền khám → Sổ quỹ ghi nhận đúng; Chuyển quỹ → 2 quỹ liên quan đều đúng; Báo cáo dòng tiền loại trừ Chuyển quỹ khỏi "Theo Loại thu chi"/tổng toàn phòng khám nhưng có tính vào "Theo Quỹ".
+
+**5 bug thật phát hiện + sửa**: (1) `CashBookPage.tsx` (Sổ quỹ) đảo hiển thị sang MỚI→CŨ (trước phải cuộn xuống cuối mới thấy số dư hiện tại); (2) `TransferVoucherFormDialog.tsx` — 2 cột không giãn đều (đổi CSS grid sang flex `flex-1` tường minh), badge nhóm bị vùng cuộn cắt mất phần trên ngay lúc mở form (thêm `pt-4`), "Ngày phát sinh" để hở nửa hàng (trả lại full-width + input gọn); (3) `CashVoucherDetailDialog.tsx` chưa phân biệt phiếu Chuyển quỹ — hiện "Loại thu chi: —" khó hiểu, không rõ tiền chuyển đi đâu — thêm nhánh hiện "Quỹ đích"/"Quỹ nguồn", ẩn nút "Sửa" (form Sửa không có trường Quỹ đích, sửa qua đó phá ràng buộc C25); (4) **bug nghiêm trọng nhất** — Sổ quỹ/danh sách phiếu sắp SAI thứ tự khi 2 chứng từ cùng "Ngày phát sinh": `cash_voucher.occurredAt` là ngày chọn tay (lưu nửa đêm), còn `payment.paidAt` là giờ thật — so thẳng khiến phiếu luôn "sớm hơn" mọi khoản thu cùng ngày dù lập sau. Sửa `CashVoucherRepository.list()` thêm tie-break `createdAt desc`, `CashBookReportService.getLedger()` đổi sort: so ngày lịch VN trước, cùng ngày so `createdAt` thật. Test hồi quy mới tự xác nhận bắt được bug (revert code cũ → fail đúng lỗi quan sát được → khôi phục → pass).
+
+Sự cố vận hành: `config.json` lệch cổng API với `.env` (leftover phiên trước) — đã sửa khớp `3001`; dev server nền của tôi và của chủ dự án cùng chiếm cổng 3001 gây `EADDRINUSE` — đã dừng tiến trình của tôi.
+
+**Đã xác minh thật**: `apps/api` 698/698 test pass (toàn bộ suite), `pnpm -w typecheck/build` sạch, Playwright xác nhận cả 5 fix bằng ảnh chụp + đo pixel thật, riêng bug (4) xác nhận lại trên đúng dữ liệu chủ dự án tạo. Dữ liệu test đã huỷ lượt khám + hoàn tiền qua HTTP API — 1 phiếu Chuyển quỹ test không huỷ được vì ca thu ngân liên quan đã đóng giữa phiên (đúng thiết kế khoá sau khi ca đóng, không phải lỗi). Xem `docs/DECISIONS.md` #125.
+
+### Verify "Thủ quỹ riêng" (phần cuối của #124) — đúng thiết kế, không phát hiện bug
+
+Bật tạm "Đa thu ngân" + "Thủ quỹ riêng", dùng tài khoản thu ngân test riêng (không đụng ca đang mở của `dev.admin`). Xác nhận qua Chrome thật + API: mở ca tự sinh két riêng (`type=DRAWER`); 3 khoản thu tiền mặt trong ca route đúng vào két riêng, không lẫn quỹ chung; chốt ca qua đúng wizard 4 bước, tự sinh phiếu Chuyển quỹ quét ĐÚNG số dư sổ quỹ thật của két riêng (không phải số "vốn đầu ca" đếm tay — số đó chỉ là đối soát, không phải giao dịch thật) về quỹ tiền mặt chung, két riêng về đúng 0đ. Dữ liệu test đã dọn sạch qua HTTP API, 2 công tắc trả về tắt. **Cả 4/4 phần GĐ2 đã verify Playwright xong.** Xem `docs/DECISIONS.md` #125.
+
 ## 2026-09-06
 
 ### Redesign "Lập phiếu thu/chi" + "Lưu và in phiếu" + cố định header/footer modal

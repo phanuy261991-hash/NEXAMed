@@ -71,6 +71,16 @@ export function CashVoucherDetailDialog({ voucherId, onClose }: { voucherId: str
     () => cashAccountsQuery.data?.items.find((a) => a.id === voucher?.cashAccountId)?.name ?? '—',
     [cashAccountsQuery.data, voucher],
   );
+  // "Chuyển quỹ" (GĐ2) — `counterAccountId` có giá trị = phiếu này không có "Loại thu chi", mà có
+  // quỹ ĐÍCH riêng. Trước đây dialog này render y hệt phiếu Thu/Chi thường (chủ dự án phát hiện
+  // "Loại thu chi: —" khó hiểu, không biết tiền chuyển đi đâu) — thêm nhánh riêng thay vì chỉ đổi 1
+  // dòng, vì "Sửa" cũng phải chặn (CashVoucherFormDialog không có trường Quỹ đích, sửa qua đó sẽ phá
+  // đúng 1-trong-2-hình-dạng của C25).
+  const isTransfer = voucher?.counterAccountId != null;
+  const counterAccountName = useMemo(
+    () => cashAccountsQuery.data?.items.find((a) => a.id === voucher?.counterAccountId)?.name ?? '—',
+    [cashAccountsQuery.data, voucher],
+  );
 
   const updateMutation = useUpdateCashVoucherMutation();
   const voidMutation = useVoidCashVoucherMutation();
@@ -178,25 +188,33 @@ export function CashVoucherDetailDialog({ voucherId, onClose }: { voucherId: str
             <div className="grid grid-cols-2 gap-x-5 gap-y-2.5 text-sm text-slate-700">
               <div>
                 <span className="text-slate-400">Chiều tiền:</span>{' '}
-                <span className="font-semibold text-slate-900">{voucher.direction === 'INCOME' ? 'Phiếu thu' : 'Phiếu chi'}</span>
+                <span className="font-semibold text-slate-900">{isTransfer ? 'Chuyển quỹ' : voucher.direction === 'INCOME' ? 'Phiếu thu' : 'Phiếu chi'}</span>
               </div>
               <div>
                 <span className="text-slate-400">Ngày phát sinh:</span>{' '}
                 <span className="font-semibold text-slate-900">{formatDateTime(voucher.occurredAt)}</span>
               </div>
-              <div>
-                <span className="text-slate-400">Loại thu chi:</span> <span className="font-semibold text-slate-900">{incomeExpenseTypeLabel}</span>
-              </div>
+              {isTransfer ? (
+                <div>
+                  <span className="text-slate-400">Quỹ đích:</span> <span className="font-semibold text-slate-900">{counterAccountName}</span>
+                </div>
+              ) : (
+                <div>
+                  <span className="text-slate-400">Loại thu chi:</span> <span className="font-semibold text-slate-900">{incomeExpenseTypeLabel}</span>
+                </div>
+              )}
               <div>
                 <span className="text-slate-400">Hình thức:</span> <span className="font-semibold text-slate-900">{paymentMethodLabel}</span>
               </div>
               <div>
-                <span className="text-slate-400">Quỹ:</span> <span className="font-semibold text-slate-900">{cashAccountName}</span>
+                <span className="text-slate-400">{isTransfer ? 'Quỹ nguồn:' : 'Quỹ:'}</span> <span className="font-semibold text-slate-900">{cashAccountName}</span>
               </div>
-              <div>
-                <span className="text-slate-400">{voucher.direction === 'INCOME' ? 'Người nộp:' : 'Người nhận:'}</span>{' '}
-                <span className="font-semibold text-slate-900">{voucher.partnerName ?? '—'}</span>
-              </div>
+              {!isTransfer && (
+                <div>
+                  <span className="text-slate-400">{voucher.direction === 'INCOME' ? 'Người nộp:' : 'Người nhận:'}</span>{' '}
+                  <span className="font-semibold text-slate-900">{voucher.partnerName ?? '—'}</span>
+                </div>
+              )}
               <div className="col-span-2">
                 <span className="text-slate-400">Diễn giải:</span> <span className="font-semibold text-slate-900">{voucher.description}</span>
               </div>
@@ -293,10 +311,16 @@ export function CashVoucherDetailDialog({ voucherId, onClose }: { voucherId: str
               </Button>
               {canUpdate && !voucher.voided && voucher.status !== 'REJECTED' && (
                 <>
-                  <Button type="button" variant="secondary" onClick={() => setEditing(true)}>
-                    <PencilSimple size={15} weight="bold" aria-hidden="true" />
-                    Sửa
-                  </Button>
+                  {/* "Sửa" mở `CashVoucherFormDialog` — form đó CHỈ có "Loại thu chi", không có "Quỹ
+                      đích" nên không sửa được phiếu Chuyển quỹ mà không phá đúng-1-trong-2-hình-dạng
+                      (C25). Ẩn hẳn thay vì mở ra rồi lỗi khó hiểu — "Huỷ phiếu" vẫn dùng được bình
+                      thường (không đụng hình dạng phiếu). */}
+                  {!isTransfer && (
+                    <Button type="button" variant="secondary" onClick={() => setEditing(true)}>
+                      <PencilSimple size={15} weight="bold" aria-hidden="true" />
+                      Sửa
+                    </Button>
+                  )}
                   <Button type="button" variant="danger" onClick={() => setVoiding(true)}>
                     <Trash size={15} weight="bold" aria-hidden="true" />
                     Huỷ phiếu

@@ -225,6 +225,31 @@ describe('HTTP e2e — Sổ quỹ & Thu chi Giai đoạn 2', () => {
       const bankTransferEntry = bankLedger.body.data.entries.find((e: { entryType: string; amountSigned: number }) => e.entryType === 'TRANSFER_IN' && e.amountSigned === 300_000);
       expect(bankTransferEntry).toBeDefined();
     });
+
+    it('cùng ngày lịch: phiếu Chuyển quỹ lập SAU khoản thu tiền khám vẫn xếp SAU trong Sổ quỹ (không bị occurredAt nửa đêm của phiếu kéo lên đầu)', async () => {
+      // Bug thật 2026-09-07: cash_voucher.occurredAt là NGÀY người dùng chọn (lưu nửa đêm), còn
+      // payment.paidAt là mốc giờ thật — so thẳng occurredAt.getTime() khiến phiếu luôn "sớm hơn"
+      // bất kỳ khoản thu nào cùng ngày có giờ sau 00:00, dù phiếu lập SAU về mặt thời gian thực.
+      // `occurredAt` PHẢI truyền tường minh dạng "YYYY-MM-DD" (đúng những gì web gửi lên — form
+      // dùng `<input type="date">`) — bỏ trống thì server tự mặc định "bây giờ" (mốc giờ thật,
+      // không tái hiện được bug), xem comment `createCashVoucherRequestSchema` (`packages/shared`).
+      const uniquePaymentAmount = 777_701;
+      const uniqueTransferAmount = 10_102;
+      const todayDateOnly = new Date().toISOString().slice(0, 10);
+      await registerDirectAndPay(clinicAdminToken, doctorUserId, uniquePaymentAmount);
+      const transferRes = await createTransferVoucher(clinicAdminToken, uniqueTransferAmount, { occurredAt: todayDateOnly });
+      expect(transferRes.status).toBe(200);
+
+      const ledger = await request(app.getHttpServer()).get(`/api/v1/cash-book/ledger?cashAccountId=${cashAccountId}`).set(authed(clinicAdminToken));
+      expect(ledger.status).toBe(200);
+      type LedgerEntry = { entryType: string; amountSigned: number };
+      const entries = ledger.body.data.entries as LedgerEntry[];
+      const paymentIndex = entries.findIndex((e) => e.entryType === 'INVOICE_PAYMENT' && e.amountSigned === uniquePaymentAmount);
+      const transferIndex = entries.findIndex((e) => e.entryType === 'TRANSFER_OUT' && e.amountSigned === -uniqueTransferAmount);
+      expect(paymentIndex).toBeGreaterThanOrEqual(0);
+      expect(transferIndex).toBeGreaterThanOrEqual(0);
+      expect(paymentIndex).toBeLessThan(transferIndex);
+    });
   });
 
   describe('Báo cáo dòng tiền (GET /cash-book/cash-flow-report)', () => {

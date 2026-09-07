@@ -112,47 +112,64 @@ export function TransferVoucherFormDialog({ onCancel, onDone }: { onCancel: () =
           <ModalHeader icon={ArrowsLeftRight} title="Chuyển quỹ" subtitle="Sổ quỹ & Thu chi" onClose={onCancel} />
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-6">
+        {/* `pt-4` — `BoxedSection` có badge nổi `-top-3` (12px) phía trên khung; vùng cuộn này
+            không có padding-top nào khác (header là vùng CỐ ĐỊNH riêng ở trên, không tính) nên
+            thiếu buffer sẽ bị CHÍNH clipping boundary của `overflow-y-auto` cắt mất phần trên của
+            badge ngay từ lúc mở form, không phải lỗi do cuộn (chủ dự án phản hồi 2026-09-07). */}
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-4">
           <SaveFlashBanner visible={flashVisible} />
 
           <div className="space-y-5 pb-6">
+            {/* Dùng flex + flex-1 (không phải CSS grid) cho từng cặp trường — ép 2 cột GIÃN ĐỀU
+                edge-to-edge tuyệt đối, tránh phụ thuộc hành vi "stretch mặc định" của grid item lồng
+                qua nhiều lớp `flex flex-col` (chủ dự án phản hồi lệch cột 2026-09-07). */}
             <BoxedSection badge="Chuyển từ quỹ nào sang quỹ nào">
-              <div className="grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2">
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="tv-source" className="text-sm font-semibold text-slate-800">
-                    Quỹ nguồn <span className="text-rose-500">*</span>
-                  </label>
-                  <Combobox id="tv-source" value={values.cashAccountId} options={sourceOptions} onChange={handleSourceChange} placeholder="Chọn quỹ bị trừ tiền..." />
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-4 sm:flex-row sm:gap-5">
+                  <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                    <label htmlFor="tv-source" className="text-sm font-semibold text-slate-800">
+                      Quỹ nguồn <span className="text-rose-500">*</span>
+                    </label>
+                    <Combobox id="tv-source" value={values.cashAccountId} options={sourceOptions} onChange={handleSourceChange} placeholder="Chọn quỹ bị trừ tiền..." />
+                  </div>
+                  <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                    <label htmlFor="tv-dest" className="text-sm font-semibold text-slate-800">
+                      Quỹ đích <span className="text-rose-500">*</span>
+                    </label>
+                    <Combobox
+                      id="tv-dest"
+                      value={values.counterAccountId}
+                      options={destinationOptions}
+                      onChange={(v) => set('counterAccountId', v)}
+                      placeholder="Chọn quỹ được cộng tiền..."
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-col gap-4 sm:flex-row sm:gap-5">
+                  <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                    <label htmlFor="tv-amount" className="text-sm font-semibold text-slate-800">
+                      Số tiền <span className="text-rose-500">*</span>
+                    </label>
+                    <MoneyInput id="tv-amount" value={values.amount} onChange={(v) => set('amount', v)} className={inputClassName} required />
+                  </div>
+                  <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                    <label htmlFor="tv-method" className="text-sm font-semibold text-slate-800">
+                      Hình thức <span className="text-rose-500">*</span>
+                    </label>
+                    <Combobox id="tv-method" value={values.paymentMethodCode} options={paymentMethodOptions} onChange={(v) => set('paymentMethodCode', v)} />
+                  </div>
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label htmlFor="tv-dest" className="text-sm font-semibold text-slate-800">
-                    Quỹ đích <span className="text-rose-500">*</span>
-                  </label>
-                  <Combobox
-                    id="tv-dest"
-                    value={values.counterAccountId}
-                    options={destinationOptions}
-                    onChange={(v) => set('counterAccountId', v)}
-                    placeholder="Chọn quỹ được cộng tiền..."
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="tv-amount" className="text-sm font-semibold text-slate-800">
-                    Số tiền <span className="text-rose-500">*</span>
-                  </label>
-                  <MoneyInput id="tv-amount" value={values.amount} onChange={(v) => set('amount', v)} className={inputClassName} required />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="tv-method" className="text-sm font-semibold text-slate-800">
-                    Hình thức <span className="text-rose-500">*</span>
-                  </label>
-                  <Combobox id="tv-method" value={values.paymentMethodCode} options={paymentMethodOptions} onChange={(v) => set('paymentMethodCode', v)} />
-                </div>
-                <div className="flex flex-col gap-1.5 sm:col-span-2">
                   <label htmlFor="tv-occurred-at" className="text-sm font-semibold text-slate-800">
                     Ngày phát sinh
                   </label>
-                  <input id="tv-occurred-at" type="date" value={values.occurredAt} onChange={(e) => set('occurredAt', e.target.value)} className={`${inputClassName} sm:max-w-[220px]`} />
+                  <input
+                    id="tv-occurred-at"
+                    type="date"
+                    value={values.occurredAt}
+                    onChange={(e) => set('occurredAt', e.target.value)}
+                    className={`${inputClassName} sm:max-w-[220px]`}
+                  />
                 </div>
               </div>
             </BoxedSection>

@@ -88,7 +88,7 @@ export class PaymentRepository {
   listForCashAccount(tx: Prisma.TransactionClient, tenantId: string, cashAccountId: string, from?: Date, to?: Date) {
     return tx.payment.findMany({
       where: { tenantId, deletedAt: null, cashAccountId, paidAt: { gte: from, lte: to } },
-      select: { id: true, type: true, amount: true, paidAt: true, invoice: { select: { invoiceNo: true } } },
+      select: { id: true, type: true, amount: true, paidAt: true, createdAt: true, invoice: { select: { invoiceNo: true } } },
       orderBy: { paidAt: 'asc' },
     });
   }

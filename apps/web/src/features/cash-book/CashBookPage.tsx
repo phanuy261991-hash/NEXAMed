@@ -35,9 +35,13 @@ const ENTRY_TYPE_META: Record<string, { label: string; icon: typeof ArrowCircleD
 
 /**
  * "Sổ quỹ" (Sổ quỹ & Thu chi GĐ2) — chọn 1 quỹ, xem MỌI chứng từ ảnh hưởng số dư của quỹ đó
- * (`payment` lượt khám + `cash_voucher`) kèm số dư luỹ kế, sắp CŨ→MỚI (đọc số dư tự nhiên, khác
- * List Screen Pattern khác trong app vốn mới→cũ). `cash_voucher.read` — cùng quyền "Phiếu thu/Phiếu
- * chi" (receptionist+clinic_admin), khác "Báo cáo dòng tiền" (chỉ clinic_admin).
+ * (`payment` lượt khám + `cash_voucher`) kèm số dư luỹ kế. Server LUÔN tính `runningBalance` theo
+ * thứ tự CŨ→MỚI (bắt buộc cho đúng phép cộng dồn), nhưng HIỂN THỊ đảo lại MỚI→CŨ (chủ dự án phản
+ * hồi 2026-09-07: sắp cũ→mới trước đây bắt phải cuộn xuống cuối mới thấy số dư hiện tại, bất tiện —
+ * đổi cho khớp List Screen Pattern chung của app, mới nhất luôn ở trên). Mỗi dòng đã mang sẵn đúng
+ * `runningBalance` của nó nên đảo thứ tự hiển thị không ảnh hưởng gì tới số liệu. `cash_voucher.read`
+ * — cùng quyền "Phiếu thu/Phiếu chi" (receptionist+clinic_admin), khác "Báo cáo dòng tiền" (chỉ
+ * clinic_admin).
  */
 export function CashBookPage() {
   useBreadcrumb([{ label: 'Sổ quỹ & Thu chi' }, { label: 'Sổ quỹ' }]);
@@ -148,7 +152,7 @@ export function CashBookPage() {
               </div>
 
               <div className="scroll-hover flex-1 overflow-y-auto overflow-x-hidden">
-                {ledgerQuery.data.entries.map((entry) => {
+                {[...ledgerQuery.data.entries].reverse().map((entry) => {
                   const meta = ENTRY_TYPE_META[entry.entryType];
                   const Icon = meta?.icon ?? ArrowCircleDown;
                   const isPositive = entry.amountSigned >= 0;

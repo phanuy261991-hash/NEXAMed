@@ -43,6 +43,7 @@ export interface CashVoucherLedgerRow {
   amount: bigint;
   occurredAt: Date;
   description: string;
+  createdAt: Date;
 }
 
 export interface ListCashVouchersFilter {
@@ -99,7 +100,12 @@ export class CashVoucherRepository {
     return tx.cashVoucher.findFirst({ where: { tenantId, id } });
   }
 
-  /** Danh sách — cùng lý do `findByIdAny`, KHÔNG lọc `deletedAt` để phiếu đã huỷ vẫn hiện (kèm badge). */
+  /** Danh sách — cùng lý do `findByIdAny`, KHÔNG lọc `deletedAt` để phiếu đã huỷ vẫn hiện (kèm badge).
+   * Sắp `occurredAt desc` (Ngày phát sinh do người dùng chọn, chỉ có độ chính xác NGÀY — 2 phiếu
+   * cùng ngày sẽ hoà); thêm tie-break `createdAt desc` (thời điểm ghi nhận thật, có độ chính xác tới
+   * mili-giây) để phiếu lập SAU vẫn luôn hiện TRƯỚC khi cùng ngày phát sinh — chủ dự án phát hiện
+   * 2026-09-07: thiếu tie-break khiến phiếu mới tạo lại rơi XUỐNG DƯỚI phiếu cũ hơn (thứ tự vật lý
+   * trong bảng, không đảm bảo). */
   list(tx: Prisma.TransactionClient, tenantId: string, filter: ListCashVouchersFilter): Promise<CashVoucher[]> {
     return tx.cashVoucher.findMany({
       where: {
@@ -109,7 +115,7 @@ export class CashVoucherRepository {
         status: filter.status,
         cashierShiftId: filter.cashierShiftId,
       },
-      orderBy: { occurredAt: 'desc' },
+      orderBy: [{ occurredAt: 'desc' }, { createdAt: 'desc' }],
     });
   }
 
@@ -196,7 +202,7 @@ export class CashVoucherRepository {
         OR: [{ cashAccountId }, { counterAccountId: cashAccountId }],
         occurredAt: { gte: from, lte: to },
       },
-      select: { id: true, voucherNo: true, direction: true, cashAccountId: true, counterAccountId: true, amount: true, occurredAt: true, description: true },
+      select: { id: true, voucherNo: true, direction: true, cashAccountId: true, counterAccountId: true, amount: true, occurredAt: true, description: true, createdAt: true },
       orderBy: { occurredAt: 'asc' },
     });
   }
