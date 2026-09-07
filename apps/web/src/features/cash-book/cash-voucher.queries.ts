@@ -45,6 +45,10 @@ function useInvalidateCashVoucher() {
   return () => {
     void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'cash-voucher') });
     void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'cashier-shift') });
+    // "Sổ quỹ & Thu chi" GĐ2 — Sổ quỹ/Báo cáo dòng tiền đọc CẢ payment lẫn cash_voucher, phải làm
+    // mới cùng lúc để không cần F5 thủ công sau khi lập phiếu.
+    void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'cash-book-ledger') });
+    void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'cash-flow-report') });
   };
 }
 

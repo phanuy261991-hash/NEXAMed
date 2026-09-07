@@ -192,7 +192,9 @@ export function CashVoucherFormDialog({
     }, 100);
   }
 
-  function labelFor(catalog: ReferenceCatalogItem[] | undefined, code: string): string {
+  function labelFor(catalog: ReferenceCatalogItem[] | undefined, code: string | null): string {
+    // GĐ2 — phiếu Chuyển quỹ (`incomeExpenseTypeCode=null`) không thuộc "Loại thu chi" nào.
+    if (code === null) return 'Chuyển quỹ';
     return catalog?.find((i) => i.code === code)?.name ?? code;
   }
 

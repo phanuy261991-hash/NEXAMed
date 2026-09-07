@@ -335,7 +335,9 @@ export function CashAccountPane() {
                       </span>
                     </td>
                     <td className="px-4 py-2 text-left text-slate-600">
-                      {item.type === 'BANK' ? `${item.bankName ?? ''} · ${item.bankAccountNo ?? '—'}` : '—'}
+                      {item.type === 'BANK' && `${item.bankName ?? ''} · ${item.bankAccountNo ?? '—'}`}
+                      {item.type === 'DRAWER' && (item.ownerUserName ? `Két riêng của ${item.ownerUserName}` : '—')}
+                      {item.type === 'CASH' && '—'}
                     </td>
                     <td className="px-4 py-2 text-center font-medium tabular-nums text-slate-700">{formatVnd(item.openingBalance)}</td>
                     <td className="px-4 py-2 text-center">{item.isDefault ? <StatusBadge tone="accent">Mặc định</StatusBadge> : '—'}</td>

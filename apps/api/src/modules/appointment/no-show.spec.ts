@@ -104,6 +104,7 @@ describe('markNoShowForAllTenants — S5-07, APP-05', () => {
       getWorkShiftAssignmentLockGraceDays: () => Promise.reject(new Error('không dùng trong test này')),
       getCashierShiftMultiCashierEnabled: () => Promise.reject(new Error('không dùng trong test này')),
       getCashVoucherApprovalEnabled: () => Promise.reject(new Error('không dùng trong test này')),
+      getCashierDrawerSeparateEnabled: () => Promise.reject(new Error('không dùng trong test này')),
     };
   }
 

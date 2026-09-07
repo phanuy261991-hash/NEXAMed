@@ -10,6 +10,7 @@ import {
   ConcurrentModificationError,
   deriveShiftLabel,
   DOCTOR_DIRECTORY_PORT,
+  formatShortSequentialCode,
   REFERENCE_CATALOG_READER_PORT,
   vietnamDayRange,
   type CashierShiftPaymentInput,
@@ -34,10 +35,17 @@ import type {
 } from '@nexamed/shared';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
+import { CodeSequenceRepository } from '../../infrastructure/persistence/code-sequence.repository';
 import type { RequestMeta } from '../../common/request-meta';
 import { PaymentRepository } from '../billing/payment.repository';
+import { BusinessCodeService } from '../clinic/business-code.service';
+import { CashAccountRepository } from '../cash-book/cash-account.repository';
 import { CashVoucherRepository, type CashVoucherCashierShiftRow } from '../cash-book/cash-voucher.repository';
 import { CashierShiftRepository, type EditCashierShiftData } from './cashier-shift.repository';
+
+/** "Thủ quỹ riêng" (GĐ2) — mã ngắn tuần tự cho két tự cấp (docs/DECISIONS.md #113), cùng tiền tố
+ * `CashAccountService` dùng cho quỹ lập tay (đều là `cash_account`, dùng chung 1 dãy số theo tenant). */
+const CASH_ACCOUNT_CODE_PREFIX = 'QU';
 
 type PaymentMethodMap = Map<string, { name: string; countsAsCash: boolean }>;
 
@@ -57,6 +65,9 @@ export class CashierShiftService implements CashierShiftReaderPort {
     private readonly cashierShiftRepository: CashierShiftRepository,
     private readonly paymentRepository: PaymentRepository,
     private readonly cashVoucherRepository: CashVoucherRepository,
+    private readonly cashAccountRepository: CashAccountRepository,
+    private readonly codeSequenceRepository: CodeSequenceRepository,
+    private readonly businessCodeService: BusinessCodeService,
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
     @Inject(REFERENCE_CATALOG_READER_PORT) private readonly referenceCatalogReader: ReferenceCatalogReaderPort,
     @Inject(CLINIC_CONFIG_READER_PORT) private readonly clinicConfigReader: ClinicConfigReaderPort,
@@ -75,6 +86,19 @@ export class CashierShiftService implements CashierShiftReaderPort {
   async isCashierShiftOpen(tenantId: string, cashierShiftId: string): Promise<boolean> {
     const row = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.cashierShiftRepository.findById(tx, tenantId, cashierShiftId));
     return row?.status === 'OPEN';
+  }
+
+  /** `CashierShiftReaderPort` ("Thủ quỹ riêng", GĐ2) — `billing` gọi để biết tiền thu khám (tiền
+   * mặt) của actor này phải đi vào két riêng nào, thay vì Quỹ CASH mặc định. Không kiểm lại công
+   * tắc `cashierDrawerSeparateEnabled` ở đây — chỉ cần đọc đúng `drawerAccountId` SNAPSHOT lúc mở
+   * ca (đã ép đúng công tắc TẠI THỜI ĐIỂM ĐÓ), tránh 1 lần đọc `tenant_setting` không cần thiết. */
+  async getCashAccountIdForActor(tenantId: string, actorId: string): Promise<string | null> {
+    const multiCashierEnabled = await this.clinicConfigReader.getCashierShiftMultiCashierEnabled(tenantId);
+    if (!multiCashierEnabled) {
+      return null; // Thủ quỹ riêng bắt buộc đi cùng Đa thu ngân — tắt thì không có ca "của actor" để tra.
+    }
+    const row = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.cashierShiftRepository.findOpenForCashier(tx, tenantId, actorId));
+    return row?.drawerAccountId ?? null;
   }
 
   async getCurrent(tenantId: string, actorId: string): Promise<CurrentCashierShiftResponse> {
@@ -109,6 +133,10 @@ export class CashierShiftService implements CashierShiftReaderPort {
 
   async openShift(tenantId: string, actorId: string, dto: OpenCashierShiftRequest, meta: RequestMeta): Promise<CashierShiftDetail> {
     const multiCashierEnabled = await this.clinicConfigReader.getCashierShiftMultiCashierEnabled(tenantId);
+    // "Thủ quỹ riêng" (GĐ2) — bắt buộc đi cùng Đa thu ngân (đã validate ở PATCH /clinic-settings,
+    // nhưng đọc lại multiCashierEnabled tại đây để phòng dữ liệu cấu hình lệch — tắt Đa thu ngân
+    // thì coi như tắt luôn Thủ quỹ riêng, không cấp két riêng).
+    const drawerSeparateEnabled = multiCashierEnabled && (await this.clinicConfigReader.getCashierDrawerSeparateEnabled(tenantId));
     const created = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       // Khoá tay (advisory lock) TRƯỚC bước kiểm tra "đã có ca mở chưa" — bắt buộc phải có, vì
       // partial unique index DB giờ chỉ còn chặn theo TỪNG thu ngân (cashier_shift_one_open_per_
@@ -132,6 +160,8 @@ export class CashierShiftService implements CashierShiftReaderPort {
         throw new CashierShiftDiscrepancyReasonRequiredError();
       }
 
+      const drawerAccountId = drawerSeparateEnabled ? await this.findOrCreateDrawerAccount(tx, tenantId, actorId) : null;
+
       const openedAt = new Date();
       const row = await this.cashierShiftRepository.create(tx, tenantId, actorId, {
         shiftLabel: deriveShiftLabel(openedAt),
@@ -139,6 +169,7 @@ export class CashierShiftService implements CashierShiftReaderPort {
         openingFloatExpected,
         openingFloatActual: dto.openingFloatActual,
         openingDiscrepancyReason: dto.openingDiscrepancyReason ?? null,
+        drawerAccountId,
       });
 
       await writeAuditLog(tx, tenantId, {
@@ -215,6 +246,36 @@ export class CashierShiftService implements CashierShiftReaderPort {
       });
       if (count === 0) {
         throw new ConcurrentModificationError();
+      }
+
+      // "Thủ quỹ riêng" (GĐ2) — ca này dùng két riêng (drawerAccountId snapshot lúc mở) → tự sinh
+      // 1 phiếu Chuyển quỹ gộp số tiền THẬT SỰ nộp lên (submittedAmount, đã trừ keepForNextAmount)
+      // từ két riêng vào Quỹ CASH mặc định. TRONG CÙNG transaction close() — atomic, đúng tiền lệ
+      // #042 "reception/encounter/appointment chia sẻ Repository" (không qua port, đã tiêm sẵn
+      // CashVoucherRepository từ GĐ1). Bỏ qua khi submittedAmount=0 (CHECK amount>0 sẽ chặn insert).
+      // CỐ Ý gắn `cashierShiftId: null` (KHÔNG gắn vào chính ca đang chốt) — nếu gắn, mọi lần "Tính
+      // toán lại" (resync-preview/edit) sau đó sẽ tự nạp lại đúng phiếu này qua listPostedForShift()
+      // và cộng thêm submittedAmount vào cashOutAmount đã chốt, gây tăng dần mỗi lần tính lại (tự
+      // tham chiếu). Phiếu vẫn truy vết được qua `description` + `occurredAt=closedAt` + `isAutoGenerated`.
+      if (row.drawerAccountId && submittedAmount > 0) {
+        const defaultCashAccount = await this.cashAccountRepository.findDefault(tx, tenantId, 'CASH');
+        if (defaultCashAccount && defaultCashAccount.id !== row.drawerAccountId) {
+          const voucherNo = await this.businessCodeService.generate(tx, tenantId, actorId, 'CASH_TRANSFER', closedAt);
+          await this.cashVoucherRepository.create(tx, tenantId, actorId, {
+            voucherNo,
+            direction: 'EXPENSE',
+            incomeExpenseTypeCode: null,
+            cashAccountId: row.drawerAccountId,
+            counterAccountId: defaultCashAccount.id,
+            paymentMethodCode: 'CASH',
+            amount: BigInt(submittedAmount),
+            occurredAt: closedAt,
+            description: `Chuyển quỹ tự động — nộp két riêng lúc chốt ca ${row.shiftNo}`,
+            status: 'POSTED',
+            cashierShiftId: null,
+            isAutoGenerated: true,
+          });
+        }
       }
 
       await writeAuditLog(tx, tenantId, {
@@ -438,6 +499,29 @@ export class CashierShiftService implements CashierShiftReaderPort {
   /** "Thu chi tại quầy" GĐ1 — `direction` INCOME/EXPENSE ánh xạ sang `type` PAYMENT/REFUND đúng
    * chiều tiền (thu vào/chi ra khỏi két), `source:'VOUCHER'` để `computeCashierShiftTotals()` tách
    * riêng được ở `otherCashIn/OutAmount` (vẫn cộng vào tổng gộp `cashIn/OutAmount` như bình thường). */
+  /** "Thủ quỹ riêng" (GĐ2) — két `DRAWER` CỦA CHÍNH `actorId`, tự cấp lần đầu actor mở ca với công
+   * tắc đang bật (find-or-create, TRONG transaction `openShift()`). Mã qua `CodeSequenceRepository`
+   * (tiền tố `QU`, tenant-scoped) — CÙNG dãy số với quỹ lập tay ở `CashAccountService.create()`. */
+  private async findOrCreateDrawerAccount(tx: Prisma.TransactionClient, tenantId: string, actorId: string): Promise<string> {
+    const existing = await this.cashAccountRepository.findDrawerForUser(tx, tenantId, actorId);
+    if (existing) {
+      return existing.id;
+    }
+    const names = await this.doctorDirectory.getUserFullNames(tenantId, [actorId]);
+    const seq = await this.codeSequenceRepository.next(tx, tenantId, CASH_ACCOUNT_CODE_PREFIX, actorId);
+    const code = formatShortSequentialCode(CASH_ACCOUNT_CODE_PREFIX, seq);
+    const created = await this.cashAccountRepository.create(tx, tenantId, actorId, {
+      code,
+      name: `Két — ${names.get(actorId) ?? 'Không rõ'}`,
+      type: 'DRAWER',
+      openingBalance: 0n,
+      openingBalanceAt: new Date(),
+      isDefault: false,
+      ownerUserId: actorId,
+    });
+    return created.id;
+  }
+
   private buildVoucherInputs(rows: CashVoucherCashierShiftRow[], methodMap: PaymentMethodMap): CashierShiftPaymentInput[] {
     return rows.map((row) => {
       const meta = methodMap.get(row.paymentMethodCode);

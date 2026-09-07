@@ -1,5 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { ConcurrentModificationError, formatShortSequentialCode } from '@nexamed/core';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { ConcurrentModificationError, DOCTOR_DIRECTORY_PORT, formatShortSequentialCode, type DoctorDirectoryPort } from '@nexamed/core';
 import type { CashAccount as CashAccountDto, CreateCashAccountRequest, ListCashAccountsResponse, UpdateCashAccountRequest } from '@nexamed/shared';
 import type { CashAccount } from '@prisma/client';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
@@ -24,6 +24,7 @@ export class CashAccountService {
     private readonly unitOfWork: UnitOfWorkService,
     private readonly cashAccountRepository: CashAccountRepository,
     private readonly codeSequenceRepository: CodeSequenceRepository,
+    @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
   ) {}
 
   async create(tenantId: string, actorId: string, dto: CreateCashAccountRequest, meta: RequestMeta): Promise<CashAccountDto> {
@@ -59,13 +60,15 @@ export class CashAccountService {
         userAgent: meta.userAgent,
       });
 
-      return this.toDto(created);
+      return this.toDto(created, new Map());
     });
   }
 
   async list(tenantId: string): Promise<ListCashAccountsResponse> {
     const rows = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.cashAccountRepository.list(tx, tenantId));
-    return { items: rows.map((row) => this.toDto(row)) };
+    const ownerIds = [...new Set(rows.map((r) => r.ownerUserId).filter((id): id is string => id !== null))];
+    const names = ownerIds.length > 0 ? await this.doctorDirectory.getUserFullNames(tenantId, ownerIds) : new Map<string, string>();
+    return { items: rows.map((row) => this.toDto(row, names)) };
   }
 
   async update(tenantId: string, actorId: string, id: string, dto: UpdateCashAccountRequest, meta: RequestMeta): Promise<CashAccountDto> {
@@ -105,11 +108,12 @@ export class CashAccountService {
       });
 
       const updated = await this.cashAccountRepository.findById(tx, tenantId, id);
-      return this.toDto(updated!);
+      const names = updated?.ownerUserId ? await this.doctorDirectory.getUserFullNames(tenantId, [updated.ownerUserId]) : new Map<string, string>();
+      return this.toDto(updated!, names);
     });
   }
 
-  private toDto(row: CashAccount): CashAccountDto {
+  private toDto(row: CashAccount, names: Map<string, string>): CashAccountDto {
     return {
       id: row.id,
       code: row.code,
@@ -121,6 +125,8 @@ export class CashAccountService {
       openingBalanceAt: row.openingBalanceAt.toISOString(),
       isDefault: row.isDefault,
       isActive: row.isActive,
+      ownerUserId: row.ownerUserId,
+      ownerUserName: row.ownerUserId ? (names.get(row.ownerUserId) ?? 'Không rõ') : null,
       version: row.version,
     };
   }

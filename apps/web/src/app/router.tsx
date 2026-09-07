@@ -50,6 +50,9 @@ const CashierShiftListPage = lazy(() =>
 );
 // Sổ quỹ & Thu chi (GĐ1, ngoài kế hoạch, 2026-09-05).
 const CashVoucherListPage = lazy(() => import('../features/cash-book/CashVoucherListPage').then((m) => ({ default: m.CashVoucherListPage })));
+// Sổ quỹ & Thu chi Giai đoạn 2 (Sổ quỹ + Báo cáo dòng tiền).
+const CashBookPage = lazy(() => import('../features/cash-book/CashBookPage').then((m) => ({ default: m.CashBookPage })));
+const CashFlowReportPage = lazy(() => import('../features/cash-book/CashFlowReportPage').then((m) => ({ default: m.CashFlowReportPage })));
 // Nhóm Quản trị — chỉ `clinic_admin` dùng tới; lễ tân/điều dưỡng/bác sĩ không bao giờ tải các
 // chunk này (gồm cả trang tra cứu ICD-10 và toàn bộ màn hình danh mục).
 const CatalogAdminPage = lazy(() => import('../features/catalog/CatalogAdminPage').then((m) => ({ default: m.CatalogAdminPage })));
@@ -110,6 +113,10 @@ export const router = createBrowserRouter([
       { path: 'billing/:encounterId', element: <RequirePermissionRoute module="invoice" action="read"><InvoiceDetailPage /></RequirePermissionRoute> },
       // Sổ quỹ & Thu chi (GĐ1) — không có mục sidebar riêng cho chi tiết (mở bằng dialog tại chỗ).
       { path: 'cash-book/vouchers', element: <RequirePermissionRoute module="cash_voucher" action="read"><CashVoucherListPage /></RequirePermissionRoute> },
+      // Sổ quỹ & Thu chi Giai đoạn 2 — Sổ quỹ (cash_voucher.read, cùng quyền Phiếu thu/chi) + Báo
+      // cáo dòng tiền (cash_voucher.report, CHỈ clinic_admin).
+      { path: 'cash-book/ledger', element: <RequirePermissionRoute module="cash_voucher" action="read"><CashBookPage /></RequirePermissionRoute> },
+      { path: 'cash-book/report', element: <RequirePermissionRoute module="cash_voucher" action="report"><CashFlowReportPage /></RequirePermissionRoute> },
       // "Đăng ký ca làm việc" (Giai đoạn 2 #101).
       { path: 'work-schedule/mine', element: <RequirePermissionRoute module="work_shift_assignment" action="read"><MyWorkSchedulePage /></RequirePermissionRoute> },
       { path: 'work-schedule/staff', element: <RequirePermissionRoute module="work_shift_assignment" action="read"><StaffWorkSchedulePage /></RequirePermissionRoute> },

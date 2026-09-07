@@ -92,14 +92,23 @@ export class InvoiceService {
    * "Thu chi tại quầy" (Sổ quỹ & Thu chi GĐ1) — quỹ nhận/xuất tiền của dòng thu/hoàn tiền khám.
    * CHỈ resolve khi hình thức thanh toán là TIỀN MẶT (`countsAsCash`) — với hình thức khác (chuyển
    * khoản/thẻ), không có tín hiệu đáng tin cậy để biết tiền vào ĐÚNG tài khoản ngân hàng nào nếu
-   * tenant có nhiều tài khoản, nên để `null` (chấp nhận, xem plan). `null` nếu tenant chưa có quỹ
-   * tiền mặt mặc định — KHÔNG chặn thu tiền.
+   * tenant có nhiều tài khoản, nên để `null` (chấp nhận, xem plan).
+   *
+   * "Thủ quỹ riêng" (GĐ2) — nhận sẵn `drawerAccountId` đã resolve TRƯỚC transaction chính (port tự
+   * mở transaction đọc riêng, không gọi port LỒNG bên trong `tx` đang mở — đúng khuôn mọi port đọc
+   * khác trong dự án, xem `cashierShiftId` ở `markPaid()`/`refund()`). Có giá trị → dùng luôn (két
+   * riêng của actor đang xử lý); `null` → FALLBACK về quỹ CASH mặc định như GĐ1 (tính năng tắt,
+   * hoặc actor không có ca mở dùng két riêng). `null` cuối cùng nếu tenant chưa có quỹ tiền mặt mặc
+   * định nào — KHÔNG chặn thu tiền.
    */
-  private async resolveCashAccountId(tx: Prisma.TransactionClient, tenantId: string, method: string): Promise<string | null> {
+  private async resolveCashAccountId(tx: Prisma.TransactionClient, tenantId: string, method: string, drawerAccountId: string | null): Promise<string | null> {
     const meta = await this.referenceCatalogReader.listByCategory(tenantId, 'PAYMENT_METHOD');
     const isCash = meta.find((m) => m.code === method)?.countsAsCash ?? false;
     if (!isCash) {
       return null;
+    }
+    if (drawerAccountId) {
+      return drawerAccountId;
     }
     const account = await this.cashAccountRepository.findDefault(tx, tenantId, 'CASH');
     return account?.id ?? null;
@@ -151,7 +160,10 @@ export class InvoiceService {
     // "Đa thu ngân" (2026-09-04) — resolve TRƯỚC transaction chính (port tự mở transaction đọc
     // riêng, không lồng `runInTenantScope`, đúng khuôn mọi port đọc khác trong dự án). `null` khi
     // không có ca nào đang mở — KHÔNG chặn thu tiền, độc lập với "Yêu cầu mở ca trước khi thu tiền".
-    const cashierShiftId = await this.cashierShiftReader.getRelevantOpenShiftId(tenantId, actorId);
+    const [cashierShiftId, drawerAccountId] = await Promise.all([
+      this.cashierShiftReader.getRelevantOpenShiftId(tenantId, actorId),
+      this.cashierShiftReader.getCashAccountIdForActor(tenantId, actorId),
+    ]);
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const invoice = await this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
       if (!invoice) {
@@ -172,7 +184,7 @@ export class InvoiceService {
         }
         throw new ConcurrentModificationError();
       }
-      const cashAccountId = await this.resolveCashAccountId(tx, tenantId, dto.method);
+      const cashAccountId = await this.resolveCashAccountId(tx, tenantId, dto.method, drawerAccountId);
       await this.paymentRepository.create(tx, tenantId, actorId, invoice.id, dto.method, invoice.totalAmount, paidAt, cashierShiftId, cashAccountId);
 
       await writeAuditLog(tx, tenantId, {
@@ -236,8 +248,11 @@ export class InvoiceService {
    * Chỉ hoàn TOÀN PHẦN ở v1 — số tiền lấy đúng `invoice.totalAmount` đã thu, không nhận từ client.
    */
   async refund(tenantId: string, actorId: string, encounterId: string, dto: RefundInvoiceRequest, meta: RequestMeta): Promise<InvoiceDto> {
-    // "Đa thu ngân" — xem comment ở markPaid() phía trên.
-    const cashierShiftId = await this.cashierShiftReader.getRelevantOpenShiftId(tenantId, actorId);
+    // "Đa thu ngân"/"Thủ quỹ riêng" — xem comment ở markPaid() phía trên.
+    const [cashierShiftId, drawerAccountId] = await Promise.all([
+      this.cashierShiftReader.getRelevantOpenShiftId(tenantId, actorId),
+      this.cashierShiftReader.getCashAccountIdForActor(tenantId, actorId),
+    ]);
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const invoice = await this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
       if (!invoice) {
@@ -257,7 +272,7 @@ export class InvoiceService {
       }
       // `activePayment` chắc chắn tồn tại ở đây — `canRefundInvoice` đã xác nhận `status='PAID'`,
       // mà phiếu PAID luôn có đúng 1 dòng payment type PAYMENT hiệu lực (xem markPaid()).
-      const cashAccountId = await this.resolveCashAccountId(tx, tenantId, invoice.activePayment!.method);
+      const cashAccountId = await this.resolveCashAccountId(tx, tenantId, invoice.activePayment!.method, drawerAccountId);
       await this.paymentRepository.createRefund(
         tx,
         tenantId,

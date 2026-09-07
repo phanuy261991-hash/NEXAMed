@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ArrowCircleDown, ArrowCircleUp, Plus, Receipt, Scales } from '@phosphor-icons/react';
+import { ArrowCircleDown, ArrowCircleUp, ArrowsLeftRight, Plus, Receipt, Scales } from '@phosphor-icons/react';
 import type { CashVoucherStatus, ReferenceCatalogDirection } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
@@ -18,6 +18,8 @@ import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog
 import { CashVoucherDetailDialog } from './CashVoucherDetailDialog';
 import { CashVoucherFormDialog, type CashVoucherSubmitDto } from './CashVoucherFormDialog';
 import { useCashVouchersQuery, useCreateCashVoucherMutation } from './cash-voucher.queries';
+import { useCashAccountsQuery } from './cash-account.queries';
+import { TransferVoucherFormDialog } from './TransferVoucherFormDialog';
 
 /** Cột đầu (chọn dòng) để sẵn cho hành động hàng loạt sau này, chưa có hành động nào dùng tới —
  * đúng khuôn `InvoiceListPage.tsx` (`.claude/docs/ui-guidelines.md` mục 4.6). */
@@ -52,6 +54,10 @@ function formatDateShort(iso: string): string {
 export function CashVoucherListPage() {
   useBreadcrumb([{ label: 'Sổ quỹ & Thu chi' }, { label: 'Phiếu thu / Phiếu chi' }]);
   const canCreate = useHasPermission('cash_voucher', 'create');
+  // "Chuyển quỹ" lập tay — CHỈ ai có `cash_account.manage` (mặc định clinic_admin), KHÁC hẳn
+  // `cash_voucher.create` — tránh mở lỗ hổng để lễ tân tự ý điều chuyển tiền giữa 2 quỹ bất kỳ
+  // (backend đã chặn cứng ở Service, đây chỉ ẩn nút cho gọn UI).
+  const canManageAccounts = useHasPermission('cash_account', 'manage');
 
   const [dateFrom, setDateFrom] = useState(monthStartDateString());
   const [dateTo, setDateTo] = useState(getVietnamTodayDateString());
@@ -59,6 +65,7 @@ export function CashVoucherListPage() {
   const [status, setStatus] = useState<CashVoucherStatus | ''>('');
   const [createModal, setCreateModal] = useState<{ direction: ReferenceCatalogDirection } | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [transferModalOpen, setTransferModalOpen] = useState(false);
 
   const listQuery = useCashVouchersQuery({
     from: dateFrom,
@@ -67,6 +74,7 @@ export function CashVoucherListPage() {
     status: status || undefined,
   });
   const incomeExpenseTypeQuery = useReferenceCatalogQuery('INCOME_EXPENSE_TYPE', true);
+  const cashAccountsQuery = useCashAccountsQuery();
   const createMutation = useCreateCashVoucherMutation();
 
   const items = useMemo(() => listQuery.data?.items ?? [], [listQuery.data]);
@@ -74,8 +82,12 @@ export function CashVoucherListPage() {
   const rowSelection = useRowSelection(itemIds);
   const incomeExpenseTypeName = useMemo(() => {
     const map = new Map((incomeExpenseTypeQuery.data?.items ?? []).map((i) => [i.code, i.name]));
-    return (code: string) => map.get(code) ?? code;
+    return (code: string | null) => (code === null ? 'Chuyển quỹ' : (map.get(code) ?? code));
   }, [incomeExpenseTypeQuery.data]);
+  const cashAccountName = useMemo(() => {
+    const map = new Map((cashAccountsQuery.data?.items ?? []).map((a) => [a.id, a.name]));
+    return (id: string) => map.get(id) ?? '—';
+  }, [cashAccountsQuery.data]);
 
   async function handleCreateSubmit(dto: CashVoucherSubmitDto) {
     return createMutation.mutateAsync({
@@ -141,12 +153,20 @@ export function CashVoucherListPage() {
             <option value="REJECTED">Đã từ chối</option>
           </select>
         </div>
-        {canCreate && (
-          <Button type="button" onClick={() => setCreateModal({ direction: 'INCOME' })}>
-            <Plus size={16} weight="bold" aria-hidden="true" />
-            Lập phiếu
-          </Button>
-        )}
+        <div className="flex flex-shrink-0 items-center gap-2">
+          {canManageAccounts && (
+            <Button type="button" variant="secondary" onClick={() => setTransferModalOpen(true)}>
+              <ArrowsLeftRight size={16} weight="bold" aria-hidden="true" />
+              Chuyển quỹ
+            </Button>
+          )}
+          {canCreate && (
+            <Button type="button" onClick={() => setCreateModal({ direction: 'INCOME' })}>
+              <Plus size={16} weight="bold" aria-hidden="true" />
+              Lập phiếu
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Thẻ số liệu tách rời (thay dải liền viền chia đôi cũ) — mỗi thẻ nền màu nhạt riêng để
@@ -257,18 +277,28 @@ export function CashVoucherListPage() {
                     </button>
                     <div role="cell" className="text-center text-slate-600">{formatDateShort(item.occurredAt)}</div>
                     <div role="cell" className="min-w-0 text-center">
-                      <span className="inline-flex items-center gap-1 truncate">
-                        {item.direction === 'INCOME' ? (
-                          <ArrowCircleDown size={13} weight="fill" className="flex-shrink-0 text-emerald-600" aria-hidden="true" />
-                        ) : (
-                          <ArrowCircleUp size={13} weight="fill" className="flex-shrink-0 text-rose-600" aria-hidden="true" />
-                        )}
-                        <span className="truncate text-slate-700">{incomeExpenseTypeName(item.incomeExpenseTypeCode)}</span>
-                      </span>
+                      {item.counterAccountId ? (
+                        <span className="inline-flex items-center gap-1 truncate text-slate-700">
+                          <ArrowsLeftRight size={13} weight="fill" className="flex-shrink-0 text-blue-600" aria-hidden="true" />
+                          <span className="truncate">
+                            {cashAccountName(item.cashAccountId)} → {cashAccountName(item.counterAccountId)}
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 truncate">
+                          {item.direction === 'INCOME' ? (
+                            <ArrowCircleDown size={13} weight="fill" className="flex-shrink-0 text-emerald-600" aria-hidden="true" />
+                          ) : (
+                            <ArrowCircleUp size={13} weight="fill" className="flex-shrink-0 text-rose-600" aria-hidden="true" />
+                          )}
+                          <span className="truncate text-slate-700">{incomeExpenseTypeName(item.incomeExpenseTypeCode)}</span>
+                        </span>
+                      )}
                     </div>
                     <div role="cell" className="min-w-0 truncate text-left font-medium text-slate-900" title={item.description}>
                       {item.description}
                       {item.partnerName && <span className="ml-1.5 text-xs text-slate-400">· {item.partnerName}</span>}
+                      {item.isAutoGenerated && <span className="ml-1.5 text-xs font-semibold text-blue-500">(tự động)</span>}
                     </div>
                     <div role="cell" className={`text-center font-bold tabular-nums ${item.direction === 'INCOME' ? 'text-emerald-700' : 'text-rose-700'}`}>
                       {item.direction === 'INCOME' ? '+' : '−'}
@@ -307,6 +337,7 @@ export function CashVoucherListPage() {
         />
       )}
       {detailId && <CashVoucherDetailDialog voucherId={detailId} onClose={() => setDetailId(null)} />}
+      {transferModalOpen && <TransferVoucherFormDialog onCancel={() => setTransferModalOpen(false)} onDone={() => setTransferModalOpen(false)} />}
     </div>
   );
 }

@@ -10,6 +10,8 @@ export interface CreateCashAccountData {
   openingBalance: bigint;
   openingBalanceAt: Date;
   isDefault?: boolean;
+  /** "Thủ quỹ riêng" (GĐ2) — CHỈ có ý nghĩa với `type='DRAWER'`. */
+  ownerUserId?: string | null;
 }
 
 export interface UpdateCashAccountData {
@@ -35,6 +37,7 @@ export class CashAccountRepository {
         openingBalance: data.openingBalance,
         openingBalanceAt: data.openingBalanceAt,
         isDefault: data.isDefault ?? false,
+        ownerUserId: data.ownerUserId ?? null,
         createdBy: actorId,
         updatedBy: actorId,
       },
@@ -43,6 +46,11 @@ export class CashAccountRepository {
 
   findById(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<CashAccount | null> {
     return tx.cashAccount.findFirst({ where: { tenantId, id, deletedAt: null } });
+  }
+
+  /** "Thủ quỹ riêng" (GĐ2) — két `DRAWER` CỦA CHÍNH `ownerUserId`, nếu đã từng cấp. */
+  findDrawerForUser(tx: Prisma.TransactionClient, tenantId: string, ownerUserId: string): Promise<CashAccount | null> {
+    return tx.cashAccount.findFirst({ where: { tenantId, ownerUserId, type: 'DRAWER', deletedAt: null } });
   }
 
   list(tx: Prisma.TransactionClient, tenantId: string): Promise<CashAccount[]> {

@@ -228,6 +228,15 @@ export const clinicSettingsSchema = z.object({
    * tiền ra khỏi két mới cần kiểm soát chặt).
    */
   cashVoucherApprovalEnabled: z.boolean(),
+  /**
+   * "Thủ quỹ riêng" (Sổ quỹ & Thu chi GĐ2) — TẮT (mặc định). BẬT: mỗi thu ngân tự có 1 quỹ `DRAWER`
+   * riêng (tự cấp lúc mở ca) — tiền thu khám bằng tiền mặt đi thẳng vào két riêng của người đang
+   * thu, không vào Quỹ tiền mặt chung; lúc Chốt ca, hệ thống tự sinh 1 phiếu "Chuyển quỹ" gộp số
+   * tiền đã nộp từ két riêng vào Quỹ tiền mặt chung. **Bắt buộc bật cùng `cashierShiftMultiCashierEnabled`**
+   * — mô hình 1 két dùng chung/1 ca duy nhất không có khái niệm "két CỦA TỪNG người" để tách (validate
+   * ở Service, lỗi `CASHIER_DRAWER_SEPARATE_REQUIRES_MULTI_CASHIER` nếu bật sai thứ tự).
+   */
+  cashierDrawerSeparateEnabled: z.boolean(),
 });
 export type ClinicSettings = z.infer<typeof clinicSettingsSchema>;
 
@@ -253,6 +262,7 @@ export const updateClinicSettingsRequestSchema = z.object({
   cashierShiftRequiredEnabled: z.boolean().optional(),
   cashierShiftMultiCashierEnabled: z.boolean().optional(),
   cashVoucherApprovalEnabled: z.boolean().optional(),
+  cashierDrawerSeparateEnabled: z.boolean().optional(),
 });
 export type UpdateClinicSettingsRequest = z.infer<typeof updateClinicSettingsRequestSchema>;
 
@@ -281,6 +291,8 @@ export const DEFAULT_CASHIER_SHIFT_REQUIRED_ENABLED = true;
 export const DEFAULT_CASHIER_SHIFT_MULTI_CASHIER_ENABLED = false;
 /** Tắt theo mặc định — thu ngân tự lập phiếu thu/chi, hiệu lực ngay, tới khi chủ động bật. */
 export const DEFAULT_CASH_VOUCHER_APPROVAL_ENABLED = false;
+/** Tắt theo mặc định — giữ nguyên "1 quỹ tiền mặt chung" tới khi chủ động bật (yêu cầu bật kèm "Đa thu ngân"). */
+export const DEFAULT_CASHIER_DRAWER_SEPARATE_ENABLED = false;
 
 /**
  * `GET /clinic-settings/cashier-shift-blind-close-enabled` — chiếu tối thiểu tự-phục vụ, cùng lý

@@ -133,6 +133,10 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   // `cashVoucherApprovalEnabled` (mặc định TẮT); mặc định CHỈ clinic_admin, đúng tinh thần
   // `cashier_shift.manage`/`invoice.refund`.
   { module: 'cash_voucher', action: 'approve', description: 'Duyệt/Từ chối phiếu thu/chi đang chờ duyệt' },
+  // "Sổ quỹ & Thu chi" GĐ2 — Sổ quỹ (tra cứu vận hành hằng ngày) dùng LẠI `cash_voucher.read`
+  // (receptionist+clinic_admin). Báo cáo dòng tiền (tổng hợp toàn phòng khám + xuất Excel) là báo
+  // cáo quản trị — permission RIÊNG, mặc định CHỈ clinic_admin, đúng tinh thần `cashier_shift.manage`.
+  { module: 'cash_voucher', action: 'report', description: 'Xem Sổ quỹ tổng hợp + Báo cáo dòng tiền' },
 ] as const;
 
 export function permissionKey(p: Pick<PermissionDefinition, 'module' | 'action'>): string {
@@ -303,6 +307,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'cash_voucher.read': 'global',
     'cash_voucher.update': 'global',
     'cash_voucher.approve': 'global',
+    'cash_voucher.report': 'global',
   },
   system_admin: {
     'user_account.read': 'global',

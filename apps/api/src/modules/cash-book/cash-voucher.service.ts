@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
   CASHIER_SHIFT_READER_PORT,
   CashVoucherNotEditableError,
@@ -6,6 +6,7 @@ import {
   CLINIC_CONFIG_READER_PORT,
   ConcurrentModificationError,
   DOCTOR_DIRECTORY_PORT,
+  maxDataScope,
   type CashierShiftReaderPort,
   type ClinicConfigReaderPort,
   type DoctorDirectoryPort,
@@ -23,6 +24,7 @@ import type {
 import type { CashVoucher } from '@prisma/client';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
+import { findScopesForUserPermission } from '../../infrastructure/persistence/permission-lookup.helper';
 import type { RequestMeta } from '../../common/request-meta';
 import { BusinessCodeService } from '../clinic/business-code.service';
 import { CashAccountRepository } from './cash-account.repository';
@@ -49,28 +51,52 @@ export class CashVoucherService {
   ) {}
 
   async create(tenantId: string, actorId: string, dto: CreateCashVoucherRequest, meta: RequestMeta): Promise<CashVoucherDto> {
+    // "Chuyển quỹ" (GĐ2) — di chuyển tiền giữa 2 quỹ NỘI BỘ, không phải Thu/Chi thật: server luôn
+    // ép direction='EXPENSE' (nghĩa: cashAccountId là quỹ NGUỒN bị trừ, counterAccountId là quỹ
+    // ĐÍCH được cộng), KHÔNG có Loại thu chi, KHÔNG qua duyệt (tiền vẫn ở lại phòng khám, rủi ro
+    // thấp hơn phiếu CHI thật — xem `.claude/plans/jiggly-meandering-leaf.md` quyết định #3/#4).
+    const isTransfer = Boolean(dto.counterAccountId);
+    const direction = isTransfer ? 'EXPENSE' : dto.direction!;
+
     // Đúng khuôn InvoiceService.markPaid() — port tự mở transaction đọc riêng, resolve TRƯỚC
     // transaction chính, không lồng runInTenantScope.
     const cashierShiftId = await this.cashierShiftReader.getRelevantOpenShiftId(tenantId, actorId);
-    // Chỉ phiếu CHI mới cần duyệt (chủ đích — tiền ra khỏi két mới cần kiểm soát chặt, phiếu THU
-    // không ảnh hưởng, xem comment `cashVoucherApprovalEnabled` ở packages/shared/src/clinic.ts).
-    const approvalEnabled = dto.direction === 'EXPENSE' && (await this.clinicConfigReader.getCashVoucherApprovalEnabled(tenantId));
+    // Chỉ phiếu CHI THẬT mới cần duyệt (chủ đích — tiền ra khỏi két mới cần kiểm soát chặt, phiếu
+    // THU và Chuyển quỹ không ảnh hưởng, xem comment `cashVoucherApprovalEnabled` ở packages/shared/src/clinic.ts).
+    const approvalEnabled = !isTransfer && direction === 'EXPENSE' && (await this.clinicConfigReader.getCashVoucherApprovalEnabled(tenantId));
 
     const created = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const account = await this.cashAccountRepository.findById(tx, tenantId, dto.cashAccountId);
       if (!account) {
         throw new NotFoundException();
       }
+      if (isTransfer) {
+        const counterAccount = await this.cashAccountRepository.findById(tx, tenantId, dto.counterAccountId!);
+        if (!counterAccount) {
+          throw new NotFoundException();
+        }
+        // Chuyển quỹ LẬP TAY chỉ cho ai có `cash_account.manage` (mặc định chỉ clinic_admin) —
+        // KHÁC hẳn `cash_voucher.create` (receptionist cũng có) gác chung cho endpoint này. Tránh
+        // mở lỗ hổng để lễ tân tự ý điều chuyển tiền giữa 2 quỹ bất kỳ, kể cả rút khỏi két riêng
+        // của người khác (`.claude/plans/jiggly-meandering-leaf.md` quyết định #6). Phiếu tự sinh
+        // lúc Chốt ca (Thủ quỹ riêng) KHÔNG qua nhánh này (gọi thẳng repository, không qua Service).
+        const scopes = await findScopesForUserPermission(tx, tenantId, actorId, 'cash_account', 'manage');
+        if (maxDataScope(scopes) === 'none') {
+          throw new ForbiddenException();
+        }
+      }
 
       const occurredAt = dto.occurredAt ? new Date(dto.occurredAt) : new Date();
-      const voucherNo = await this.businessCodeService.generate(tx, tenantId, actorId, dto.direction === 'INCOME' ? 'CASH_RECEIPT' : 'CASH_PAYMENT', occurredAt);
+      const codeType = isTransfer ? 'CASH_TRANSFER' : direction === 'INCOME' ? 'CASH_RECEIPT' : 'CASH_PAYMENT';
+      const voucherNo = await this.businessCodeService.generate(tx, tenantId, actorId, codeType, occurredAt);
       const status = approvalEnabled ? 'PENDING_APPROVAL' : 'POSTED';
 
       const row = await this.cashVoucherRepository.create(tx, tenantId, actorId, {
         voucherNo,
-        direction: dto.direction,
-        incomeExpenseTypeCode: dto.incomeExpenseTypeCode,
+        direction,
+        incomeExpenseTypeCode: isTransfer ? null : (dto.incomeExpenseTypeCode ?? null),
         cashAccountId: dto.cashAccountId,
+        counterAccountId: isTransfer ? dto.counterAccountId : null,
         paymentMethodCode: dto.paymentMethodCode,
         amount: BigInt(dto.amount),
         occurredAt,
@@ -86,7 +112,7 @@ export class CashVoucherService {
         action: 'cash_voucher.created',
         entityType: 'cash_voucher',
         entityId: row.id,
-        afterJson: { voucherNo, direction: dto.direction, amount: dto.amount, status },
+        afterJson: { voucherNo, direction, isTransfer, amount: dto.amount, status },
         ip: meta.ip,
         userAgent: meta.userAgent,
       });
@@ -123,6 +149,7 @@ export class CashVoucherService {
       if (row.deletedAt) continue; // Phiếu đã huỷ vẫn HIỆN trong `items` (xem findByIdAny/list) nhưng không tính vào tổng kết.
       if (row.status === 'PENDING_APPROVAL') pendingApprovalCount += 1;
       if (row.status !== 'POSTED') continue;
+      if (row.counterAccountId) continue; // Chuyển quỹ (GĐ2) — không phải Thu/Chi thật, loại khỏi tổng kết trang này (xem Sổ quỹ/Báo cáo dòng tiền).
       if (row.direction === 'INCOME') totalIncomeAmount += Number(row.amount);
       else totalExpenseAmount += Number(row.amount);
     }
@@ -138,6 +165,7 @@ export class CashVoucherService {
     const patch: UpdateCashVoucherData = {};
     if (dto.incomeExpenseTypeCode !== undefined) patch.incomeExpenseTypeCode = dto.incomeExpenseTypeCode;
     if (dto.cashAccountId !== undefined) patch.cashAccountId = dto.cashAccountId;
+    if (dto.counterAccountId !== undefined) patch.counterAccountId = dto.counterAccountId;
     if (dto.paymentMethodCode !== undefined) patch.paymentMethodCode = dto.paymentMethodCode;
     if (dto.amount !== undefined) patch.amount = BigInt(dto.amount);
     if (dto.occurredAt !== undefined) patch.occurredAt = new Date(dto.occurredAt);
@@ -273,10 +301,12 @@ export class CashVoucherService {
     return row;
   }
 
-  /** Đã Từ chối → chỉ đọc (lập phiếu mới thay vì hồi sinh). Gắn ca đã chốt → khoá theo đúng
-   * nguyên tắc "Chốt ca" tự khoá số liệu của chính nó sau khi CLOSED/APPROVED. */
+  /** Đã Từ chối → chỉ đọc (lập phiếu mới thay vì hồi sinh). Tự sinh lúc Chốt ca (Thủ quỹ riêng,
+   * GĐ2) → chỉ đọc (gắn 1-1 với snapshot chốt ca của chính nó, sửa/huỷ tay sẽ làm lệch số liệu đã
+   * chốt). Gắn ca đã chốt → khoá theo đúng nguyên tắc "Chốt ca" tự khoá số liệu của chính nó sau
+   * khi CLOSED/APPROVED. */
   private async assertEditable(tenantId: string, voucher: CashVoucher): Promise<void> {
-    if (voucher.status === 'REJECTED') {
+    if (voucher.status === 'REJECTED' || voucher.isAutoGenerated) {
       throw new CashVoucherNotEditableError();
     }
     if (voucher.cashierShiftId) {
@@ -310,6 +340,7 @@ export class CashVoucherService {
       direction: row.direction,
       incomeExpenseTypeCode: row.incomeExpenseTypeCode,
       cashAccountId: row.cashAccountId,
+      counterAccountId: row.counterAccountId,
       paymentMethodCode: row.paymentMethodCode,
       amount: Number(row.amount),
       occurredAt: row.occurredAt.toISOString(),
@@ -323,6 +354,7 @@ export class CashVoucherService {
       rejectionReason: row.rejectionReason,
       createdByName: names.get(row.createdBy) ?? 'Không rõ',
       printedAt: row.printedAt?.toISOString() ?? null,
+      isAutoGenerated: row.isAutoGenerated,
       version: row.version,
     };
   }

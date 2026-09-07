@@ -2,6 +2,24 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-07
+
+### "Sổ quỹ & Thu chi" Giai đoạn 2 — Sổ quỹ + Báo cáo dòng tiền + Chuyển quỹ + Thủ quỹ riêng
+
+Trước khi bắt đầu: vá tài liệu B7 của GĐ1 (#121/#122) bị bỏ sót — thêm đoạn "Sổ quỹ & Thu chi tại quầy" vào `CLAUDE.md` (phạm vi v1) và mục 3.5/3.6/4/5/9 vào `docs/ERD.md` (v1.44). Kế hoạch GĐ2 duyệt qua `EnterPlanMode` (`jiggly-meandering-leaf.md`), chủ dự án chốt làm đủ cả 4 phần: Sổ quỹ, Báo cáo dòng tiền, Chuyển quỹ lập tay, Thủ quỹ riêng.
+
+**Schema** (migration `20260907090000_cash_book_transfer_and_drawer`): `cash_voucher` thêm `counter_account_id` (nullable — có giá trị = phiếu Chuyển quỹ), `is_auto_generated`; `income_expense_type_code` đổi NOT NULL → NULLABLE + CHECK mới (C25) ép đúng 1 trong 2 hình dạng phiếu. `cash_account` thêm `owner_user_id` (chủ két riêng). `cashier_shift` thêm `drawer_account_id` (snapshot két riêng lúc mở ca). Không bảng mới.
+
+**Backend**: mở rộng `CashVoucherService.create()` cho Chuyển quỹ (server ép `direction='EXPENSE'`, không qua duyệt); module mới `CashBookReportModule` (`CashBookReportService`/`CashBookExportService`, tách khỏi `CashBookModule` để tránh vòng phụ thuộc mới với `BillingModule`) — `GET /cash-book/ledger` (Sổ quỹ), `GET /cash-book/cash-flow-report` (+ `/export` Excel qua `exceljs`). `CashierShiftService.openShift()` tự cấp két riêng (find-or-create) khi bật "Thủ quỹ riêng"; `close()` tự sinh phiếu Chuyển quỹ gộp két riêng về quỹ CASH mặc định — **cố ý không gắn `cashier_shift_id` vào chính ca đang chốt** (phát hiện lúc viết test: nếu gắn, "Tính toán lại" sẽ tự nạp lại phiếu này và cộng dồn `cashOutAmount` mỗi lần tính lại). `InvoiceService.resolveCashAccountId()` mở rộng route tiền thu khám vào đúng két riêng của actor đang có ca mở. Permission mới `cash_voucher.report` (chỉ `clinic_admin`).
+
+**Bug bảo mật thật phát hiện lúc viết test**: nhánh Chuyển quỹ ban đầu chỉ gác bằng `cash_voucher.create` (receptionist cũng có) dù thiết kế đã chốt "chỉ ai có `cash_account.manage`" — đã thêm kiểm tra quyền tường minh trong Service.
+
+**Frontend**: `CashBookPage.tsx` (Sổ quỹ, số dư luỹ kế), `CashFlowReportPage.tsx` (Báo cáo dòng tiền + Xuất Excel), `TransferVoucherFormDialog.tsx` (Chuyển quỹ, chỉ hiện cho `clinic_admin`), toggle "Thủ quỹ riêng" trong Cấu hình thanh toán (khoá tới khi bật "Đa thu ngân"), cập nhật `CashVoucherListPage`/`CashAccountPane` hiển thị đúng phiếu Chuyển quỹ/két riêng, sidebar + router. OpenAPI + web codegen đã sinh lại (2 endpoint mới, `export` không đăng ký — đúng tiền lệ `/work-shift-assignments/export`).
+
+Tiện vá: `tenant-fixture.ts` đổi thứ tự xoá `cashier_shift` lên trước `cash_account` (FK `drawer_account_id` mới khiến thứ tự cũ vỡ).
+
+**Đã xác minh thật**: `apps/api` 697/697 test pass (34 test mới, gồm kịch bản end-to-end Thủ quỹ riêng đầy đủ), `packages/core` 157/157, `packages/shared` 20/20, `apps/web` 5/5. `pnpm -w typecheck/lint/build` sạch toàn workspace, chunk khởi động 496.00 kB (dưới ngưỡng 500kB). Migration đã áp thật lên Postgres dev. **Chưa verify Playwright/trình duyệt thật.** Xem `docs/DECISIONS.md` #124.
+
 ## 2026-09-06
 
 ### Redesign "Lập phiếu thu/chi" + "Lưu và in phiếu" + cố định header/footer modal

@@ -72,3 +72,16 @@ export class BusinessCodeTemplateStartingValueLockedError extends DomainError {
     super('Loại mã này đã phát sinh mã đầu tiên — không thể sửa lại "Số bắt đầu đếm".');
   }
 }
+
+/**
+ * "Thủ quỹ riêng" (Sổ quỹ & Thu chi GĐ2) — bật `cashierDrawerSeparateEnabled` khi
+ * `cashierShiftMultiCashierEnabled` đang tắt. Mô hình 1 quỹ chung/1 ca duy nhất không có khái
+ * niệm "két CỦA TỪNG người" để tách — phải bật "Đa thu ngân" trước.
+ */
+export class CashierDrawerSeparateRequiresMultiCashierError extends DomainError {
+  readonly code = 'CASHIER_DRAWER_SEPARATE_REQUIRES_MULTI_CASHIER';
+
+  constructor() {
+    super('Phải bật "Đa thu ngân" trước khi bật "Thủ quỹ riêng".');
+  }
+}

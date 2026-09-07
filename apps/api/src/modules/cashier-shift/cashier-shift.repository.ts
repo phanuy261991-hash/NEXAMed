@@ -8,6 +8,8 @@ export interface OpenCashierShiftData {
   openingFloatExpected: number | null;
   openingFloatActual: number;
   openingDiscrepancyReason: string | null;
+  /** "Thủ quỹ riêng" (GĐ2) — SNAPSHOT quỹ `DRAWER` gắn với ca này, `null` khi tính năng tắt. */
+  drawerAccountId: string | null;
 }
 
 export interface CloseCashierShiftData {
@@ -69,6 +71,7 @@ export class CashierShiftRepository {
         openingFloatExpected: data.openingFloatExpected !== null ? BigInt(data.openingFloatExpected) : null,
         openingFloatActual: BigInt(data.openingFloatActual),
         openingDiscrepancyReason: data.openingDiscrepancyReason,
+        drawerAccountId: data.drawerAccountId,
         createdBy: actorId,
         updatedBy: actorId,
       },

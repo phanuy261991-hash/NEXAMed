@@ -333,6 +333,49 @@ describe('HTTP e2e — /api/v1/rooms và /api/v1/clinic-settings', () => {
       expect(restore.body.data.cashVoucherApprovalEnabled).toBe(false);
     });
 
+    it('GET lúc chưa cấu hình → cashierDrawerSeparateEnabled mặc định false ("Thủ quỹ riêng", Sổ quỹ & Thu chi GĐ2)', async () => {
+      const res = await request(app.getHttpServer()).get('/api/v1/clinic-settings').set(authed(tenantBAdminToken));
+      expect(res.status).toBe(200);
+      expect(res.body.data.cashierDrawerSeparateEnabled).toBe(false);
+    });
+
+    it('PATCH cashierDrawerSeparateEnabled=true khi cashierShiftMultiCashierEnabled đang tắt → 422', async () => {
+      const res = await request(app.getHttpServer())
+        .patch('/api/v1/clinic-settings')
+        .set(authed(clinicAdminToken))
+        .send({ cashierDrawerSeparateEnabled: true });
+      expect(res.status).toBe(422);
+      expect(res.body.error.code).toBe('CASHIER_DRAWER_SEPARATE_REQUIRES_MULTI_CASHIER');
+
+      const get = await request(app.getHttpServer()).get('/api/v1/clinic-settings').set(authed(clinicAdminToken));
+      expect(get.body.data.cashierDrawerSeparateEnabled).toBe(false);
+    });
+
+    it('PATCH cả 2 công tắc CÙNG 1 request (multiCashier+drawerSeparate) → 200, PATCH riêng multiCashier trước rồi drawerSeparate sau cũng → 200', async () => {
+      const both = await request(app.getHttpServer())
+        .patch('/api/v1/clinic-settings')
+        .set(authed(clinicAdminToken))
+        .send({ cashierShiftMultiCashierEnabled: true, cashierDrawerSeparateEnabled: true });
+      expect(both.status).toBe(200);
+      expect(both.body.data.cashierShiftMultiCashierEnabled).toBe(true);
+      expect(both.body.data.cashierDrawerSeparateEnabled).toBe(true);
+
+      // Tắt lại drawerSeparate rồi bật lại riêng (multiCashier đã BẬT sẵn từ bước trên) → vẫn 200.
+      await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(clinicAdminToken)).send({ cashierDrawerSeparateEnabled: false });
+      const again = await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(clinicAdminToken)).send({ cashierDrawerSeparateEnabled: true });
+      expect(again.status).toBe(200);
+      expect(again.body.data.cashierDrawerSeparateEnabled).toBe(true);
+
+      // Khôi phục về mặc định — tenant A dùng chung cho các describe khác trong file này.
+      const restore = await request(app.getHttpServer())
+        .patch('/api/v1/clinic-settings')
+        .set(authed(clinicAdminToken))
+        .send({ cashierDrawerSeparateEnabled: false, cashierShiftMultiCashierEnabled: false });
+      expect(restore.status).toBe(200);
+      expect(restore.body.data.cashierDrawerSeparateEnabled).toBe(false);
+      expect(restore.body.data.cashierShiftMultiCashierEnabled).toBe(false);
+    });
+
     it('PATCH slotDurationMinutes → 200, GET phản ánh đúng giá trị mới', async () => {
       const patch = await request(app.getHttpServer())
         .patch('/api/v1/clinic-settings')

@@ -78,4 +78,45 @@ export class PaymentRepository {
       select: { method: true, type: true, amount: true },
     });
   }
+
+  /**
+   * "Sổ quỹ" (GĐ2) — mọi dòng thu/hoàn tiền khám ĐÃ GẮN quỹ `cashAccountId` này
+   * (`payment.cashAccountId`, chỉ có giá trị từ GĐ1 trở đi — dòng cũ hơn NULL, tự loại khỏi kết
+   * quả, đúng thiết kế "không backfill"). Sắp CŨ→MỚI, cùng lý do `CashVoucherRepository.
+   * listForAccountLedger()`.
+   */
+  listForCashAccount(tx: Prisma.TransactionClient, tenantId: string, cashAccountId: string, from?: Date, to?: Date) {
+    return tx.payment.findMany({
+      where: { tenantId, deletedAt: null, cashAccountId, paidAt: { gte: from, lte: to } },
+      select: { id: true, type: true, amount: true, paidAt: true, invoice: { select: { invoiceNo: true } } },
+      orderBy: { paidAt: 'asc' },
+    });
+  }
+
+  /**
+   * "Báo cáo dòng tiền" (GĐ2) — mọi dòng thu/hoàn tiền khám (MỌI quỹ) trong khoảng [from, to] —
+   * dùng để gộp bucket "Thu tiền khám"/"Hoàn tiền khám" (`byType`) và phân bổ theo quỹ (`byAccount`).
+   */
+  listForReport(tx: Prisma.TransactionClient, tenantId: string, from: Date, to: Date) {
+    return tx.payment.findMany({
+      where: { tenantId, deletedAt: null, paidAt: { gte: from, lte: to } },
+      select: { type: true, amount: true, cashAccountId: true },
+    });
+  }
+
+  /** Tổng luỹ kế TRƯỚC mốc `before` cho quỹ `cashAccountId` — dùng tính "Số dư đầu kỳ" của Sổ quỹ
+   * khi có `from`, cùng lý do `CashVoucherRepository.sumBeforeForAccount()`. */
+  async sumBeforeForCashAccount(tx: Prisma.TransactionClient, tenantId: string, cashAccountId: string, before: Date): Promise<{ paymentAmount: bigint; refundAmount: bigint }> {
+    const rows = await tx.payment.findMany({
+      where: { tenantId, deletedAt: null, cashAccountId, paidAt: { lt: before } },
+      select: { type: true, amount: true },
+    });
+    let paymentAmount = 0n;
+    let refundAmount = 0n;
+    for (const row of rows) {
+      if (row.type === 'PAYMENT') paymentAmount += row.amount;
+      else refundAmount += row.amount;
+    }
+    return { paymentAmount, refundAmount };
+  }
 }

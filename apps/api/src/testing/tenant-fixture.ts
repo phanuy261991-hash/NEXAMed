@@ -57,9 +57,15 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       await prisma.invoiceLine.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.invoice.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // cash_voucher/cash_account ("Thu chi tại quầy", Sổ quỹ & Thu chi GĐ1) — cash_voucher tham
-      // chiếu CẢ cash_account LẪN cashier_shift (FK RESTRICT), phải xoá TRƯỚC cashier_shift (dưới
-      // đây) và trước cash_account. payment cũng tham chiếu cash_account (đã xoá ở trên rồi).
+      // chiếu CẢ cash_account LẪN cashier_shift (FK RESTRICT), phải xoá TRƯỚC CẢ HAI. payment cũng
+      // tham chiếu cash_account (đã xoá ở trên rồi).
       await prisma.cashVoucher.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // cashier_shift ("Chốt ca", 2026-09-03) tham chiếu user_account qua cashier_id (FK RESTRICT,
+      // userAccount xoá ở dòng xa hơn dưới nên an toàn) VÀ, từ "Thủ quỹ riêng" (Sổ quỹ & Thu chi
+      // GĐ2), tham chiếu cash_account qua drawer_account_id (FK RESTRICT) — phải xoá TRƯỚC
+      // cash_account ngay dưới đây (đảo thứ tự so với bản GĐ1 cũ, lúc đó chưa có cột này nên xoá ở
+      // đâu cũng an toàn).
+      await prisma.cashierShift.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.cashAccount.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // encounter_service_item (docs/DECISIONS.md #080) — cùng lý do vital_sign, sub-resource của
       // encounter, không có self-reference nên xoá thẳng, không cần vòng lặp theo tầng.
@@ -109,8 +115,7 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       await prisma.doctorRoomSession.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // doctor_availability ("Tạm nghỉ / Đóng ca") tham chiếu user_account (FK RESTRICT) — xoá trước.
       await prisma.doctorAvailability.deleteMany({ where: { tenantId: { in: tenantIds } } });
-      // cashier_shift ("Chốt ca", 2026-09-03) tham chiếu user_account qua cashier_id (FK RESTRICT) — xoá trước.
-      await prisma.cashierShift.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // cashier_shift đã xoá sớm hơn ở trên (cùng cash_voucher/cash_account, xem comment ở đó).
       await prisma.userAccount.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // department (mở rộng ADM-01) tham chiếu tenant (FK RESTRICT); user_account.department_id
       // tham chiếu department — đã xoá userAccount ở trên nên an toàn xoá department ở đây.

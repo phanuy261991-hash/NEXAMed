@@ -37,6 +37,7 @@ export function PaymentConfigPane() {
   const shiftRequiredEnabled = settingsQuery.data?.cashierShiftRequiredEnabled ?? true;
   const multiCashierEnabled = settingsQuery.data?.cashierShiftMultiCashierEnabled ?? false;
   const cashVoucherApprovalEnabled = settingsQuery.data?.cashVoucherApprovalEnabled ?? false;
+  const drawerSeparateEnabled = settingsQuery.data?.cashierDrawerSeparateEnabled ?? false;
 
   return (
     <div className="space-y-8">
@@ -164,6 +165,38 @@ export function PaymentConfigPane() {
               disabled={updateMutation.isPending}
               onChange={(e) => updateMutation.mutate({ cashVoucherApprovalEnabled: e.target.checked })}
               aria-label="Phiếu chi phải được duyệt"
+            />
+            <span className="absolute inset-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-brand-teal peer-disabled:opacity-60" />
+            <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
+          </label>
+        </div>
+
+        {/* "Thủ quỹ riêng" (GĐ2) — BẮT BUỘC bật kèm "Nhiều thu ngân cùng lúc" ở trên (mô hình 1 két
+            dùng chung/1 ca duy nhất không có khái niệm "két CỦA TỪNG người" để tách) — khoá toggle
+            + tooltip khi chưa bật, backend cũng chặn cứng lại (CASHIER_DRAWER_SEPARATE_REQUIRES_
+            MULTI_CASHIER) nếu lỡ bật sai thứ tự. */}
+        <div className="mt-4 flex items-start justify-between gap-5 border-t border-dashed border-slate-200 pt-4">
+          <div>
+            <p className="text-[14.5px] font-bold text-slate-900">Thủ quỹ riêng</p>
+            <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
+              Tắt (mặc định): Tiền thu khám bằng tiền mặt vào chung Quỹ tiền mặt của phòng khám.
+              <br />
+              Bật: Mỗi thu ngân có 1 két riêng, tự cấp lúc mở ca — tiền thu khám đi thẳng vào két riêng đó; lúc Chốt
+              ca, hệ thống tự chuyển số tiền đã nộp về Quỹ tiền mặt chung.
+              {!multiCashierEnabled && <span className="mt-1 block font-semibold text-amber-600">Phải bật &quot;Nhiều thu ngân cùng lúc&quot; ở trên trước.</span>}
+            </p>
+          </div>
+          <label
+            className={`relative mt-0.5 inline-flex h-6 w-11 flex-shrink-0 items-center ${multiCashierEnabled ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}
+            title={multiCashierEnabled ? undefined : 'Phải bật "Nhiều thu ngân cùng lúc" trước'}
+          >
+            <input
+              type="checkbox"
+              className="peer sr-only"
+              checked={drawerSeparateEnabled}
+              disabled={updateMutation.isPending || !multiCashierEnabled}
+              onChange={(e) => updateMutation.mutate({ cashierDrawerSeparateEnabled: e.target.checked })}
+              aria-label="Thủ quỹ riêng"
             />
             <span className="absolute inset-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-brand-teal peer-disabled:opacity-60" />
             <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />

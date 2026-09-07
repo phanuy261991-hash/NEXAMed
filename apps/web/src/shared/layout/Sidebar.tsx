@@ -20,6 +20,8 @@ import {
   UserPlus,
   Users,
   Vault,
+  BookOpen,
+  ChartLine,
   Wallet,
   type Icon,
 } from '@phosphor-icons/react';
@@ -143,6 +145,9 @@ export function Sidebar() {
   const canSeeDoctorQueue = user?.roles.some((role) => DOCTOR_QUEUE_ROLES.includes(role)) ?? false;
   const canSeeBilling = useHasPermission('invoice', 'read');
   const canSeeCashBook = useHasPermission('cash_voucher', 'read');
+  // "Báo cáo dòng tiền" (Sổ quỹ & Thu chi GĐ2) — báo cáo quản trị tổng hợp toàn phòng khám, CHỈ
+  // clinic_admin (`cash_voucher.report`), khác "Phiếu thu/chi"/"Sổ quỹ" (receptionist cũng thấy).
+  const canSeeCashFlowReport = useHasPermission('cash_voucher', 'report');
   const canSeeWorkSchedule = useHasPermission('work_shift_assignment', 'create');
   // "Lịch làm việc nhân viên" — chỉ actor có scope GLOBAL (quản lý toàn phòng khám) mới thấy mục
   // này, khác canSeeWorkSchedule (personal cũng đủ để thấy "Lịch làm việc của tôi").
@@ -335,6 +340,8 @@ export function Sidebar() {
               {cashBookGroupExpanded && (
                 <ul className="mt-0.5 flex flex-col gap-0.5 border-l border-slate-800 pl-3.5">
                   <NavItem to="/cash-book/vouchers" label="Phiếu thu / Phiếu chi" icon={Vault} end collapsed={false} indent />
+                  <NavItem to="/cash-book/ledger" label="Sổ quỹ" icon={BookOpen} collapsed={false} indent />
+                  {canSeeCashFlowReport && <NavItem to="/cash-book/report" label="Báo cáo dòng tiền" icon={ChartLine} collapsed={false} indent />}
                 </ul>
               )}
             </li>

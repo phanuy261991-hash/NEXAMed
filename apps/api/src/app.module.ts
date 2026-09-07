@@ -23,6 +23,7 @@ import { DoctorAvailabilityModule } from './modules/doctor-availability/doctor-a
 import { WorkShiftAssignmentModule } from './modules/work-shift-assignment/work-shift-assignment.module';
 import { CashierShiftModule } from './modules/cashier-shift/cashier-shift.module';
 import { CashBookModule } from './modules/cash-book/cash-book.module';
+import { CashBookReportModule } from './modules/cash-book/cash-book-report.module';
 import { HealthModule } from './modules/health/health.module';
 import { TenantContextMiddleware } from './common/tenant-context.middleware';
 
@@ -52,6 +53,7 @@ import { TenantContextMiddleware } from './common/tenant-context.middleware';
     WorkShiftAssignmentModule,
     CashierShiftModule,
     CashBookModule,
+    CashBookReportModule,
     HealthModule,
   ],
 })

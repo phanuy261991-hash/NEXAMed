@@ -1950,6 +1950,7 @@ export interface paths {
                                 cashierShiftRequiredEnabled: boolean;
                                 cashierShiftMultiCashierEnabled: boolean;
                                 cashVoucherApprovalEnabled: boolean;
+                                cashierDrawerSeparateEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -10165,6 +10166,7 @@ export interface paths {
                                 cashierShiftRequiredEnabled: boolean;
                                 cashierShiftMultiCashierEnabled: boolean;
                                 cashVoucherApprovalEnabled: boolean;
+                                cashierDrawerSeparateEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -10262,6 +10264,7 @@ export interface paths {
                         cashierShiftRequiredEnabled?: boolean;
                         cashierShiftMultiCashierEnabled?: boolean;
                         cashVoucherApprovalEnabled?: boolean;
+                        cashierDrawerSeparateEnabled?: boolean;
                     };
                 };
             };
@@ -10318,6 +10321,7 @@ export interface paths {
                                 cashierShiftRequiredEnabled: boolean;
                                 cashierShiftMultiCashierEnabled: boolean;
                                 cashVoucherApprovalEnabled: boolean;
+                                cashierDrawerSeparateEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -10608,7 +10612,7 @@ export interface paths {
                             data: {
                                 items: {
                                     /** @enum {string} */
-                                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT";
+                                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER";
                                     label: string;
                                     prefix: string;
                                     template: string;
@@ -10681,7 +10685,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT";
+                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER";
                 };
                 cookie?: never;
             };
@@ -10704,7 +10708,7 @@ export interface paths {
                         "application/json": {
                             data: {
                                 /** @enum {string} */
-                                codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT";
+                                codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER";
                                 label: string;
                                 prefix: string;
                                 template: string;
@@ -15858,6 +15862,9 @@ export interface paths {
                                     openingBalanceAt: string;
                                     isDefault: boolean;
                                     isActive: boolean;
+                                    /** Format: uuid */
+                                    ownerUserId: string | null;
+                                    ownerUserName: string | null;
                                     version: number;
                                 }[];
                             };
@@ -15942,6 +15949,9 @@ export interface paths {
                                 openingBalanceAt: string;
                                 isDefault: boolean;
                                 isActive: boolean;
+                                /** Format: uuid */
+                                ownerUserId: string | null;
+                                ownerUserName: string | null;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -16057,6 +16067,9 @@ export interface paths {
                                 openingBalanceAt: string;
                                 isDefault: boolean;
                                 isActive: boolean;
+                                /** Format: uuid */
+                                ownerUserId: string | null;
+                                ownerUserName: string | null;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -16164,9 +16177,11 @@ export interface paths {
                                     voucherNo: string;
                                     /** @enum {string} */
                                     direction: "EXPENSE" | "INCOME";
-                                    incomeExpenseTypeCode: string;
+                                    incomeExpenseTypeCode: string | null;
                                     /** Format: uuid */
                                     cashAccountId: string;
+                                    /** Format: uuid */
+                                    counterAccountId: string | null;
                                     paymentMethodCode: string;
                                     amount: number;
                                     occurredAt: string;
@@ -16181,6 +16196,7 @@ export interface paths {
                                     rejectionReason: string | null;
                                     createdByName: string;
                                     printedAt: string | null;
+                                    isAutoGenerated: boolean;
                                     version: number;
                                 }[];
                                 totalIncomeAmount: number;
@@ -16236,10 +16252,12 @@ export interface paths {
                 content: {
                     "application/json": {
                         /** @enum {string} */
-                        direction: "EXPENSE" | "INCOME";
-                        incomeExpenseTypeCode: string;
+                        direction?: "EXPENSE" | "INCOME";
+                        incomeExpenseTypeCode?: string;
                         /** Format: uuid */
                         cashAccountId: string;
+                        /** Format: uuid */
+                        counterAccountId?: string;
                         paymentMethodCode: string;
                         amount: number;
                         occurredAt?: string;
@@ -16263,9 +16281,11 @@ export interface paths {
                                 voucherNo: string;
                                 /** @enum {string} */
                                 direction: "EXPENSE" | "INCOME";
-                                incomeExpenseTypeCode: string;
+                                incomeExpenseTypeCode: string | null;
                                 /** Format: uuid */
                                 cashAccountId: string;
+                                /** Format: uuid */
+                                counterAccountId: string | null;
                                 paymentMethodCode: string;
                                 amount: number;
                                 occurredAt: string;
@@ -16280,6 +16300,7 @@ export interface paths {
                                 rejectionReason: string | null;
                                 createdByName: string;
                                 printedAt: string | null;
+                                isAutoGenerated: boolean;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -16371,9 +16392,11 @@ export interface paths {
                                 voucherNo: string;
                                 /** @enum {string} */
                                 direction: "EXPENSE" | "INCOME";
-                                incomeExpenseTypeCode: string;
+                                incomeExpenseTypeCode: string | null;
                                 /** Format: uuid */
                                 cashAccountId: string;
+                                /** Format: uuid */
+                                counterAccountId: string | null;
                                 paymentMethodCode: string;
                                 amount: number;
                                 occurredAt: string;
@@ -16388,6 +16411,7 @@ export interface paths {
                                 rejectionReason: string | null;
                                 createdByName: string;
                                 printedAt: string | null;
+                                isAutoGenerated: boolean;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -16462,6 +16486,8 @@ export interface paths {
                         incomeExpenseTypeCode?: string;
                         /** Format: uuid */
                         cashAccountId?: string;
+                        /** Format: uuid */
+                        counterAccountId?: string;
                         paymentMethodCode?: string;
                         amount?: number;
                         occurredAt?: string;
@@ -16486,9 +16512,11 @@ export interface paths {
                                 voucherNo: string;
                                 /** @enum {string} */
                                 direction: "EXPENSE" | "INCOME";
-                                incomeExpenseTypeCode: string;
+                                incomeExpenseTypeCode: string | null;
                                 /** Format: uuid */
                                 cashAccountId: string;
+                                /** Format: uuid */
+                                counterAccountId: string | null;
                                 paymentMethodCode: string;
                                 amount: number;
                                 occurredAt: string;
@@ -16503,6 +16531,7 @@ export interface paths {
                                 rejectionReason: string | null;
                                 createdByName: string;
                                 printedAt: string | null;
+                                isAutoGenerated: boolean;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -16614,9 +16643,11 @@ export interface paths {
                                 voucherNo: string;
                                 /** @enum {string} */
                                 direction: "EXPENSE" | "INCOME";
-                                incomeExpenseTypeCode: string;
+                                incomeExpenseTypeCode: string | null;
                                 /** Format: uuid */
                                 cashAccountId: string;
+                                /** Format: uuid */
+                                counterAccountId: string | null;
                                 paymentMethodCode: string;
                                 amount: number;
                                 occurredAt: string;
@@ -16631,6 +16662,7 @@ export interface paths {
                                 rejectionReason: string | null;
                                 createdByName: string;
                                 printedAt: string | null;
+                                isAutoGenerated: boolean;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -16745,9 +16777,11 @@ export interface paths {
                                 voucherNo: string;
                                 /** @enum {string} */
                                 direction: "EXPENSE" | "INCOME";
-                                incomeExpenseTypeCode: string;
+                                incomeExpenseTypeCode: string | null;
                                 /** Format: uuid */
                                 cashAccountId: string;
+                                /** Format: uuid */
+                                counterAccountId: string | null;
                                 paymentMethodCode: string;
                                 amount: number;
                                 occurredAt: string;
@@ -16762,6 +16796,7 @@ export interface paths {
                                 rejectionReason: string | null;
                                 createdByName: string;
                                 printedAt: string | null;
+                                isAutoGenerated: boolean;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -16877,9 +16912,11 @@ export interface paths {
                                 voucherNo: string;
                                 /** @enum {string} */
                                 direction: "EXPENSE" | "INCOME";
-                                incomeExpenseTypeCode: string;
+                                incomeExpenseTypeCode: string | null;
                                 /** Format: uuid */
                                 cashAccountId: string;
+                                /** Format: uuid */
+                                counterAccountId: string | null;
                                 paymentMethodCode: string;
                                 amount: number;
                                 occurredAt: string;
@@ -16894,6 +16931,7 @@ export interface paths {
                                 rejectionReason: string | null;
                                 createdByName: string;
                                 printedAt: string | null;
+                                isAutoGenerated: boolean;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -17002,9 +17040,11 @@ export interface paths {
                                 voucherNo: string;
                                 /** @enum {string} */
                                 direction: "EXPENSE" | "INCOME";
-                                incomeExpenseTypeCode: string;
+                                incomeExpenseTypeCode: string | null;
                                 /** Format: uuid */
                                 cashAccountId: string;
+                                /** Format: uuid */
+                                counterAccountId: string | null;
                                 paymentMethodCode: string;
                                 amount: number;
                                 occurredAt: string;
@@ -17019,6 +17059,7 @@ export interface paths {
                                 rejectionReason: string | null;
                                 createdByName: string;
                                 printedAt: string | null;
+                                isAutoGenerated: boolean;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -17072,6 +17113,199 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cash-book/ledger": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Sổ quỹ — chứng từ + số dư luỹ kế của 1 quỹ (payment lượt khám + cash_voucher) */
+        get: {
+            parameters: {
+                query: {
+                    cashAccountId: string;
+                    from?: string;
+                    to?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                cashAccountId: string;
+                                cashAccountName: string;
+                                openingBalance: number;
+                                closingBalance: number;
+                                entries: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    occurredAt: string;
+                                    /** @enum {string} */
+                                    entryType: "INVOICE_PAYMENT" | "INVOICE_REFUND" | "VOUCHER_INCOME" | "VOUCHER_EXPENSE" | "TRANSFER_IN" | "TRANSFER_OUT";
+                                    description: string;
+                                    referenceNo: string;
+                                    amountSigned: number;
+                                    runningBalance: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền cash_voucher.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy quỹ (không tồn tại hoặc thuộc tenant khác) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cash-book/cash-flow-report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Báo cáo dòng tiền — tổng thu/chi/tồn quỹ toàn phòng khám, loại trừ Chuyển quỹ khỏi tổng */
+        get: {
+            parameters: {
+                query: {
+                    from: string;
+                    to: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                totalIncome: number;
+                                totalExpense: number;
+                                byType: {
+                                    key: string;
+                                    label: string;
+                                    totalIncome: number;
+                                    totalExpense: number;
+                                }[];
+                                byAccount: {
+                                    key: string;
+                                    label: string;
+                                    totalIncome: number;
+                                    totalExpense: number;
+                                    closingBalance: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền cash_voucher.report */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;

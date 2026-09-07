@@ -34,6 +34,7 @@ export const businessCodeTypeSchema = z.enum([
   'CASHIER_SHIFT',
   'CASH_RECEIPT',
   'CASH_PAYMENT',
+  'CASH_TRANSFER',
 ]);
 export type BusinessCodeType = z.infer<typeof businessCodeTypeSchema>;
 
@@ -55,6 +56,9 @@ export const BUSINESS_CODE_TYPE_REGISTRY: Record<BusinessCodeType, { label: stri
   // chốt ca) đã dùng.
   CASH_RECEIPT: { label: 'Mã phiếu thu quỹ', internalPrefix: 'PTQ' },
   CASH_PAYMENT: { label: 'Mã phiếu chi quỹ', internalPrefix: 'PCQ' },
+  // "Sổ quỹ & Thu chi" GĐ2 — phiếu Chuyển quỹ (di chuyển tiền giữa 2 quỹ nội bộ, không phải Thu/
+  // Chi thật). Không trùng PTQ/PCQ đã có.
+  CASH_TRANSFER: { label: 'Mã phiếu chuyển quỹ', internalPrefix: 'PCK' },
 };
 
 export const DEFAULT_BUSINESS_CODE_COUNTER_DIGITS = 6;

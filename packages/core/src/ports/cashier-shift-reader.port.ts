@@ -22,6 +22,15 @@ export interface CashierShiftReaderPort {
    * nếu không tìm thấy ca (không nên xảy ra — `cash_voucher.cashierShiftId` luôn trỏ ca có thật).
    */
   isCashierShiftOpen(tenantId: string, cashierShiftId: string): Promise<boolean>;
+
+  /**
+   * "Thủ quỹ riêng" (Sổ quỹ & Thu chi GĐ2) — quỹ `DRAWER` gắn với ca ĐANG MỞ của `actorId`, nếu
+   * tenant đang bật `cashierDrawerSeparateEnabled` VÀ actor có ca mở VÀ ca đó có
+   * `drawerAccountId`. `null` trong mọi trường hợp khác (tắt tính năng, không có ca mở, ca không
+   * dùng két riêng) — `InvoiceService.resolveCashAccountId()` fallback về quỹ CASH mặc định khi
+   * nhận `null`, giữ đúng hành vi cũ khi tính năng tắt.
+   */
+  getCashAccountIdForActor(tenantId: string, actorId: string): Promise<string | null>;
 }
 
 export const CASHIER_SHIFT_READER_PORT = Symbol('CASHIER_SHIFT_READER_PORT');

@@ -103,6 +103,10 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   // (đã duyệt/không còn chờ duyệt) không cho phép thao tác này, không phải lỗi input.
   CASH_VOUCHER_NOT_EDITABLE: HttpStatus.CONFLICT,
   CASH_VOUCHER_NOT_PENDING_APPROVAL: HttpStatus.CONFLICT,
+  // "Thủ quỹ riêng" (Sổ quỹ & Thu chi GĐ2) — bật công tắc này khi "Đa thu ngân" đang tắt là input
+  // không hợp lệ (thiếu ràng buộc phụ thuộc), không phải xung đột trạng thái — dùng đúng mặc định
+  // UNPROCESSABLE_ENTITY của filter (khai tường minh ở đây cho dễ tra).
+  CASHIER_DRAWER_SEPARATE_REQUIRES_MULTI_CASHIER: HttpStatus.UNPROCESSABLE_ENTITY,
 };
 
 /**

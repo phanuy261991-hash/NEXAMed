@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { ClinicConfigReaderPort } from '@nexamed/core';
+import { CashierDrawerSeparateRequiresMultiCashierError, type ClinicConfigReaderPort } from '@nexamed/core';
 import type { ClinicSettings, UpdateClinicSettingsRequest } from '@nexamed/shared';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
@@ -40,6 +40,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         cashierShiftRequiredEnabled,
         cashierShiftMultiCashierEnabled,
         cashVoucherApprovalEnabled,
+        cashierDrawerSeparateEnabled,
       ] = await Promise.all([
         this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
         this.clinicSettingsRepository.getSlotDurationMinutes(tx, tenantId),
@@ -56,6 +57,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getCashierShiftRequiredEnabled(tx, tenantId),
         this.clinicSettingsRepository.getCashierShiftMultiCashierEnabled(tx, tenantId),
         this.clinicSettingsRepository.getCashVoucherApprovalEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getCashierDrawerSeparateEnabled(tx, tenantId),
       ]);
       return {
         businessHours,
@@ -73,6 +75,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         cashierShiftRequiredEnabled,
         cashierShiftMultiCashierEnabled,
         cashVoucherApprovalEnabled,
+        cashierDrawerSeparateEnabled,
       };
     });
   }
@@ -95,6 +98,11 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
   /** `ClinicConfigReaderPort` ("Thu chi tại quầy" GĐ1) — module `cash-book` đọc qua port này (không có endpoint tự-phục vụ, chỉ backend rẽ nhánh khi lập phiếu chi). */
   getCashVoucherApprovalEnabled(tenantId: string): ReturnType<ClinicConfigReaderPort['getCashVoucherApprovalEnabled']> {
     return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getCashVoucherApprovalEnabled(tx, tenantId));
+  }
+
+  /** `ClinicConfigReaderPort` ("Thủ quỹ riêng", Sổ quỹ & Thu chi GĐ2) — module `cashier-shift` đọc qua port này (không có endpoint tự-phục vụ, chỉ backend rẽ nhánh lúc mở/chốt ca). */
+  getCashierDrawerSeparateEnabled(tenantId: string): ReturnType<ClinicConfigReaderPort['getCashierDrawerSeparateEnabled']> {
+    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getCashierDrawerSeparateEnabled(tx, tenantId));
   }
 
   /** `ClinicConfigReaderPort` ("Cấu hình chung", "Đăng ký ca làm việc") — xem comment ở khai báo class. */
@@ -156,6 +164,16 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
     meta: RequestMeta,
   ): Promise<ClinicSettings> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      if (dto.cashierDrawerSeparateEnabled === true) {
+        // "Thủ quỹ riêng" chỉ có nghĩa khi mỗi thu ngân có ca RIÊNG — mô hình 1 két dùng chung/1 ca
+        // duy nhất không có khái niệm "két CỦA TỪNG người" để tách. Đọc giá trị SẼ CÓ sau khi patch
+        // này áp dụng (dto.cashierShiftMultiCashierEnabled nếu client gửi kèm, ngược lại giá trị
+        // hiện tại đã lưu) — cho phép bật CẢ HAI công tắc trong CÙNG 1 request.
+        const multiCashierEnabled = dto.cashierShiftMultiCashierEnabled ?? (await this.clinicSettingsRepository.getCashierShiftMultiCashierEnabled(tx, tenantId));
+        if (!multiCashierEnabled) {
+          throw new CashierDrawerSeparateRequiresMultiCashierError();
+        }
+      }
       if (dto.businessHours !== undefined) {
         await this.clinicSettingsRepository.upsertBusinessHours(tx, tenantId, actorId, dto.businessHours);
       }
@@ -201,6 +219,9 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
       if (dto.cashVoucherApprovalEnabled !== undefined) {
         await this.clinicSettingsRepository.upsertCashVoucherApprovalEnabled(tx, tenantId, actorId, dto.cashVoucherApprovalEnabled);
       }
+      if (dto.cashierDrawerSeparateEnabled !== undefined) {
+        await this.clinicSettingsRepository.upsertCashierDrawerSeparateEnabled(tx, tenantId, actorId, dto.cashierDrawerSeparateEnabled);
+      }
 
       const hasChanges =
         dto.businessHours !== undefined ||
@@ -217,7 +238,8 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         dto.cashierShiftBlindCloseEnabled !== undefined ||
         dto.cashierShiftRequiredEnabled !== undefined ||
         dto.cashierShiftMultiCashierEnabled !== undefined ||
-        dto.cashVoucherApprovalEnabled !== undefined;
+        dto.cashVoucherApprovalEnabled !== undefined ||
+        dto.cashierDrawerSeparateEnabled !== undefined;
       if (hasChanges) {
         await writeAuditLog(tx, tenantId, {
           actorId,
@@ -246,6 +268,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         cashierShiftRequiredEnabled,
         cashierShiftMultiCashierEnabled,
         cashVoucherApprovalEnabled,
+        cashierDrawerSeparateEnabled,
       ] = await Promise.all([
         this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
         this.clinicSettingsRepository.getSlotDurationMinutes(tx, tenantId),
@@ -262,6 +285,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getCashierShiftRequiredEnabled(tx, tenantId),
         this.clinicSettingsRepository.getCashierShiftMultiCashierEnabled(tx, tenantId),
         this.clinicSettingsRepository.getCashVoucherApprovalEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getCashierDrawerSeparateEnabled(tx, tenantId),
       ]);
       return {
         businessHours,
@@ -279,6 +303,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         cashierShiftRequiredEnabled,
         cashierShiftMultiCashierEnabled,
         cashVoucherApprovalEnabled,
+        cashierDrawerSeparateEnabled,
       };
     });
   }

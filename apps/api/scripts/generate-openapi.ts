@@ -50,6 +50,10 @@ import {
   rejectCashVoucherRequestSchema,
   listCashVouchersQuerySchema,
   listCashVouchersResponseSchema,
+  getCashBookLedgerQuerySchema,
+  cashBookLedgerResponseSchema,
+  cashFlowReportQuerySchema,
+  cashFlowReportResponseSchema,
   changePasswordRequestSchema,
   changePasswordResponseSchema,
   checkInRequestSchema,
@@ -2744,6 +2748,38 @@ registry.registerPath({
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền cash_voucher.read, hoặc scope personal mà không phải người lập phiếu'),
     404: errorResponse('Không tìm thấy'),
+  },
+});
+
+// "Sổ quỹ & Thu chi" Giai đoạn 2 — Sổ quỹ + Báo cáo dòng tiền. `/cash-flow-report/export` (Excel,
+// binary qua @Res()) KHÔNG đăng ký ở đây — cùng lý do `/work-shift-assignments/export` không có
+// trong file này: web tải bằng `downloadFile()` (fetch thô), không qua client sinh từ OpenAPI.
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/cash-book/ledger',
+  tags: ['cash-book'],
+  summary: 'Sổ quỹ — chứng từ + số dư luỹ kế của 1 quỹ (payment lượt khám + cash_voucher)',
+  security: [{ bearerAuth: [] }],
+  request: { query: getCashBookLedgerQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(cashBookLedgerResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền cash_voucher.read'),
+    404: errorResponse('Không tìm thấy quỹ (không tồn tại hoặc thuộc tenant khác)'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/cash-book/cash-flow-report',
+  tags: ['cash-book'],
+  summary: 'Báo cáo dòng tiền — tổng thu/chi/tồn quỹ toàn phòng khám, loại trừ Chuyển quỹ khỏi tổng',
+  security: [{ bearerAuth: [] }],
+  request: { query: cashFlowReportQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(cashFlowReportResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền cash_voucher.report'),
   },
 });
 

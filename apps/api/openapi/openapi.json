@@ -4819,6 +4819,9 @@
                         },
                         "cashVoucherApprovalEnabled": {
                           "type": "boolean"
+                        },
+                        "cashierDrawerSeparateEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -4836,7 +4839,8 @@
                         "cashierShiftBlindCloseEnabled",
                         "cashierShiftRequiredEnabled",
                         "cashierShiftMultiCashierEnabled",
-                        "cashVoucherApprovalEnabled"
+                        "cashVoucherApprovalEnabled",
+                        "cashierDrawerSeparateEnabled"
                       ]
                     },
                     "meta": {
@@ -24520,6 +24524,9 @@
                         },
                         "cashVoucherApprovalEnabled": {
                           "type": "boolean"
+                        },
+                        "cashierDrawerSeparateEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -24537,7 +24544,8 @@
                         "cashierShiftBlindCloseEnabled",
                         "cashierShiftRequiredEnabled",
                         "cashierShiftMultiCashierEnabled",
-                        "cashVoucherApprovalEnabled"
+                        "cashVoucherApprovalEnabled",
+                        "cashierDrawerSeparateEnabled"
                       ]
                     },
                     "meta": {
@@ -24836,6 +24844,9 @@
                   },
                   "cashVoucherApprovalEnabled": {
                     "type": "boolean"
+                  },
+                  "cashierDrawerSeparateEnabled": {
+                    "type": "boolean"
                   }
                 }
               }
@@ -25059,6 +25070,9 @@
                         },
                         "cashVoucherApprovalEnabled": {
                           "type": "boolean"
+                        },
+                        "cashierDrawerSeparateEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -25076,7 +25090,8 @@
                         "cashierShiftBlindCloseEnabled",
                         "cashierShiftRequiredEnabled",
                         "cashierShiftMultiCashierEnabled",
-                        "cashVoucherApprovalEnabled"
+                        "cashVoucherApprovalEnabled",
+                        "cashierDrawerSeparateEnabled"
                       ]
                     },
                     "meta": {
@@ -25503,7 +25518,8 @@
                                   "INVOICE",
                                   "CASHIER_SHIFT",
                                   "CASH_RECEIPT",
-                                  "CASH_PAYMENT"
+                                  "CASH_PAYMENT",
+                                  "CASH_TRANSFER"
                                 ]
                               },
                               "label": {
@@ -25650,7 +25666,8 @@
                 "INVOICE",
                 "CASHIER_SHIFT",
                 "CASH_RECEIPT",
-                "CASH_PAYMENT"
+                "CASH_PAYMENT",
+                "CASH_TRANSFER"
               ]
             },
             "required": true,
@@ -25708,7 +25725,8 @@
                             "INVOICE",
                             "CASHIER_SHIFT",
                             "CASH_RECEIPT",
-                            "CASH_PAYMENT"
+                            "CASH_PAYMENT",
+                            "CASH_TRANSFER"
                           ]
                         },
                         "label": {
@@ -37430,6 +37448,19 @@
                               "isActive": {
                                 "type": "boolean"
                               },
+                              "ownerUserId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "ownerUserName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
                               "version": {
                                 "type": "integer"
                               }
@@ -37445,6 +37476,8 @@
                               "openingBalanceAt",
                               "isDefault",
                               "isActive",
+                              "ownerUserId",
+                              "ownerUserName",
                               "version"
                             ]
                           }
@@ -37645,6 +37678,19 @@
                         "isActive": {
                           "type": "boolean"
                         },
+                        "ownerUserId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "ownerUserName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -37660,6 +37706,8 @@
                         "openingBalanceAt",
                         "isDefault",
                         "isActive",
+                        "ownerUserId",
+                        "ownerUserName",
                         "version"
                       ]
                     },
@@ -37886,6 +37934,19 @@
                         "isActive": {
                           "type": "boolean"
                         },
+                        "ownerUserId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "ownerUserName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -37901,6 +37962,8 @@
                         "openingBalanceAt",
                         "isDefault",
                         "isActive",
+                        "ownerUserId",
+                        "ownerUserName",
                         "version"
                       ]
                     },
@@ -38140,10 +38203,20 @@
                                 ]
                               },
                               "incomeExpenseTypeCode": {
-                                "type": "string"
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               },
                               "cashAccountId": {
                                 "type": "string",
+                                "format": "uuid"
+                              },
+                              "counterAccountId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
                                 "format": "uuid"
                               },
                               "paymentMethodCode": {
@@ -38209,6 +38282,9 @@
                                   "null"
                                 ]
                               },
+                              "isAutoGenerated": {
+                                "type": "boolean"
+                              },
                               "version": {
                                 "type": "integer"
                               }
@@ -38219,6 +38295,7 @@
                               "direction",
                               "incomeExpenseTypeCode",
                               "cashAccountId",
+                              "counterAccountId",
                               "paymentMethodCode",
                               "amount",
                               "occurredAt",
@@ -38232,6 +38309,7 @@
                               "rejectionReason",
                               "createdByName",
                               "printedAt",
+                              "isAutoGenerated",
                               "version"
                             ]
                           }
@@ -38361,6 +38439,10 @@
                     "type": "string",
                     "format": "uuid"
                   },
+                  "counterAccountId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
                   "paymentMethodCode": {
                     "type": "string",
                     "minLength": 1
@@ -38390,8 +38472,6 @@
                   }
                 },
                 "required": [
-                  "direction",
-                  "incomeExpenseTypeCode",
                   "cashAccountId",
                   "paymentMethodCode",
                   "amount",
@@ -38427,10 +38507,20 @@
                           ]
                         },
                         "incomeExpenseTypeCode": {
-                          "type": "string"
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "cashAccountId": {
                           "type": "string",
+                          "format": "uuid"
+                        },
+                        "counterAccountId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
                           "format": "uuid"
                         },
                         "paymentMethodCode": {
@@ -38496,6 +38586,9 @@
                             "null"
                           ]
                         },
+                        "isAutoGenerated": {
+                          "type": "boolean"
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -38506,6 +38599,7 @@
                         "direction",
                         "incomeExpenseTypeCode",
                         "cashAccountId",
+                        "counterAccountId",
                         "paymentMethodCode",
                         "amount",
                         "occurredAt",
@@ -38519,6 +38613,7 @@
                         "rejectionReason",
                         "createdByName",
                         "printedAt",
+                        "isAutoGenerated",
                         "version"
                       ]
                     },
@@ -38679,10 +38774,20 @@
                           ]
                         },
                         "incomeExpenseTypeCode": {
-                          "type": "string"
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "cashAccountId": {
                           "type": "string",
+                          "format": "uuid"
+                        },
+                        "counterAccountId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
                           "format": "uuid"
                         },
                         "paymentMethodCode": {
@@ -38748,6 +38853,9 @@
                             "null"
                           ]
                         },
+                        "isAutoGenerated": {
+                          "type": "boolean"
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -38758,6 +38866,7 @@
                         "direction",
                         "incomeExpenseTypeCode",
                         "cashAccountId",
+                        "counterAccountId",
                         "paymentMethodCode",
                         "amount",
                         "occurredAt",
@@ -38771,6 +38880,7 @@
                         "rejectionReason",
                         "createdByName",
                         "printedAt",
+                        "isAutoGenerated",
                         "version"
                       ]
                     },
@@ -38917,6 +39027,10 @@
                     "type": "string",
                     "format": "uuid"
                   },
+                  "counterAccountId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
                   "paymentMethodCode": {
                     "type": "string",
                     "minLength": 1
@@ -38981,10 +39095,20 @@
                           ]
                         },
                         "incomeExpenseTypeCode": {
-                          "type": "string"
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "cashAccountId": {
                           "type": "string",
+                          "format": "uuid"
+                        },
+                        "counterAccountId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
                           "format": "uuid"
                         },
                         "paymentMethodCode": {
@@ -39050,6 +39174,9 @@
                             "null"
                           ]
                         },
+                        "isAutoGenerated": {
+                          "type": "boolean"
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -39060,6 +39187,7 @@
                         "direction",
                         "incomeExpenseTypeCode",
                         "cashAccountId",
+                        "counterAccountId",
                         "paymentMethodCode",
                         "amount",
                         "occurredAt",
@@ -39073,6 +39201,7 @@
                         "rejectionReason",
                         "createdByName",
                         "printedAt",
+                        "isAutoGenerated",
                         "version"
                       ]
                     },
@@ -39286,10 +39415,20 @@
                           ]
                         },
                         "incomeExpenseTypeCode": {
-                          "type": "string"
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "cashAccountId": {
                           "type": "string",
+                          "format": "uuid"
+                        },
+                        "counterAccountId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
                           "format": "uuid"
                         },
                         "paymentMethodCode": {
@@ -39355,6 +39494,9 @@
                             "null"
                           ]
                         },
+                        "isAutoGenerated": {
+                          "type": "boolean"
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -39365,6 +39507,7 @@
                         "direction",
                         "incomeExpenseTypeCode",
                         "cashAccountId",
+                        "counterAccountId",
                         "paymentMethodCode",
                         "amount",
                         "occurredAt",
@@ -39378,6 +39521,7 @@
                         "rejectionReason",
                         "createdByName",
                         "printedAt",
+                        "isAutoGenerated",
                         "version"
                       ]
                     },
@@ -39586,10 +39730,20 @@
                           ]
                         },
                         "incomeExpenseTypeCode": {
-                          "type": "string"
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "cashAccountId": {
                           "type": "string",
+                          "format": "uuid"
+                        },
+                        "counterAccountId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
                           "format": "uuid"
                         },
                         "paymentMethodCode": {
@@ -39655,6 +39809,9 @@
                             "null"
                           ]
                         },
+                        "isAutoGenerated": {
+                          "type": "boolean"
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -39665,6 +39822,7 @@
                         "direction",
                         "incomeExpenseTypeCode",
                         "cashAccountId",
+                        "counterAccountId",
                         "paymentMethodCode",
                         "amount",
                         "occurredAt",
@@ -39678,6 +39836,7 @@
                         "rejectionReason",
                         "createdByName",
                         "printedAt",
+                        "isAutoGenerated",
                         "version"
                       ]
                     },
@@ -39891,10 +40050,20 @@
                           ]
                         },
                         "incomeExpenseTypeCode": {
-                          "type": "string"
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "cashAccountId": {
                           "type": "string",
+                          "format": "uuid"
+                        },
+                        "counterAccountId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
                           "format": "uuid"
                         },
                         "paymentMethodCode": {
@@ -39960,6 +40129,9 @@
                             "null"
                           ]
                         },
+                        "isAutoGenerated": {
+                          "type": "boolean"
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -39970,6 +40142,7 @@
                         "direction",
                         "incomeExpenseTypeCode",
                         "cashAccountId",
+                        "counterAccountId",
                         "paymentMethodCode",
                         "amount",
                         "occurredAt",
@@ -39983,6 +40156,7 @@
                         "rejectionReason",
                         "createdByName",
                         "printedAt",
+                        "isAutoGenerated",
                         "version"
                       ]
                     },
@@ -40174,10 +40348,20 @@
                           ]
                         },
                         "incomeExpenseTypeCode": {
-                          "type": "string"
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "cashAccountId": {
                           "type": "string",
+                          "format": "uuid"
+                        },
+                        "counterAccountId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
                           "format": "uuid"
                         },
                         "paymentMethodCode": {
@@ -40243,6 +40427,9 @@
                             "null"
                           ]
                         },
+                        "isAutoGenerated": {
+                          "type": "boolean"
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -40253,6 +40440,7 @@
                         "direction",
                         "incomeExpenseTypeCode",
                         "cashAccountId",
+                        "counterAccountId",
                         "paymentMethodCode",
                         "amount",
                         "occurredAt",
@@ -40266,6 +40454,7 @@
                         "rejectionReason",
                         "createdByName",
                         "printedAt",
+                        "isAutoGenerated",
                         "version"
                       ]
                     },
@@ -40346,6 +40535,425 @@
           },
           "404": {
             "description": "Không tìm thấy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cash-book/ledger": {
+      "get": {
+        "tags": [
+          "cash-book"
+        ],
+        "summary": "Sổ quỹ — chứng từ + số dư luỹ kế của 1 quỹ (payment lượt khám + cash_voucher)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "cashAccountId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": false,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": false,
+            "name": "to",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "cashAccountId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "cashAccountName": {
+                          "type": "string"
+                        },
+                        "openingBalance": {
+                          "type": "integer"
+                        },
+                        "closingBalance": {
+                          "type": "integer"
+                        },
+                        "entries": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "occurredAt": {
+                                "type": "string"
+                              },
+                              "entryType": {
+                                "type": "string",
+                                "enum": [
+                                  "INVOICE_PAYMENT",
+                                  "INVOICE_REFUND",
+                                  "VOUCHER_INCOME",
+                                  "VOUCHER_EXPENSE",
+                                  "TRANSFER_IN",
+                                  "TRANSFER_OUT"
+                                ]
+                              },
+                              "description": {
+                                "type": "string"
+                              },
+                              "referenceNo": {
+                                "type": "string"
+                              },
+                              "amountSigned": {
+                                "type": "integer"
+                              },
+                              "runningBalance": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "occurredAt",
+                              "entryType",
+                              "description",
+                              "referenceNo",
+                              "amountSigned",
+                              "runningBalance"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "cashAccountId",
+                        "cashAccountName",
+                        "openingBalance",
+                        "closingBalance",
+                        "entries"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền cash_voucher.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy quỹ (không tồn tại hoặc thuộc tenant khác)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cash-book/cash-flow-report": {
+      "get": {
+        "tags": [
+          "cash-book"
+        ],
+        "summary": "Báo cáo dòng tiền — tổng thu/chi/tồn quỹ toàn phòng khám, loại trừ Chuyển quỹ khỏi tổng",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "to",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "totalIncome": {
+                          "type": "integer"
+                        },
+                        "totalExpense": {
+                          "type": "integer"
+                        },
+                        "byType": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "totalIncome": {
+                                "type": "integer"
+                              },
+                              "totalExpense": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "key",
+                              "label",
+                              "totalIncome",
+                              "totalExpense"
+                            ]
+                          }
+                        },
+                        "byAccount": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "totalIncome": {
+                                "type": "integer"
+                              },
+                              "totalExpense": {
+                                "type": "integer"
+                              },
+                              "closingBalance": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "key",
+                              "label",
+                              "totalIncome",
+                              "totalExpense",
+                              "closingBalance"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "totalIncome",
+                        "totalExpense",
+                        "byType",
+                        "byAccount"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền cash_voucher.report",
             "content": {
               "application/json": {
                 "schema": {

@@ -101,6 +101,15 @@ export interface ClinicConfigReaderPort {
    * `clinic` sở hữu `tenant_setting`), cùng lý do các cấu hình khác ở trên.
    */
   getCashVoucherApprovalEnabled(tenantId: string): Promise<boolean>;
+
+  /**
+   * "Thủ quỹ riêng" (Sổ quỹ & Thu chi GĐ2) — mỗi thu ngân có 1 quỹ `DRAWER` riêng, tự cấp lúc mở
+   * ca (`tenant_setting` key `cashier_drawer_separate_enabled`, mặc định `false`). BẮT BUỘC đi
+   * cùng `getCashierShiftMultiCashierEnabled=true` (validate lúc `PATCH /clinic-settings`, không
+   * validate lại ở đây — port chỉ đọc). Module `cashier-shift` đọc qua port này, cùng lý do các
+   * cấu hình khác ở trên.
+   */
+  getCashierDrawerSeparateEnabled(tenantId: string): Promise<boolean>;
 }
 
 export const CLINIC_CONFIG_READER_PORT = Symbol('CLINIC_CONFIG_READER_PORT');
