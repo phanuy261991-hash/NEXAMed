@@ -41,6 +41,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         cashierShiftMultiCashierEnabled,
         cashVoucherApprovalEnabled,
         cashierDrawerSeparateEnabled,
+        sidebarAutoCollapseEnabled,
       ] = await Promise.all([
         this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
         this.clinicSettingsRepository.getSlotDurationMinutes(tx, tenantId),
@@ -58,6 +59,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getCashierShiftMultiCashierEnabled(tx, tenantId),
         this.clinicSettingsRepository.getCashVoucherApprovalEnabled(tx, tenantId),
         this.clinicSettingsRepository.getCashierDrawerSeparateEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getSidebarAutoCollapseEnabled(tx, tenantId),
       ]);
       return {
         businessHours,
@@ -76,8 +78,14 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         cashierShiftMultiCashierEnabled,
         cashVoucherApprovalEnabled,
         cashierDrawerSeparateEnabled,
+        sidebarAutoCollapseEnabled,
       };
     });
+  }
+
+  /** `GET /clinic-settings/sidebar-auto-collapse-enabled` — chiếu tối thiểu tự-phục vụ, xem comment ở `packages/shared/src/clinic.ts`. */
+  getSidebarAutoCollapseEnabled(tenantId: string): Promise<boolean> {
+    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getSidebarAutoCollapseEnabled(tx, tenantId));
   }
 
   /** `GET /clinic-settings/cashier-shift-blind-close-enabled` — chiếu tối thiểu tự-phục vụ, xem comment ở `packages/shared/src/clinic.ts`. */
@@ -222,6 +230,9 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
       if (dto.cashierDrawerSeparateEnabled !== undefined) {
         await this.clinicSettingsRepository.upsertCashierDrawerSeparateEnabled(tx, tenantId, actorId, dto.cashierDrawerSeparateEnabled);
       }
+      if (dto.sidebarAutoCollapseEnabled !== undefined) {
+        await this.clinicSettingsRepository.upsertSidebarAutoCollapseEnabled(tx, tenantId, actorId, dto.sidebarAutoCollapseEnabled);
+      }
 
       const hasChanges =
         dto.businessHours !== undefined ||
@@ -239,7 +250,8 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         dto.cashierShiftRequiredEnabled !== undefined ||
         dto.cashierShiftMultiCashierEnabled !== undefined ||
         dto.cashVoucherApprovalEnabled !== undefined ||
-        dto.cashierDrawerSeparateEnabled !== undefined;
+        dto.cashierDrawerSeparateEnabled !== undefined ||
+        dto.sidebarAutoCollapseEnabled !== undefined;
       if (hasChanges) {
         await writeAuditLog(tx, tenantId, {
           actorId,
@@ -269,6 +281,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         cashierShiftMultiCashierEnabled,
         cashVoucherApprovalEnabled,
         cashierDrawerSeparateEnabled,
+        sidebarAutoCollapseEnabled,
       ] = await Promise.all([
         this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
         this.clinicSettingsRepository.getSlotDurationMinutes(tx, tenantId),
@@ -286,6 +299,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getCashierShiftMultiCashierEnabled(tx, tenantId),
         this.clinicSettingsRepository.getCashVoucherApprovalEnabled(tx, tenantId),
         this.clinicSettingsRepository.getCashierDrawerSeparateEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getSidebarAutoCollapseEnabled(tx, tenantId),
       ]);
       return {
         businessHours,
@@ -304,6 +318,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         cashierShiftMultiCashierEnabled,
         cashVoucherApprovalEnabled,
         cashierDrawerSeparateEnabled,
+        sidebarAutoCollapseEnabled,
       };
     });
   }

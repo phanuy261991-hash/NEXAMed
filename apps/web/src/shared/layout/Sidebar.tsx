@@ -30,7 +30,8 @@ import { useAuthStore } from '../../features/auth/auth.store';
 import { useHasAnyPermission, useDataScope, useHasPermission } from '../../features/auth/usePermission';
 import { ADMIN_ANY_PERMISSIONS, ADMIN_ORG_PERMISSIONS } from '../../features/auth/admin-permissions';
 import { DOCTOR_QUEUE_ROLES } from '../../features/auth/workflow-roles';
-import { useSidebar } from './sidebar.context';
+import { useSidebarAutoCollapseEnabledQuery } from '../../features/clinic/clinic.queries';
+import { useAutoCollapseSidebarOnNavigate, useSidebar } from './sidebar.context';
 
 /**
  * 7 mục con của "Quản trị" (2026-09-04) — TỪNG mục ẩn/hiện theo ĐÚNG quyền route đó cần, không
@@ -100,11 +101,18 @@ function NavItem({ to, label, icon: IconComponent, end, collapsed, indent }: Nav
  * (.claude/docs/ui-guidelines.md mục 8.1, docs/DECISIONS.md #027). Ba vùng: logo → menu (nhóm
  * cha/con, chỉ hiện mục đã có backend thật) → nút thu gọn. Trạng thái thu gọn không lưu giữa các
  * phiên ở v1 (chưa có yêu cầu cụ thể).
+ *
+ * "Tự động thu gọn menu khi chuyển trang" (2026-09-07) — `useAutoCollapseSidebarOnNavigate()` ép
+ * thu gọn mỗi lần đổi route khi tenant bật `sidebarAutoCollapseEnabled` ("Cấu hình chung", pill
+ * "Cấu hình phòng khám"). Độc lập với `useAutoCollapseSidebar()` (chỉ màn hình khám gọi, luôn ép
+ * thu gọn CỐ ĐỊNH bất kể cờ này) — xem comment ở `sidebar.context.tsx`.
  */
 export function Sidebar() {
   const user = useAuthStore((s) => s.user);
   const location = useLocation();
   const { collapsed, setCollapsed } = useSidebar();
+  const sidebarAutoCollapseQuery = useSidebarAutoCollapseEnabledQuery();
+  useAutoCollapseSidebarOnNavigate(sidebarAutoCollapseQuery.data?.enabled ?? false);
   const [receptionGroupOpen, setReceptionGroupOpen] = useState(
     RECEPTION_GROUP_PATHS.some((path) => location.pathname.startsWith(path)) &&
       !location.pathname.startsWith(EXAMINATION_GROUP_PATH),

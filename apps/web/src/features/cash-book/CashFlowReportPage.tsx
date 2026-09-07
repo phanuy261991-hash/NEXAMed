@@ -4,6 +4,7 @@ import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
+import { StatCardRow } from '../../shared/ui/StatCard';
 import { ApiError } from '../../shared/api/client';
 import { formatVnd } from '../../shared/format/currency';
 import { getVietnamTodayDateString } from '../appointment/schedule-grid.utils';
@@ -66,34 +67,21 @@ export function CashFlowReportPage() {
 
       {reportQuery.isSuccess && (
         <>
+          {/* Dải KPI dùng chung `shared/ui/StatCard.tsx#StatCardRow` — cùng khuôn `CashVoucherListPage.tsx`. */}
           <div className="flex flex-shrink-0 flex-wrap items-stretch gap-3">
-            <div className="flex min-w-[210px] flex-1 items-center gap-3.5 rounded-xl border border-emerald-100 bg-emerald-50/50 px-5 py-4">
-              <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-white text-emerald-600 shadow-sm ring-1 ring-emerald-100">
-                <ArrowCircleDown size={22} weight="bold" aria-hidden="true" />
-              </div>
-              <div className="flex min-w-0 flex-col">
-                <span className="text-xs font-bold uppercase tracking-wide text-emerald-700">Tổng thu</span>
-                <span className="truncate text-2xl font-bold tabular-nums text-slate-900">{formatVnd(reportQuery.data.totalIncome)}</span>
-              </div>
-            </div>
-            <div className="flex min-w-[210px] flex-1 items-center gap-3.5 rounded-xl border border-rose-100 bg-rose-50/50 px-5 py-4">
-              <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-white text-rose-600 shadow-sm ring-1 ring-rose-100">
-                <ArrowCircleUp size={22} weight="bold" aria-hidden="true" />
-              </div>
-              <div className="flex min-w-0 flex-col">
-                <span className="text-xs font-bold uppercase tracking-wide text-rose-700">Tổng chi</span>
-                <span className="truncate text-2xl font-bold tabular-nums text-slate-900">{formatVnd(reportQuery.data.totalExpense)}</span>
-              </div>
-            </div>
-            <div className="flex min-w-[210px] flex-1 items-center gap-3.5 rounded-xl border border-blue-100 bg-blue-50/50 px-5 py-4">
-              <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-white text-blue-600 shadow-sm ring-1 ring-blue-100">
-                <Scales size={22} weight="bold" aria-hidden="true" />
-              </div>
-              <div className="flex min-w-0 flex-col">
-                <span className="text-xs font-bold uppercase tracking-wide text-blue-700">Chênh lệch</span>
-                <span className="truncate text-2xl font-bold tabular-nums text-slate-900">{formatVnd(reportQuery.data.totalIncome - reportQuery.data.totalExpense)}</span>
-              </div>
-            </div>
+            <StatCardRow
+              items={[
+                { icon: ArrowCircleDown, tone: 'emerald', label: 'Tổng thu', value: formatVnd(reportQuery.data.totalIncome) },
+                { icon: ArrowCircleUp, tone: 'rose', label: 'Tổng chi', value: formatVnd(reportQuery.data.totalExpense) },
+                {
+                  icon: Scales,
+                  tone: 'blue',
+                  label: 'Chênh lệch',
+                  value: formatVnd(reportQuery.data.totalIncome - reportQuery.data.totalExpense),
+                  emphasis: true,
+                },
+              ]}
+            />
           </div>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

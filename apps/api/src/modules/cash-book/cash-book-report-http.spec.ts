@@ -250,6 +250,43 @@ describe('HTTP e2e — Sổ quỹ & Thu chi Giai đoạn 2', () => {
       expect(transferIndex).toBeGreaterThanOrEqual(0);
       expect(paymentIndex).toBeLessThan(transferIndex);
     });
+
+    it('Xuất Excel (GET /cash-book/ledger/export) → 200, content-type .xlsx, lễ tân (cash_voucher.read) gọi được', async () => {
+      const res = await request(app.getHttpServer()).get(`/api/v1/cash-book/ledger/export?cashAccountId=${cashAccountId}`).set(authed(receptionistToken));
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toContain('spreadsheetml');
+      expect(res.headers['content-disposition']).toContain('.xlsx');
+    });
+
+    it('Xuất Excel — tenant B tra quỹ tenant A → 404', async () => {
+      const res = await request(app.getHttpServer()).get(`/api/v1/cash-book/ledger/export?cashAccountId=${cashAccountId}`).set(authed(tenantBClinicAdminToken));
+      expect(res.status).toBe(404);
+    });
+  });
+
+  describe('Phiếu thu chi (GET /cash-book/vouchers/export)', () => {
+    it('không có access token → 401', async () => {
+      const res = await request(app.getHttpServer()).get('/api/v1/cash-book/vouchers/export');
+      expect(res.status).toBe(401);
+    });
+
+    it('lễ tân (cash_voucher.read, KHÔNG cần cash_voucher.report) → 200, content-type .xlsx', async () => {
+      const res = await request(app.getHttpServer()).get('/api/v1/cash-book/vouchers/export').set(authed(receptionistToken));
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toContain('spreadsheetml');
+      expect(res.headers['content-disposition']).toContain('.xlsx');
+    });
+
+    it('lọc theo direction/status áp đúng — đúng khuôn GET /cash-vouchers', async () => {
+      const res = await request(app.getHttpServer()).get('/api/v1/cash-book/vouchers/export?direction=INCOME&status=POSTED').set(authed(clinicAdminToken));
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toContain('spreadsheetml');
+    });
+
+    it('tenant B không lẫn dữ liệu tenant A (tệp xuất được tạo độc lập, không lỗi)', async () => {
+      const res = await request(app.getHttpServer()).get('/api/v1/cash-book/vouchers/export').set(authed(tenantBClinicAdminToken));
+      expect(res.status).toBe(200);
+    });
   });
 
   describe('Báo cáo dòng tiền (GET /cash-book/cash-flow-report)', () => {

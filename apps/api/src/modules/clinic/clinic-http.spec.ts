@@ -532,4 +532,43 @@ describe('HTTP e2e — /api/v1/rooms và /api/v1/clinic-settings', () => {
       expect(res.body.data.enabled).toBe(true);
     });
   });
+
+  describe('/api/v1/clinic-settings/sidebar-auto-collapse-enabled ("Tự động thu gọn menu khi chuyển trang")', () => {
+    it('không có access token → 401', async () => {
+      const res = await request(app.getHttpServer()).get('/api/v1/clinic-settings/sidebar-auto-collapse-enabled');
+      expect(res.status).toBe(401);
+    });
+
+    it('lễ tân (KHÔNG có clinic_config.read) → vẫn 200 (tự-phục vụ, đúng khuôn deferred-payment-enabled)', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/v1/clinic-settings/sidebar-auto-collapse-enabled')
+        .set(authed(receptionistToken));
+      expect(res.status).toBe(200);
+      expect(typeof res.body.data.enabled).toBe('boolean');
+    });
+
+    it('mặc định false khi chưa cấu hình, PATCH bật → GET tự-phục vụ phản ánh đúng ngay', async () => {
+      const before = await request(app.getHttpServer())
+        .get('/api/v1/clinic-settings/sidebar-auto-collapse-enabled')
+        .set(authed(tenantBAdminToken));
+      expect(before.body.data.enabled).toBe(false);
+
+      await request(app.getHttpServer())
+        .patch('/api/v1/clinic-settings')
+        .set(authed(clinicAdminToken))
+        .send({ sidebarAutoCollapseEnabled: true });
+
+      const after = await request(app.getHttpServer())
+        .get('/api/v1/clinic-settings/sidebar-auto-collapse-enabled')
+        .set(authed(receptionistToken));
+      expect(after.body.data.enabled).toBe(true);
+    });
+
+    it('tenant B độc lập — bật ở tenant A không ảnh hưởng tenant B', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/v1/clinic-settings/sidebar-auto-collapse-enabled')
+        .set(authed(tenantBAdminToken));
+      expect(res.body.data.enabled).toBe(false);
+    });
+  });
 });

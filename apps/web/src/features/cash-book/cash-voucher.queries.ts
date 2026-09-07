@@ -12,6 +12,7 @@ import { queryKey } from '../../shared/api/query-keys';
 import {
   approveCashVoucher,
   createCashVoucher,
+  exportCashVouchers,
   getCashVoucher,
   getCashVouchers,
   printCashVoucher,
@@ -25,6 +26,12 @@ export function useCashVouchersQuery(query: ListCashVouchersQuery) {
   return useQuery({
     queryKey: queryKey(tenantId, 'cash-voucher', 'list', JSON.stringify(query)),
     queryFn: () => getCashVouchers(query),
+  });
+}
+
+export function useExportCashVouchersMutation() {
+  return useMutation({
+    mutationFn: (query: ListCashVouchersQuery) => exportCashVouchers(query),
   });
 }
 

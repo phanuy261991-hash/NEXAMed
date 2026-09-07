@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowCircleDown, ArrowCircleUp, ArrowsLeftRight, BookOpen, Wallet } from '@phosphor-icons/react';
+import { ArrowCircleDown, ArrowCircleUp, ArrowsLeftRight, BookOpen, DownloadSimple, Wallet } from '@phosphor-icons/react';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
+import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { Skeleton } from '../../shared/ui/Skeleton';
+import { StatCardRow } from '../../shared/ui/StatCard';
 import { ApiError } from '../../shared/api/client';
 import { formatVnd } from '../../shared/format/currency';
 import { getVietnamTodayDateString } from '../appointment/schedule-grid.utils';
 import { useCashAccountsQuery } from './cash-account.queries';
-import { useCashBookLedgerQuery } from './cash-book-ledger.queries';
+import { useCashBookLedgerQuery, useExportCashBookLedgerMutation } from './cash-book-ledger.queries';
 
 const GRID_COLUMNS = '130px 1.4fr 2fr 160px 160px';
 const TABLE_MIN_WIDTH_PX = 900;
@@ -60,62 +62,65 @@ export function CashBookPage() {
   }, [accounts, cashAccountId]);
 
   const ledgerQuery = useCashBookLedgerQuery({ cashAccountId, from: dateFrom, to: dateTo }, cashAccountId !== '');
+  const exportMutation = useExportCashBookLedgerMutation();
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 p-6">
-      <div className="flex flex-shrink-0 flex-wrap items-end gap-3">
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="cb-account" className="text-sm font-semibold text-slate-800">
-            Quỹ
-          </label>
-          <select
-            id="cb-account"
-            value={cashAccountId}
-            onChange={(e) => setCashAccountId(e.target.value)}
-            className="min-w-[220px] rounded-md border border-slate-300 px-2.5 py-1.5 text-[13px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-          >
-            {accounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-                {a.type === 'DRAWER' && a.ownerUserName ? ` — Két riêng của ${a.ownerUserName}` : ''}
-              </option>
-            ))}
-          </select>
+      <div className="flex flex-shrink-0 flex-wrap items-end justify-between gap-3">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="cb-account" className="text-sm font-semibold text-slate-800">
+              Quỹ
+            </label>
+            <select
+              id="cb-account"
+              value={cashAccountId}
+              onChange={(e) => setCashAccountId(e.target.value)}
+              className="min-w-[220px] rounded-md border border-slate-300 px-2.5 py-1.5 text-[13px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            >
+              {accounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                  {a.type === 'DRAWER' && a.ownerUserName ? ` — Két riêng của ${a.ownerUserName}` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="cb-from" className="text-sm font-semibold text-slate-800">
+              Từ ngày
+            </label>
+            <input id="cb-from" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="rounded-md border border-slate-300 px-2.5 py-1.5 text-[13px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="cb-to" className="text-sm font-semibold text-slate-800">
+              Đến ngày
+            </label>
+            <input id="cb-to" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="rounded-md border border-slate-300 px-2.5 py-1.5 text-[13px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+          </div>
         </div>
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="cb-from" className="text-sm font-semibold text-slate-800">
-            Từ ngày
-          </label>
-          <input id="cb-from" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="rounded-md border border-slate-300 px-2.5 py-1.5 text-[13px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="cb-to" className="text-sm font-semibold text-slate-800">
-            Đến ngày
-          </label>
-          <input id="cb-to" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="rounded-md border border-slate-300 px-2.5 py-1.5 text-[13px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
-        </div>
+        <Button
+          type="button"
+          variant="secondary"
+          loading={exportMutation.isPending}
+          disabled={cashAccountId === ''}
+          onClick={() => exportMutation.mutate({ cashAccountId, from: dateFrom, to: dateTo })}
+        >
+          <DownloadSimple size={16} weight="bold" aria-hidden="true" />
+          Xuất Excel
+        </Button>
       </div>
 
+      {/* Dải KPI dùng chung `shared/ui/StatCard.tsx#StatCardRow` — "Số dư cuối kỳ" là số liệu thật
+          sự cần chú ý nên `emphasis`, "Số dư đầu kỳ" giữ tông trung tính. */}
       {ledgerQuery.isSuccess && (
         <div className="flex flex-shrink-0 flex-wrap items-stretch gap-3">
-          <div className="flex min-w-[210px] flex-1 items-center gap-3.5 rounded-xl border border-slate-200 bg-slate-50 px-5 py-4">
-            <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-white text-slate-600 shadow-sm ring-1 ring-slate-200">
-              <Wallet size={22} weight="bold" aria-hidden="true" />
-            </div>
-            <div className="flex min-w-0 flex-col">
-              <span className="text-xs font-bold uppercase tracking-wide text-slate-600">Số dư đầu kỳ</span>
-              <span className="truncate text-2xl font-bold tabular-nums text-slate-900">{formatVnd(ledgerQuery.data.openingBalance)}</span>
-            </div>
-          </div>
-          <div className="flex min-w-[210px] flex-1 items-center gap-3.5 rounded-xl border border-blue-100 bg-blue-50/50 px-5 py-4">
-            <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-white text-blue-600 shadow-sm ring-1 ring-blue-100">
-              <BookOpen size={22} weight="bold" aria-hidden="true" />
-            </div>
-            <div className="flex min-w-0 flex-col">
-              <span className="text-xs font-bold uppercase tracking-wide text-blue-700">Số dư cuối kỳ</span>
-              <span className="truncate text-2xl font-bold tabular-nums text-slate-900">{formatVnd(ledgerQuery.data.closingBalance)}</span>
-            </div>
-          </div>
+          <StatCardRow
+            items={[
+              { icon: Wallet, tone: 'slate', label: 'Số dư đầu kỳ', value: formatVnd(ledgerQuery.data.openingBalance) },
+              { icon: BookOpen, tone: 'blue', label: 'Số dư cuối kỳ', value: formatVnd(ledgerQuery.data.closingBalance), emphasis: true },
+            ]}
+          />
         </div>
       )}
 

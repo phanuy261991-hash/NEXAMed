@@ -2,7 +2,39 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-07 (3)
+
+### Redesign lần 2 dải KPI "Sổ quỹ & Thu chi" — bỏ khuôn thẻ/icon-vòng-tròn "giống AI tạo"
+
+Chủ dự án phản hồi trực tiếp bản redesign lần 1 (mục ngay dưới): "không thích dạng thẻ có badge kiểu này vì nó giống AI tạo quá". Dùng `/ui-ux-pro-max` (domain `style`, nhóm "Financial Dashboard") tra cách phần mềm tài chính thật trình bày số liệu tổng kết — màu sắc gắn vào CHÍNH con số, không trang trí quanh nó bằng thẻ/icon riêng.
+
+`shared/ui/StatCard.tsx` viết lại hoàn toàn: bỏ hẳn khuôn "mỗi số liệu 1 thẻ + icon lồng vòng tròn nền màu + viền trái đậm màu" (khuôn rất phổ biến ở UI do AI sinh ra) — đổi component `StatCard` (từng thẻ) thành `StatCardRow` (nhận mảng `items`, tự dựng **1 dải liền khối chia ngăn bằng đường kẻ mảnh** `divide-x`). Icon giờ nhỏ, phẳng (không lồng vòng tròn), cạnh nhãn. Màu chỉ gắn vào CHÍNH con số (`text-emerald-600`/`text-rose-600` cho Thu/Chi — đúng cách bảng chứng từ trong CÙNG các trang này đã tô màu cột Số tiền, không bịa quy ước mới), số liệu trung tính (Chênh lệch/Số dư) giữ `text-slate-900`. `emphasis` (số liệu "chốt hạ") giờ chỉ tăng cỡ chữ 1 nấc, không còn đổi màu nền/viền riêng. Áp dụng lại cho cả 3 màn hình `CashVoucherListPage.tsx`/`CashFlowReportPage.tsx`/`CashBookPage.tsx`.
+
+**Đã xác minh thật**: `pnpm -w typecheck/lint/build` sạch toàn workspace, chunk web không đổi bất thường (thuần đổi CSS/markup, không đổi logic). `apps/api` 171/171 test module `cash-book`/`clinic` không regression (đổi thuần frontend, không đụng backend). Playwright qua Chrome thật (dùng lại dev server đang chạy sẵn) xác nhận cả 3 màn hình hiện đúng dải KPI kiểu mới — 1 dải liền khối, không còn thẻ/icon-vòng-tròn riêng lẻ.
+
+## 2026-09-07 (2)
+
+### Redesign dải KPI "Sổ quỹ & Thu chi" (3 màn hình) + Xuất Excel cho "Phiếu thu/chi" và "Sổ quỹ"
+
+Chủ dự án yêu cầu trực tiếp: thiết kế lại dải tổng kết (toolbar + thẻ số liệu) ở "Phiếu thu / Phiếu chi" cho "hiện đại và y tế hơn, có điểm nhấn hơn", sau đó mở rộng sang "Sổ quỹ"/"Báo cáo dòng tiền", cùng lúc thêm "Xuất Excel" cho 2 màn hình còn thiếu (đã có sẵn ở "Báo cáo dòng tiền").
+
+**Thiết kế**: trích xuất `shared/ui/StatCard.tsx` mới (trùng lặp lần 3 giữa 3 trang, đúng ngưỡng phải gộp) — đổi từ nền tô màu nhạt toàn thẻ sang thẻ trắng + viền trái đậm màu theo `tone` + icon trong vòng tròn nhạt màu, cùng ngôn ngữ thị giác với `ShiftStatTile` (`DoctorEndShiftDialog.tsx`, panel mẫu hiện đại nhất trong app, dựng sau khi tra `/ui-ux-pro-max`) thay vì phát minh phong cách mới. Prop `emphasis` cho thẻ "chốt hạ" của dải (Chênh lệch/Số dư cuối kỳ) — đổi nền sang tông nhạt + icon nổi trên nền trắng để tạo phân cấp thị giác, không cần chữ to hơn. Áp dụng cho `CashVoucherListPage.tsx`/`CashFlowReportPage.tsx`/`CashBookPage.tsx`.
+
+**Backend — Xuất Excel mới**: `CashBookExportService` thêm `buildCashVoucherListExcel()`/`buildCashBookLedgerExcel()` (đúng khuôn `buildCashFlowReportExcel()` có sẵn). 2 endpoint mới trên `CashBookReportController` — `GET /cash-book/vouchers/export` (đúng bộ lọc `CashVoucherListPage.tsx` đang xem, quyền `cash_voucher.read` — KHÔNG đòi `cash_voucher.report` như Báo cáo dòng tiền vì đây là tra cứu vận hành, không phải báo cáo quản trị tổng hợp) và `GET /cash-book/ledger/export` (cùng quyền `ledger()`). `CashBookModule` export thêm `CashVoucherService` để `CashBookReportService` gọi lại `list()` có sẵn (tránh chép lại logic tổng kết); `CashBookReportService` thêm `getVoucherExportData()` (gộp `list()` + resolve tên `incomeExpenseTypeCode`/`cashAccountId` qua `REFERENCE_CATALOG_READER_PORT`/`CashAccountRepository`, đúng khuôn `getCashFlowReport()`). Nhãn tiếng Việt cho trạng thái/loại chứng từ khai RIÊNG ở backend (không dùng chung với `apps/web`) — cùng lý do bug bundler đã gặp lặp lại (#032/#091/#114): hằng số từ `packages/shared` không luôn resolve được qua `vite build`.
+
+**Frontend**: `cash-voucher.api.ts`/`cash-book-ledger.api.ts` thêm hàm export tải file thô qua `downloadFile()` (đúng khuôn `cash-flow-report.api.ts`), 2 hook mutation mới. Nút "Xuất Excel" (`variant="secondary"`, icon `DownloadSimple`) thêm vào toolbar `CashVoucherListPage.tsx` (trước "Chuyển quỹ"/"Lập phiếu") và `CashBookPage.tsx` (đối diện bộ lọc, cùng vị trí "Báo cáo dòng tiền").
+
+**Đã xác minh thật**: `cash-book-report-http.spec.ts` +6 test (24/24), `apps/api` 708/708 test pass (1 lần dính flake race cleanup `tenant-fixture.ts` đã biết khi chạy song song ở `drug-http.spec.ts`, pass 100% khi chạy riêng, không liên quan). `pnpm -w typecheck/lint/build` sạch toàn workspace, chunk web 496.49 kB (không đổi bất thường). Playwright qua Chrome thật (dùng lại dev server đang chạy sẵn): cả 3 màn hình hiện đúng dải KPI mới, 2 nút "Xuất Excel" mới tải file `.xlsx` thành công (`phieu-thu-chi-*.xlsx`/`so-quy-*.xlsx`), không lỗi console ngoài dự kiến.
+
 ## 2026-09-07
+
+### "Tự động thu gọn menu khi chuyển trang" — công tắc mới ở "Cấu hình chung"
+
+Chủ dự án yêu cầu trực tiếp: mở rộng hành vi tự thu gọn sidebar (trước chỉ hardcode riêng ở màn hình khám, S3-06) thành tuỳ chọn áp dụng cho MỌI trang, bật/tắt được ở "Cấu hình chung" (pill "Cấu hình phòng khám", `/admin/system-config`). Chốt 3 điểm qua `AskUserQuestion` trước khi code: (1) áp dụng cho mọi trang chứ không riêng nhóm "làm việc rộng"; (2) luôn ép thu gọn lại ở MỖI lần điều hướng, kể cả khi người dùng vừa tự mở lại tay (không tự khôi phục); (3) cờ toàn tenant (`tenant_setting`, không phải tuỳ chọn cá nhân từng tài khoản) — riêng màn hình khám GIỮ NGUYÊN hành vi tự thu gọn CỐ ĐỊNH hiện có, không đi qua cờ này (đã hỏi và chốt, để không thoái lui hành vi đang chạy thật ở pilot).
+
+`tenant_setting.sidebar_auto_collapse_enabled` mới (TẮT theo mặc định — an toàn, giữ nguyên hành vi hiện tại), đọc/ghi qua `GET/PATCH /clinic-settings` có sẵn + chiếu tối thiểu tự-phục vụ `GET /clinic-settings/sidebar-auto-collapse-enabled` (mọi nhân viên đọc được, không cần `clinic_config.read`, đúng khuôn `allow-staff-self-schedule-enabled`). `apps/web/src/shared/layout/sidebar.context.tsx` thêm `useAutoCollapseSidebarOnNavigate(enabled)` — hook mới, độc lập hoàn toàn với `useAutoCollapseSidebar()` cũ (chỉ màn khám dùng), ép `setCollapsed(true)` mỗi khi `location.pathname` đổi. Gọi ở cấp `Sidebar.tsx` (không phải trang con) để bắt được MỌI lượt điều hướng, kể cả không qua sidebar. `GeneralConfigPane.tsx` thêm Boxed Section "Giao diện" mới (trích `ToggleSwitch` dùng chung trong file, thay 2 khối markup lặp lại).
+
+**Đã xác minh thật**: `clinic-http.spec.ts` +4 test (698/698 tổng `apps/api` — 2 file flake race `role_permission` tiền nhiệm đã biết khi chạy song song, pass 100% khi chạy riêng), `packages/core`/`packages/shared`/`apps/web` test không regression. `pnpm -w typecheck/lint/build` sạch toàn workspace, chunk web 496.45 kB (không đổi bất thường). Playwright qua Chrome thật (dùng lại dev server đang chạy sẵn, không khởi động instance thứ hai): TẮT → điều hướng nhiều lần → sidebar không bị ép (240px); BẬT → bấm menu điều hướng → tự thu gọn (64px); tự mở lại tay (240px) → điều hướng tiếp → ép thu gọn lại ngay (64px, đúng quyết định "không tự khôi phục lựa chọn tay"); khôi phục công tắc về TẮT sau khi kiểm. Không có migration/ERD nào đổi (chỉ thêm 1 key `tenant_setting`, đúng khuôn các cờ đơn giản khác).
 
 ### "Sổ quỹ & Thu chi" Giai đoạn 2 — Sổ quỹ + Báo cáo dòng tiền + Chuyển quỹ + Thủ quỹ riêng
 

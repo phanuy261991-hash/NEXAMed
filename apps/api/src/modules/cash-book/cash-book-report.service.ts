@@ -1,9 +1,10 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { REFERENCE_CATALOG_READER_PORT, type ReferenceCatalogReaderPort } from '@nexamed/core';
-import type { CashBookLedgerResponse, CashFlowReportResponse } from '@nexamed/shared';
+import type { CashBookLedgerResponse, CashFlowReportResponse, CashVoucher, ListCashVouchersQuery } from '@nexamed/shared';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { CashAccountRepository } from './cash-account.repository';
 import { CashVoucherRepository } from './cash-voucher.repository';
+import { CashVoucherService } from './cash-voucher.service';
 import { PaymentRepository } from '../billing/payment.repository';
 
 /** `to` là ngày (không giờ) — luôn diễn giải thành CUỐI ngày giờ Việt Nam, đúng khuôn
@@ -41,6 +42,7 @@ export class CashBookReportService {
     private readonly unitOfWork: UnitOfWorkService,
     private readonly cashAccountRepository: CashAccountRepository,
     private readonly cashVoucherRepository: CashVoucherRepository,
+    private readonly cashVoucherService: CashVoucherService,
     private readonly paymentRepository: PaymentRepository,
     @Inject(REFERENCE_CATALOG_READER_PORT) private readonly referenceCatalogReader: ReferenceCatalogReaderPort,
   ) {}
@@ -146,6 +148,37 @@ export class CashBookReportService {
         entries: dtoEntries,
       };
     });
+  }
+
+  /**
+   * "Xuất Excel" cho "Phiếu thu/chi" (`CashVoucherListPage.tsx`) — dùng LẠI `CashVoucherService.list()`
+   * (tự có transaction riêng) cho items+tổng kết, chỉ thêm 2 map resolve tên (`incomeExpenseTypeCode`
+   * → tên, `cashAccountId` → tên quỹ) — đúng khuôn đã dùng ở `getCashFlowReport()` ngay dưới, vì
+   * `cashVoucherSchema` cố ý KHÔNG resolve 2 trường này (web tự map cho màn hình, xem comment ở
+   * `packages/shared/src/cash-book.ts`).
+   */
+  async getVoucherExportData(
+    tenantId: string,
+    query: ListCashVouchersQuery,
+  ): Promise<{
+    items: CashVoucher[];
+    totalIncomeAmount: number;
+    totalExpenseAmount: number;
+    typeLabelByCode: Map<string, string>;
+    accountNameById: Map<string, string>;
+  }> {
+    const [{ items, totalIncomeAmount, totalExpenseAmount }, incomeExpenseTypes, accounts] = await Promise.all([
+      this.cashVoucherService.list(tenantId, query),
+      this.referenceCatalogReader.listByCategory(tenantId, 'INCOME_EXPENSE_TYPE'),
+      this.unitOfWork.runInTenantScope(tenantId, (tx) => this.cashAccountRepository.list(tx, tenantId)),
+    ]);
+    return {
+      items,
+      totalIncomeAmount,
+      totalExpenseAmount,
+      typeLabelByCode: new Map(incomeExpenseTypes.map((t) => [t.code, t.name])),
+      accountNameById: new Map(accounts.map((a) => [a.id, a.name])),
+    };
   }
 
   async getCashFlowReport(tenantId: string, from: string, to: string): Promise<CashFlowReportResponse> {

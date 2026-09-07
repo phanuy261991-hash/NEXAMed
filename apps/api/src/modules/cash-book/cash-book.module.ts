@@ -23,11 +23,14 @@ import { CashVoucherRepository } from './cash-voucher.repository';
  * `exports: [CashAccountRepository]` — `BillingModule` dùng để gắn `payment.cashAccountId` lúc
  * thu/hoàn tiền khám (đúng "chia sẻ Repository giữa module trong 1 transaction", #042).
  * `exports: [CashVoucherRepository]` — `CashierShiftModule` dùng trong `computeTotals()`.
+ * `exports: [CashVoucherService]` — "Xuất Excel" cho "Phiếu thu/chi" (`CashBookReportModule` gọi
+ * thẳng `list()` đã có sẵn logic tổng kết, tránh chép lại — đúng nguyên tắc "không tạo bản sao
+ * logic", CLAUDE.md).
  */
 @Module({
   imports: [IamModule, ClinicModule, forwardRef(() => CashierShiftModule)],
   controllers: [CashAccountController, CashVoucherController],
   providers: [CashAccountService, CashAccountRepository, CashVoucherService, CashVoucherRepository],
-  exports: [CashAccountRepository, CashVoucherRepository],
+  exports: [CashAccountRepository, CashVoucherRepository, CashVoucherService],
 })
 export class CashBookModule {}

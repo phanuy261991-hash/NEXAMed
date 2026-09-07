@@ -1951,6 +1951,7 @@ export interface paths {
                                 cashierShiftMultiCashierEnabled: boolean;
                                 cashVoucherApprovalEnabled: boolean;
                                 cashierDrawerSeparateEnabled: boolean;
+                                sidebarAutoCollapseEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -10167,6 +10168,7 @@ export interface paths {
                                 cashierShiftMultiCashierEnabled: boolean;
                                 cashVoucherApprovalEnabled: boolean;
                                 cashierDrawerSeparateEnabled: boolean;
+                                sidebarAutoCollapseEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -10265,6 +10267,7 @@ export interface paths {
                         cashierShiftMultiCashierEnabled?: boolean;
                         cashVoucherApprovalEnabled?: boolean;
                         cashierDrawerSeparateEnabled?: boolean;
+                        sidebarAutoCollapseEnabled?: boolean;
                     };
                 };
             };
@@ -10322,6 +10325,7 @@ export interface paths {
                                 cashierShiftMultiCashierEnabled: boolean;
                                 cashVoucherApprovalEnabled: boolean;
                                 cashierDrawerSeparateEnabled: boolean;
+                                sidebarAutoCollapseEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -10537,6 +10541,62 @@ export interface paths {
             cookie?: never;
         };
         /** "Yêu cầu mở ca trước khi thu tiền" — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /clinic-settings/deferred-payment-enabled) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                enabled: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinic-settings/sidebar-auto-collapse-enabled": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** "Tự động thu gọn menu khi chuyển trang" — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /clinic-settings/deferred-payment-enabled) */
         get: {
             parameters: {
                 query?: never;

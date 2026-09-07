@@ -4822,6 +4822,9 @@
                         },
                         "cashierDrawerSeparateEnabled": {
                           "type": "boolean"
+                        },
+                        "sidebarAutoCollapseEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -4840,7 +4843,8 @@
                         "cashierShiftRequiredEnabled",
                         "cashierShiftMultiCashierEnabled",
                         "cashVoucherApprovalEnabled",
-                        "cashierDrawerSeparateEnabled"
+                        "cashierDrawerSeparateEnabled",
+                        "sidebarAutoCollapseEnabled"
                       ]
                     },
                     "meta": {
@@ -24527,6 +24531,9 @@
                         },
                         "cashierDrawerSeparateEnabled": {
                           "type": "boolean"
+                        },
+                        "sidebarAutoCollapseEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -24545,7 +24552,8 @@
                         "cashierShiftRequiredEnabled",
                         "cashierShiftMultiCashierEnabled",
                         "cashVoucherApprovalEnabled",
-                        "cashierDrawerSeparateEnabled"
+                        "cashierDrawerSeparateEnabled",
+                        "sidebarAutoCollapseEnabled"
                       ]
                     },
                     "meta": {
@@ -24847,6 +24855,9 @@
                   },
                   "cashierDrawerSeparateEnabled": {
                     "type": "boolean"
+                  },
+                  "sidebarAutoCollapseEnabled": {
+                    "type": "boolean"
                   }
                 }
               }
@@ -25073,6 +25084,9 @@
                         },
                         "cashierDrawerSeparateEnabled": {
                           "type": "boolean"
+                        },
+                        "sidebarAutoCollapseEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -25091,7 +25105,8 @@
                         "cashierShiftRequiredEnabled",
                         "cashierShiftMultiCashierEnabled",
                         "cashVoucherApprovalEnabled",
-                        "cashierDrawerSeparateEnabled"
+                        "cashierDrawerSeparateEnabled",
+                        "sidebarAutoCollapseEnabled"
                       ]
                     },
                     "meta": {
@@ -25409,6 +25424,83 @@
           "clinic"
         ],
         "summary": "\"Yêu cầu mở ca trước khi thu tiền\" — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /clinic-settings/deferred-payment-enabled)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "enabled"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clinic-settings/sidebar-auto-collapse-enabled": {
+      "get": {
+        "tags": [
+          "clinic"
+        ],
+        "summary": "\"Tự động thu gọn menu khi chuyển trang\" — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /clinic-settings/deferred-payment-enabled)",
         "security": [
           {
             "bearerAuth": []

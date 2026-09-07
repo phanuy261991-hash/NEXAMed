@@ -8,10 +8,23 @@ import type {
   UpdateCashVoucherRequest,
   VoidCashVoucherRequest,
 } from '@nexamed/shared';
-import { getApiClient, unwrap } from '../../shared/api/client';
+import { downloadFile, getApiClient, unwrap } from '../../shared/api/client';
 
 export async function getCashVouchers(query: ListCashVouchersQuery): Promise<ListCashVouchersResponse> {
   return unwrap(await getApiClient().GET('/api/v1/cash-vouchers', { params: { query } })) as ListCashVouchersResponse;
+}
+
+/** Xuất Excel — endpoint đặt ở module `cash-book-report` (`GET /cash-book/vouchers/export`, đúng
+ * bộ lọc đang xem), tải file thô qua `downloadFile()`, đúng khuôn `cash-flow-report.api.ts`. */
+export async function exportCashVouchers(query: ListCashVouchersQuery): Promise<void> {
+  const params = new URLSearchParams();
+  if (query.from) params.set('from', query.from);
+  if (query.to) params.set('to', query.to);
+  if (query.direction) params.set('direction', query.direction);
+  if (query.status) params.set('status', query.status);
+  const from = query.from ?? 'tat-ca';
+  const to = query.to ?? 'tat-ca';
+  await downloadFile(`/api/v1/cash-book/vouchers/export?${params.toString()}`, `phieu-thu-chi-${from}_${to}.xlsx`);
 }
 
 export async function getCashVoucher(id: string): Promise<CashVoucher> {

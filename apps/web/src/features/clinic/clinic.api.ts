@@ -1,5 +1,6 @@
 import type {
   AllowStaffSelfScheduleStatus,
+  SidebarAutoCollapseStatus,
   BusinessCodeTemplateItem,
   BusinessCodeType,
   CashierShiftRequiredStatus,
@@ -58,6 +59,11 @@ export async function getAllowStaffSelfScheduleStatus(): Promise<AllowStaffSelfS
 /** "Yêu cầu mở ca trước khi thu tiền" (2026-09-04) — tự-phục vụ, không cần `clinic_config.read` (đúng khuôn `getDeferredPaymentStatus`). */
 export async function getCashierShiftRequiredStatus(): Promise<CashierShiftRequiredStatus> {
   return unwrap(await getApiClient().GET('/api/v1/clinic-settings/cashier-shift-required-enabled')) as CashierShiftRequiredStatus;
+}
+
+/** "Tự động thu gọn menu khi chuyển trang" (2026-09-07) — tự-phục vụ, không cần `clinic_config.read` (đúng khuôn `getDeferredPaymentStatus`). */
+export async function getSidebarAutoCollapseStatus(): Promise<SidebarAutoCollapseStatus> {
+  return unwrap(await getApiClient().GET('/api/v1/clinic-settings/sidebar-auto-collapse-enabled')) as SidebarAutoCollapseStatus;
 }
 
 /** Trang "Thông tin phòng khám" (2026-08-13) — GET/PATCH cùng contract `clinic-settings` phía trên. */

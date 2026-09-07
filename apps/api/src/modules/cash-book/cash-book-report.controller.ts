@@ -1,6 +1,6 @@
 import { Controller, Get, Query, Req, Res, UseGuards } from '@nestjs/common';
 import type { Request, Response } from 'express';
-import { cashFlowReportQuerySchema, getCashBookLedgerQuerySchema } from '@nexamed/shared';
+import { cashFlowReportQuerySchema, getCashBookLedgerQuerySchema, listCashVouchersQuerySchema } from '@nexamed/shared';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
@@ -28,6 +28,35 @@ export class CashBookReportController {
     const dto = getCashBookLedgerQuerySchema.parse(query);
     const { tenantId } = req.user!;
     return this.reportService.getLedger(tenantId, dto.cashAccountId, dto.from, dto.to);
+  }
+
+  /** "Xuất Excel" cho "Sổ quỹ" — cùng quyền `cash_voucher.read` với `ledger()` (tra cứu vận hành
+   * hằng ngày, KHÔNG phải báo cáo quản trị tổng hợp — khác `cash_voucher.report`). Đặt TRƯỚC
+   * `ledger()` không cần thiết (khác path cố định `ledger/export`, không đụng `:id`). */
+  @Get('ledger/export')
+  @RequirePermission('cash_voucher', 'read')
+  async exportLedger(@Query() query: unknown, @Req() req: Request, @Res() res: Response): Promise<void> {
+    const dto = getCashBookLedgerQuerySchema.parse(query);
+    const { tenantId } = req.user!;
+    const ledger = await this.reportService.getLedger(tenantId, dto.cashAccountId, dto.from, dto.to);
+    const buffer = await this.exportService.buildCashBookLedgerExcel(ledger, dto.from, dto.to);
+    res.setHeader('Content-Type', EXCEL_CONTENT_TYPE);
+    res.setHeader('Content-Disposition', `attachment; filename="so-quy-${dto.from ?? 'tat-ca'}_${dto.to ?? 'tat-ca'}.xlsx"`);
+    res.send(buffer);
+  }
+
+  /** "Xuất Excel" cho "Phiếu thu / Phiếu chi" — cùng quyền `cash_voucher.read` với danh sách
+   * (`CashVoucherController.list()`), đúng bộ lọc đang xem trên `CashVoucherListPage.tsx`. */
+  @Get('vouchers/export')
+  @RequirePermission('cash_voucher', 'read')
+  async exportVouchers(@Query() query: unknown, @Req() req: Request, @Res() res: Response): Promise<void> {
+    const dto = listCashVouchersQuerySchema.parse(query);
+    const { tenantId } = req.user!;
+    const data = await this.reportService.getVoucherExportData(tenantId, dto);
+    const buffer = await this.exportService.buildCashVoucherListExcel(dto.from, dto.to, data);
+    res.setHeader('Content-Type', EXCEL_CONTENT_TYPE);
+    res.setHeader('Content-Disposition', `attachment; filename="phieu-thu-chi-${dto.from ?? 'tat-ca'}_${dto.to ?? 'tat-ca'}.xlsx"`);
+    res.send(buffer);
   }
 
   @Get('cash-flow-report')

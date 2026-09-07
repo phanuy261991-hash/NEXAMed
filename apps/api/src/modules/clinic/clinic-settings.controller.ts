@@ -72,6 +72,18 @@ export class ClinicSettingsController {
     return { enabled };
   }
 
+  /**
+   * "Tự động thu gọn menu khi chuyển trang" (2026-09-07) — tự-phục vụ, KHÔNG gắn `@RequirePermission`
+   * (đúng khuôn `getAllowStaffSelfScheduleEnabled` ở trên): MỌI nhân viên (không chỉ `clinic_admin`)
+   * cần biết công tắc này để `Sidebar.tsx` tự thu gọn đúng theo cấu hình.
+   */
+  @Get('sidebar-auto-collapse-enabled')
+  async getSidebarAutoCollapseEnabled(@Req() req: Request) {
+    const { tenantId } = req.user!;
+    const enabled = await this.clinicSettingsService.getSidebarAutoCollapseEnabled(tenantId);
+    return { enabled };
+  }
+
   @Patch()
   @RequirePermission('clinic_config', 'update')
   async update(@Body() body: unknown, @Req() req: Request) {

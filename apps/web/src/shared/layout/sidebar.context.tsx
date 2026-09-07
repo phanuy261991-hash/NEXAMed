@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
+import { useLocation } from 'react-router-dom';
 
 interface SidebarContextValue {
   collapsed: boolean;
@@ -39,4 +40,23 @@ export function useAutoCollapseSidebar(): void {
     return () => setCollapsed(previousRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ chạy lúc mount/unmount, không theo dõi `collapsed` đổi sau đó (người dùng có thể tự mở lại tay trong lúc khám).
   }, []);
+}
+
+/**
+ * "Tự động thu gọn menu khi chuyển trang" (2026-09-07, tenant_setting `sidebarAutoCollapseEnabled`,
+ * mặc định TẮT — `docs/DECISIONS.md`) — KHÔNG liên quan tới `useAutoCollapseSidebar()` ở trên (màn
+ * hình khám luôn tự thu gọn CỐ ĐỊNH, không đi qua cờ này — đã hỏi và chốt qua `AskUserQuestion`).
+ * Gọi Ở CẤP `Sidebar.tsx` (không phải trang con) vì cần biết MỌI lần đổi route trong toàn app, kể
+ * cả điều hướng không qua sidebar (breadcrumb, nút "Quay lại", điều hướng lập trình sau khi lưu...).
+ * Ép thu gọn lại mỗi lần đổi `pathname` (không tự khôi phục trạng thái mở tay của người dùng ở lần
+ * điều hướng kế tiếp — quyết định đã chốt, khác hẳn `useAutoCollapseSidebar()`).
+ */
+export function useAutoCollapseSidebarOnNavigate(enabled: boolean): void {
+  const { setCollapsed } = useSidebar();
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    if (enabled) setCollapsed(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ ép thu gọn khi ĐỔI trang hoặc đổi cấu hình, không phải mỗi lần `setCollapsed` đổi (người dùng có thể tự mở lại tay trong lúc đứng yên ở trang hiện tại).
+  }, [pathname, enabled]);
 }

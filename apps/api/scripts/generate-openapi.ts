@@ -16,6 +16,7 @@ import {
   appointmentPhoneLookupResponseSchema,
   appointmentSummarySchema,
   allowStaffSelfScheduleStatusSchema,
+  sidebarAutoCollapseStatusSchema,
   breakGlassRequestSchema,
   breakGlassResponseSchema,
   clinicPrintHeaderSchema,
@@ -1737,6 +1738,18 @@ registry.registerPath({
   security: [{ bearerAuth: [] }],
   responses: {
     200: jsonResponse('Thành công', envelope(cashierShiftRequiredStatusSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/clinic-settings/sidebar-auto-collapse-enabled',
+  tags: ['clinic'],
+  summary: '"Tự động thu gọn menu khi chuyển trang" — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /clinic-settings/deferred-payment-enabled)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(sidebarAutoCollapseStatusSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
   },
 });

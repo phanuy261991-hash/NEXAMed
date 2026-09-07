@@ -26,6 +26,7 @@ import {
   createFloor,
   createRoom,
   getAllowStaffSelfScheduleStatus,
+  getSidebarAutoCollapseStatus,
   getCashierShiftRequiredStatus,
   getClinicPrintHeader,
   getClinicProfile,
@@ -102,6 +103,19 @@ export function useCashierShiftRequiredEnabledQuery() {
   });
 }
 
+/**
+ * "Tự động thu gọn menu khi chuyển trang" — `Sidebar.tsx` dùng riêng hook này (KHÔNG dùng
+ * `useClinicSettingsQuery()`): MỌI nhân viên (không chỉ `clinic_admin`) cần biết công tắc này,
+ * cùng lý do `useDeferredPaymentEnabledQuery` ở trên.
+ */
+export function useSidebarAutoCollapseEnabledQuery() {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'clinic', 'sidebar-auto-collapse-enabled'),
+    queryFn: getSidebarAutoCollapseStatus,
+  });
+}
+
 export function useUpdateClinicSettingsMutation() {
   const { tenantId } = useAppConfig();
   const queryClient = useQueryClient();
@@ -120,6 +134,8 @@ export function useUpdateClinicSettingsMutation() {
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'doctor-availability-policy') });
       // "Yêu cầu mở ca trước khi thu tiền" — Thu ngân đọc qua hook tự-phục vụ riêng, làm mới luôn.
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'cashier-shift-required-enabled') });
+      // "Tự động thu gọn menu khi chuyển trang" — Sidebar.tsx đọc qua hook tự-phục vụ riêng, làm mới luôn.
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'sidebar-auto-collapse-enabled') });
     },
   });
 }

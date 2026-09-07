@@ -237,6 +237,17 @@ export const clinicSettingsSchema = z.object({
    * ở Service, lỗi `CASHIER_DRAWER_SEPARATE_REQUIRES_MULTI_CASHIER` nếu bật sai thứ tự).
    */
   cashierDrawerSeparateEnabled: z.boolean(),
+  /**
+   * "Tự động thu gọn menu khi chuyển trang" (2026-09-07, chủ dự án yêu cầu trực tiếp) — pill "Cấu
+   * hình phòng khám" → mục con "Cấu hình chung", cùng chỗ với "Cho phép nhân viên tự đăng ký ca".
+   * TẮT (mặc định — an toàn, giữ nguyên hành vi hiện tại): sidebar chỉ thu gọn/mở rộng theo đúng
+   * thao tác tay của người dùng, trừ màn hình khám (`EncounterConsultationPage.tsx`) vẫn LUÔN tự
+   * thu gọn lúc vào + tự khôi phục lúc rời — hành vi CỐ ĐỊNH, không đi qua cờ này (đã hỏi và chốt:
+   * trang đó cần không gian rộng do nhiều panel, không phụ thuộc lựa chọn cấu hình chung). BẬT: MỌI
+   * lượt điều hướng sang trang khác (qua sidebar hay điều hướng khác) đều ép sidebar thu gọn ngay,
+   * kể cả khi người dùng vừa tự mở lại tay ở trang trước đó — không tự khôi phục trạng thái mở lại.
+   */
+  sidebarAutoCollapseEnabled: z.boolean(),
 });
 export type ClinicSettings = z.infer<typeof clinicSettingsSchema>;
 
@@ -263,6 +274,7 @@ export const updateClinicSettingsRequestSchema = z.object({
   cashierShiftMultiCashierEnabled: z.boolean().optional(),
   cashVoucherApprovalEnabled: z.boolean().optional(),
   cashierDrawerSeparateEnabled: z.boolean().optional(),
+  sidebarAutoCollapseEnabled: z.boolean().optional(),
 });
 export type UpdateClinicSettingsRequest = z.infer<typeof updateClinicSettingsRequestSchema>;
 
@@ -293,6 +305,8 @@ export const DEFAULT_CASHIER_SHIFT_MULTI_CASHIER_ENABLED = false;
 export const DEFAULT_CASH_VOUCHER_APPROVAL_ENABLED = false;
 /** Tắt theo mặc định — giữ nguyên "1 quỹ tiền mặt chung" tới khi chủ động bật (yêu cầu bật kèm "Đa thu ngân"). */
 export const DEFAULT_CASHIER_DRAWER_SEPARATE_ENABLED = false;
+/** Tắt theo mặc định (an toàn — giữ nguyên hành vi sidebar hiện tại tới khi chủ động bật). */
+export const DEFAULT_SIDEBAR_AUTO_COLLAPSE_ENABLED = false;
 
 /**
  * `GET /clinic-settings/cashier-shift-blind-close-enabled` — chiếu tối thiểu tự-phục vụ, cùng lý
@@ -329,6 +343,14 @@ export type DeferredPaymentStatus = z.infer<typeof deferredPaymentStatusSchema>;
  */
 export const allowStaffSelfScheduleStatusSchema = z.object({ enabled: z.boolean() });
 export type AllowStaffSelfScheduleStatus = z.infer<typeof allowStaffSelfScheduleStatusSchema>;
+
+/**
+ * `GET /clinic-settings/sidebar-auto-collapse-enabled` — chiếu tối thiểu tự-phục vụ, cùng lý do
+ * `allowStaffSelfScheduleStatusSchema` ở trên: MỌI nhân viên (không chỉ `clinic_admin`) cần biết
+ * công tắc này để `Sidebar.tsx` tự thu gọn đúng theo cấu hình, nhưng không có `clinic_config.read`.
+ */
+export const sidebarAutoCollapseStatusSchema = z.object({ enabled: z.boolean() });
+export type SidebarAutoCollapseStatus = z.infer<typeof sidebarAutoCollapseStatusSchema>;
 
 /**
  * Trang "Thông tin phòng khám" (2026-08-13, `/admin/system-config`) — mở rộng `tenant`

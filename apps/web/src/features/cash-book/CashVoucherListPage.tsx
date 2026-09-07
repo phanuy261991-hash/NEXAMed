@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ArrowCircleDown, ArrowCircleUp, ArrowsLeftRight, Plus, Receipt, Scales } from '@phosphor-icons/react';
+import { ArrowCircleDown, ArrowCircleUp, ArrowsLeftRight, DownloadSimple, Plus, Receipt, Scales } from '@phosphor-icons/react';
 import type { CashVoucherStatus, ReferenceCatalogDirection } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
@@ -9,6 +9,7 @@ import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
 import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
 import { Skeleton } from '../../shared/ui/Skeleton';
+import { StatCardRow } from '../../shared/ui/StatCard';
 import { StatusBadge, type StatusBadgeTone } from '../../shared/ui/StatusBadge';
 import { formatVnd } from '../../shared/format/currency';
 import { useRowSelection } from '../../shared/hooks/useRowSelection';
@@ -17,7 +18,7 @@ import { getVietnamTodayDateString } from '../appointment/schedule-grid.utils';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { CashVoucherDetailDialog } from './CashVoucherDetailDialog';
 import { CashVoucherFormDialog, type CashVoucherSubmitDto } from './CashVoucherFormDialog';
-import { useCashVouchersQuery, useCreateCashVoucherMutation } from './cash-voucher.queries';
+import { useCashVouchersQuery, useCreateCashVoucherMutation, useExportCashVouchersMutation } from './cash-voucher.queries';
 import { useCashAccountsQuery } from './cash-account.queries';
 import { TransferVoucherFormDialog } from './TransferVoucherFormDialog';
 
@@ -67,15 +68,17 @@ export function CashVoucherListPage() {
   const [detailId, setDetailId] = useState<string | null>(null);
   const [transferModalOpen, setTransferModalOpen] = useState(false);
 
-  const listQuery = useCashVouchersQuery({
+  const listFilter = {
     from: dateFrom,
     to: dateTo,
     direction: direction === 'ALL' ? undefined : direction,
     status: status || undefined,
-  });
+  };
+  const listQuery = useCashVouchersQuery(listFilter);
   const incomeExpenseTypeQuery = useReferenceCatalogQuery('INCOME_EXPENSE_TYPE', true);
   const cashAccountsQuery = useCashAccountsQuery();
   const createMutation = useCreateCashVoucherMutation();
+  const exportMutation = useExportCashVouchersMutation();
 
   const items = useMemo(() => listQuery.data?.items ?? [], [listQuery.data]);
   const itemIds = useMemo(() => items.map((i) => i.id), [items]);
@@ -154,6 +157,10 @@ export function CashVoucherListPage() {
           </select>
         </div>
         <div className="flex flex-shrink-0 items-center gap-2">
+          <Button type="button" variant="secondary" loading={exportMutation.isPending} onClick={() => exportMutation.mutate(listFilter)}>
+            <DownloadSimple size={16} weight="bold" aria-hidden="true" />
+            Xuất Excel
+          </Button>
           {canManageAccounts && (
             <Button type="button" variant="secondary" onClick={() => setTransferModalOpen(true)}>
               <ArrowsLeftRight size={16} weight="bold" aria-hidden="true" />
@@ -169,41 +176,23 @@ export function CashVoucherListPage() {
         </div>
       </div>
 
-      {/* Thẻ số liệu tách rời (thay dải liền viền chia đôi cũ) — mỗi thẻ nền màu nhạt riêng để
-          phân biệt rõ hơn theo mắt lướt qua. Số tiền `text-2xl font-bold`, nhãn `text-xs font-bold`
-          màu đặc (không opacity) — thử `font-semibold`/nhạt hơn trước đó bị phản hồi "mỏng", chốt
-          lại đậm/to rõ ràng (2026-09-06). */}
+      {/* Dải KPI dùng chung `shared/ui/StatCard.tsx#StatCardRow` (redesign lần 2, 2026-09-07 —
+          1 dải liền khối chia ngăn bằng đường kẻ mảnh, không còn thẻ/icon-vòng-tròn riêng từng ô). */}
       {listQuery.isSuccess && (
         <div className="flex flex-shrink-0 flex-wrap items-stretch gap-3">
-          <div className="flex min-w-[210px] flex-1 items-center gap-3.5 rounded-xl border border-emerald-100 bg-emerald-50/50 px-5 py-4">
-            <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-white text-emerald-600 shadow-sm ring-1 ring-emerald-100">
-              <ArrowCircleDown size={22} weight="bold" aria-hidden="true" />
-            </div>
-            <div className="flex min-w-0 flex-col">
-              <span className="text-xs font-bold uppercase tracking-wide text-emerald-700">Tổng thu</span>
-              <span className="truncate text-2xl font-bold tabular-nums text-emerald-700">{formatVnd(listQuery.data.totalIncomeAmount)}</span>
-            </div>
-          </div>
-          <div className="flex min-w-[210px] flex-1 items-center gap-3.5 rounded-xl border border-rose-100 bg-rose-50/50 px-5 py-4">
-            <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-white text-rose-600 shadow-sm ring-1 ring-rose-100">
-              <ArrowCircleUp size={22} weight="bold" aria-hidden="true" />
-            </div>
-            <div className="flex min-w-0 flex-col">
-              <span className="text-xs font-bold uppercase tracking-wide text-rose-700">Tổng chi</span>
-              <span className="truncate text-2xl font-bold tabular-nums text-rose-700">{formatVnd(listQuery.data.totalExpenseAmount)}</span>
-            </div>
-          </div>
-          <div className="flex min-w-[210px] flex-1 items-center gap-3.5 rounded-xl border border-blue-100 bg-blue-50/50 px-5 py-4">
-            <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-white text-blue-600 shadow-sm ring-1 ring-blue-100">
-              <Scales size={22} weight="bold" aria-hidden="true" />
-            </div>
-            <div className="flex min-w-0 flex-col">
-              <span className="text-xs font-bold uppercase tracking-wide text-blue-700">Chênh lệch</span>
-              <span className="truncate text-2xl font-bold tabular-nums text-slate-900">
-                {formatVnd(listQuery.data.totalIncomeAmount - listQuery.data.totalExpenseAmount)}
-              </span>
-            </div>
-          </div>
+          <StatCardRow
+            items={[
+              { icon: ArrowCircleDown, tone: 'emerald', label: 'Tổng thu', value: formatVnd(listQuery.data.totalIncomeAmount) },
+              { icon: ArrowCircleUp, tone: 'rose', label: 'Tổng chi', value: formatVnd(listQuery.data.totalExpenseAmount) },
+              {
+                icon: Scales,
+                tone: 'blue',
+                label: 'Chênh lệch',
+                value: formatVnd(listQuery.data.totalIncomeAmount - listQuery.data.totalExpenseAmount),
+                emphasis: true,
+              },
+            ]}
+          />
           {listQuery.data.pendingApprovalCount > 0 && (
             <div className="flex flex-none items-center gap-3 self-stretch rounded-xl bg-amber-500 px-5 py-4 text-white">
               <span className="whitespace-nowrap text-sm font-bold">{listQuery.data.pendingApprovalCount} phiếu chờ duyệt</span>

@@ -17,6 +17,7 @@ import {
   DEFAULT_NO_SHOW_AUTO_ENABLED,
   DEFAULT_NO_SHOW_THRESHOLD_MINUTES,
   DEFAULT_OVERDUE_WAIT_WARNING_MINUTES,
+  DEFAULT_SIDEBAR_AUTO_COLLAPSE_ENABLED,
   DEFAULT_SLOT_DURATION_MINUTES,
   DEFAULT_WORK_SHIFT_ASSIGNMENT_LOCK_GRACE_DAYS,
   type BusinessHours,
@@ -78,6 +79,10 @@ const cashVoucherApprovalEnabledSchema = z.boolean();
 // mặt chung" tới khi chủ động bật, bắt buộc bật kèm "Đa thu ngân").
 const CASHIER_DRAWER_SEPARATE_ENABLED_KEY = 'cashier_drawer_separate_enabled';
 const cashierDrawerSeparateEnabledSchema = z.boolean();
+// "Tự động thu gọn menu khi chuyển trang" (2026-09-07) — tắt theo mặc định (an toàn, giữ nguyên
+// hành vi sidebar hiện tại tới khi chủ động bật).
+const SIDEBAR_AUTO_COLLAPSE_KEY = 'sidebar_auto_collapse_enabled';
+const sidebarAutoCollapseSchema = z.boolean();
 // "Cấu hình mẫu mã phát sinh" (docs/DECISIONS.md #114, 2026-09-03) — 1 object JSON duy nhất,
 // khoá theo loại mã (7 loại), chỉ chứa entry của loại mã ĐÃ được tenant chủ động sửa (loại chưa
 // đụng tới thì KHÔNG có key — service tự áp mặc định khớp hành vi cũ, xem `BusinessCodeService`).
@@ -277,6 +282,19 @@ export class ClinicSettingsRepository {
 
   upsertCashierDrawerSeparateEnabled(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
     return this.upsert(tx, tenantId, actorId, CASHIER_DRAWER_SEPARATE_ENABLED_KEY, value);
+  }
+
+  async getSidebarAutoCollapseEnabled(tx: Prisma.TransactionClient, tenantId: string): Promise<boolean> {
+    const setting = await tx.tenantSetting.findFirst({ where: { tenantId, key: SIDEBAR_AUTO_COLLAPSE_KEY } });
+    if (!setting) {
+      return DEFAULT_SIDEBAR_AUTO_COLLAPSE_ENABLED;
+    }
+    const parsed = sidebarAutoCollapseSchema.safeParse(setting.valueJson);
+    return parsed.success ? parsed.data : DEFAULT_SIDEBAR_AUTO_COLLAPSE_ENABLED;
+  }
+
+  upsertSidebarAutoCollapseEnabled(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
+    return this.upsert(tx, tenantId, actorId, SIDEBAR_AUTO_COLLAPSE_KEY, value);
   }
 
   /** Chỉ trả entry của loại mã tenant ĐÃ chủ động cấu hình — loại mã vắng mặt nghĩa là "dùng mặc
