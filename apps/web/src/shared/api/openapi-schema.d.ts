@@ -3351,6 +3351,94 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/encounters/patient-clinical-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Trang "Hồ sơ bệnh nhân" — tổng lượt khám COMPLETED, lần gần nhất, sinh hiệu 5 lượt gần nhất (đầy đủ mọi bác sĩ, không giới hạn personal) */
+        get: {
+            parameters: {
+                query: {
+                    patientId: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công (0/null/[] nếu bệnh nhân chưa có lượt khám nào, hoặc thuộc tenant khác) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                totalCompletedVisits: number;
+                                lastCompletedVisitAt: string | null;
+                                recentVitalSigns: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    encounterId: string;
+                                    measuredAt: string;
+                                    weightGram: number | null;
+                                    heightMm: number | null;
+                                    bpSystolic: number | null;
+                                    bpDiastolic: number | null;
+                                    temperatureC: number | null;
+                                    pulse: number | null;
+                                    spo2: number | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền patient.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/encounters/{id}/start": {
         parameters: {
             query?: never;

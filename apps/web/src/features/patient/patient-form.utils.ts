@@ -4,6 +4,13 @@ import { FAMILY_RELATION_LABELS } from './family-relation';
 
 export { FAMILY_RELATION_LABELS };
 
+/**
+ * Nhãn hiển thị giới tính — trùng lặp độc lập ở `PatientListPage.tsx`/`PatientDetailPage.tsx`/
+ * `EncounterConsultationPage.tsx` (2026-09-08, gộp lại theo CLAUDE.md "trùng lặp lần 2 → trích
+ * xuất ra dùng chung", đã trùng tới lần 3 trước khi gộp).
+ */
+export const GENDER_LABEL: Record<string, string> = { male: 'Nam', female: 'Nữ', other: 'Khác' };
+
 /** Chuỗi rỗng → không gửi field (undefined) — khớp field optional của schema dùng chung. */
 function orUndefined(value: string): string | undefined {
   return value.trim() === '' ? undefined : value;

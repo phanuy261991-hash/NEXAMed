@@ -16,7 +16,7 @@ import {
   X,
   XCircle,
 } from '@phosphor-icons/react';
-import type { ClinicalNoteSection, ConsultationDetailResponse, DiagnosisType, EncounterHistoryItem, PatientAllergenItem, SaveClinicalNoteRequest } from '@nexamed/shared';
+import type { ClinicalNoteSection, ConsultationDetailResponse, DiagnosisType, EncounterHistoryItem, SaveClinicalNoteRequest } from '@nexamed/shared';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { useAutoCollapseSidebar } from '../../shared/layout/sidebar.context';
 import { ApiError } from '../../shared/api/client';
@@ -29,8 +29,11 @@ import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { ReleaseEncounterDialog } from '../../shared/ui/ReleaseEncounterDialog';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { Textarea } from '../../shared/ui/Textarea';
-import { computeAgeLabel, buildHistoryUpdatePayload, consultationPatientToHistoryFormValues } from '../patient/patient-form.utils';
+import { computeAgeLabel, buildHistoryUpdatePayload, consultationPatientToHistoryFormValues, GENDER_LABEL } from '../patient/patient-form.utils';
 import { PatientHistoryDialog } from '../patient/PatientHistoryDialog';
+import { AllergyBanner, HistoryBoxCard } from '../patient/AllergyBanner';
+import { PersonalHistoryCard } from '../patient/PersonalHistoryCard';
+import { FamilyHistoryCard } from '../patient/FamilyHistoryCard';
 import { CLINICAL_SECTION_LABEL, DIAGNOSIS_TYPE_LABEL, VitalChip, classifyBmi, type ClinicalKey } from './clinical-display';
 import { EncounterHistoryDetailDialog } from './EncounterHistoryDetailDialog';
 import type { PatientFormValues } from '../patient/PatientFormFields';
@@ -50,7 +53,6 @@ import {
   useSaveDiagnosesMutation,
 } from './encounter.queries';
 
-const GENDER_LABEL: Record<string, string> = { male: 'Nam', female: 'Nữ', other: 'Khác' };
 /** Ký hồ sơ khám (Sprint 5, S5-02/03) — ghép field form (`ClinicalKey`) sang mã section thật gửi lên `.../clinical-note/amend`. */
 const CLINICAL_SECTION_CODE: Record<ClinicalKey, ClinicalNoteSection> = {
   reasonForVisit: 'REASON_FOR_VISIT',
@@ -93,11 +95,6 @@ function formatRelativeTime(iso: string): string {
   if (days < 30) return `${days} ngày trước`;
   if (days < 365) return `${Math.round(days / 30)} tháng trước`;
   return `${Math.round(days / 365)} năm trước`;
-}
-
-/** Thói quen/lối sống dùng CHUNG mảng `patient.conditions` với bệnh lý nền, mã hoá ICD-10 Chương XXI (Z72.x) — xem `PatientHistoryDialog.tsx`. */
-function isHabitConditionCode(icd10Code: string): boolean {
-  return icd10Code.startsWith('Z72');
 }
 
 const TABS = [
@@ -693,9 +690,6 @@ export function EncounterConsultationPage() {
       : null;
   const bmiClass = bmi != null ? classifyBmi(bmi) : null;
   const warningFields = new Set((vitalSigns?.warnings ?? []).map((w) => w.field));
-  /** Tách bệnh lý nền/thói quen khỏi cùng mảng `patient.conditions` để hiện 2 dòng riêng ở panel Tiền sử (xem `isHabitConditionCode`). */
-  const personalDiseaseConditions = patient.conditions.filter((c) => !isHabitConditionCode(c.icd10Code));
-  const personalHabitConditions = patient.conditions.filter((c) => isHabitConditionCode(c.icd10Code));
   const receptionTypeName = encounter.receptionTypeCode
     ? (receptionTypeCatalogQuery.data?.items.find((i) => i.code === encounter.receptionTypeCode)?.name ?? null)
     : null;
@@ -866,53 +860,9 @@ export function EncounterConsultationPage() {
                   )}
                 </HistoryBoxCard>
 
-                <HistoryBoxCard title="Tiền sử bản thân" onAdd={() => setHistoryDialogOpen(true)}>
-                  {personalDiseaseConditions.length === 0 && personalHabitConditions.length === 0 && !patient.personalHistory ? (
-                    <p className="text-[13px] text-slate-400">Chưa ghi nhận.</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {personalDiseaseConditions.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5">
-                          {personalDiseaseConditions.map((c) => (
-                            <span
-                              key={c.icd10Code}
-                              className="rounded-full border border-brand-teal bg-brand-teal-tint px-2.5 py-1 text-[12px] font-semibold text-brand-teal-active"
-                            >
-                              {c.icd10Name}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      {personalHabitConditions.length > 0 && (
-                        <p className="text-[12.5px]">
-                          <span className="font-semibold text-slate-700">Thói quen: </span>
-                          <span className="text-slate-600">{personalHabitConditions.map((c) => c.icd10Name).join(' / ')}</span>
-                        </p>
-                      )}
-                      {patient.personalHistory && (
-                        <p className="text-[12.5px]">
-                          <span className="font-semibold text-slate-700">Ghi chú: </span>
-                          <span className="text-slate-600">{patient.personalHistory}</span>
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </HistoryBoxCard>
+                <PersonalHistoryCard conditions={patient.conditions} personalHistory={patient.personalHistory} onAdd={() => setHistoryDialogOpen(true)} />
 
-                <HistoryBoxCard title="Tiền sử gia đình" onAdd={() => setHistoryDialogOpen(true)}>
-                  {patient.familyHistoryRows.length === 0 ? (
-                    <p className="text-[13px] text-slate-400">Chưa ghi nhận.</p>
-                  ) : (
-                    <ul className="space-y-1">
-                      {patient.familyHistoryRows.map((row) => (
-                        <li key={row.id} className="text-[12.5px] font-semibold text-slate-800">
-                          {row.relationLabel}: <span className="font-normal text-slate-600">{row.icd10Name}</span>
-                          {row.ageOfOnsetYears !== null && <span className="font-normal text-slate-400"> ({row.ageOfOnsetYears} tuổi)</span>}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </HistoryBoxCard>
+                <FamilyHistoryCard familyHistoryRows={patient.familyHistoryRows} onAdd={() => setHistoryDialogOpen(true)} />
               </div>
             </div>
           )}
@@ -1391,101 +1341,6 @@ function SectionLabel({ children, className = '' }: { children: React.ReactNode;
   return <div className={`mb-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-700 ${className}`}>{children}</div>;
 }
 
-/** Chip 1 dị ứng — dùng chung cho phần hiện sẵn lẫn danh sách đầy đủ trong dropdown "xem thêm". */
-function AllergenChip({ allergen }: { allergen: PatientAllergenItem }) {
-  return (
-    <span className="whitespace-nowrap rounded-full border border-rose-300 bg-white px-2.5 py-0.5 text-xs font-semibold text-rose-700">
-      {allergen.name} <span className="font-medium text-rose-600">({allergen.allergenGroupName})</span>
-    </span>
-  );
-}
-
-/**
- * Banner "CẢNH BÁO DỊ ỨNG" ở đầu trang khám — chỉ hiện tối đa 2 chip đầu tiên (theo yêu cầu chủ dự
- * án, tránh chiếm quá nhiều chỗ ở dòng định danh chính); còn lại gộp vào nút "+N", rê chuột hoặc bấm
- * vào mở dropdown liệt kê ĐẦY ĐỦ dị nguyên. **Chưa có "mức độ nghiêm trọng"** — hệ thống hiện không
- * lưu trường này cho dị nguyên (`patient_allergen`/`allergen_catalog` chỉ có tên + nhóm), nên dropdown
- * chỉ hiện tên + nhóm như banner chính, không bịa số liệu mức độ.
- */
-function AllergyBanner({ allergens }: { allergens: PatientAllergenItem[] }) {
-  const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function handleClickOutside(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [open]);
-
-  const VISIBLE_LIMIT = 2;
-  const visible = allergens.slice(0, VISIBLE_LIMIT);
-  const hiddenCount = allergens.length - visible.length;
-
-  return (
-    <span
-      ref={containerRef}
-      className="relative flex flex-wrap items-center gap-1.5 rounded-md border border-rose-300 bg-rose-50 px-2.5 py-1.5"
-      onMouseEnter={() => hiddenCount > 0 && setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-    >
-      <span className="flex items-center gap-1 whitespace-nowrap text-xs font-bold text-rose-700">
-        <Warning size={13} weight="fill" aria-hidden="true" />
-        CẢNH BÁO DỊ ỨNG:
-      </span>
-      {visible.map((a) => (
-        <AllergenChip key={a.id} allergen={a} />
-      ))}
-      {hiddenCount > 0 && (
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          aria-expanded={open}
-          aria-label={`Xem thêm ${hiddenCount} dị ứng khác`}
-          className="whitespace-nowrap rounded-full border border-rose-300 bg-rose-100 px-2.5 py-0.5 text-xs font-bold text-rose-700 hover:bg-rose-200"
-        >
-          +{hiddenCount}
-        </button>
-      )}
-      {open && hiddenCount > 0 && (
-        <div className="scroll-hover absolute left-0 top-full z-20 mt-1.5 max-h-64 w-72 overflow-y-auto rounded-lg border border-rose-200 bg-white p-3 shadow-lg">
-          <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-rose-700">Toàn bộ dị ứng ({allergens.length})</p>
-          <div className="flex flex-wrap gap-1.5">
-            {allergens.map((a) => (
-              <AllergenChip key={a.id} allergen={a} />
-            ))}
-          </div>
-        </div>
-      )}
-    </span>
-  );
-}
-
-/**
- * Khung "Tiền sử dị ứng"/"Tiền sử bản thân"/"Tiền sử gia đình" ở panel trái màn khám — tiêu đề +
- * nút "+ Thêm" (mở `PatientHistoryDialog`, dùng chung cho cả 3 khung vì đó là dialog sửa cả 3 mục
- * cùng lúc) trên cùng 1 khung viền, theo mẫu ảnh tham khảo chủ dự án gửi.
- */
-function HistoryBoxCard({ title, onAdd, children }: { title: string; onAdd: () => void; children: React.ReactNode }) {
-  return (
-    <div className="rounded-lg border border-slate-200 bg-white p-3.5 shadow-sm">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <h3 className="text-[11px] font-bold uppercase tracking-wide text-slate-700">{title}</h3>
-        <button
-          type="button"
-          onClick={onAdd}
-          className="flex flex-shrink-0 items-center gap-1 rounded-full border border-dashed border-blue-400 bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-600 hover:bg-blue-100"
-        >
-          <Plus size={11} weight="bold" aria-hidden="true" />
-          Thêm
-        </button>
-      </div>
-      {children}
-    </div>
-  );
-}
 
 /**
  * Thẻ tóm tắt 1 lần khám trước — lần gần nhất nổi bật (viền/nền xanh đậm hơn, chữ to hơn), các lần

@@ -8069,6 +8069,206 @@
         }
       }
     },
+    "/api/v1/encounters/patient-clinical-summary": {
+      "get": {
+        "tags": [
+          "encounter"
+        ],
+        "summary": "Trang \"Hồ sơ bệnh nhân\" — tổng lượt khám COMPLETED, lần gần nhất, sinh hiệu 5 lượt gần nhất (đầy đủ mọi bác sĩ, không giới hạn personal)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "patientId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công (0/null/[] nếu bệnh nhân chưa có lượt khám nào, hoặc thuộc tenant khác)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "totalCompletedVisits": {
+                          "type": "integer"
+                        },
+                        "lastCompletedVisitAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "recentVitalSigns": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "encounterId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "measuredAt": {
+                                "type": "string"
+                              },
+                              "weightGram": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "heightMm": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "bpSystolic": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "bpDiastolic": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "temperatureC": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              },
+                              "pulse": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "spo2": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "encounterId",
+                              "measuredAt",
+                              "weightGram",
+                              "heightMm",
+                              "bpSystolic",
+                              "bpDiastolic",
+                              "temperatureC",
+                              "pulse",
+                              "spo2"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "totalCompletedVisits",
+                        "lastCompletedVisitAt",
+                        "recentVitalSigns"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền patient.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/encounters/{id}/start": {
       "post": {
         "tags": [

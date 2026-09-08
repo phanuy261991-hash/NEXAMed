@@ -258,6 +258,36 @@ export class EncounterRepository {
   }
 
   /**
+   * Trang "Hồ sơ bệnh nhân" (`GET /encounters/patient-clinical-summary`) — cố ý KHÔNG lọc theo
+   * `data_scope` của `encounter.read` (đã chốt: xem đầy đủ mọi bác sĩ, liên tục chăm sóc), gate
+   * bằng `patient.read` (global) ở tầng controller. `vitalSigns` KHÔNG lọc theo `status` lượt khám
+   * (có thể đã đo dù ca chưa hoàn tất) — chỉ `totalCompletedVisits`/`lastCompletedVisitAt` mới lọc
+   * `status='COMPLETED'`. `patientId` của tenant khác tự nhiên trả về rỗng nhờ lọc `tenantId` ở cả
+   * 2 nhánh — không cần kiểm tồn tại riêng.
+   */
+  async findPatientClinicalSummary(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    patientId: string,
+    vitalsLimit: number,
+  ): Promise<{ totalCompletedVisits: number; lastCompletedVisitAt: Date | null; vitalSigns: VitalSign[] }> {
+    const [totalCompletedVisits, lastCompleted, vitalSigns] = await Promise.all([
+      tx.encounter.count({ where: { tenantId, patientId, status: 'COMPLETED', deletedAt: null } }),
+      tx.encounter.findFirst({
+        where: { tenantId, patientId, status: 'COMPLETED', deletedAt: null },
+        orderBy: { checkedInAt: 'desc' },
+        select: { checkedInAt: true },
+      }),
+      tx.vitalSign.findMany({
+        where: { tenantId, deletedAt: null, encounter: { patientId, tenantId } },
+        orderBy: { measuredAt: 'desc' },
+        take: vitalsLimit,
+      }),
+    ]);
+    return { totalCompletedVisits, lastCompletedVisitAt: lastCompleted?.checkedInAt ?? null, vitalSigns };
+  }
+
+  /**
    * Gộp hồ sơ trùng (S5-06, PAT-04) — chuyển toàn bộ `encounter` của hồ sơ nguồn sang hồ sơ đích.
    * Không đụng `encounterNo`/trạng thái/nội dung lâm sàng nào, chỉ đổi `patientId`.
    */

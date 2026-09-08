@@ -8,6 +8,7 @@ import {
   findPatientsByNationalId,
   findPatientsByPhone,
   getPatient,
+  getPatientClinicalSummary,
   listPatients,
   updatePatient,
   uploadPatientPhoto,
@@ -97,6 +98,20 @@ export function usePatientQuery(id: string, enabled = true) {
     queryKey: queryKey(tenantId, 'patient', 'detail', id),
     queryFn: () => getPatient(id),
     enabled: enabled && id !== '',
+  });
+}
+
+/**
+ * Trang "Hồ sơ bệnh nhân" — dải KPI + bảng "Sinh hiệu theo lượt khám" (`GET
+ * /encounters/patient-clinical-summary`). Lỗi query này KHÔNG chặn hiển thị phần còn lại của
+ * trang — nơi gọi tự quyết định hiện banner lỗi cục bộ, không phải toàn trang.
+ */
+export function usePatientClinicalSummaryQuery(patientId: string) {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'patient', 'clinical-summary', patientId),
+    queryFn: () => getPatientClinicalSummary(patientId),
+    enabled: patientId !== '',
   });
 }
 

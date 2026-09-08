@@ -33,6 +33,7 @@ describe('HTTP e2e — /api/v1/encounters', () => {
   let doctorBUserId: string;
   let doctorCToken: string;
   let clinicAdminToken: string;
+  let nurseToken: string;
   let tenantBReceptionistToken: string;
   let tenantBDoctorToken: string;
 
@@ -224,6 +225,7 @@ describe('HTTP e2e — /api/v1/encounters', () => {
     doctorBUserId = doctorB.userId;
     doctorCToken = (await createUserWithRole(fixture.tenantA.id, 'doctor')).token;
     clinicAdminToken = (await createUserWithRole(fixture.tenantA.id, 'clinic_admin')).token;
+    nurseToken = (await createUserWithRole(fixture.tenantA.id, 'nurse')).token;
     tenantBReceptionistToken = (await createUserWithRole(fixture.tenantB.id, 'receptionist')).token;
     tenantBDoctorToken = (await createUserWithRole(fixture.tenantB.id, 'doctor')).token;
   });
@@ -1254,6 +1256,122 @@ describe('HTTP e2e — /api/v1/encounters', () => {
       const res = await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/start`).set(authed(doctorAToken)).send({ version: 1 });
       expect(res.status).toBe(409);
       expect(res.body.error.code).toBe('ENCOUNTER_PAYMENT_REQUIRED');
+    });
+  });
+
+  /**
+   * Trang "Hồ sơ bệnh nhân" — gate bằng `patient.read` (global mọi vai trò), CỐ Ý đọc đầy đủ mọi
+   * bác sĩ (không giới hạn `data_scope=personal` như `encounter.read` ở nơi khác).
+   */
+  describe('GET /api/v1/encounters/patient-clinical-summary', () => {
+    async function createSummaryPatient(phone: string) {
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/patients')
+        .set(authed(receptionistToken))
+        .send({ fullName: 'Bệnh nhân e2e (tổng hợp lâm sàng)', dob: '1985-05-20', gender: 'male', phone, nationalId: randomNationalId() });
+      return res.body.data.id as string;
+    }
+
+    /** Check-in trực tiếp (đích danh bác sĩ) + ghi sinh hiệu lúc còn CHECKED_IN, rồi hoàn tất khám. */
+    async function completedVisitWithVitals(patientId: string, hour: number, weightGram: number) {
+      const directRes = await request(app.getHttpServer())
+        .post('/api/v1/reception/direct')
+        .set(authed(receptionistToken))
+        .send({
+          patientId,
+          doctorId: doctorAUserId,
+          checkedInAt: isoAt(hour, 0),
+          services: [{ examTypeCode: 'KT', examTypeName: 'Khám thường', examTypePrice: 150_000, quantity: 1 }],
+          receptionTypeCode: 'RT_NEW',
+          examFormCode: 'EF_NORMAL',
+        });
+      const encounterId = directRes.body.data.id as string;
+      await payInvoice(encounterId);
+      await request(app.getHttpServer())
+        .post(`/api/v1/reception/encounters/${encounterId}/vital-signs`)
+        .set(authed(nurseToken))
+        .send({ weightGram, heightMm: 1700 });
+      await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/start`).set(authed(doctorAToken)).send({ version: 1 });
+      await request(app.getHttpServer())
+        .put(`/api/v1/encounters/${encounterId}/diagnoses`)
+        .set(authed(doctorAToken))
+        .send({ diagnoses: [{ icd10Code: 'A00.0', type: 'PRIMARY' as const }] });
+      await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/complete`).set(authed(doctorAToken)).send({ version: 2 });
+      return encounterId;
+    }
+
+    it('đếm đúng CHỈ lượt COMPLETED, sinh hiệu sắp mới nhất trước, KHÔNG lọc theo trạng thái lượt khám', async () => {
+      const patientId = await createSummaryPatient('0977100001');
+
+      await completedVisitWithVitals(patientId, 8, 60_000);
+      await completedVisitWithVitals(patientId, 9, 61_000);
+      await completedVisitWithVitals(patientId, 10, 62_000);
+
+      // Lượt đang dở (CHECKED_IN, có sinh hiệu) — KHÔNG tính vào totalCompletedVisits nhưng sinh
+      // hiệu của nó vẫn phải xuất hiện trong recentVitalSigns (đúng thiết kế: không lọc theo status).
+      const inProgressRes = await request(app.getHttpServer())
+        .post('/api/v1/reception/direct')
+        .set(authed(receptionistToken))
+        .send({
+          patientId,
+          doctorId: doctorAUserId,
+          checkedInAt: isoAt(11, 0),
+          services: [{ examTypeCode: 'KT', examTypeName: 'Khám thường', examTypePrice: 150_000, quantity: 1 }],
+          receptionTypeCode: 'RT_NEW',
+          examFormCode: 'EF_NORMAL',
+        });
+      const inProgressEncounterId = inProgressRes.body.data.id as string;
+      await payInvoice(inProgressEncounterId);
+      await request(app.getHttpServer())
+        .post(`/api/v1/reception/encounters/${inProgressEncounterId}/vital-signs`)
+        .set(authed(nurseToken))
+        .send({ weightGram: 63_000, heightMm: 1700 });
+
+      // Lượt đã huỷ — KHÔNG tính vào totalCompletedVisits.
+      const cancelledId = await checkInFreshEncounter(12);
+      await request(app.getHttpServer())
+        .post(`/api/v1/encounters/${cancelledId}/cancel`)
+        .set(authed(receptionistToken))
+        .send({ cancelReason: 'Khách bỏ về', version: 1 });
+
+      const res = await request(app.getHttpServer())
+        .get('/api/v1/encounters/patient-clinical-summary')
+        .query({ patientId })
+        .set(authed(doctorBToken)); // #085/#089: chốt "xem đầy đủ mọi bác sĩ" — doctorB KHÔNG khám ca nào ở trên vẫn phải thấy đủ.
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.totalCompletedVisits).toBe(3);
+      expect(res.body.data.lastCompletedVisitAt).not.toBeNull();
+      const weights = res.body.data.recentVitalSigns.map((v: { weightGram: number }) => v.weightGram);
+      // Mới nhất trước — ca CHECKED_IN (11h, 63kg) đứng đầu, rồi 3 ca COMPLETED giảm dần theo giờ.
+      expect(weights).toEqual([63_000, 62_000, 61_000, 60_000]);
+    });
+
+    it('vai trò không có patient.read (system_admin) → 403', async () => {
+      const patientId = await createSummaryPatient('0977100002');
+      const systemAdminToken = (await createUserWithRole(fixture.tenantA.id, 'system_admin')).token;
+
+      const res = await request(app.getHttpServer())
+        .get('/api/v1/encounters/patient-clinical-summary')
+        .query({ patientId })
+        .set(authed(systemAdminToken));
+
+      expect(res.status).toBe(403);
+    });
+
+    it('cách ly tenant — patientId của tenant khác trả về rỗng, không lỗi, không lộ dữ liệu', async () => {
+      const patientId = await createSummaryPatient('0977100003');
+      await completedVisitWithVitals(patientId, 13, 70_000);
+
+      const res = await request(app.getHttpServer())
+        .get('/api/v1/encounters/patient-clinical-summary')
+        .query({ patientId })
+        .set(authed(tenantBDoctorToken));
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.totalCompletedVisits).toBe(0);
+      expect(res.body.data.lastCompletedVisitAt).toBeNull();
+      expect(res.body.data.recentVitalSigns).toEqual([]);
     });
   });
 });

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Put, Req, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Post, Put, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
 import type { Request } from 'express';
 import { AuditView } from '../../common/audit-view.decorator';
 import { AuditViewInterceptor } from '../../common/audit-view.interceptor';
@@ -8,6 +8,7 @@ import {
   amendPrescriptionRequestSchema,
   cancelEncounterRequestSchema,
   completeConsultationRequestSchema,
+  patientClinicalSummaryQuerySchema,
   releaseEncounterRequestSchema,
   saveClinicalNoteRequestSchema,
   saveDiagnosesRequestSchema,
@@ -26,6 +27,21 @@ import { EncounterService } from './encounter.service';
 @UseGuards(JwtAuthGuard, PermissionGuard)
 export class EncounterController {
   constructor(private readonly encounterService: EncounterService) {}
+
+  /**
+   * Trang "Hồ sơ bệnh nhân" (`apps/web/src/features/patient/`) — dải KPI + bảng "Sinh hiệu theo
+   * lượt khám". Gate bằng `patient.read` (global mọi vai trò) thay vì `encounter.read` — cố ý xem
+   * đầy đủ mọi bác sĩ, không giới hạn `data_scope=personal` (đã chốt qua `AskUserQuestion`). Query
+   * param (không phải `:id`) nên khai TRƯỚC mọi route `:id/...` không quan trọng thứ tự vì khác số
+   * đoạn đường dẫn, nhưng đặt đầu cho dễ đọc, đúng thói quen `patient.controller.ts`.
+   */
+  @Get('patient-clinical-summary')
+  @RequirePermission('patient', 'read')
+  async getPatientClinicalSummary(@Query() query: unknown, @Req() req: Request) {
+    const dto = patientClinicalSummaryQuerySchema.parse(query);
+    const { tenantId } = req.user!;
+    return this.encounterService.getPatientClinicalSummary(tenantId, dto.patientId);
+  }
 
   @Post(':id/start')
   @RequirePermission('encounter', 'update', { entityIdParam: 'id' })

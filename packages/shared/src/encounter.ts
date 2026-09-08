@@ -257,6 +257,43 @@ export const vitalSignResponseSchema = z.object({
 export type VitalSignResponse = z.infer<typeof vitalSignResponseSchema>;
 
 /**
+ * `GET /encounters/patient-clinical-summary` — trang "Hồ sơ bệnh nhân" (dải KPI + bảng "Sinh hiệu
+ * theo lượt khám"). Rút gọn hơn `vitalSignResponseSchema` — KHÔNG có `warnings` (không cần cảnh báo
+ * ngưỡng ở màn hình tổng quan, chỉ ở lúc ghi/xem TRỰC TIẾP một lượt khám).
+ */
+export const patientVitalSignHistoryItemSchema = z.object({
+  id: z.string().uuid(),
+  encounterId: z.string().uuid(),
+  measuredAt: z.string(),
+  weightGram: z.number().int().nullable(),
+  heightMm: z.number().int().nullable(),
+  bpSystolic: z.number().int().nullable(),
+  bpDiastolic: z.number().int().nullable(),
+  temperatureC: z.number().nullable(),
+  pulse: z.number().int().nullable(),
+  spo2: z.number().int().nullable(),
+});
+export type PatientVitalSignHistoryItem = z.infer<typeof patientVitalSignHistoryItemSchema>;
+
+/**
+ * `totalCompletedVisits`/`lastCompletedVisitAt` CHỈ tính lượt `status='COMPLETED'` (chốt qua
+ * `AskUserQuestion` — đúng nghĩa "lượt khám" thật, không tính lịch hẹn chưa tới/đã huỷ/không tới).
+ * `recentVitalSigns` KHÔNG lọc theo trạng thái lượt khám (sinh hiệu có thể đã đo dù ca chưa hoàn
+ * tất), sắp mới nhất trước, giới hạn 5 dòng.
+ */
+export const patientClinicalSummaryResponseSchema = z.object({
+  totalCompletedVisits: z.number().int(),
+  lastCompletedVisitAt: z.string().nullable(),
+  recentVitalSigns: z.array(patientVitalSignHistoryItemSchema),
+});
+export type PatientClinicalSummaryResponse = z.infer<typeof patientClinicalSummaryResponseSchema>;
+
+export const patientClinicalSummaryQuerySchema = z.object({
+  patientId: z.string().uuid(),
+});
+export type PatientClinicalSummaryQuery = z.infer<typeof patientClinicalSummaryQuerySchema>;
+
+/**
  * Danh sách Tiếp nhận (`GET /reception/list`) — CHỈ hồ sơ ĐÃ được tiếp nhận (đã có `encounter`),
  * theo dõi trạng thái từ lúc vào tới lúc khám xong trong ngày: "Đã tiếp nhận" (`CHECKED_IN`) →
  * "Đang khám" (`IN_CONSULTATION`) → "Đã khám xong" (`COMPLETED`); `CANCELLED` ("bỏ về") cũng hiện

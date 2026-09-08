@@ -36,6 +36,8 @@ import type {
   EncounterSummary,
   Prescription as PrescriptionDto,
   PrescriptionItem as PrescriptionItemDto,
+  PatientClinicalSummaryResponse,
+  PatientVitalSignHistoryItem,
   PrescriptionResponse,
   PrescriptionWarning,
   ReleaseEncounterRequest,
@@ -64,6 +66,8 @@ import { InvoiceRepository } from '../billing/invoice.repository';
 const TEMPERATURE_DECI_PER_CELSIUS = 10;
 /** Số lần khám cũ tối đa hiện trong panel tiền sử (ENC-01) — danh sách tóm tắt, không phân trang ở v1. */
 const CONSULTATION_HISTORY_LIMIT = 20;
+/** Số dòng sinh hiệu gần nhất hiện ở trang "Hồ sơ bệnh nhân" (dải KPI + bảng). */
+const PATIENT_VITALS_HISTORY_LIMIT = 5;
 
 /**
  * Điều phối use case chuyển trạng thái `encounter` (Sprint 3) — "Bắt đầu khám"
@@ -367,6 +371,23 @@ export class EncounterService {
     const history = historyWithDoctorId.map(({ doctorId, ...h }) => ({ ...h, doctorName: doctorId ? (doctorNames.get(doctorId) ?? null) : null }));
 
     return { ...rest, history };
+  }
+
+  /**
+   * Trang "Hồ sơ bệnh nhân" (dải KPI + bảng "Sinh hiệu theo lượt khám") — gate bằng `patient.read`
+   * ở controller (global cho mọi vai trò), CỐ Ý không nhận `dataScope`/`actorId`: xem đầy đủ mọi
+   * bác sĩ, không giới hạn `personal` như `encounter.read` ở nơi khác (đã chốt qua `AskUserQuestion`
+   * — liên tục chăm sóc, cùng lý do "Lịch sử khám" sẽ hiện đủ mọi bác sĩ).
+   */
+  async getPatientClinicalSummary(tenantId: string, patientId: string): Promise<PatientClinicalSummaryResponse> {
+    const summary = await this.unitOfWork.runInTenantScope(tenantId, (tx) =>
+      this.encounterRepository.findPatientClinicalSummary(tx, tenantId, patientId, PATIENT_VITALS_HISTORY_LIMIT),
+    );
+    return {
+      totalCompletedVisits: summary.totalCompletedVisits,
+      lastCompletedVisitAt: summary.lastCompletedVisitAt?.toISOString() ?? null,
+      recentVitalSigns: summary.vitalSigns.map((v) => this.toPatientVitalSignHistoryItem(v)),
+    };
   }
 
   /**
@@ -950,6 +971,21 @@ export class EncounterService {
       heightMm: vitalSign.heightMm,
       measuredAt: vitalSign.measuredAt.toISOString(),
       warnings,
+    };
+  }
+
+  private toPatientVitalSignHistoryItem(vitalSign: VitalSign): PatientVitalSignHistoryItem {
+    return {
+      id: vitalSign.id,
+      encounterId: vitalSign.encounterId,
+      measuredAt: vitalSign.measuredAt.toISOString(),
+      weightGram: vitalSign.weightGram,
+      heightMm: vitalSign.heightMm,
+      bpSystolic: vitalSign.bpSystolic,
+      bpDiastolic: vitalSign.bpDiastolic,
+      temperatureC: vitalSign.temperatureDeciC !== null ? vitalSign.temperatureDeciC / TEMPERATURE_DECI_PER_CELSIUS : null,
+      pulse: vitalSign.pulse,
+      spo2: vitalSign.spo2,
     };
   }
 

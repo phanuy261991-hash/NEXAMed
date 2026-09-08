@@ -15,11 +15,10 @@ import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
 import { useRowSelection } from '../../shared/hooks/useRowSelection';
 import { useHasPermission } from '../auth/usePermission';
 import { usePatientsQuery } from './patient.queries';
-import { computeBirthYear, formatAddressLine } from './patient-form.utils';
+import { computeBirthYear, formatAddressLine, GENDER_LABEL } from './patient-form.utils';
 import { MergePatientsDialog } from './MergePatientsDialog';
 import { useAllWardsQuery, useProvincesQuery } from '../geo/geo.queries';
 
-const GENDER_LABEL: Record<string, string> = { male: 'Nam', female: 'Nữ', other: 'Khác' };
 /**
  * Thứ tự cột (docs/DECISIONS.md #034): chọn dòng, Mã BN, Họ tên, CCCD, Giới tính, Năm sinh, Điện
  * thoại, Địa chỉ. Hai cột dài (Họ tên, Địa chỉ) CÙNG chia phần rộng còn lại (`minmax(0,*fr)`) thay

@@ -10,21 +10,44 @@ import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { PatientSearchDialog } from '../reception/PatientSearchDialog';
-import { usePatientQuery, useUpdatePatientMutation } from './patient.queries';
-import { PatientFormFields, type PatientFormValues } from './PatientFormFields';
+import { usePatientQuery, usePatientClinicalSummaryQuery, useUpdatePatientMutation } from './patient.queries';
+import type { PatientFormValues } from './PatientFormFields';
+import { PatientHistoryDialog } from './PatientHistoryDialog';
 import { MergePatientsDialog } from './MergePatientsDialog';
-import { patientDetailToFormValues, toUpdatePatientRequest } from './patient-form.utils';
+import { patientDetailToFormValues, buildHistoryUpdatePayload } from './patient-form.utils';
+import { PatientProfileHeader } from './PatientProfileHeader';
+import { PatientClinicalKpiRow } from './PatientClinicalKpiRow';
+import { PatientAdministrativeInfoCard } from './PatientAdministrativeInfoCard';
+import { PatientVitalHistoryTable } from './PatientVitalHistoryTable';
+import { PersonalHistoryCard } from './PersonalHistoryCard';
+import { FamilyHistoryCard } from './FamilyHistoryCard';
+import { PatientEditDialog } from './PatientEditDialog';
 
-const GENDER_LABEL: Record<string, string> = { male: 'Nam', female: 'Nữ', other: 'Khác' };
+type ProfileTabId = 'info' | 'record' | 'history';
 
-/** Chi tiết + sửa TẠI CHỖ (không modal, đã chốt với chủ dự án) — cùng bố cục PatientFormFields cho cả xem/sửa. */
+const TABS: { id: ProfileTabId; label: string; comingSoon: boolean }[] = [
+  { id: 'info', label: 'Thông tin cá nhân', comingSoon: false },
+  { id: 'record', label: 'Hồ sơ bệnh án', comingSoon: true },
+  { id: 'history', label: 'Lịch sử khám chữa bệnh', comingSoon: true },
+];
+
+/**
+ * "Hồ sơ bệnh nhân" — bố cục mới (mockup đã duyệt qua nhiều vòng, 2026-09-08): dải định danh NGANG
+ * + dải KPI 2 tầng + tab (chỉ "Thông tin cá nhân" xây đầy đủ đợt này, 2 tab còn lại "Sắp có").
+ * "Sửa hồ sơ" đổi từ sửa-tại-chỗ sang dialog riêng (`PatientEditDialog`).
+ */
 export function PatientDetailPage() {
   const { id } = useParams<{ id: string }>();
   const patientId = id!;
   const query = usePatientQuery(patientId);
-  const updateMutation = useUpdatePatientMutation(patientId);
+  const summaryQuery = usePatientClinicalSummaryQuery(patientId);
+  const updateHistoryMutation = useUpdatePatientMutation(patientId);
   const canEdit = useHasPermission('patient', 'update');
   const canMerge = useHasPermission('patient', 'merge');
+
+  const [activeTab, setActiveTab] = useState<ProfileTabId>('info');
+  const [editing, setEditing] = useState(false);
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [searchingMergeTarget, setSearchingMergeTarget] = useState(false);
   const [mergeTarget, setMergeTarget] = useState<PatientSummary | null>(null);
 
@@ -34,14 +57,12 @@ export function PatientDetailPage() {
     { label: query.data?.fullName ?? 'Đang tải...' },
   ]);
 
-  const [editing, setEditing] = useState(false);
-  const [formValues, setFormValues] = useState<PatientFormValues | null>(null);
-  const [apiError, setApiError] = useState<string | null>(null);
-
   if (query.isPending) {
     return (
-      <div className="space-y-4 p-6">
-        <Skeleton className="h-6 w-40" />
+      <div className="flex flex-col gap-5 p-6">
+        <Skeleton className="h-[104px] w-full rounded-lg" />
+        <Skeleton className="h-[132px] w-full rounded-lg" />
+        <Skeleton className="h-10 w-80 rounded-full" />
         <Skeleton className="h-64 w-full rounded-lg" />
       </div>
     );
@@ -72,59 +93,18 @@ export function PatientDetailPage() {
   }
 
   const patient = query.data;
-
-  function startEditing() {
-    setApiError(null);
-    setFormValues(patientDetailToFormValues(patient));
-    setEditing(true);
-  }
-
-  function cancelEditing() {
-    setEditing(false);
-    setFormValues(null);
-    setApiError(null);
-  }
-
-  async function save() {
-    if (!formValues) return;
-    setApiError(null);
-    try {
-      await updateMutation.mutateAsync(toUpdatePatientRequest(formValues, patient.version));
-      setEditing(false);
-      setFormValues(null);
-    } catch (err) {
-      if (err instanceof ApiError && err.code === 'CONCURRENT_MODIFICATION') {
-        await query.refetch();
-        setEditing(false);
-        setFormValues(null);
-      }
-      setApiError(err instanceof ApiError ? err.message : 'Có lỗi xảy ra, vui lòng thử lại.');
-    }
-  }
-
   const merged = patient.mergedIntoId !== null;
 
+  function handlePatientHistoryChange(values: PatientFormValues) {
+    updateHistoryMutation.mutate(buildHistoryUpdatePayload(values, patient.version));
+  }
+
   return (
-    <div className="p-6">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">{patient.fullName}</h1>
-          <p className="text-sm text-slate-500">
-            Mã BN {patient.patientCode} · {GENDER_LABEL[patient.gender]}
-          </p>
-        </div>
-        <div className="flex gap-2.5">
-          {!editing && !merged && canMerge && (
-            <Button type="button" variant="secondary" onClick={() => setSearchingMergeTarget(true)}>
-              Gộp vào hồ sơ khác
-            </Button>
-          )}
-          {!editing && !merged && canEdit && <Button onClick={startEditing}>Sửa hồ sơ</Button>}
-        </div>
-      </div>
+    <div className="flex flex-col gap-5 p-6">
+      <h1 className="sr-only">Hồ sơ bệnh nhân {patient.fullName}</h1>
 
       {merged && (
-        <div className="mb-6 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           <Warning size={18} weight="fill" className="mt-0.5 flex-shrink-0" aria-hidden="true" />
           <span>
             Hồ sơ này đã được gộp vào hồ sơ khác, không còn tạo được lượt khám mới.{' '}
@@ -135,34 +115,69 @@ export function PatientDetailPage() {
         </div>
       )}
 
-      {apiError && (
-        <p role="alert" className="mb-6 text-sm text-rose-600">
-          {apiError}
-        </p>
+      <PatientProfileHeader
+        patient={patient}
+        canEdit={canEdit}
+        canMerge={canMerge}
+        merged={merged}
+        onEdit={() => setEditing(true)}
+        onMerge={() => setSearchingMergeTarget(true)}
+      />
+
+      <PatientClinicalKpiRow
+        totalCompletedVisits={summaryQuery.data?.totalCompletedVisits ?? 0}
+        lastCompletedVisitAt={summaryQuery.data?.lastCompletedVisitAt ?? null}
+        vitalSigns={summaryQuery.data?.recentVitalSigns ?? []}
+        allergenCount={patient.allergens.length}
+      />
+      {summaryQuery.isError && <ErrorBanner message="Không tải được số liệu lâm sàng." onRetry={() => void summaryQuery.refetch()} />}
+
+      <div className="flex gap-1.5">
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            disabled={tab.comingSoon}
+            onClick={() => setActiveTab(tab.id)}
+            className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
+              activeTab === tab.id
+                ? 'bg-blue-600 text-white'
+                : tab.comingSoon
+                  ? 'cursor-not-allowed text-slate-400'
+                  : 'text-slate-500 hover:bg-slate-100'
+            }`}
+          >
+            {tab.label}
+            {tab.comingSoon && (
+              <span className="ml-1.5 rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">Sắp có</span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'info' && (
+        <div className="flex flex-col gap-5">
+          <PatientAdministrativeInfoCard patient={patient} />
+          <PatientVitalHistoryTable vitalSigns={summaryQuery.data?.recentVitalSigns ?? []} />
+          <PersonalHistoryCard conditions={patient.conditions} personalHistory={patient.personalHistory} onAdd={() => setHistoryDialogOpen(true)} />
+          <FamilyHistoryCard familyHistoryRows={patient.familyHistoryRows} onAdd={() => setHistoryDialogOpen(true)} />
+        </div>
+      )}
+      {activeTab === 'record' && (
+        <EmptyState icon={IdentificationCard} title="Hồ sơ bệnh án — sắp ra mắt" description="Tổng hợp dị ứng, bệnh lý nền, chẩn đoán và đơn thuốc theo thời gian tại một chỗ." />
+      )}
+      {activeTab === 'history' && (
+        <EmptyState icon={IdentificationCard} title="Lịch sử khám chữa bệnh — sắp ra mắt" description="Danh sách mọi lượt khám của bệnh nhân, mở chi tiết từng lượt." />
       )}
 
-      <div className="rounded-lg bg-white p-6 shadow-sm">
-        <PatientFormFields
-          values={editing && formValues ? formValues : patientDetailToFormValues(patient)}
-          onChange={setFormValues}
-          disabled={!editing}
-          patientId={patient.id}
-          patientCode={patient.patientCode}
-          photoUrl={patient.photoUrl}
-          version={patient.version}
-        />
+      <PatientHistoryDialog
+        open={historyDialogOpen}
+        onClose={() => setHistoryDialogOpen(false)}
+        values={patientDetailToFormValues(patient)}
+        onChange={handlePatientHistoryChange}
+      />
 
-        {editing && (
-          <div className="mt-6 flex justify-end gap-3">
-            <Button type="button" variant="secondary" onClick={cancelEditing}>
-              Huỷ
-            </Button>
-            <Button type="button" loading={updateMutation.isPending} onClick={() => void save()}>
-              Lưu
-            </Button>
-          </div>
-        )}
-      </div>
+      {editing && <PatientEditDialog patient={patient} onClose={() => setEditing(false)} />}
 
       {searchingMergeTarget && (
         <PatientSearchDialog

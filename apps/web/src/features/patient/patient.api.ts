@@ -4,6 +4,7 @@ import type {
   ListPatientsResponse,
   PatientByNationalIdResponse,
   PatientByPhoneResponse,
+  PatientClinicalSummaryResponse,
   PatientDetail,
   UpdatePatientRequest,
 } from '@nexamed/shared';
@@ -22,6 +23,13 @@ export async function listPatients(params: {
 
 export async function getPatient(id: string): Promise<PatientDetail> {
   return unwrap(await getApiClient().GET('/api/v1/patients/{id}', { params: { path: { id } } })) as PatientDetail;
+}
+
+/** Trang "Hồ sơ bệnh nhân" — dải KPI + bảng "Sinh hiệu theo lượt khám". */
+export async function getPatientClinicalSummary(patientId: string): Promise<PatientClinicalSummaryResponse> {
+  return unwrap(
+    await getApiClient().GET('/api/v1/encounters/patient-clinical-summary', { params: { query: { patientId } } }),
+  ) as PatientClinicalSummaryResponse;
 }
 
 export async function createPatient(body: CreatePatientRequest): Promise<PatientDetail> {

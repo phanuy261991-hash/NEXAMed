@@ -136,6 +136,8 @@ import {
   updateAllergenRequestSchema,
   updateDepartmentRequestSchema,
   updateDepartmentTypeRequestSchema,
+  patientClinicalSummaryQuerySchema,
+  patientClinicalSummaryResponseSchema,
   receptionListQuerySchema,
   receptionListResponseSchema,
   recordVitalSignRequestSchema,
@@ -713,6 +715,20 @@ registry.registerPath({
 });
 
 const encounterActionIdParams = z.object({ id: z.string().uuid() });
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/encounters/patient-clinical-summary',
+  tags: ['encounter'],
+  summary: 'Trang "Hồ sơ bệnh nhân" — tổng lượt khám COMPLETED, lần gần nhất, sinh hiệu 5 lượt gần nhất (đầy đủ mọi bác sĩ, không giới hạn personal)',
+  security: [{ bearerAuth: [] }],
+  request: { query: patientClinicalSummaryQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công (0/null/[] nếu bệnh nhân chưa có lượt khám nào, hoặc thuộc tenant khác)', envelope(patientClinicalSummaryResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền patient.read'),
+  },
+});
 
 registry.registerPath({
   method: 'post',
