@@ -1,6 +1,17 @@
 import { CalendarCheck, Clock, PlusCircle, Play, Star, Warning, XCircle, type Icon } from '@phosphor-icons/react';
-import type { ReceptionListItem } from '@nexamed/shared';
+import type { DoctorAvailabilityStatus, ReceptionListItem } from '@nexamed/shared';
 import { Button } from '../../shared/ui/Button';
+
+/**
+ * Badge trạng thái ca trực (`doctor-availability`, #094) — dùng chung giữa `ReassignDoctorDialog.tsx`
+ * và panel "Tải theo Bác sĩ" (`ReceptionListPage.tsx`), trích xuất lúc có nơi dùng thứ hai (CLAUDE.md).
+ * `ACTIVE` không có dòng trong board (`useDoctorAvailabilityTodayQuery`) — caller tự fallback `'ACTIVE'`.
+ */
+export function doctorAvailabilityBadgeMeta(status: DoctorAvailabilityStatus): { label: string; className: string } {
+  if (status === 'BREAK') return { label: 'Tạm nghỉ', className: 'bg-amber-500 text-white' };
+  if (status === 'ENDED') return { label: 'Đã đóng ca', className: 'bg-slate-400 text-white' };
+  return { label: 'Trống', className: 'bg-emerald-500 text-white' };
+}
 
 /**
  * Thành phần dùng chung cho MỌI nơi hiển thị thẻ "khách đang chờ" theo mô hình Hàng đợi ảo

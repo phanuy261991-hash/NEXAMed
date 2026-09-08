@@ -42,6 +42,8 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   ENCOUNTER_NOT_IN_CONSULTATION: HttpStatus.CONFLICT,
   // "Hàng đợi ảo" (#064) — "Nhận ca" chậm chân, cùng nhóm ENCOUNTER_NOT_CHECKED_IN ở trên.
   ENCOUNTER_ALREADY_CLAIMED: HttpStatus.CONFLICT,
+  // "Trung tâm Điều phối Tiếp nhận" — "Đổi bác sĩ" ngoài trạng thái CHECKED_IN, cùng nhóm trên.
+  ENCOUNTER_NOT_REASSIGNABLE: HttpStatus.CONFLICT,
   // ADM-07 — trùng tên/còn tài khoản gán là xung đột với trạng thái hiện có (409). ROLE_IMMUTABLE
   // và ROLE_INVALID_REFERENCE không có trong bảng này nên rơi về mặc định 422 (vi phạm quy tắc
   // nghiệp vụ, không phải xung đột trạng thái đồng thời).

@@ -2,6 +2,7 @@ import type {
   CancelEncounterRequest,
   CheckInRequest,
   EncounterSummary,
+  ReassignEncounterRequest,
   ReceptionListResponse,
   RegisterReceptionRequest,
   ReleaseEncounterRequest,
@@ -44,5 +45,12 @@ export async function cancelEncounter(id: string, body: CancelEncounterRequest):
 export async function releaseEncounter(id: string, body: ReleaseEncounterRequest): Promise<EncounterSummary> {
   return unwrap(
     await getApiClient().POST('/api/v1/encounters/{id}/release', { params: { path: { id } }, body }),
+  ) as EncounterSummary;
+}
+
+/** "Trung tâm Điều phối Tiếp nhận" — lễ tân đổi bác sĩ/Khoa phụ trách, chỉ khi còn CHECKED_IN. */
+export async function reassignEncounter(id: string, body: ReassignEncounterRequest): Promise<EncounterSummary> {
+  return unwrap(
+    await getApiClient().PATCH('/api/v1/encounters/{id}/reassign', { params: { path: { id } }, body }),
   ) as EncounterSummary;
 }

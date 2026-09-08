@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { invoiceStatusSchema } from './billing';
 import { patientAllergenItemSchema, patientConditionItemSchema, patientFamilyHistoryItemSchema } from './patient';
 import { prescriptionResponseSchema } from './prescription';
 
@@ -193,6 +194,17 @@ export type CancelEncounterRequest = z.infer<typeof cancelEncounterRequestSchema
 export const releaseEncounterRequestSchema = z.object({ version: z.number().int() });
 export type ReleaseEncounterRequest = z.infer<typeof releaseEncounterRequestSchema>;
 
+/**
+ * "Trung tâm Điều phối Tiếp nhận" — lễ tân đổi bác sĩ/Khoa phụ trách một lượt khám còn
+ * `CHECKED_IN` (chưa vào khám — đã hỏi và chốt qua mockup, không áp dụng cho `IN_CONSULTATION`).
+ * Cùng ràng buộc "đích danh bác sĩ hoặc theo Khoa" đã dùng ở Tiếp nhận (`intakeRoutingFieldsSchema`).
+ */
+export const reassignEncounterRequestSchema = z
+  .object({ version: z.number().int() })
+  .merge(intakeRoutingFieldsSchema)
+  .superRefine(requireDoctorOrDepartment);
+export type ReassignEncounterRequest = z.infer<typeof reassignEncounterRequestSchema>;
+
 export const encounterSummarySchema = z.object({
   id: z.string().uuid(),
   encounterNo: z.string(),
@@ -311,6 +323,9 @@ export const receptionListItemSchema = z.object({
   patientId: z.string().uuid(),
   patientCode: z.string(),
   fullName: z.string(),
+  /** "Trung tâm Điều phối Tiếp nhận" — tính "Năm sinh"/tuổi hiển thị gộp cùng tên (đúng thứ tự
+   * form Thêm/Sửa bệnh nhân, không đọc `patient.dob` riêng ở web). */
+  dob: z.string(),
   phone: z.string(),
   /** "Hàng đợi ảo" (#064) — `null` = đang trong hàng chờ chung Khoa, chưa được bác sĩ nào nhận. */
   doctorId: z.string().uuid().nullable(),
@@ -320,6 +335,11 @@ export const receptionListItemSchema = z.object({
   /** Người thực hiện tiếp nhận (`encounter.createdBy`, resolve tên qua `DoctorDirectoryPort.getUserFullNames`) — check-in từ lịch hẹn hay "Tiếp nhận bệnh nhân" đều tính là 1 lần tiếp nhận. `null` nếu tài khoản không còn resolve được tên (trường hợp hiếm). */
   receivedByName: z.string().nullable(),
   status: encounterStatusSchema,
+  /** "Trung tâm Điều phối Tiếp nhận" — `null` khi lượt khám không phát sinh phiếu thu (không có
+   * dòng dịch vụ nào có giá, xem `ReceptionService.createInvoiceForEncounter()`). Ưu tiên hiển
+   * thị hơn `status` ở badge Trạng thái khi `UNPAID`: bước lễ tân cần xử lý tiếp theo là thu tiền,
+   * không phải "đã tiếp nhận" (đã biết, không lặp lại 2 badge cùng lúc). */
+  invoiceStatus: invoiceStatusSchema.nullable(),
   checkedInAt: z.string(),
   startedAt: z.string().nullable(),
   completedAt: z.string().nullable(),

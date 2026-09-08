@@ -30,6 +30,7 @@ import {
   saveInvoiceDraftRequestSchema,
   cancelAppointmentRequestSchema,
   cancelEncounterRequestSchema,
+  reassignEncounterRequestSchema,
   releaseEncounterRequestSchema,
   createDrugRequestSchema,
   drugSummarySchema,
@@ -784,6 +785,26 @@ registry.registerPath({
     403: errorResponse('Không có quyền encounter.update'),
     404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal)'),
     409: errorResponse('Chuyển trạng thái không hợp lệ (ENCOUNTER_INVALID_TRANSITION) hoặc version không khớp (CONCURRENT_MODIFICATION)'),
+  },
+});
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/encounters/{id}/reassign',
+  tags: ['encounter'],
+  summary: '"Trung tâm Điều phối Tiếp nhận" — lễ tân đổi bác sĩ/Khoa phụ trách, chỉ khi còn CHECKED_IN',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: encounterActionIdParams,
+    body: { content: { 'application/json': { schema: reassignEncounterRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Thành công', envelope(encounterSummarySchema)),
+    400: errorResponse('Thiếu cả doctorId lẫn departmentId'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền encounter.reassign'),
+    404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal)'),
+    409: errorResponse('Không còn CHECKED_IN (ENCOUNTER_NOT_REASSIGNABLE) hoặc version không khớp (CONCURRENT_MODIFICATION)'),
   },
 });
 

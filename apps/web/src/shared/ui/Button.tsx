@@ -9,7 +9,7 @@ import { CircleNotch } from '@phosphor-icons/react';
  * phải thứ tự trong chuỗi class ở HTML, nên override qua `className` bị chữ trắng trên nền
  * trắng (phát hiện thật khi kiểm bằng trình duyệt ở S2-08, nút "Huỷ" vô hình).
  */
-type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'add' | 'amber' | 'amberSolid';
+type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'add' | 'amber' | 'amberSolid' | 'info';
 
 const VARIANT_CLASSNAME: Record<ButtonVariant, string> = {
   primary: 'bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800',
@@ -26,6 +26,10 @@ const VARIANT_CLASSNAME: Record<ButtonVariant, string> = {
   // đã dùng cho khối "Còn chờ thu" — chủ dự án phản hồi trực tiếp nút "Chốt ca" viền nhạt "không
   // nổi bật", 2026-09-03, `InvoiceListPage.tsx`).
   amberSolid: 'bg-amber-500 text-white hover:bg-amber-600 active:bg-amber-700',
+  // Hành động phụ trung tính-thông tin (ví dụ "Đổi bác sĩ" ở Trung tâm Điều phối Tiếp nhận) —
+  // cùng khuôn ghost-tint đã dùng cho `amber`, đổi màu xanh dương thương hiệu chính để tránh lẫn
+  // với tín hiệu "đang diễn ra"/cảnh báo của amber.
+  info: 'bg-white text-blue-600 ring-1 ring-inset ring-blue-300 hover:bg-blue-50 active:bg-blue-100',
 };
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {

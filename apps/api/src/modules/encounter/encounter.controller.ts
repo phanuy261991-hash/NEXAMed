@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Put, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Patch, Post, Put, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
 import type { Request } from 'express';
 import { AuditView } from '../../common/audit-view.decorator';
 import { AuditViewInterceptor } from '../../common/audit-view.interceptor';
@@ -9,6 +9,7 @@ import {
   cancelEncounterRequestSchema,
   completeConsultationRequestSchema,
   patientClinicalSummaryQuerySchema,
+  reassignEncounterRequestSchema,
   releaseEncounterRequestSchema,
   saveClinicalNoteRequestSchema,
   saveDiagnosesRequestSchema,
@@ -69,6 +70,16 @@ export class EncounterController {
     const dto = releaseEncounterRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
     return this.encounterService.releaseEncounter(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+  }
+
+  /** "Trung tâm Điều phối Tiếp nhận" — lễ tân đổi bác sĩ/Khoa phụ trách, chỉ khi còn `CHECKED_IN`. */
+  @Patch(':id/reassign')
+  @RequirePermission('encounter', 'reassign', { entityIdParam: 'id' })
+  @HttpCode(200)
+  async reassign(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
+    const dto = reassignEncounterRequestSchema.parse(body);
+    const { userId, tenantId } = req.user!;
+    return this.encounterService.reassignEncounter(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 
   /**

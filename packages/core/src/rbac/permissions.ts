@@ -32,6 +32,10 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   { module: 'encounter', action: 'create', description: 'Tạo lượt khám (check-in)' },
   { module: 'encounter', action: 'update', description: 'Chuyển trạng thái lượt khám (bắt đầu khám)' },
   { module: 'encounter', action: 'cancel', description: 'Huỷ lượt khám ("bỏ về")' },
+  // "Trung tâm Điều phối Tiếp nhận" — TÁCH khỏi encounter.update có chủ đích: encounter.update
+  // đang personal cho doctor (Nhận ca/Trả về hàng chờ), mở rộng nó cho lễ tân sẽ vô tình cấp thêm
+  // quyền không liên quan. Cùng tiền lệ tách quyền hẹp đã làm với invoice.refund/cash_voucher.report.
+  { module: 'encounter', action: 'reassign', description: 'Đổi bác sĩ/Khoa phụ trách lượt khám (chỉ khi chưa vào khám)' },
   { module: 'vital_sign', action: 'create', description: 'Ghi sinh hiệu' },
   { module: 'diagnosis', action: 'create', description: 'Ghi chẩn đoán' },
   // Ký hồ sơ khám (Sprint 5, S5-02/03) — dùng làm quyền cho "Đính chính chẩn đoán" (mirror
@@ -166,6 +170,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'encounter.read': 'global',
     'encounter.create': 'global',
     'encounter.cancel': 'global',
+    // "Trung tâm Điều phối Tiếp nhận" — lễ tân là actor chính đổi bác sĩ/Khoa phụ trách.
+    'encounter.reassign': 'global',
     'reference_catalog.read': 'global',
     'allergen_catalog.read': 'global',
     'allergen_catalog.create': 'global',
@@ -261,6 +267,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'encounter.read': 'global',
     'encounter.create': 'global',
     'encounter.cancel': 'global',
+    // "Trung tâm Điều phối Tiếp nhận" — cùng mức lễ tân.
+    'encounter.reassign': 'global',
     'clinic_config.read': 'global',
     'clinic_config.update': 'global',
     'user_account.read': 'global',

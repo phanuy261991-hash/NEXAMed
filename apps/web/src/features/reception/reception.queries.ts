@@ -1,8 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { CancelEncounterRequest, CheckInRequest, RegisterReceptionRequest, ReleaseEncounterRequest, StartConsultationRequest } from '@nexamed/shared';
+import type {
+  CancelEncounterRequest,
+  CheckInRequest,
+  ReassignEncounterRequest,
+  RegisterReceptionRequest,
+  ReleaseEncounterRequest,
+  StartConsultationRequest,
+} from '@nexamed/shared';
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
-import { cancelEncounter, checkIn, getReceptionList, registerReception, releaseEncounter, startConsultation } from './reception.api';
+import { cancelEncounter, checkIn, getReceptionList, reassignEncounter, registerReception, releaseEncounter, startConsultation } from './reception.api';
 
 /**
  * "Danh sách tiếp nhận" (không `doctorId`) / "Hàng đợi khám" (kèm `doctorId`, `includeDepartmentPool`
@@ -82,6 +89,15 @@ export function useReleaseEncounterMutation() {
   const invalidate = useInvalidateReception();
   return useMutation({
     mutationFn: ({ id, body }: { id: string; body: ReleaseEncounterRequest }) => releaseEncounter(id, body),
+    onSuccess: () => void invalidate(),
+  });
+}
+
+/** "Trung tâm Điều phối Tiếp nhận" — lễ tân đổi bác sĩ/Khoa phụ trách, KHÔNG đụng phiếu thu. */
+export function useReassignEncounterMutation() {
+  const invalidate = useInvalidateReception();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: ReassignEncounterRequest }) => reassignEncounter(id, body),
     onSuccess: () => void invalidate(),
   });
 }

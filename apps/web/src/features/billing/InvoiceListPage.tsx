@@ -6,7 +6,7 @@ import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
-import { StatusBadge, type StatusBadgeTone } from '../../shared/ui/StatusBadge';
+import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
 import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
 import { Skeleton } from '../../shared/ui/Skeleton';
@@ -23,6 +23,7 @@ import { CashVoucherFormDialog, type CashVoucherSubmitDto } from '../cash-book/C
 import { MyShiftVouchersDialog } from '../cash-book/MyShiftVouchersDialog';
 import { useCreateCashVoucherMutation } from '../cash-book/cash-voucher.queries';
 import { useBillingInvoiceListQuery } from './invoice.queries';
+import { INVOICE_STATUS_META } from './invoice-status';
 
 /** Cùng khuôn `ReceptionListPage.tsx` (List Screen Pattern, .claude/docs/ui-guidelines.md mục 9).
  * Cột đầu (chọn dòng) để sẵn cho hành động hàng loạt sau này, chưa có hành động nào dùng tới. */
@@ -31,14 +32,6 @@ const TABLE_MIN_WIDTH_PX = 1300;
 const ROW_HEIGHT_PX = 60;
 
 type StatusTab = 'UNPAID' | 'PAID' | 'ALL';
-
-/** #085 — nhãn/tone cho cả 4 trạng thái, dùng chung cho cột "Trạng thái" (nền đặc, #105). */
-const STATUS_META: Record<BillingListItem['status'], { label: string; tone: StatusBadgeTone }> = {
-  UNPAID: { label: 'Chờ thu', tone: 'warning' },
-  PAID: { label: 'Đã thu', tone: 'success' },
-  CANCELLED: { label: 'Đã huỷ (chưa thu)', tone: 'neutral' },
-  REFUNDED: { label: 'Đã hoàn tiền', tone: 'accent' },
-};
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
@@ -360,7 +353,7 @@ export function InvoiceListPage() {
                       {item.status === 'REFUNDED' ? `-${formatVnd(item.totalAmount)}` : <span className="text-slate-300">—</span>}
                     </div>
                     <div role="cell" className="flex flex-col items-center gap-1 text-center">
-                      <StatusBadge tone={STATUS_META[item.status].tone}>{STATUS_META[item.status].label}</StatusBadge>
+                      <StatusBadge tone={INVOICE_STATUS_META[item.status].tone}>{INVOICE_STATUS_META[item.status].label}</StatusBadge>
                       {/* #085 — phiếu PAID của lượt khám đã huỷ nhưng chưa hoàn tiền. */}
                       {item.needsRefund && (
                         <StatusBadge tone="danger">

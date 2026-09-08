@@ -24,6 +24,7 @@ export * from './specialty/registry';
 export * from './storage/sniff-image-extension';
 export * from './encounter/encounter-state-machine';
 export * from './encounter/shift-summary';
+export * from './encounter/resolve-doctor-department-routing';
 export * from './vital-sign/vital-sign-thresholds';
 export * from './vital-sign/bmi';
 export * from './prescription/warnings';

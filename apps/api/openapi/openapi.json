@@ -7581,6 +7581,9 @@
                               "fullName": {
                                 "type": "string"
                               },
+                              "dob": {
+                                "type": "string"
+                              },
                               "phone": {
                                 "type": "string"
                               },
@@ -7621,6 +7624,18 @@
                                   "NO_SHOW"
                                 ]
                               },
+                              "invoiceStatus": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "UNPAID",
+                                  "PAID",
+                                  "CANCELLED",
+                                  "REFUNDED"
+                                ]
+                              },
                               "checkedInAt": {
                                 "type": "string"
                               },
@@ -7647,6 +7662,7 @@
                               "patientId",
                               "patientCode",
                               "fullName",
+                              "dob",
                               "phone",
                               "doctorId",
                               "departmentId",
@@ -7654,6 +7670,7 @@
                               "chiefComplaint",
                               "receivedByName",
                               "status",
+                              "invoiceStatus",
                               "checkedInAt",
                               "startedAt",
                               "completedAt",
@@ -9106,6 +9123,333 @@
           },
           "409": {
             "description": "Chuyển trạng thái không hợp lệ (ENCOUNTER_INVALID_TRANSITION) hoặc version không khớp (CONCURRENT_MODIFICATION)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/encounters/{id}/reassign": {
+      "patch": {
+        "tags": [
+          "encounter"
+        ],
+        "summary": "\"Trung tâm Điều phối Tiếp nhận\" — lễ tân đổi bác sĩ/Khoa phụ trách, chỉ khi còn CHECKED_IN",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer"
+                  },
+                  "doctorId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "departmentId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "encounterNo": {
+                          "type": "string"
+                        },
+                        "patientId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "doctorId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "departmentId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "appointmentId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "SCHEDULED",
+                            "CHECKED_IN",
+                            "IN_CONSULTATION",
+                            "COMPLETED",
+                            "CANCELLED",
+                            "NO_SHOW"
+                          ]
+                        },
+                        "specialty": {
+                          "type": "string"
+                        },
+                        "checkedInAt": {
+                          "type": "string"
+                        },
+                        "startedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "completedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "chiefComplaint": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "examTypeName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "receptionTypeCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "encounterNo",
+                        "patientId",
+                        "doctorId",
+                        "departmentId",
+                        "appointmentId",
+                        "status",
+                        "specialty",
+                        "checkedInAt",
+                        "startedAt",
+                        "completedAt",
+                        "chiefComplaint",
+                        "examTypeName",
+                        "receptionTypeCode",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Thiếu cả doctorId lẫn departmentId",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền encounter.reassign",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Không còn CHECKED_IN (ENCOUNTER_NOT_REASSIGNABLE) hoặc version không khớp (CONCURRENT_MODIFICATION)",
             "content": {
               "application/json": {
                 "schema": {

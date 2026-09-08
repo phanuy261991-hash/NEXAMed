@@ -9,6 +9,7 @@ import {
   PatientAlreadyMergedError,
   evaluateVitalSignWarnings,
   getVietnamDateString,
+  resolveDoctorDepartmentRouting,
   vietnamDayRange,
   type DoctorDirectoryPort,
 } from '@nexamed/core';
@@ -127,15 +128,8 @@ export class ReceptionService {
    * (`routing.doctorId` vắng mặt): `doctorId=null`, `departmentId` lấy thẳng từ client (Zod đã ép
    * bắt buộc có `departmentId` trong trường hợp này — `intakeRoutingFieldsSchema.superRefine`).
    */
-  private async resolveRouting(
-    tenantId: string,
-    routing: { doctorId?: string; departmentId?: string },
-  ): Promise<{ doctorId: string | null; departmentId: string }> {
-    if (routing.doctorId) {
-      const departmentId = (await this.doctorDirectory.getDoctorDepartmentId(tenantId, routing.doctorId)) ?? (await this.doctorDirectory.getDefaultDepartmentId(tenantId));
-      return { doctorId: routing.doctorId, departmentId };
-    }
-    return { doctorId: null, departmentId: routing.departmentId! };
+  private resolveRouting(tenantId: string, routing: { doctorId?: string; departmentId?: string }) {
+    return resolveDoctorDepartmentRouting(this.doctorDirectory, tenantId, routing);
   }
 
   /**
@@ -452,6 +446,7 @@ export class ReceptionService {
       patientId: e.patientId,
       patientCode: e.patient.patientCode,
       fullName: e.patient.fullName,
+      dob: e.patient.dob.toISOString().slice(0, 10),
       phone: e.patient.phone,
       doctorId: e.doctorId,
       departmentId: e.departmentId,
@@ -459,6 +454,7 @@ export class ReceptionService {
       chiefComplaint: e.chiefComplaint,
       receivedByName: receivedByNames.get(e.createdBy) ?? null,
       status: e.status,
+      invoiceStatus: e.invoice?.status ?? null,
       checkedInAt: e.checkedInAt.toISOString(),
       startedAt: e.startedAt?.toISOString() ?? null,
       completedAt: e.completedAt?.toISOString() ?? null,

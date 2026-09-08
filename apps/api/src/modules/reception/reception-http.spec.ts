@@ -636,6 +636,32 @@ describe('HTTP e2e — /api/v1/reception', () => {
       expect(encounterItem).toMatchObject({ status: 'CHECKED_IN' });
     });
 
+    it('"Trung tâm Điều phối Tiếp nhận" — trả đúng `dob` bệnh nhân + `invoiceStatus` theo phiếu thu (UNPAID trước khi thu, null khi không có dịch vụ nào có giá)', async () => {
+      const targetDay = 25;
+      const priced = await createPatient(receptionistToken, { phone: '0933444570' });
+      const apptPriced = await createAppointment(receptionistToken, doctorAUserId, isoAt(13, 0, targetDay));
+      const checkedInPriced = await request(app.getHttpServer())
+        .post('/api/v1/reception/check-in')
+        .set(authed(receptionistToken))
+        .send(checkInPayload(apptPriced.id, priced.id, apptPriced.version, doctorAUserId));
+
+      const unpriced = await createPatient(receptionistToken, { phone: '0933444571' });
+      const apptUnpriced = await createAppointment(receptionistToken, doctorAUserId, isoAt(13, 30, targetDay));
+      const checkedInUnpriced = await request(app.getHttpServer())
+        .post('/api/v1/reception/check-in')
+        .set(authed(receptionistToken))
+        .send(
+          checkInPayload(apptUnpriced.id, unpriced.id, apptUnpriced.version, doctorAUserId, {
+            services: [{ examTypeCode: 'XN', examTypeName: 'Chưa có giá', quantity: 1 }],
+          }),
+        );
+
+      const res = await request(app.getHttpServer()).get('/api/v1/reception/list').set(authed(receptionistToken));
+      const items = res.body.data.items as Array<{ encounterId: string; dob: string; invoiceStatus: string | null }>;
+      expect(items.find((i) => i.encounterId === checkedInPriced.body.data.id)).toMatchObject({ dob: '1990-01-01', invoiceStatus: 'UNPAID' });
+      expect(items.find((i) => i.encounterId === checkedInUnpriced.body.data.id)).toMatchObject({ dob: '1990-01-01', invoiceStatus: null });
+    });
+
     it('trả đúng "Người tiếp nhận" (encounter.createdBy resolve tên) cho cả 2 luồng check-in và tiếp nhận trực tiếp', async () => {
       // Không dùng isoAt(..., targetDay) cho checkedInAt ở đây — GET /reception/list không truyền
       // `date` sẽ mặc định lọc "hôm nay" (giờ hệ thống thật), cùng lý do check-in() luôn tự đặt

@@ -3157,6 +3157,7 @@ export interface paths {
                                     patientId: string;
                                     patientCode: string;
                                     fullName: string;
+                                    dob: string;
                                     phone: string;
                                     /** Format: uuid */
                                     doctorId: string | null;
@@ -3167,6 +3168,8 @@ export interface paths {
                                     receivedByName: string | null;
                                     /** @enum {string} */
                                     status: "SCHEDULED" | "CHECKED_IN" | "IN_CONSULTATION" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
+                                    /** @enum {string|null} */
+                                    invoiceStatus: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED" | null;
                                     checkedInAt: string;
                                     startedAt: string | null;
                                     completedAt: string | null;
@@ -3825,6 +3828,154 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/encounters/{id}/reassign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** "Trung tâm Điều phối Tiếp nhận" — lễ tân đổi bác sĩ/Khoa phụ trách, chỉ khi còn CHECKED_IN */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                        /** Format: uuid */
+                        doctorId?: string;
+                        /** Format: uuid */
+                        departmentId?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                encounterNo: string;
+                                /** Format: uuid */
+                                patientId: string;
+                                /** Format: uuid */
+                                doctorId: string | null;
+                                /** Format: uuid */
+                                departmentId: string;
+                                /** Format: uuid */
+                                appointmentId: string | null;
+                                /** @enum {string} */
+                                status: "SCHEDULED" | "CHECKED_IN" | "IN_CONSULTATION" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
+                                specialty: string;
+                                checkedInAt: string;
+                                startedAt: string | null;
+                                completedAt: string | null;
+                                chiefComplaint: string | null;
+                                examTypeName: string | null;
+                                receptionTypeCode: string | null;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu cả doctorId lẫn departmentId */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền encounter.reassign */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không còn CHECKED_IN (ENCOUNTER_NOT_REASSIGNABLE) hoặc version không khớp (CONCURRENT_MODIFICATION) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
         trace?: never;
     };
     "/api/v1/encounters/{id}/consultation": {

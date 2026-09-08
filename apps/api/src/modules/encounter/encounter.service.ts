@@ -7,6 +7,7 @@ import {
   DOCTOR_DIRECTORY_PORT,
   EncounterAlreadyClaimedError,
   EncounterNotInConsultationError,
+  EncounterNotReassignableError,
   EncounterPaymentRequiredError,
   PrescriptionAlreadySignedError,
   PrescriptionEmptyError,
@@ -16,6 +17,7 @@ import {
   evaluateVitalSignWarnings,
   findAllergyMatches,
   findDuplicateActiveIngredients,
+  resolveDoctorDepartmentRouting,
   type ClinicConfigReaderPort,
   type DoctorDirectoryPort,
   type PrescriptionDrugLine,
@@ -40,6 +42,7 @@ import type {
   PatientVitalSignHistoryItem,
   PrescriptionResponse,
   PrescriptionWarning,
+  ReassignEncounterRequest,
   ReleaseEncounterRequest,
   SaveClinicalNoteRequest,
   SaveDiagnosesRequest,
@@ -281,6 +284,58 @@ export class EncounterService {
         action: 'encounter.released',
         entityType: 'encounter',
         entityId: id,
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
+
+      const updated = await this.encounterRepository.findById(tx, tenantId, id);
+      if (!updated) {
+        throw new NotFoundException();
+      }
+      return toEncounterSummary(updated);
+    });
+  }
+
+  /**
+   * "Trung tâm Điều phối Tiếp nhận" — lễ tân chủ động đổi bác sĩ/Khoa phụ trách một lượt khám còn
+   * `CHECKED_IN` (đã hỏi và chốt: KHÔNG áp dụng cho `IN_CONSULTATION`, tránh đụng ca đang khám dở
+   * — 409 `ENCOUNTER_NOT_REASSIGNABLE` cho mọi trạng thái khác). Tái dùng đúng
+   * `resolveDoctorDepartmentRouting()` đã trích xuất từ `ReceptionService.resolveRouting()` (dùng
+   * lần 2, CLAUDE.md) — "đích danh bác sĩ" server tự suy Khoa, "theo Khoa" giữ `doctorId=null`.
+   */
+  async reassignEncounter(
+    tenantId: string,
+    actorId: string,
+    dataScope: DataScope,
+    id: string,
+    dto: ReassignEncounterRequest,
+    meta: RequestMeta,
+  ): Promise<EncounterSummary> {
+    // `DoctorDirectoryPort` tự mở transaction RIÊNG — resolve TRƯỚC transaction chính, cùng lý do
+    // đã áp dụng ở `ReceptionService.checkIn()`/`registerDirect()`.
+    const routing = await resolveDoctorDepartmentRouting(this.doctorDirectory, tenantId, dto);
+
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const existing = await this.encounterRepository.findById(tx, tenantId, id);
+      if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId)) {
+        throw new NotFoundException();
+      }
+      if (existing.status !== 'CHECKED_IN') {
+        throw new EncounterNotReassignableError();
+      }
+
+      const count = await this.encounterRepository.reassign(tx, tenantId, id, routing.doctorId, routing.departmentId, dto.version, actorId);
+      if (count === 0) {
+        throw new ConcurrentModificationError();
+      }
+
+      await writeAuditLog(tx, tenantId, {
+        actorId,
+        action: 'encounter.reassigned',
+        entityType: 'encounter',
+        entityId: id,
+        beforeJson: { doctorId: existing.doctorId, departmentId: existing.departmentId },
+        afterJson: { doctorId: routing.doctorId, departmentId: routing.departmentId },
         ip: meta.ip,
         userAgent: meta.userAgent,
       });

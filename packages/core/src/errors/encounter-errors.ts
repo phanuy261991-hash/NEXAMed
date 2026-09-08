@@ -119,3 +119,17 @@ export class EncounterPaymentRequiredError extends DomainError {
     super('Lượt khám này chưa thu tiền — thu tiền ở Thu ngân trước khi vào Hàng đợi khám.');
   }
 }
+
+/**
+ * "Trung tâm Điều phối Tiếp nhận" — lễ tân đổi bác sĩ/Khoa phụ trách một lượt khám
+ * (`PATCH /encounters/:id/reassign`). Chỉ cho phép khi còn `CHECKED_IN` (chưa vào khám) — bệnh
+ * nhân đã `IN_CONSULTATION`/`COMPLETED`/`CANCELLED`/`NO_SHOW` thì không đổi được nữa (đã hỏi và
+ * chốt qua mockup: tránh đụng ca đang khám dở).
+ */
+export class EncounterNotReassignableError extends DomainError {
+  readonly code = 'ENCOUNTER_NOT_REASSIGNABLE';
+
+  constructor() {
+    super('Chỉ đổi được bác sĩ phụ trách khi lượt khám đang ở trạng thái đã tiếp nhận (chưa vào khám).');
+  }
+}

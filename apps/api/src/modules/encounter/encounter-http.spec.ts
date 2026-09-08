@@ -537,6 +537,109 @@ describe('HTTP e2e — /api/v1/encounters', () => {
     });
   });
 
+  describe('PATCH /api/v1/encounters/:id/reassign — "Trung tâm Điều phối Tiếp nhận" (lễ tân đổi bác sĩ/Khoa phụ trách)', () => {
+    it('lễ tân đổi đích danh sang bác sĩ khác khi CHECKED_IN → 200, doctorId đổi đúng + tự suy departmentId của bác sĩ mới', async () => {
+      const departmentId = await createDepartment(fixture.tenantA.id, 'Khoa TMH — reassign đích danh');
+      await assignDepartment(doctorBUserId, departmentId);
+      const encounterId = await checkInFreshEncounter(200, doctorAUserId);
+
+      const res = await request(app.getHttpServer())
+        .patch(`/api/v1/encounters/${encounterId}/reassign`)
+        .set(authed(receptionistToken))
+        .send({ doctorId: doctorBUserId, version: 1 });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.status).toBe('CHECKED_IN');
+      expect(res.body.data.doctorId).toBe(doctorBUserId);
+      expect(res.body.data.departmentId).toBe(departmentId);
+      expect(res.body.data.version).toBe(2);
+    });
+
+    it('lễ tân đổi "theo Khoa, chưa rõ bác sĩ" → 200, doctorId về null', async () => {
+      const departmentId = await createDepartment(fixture.tenantA.id, 'Khoa Nội — reassign theo Khoa');
+      const encounterId = await checkInFreshEncounter(201, doctorAUserId);
+
+      const res = await request(app.getHttpServer())
+        .patch(`/api/v1/encounters/${encounterId}/reassign`)
+        .set(authed(receptionistToken))
+        .send({ departmentId, version: 1 });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.doctorId).toBeNull();
+      expect(res.body.data.departmentId).toBe(departmentId);
+    });
+
+    it('clinic_admin cũng đổi được (global, cùng mức lễ tân)', async () => {
+      const encounterId = await checkInFreshEncounter(202, doctorAUserId);
+
+      const res = await request(app.getHttpServer())
+        .patch(`/api/v1/encounters/${encounterId}/reassign`)
+        .set(authed(clinicAdminToken))
+        .send({ doctorId: doctorBUserId, version: 1 });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.doctorId).toBe(doctorBUserId);
+    });
+
+    it('đã IN_CONSULTATION (đã "Nhận ca") → 409 ENCOUNTER_NOT_REASSIGNABLE, không đổi được nữa', async () => {
+      const encounterId = await checkInFreshEncounter(203, doctorAUserId);
+      await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/start`).set(authed(doctorAToken)).send({ version: 1 });
+
+      const res = await request(app.getHttpServer())
+        .patch(`/api/v1/encounters/${encounterId}/reassign`)
+        .set(authed(receptionistToken))
+        .send({ doctorId: doctorBUserId, version: 2 });
+
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('ENCOUNTER_NOT_REASSIGNABLE');
+    });
+
+    it('bác sĩ (chỉ có encounter.update personal, không có encounter.reassign) → 403', async () => {
+      const encounterId = await checkInFreshEncounter(204, doctorAUserId);
+
+      const res = await request(app.getHttpServer())
+        .patch(`/api/v1/encounters/${encounterId}/reassign`)
+        .set(authed(doctorAToken))
+        .send({ doctorId: doctorBUserId, version: 1 });
+
+      expect(res.status).toBe(403);
+    });
+
+    it('version cũ → 409 CONCURRENT_MODIFICATION', async () => {
+      const encounterId = await checkInFreshEncounter(205, doctorAUserId);
+
+      const res = await request(app.getHttpServer())
+        .patch(`/api/v1/encounters/${encounterId}/reassign`)
+        .set(authed(receptionistToken))
+        .send({ doctorId: doctorBUserId, version: 99 });
+
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('CONCURRENT_MODIFICATION');
+    });
+
+    it('thiếu cả doctorId lẫn departmentId → 400', async () => {
+      const encounterId = await checkInFreshEncounter(206, doctorAUserId);
+
+      const res = await request(app.getHttpServer())
+        .patch(`/api/v1/encounters/${encounterId}/reassign`)
+        .set(authed(receptionistToken))
+        .send({ version: 1 });
+
+      expect(res.status).toBe(400);
+    });
+
+    it('tenant B không đổi được lượt khám của tenant A → 404 (cách ly tenant)', async () => {
+      const encounterId = await checkInFreshEncounter(207, doctorAUserId);
+
+      const res = await request(app.getHttpServer())
+        .patch(`/api/v1/encounters/${encounterId}/reassign`)
+        .set(authed(tenantBReceptionistToken))
+        .send({ doctorId: doctorBUserId, version: 1 });
+
+      expect(res.status).toBe(404);
+    });
+  });
+
   /** Đưa 1 encounter mới vào IN_CONSULTATION (check-in + start), sẵn sàng cho test S3-05→07. */
   async function startedEncounter(hour: number, doctorId = doctorAUserId, doctorToken = doctorAToken) {
     const encounterId = await checkInFreshEncounter(hour, doctorId);

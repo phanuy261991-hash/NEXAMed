@@ -31,7 +31,9 @@ export interface CreateEncounterData {
 }
 
 export interface EncounterWithPatientContact extends Encounter {
-  patient: { patientCode: string; fullName: string; phone: string };
+  patient: { patientCode: string; fullName: string; phone: string; dob: Date };
+  /** "Trung tâm Điều phối Tiếp nhận" — `null` khi lượt khám không có phiếu thu nào. */
+  invoice: { status: 'UNPAID' | 'PAID' | 'CANCELLED' | 'REFUNDED' } | null;
 }
 
 export interface EncounterWithPatientDob extends Encounter {
@@ -176,7 +178,12 @@ export class EncounterRepository {
     }
     return tx.encounter.findMany({
       where,
-      include: { patient: { select: { patientCode: true, fullName: true, phone: true } } },
+      include: {
+        patient: { select: { patientCode: true, fullName: true, phone: true, dob: true } },
+        // "Trung tâm Điều phối Tiếp nhận" — trạng thái phiếu thu qua quan hệ sẵn có của Encounter
+        // (không gọi thẳng tx.invoice..., đúng nguyên tắc đã áp dụng ở findByIdWithInvoiceStatus()).
+        invoice: { select: { status: true } },
+      },
       orderBy: [{ checkedInAt: 'asc' }, { id: 'asc' }],
     }) as Promise<EncounterWithPatientContact[]>;
   }
@@ -376,6 +383,27 @@ export class EncounterRepository {
     const result = await tx.encounter.updateMany({
       where: { tenantId, id, version: expectedVersion, deletedAt: null, status: 'IN_CONSULTATION' },
       data: { status: 'CHECKED_IN', doctorId: null, startedAt: null, updatedBy: actorId, version: { increment: 1 } },
+    });
+    return result.count;
+  }
+
+  /**
+   * "Trung tâm Điều phối Tiếp nhận" — lễ tân đổi bác sĩ/Khoa phụ trách, CHỈ khi còn `CHECKED_IN`
+   * (ghép vào `WHERE`, atomic đúng cạnh nguồn — cùng khuôn `cancel()`/`release()`). KHÔNG đổi
+   * `status` — thuần đổi `doctorId`/`departmentId`.
+   */
+  async reassign(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    id: string,
+    doctorId: string | null,
+    departmentId: string,
+    expectedVersion: number,
+    actorId: string,
+  ): Promise<number> {
+    const result = await tx.encounter.updateMany({
+      where: { tenantId, id, version: expectedVersion, deletedAt: null, status: 'CHECKED_IN' },
+      data: { doctorId, departmentId, updatedBy: actorId, version: { increment: 1 } },
     });
     return result.count;
   }

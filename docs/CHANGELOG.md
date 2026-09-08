@@ -2,6 +2,18 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-08 (7)
+
+### "Bệnh nhân trong ngày" → "Trung tâm Điều phối Tiếp nhận"
+
+Trang `/reception` từ thuần theo dõi trạng thái thành nơi lễ tân điều phối + thống kê, theo mockup HTML chủ dự án gửi (đã hỏi chốt 4 điểm lệch với cấu trúc v1: bỏ "Chờ Cận lâm sàng" ngoài phạm vi → thay "Chờ thanh toán"; điều phối theo Bác sĩ không theo Phòng; "Đổi bác sĩ" chỉ áp dụng khi `CHECKED_IN`; bỏ "Gọi loa" không có hệ thống PA thật).
+
+Backend: permission mới `encounter.reassign`, endpoint `PATCH /encounters/:id/reassign`, `receptionListItemSchema` thêm `dob`/`invoiceStatus`, trích xuất `resolveDoctorDepartmentRouting()` dùng chung Tiếp nhận + Đổi bác sĩ.
+
+Frontend: dải KPI 6 ô, gộp cột Mã LK+Họ tên+Tuổi, badge Trạng thái ưu tiên "Chờ thu" khi chưa thanh toán, cảnh báo "Chờ lâu", panel "Tải theo Bác sĩ" (nêu bật bác sĩ đã đóng ca nhưng còn bệnh nhân gán), dialog `ReassignDoctorDialog.tsx` mới, trích xuất `INVOICE_STATUS_META`.
+
+**Đã xác minh**: `packages/core` 160/160, `apps/api` 725/725 (+9), `apps/web` 5/5, `pnpm -w typecheck/lint/build` sạch (chunk 497.96 kB). Playwright qua Chrome thật với dữ liệu tạo qua HTTP API — đủ 7 kịch bản (chờ khám/chờ lâu/chưa gán/đang khám/đã huỷ/hoàn tất/bác sĩ đóng ca còn bệnh nhân gán). Xem `docs/DECISIONS.md` #135.
+
 ## 2026-09-08 (6)
 
 ### Bỏ hẳn lỗi 401 /auth/refresh lặp lại mỗi lần tải trang chưa đăng nhập
