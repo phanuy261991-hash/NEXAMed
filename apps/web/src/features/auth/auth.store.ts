@@ -19,11 +19,45 @@ interface AuthState {
   clear: () => void;
 }
 
+/**
+ * Cờ gợi ý "trình duyệt này đã từng đăng nhập" — CHỈ là `'1'`/không có gì, KHÔNG phải
+ * access/refresh token (không lộ thông tin nhạy cảm qua XSS, khác hẳn lý do `accessToken` cố ý
+ * không lưu localStorage ở comment trên). Dùng để `AppBootstrap` bỏ qua hẳn lượt gọi
+ * `/auth/refresh` CHẮC CHẮN thất bại (401, gây nhiễu console) cho trình duyệt/tab chưa từng đăng
+ * nhập hoặc đã đăng xuất tường minh — không đổi hành vi khôi phục phiên thật (2026-09-08, chủ dự
+ * án phản hồi trực tiếp lỗi 401 lặp lại mỗi lần tải trang).
+ */
+const SESSION_HINT_KEY = 'nexamed_had_session';
+
+export function hasSessionHint(): boolean {
+  try {
+    return localStorage.getItem(SESSION_HINT_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function setSessionHint(value: boolean) {
+  try {
+    if (value) localStorage.setItem(SESSION_HINT_KEY, '1');
+    else localStorage.removeItem(SESSION_HINT_KEY);
+  } catch {
+    // Trình duyệt chặn localStorage (chế độ ẩn danh nghiêm ngặt...) — bỏ qua, chỉ mất tác dụng
+    // tối ưu bỏ-qua-refresh-thừa, không ảnh hưởng luồng đăng nhập/khôi phục phiên chính.
+  }
+}
+
 export const useAuthStore = create<AuthState>((set) => ({
   accessToken: null,
   user: null,
   status: 'idle',
-  setSession: (accessToken, user) => set({ accessToken, user, status: 'authenticated' }),
+  setSession: (accessToken, user) => {
+    setSessionHint(true);
+    set({ accessToken, user, status: 'authenticated' });
+  },
   updateUser: (patch) => set((state) => (state.user ? { user: { ...state.user, ...patch } } : {})),
-  clear: () => set({ accessToken: null, user: null, status: 'unauthenticated' }),
+  clear: () => {
+    setSessionHint(false);
+    set({ accessToken: null, user: null, status: 'unauthenticated' });
+  },
 }));

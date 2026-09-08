@@ -2,6 +2,16 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-08 (6)
+
+### Bỏ hẳn lỗi 401 /auth/refresh lặp lại mỗi lần tải trang chưa đăng nhập
+
+Chủ dự án hỏi thẳng sau khi xem kết quả verify #133: "không lỗi nào ngoài 401 /auth/refresh sao không xử lý luôn". Nguyên nhân: `AppBootstrap.tsx` gọi `/auth/refresh` vô điều kiện mỗi lần khởi động app kể cả trình duyệt chưa từng đăng nhập — JS không đọc được cookie httpOnly để biết trước, nên request luôn 401 và Chrome tự in lỗi ở tầng mạng.
+
+Thêm cờ nhẹ `nexamed_had_session` (`localStorage`, chỉ `'1'`/không có gì — không phải token, không lộ gì nhạy cảm) trong `auth.store.ts` (set khi `setSession`, xoá khi `clear`). `AppBootstrap.tsx` kiểm cờ này trước khi gọi refresh — không có cờ thì bỏ qua hẳn network call, chuyển thẳng sang trạng thái chưa đăng nhập.
+
+**Đã xác minh qua Playwright/Chrome thật** (3 context riêng biệt): trình duyệt mới → 0 lỗi console; đăng nhập rồi F5 → vẫn giữ phiên, 0 lỗi; đăng xuất rồi tải lại → cờ đã xoá, 0 lỗi. `typecheck/build` sạch, chunk 497.75 kB. Xem `docs/DECISIONS.md` #134.
+
 ## 2026-09-08 (5)
 
 ### Đổi tên "Danh sách tiếp nhận"→"Bệnh nhân trong ngày" + bổ sung đủ trường "Thông tin hành chính"
