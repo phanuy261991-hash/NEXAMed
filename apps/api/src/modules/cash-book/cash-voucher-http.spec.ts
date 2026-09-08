@@ -332,7 +332,15 @@ describe('HTTP e2e — /api/v1/cash-vouchers', () => {
     });
   });
 
-  describe('Chốt ca — phiếu gắn ca đã chốt tự khoá sửa/huỷ', () => {
+  describe('Chốt ca — phiếu gắn ca đã chốt tự khoá Sửa tuyệt đối, trừ Huỷ dành cho clinic_admin (#129)', () => {
+    let expenseVoucher2Id: string;
+
+    it('tạo thêm 1 phiếu CHI nữa trước khi chốt ca (dùng cho kịch bản admin Huỷ xuyên khoá thứ 2)', async () => {
+      const res = await createVoucher(cashierToken, 'EXPENSE', 30_000);
+      expect(res.status).toBe(200);
+      expenseVoucher2Id = res.body.data.id;
+    });
+
     it('chốt ca hiện tại (khớp đúng số hệ thống)', async () => {
       const summary = await request(app.getHttpServer()).get(`/api/v1/cashier-shifts/${cashierShiftId}/summary`).set(authed(cashierToken));
       const res = await request(app.getHttpServer())
@@ -343,7 +351,7 @@ describe('HTTP e2e — /api/v1/cash-vouchers', () => {
       expect(res.body.data.status).toBe('CLOSED');
     });
 
-    it('sửa phiếu CHI (vẫn POSTED, chưa từng huỷ) gắn ca vừa chốt → 409 CASH_VOUCHER_NOT_EDITABLE', async () => {
+    it('sửa phiếu CHI (vẫn POSTED, chưa từng huỷ) gắn ca vừa chốt → 409 CASH_VOUCHER_NOT_EDITABLE, kể cả clinic_admin (không có đường Sửa xuyên khoá — chỉ Huỷ mới có)', async () => {
       const res = await request(app.getHttpServer())
         .patch(`/api/v1/cash-vouchers/${expenseVoucherId}`)
         .set(authed(clinicAdminToken))
@@ -352,13 +360,39 @@ describe('HTTP e2e — /api/v1/cash-vouchers', () => {
       expect(res.body.error.code).toBe('CASH_VOUCHER_NOT_EDITABLE');
     });
 
-    it('huỷ phiếu CHI gắn ca vừa chốt → 409 CASH_VOUCHER_NOT_EDITABLE', async () => {
+    it('thu ngân (không có cashier_shift.manage) huỷ phiếu gắn ca đã chốt → vẫn 409 CASH_VOUCHER_NOT_EDITABLE', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/cash-vouchers/${expenseVoucherId}/void`)
+        .set(authed(cashierToken))
+        .send({ reason: 'Nhập nhầm số tiền', version: 1 });
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('CASH_VOUCHER_NOT_EDITABLE');
+    });
+
+    it('clinic_admin (cashier_shift.manage) huỷ phiếu gắn ca đã chốt → 200 voided=true — đường sửa sai duy nhất khi lỗi chỉ phát hiện sau khi đã chốt ca', async () => {
       const res = await request(app.getHttpServer())
         .post(`/api/v1/cash-vouchers/${expenseVoucherId}/void`)
         .set(authed(clinicAdminToken))
-        .send({ reason: 'x', version: 1 });
-      expect(res.status).toBe(409);
-      expect(res.body.error.code).toBe('CASH_VOUCHER_NOT_EDITABLE');
+        .send({ reason: 'Nhập nhầm số tiền, huỷ để lập lại phiếu đúng', version: 1 });
+      expect(res.status).toBe(200);
+      expect(res.body.data.voided).toBe(true);
+    });
+
+    it('clinic_admin huỷ tiếp phiếu CHI thứ 2 cùng ca đã chốt → vẫn 200 (không giới hạn 1 lần cho mỗi ca)', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/cash-vouchers/${expenseVoucher2Id}/void`)
+        .set(authed(clinicAdminToken))
+        .send({ reason: 'Lập trùng, huỷ bớt 1 phiếu', version: 1 });
+      expect(res.status).toBe(200);
+      expect(res.body.data.voided).toBe(true);
+    });
+
+    it('huỷ lại phiếu vừa huỷ (đã deletedAt) → 404, không phải 409 (đã ra khỏi đường EDIT hoàn toàn)', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/cash-vouchers/${expenseVoucherId}/void`)
+        .set(authed(clinicAdminToken))
+        .send({ reason: 'x', version: 2 });
+      expect(res.status).toBe(404);
     });
   });
 

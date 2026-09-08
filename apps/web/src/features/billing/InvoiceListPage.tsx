@@ -12,7 +12,7 @@ import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { formatVnd } from '../../shared/format/currency';
 import { useRowSelection } from '../../shared/hooks/useRowSelection';
-import { addDays, formatDateLabel, getVietnamTodayDateString } from '../appointment/schedule-grid.utils';
+import { addDays, formatDateLabel, getVietnamTodayDateString, isoToVietnamDateString } from '../appointment/schedule-grid.utils';
 import { Button } from '../../shared/ui/Button';
 import { CloseShiftDialog } from '../cashier-shift/CloseShiftDialog';
 import { OpenShiftDialog } from '../cashier-shift/OpenShiftDialog';
@@ -104,6 +104,12 @@ export function InvoiceListPage() {
   // PERMISSION_DENIED nghĩa là vai trò này không có `cashier_shift.*` — không hiện gì thêm ở
   // Thu ngân, khác lỗi mạng thật (không chặn cả trang).
   const shiftFeatureUnavailable = currentShiftQuery.isError && currentShiftQuery.error instanceof ApiError && currentShiftQuery.error.code === 'PERMISSION_DENIED';
+  // Cảnh báo MỀM "ca treo qua ngày hôm sau" (docs/DECISIONS.md #129) — `openShift()` backend chỉ
+  // kiểm tra "actor này đã có ca mở chưa", KHÔNG có mốc ngày nào chặn — quên/cố tình không Chốt ca
+  // thì mọi giao dịch hôm sau vẫn lặng lẽ cộng dồn vào ĐÚNG ca cũ, làm 2 ngày làm việc lẫn vào 1 lần
+  // chốt. Xử lý bằng CẢNH BÁO, không chặn thu tiền — đúng triết lý cảnh báo-không-chặn đã dùng cho
+  // sinh hiệu/tương tác thuốc, tránh kẹt quầy thu ngân giữa lúc bệnh nhân đang chờ.
+  const openShiftIsStale = openShift !== null && isoToVietnamDateString(openShift.openedAt) !== getVietnamTodayDateString();
 
   // "Sổ quỹ & Thu chi" GĐ1 — nút tắt lập phiếu thu/chi NGOÀI dịch vụ khám ngay từ trang Thu ngân
   // (yêu cầu #5 mockup), tránh phải điều hướng sang mục sidebar riêng cho thao tác hay dùng.
@@ -217,6 +223,29 @@ export function InvoiceListPage() {
           </div>
           <Button type="button" variant="secondary" onClick={() => setOpenShiftDialogVisible(true)}>
             Mở ca ngay
+          </Button>
+        </div>
+      )}
+
+      {/* Ca đang mở nhưng mở TỪ HÔM QUA trở về trước (docs/DECISIONS.md #129) — cảnh báo MỀM, không
+          chặn thu tiền. Màu `rose-600` (không dùng amber) — cùng tông "Có chênh lệch — cần xử lý"
+          ở `CashierShiftListPage.tsx`, tránh trùng màu với nút "Chốt ca" (`amberSolid`) và badge
+          "Chờ thu" (`tone='warning'`, cũng amber) đứng ngay cạnh/bên dưới — chủ dự án phản hồi trực
+          tiếp 3 màu giống nhau khó phân biệt mức độ khẩn cấp. */}
+      {openShift && openShiftIsStale && (
+        <div className="flex flex-shrink-0 items-center justify-between gap-3 rounded-xl bg-rose-600 px-5 py-3.5 text-white shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-white/20">
+              <Warning size={20} weight="bold" aria-hidden="true" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-sm font-bold">Ca thu ngân mở quá lâu — Chưa chốt</span>
+              <span className="text-xs font-medium text-rose-100">Mở từ {formatDateTime(openShift.openedAt)}. Vui lòng kiểm tra và chốt ca.</span>
+            </div>
+          </div>
+          <Button type="button" variant="secondary" onClick={() => setClosingShift(openShift)}>
+            <LockKey size={16} weight="bold" aria-hidden="true" />
+            Chốt ca ngay
           </Button>
         </div>
       )}

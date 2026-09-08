@@ -99,8 +99,8 @@ export function CashFlowReportPage() {
                   {reportQuery.data.byType.map((g) => (
                     <tr key={g.key} className="border-b border-slate-50 last:border-0">
                       <td className="px-4 py-2 font-medium text-slate-800">{g.label}</td>
-                      <td className="px-4 py-2 text-right tabular-nums text-emerald-700">{g.totalIncome > 0 ? formatVnd(g.totalIncome) : '—'}</td>
-                      <td className="px-4 py-2 text-right tabular-nums text-rose-700">{g.totalExpense > 0 ? formatVnd(g.totalExpense) : '—'}</td>
+                      <td className="px-4 py-2 text-right font-medium tabular-nums text-emerald-700">{g.totalIncome > 0 ? formatVnd(g.totalIncome) : '—'}</td>
+                      <td className="px-4 py-2 text-right font-medium tabular-nums text-rose-700">{g.totalExpense > 0 ? formatVnd(g.totalExpense) : '—'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -122,8 +122,8 @@ export function CashFlowReportPage() {
                   {reportQuery.data.byAccount.map((g) => (
                     <tr key={g.key} className="border-b border-slate-50 last:border-0">
                       <td className="px-4 py-2 font-medium text-slate-800">{g.label}</td>
-                      <td className="px-4 py-2 text-right tabular-nums text-emerald-700">{g.totalIncome > 0 ? formatVnd(g.totalIncome) : '—'}</td>
-                      <td className="px-4 py-2 text-right tabular-nums text-rose-700">{g.totalExpense > 0 ? formatVnd(g.totalExpense) : '—'}</td>
+                      <td className="px-4 py-2 text-right font-medium tabular-nums text-emerald-700">{g.totalIncome > 0 ? formatVnd(g.totalIncome) : '—'}</td>
+                      <td className="px-4 py-2 text-right font-medium tabular-nums text-rose-700">{g.totalExpense > 0 ? formatVnd(g.totalExpense) : '—'}</td>
                       <td className="px-4 py-2 text-right font-bold tabular-nums text-slate-900">{formatVnd(g.closingBalance)}</td>
                     </tr>
                   ))}
