@@ -51,7 +51,7 @@ function formatDateTime(iso: string): string {
  * bác sĩ nên chuyển sang "Hàng đợi khám" (`ReceptionDoctorQueuePage.tsx`).
  */
 export function ReceptionListPage() {
-  useBreadcrumb([{ label: 'Tiếp nhận và Đặt lịch' }, { label: 'Danh sách tiếp nhận' }]);
+  useBreadcrumb([{ label: 'Tiếp nhận và Đặt lịch' }, { label: 'Bệnh nhân trong ngày' }]);
 
   const [date, setDate] = useState(getVietnamTodayDateString());
   const [cancellingId, setCancellingId] = useState<string | null>(null);
@@ -65,7 +65,7 @@ export function ReceptionListPage() {
 
   return (
     <div className="flex h-full flex-col gap-2.5 p-3">
-      <h1 className="sr-only">Danh sách tiếp nhận</h1>
+      <h1 className="sr-only">Bệnh nhân trong ngày</h1>
 
       <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-2.5 px-1">
         <div className="flex items-center gap-1.5">
@@ -132,7 +132,7 @@ export function ReceptionListPage() {
           {/* `overflow-x-auto` ở khung ngoài + `min-width` cố định ở khung trong (header lẫn thân
               bảng cùng nằm trong) — cuộn ngang khi 8 cột không vừa màn hình hẹp, header luôn khớp
               cột với thân bảng vì cuộn cùng một khối. */}
-          <div role="table" aria-label="Danh sách tiếp nhận" className="scroll-hover h-full overflow-x-auto">
+          <div role="table" aria-label="Bệnh nhân trong ngày" className="scroll-hover h-full overflow-x-auto">
             <div className="flex h-full flex-col" style={{ minWidth: TABLE_MIN_WIDTH_PX }}>
               <div
                 role="row"

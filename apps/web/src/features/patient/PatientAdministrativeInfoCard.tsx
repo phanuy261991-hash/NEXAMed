@@ -4,7 +4,7 @@ import type { PatientDetail } from '@nexamed/shared';
 import { useAllWardsQuery, useProvincesQuery } from '../geo/geo.queries';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { formatDobDisplay } from '../../shared/format/date';
-import { GENDER_LABEL, formatAddressLine } from './patient-form.utils';
+import { GENDER_LABEL, computeAgeLabel, computeBirthYear } from './patient-form.utils';
 
 function Field({ label, value }: { label: string; value: string }) {
   return (
@@ -55,18 +55,22 @@ export function PatientAdministrativeInfoCard({ patient, onEdit }: { patient: Pa
 
       <div className="grid grid-cols-2 gap-x-6 gap-y-4 p-5 sm:grid-cols-3 lg:grid-cols-4">
         <Field label="Họ và tên" value={patient.fullName} />
-        <Field label="Ngày sinh" value={formatDobDisplay(patient.dob)} />
         <Field label="Giới tính" value={GENDER_LABEL[patient.gender] ?? patient.gender} />
+        <Field label="Ngày sinh" value={formatDobDisplay(patient.dob)} />
+        <Field label="Năm sinh" value={computeBirthYear(patient.dob)} />
+        <Field label="Tuổi" value={computeAgeLabel(patient.dob)} />
         <Field label="Số điện thoại" value={patient.phone} />
-        <Field label="Số CCCD" value={patient.nationalId ?? ''} />
-        <Field label="Ngày / nơi cấp" value={[patient.nationalIdIssuedAt, patient.nationalIdIssuedPlace].filter(Boolean).join(' · ')} />
-        <Field label="Số thẻ BHYT" value={patient.insuranceNumber ?? ''} />
+        <Field label="CCCD/CMND" value={patient.nationalId ?? ''} />
+        <Field label="Ngày cấp" value={patient.nationalIdIssuedAt ? formatDobDisplay(patient.nationalIdIssuedAt) : ''} />
+        <Field label="Nơi cấp" value={patient.nationalIdIssuedPlace ?? ''} />
         <Field label="Dân tộc" value={patient.ethnicity ? (ethnicityNameByCode[patient.ethnicity] ?? patient.ethnicity) : ''} />
         <Field label="Quốc tịch" value={patient.nationality ? (nationalityNameByCode[patient.nationality] ?? patient.nationality) : ''} />
         <Field label="Nghề nghiệp" value={patient.occupation ? (occupationNameByCode[patient.occupation] ?? patient.occupation) : ''} />
-        <div className="col-span-2 sm:col-span-3 lg:col-span-4">
-          <Field label="Địa chỉ" value={formatAddressLine(patient.address, provinceNameByCode, wardNameByCode)} />
-        </div>
+        <Field label="Số bảo hiểm" value={patient.insuranceNumber ?? ''} />
+        <Field label="Tỉnh/Thành phố" value={patient.address?.province ? (provinceNameByCode[patient.address.province] ?? patient.address.province) : ''} />
+        <Field label="Phường/Xã" value={patient.address?.ward ? (wardNameByCode[patient.address.ward] ?? patient.address.ward) : ''} />
+        <Field label="Số nhà, đường" value={patient.address?.street ?? ''} />
+        <Field label="Khu phố" value={patient.address?.neighborhood ?? ''} />
       </div>
 
       {hasRelative && (

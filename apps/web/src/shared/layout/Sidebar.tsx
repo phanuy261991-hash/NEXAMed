@@ -233,7 +233,7 @@ export function Sidebar() {
                 <ul className="mt-0.5 flex flex-col gap-0.5 border-l border-slate-800 pl-3.5">
                   {canSeeAppointments && <NavItem to="/appointments" label="Lịch hẹn" icon={CalendarBlank} collapsed={false} indent />}
                   {canSeeReception && <NavItem to="/reception/new" label="Tiếp nhận bệnh nhân" icon={UserPlus} collapsed={false} indent />}
-                  {canSeeReception && <NavItem to="/reception" label="Danh sách tiếp nhận" icon={ClipboardText} end collapsed={false} indent />}
+                  {canSeeReception && <NavItem to="/reception" label="Bệnh nhân trong ngày" icon={ClipboardText} end collapsed={false} indent />}
                 </ul>
               )}
             </li>

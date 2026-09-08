@@ -2,6 +2,18 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-08 (5)
+
+### Đổi tên "Danh sách tiếp nhận"→"Bệnh nhân trong ngày" + bổ sung đủ trường "Thông tin hành chính"
+
+Chạy `pnpm -w test` toàn workspace: `packages/shared` 20/20, `packages/core` 157/157, `apps/web` 5/5 pass. `apps/api` 715 test, 2 file fail lúc chạy chung — chạy lại riêng 9/9 pass sạch, xác nhận race điều kiện tiền nhiệm đã biết (`role_permission`/`code_sequence`), không liên quan thay đổi phiên này.
+
+Đổi tên menu con "Danh sách tiếp nhận" → "Bệnh nhân trong ngày" (sidebar, breadcrumb, `h1`, `aria-label` ở `ReceptionListPage.tsx`).
+
+Rà soát lại "Thông tin hành chính" (trang Hồ sơ bệnh nhân) đúng theo form Thêm mới/Sửa (`PatientFormFields.tsx`): tách "Ngày / nơi cấp" thành 2 trường riêng, bổ sung "Năm sinh"/"Tuổi" (thiếu hoàn toàn trước đó), tách địa chỉ gộp 1 dòng thành 4 trường riêng (Tỉnh/Thành phố, Phường/Xã, Số nhà-đường, Khu phố) — tổng 16 trường đúng thứ tự form gốc, đổi nhãn "Số thẻ BHYT"→"Số bảo hiểm" cho khớp chữ dùng trong form.
+
+**Đã xác minh**: `pnpm --filter @nexamed/web run typecheck/build` sạch, chunk không đổi (497.52 kB). Xem `docs/DECISIONS.md` #133.
+
 ## 2026-09-08 (4)
 
 ### Menu "Hồ sơ Bệnh nhân" mới dưới "Khám bệnh", tách khỏi "Tiếp nhận và Đặt lịch"
