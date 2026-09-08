@@ -19,8 +19,7 @@ import { PatientProfileHeader } from './PatientProfileHeader';
 import { PatientClinicalKpiRow } from './PatientClinicalKpiRow';
 import { PatientAdministrativeInfoCard } from './PatientAdministrativeInfoCard';
 import { PatientVitalHistoryTable } from './PatientVitalHistoryTable';
-import { PersonalHistoryCard } from './PersonalHistoryCard';
-import { FamilyHistoryCard } from './FamilyHistoryCard';
+import { PatientHistorySummaryCard } from './PatientHistorySummaryCard';
 import { PatientEditDialog } from './PatientEditDialog';
 
 type ProfileTabId = 'info' | 'record' | 'history';
@@ -157,10 +156,14 @@ export function PatientDetailPage() {
 
       {activeTab === 'info' && (
         <div className="flex flex-col gap-5">
-          <PatientAdministrativeInfoCard patient={patient} />
+          <PatientAdministrativeInfoCard patient={patient} onEdit={canEdit ? () => setEditing(true) : undefined} />
           <PatientVitalHistoryTable vitalSigns={summaryQuery.data?.recentVitalSigns ?? []} />
-          <PersonalHistoryCard conditions={patient.conditions} personalHistory={patient.personalHistory} onAdd={() => setHistoryDialogOpen(true)} />
-          <FamilyHistoryCard familyHistoryRows={patient.familyHistoryRows} onAdd={() => setHistoryDialogOpen(true)} />
+          <PatientHistorySummaryCard
+            conditions={patient.conditions}
+            familyHistoryRows={patient.familyHistoryRows}
+            personalHistory={patient.personalHistory}
+            onAdd={() => setHistoryDialogOpen(true)}
+          />
         </div>
       )}
       {activeTab === 'record' && (

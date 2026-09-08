@@ -1,10 +1,6 @@
 import type { PatientConditionItem } from '@nexamed/shared';
 import { HistoryBoxCard } from './AllergyBanner';
-
-/** Thói quen/lối sống dùng CHUNG mảng `patient.conditions` với bệnh lý nền, mã hoá ICD-10 Chương XXI (Z72.x) — xem `PatientHistoryDialog.tsx`. */
-function isHabitConditionCode(icd10Code: string): boolean {
-  return icd10Code.startsWith('Z72');
-}
+import { isHabitConditionCode } from './patient-form.utils';
 
 /**
  * Khung "Tiền sử bản thân" (bệnh lý nền + thói quen/lối sống + ghi chú tự do) — trích xuất từ

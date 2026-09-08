@@ -127,6 +127,16 @@ Chọn icon theo đúng bản chất thực thể của modal (không dùng chun
 
 Modal có bố cục đặc thù (ví dụ `UserAccountFormDialog.tsx` có thanh Tab ngay dưới tiêu đề, không dùng được viền-dưới mặc định của `ModalHeader`) được phép tự dựng lại ĐÚNG ngôn ngữ thị giác này (badge icon đặc + tiêu đề đậm) thay vì gọi thẳng component, miễn giữ nhất quán — không quay lại kiểu `<h2>` phẳng cũ.
 
+### 4.1h. Card chỉ-xem (Read-only Info Card) — tiêu đề có icon nhỏ, nhãn nhạt/giá trị đậm (chốt 2026-09-08)
+
+Áp dụng cho khung THUẦN HIỂN THỊ (không có input/validate, ví dụ `PatientAdministrativeInfoCard.tsx`/`PatientVitalHistoryTable.tsx`/`PatientHistorySummaryCard.tsx` ở trang "Hồ sơ bệnh nhân") — **khác** modal Thêm/Sửa (dùng `ModalHeader`, mục 4.1g) và **khác** nhãn trường trong FORM nghiệp vụ có nhập liệu (mục 4.1c, nhãn đậm `text-sm font-semibold text-slate-800` để tương phản với khung input). Đọc đúng mục cần trước khi áp dụng — 2 quy tắc nhãn/giá trị này CHỦ ĐÍCH khác nhau, không phải lỗi/mâu thuẫn.
+
+- **Tiêu đề khung**: `rounded-lg border border-slate-200 bg-white shadow-sm` bọc ngoài; header `flex items-center justify-between border-b border-slate-100 px-5 py-3`. Tiêu đề LUÔN có 1 icon Phosphor nhỏ đứng trước chữ, cùng dòng (`flex items-center gap-1.5`): `size={16} weight="fill"` màu `text-blue-600`, KHÔNG bọc trong ô vuông nền màu (khác `ModalHeader` — icon ở đây chỉ là điểm nhấn nhỏ ngang tầm chữ, không phải badge). Chữ tiêu đề `text-sm font-bold text-slate-800`. Chọn icon đúng bản chất nội dung khung (ví dụ `IdentificationCard` cho thông tin hành chính, `Heartbeat` cho sinh hiệu, `ClipboardText` cho tiền sử) — không dùng chung 1 icon cho mọi khung, cùng tinh thần mục 4.1g.
+- **Nút hành động phụ** (ví dụ bút sửa mở dialog riêng) đặt cuối header, đối diện tiêu đề qua `justify-between`: icon trơn `text-slate-400 hover:text-slate-600`, không nền/viền.
+- **Cặp nhãn/giá trị field**: nhãn `text-sm font-medium text-slate-500` (nhạt, không cạnh tranh thị giác với giá trị); giá trị `text-base font-semibold text-slate-900` (to hơn 1 bậc, đậm vừa — **không dùng `font-bold`/`font-extrabold`**, chủ dự án phản hồi trực tiếp "nét quá đậm" khi thử `font-bold` cho giá trị và `font-extrabold` cho số liệu KPI, đã giảm lại 1 bậc). Đây là điểm khác biệt CHỦ Ý với mục 4.1c (nhãn form nhập liệu đậm hơn giá trị) — ở đây là dữ liệu đã có sẵn cần đọc nhanh, giá trị mới là trọng tâm, không phải nhãn.
+- **Số liệu KPI/thống kê lớn trong card** (ví dụ dải "Sinh hiệu gần nhất"/"Tổng lượt khám"): nhãn nhỏ viết hoa `text-[11px] font-bold uppercase` màu nhạt (`text-slate-500`/màu semantic nếu card có nền màu, ví dụ `text-amber-800` trên nền `bg-amber-50`); giá trị lớn `font-bold` (không `font-extrabold`) `tabular-nums`.
+- **Nhiều tiêu chí cùng cấp thì tách card riêng**, không lồng nhiều số liệu rời trong 1 card qua các ô con — mỗi card viền/bo góc/đổ bóng độc lập (`rounded-[10px] border border-slate-200 shadow-sm`), xếp cạnh nhau bằng `flex gap-3` (đã thử lồng "Cân nặng"/"Chiều cao" thành 2 ô nhỏ bên trong card BMI, chủ dự án phản hồi yêu cầu tách hẳn 3 card).
+
 ### 4.2. Bảng dữ liệu y tế (Medical Data Tables)
 - **Cột:** Phải có tính năng cố định (sticky) cột "Tên bệnh nhân" ở bên trái và cột "Hành động" ở bên phải.
 - **Hàng (Row):** Có thể click vào bất cứ đâu trên hàng để xem chi tiết (không chỉ click vào nút xem).

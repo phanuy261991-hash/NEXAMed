@@ -180,6 +180,15 @@ export function findRepeatedFamilyConditions(rows: FamilyHistoryRowDraft[]): { i
     .map(([icd10Code, v]) => ({ icd10Code, icd10Name: v.icd10Name, relationLabels: v.relationLabels }));
 }
 
+/**
+ * Thói quen/lối sống dùng CHUNG mảng `patient.conditions` với bệnh lý nền, mã hoá ICD-10 Chương XXI
+ * (Z72.x) — dùng chung cho `PersonalHistoryCard.tsx` (màn khám) và `PatientHistorySummaryCard.tsx`
+ * (trang Hồ sơ bệnh nhân), tránh trùng lặp logic phân loại (CLAUDE.md "trùng lặp lần 2 → trích xuất").
+ */
+export function isHabitConditionCode(icd10Code: string): boolean {
+  return icd10Code.startsWith('Z72');
+}
+
 /** Năm sinh — bóc tách từ `dob` (`YYYY-MM-DD`), rỗng nếu chưa nhập. */
 export function computeBirthYear(dob: string): string {
   return dob.slice(0, 4);

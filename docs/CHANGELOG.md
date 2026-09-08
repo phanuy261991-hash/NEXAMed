@@ -2,6 +2,22 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-08 (3)
+
+### Đối chiếu lại "Hồ sơ bệnh nhân" đúng mockup gốc + tách 3 card sinh hiệu + favicon web app
+
+Chủ dự án phản hồi bản #130 (mục ngay dưới) vẫn chưa khớp mockup đã chốt dù đã sửa 1 vòng. Đọc lại NGUYÊN VĂN HTML của Artifact "Hồ Sơ Bệnh Nhân NEXAMed" (Phương án 4 ★) làm chuẩn thay vì suy luận qua ảnh chụp — phát hiện lưới `lg:grid-cols-5` (bản fix trước) lẽ ra là `lg:grid-cols-4`, header "Thông tin hành chính" thiếu đúng icon `PencilSimple` (có icon-box thừa), và "Tiền sử bản thân & gia đình" phải là 1 card gộp (không phải 2 card compact như màn khám).
+
+**Sửa đúng mockup**: `PatientAdministrativeInfoCard.tsx` (bỏ icon-box, thêm `PencilSimple` mở dialog sửa, `lg:grid-cols-4`), `PatientVitalHistoryTable.tsx` (cột "Ngày khám" đậm hơn các cột khác), `PatientClinicalKpiRow.tsx` (letter-spacing/overflow/nowrap khớp CSS gốc). `PatientHistorySummaryCard.tsx` mới — gộp đúng bố cục mockup (chip Bệnh lý nền/Thói quen 2 cột + bảng Tiền sử gia đình + khung Ghi chú), thay 2 lần gọi `PersonalHistoryCard`/`FamilyHistoryCard` ở trang này (2 component cũ giữ nguyên cho màn Khám bệnh).
+
+**Theo phản hồi trực tiếp tiếp theo** (ghi đè mockup gốc): thêm 2 chỉ số Cân nặng/Chiều cao đo gần nhất, sau đó tách hẳn BMI/Cân nặng/Chiều cao thành 3 card riêng biệt; nhãn/giá trị "Thông tin hành chính" đổi cách phân cấp (nhãn nhạt, giá trị đậm) rồi giảm độ đậm lại sau khi thấy "nét quá đậm"; toàn bộ `font-extrabold` ở dải KPI giảm xuống `font-bold`; thêm icon nhỏ trước tiêu đề cả 3 khung (`IdentificationCard`/`Heartbeat`/`ClipboardText`). Chốt thành quy tắc mới **mục 4.1h `ui-guidelines.md`** ("Card chỉ-xem") để form khác dùng lại đúng, không phải nhắc lại.
+
+**Favicon web app** — trước đây trống hoàn toàn (`apps/web/index.html` chưa từng khai `<link rel="icon">`). Thêm `apps/web/public/favicon.svg` (icon `Stethoscope` của Phosphor, nền tròn `blue-600`), hỏi qua `AskUserQuestion` trước khi chọn hướng thiết kế.
+
+**Dữ liệu test đầy đủ trường** — script dùng-một-lần qua HTTP API thật (không SQL trực tiếp) tạo/cập nhật bệnh nhân "Trần Kiểm Thử Hồ Sơ" đủ CCCD/BHYT/dân tộc/quốc tịch/nghề nghiệp/địa chỉ/người thân/dị nguyên/3 bệnh lý nền-thói quen/2 dòng tiền sử gia đình/6 lượt khám COMPLETED có sinh hiệu tăng dần.
+
+**Đã xác minh**: `pnpm --filter @nexamed/web run typecheck/build` sạch qua từng vòng, chunk web không đổi (496.65 kB). Xem `docs/DECISIONS.md` #131.
+
 ## 2026-09-08 (2)
 
 ### Rebuild trang chi tiết bệnh nhân thành "Hồ sơ bệnh nhân"

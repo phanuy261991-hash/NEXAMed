@@ -1,3 +1,4 @@
+import { Heartbeat } from '@phosphor-icons/react';
 import type { PatientVitalSignHistoryItem } from '@nexamed/shared';
 import { classifyBmi } from '../encounter/clinical-display';
 
@@ -31,8 +32,11 @@ function Cell({ children, tone = 'default' }: { children: React.ReactNode; tone?
 export function PatientVitalHistoryTable({ vitalSigns }: { vitalSigns: PatientVitalSignHistoryItem[] }) {
   return (
     <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
-        <h2 className="text-sm font-bold text-slate-800">Sinh hiệu theo lượt khám</h2>
+      <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
+        <h2 className="flex items-center gap-1.5 text-sm font-bold text-slate-800">
+          <Heartbeat size={16} weight="fill" className="text-blue-600" aria-hidden="true" />
+          Sinh hiệu theo lượt khám
+        </h2>
         <span className="text-[11px] font-medium text-slate-400">Chỉ xem — ghi nhận tại từng lượt khám</span>
       </div>
 
@@ -61,7 +65,7 @@ export function PatientVitalHistoryTable({ vitalSigns }: { vitalSigns: PatientVi
                 const feverish = v.temperatureC !== null && v.temperatureC >= TEMPERATURE_WARNING_C;
                 return (
                   <tr key={v.id}>
-                    <Cell>{formatVisitDate(v.measuredAt)}</Cell>
+                    <td className="px-3 py-2.5 text-center font-medium text-slate-900">{formatVisitDate(v.measuredAt)}</td>
                     <Cell tone={v.weightGram === null ? 'muted' : 'default'}>{v.weightGram !== null ? `${(v.weightGram / 1000).toFixed(1)} kg` : '—'}</Cell>
                     <Cell tone={v.heightMm === null ? 'muted' : 'default'}>{v.heightMm !== null ? `${Math.round(v.heightMm / 10)} cm` : '—'}</Cell>
                     <td className="px-3 py-2.5 text-center">
