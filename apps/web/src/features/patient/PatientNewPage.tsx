@@ -18,7 +18,7 @@ import { toCreatePatientRequest } from './patient-form.utils';
  */
 export function PatientNewPage() {
   useBreadcrumb([
-    { label: 'Tiếp nhận và Đặt lịch' },
+    { label: 'Hồ sơ Bệnh nhân' },
     { label: 'Danh sách bệnh nhân', to: '/patients' },
     { label: 'Thêm bệnh nhân' },
   ]);

@@ -48,8 +48,16 @@ import { useAutoCollapseSidebarOnNavigate, useSidebar } from './sidebar.context'
  * `examination` thật ở web), chỉ đổi vị trí hiển thị sang nhóm "Khám bệnh" trong sidebar. */
 const EXAMINATION_GROUP_PATH = '/reception/doctor-queue';
 /** Đường dẫn thuộc nhóm "Tiếp nhận và Đặt lịch" — dùng để tự mở nhóm khi route đang active nằm trong
- * đó. Loại trừ `EXAMINATION_GROUP_PATH` vì cùng tiền tố `/reception` nhưng nay thuộc nhóm khác. */
-const RECEPTION_GROUP_PATHS = ['/patients', '/appointments', '/reception'];
+ * đó. Loại trừ `EXAMINATION_GROUP_PATH` vì cùng tiền tố `/reception` nhưng nay thuộc nhóm khác.
+ * KHÔNG còn `/patients` (2026-09-08) — "Danh sách bệnh nhân" đã chuyển sang nhóm "Hồ sơ Bệnh nhân"
+ * riêng, xem `PATIENT_RECORDS_GROUP_PATHS`. */
+const RECEPTION_GROUP_PATHS = ['/appointments', '/reception'];
+/** Đường dẫn thuộc nhóm "Hồ sơ Bệnh nhân" (tách khỏi "Tiếp nhận và Đặt lịch", 2026-09-08, chủ dự án
+ * yêu cầu trực tiếp — đặt ngay dưới "Khám bệnh") — hiện chỉ có "Danh sách bệnh nhân", cùng khuôn
+ * "Thu ngân" (1 mục con thật vẫn dựng dạng nhóm cha/con để mở rộng thêm mục sau này không phải đổi
+ * lại cấu trúc). Gate bằng ĐÚNG quyền route `/patients*` cần (`patient.read`) — không đổi permission
+ * nào, chỉ đổi vị trí hiển thị trong sidebar. */
+const PATIENT_RECORDS_GROUP_PATHS = ['/patients'];
 /** Đường dẫn thuộc nhóm "Thu ngân" — hiện chỉ có "Danh sách cần thu" (`/billing`), tách nhóm cha/con
  * cùng khuôn "Khám bệnh" để sau này thêm mục con (vd tổng kết ca) không phải đổi lại cấu trúc. */
 const BILLING_GROUP_PATHS = ['/billing'];
@@ -120,6 +128,9 @@ export function Sidebar() {
   const [examinationGroupOpen, setExaminationGroupOpen] = useState(
     location.pathname.startsWith(EXAMINATION_GROUP_PATH),
   );
+  const [patientRecordsGroupOpen, setPatientRecordsGroupOpen] = useState(
+    PATIENT_RECORDS_GROUP_PATHS.some((path) => location.pathname.startsWith(path)),
+  );
   const [adminGroupOpen, setAdminGroupOpen] = useState(
     ADMIN_GROUP_PATHS.some((path) => location.pathname.startsWith(path)),
   );
@@ -162,6 +173,7 @@ export function Sidebar() {
   const canSeeStaffSchedule = useDataScope('work_shift_assignment', 'read') === 'global';
   const receptionGroupExpanded = receptionGroupOpen && !collapsed;
   const examinationGroupExpanded = examinationGroupOpen && !collapsed;
+  const patientRecordsGroupExpanded = patientRecordsGroupOpen && !collapsed;
   const adminGroupExpanded = adminGroupOpen && !collapsed;
   const billingGroupExpanded = billingGroupOpen && !collapsed;
   const cashBookGroupExpanded = cashBookGroupOpen && !collapsed;
@@ -184,7 +196,7 @@ export function Sidebar() {
         <ul className="flex flex-col gap-0.5">
           <NavItem to="/" label="Tổng quan" icon={House} end collapsed={collapsed} />
 
-          {(canSeePatients || canSeeAppointments || canSeeReception) && (
+          {(canSeeAppointments || canSeeReception) && (
             <li>
               <button
                 type="button"
@@ -222,7 +234,6 @@ export function Sidebar() {
                   {canSeeAppointments && <NavItem to="/appointments" label="Lịch hẹn" icon={CalendarBlank} collapsed={false} indent />}
                   {canSeeReception && <NavItem to="/reception/new" label="Tiếp nhận bệnh nhân" icon={UserPlus} collapsed={false} indent />}
                   {canSeeReception && <NavItem to="/reception" label="Danh sách tiếp nhận" icon={ClipboardText} end collapsed={false} indent />}
-                  {canSeePatients && <NavItem to="/patients" label="Danh sách bệnh nhân" icon={Users} collapsed={false} indent />}
                 </ul>
               )}
             </li>
@@ -264,6 +275,50 @@ export function Sidebar() {
               {examinationGroupExpanded && (
                 <ul className="mt-0.5 flex flex-col gap-0.5 border-l border-slate-800 pl-3.5">
                   <NavItem to={EXAMINATION_GROUP_PATH} label="Hàng đợi khám" icon={ListChecks} collapsed={false} indent />
+                </ul>
+              )}
+            </li>
+          )}
+
+          {/* "Hồ sơ Bệnh nhân" (2026-09-08, chủ dự án yêu cầu trực tiếp) — tách khỏi "Tiếp nhận và
+              Đặt lịch", đặt ngay dưới "Khám bệnh". Gate bằng ĐÚNG quyền route `/patients*` cần
+              (`canSeePatients`) — không đổi permission nào, chỉ đổi vị trí hiển thị trong sidebar. */}
+          {canSeePatients && (
+            <li>
+              <button
+                type="button"
+                title={collapsed ? 'Hồ sơ Bệnh nhân' : undefined}
+                onClick={() => {
+                  if (collapsed) {
+                    // Cùng quy tắc bắt buộc ở nhóm "Tiếp nhận và Đặt lịch" (.claude/docs/
+                    // ui-guidelines.md mục 8.1/8.3): bấm icon lúc thu gọn phải mở lại sidebar.
+                    setCollapsed(false);
+                    setPatientRecordsGroupOpen(true);
+                  } else {
+                    setPatientRecordsGroupOpen((v) => !v);
+                  }
+                }}
+                aria-expanded={patientRecordsGroupExpanded}
+                className={`flex w-full items-center gap-3 rounded-md py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800/60 hover:text-white ${
+                  collapsed ? 'justify-center px-2' : 'px-3'
+                }`}
+              >
+                <FileText size={collapsed ? 20 : 18} weight="regular" aria-hidden="true" className="flex-shrink-0" />
+                {!collapsed && (
+                  <>
+                    <span className="truncate text-left">Hồ sơ Bệnh nhân</span>
+                    <CaretRight
+                      size={13}
+                      weight="bold"
+                      aria-hidden="true"
+                      className={`ml-auto flex-shrink-0 transition-transform ${patientRecordsGroupExpanded ? 'rotate-90' : ''}`}
+                    />
+                  </>
+                )}
+              </button>
+              {patientRecordsGroupExpanded && (
+                <ul className="mt-0.5 flex flex-col gap-0.5 border-l border-slate-800 pl-3.5">
+                  <NavItem to="/patients" label="Danh sách bệnh nhân" icon={Users} collapsed={false} indent />
                 </ul>
               )}
             </li>

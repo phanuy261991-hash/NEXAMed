@@ -42,7 +42,7 @@ const ROW_HEIGHT_PX = 60;
  * cụ hỗ trợ vẫn đọc được như bảng.
  */
 export function PatientListPage() {
-  useBreadcrumb([{ label: 'Tiếp nhận và Đặt lịch' }, { label: 'Danh sách bệnh nhân' }]);
+  useBreadcrumb([{ label: 'Hồ sơ Bệnh nhân' }, { label: 'Danh sách bệnh nhân' }]);
 
   const navigate = useNavigate();
   const [q, setQ] = useState('');

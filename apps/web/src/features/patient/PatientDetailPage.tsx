@@ -51,7 +51,7 @@ export function PatientDetailPage() {
   const [mergeTarget, setMergeTarget] = useState<PatientSummary | null>(null);
 
   useBreadcrumb([
-    { label: 'Tiếp nhận và Đặt lịch' },
+    { label: 'Hồ sơ Bệnh nhân' },
     { label: 'Danh sách bệnh nhân', to: '/patients' },
     { label: query.data?.fullName ?? 'Đang tải...' },
   ]);

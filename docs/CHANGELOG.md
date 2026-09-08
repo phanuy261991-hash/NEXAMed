@@ -2,6 +2,18 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-08 (4)
+
+### Menu "Hồ sơ Bệnh nhân" mới dưới "Khám bệnh", tách khỏi "Tiếp nhận và Đặt lịch"
+
+Chủ dự án yêu cầu tạo nhóm sidebar mới "Hồ sơ Bệnh nhân" ngay dưới "Khám bệnh", chuyển "Danh sách bệnh nhân" (trước ở trong "Tiếp nhận và Đặt lịch") vào đây, kèm yêu cầu kiểm tra phân quyền không bị lệch sau khi đổi vị trí.
+
+`Sidebar.tsx`: nhóm cha/con mới cùng khuôn các nhóm khác, gate bằng ĐÚNG `canSeePatients` (`patient.read`) đã có sẵn — không đổi permission nào. Xác nhận route guard (`RequirePermissionRoute`) và trang "Vai trò & Phân quyền" (nhóm theo module, không theo vị trí sidebar) hoàn toàn độc lập với cấu trúc menu, nên đổi chỗ menu không ảnh hưởng gì tới việc áp quyền. Cập nhật breadcrumb 3 trang bệnh nhân khớp tên nhóm mới.
+
+Phát hiện + sửa 1 bug hiệu năng lúc code: icon `IdentificationCard` mới đẩy chunk khởi động vượt ngưỡng 500 kB (501.09 kB) vì `Sidebar.tsx` không lazy — đổi sang `FileText` (icon có sẵn trong file), chunk về 497.52 kB.
+
+**Đã xác minh**: `pnpm --filter @nexamed/web run typecheck/build` sạch. Chưa chạy Playwright trong phiên này. Xem `docs/DECISIONS.md` #132.
+
 ## 2026-09-08 (3)
 
 ### Đối chiếu lại "Hồ sơ bệnh nhân" đúng mockup gốc + tách 3 card sinh hiệu + favicon web app
