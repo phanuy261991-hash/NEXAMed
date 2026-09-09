@@ -196,6 +196,12 @@ Chủ dự án yêu cầu: form "Thêm mới" phải có thêm nút lưu xong KH
 
 **Đã áp dụng cho toàn bộ 8 nhóm form Thêm mới trong Quản trị**: `ReferenceCatalogPane.tsx` (`ItemFormModal`, mọi category dùng chung, gồm cả `ExamTypeFormModal.tsx` riêng), `RoomPane.tsx` (Tầng + Phòng), `DepartmentPane.tsx` (Loại Khoa/Phòng + Khoa/Phòng), `DrugCatalogPane.tsx`, `AllergenPane.tsx` (Nhóm dị nguyên + Dị nguyên), `WorkShiftFormModal.tsx`, `UserAccountFormDialog.tsx`. Form Thêm mới phát sinh sau này trong Quản trị PHẢI theo đúng khuôn này ngay từ đầu.
 
+### 4.8. `TwoOptionToggle` — công tắc trượt chọn 1-trong-2 (chốt 2026-09-09)
+
+`shared/ui/TwoOptionToggle.tsx` — dùng cho MỌI trường hợp cần chọn 1-trong-2 gọn trong không gian hẹp (ví dụ chiết khấu %/Tiền, "Từng dịch vụ"/"Toàn hoá đơn" ở `InvoiceDetailPage.tsx`) — không viết toggle 2 nút tay mới. Hỗ trợ trạng thái CHƯA CHỌN GÌ (`value=null`, cả 2 nút chỉ hiện dạng chip xám chưa tô màu) — bấm lại đúng nút đang chọn để bỏ chọn (quay về `null`).
+
+**Kỹ thuật bắt buộc — đo toạ độ THẬT bằng `getBoundingClientRect()`, không tính bằng `%`/`calc()`**: bản đầu dùng `width: 50%` + `translateX()` suy vị trí lý thuyết của nền trượt — lệch thật so với chữ (bug chủ dự án chụp ảnh phát hiện), nguyên nhân "static position" của phần tử `absolute` bên trong flex container không đáng tin cậy giữa các engine trình duyệt. Sửa bằng `useLayoutEffect` đo `getBoundingClientRect()` của nút đang chọn (qua `ref`) rồi đặt `left`/`width` bằng pixel thật — luôn khớp tuyệt đối bất kể cỡ chữ/khoảng đệm/độ dài nhãn khác nhau giữa 2 lựa chọn.
+
 ## 5. TIÊU CHUẨN TRUY CẬP (ACCESSIBILITY - A11y)
 - Mọi thẻ `<img>` và `<svg>` (Icon) đều phải có `alt` hoặc `aria-label` mô tả bằng tiếng Việt (VD: `aria-label="Đóng cửa sổ"`).
 - Contrast Ratio (Độ tương phản) của Text trên Background phải luôn đạt chuẩn WCAG AA (Tối thiểu 4.5:1). Không dùng chữ màu xám quá nhạt trên nền trắng.
