@@ -1,8 +1,9 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import {
   canRefundInvoice,
   CASHIER_SHIFT_READER_PORT,
+  CLINIC_CONFIG_READER_PORT,
   computeDailyBillingTotals,
   ConcurrentModificationError,
   getVietnamDateString,
@@ -14,16 +15,20 @@ import {
   needsRefund as computeNeedsRefund,
   REFERENCE_CATALOG_READER_PORT,
   vietnamDayRange,
+  WalletInsufficientBalanceError,
   type CashierShiftReaderPort,
+  type ClinicConfigReaderPort,
   type ReferenceCatalogReaderPort,
 } from '@nexamed/core';
 import type {
   Invoice as InvoiceDto,
   ListBillingInvoicesResponse,
   MarkInvoicePaidRequest,
+  PayInvoiceWithWalletRequest,
   RefundInvoiceRequest,
   RevertInvoicePaymentRequest,
   SaveInvoiceDraftRequest,
+  TopUpAndPayInvoiceWithWalletRequest,
 } from '@nexamed/shared';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
@@ -31,6 +36,7 @@ import type { RequestMeta } from '../../common/request-meta';
 import { InvoiceRepository, type BillingListRow, type InvoiceWithLines } from './invoice.repository';
 import { PaymentRepository } from './payment.repository';
 import { CashAccountRepository } from '../cash-book/cash-account.repository';
+import { PatientWalletService } from '../patient-wallet/patient-wallet.service';
 
 function toInvoiceResponse(row: InvoiceWithLines): InvoiceDto {
   const encounterCancelled = row.encounter.status === 'CANCELLED';
@@ -62,6 +68,7 @@ function toInvoiceResponse(row: InvoiceWithLines): InvoiceDto {
     pendingCashReceivedAmount: row.pendingCashReceivedAmount !== null ? Number(row.pendingCashReceivedAmount) : null,
     paymentMethod: row.activePayment?.method ?? null,
     paidAt: row.activePayment?.paidAt.toISOString() ?? null,
+    payments: row.activePayments.map((p) => ({ method: p.method, amount: Number(p.amount) })),
     // #085 — cảnh báo hoàn tiền + vết hoàn tiền, xem `needsRefund()`/`invoice-lifecycle.ts` ở `@nexamed/core`.
     encounterCancelled,
     needsRefund: computeNeedsRefund({ invoiceStatus: row.status, encounterCancelled }),
@@ -84,8 +91,10 @@ export class InvoiceService {
     private readonly invoiceRepository: InvoiceRepository,
     private readonly paymentRepository: PaymentRepository,
     private readonly cashAccountRepository: CashAccountRepository,
+    private readonly walletService: PatientWalletService,
     @Inject(CASHIER_SHIFT_READER_PORT) private readonly cashierShiftReader: CashierShiftReaderPort,
     @Inject(REFERENCE_CATALOG_READER_PORT) private readonly referenceCatalogReader: ReferenceCatalogReaderPort,
+    @Inject(CLINIC_CONFIG_READER_PORT) private readonly clinicConfigReader: ClinicConfigReaderPort,
   ) {}
 
   /**
@@ -202,6 +211,123 @@ export class InvoiceService {
     });
   }
 
+  /**
+   * Core "Trừ ví tạm ứng" (Ví tạm ứng) — dùng bởi `payWithWallet()` VÀ `topUpAndPayWithWallet()`
+   * (sau khi đã nạp thêm, trong CÙNG transaction). Trừ ĐÚNG số dư hiện có (`covered`); nếu còn
+   * thiếu (`remainder`) — thiếu mà tenant CHƯA bật "Cho phép thanh toán hỗn hợp" → 409
+   * `WALLET_INSUFFICIENT_BALANCE` (FE hiện khối "Cần thu tối thiểu"); thiếu mà ĐÃ bật → bắt buộc
+   * `remainderPaymentMethodCode`, tạo THÊM 1 dòng Payment cho phần còn lại (trả hỗn hợp, xem Bước 0
+   * ở `invoice.repository.ts`/`refund()`/`revertPayment()`).
+   */
+  private async payWithWalletCore(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    actorId: string,
+    encounterId: string,
+    expectedVersion: number,
+    remainderPaymentMethodCode: string | undefined,
+    cashierShiftId: string | null,
+    drawerAccountId: string | null,
+    meta: RequestMeta,
+  ): Promise<InvoiceDto> {
+    const invoice = await this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
+    if (!invoice) {
+      throw new NotFoundException();
+    }
+    if (invoice.status === 'PAID') {
+      throw new InvoiceAlreadyPaidError();
+    }
+    if (isInvoiceClosed(invoice.status)) {
+      throw new InvoiceClosedError();
+    }
+
+    const patientId = invoice.encounter.patient.id;
+    const wallet = await this.walletService.tryGetActiveWallet(tx, tenantId, patientId);
+    const balance = wallet?.balance ?? 0n;
+    const due = invoice.totalAmount;
+    const covered = balance < due ? balance : due;
+    const remainder = due - covered;
+
+    if (remainder > 0n) {
+      const mixedEnabled = await this.clinicConfigReader.getWalletMixedPaymentEnabled(tenantId);
+      if (!mixedEnabled) {
+        throw new WalletInsufficientBalanceError(Number(balance), Number(due), Number(remainder));
+      }
+      if (!remainderPaymentMethodCode) {
+        throw new BadRequestException('Thiếu phương thức thanh toán cho phần còn lại.');
+      }
+    }
+
+    const paidAt = new Date();
+    const count = await this.invoiceRepository.markPaid(tx, tenantId, invoice.id, expectedVersion, actorId);
+    if (count === 0) {
+      const recheck = await this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
+      if (recheck?.status === 'PAID') {
+        throw new InvoiceAlreadyPaidError();
+      }
+      if (recheck && isInvoiceClosed(recheck.status)) {
+        throw new InvoiceClosedError();
+      }
+      throw new ConcurrentModificationError();
+    }
+
+    const rows: { method: string; amount: bigint; cashAccountId: string | null }[] = [];
+    if (covered > 0n) {
+      await this.walletService.deduct(tx, tenantId, actorId, patientId, covered, invoice.id, meta);
+      rows.push({ method: 'WALLET', amount: covered, cashAccountId: null });
+    }
+    if (remainder > 0n) {
+      const cashAccountId = await this.resolveCashAccountId(tx, tenantId, remainderPaymentMethodCode!, drawerAccountId);
+      rows.push({ method: remainderPaymentMethodCode!, amount: remainder, cashAccountId });
+    }
+    await this.paymentRepository.createMany(tx, tenantId, actorId, invoice.id, rows, paidAt, cashierShiftId);
+
+    await writeAuditLog(tx, tenantId, {
+      actorId,
+      action: 'invoice.paid',
+      entityType: 'invoice',
+      entityId: invoice.id,
+      afterJson: { rows: rows.map((r) => ({ method: r.method, amount: r.amount.toString() })) },
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+
+    const updated = await this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
+    return toInvoiceResponse(updated!);
+  }
+
+  /** `POST /billing/invoices/:encounterId/pay-with-wallet` — dùng số dư ví HIỆN CÓ, không nạp thêm. */
+  async payWithWallet(tenantId: string, actorId: string, encounterId: string, dto: PayInvoiceWithWalletRequest, meta: RequestMeta): Promise<InvoiceDto> {
+    const [cashierShiftId, drawerAccountId] = await Promise.all([
+      this.cashierShiftReader.getRelevantOpenShiftId(tenantId, actorId),
+      this.cashierShiftReader.getCashAccountIdForActor(tenantId, actorId),
+    ]);
+    return this.unitOfWork.runInTenantScope(tenantId, (tx) =>
+      this.payWithWalletCore(tx, tenantId, actorId, encounterId, dto.version, dto.remainderPaymentMethodCode, cashierShiftId, drawerAccountId, meta),
+    );
+  }
+
+  /**
+   * `POST /billing/invoices/:encounterId/topup-and-pay-with-wallet` — nạp thêm vào ví TRƯỚC (Luồng
+   * 2 PRD: "Nạp phần thiếu"/"Nạp mức chuẩn") rồi chạy lại đúng logic `payWithWalletCore()` trong
+   * CÙNG transaction. Quyền riêng `patient_wallet.topup` (có hành động nạp tiền thật).
+   */
+  async topUpAndPayWithWallet(tenantId: string, actorId: string, encounterId: string, dto: TopUpAndPayInvoiceWithWalletRequest, meta: RequestMeta): Promise<InvoiceDto> {
+    const [cashierShiftId, drawerAccountId] = await Promise.all([
+      this.cashierShiftReader.getRelevantOpenShiftId(tenantId, actorId),
+      this.cashierShiftReader.getCashAccountIdForActor(tenantId, actorId),
+    ]);
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const invoice = await this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
+      if (!invoice) {
+        throw new NotFoundException();
+      }
+      const patientId = invoice.encounter.patient.id;
+      await this.walletService.credit(tx, tenantId, actorId, patientId, BigInt(dto.topUpAmount), dto.topUpPaymentMethodCode, dto.cashAccountId, undefined, meta);
+      return this.payWithWalletCore(tx, tenantId, actorId, encounterId, dto.version, dto.remainderPaymentMethodCode, cashierShiftId, drawerAccountId, meta);
+    });
+  }
+
   /** "Đánh dấu chưa thu" (huỷ nhầm) — lý do bắt buộc, ghi audit trước/sau. */
   async revertPayment(tenantId: string, actorId: string, encounterId: string, dto: RevertInvoicePaymentRequest, meta: RequestMeta): Promise<InvoiceDto> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
@@ -222,6 +348,14 @@ export class InvoiceService {
           throw new InvoiceClosedError();
         }
         throw new ConcurrentModificationError();
+      }
+      // Ví tạm ứng — dòng nào đã trừ ví (`method='WALLET'`) thì cộng lại TRƯỚC khi soft-delete (đảo
+      // ngược đúng số tiền của TỪNG dòng, không phải toàn bộ `invoice.totalAmount` — trả hỗn hợp có
+      // thể chỉ 1 trong 2 dòng là WALLET).
+      for (const p of invoice.activePayments) {
+        if (p.method === 'WALLET') {
+          await this.walletService.creditBack(tx, tenantId, actorId, invoice.encounter.patient.id, p.amount, invoice.id, 'Đánh dấu chưa thu', meta);
+        }
       }
       await this.paymentRepository.voidActive(tx, tenantId, invoice.id, actorId, dto.reason);
 
@@ -270,21 +404,18 @@ export class InvoiceService {
       if (count === 0) {
         throw new ConcurrentModificationError();
       }
-      // `activePayment` chắc chắn tồn tại ở đây — `canRefundInvoice` đã xác nhận `status='PAID'`,
-      // mà phiếu PAID luôn có đúng 1 dòng payment type PAYMENT hiệu lực (xem markPaid()).
-      const cashAccountId = await this.resolveCashAccountId(tx, tenantId, invoice.activePayment!.method, drawerAccountId);
-      await this.paymentRepository.createRefund(
-        tx,
-        tenantId,
-        actorId,
-        invoice.id,
-        invoice.activePayment!.method,
-        invoice.totalAmount,
-        refundedAt,
-        dto.reason,
-        cashierShiftId,
-        cashAccountId,
-      );
+      // `activePayments` chắc chắn có ≥1 phần tử ở đây — `canRefundInvoice` đã xác nhận
+      // `status='PAID'`. Thường 1 dòng; 2 dòng khi trả hỗn hợp (Ví tạm ứng) — lặp qua TỪNG dòng,
+      // tạo đúng 1 dòng REFUND đối ứng mỗi dòng (cùng method/amount/cashAccountId), tổng hoàn =
+      // tổng các dòng = invoice.totalAmount (bất biến đã đảm bảo lúc thu). Dòng nào là `WALLET` thì
+      // CỘNG LẠI vào ví đúng phần tiền của dòng đó (không phải toàn bộ totalAmount).
+      for (const p of invoice.activePayments) {
+        const cashAccountId = await this.resolveCashAccountId(tx, tenantId, p.method, drawerAccountId);
+        await this.paymentRepository.createRefund(tx, tenantId, actorId, invoice.id, p.method, p.amount, refundedAt, dto.reason, cashierShiftId, cashAccountId);
+        if (p.method === 'WALLET') {
+          await this.walletService.creditBack(tx, tenantId, actorId, invoice.encounter.patient.id, p.amount, invoice.id, 'Hoàn tiền do huỷ lượt khám', meta);
+        }
+      }
 
       await writeAuditLog(tx, tenantId, {
         actorId,

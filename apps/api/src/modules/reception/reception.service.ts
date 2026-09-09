@@ -34,6 +34,8 @@ import { AppointmentRepository } from '../appointment/appointment.repository';
 import { EncounterRepository } from '../encounter/encounter.repository';
 import { toEncounterSummary } from '../encounter/encounter.mapper';
 import { InvoiceRepository } from '../billing/invoice.repository';
+import { PaymentRepository } from '../billing/payment.repository';
+import { PatientWalletService } from '../patient-wallet/patient-wallet.service';
 import { PatientRepository } from '../patient/patient.repository';
 import { VitalSignRepository } from './vital-sign.repository';
 import { EncounterServiceItemRepository, type CreateEncounterServiceItemData } from './encounter-service-item.repository';
@@ -102,6 +104,8 @@ export class ReceptionService {
     private readonly vitalSignRepository: VitalSignRepository,
     private readonly encounterServiceItemRepository: EncounterServiceItemRepository,
     private readonly invoiceRepository: InvoiceRepository,
+    private readonly paymentRepository: PaymentRepository,
+    private readonly walletService: PatientWalletService,
     private readonly businessCodeService: BusinessCodeService,
     private readonly patientRepository: PatientRepository,
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
@@ -171,7 +175,7 @@ export class ReceptionService {
         meta,
       });
       await this.encounterServiceItemRepository.createMany(tx, tenantId, actorId, created.id, mapServiceItems(dto.services));
-      await this.createInvoiceForEncounter(tx, tenantId, actorId, created.id, meta);
+      await this.createInvoiceForEncounter(tx, tenantId, actorId, created.id, dto.patientId, meta);
       if (hasAnyVitalSign(dto)) {
         await this.createIntakeVitalSign(tx, tenantId, actorId, created.id, dto, meta);
       }
@@ -222,7 +226,7 @@ export class ReceptionService {
       }
 
       await this.encounterServiceItemRepository.createMany(tx, tenantId, actorId, created.id, mapServiceItems(dto.services));
-      await this.createInvoiceForEncounter(tx, tenantId, actorId, created.id, meta);
+      await this.createInvoiceForEncounter(tx, tenantId, actorId, created.id, dto.patientId, meta);
 
       await writeAuditLog(tx, tenantId, {
         actorId,
@@ -283,8 +287,13 @@ export class ReceptionService {
    * (`createMany()` không trả về bản ghi) rồi giao cho `InvoiceRepository` tính tổng + snapshot
    * (`docs/DECISIONS.md` #080 — chỉ tính dòng có giá). Không tạo gì nếu không có dòng nào có giá
    * (không có gì để thu, không chặn hàng đợi khám).
+   *
+   * Ví tạm ứng — NGAY SAU KHI phiếu thu tạo xong, thử cấn trừ tự động (chỉ khi bệnh nhân có ví
+   * ACTIVE VÀ số dư ĐỦ 100%, đúng quyết định đã chốt — không tự động khi thiếu, để lại cho thu
+   * ngân xử lý ở màn thanh toán). Đủ tiền → trừ ví + đánh dấu PAID ngay, bệnh nhân vào thẳng hàng
+   * đợi khám không qua quầy. Không đủ/không có ví → bỏ qua, phiếu giữ nguyên UNPAID như trước đây.
    */
-  private async createInvoiceForEncounter(tx: Prisma.TransactionClient, tenantId: string, actorId: string, encounterId: string, meta: RequestMeta): Promise<void> {
+  private async createInvoiceForEncounter(tx: Prisma.TransactionClient, tenantId: string, actorId: string, encounterId: string, patientId: string, meta: RequestMeta): Promise<void> {
     const serviceItems = await this.encounterServiceItemRepository.findByEncounterId(tx, tenantId, encounterId);
     const invoice = await this.invoiceRepository.createFromServiceItems(tx, tenantId, actorId, encounterId, serviceItems);
     if (!invoice) {
@@ -296,6 +305,29 @@ export class ReceptionService {
       entityType: 'invoice',
       entityId: invoice.id,
       afterJson: { invoiceNo: invoice.invoiceNo, totalAmount: invoice.totalAmount.toString() },
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+
+    const wallet = await this.walletService.tryGetActiveWallet(tx, tenantId, patientId);
+    if (!wallet || wallet.balance < invoice.totalAmount) {
+      return;
+    }
+    await this.walletService.deduct(tx, tenantId, actorId, patientId, invoice.totalAmount, invoice.id, meta);
+    const paidAt = new Date();
+    const count = await this.invoiceRepository.markPaid(tx, tenantId, invoice.id, invoice.version, actorId);
+    if (count === 0) {
+      // Không nên xảy ra (phiếu vừa tạo trong CÙNG transaction, chưa ai khác chạm tới) — nhưng nếu
+      // có thì để invoice giữ nguyên UNPAID, KHÔNG rollback cả lượt tiếp nhận vì lý do phụ này.
+      return;
+    }
+    await this.paymentRepository.createMany(tx, tenantId, actorId, invoice.id, [{ method: 'WALLET', amount: invoice.totalAmount, cashAccountId: null }], paidAt);
+    await writeAuditLog(tx, tenantId, {
+      actorId,
+      action: 'invoice.paid',
+      entityType: 'invoice',
+      entityId: invoice.id,
+      afterJson: { method: 'WALLET', amount: invoice.totalAmount.toString(), auto: true },
       ip: meta.ip,
       userAgent: meta.userAgent,
     });

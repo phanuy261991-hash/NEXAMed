@@ -1,15 +1,24 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { MarkInvoicePaidRequest, RefundInvoiceRequest, RevertInvoicePaymentRequest, SaveInvoiceDraftRequest } from '@nexamed/shared';
+import type {
+  MarkInvoicePaidRequest,
+  PayInvoiceWithWalletRequest,
+  RefundInvoiceRequest,
+  RevertInvoicePaymentRequest,
+  SaveInvoiceDraftRequest,
+  TopUpAndPayInvoiceWithWalletRequest,
+} from '@nexamed/shared';
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
 import {
   getBillingInvoice,
   getBillingInvoiceList,
   markInvoicePaid,
+  payInvoiceWithWallet,
   printInvoice,
   refundInvoice,
   revertInvoicePayment,
   saveInvoiceDraft,
+  topUpAndPayInvoiceWithWallet,
 } from './invoice.api';
 
 /** "Thu ngân" (danh sách trong ngày) + tổng kết cuối ngày (BIL-04) — 1 ngày/tenant nhỏ, không cursor. */
@@ -48,6 +57,36 @@ export function useMarkInvoicePaidMutation(encounterId: string) {
     onSuccess: () => {
       void invalidate();
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'reception') });
+    },
+  });
+}
+
+/** Ví tạm ứng — trừ số dư ví HIỆN CÓ. Cùng invalidate 'reception' như `useMarkInvoicePaidMutation` (mở khoá "Hàng đợi khám" ngay). */
+export function usePayInvoiceWithWalletMutation(encounterId: string) {
+  const { tenantId } = useAppConfig();
+  const queryClient = useQueryClient();
+  const invalidate = useInvalidateInvoice();
+  return useMutation({
+    mutationFn: (body: PayInvoiceWithWalletRequest) => payInvoiceWithWallet(encounterId, body),
+    onSuccess: () => {
+      void invalidate();
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'reception') });
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'wallet') });
+    },
+  });
+}
+
+/** Ví tạm ứng — nạp thêm rồi trừ ngay (Luồng "Nạp phần thiếu"/"Nạp mức chuẩn"). */
+export function useTopUpAndPayInvoiceWithWalletMutation(encounterId: string) {
+  const { tenantId } = useAppConfig();
+  const queryClient = useQueryClient();
+  const invalidate = useInvalidateInvoice();
+  return useMutation({
+    mutationFn: (body: TopUpAndPayInvoiceWithWalletRequest) => topUpAndPayInvoiceWithWallet(encounterId, body),
+    onSuccess: () => {
+      void invalidate();
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'reception') });
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'wallet') });
     },
   });
 }

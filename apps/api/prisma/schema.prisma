@@ -90,6 +90,8 @@ model Tenant {
   cashierShifts          CashierShift[]
   cashAccounts           CashAccount[]
   cashVouchers           CashVoucher[]
+  patientWallets         PatientWallet[]
+  walletTransactions     WalletTransaction[]
 
   @@map("tenant")
 }
@@ -1039,6 +1041,8 @@ model Patient {
   // PatientCondition/PatientFamilyHistory.
   conditions        PatientCondition[]
   familyHistoryRows PatientFamilyHistory[]
+  // Ví tạm ứng — 1 ví/bệnh nhân, `null` nếu chưa từng nạp lần nào (xem model PatientWallet).
+  wallet            PatientWallet?
 
   // Đích của composite FK (tenant_id, id) từ appointment/encounter (S2-05, S3) sau này.
   @@unique([tenantId, id])
@@ -1593,6 +1597,8 @@ model Invoice {
   encounter Encounter     @relation(fields: [tenantId, encounterId], references: [tenantId, id])
   lines     InvoiceLine[]
   payments  Payment[]
+  // Ví tạm ứng — dòng DEDUCT/REFUND của `wallet_transaction` liên quan tới chính phiếu thu này.
+  walletTransactions WalletTransaction[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, encounterId])
@@ -1802,6 +1808,8 @@ model CashVoucher {
   counterAccount CashAccount?  @relation("CashVoucherCounterAccount", fields: [tenantId, counterAccountId], references: [tenantId, id])
   // Composite FK (tenant_id, cashier_shift_id) -> cashier_shift(tenant_id, id), NULLABLE.
   cashierShift   CashierShift? @relation(fields: [tenantId, cashierShiftId], references: [tenantId, id])
+  // Ví tạm ứng — dòng TOPUP/SETTLEMENT của `wallet_transaction` liên quan tới chính phiếu quỹ này.
+  walletTransactions WalletTransaction[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, voucherNo])
@@ -1920,6 +1928,95 @@ model CashierShift {
   @@unique([tenantId, id])
   @@unique([tenantId, shiftNo])
   @@map("cashier_shift")
+}
+
+enum PatientWalletStatus {
+  ACTIVE
+  CLOSED
+
+  @@map("patient_wallet_status")
+}
+
+// "Ví tạm ứng" (Patient Advance-Payment Wallet) — tài khoản tín dụng nội bộ CỦA BỆNH NHÂN, KHÁC
+// hẳn `cash_account` (quỹ CỦA PHÒNG KHÁM). 1 ví/bệnh nhân (không theo đợt điều trị — v1 không có
+// khái niệm này), tự sinh lúc nạp tạm ứng lần đầu (`WalletService.getOrCreate()`). `balance` cộng
+// khi nạp/hoàn về ví, trừ khi cấn trừ phiếu thu — mọi biến động ghi vết đầy đủ ở `wallet_transaction`
+// (bảng bên dưới), `balance` ở đây chỉ là SNAPSHOT tiện đọc nhanh, không phải nguồn sự thật duy
+// nhất (đối soát dựa trên tổng `wallet_transaction`, giống `cashier_shift` đối soát dựa trên
+// `payment`/`cash_voucher`). `status=CLOSED` sau khi "Tất toán" (hoàn số dư còn lại + khoá) —
+// KHÔNG xoá ví, giữ nguyên lịch sử để tra cứu lại.
+model PatientWallet {
+  id        String              @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId  String              @map("tenant_id") @db.Uuid
+  patientId String              @map("patient_id") @db.Uuid
+  balance   BigInt              @default(0)
+  status    PatientWalletStatus @default(ACTIVE)
+  closedAt  DateTime?           @map("closed_at") @db.Timestamptz(6)
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant       Tenant              @relation(fields: [tenantId], references: [id])
+  // Composite FK (tenant_id, patient_id) -> patient(tenant_id, id): chống trỏ chéo tenant.
+  patient      Patient             @relation(fields: [tenantId, patientId], references: [tenantId, id])
+  transactions WalletTransaction[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, patientId])
+  @@map("patient_wallet")
+}
+
+enum WalletTransactionType {
+  TOPUP
+  DEDUCT
+  REFUND
+  SETTLEMENT
+
+  @@map("wallet_transaction_type")
+}
+
+// Sổ ghi (append-only) mọi biến động số dư ví — đúng 1 trong `invoice_id`/`cash_voucher_id` có giá
+// trị tuỳ `type` (DEDUCT/REFUND -> invoice_id: cấn trừ/hoàn lại phiếu thu tương ứng; TOPUP/
+// SETTLEMENT -> cash_voucher_id: phiếu thu/chi quỹ đã sinh kèm — tiền THẬT vào/ra két lúc nạp/tất
+// toán). `amount` LUÔN dương (chiều đọc từ `type`, cùng nguyên tắc `payment.amount`).
+// `balanceAfter` snapshot số dư ví NGAY SAU giao dịch này — phục vụ cột "Số dư sau" ở màn "Ví tạm
+// ứng" mà không phải tính lại từ đầu lịch sử mỗi lần đọc.
+model WalletTransaction {
+  id            String                @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String                @map("tenant_id") @db.Uuid
+  walletId      String                @map("wallet_id") @db.Uuid
+  type          WalletTransactionType
+  amount        BigInt
+  balanceAfter  BigInt                @map("balance_after")
+  invoiceId     String?               @map("invoice_id") @db.Uuid
+  cashVoucherId String?               @map("cash_voucher_id") @db.Uuid
+  note          String?
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant      Tenant         @relation(fields: [tenantId], references: [id])
+  // Composite FK (tenant_id, wallet_id) -> patient_wallet(tenant_id, id): chống trỏ chéo tenant.
+  wallet      PatientWallet  @relation(fields: [tenantId, walletId], references: [tenantId, id])
+  // Composite FK (tenant_id, invoice_id) -> invoice(tenant_id, id), NULLABLE.
+  invoice     Invoice?       @relation(fields: [tenantId, invoiceId], references: [tenantId, id])
+  // Composite FK (tenant_id, cash_voucher_id) -> cash_voucher(tenant_id, id), NULLABLE.
+  cashVoucher CashVoucher?   @relation(fields: [tenantId, cashVoucherId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@map("wallet_transaction")
 }
 
 // Dị nguyên đã biết của bệnh nhân (Sprint 4, chốt 2026-08-25) — liên kết `patient` với danh mục

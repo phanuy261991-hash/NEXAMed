@@ -69,7 +69,6 @@ export function CashierShiftListPage() {
   return (
     <div className="flex h-full flex-col gap-2.5 p-3">
       <h1 className="sr-only">Phiếu chốt ca</h1>
-      <p className="px-1 text-xs font-medium text-slate-500">Dành cho Quản lý / Kế toán / Chủ phòng khám — tra cứu, xử lý chênh lệch và duyệt các phiếu chốt ca do thu ngân tạo ra.</p>
 
       <div className="flex flex-shrink-0 flex-wrap items-center gap-2.5 px-1">
         <div className="flex items-center gap-1.5">

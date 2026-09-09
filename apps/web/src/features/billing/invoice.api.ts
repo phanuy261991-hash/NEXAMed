@@ -3,9 +3,11 @@ import type {
   InvoiceResponse,
   ListBillingInvoicesResponse,
   MarkInvoicePaidRequest,
+  PayInvoiceWithWalletRequest,
   RefundInvoiceRequest,
   RevertInvoicePaymentRequest,
   SaveInvoiceDraftRequest,
+  TopUpAndPayInvoiceWithWalletRequest,
 } from '@nexamed/shared';
 import { getApiClient, unwrap } from '../../shared/api/client';
 
@@ -22,6 +24,20 @@ export async function getBillingInvoice(encounterId: string): Promise<InvoiceRes
 export async function markInvoicePaid(encounterId: string, body: MarkInvoicePaidRequest): Promise<Invoice> {
   return unwrap(
     await getApiClient().POST('/api/v1/billing/invoices/{encounterId}/pay', { params: { path: { encounterId } }, body }),
+  ) as Invoice;
+}
+
+/** Ví tạm ứng — trừ số dư ví HIỆN CÓ (không nạp thêm). */
+export async function payInvoiceWithWallet(encounterId: string, body: PayInvoiceWithWalletRequest): Promise<Invoice> {
+  return unwrap(
+    await getApiClient().POST('/api/v1/billing/invoices/{encounterId}/pay-with-wallet', { params: { path: { encounterId } }, body }),
+  ) as Invoice;
+}
+
+/** Ví tạm ứng — nạp thêm vào ví rồi trừ ngay trong 1 lượt (Luồng "Nạp phần thiếu"/"Nạp mức chuẩn"). */
+export async function topUpAndPayInvoiceWithWallet(encounterId: string, body: TopUpAndPayInvoiceWithWalletRequest): Promise<Invoice> {
+  return unwrap(
+    await getApiClient().POST('/api/v1/billing/invoices/{encounterId}/topup-and-pay-with-wallet', { params: { path: { encounterId } }, body }),
   ) as Invoice;
 }
 

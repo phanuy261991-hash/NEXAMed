@@ -3,9 +3,11 @@ import type { Request } from 'express';
 import {
   listBillingInvoicesQuerySchema,
   markInvoicePaidRequestSchema,
+  payInvoiceWithWalletRequestSchema,
   refundInvoiceRequestSchema,
   revertInvoicePaymentRequestSchema,
   saveInvoiceDraftRequestSchema,
+  topUpAndPayInvoiceWithWalletRequestSchema,
 } from '@nexamed/shared';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
@@ -65,6 +67,34 @@ export class InvoiceController {
     const dto = refundInvoiceRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
     return this.invoiceService.refund(tenantId, userId, encounterId, dto, extractRequestMeta(req));
+  }
+
+  /**
+   * Ví tạm ứng — trừ số dư ví HIỆN CÓ (không nạp thêm). Cùng quyền `invoice.update` như `pay` — về
+   * bản chất đây cũng là "Thu tiền", chỉ khác nguồn tiền.
+   */
+  @Post(':encounterId/pay-with-wallet')
+  @RequirePermission('invoice', 'update', { entityIdParam: 'encounterId' })
+  @HttpCode(200)
+  async payWithWallet(@Param('encounterId') encounterId: string, @Body() body: unknown, @Req() req: Request) {
+    const dto = payInvoiceWithWalletRequestSchema.parse(body);
+    const { userId, tenantId } = req.user!;
+    return this.invoiceService.payWithWallet(tenantId, userId, encounterId, dto, extractRequestMeta(req));
+  }
+
+  /**
+   * Ví tạm ứng — nạp thêm rồi trừ ngay (Luồng 2 PRD). Quyền RIÊNG `patient_wallet.topup` (có hành
+   * động nạp tiền thật, khác `pay-with-wallet` chỉ trừ ví có sẵn). KHÔNG gắn `entityIdParam` — quyền
+   * này thuộc module `patient_wallet` (tài chính), không phải `invoice`, cùng lý do
+   * `CashVoucherController` không dùng break-glass cho dữ liệu tài chính.
+   */
+  @Post(':encounterId/topup-and-pay-with-wallet')
+  @RequirePermission('patient_wallet', 'topup')
+  @HttpCode(200)
+  async topUpAndPayWithWallet(@Param('encounterId') encounterId: string, @Body() body: unknown, @Req() req: Request) {
+    const dto = topUpAndPayInvoiceWithWalletRequestSchema.parse(body);
+    const { userId, tenantId } = req.user!;
+    return this.invoiceService.topUpAndPayWithWallet(tenantId, userId, encounterId, dto, extractRequestMeta(req));
   }
 
   /** "Lưu tạm" (F8) — phương thức/tiền khách đưa đang nhập dở, chưa "Thu tiền". */

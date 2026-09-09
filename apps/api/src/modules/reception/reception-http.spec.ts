@@ -503,6 +503,97 @@ describe('HTTP e2e — /api/v1/reception', () => {
     });
   });
 
+  describe('Ví tạm ứng — auto-deduct ngay lúc tiếp nhận', () => {
+    async function topUpWallet(patientId: string, amount: number) {
+      return request(app.getHttpServer()).post('/api/v1/wallet/topup').set(authed(receptionistToken)).send({ patientId, amount, paymentMethodCode: 'CASH' });
+    }
+
+    it('ví đủ tiền → phiếu thu tự động PAID ngay, phương thức WALLET, không cần thu ngân bấm gì', async () => {
+      const patient = await createPatient(receptionistToken);
+      await topUpWallet(patient.id, 500_000);
+
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/reception/direct')
+        .set(authed(receptionistToken))
+        .send({ patientId: patient.id, doctorId: doctorAUserId, checkedInAt: isoAt(8, 40, 28), services: defaultServices(), receptionTypeCode: 'RT_NEW', examFormCode: 'EF_NORMAL' });
+      expect(res.status).toBe(200);
+
+      const invoice = await request(app.getHttpServer()).get(`/api/v1/billing/invoices/${res.body.data.id}`).set(authed(receptionistToken));
+      expect(invoice.body.data.status).toBe('PAID');
+      expect(invoice.body.data.payments).toEqual([{ method: 'WALLET', amount: 150_000 }]);
+
+      const wallet = await request(app.getHttpServer()).get('/api/v1/wallet').set(authed(receptionistToken)).query({ patientId: patient.id });
+      expect(wallet.body.data.balance).toBe(350_000);
+      expect(wallet.body.data.topUpCount).toBe(1);
+      expect(wallet.body.data.deductCount).toBe(1);
+    });
+
+    it('ví không đủ tiền → phiếu thu giữ nguyên UNPAID, không tự trừ một phần', async () => {
+      const patient = await createPatient(receptionistToken);
+      await topUpWallet(patient.id, 50_000);
+
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/reception/direct')
+        .set(authed(receptionistToken))
+        .send({ patientId: patient.id, doctorId: doctorAUserId, checkedInAt: isoAt(8, 45, 28), services: defaultServices(), receptionTypeCode: 'RT_NEW', examFormCode: 'EF_NORMAL' });
+      expect(res.status).toBe(200);
+
+      const invoice = await request(app.getHttpServer()).get(`/api/v1/billing/invoices/${res.body.data.id}`).set(authed(receptionistToken));
+      expect(invoice.body.data.status).toBe('UNPAID');
+
+      const wallet = await request(app.getHttpServer()).get('/api/v1/wallet').set(authed(receptionistToken)).query({ patientId: patient.id });
+      expect(wallet.body.data.balance).toBe(50_000);
+    });
+
+    it('bệnh nhân chưa từng có ví → phiếu thu bình thường UNPAID, không lỗi gì', async () => {
+      const patient = await createPatient(receptionistToken);
+
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/reception/direct')
+        .set(authed(receptionistToken))
+        .send({ patientId: patient.id, doctorId: doctorAUserId, checkedInAt: isoAt(8, 50, 28), services: defaultServices(), receptionTypeCode: 'RT_NEW', examFormCode: 'EF_NORMAL' });
+      expect(res.status).toBe(200);
+
+      const invoice = await request(app.getHttpServer()).get(`/api/v1/billing/invoices/${res.body.data.id}`).set(authed(receptionistToken));
+      expect(invoice.body.data.status).toBe('UNPAID');
+    });
+
+    it('2 lượt tiếp nhận cùng bệnh nhân gần như đồng thời, ví chỉ đủ cho ĐÚNG 1 lượt → không double-spend, số dư cuối không bao giờ âm', async () => {
+      const patient = await createPatient(receptionistToken);
+      await topUpWallet(patient.id, 150_000); // đúng 1 suất 150.000, không đủ cho cả 2
+
+      const payload = (minute: number) => ({
+        patientId: patient.id,
+        doctorId: doctorAUserId,
+        checkedInAt: isoAt(9, minute, 28),
+        services: defaultServices(),
+        receptionTypeCode: 'RT_NEW',
+        examFormCode: 'EF_NORMAL',
+      });
+
+      const [resA, resB] = await Promise.all([
+        request(app.getHttpServer()).post('/api/v1/reception/direct').set(authed(receptionistToken)).send(payload(10)),
+        request(app.getHttpServer()).post('/api/v1/reception/direct').set(authed(receptionistToken)).send(payload(11)),
+      ]);
+
+      // Bất kể request nào "thắng" cấn trừ ví (race), CẢ HAI đều phải tạo encounter thành công
+      // (200) — tiếp nhận không được phép thất bại chỉ vì thua race cấn trừ ví, đó là lý do
+      // `createInvoiceForEncounter` không để lỗi ví làm rollback cả lượt tiếp nhận.
+      expect(resA.status).toBe(200);
+      expect(resB.status).toBe(200);
+
+      const invoiceA = await request(app.getHttpServer()).get(`/api/v1/billing/invoices/${resA.body.data.id}`).set(authed(receptionistToken));
+      const invoiceB = await request(app.getHttpServer()).get(`/api/v1/billing/invoices/${resB.body.data.id}`).set(authed(receptionistToken));
+      const statuses = [invoiceA.body.data.status, invoiceB.body.data.status].sort();
+      // Đúng 1 trong 2 được trừ ví PAID, cái còn lại giữ UNPAID — không được cả 2 cùng PAID (double-spend).
+      expect(statuses).toEqual(['PAID', 'UNPAID']);
+
+      const wallet = await request(app.getHttpServer()).get('/api/v1/wallet').set(authed(receptionistToken)).query({ patientId: patient.id });
+      expect(wallet.body.data.balance).toBe(0);
+      expect(wallet.body.data.balance).toBeGreaterThanOrEqual(0);
+    });
+  });
+
   describe('Điều phối Bác sĩ/Khoa lúc Tiếp nhận ("Hàng đợi ảo", #064)', () => {
     function baseExam() {
       return {

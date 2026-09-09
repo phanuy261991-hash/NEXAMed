@@ -110,6 +110,14 @@ export interface ClinicConfigReaderPort {
    * cấu hình khác ở trên.
    */
   getCashierDrawerSeparateEnabled(tenantId: string): Promise<boolean>;
+
+  /**
+   * "Ví tạm ứng" — cho phép trừ TOÀN BỘ số dư ví rồi thu PHẦN CÒN LẠI bằng phương thức khác trên
+   * CÙNG 1 phiếu khi số dư không đủ (`tenant_setting` key `wallet_mixed_payment_enabled`, mặc định
+   * `false`). Module `billing` đọc qua port này (module `clinic` sở hữu `tenant_setting`), cùng lý
+   * do các cấu hình khác ở trên.
+   */
+  getWalletMixedPaymentEnabled(tenantId: string): Promise<boolean>;
 }
 
 export const CLINIC_CONFIG_READER_PORT = Symbol('CLINIC_CONFIG_READER_PORT');

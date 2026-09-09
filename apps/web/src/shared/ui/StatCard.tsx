@@ -70,7 +70,7 @@ export function StatCardRow({ items }: { items: StatCardItem[] }) {
           <div className="flex min-w-[190px] flex-1 flex-col items-center justify-center gap-1.5 px-5 py-4 text-center">
             <div className="flex items-center gap-1.5">
               <item.icon size={15} weight="bold" className={TONE_ICON_CLASS[item.tone]} aria-hidden="true" />
-              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">{item.label}</span>
+              <span className="text-xs font-bold uppercase tracking-wide text-slate-500">{item.label}</span>
             </div>
             <span className={`tabular-nums font-bold leading-tight ${item.emphasis ? 'text-[26px]' : 'text-2xl'} ${TONE_VALUE_CLASS[item.tone]}`}>
               {item.value}

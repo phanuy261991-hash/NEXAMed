@@ -21,11 +21,13 @@ import { PatientAdministrativeInfoCard } from './PatientAdministrativeInfoCard';
 import { PatientVitalHistoryTable } from './PatientVitalHistoryTable';
 import { PatientHistorySummaryCard } from './PatientHistorySummaryCard';
 import { PatientEditDialog } from './PatientEditDialog';
+import { PatientWalletTab } from '../patient-wallet/PatientWalletTab';
 
-type ProfileTabId = 'info' | 'record' | 'history';
+type ProfileTabId = 'info' | 'wallet' | 'record' | 'history';
 
 const TABS: { id: ProfileTabId; label: string; comingSoon: boolean }[] = [
   { id: 'info', label: 'Thông tin cá nhân', comingSoon: false },
+  { id: 'wallet', label: 'Ví tạm ứng', comingSoon: false },
   { id: 'record', label: 'Hồ sơ bệnh án', comingSoon: true },
   { id: 'history', label: 'Lịch sử khám chữa bệnh', comingSoon: true },
 ];
@@ -166,6 +168,7 @@ export function PatientDetailPage() {
           />
         </div>
       )}
+      {activeTab === 'wallet' && <PatientWalletTab patientId={patient.id} />}
       {activeTab === 'record' && (
         <EmptyState icon={IdentificationCard} title="Hồ sơ bệnh án — sắp ra mắt" description="Tổng hợp dị ứng, bệnh lý nền, chẩn đoán và đơn thuốc theo thời gian tại một chỗ." />
       )}

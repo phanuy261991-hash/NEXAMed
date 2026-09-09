@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { EncounterServiceItem, EncounterStatus, Invoice, InvoiceLine, PaymentType, Prisma } from '@prisma/client';
+import type { EncounterServiceItem, EncounterStatus, Invoice, InvoiceLine, Payment, Prisma } from '@prisma/client';
 import { computeInvoiceFromServiceItems, type ServiceItemForInvoice } from '@nexamed/core';
 import { BusinessCodeService } from '../clinic/business-code.service';
 
@@ -19,7 +19,12 @@ interface EncounterContext {
 
 /** #085 — dòng `payment` hiệu lực tách theo chiều tiền: thu vào (`PAYMENT`) và trả ra (`REFUND`). */
 interface PaymentSides {
+  /** Dòng ĐẦU TIÊN (đủ cho hiển thị đơn giản khi chỉ có 1 dòng — trường hợp phổ biến). */
   activePayment: { method: string; paidAt: Date } | null;
+  /** MỌI dòng PAYMENT hiệu lực — thường 1 phần tử, 2 phần tử khi "trả hỗn hợp" (Ví tạm ứng: 1 dòng
+   * `WALLET` + 1 dòng tiền mặt/CK). `refund()`/`revertPayment()` (invoice.service.ts) lặp qua mảng
+   * này thay vì giả định đúng 1 dòng. */
+  activePayments: { id: string; method: string; amount: bigint; paidAt: Date; cashAccountId: string | null }[];
   refundPayment: { paidAt: Date; reason: string | null } | null;
 }
 
@@ -43,7 +48,9 @@ export interface BillingListRow extends PaymentSides {
  * cả hai đều sống. Tách chiều ở `toPaymentSides()` bên dưới.
  */
 const ACTIVE_PAYMENT_INCLUDE = {
-  payments: { where: { deletedAt: null }, orderBy: { paidAt: 'desc' as const } },
+  // Tie-break `createdAt asc` — trả hỗn hợp (Ví tạm ứng) tạo 2 dòng CÙNG `paidAt` (cùng 1 lệnh
+  // `createMany`), cần thứ tự ổn định (dòng WALLET trước, dòng còn lại sau) để hiển thị nhất quán.
+  payments: { where: { deletedAt: null }, orderBy: [{ paidAt: 'desc' as const }, { createdAt: 'asc' as const }] },
 } satisfies Prisma.InvoiceInclude;
 
 /** Bối cảnh lượt khám/bệnh nhân — dùng chung cho cả chi tiết 1 phiếu thu lẫn danh sách trong ngày. */
@@ -62,11 +69,12 @@ const ENCOUNTER_CONTEXT_INCLUDE = {
   },
 } satisfies Prisma.InvoiceInclude;
 
-function toPaymentSides(payments: { method: string; paidAt: Date; type: PaymentType; reason: string | null }[]): PaymentSides {
-  const payment = payments.find((p) => p.type === 'PAYMENT') ?? null;
+function toPaymentSides(payments: Payment[]): PaymentSides {
+  const paymentRows = payments.filter((p) => p.type === 'PAYMENT');
   const refund = payments.find((p) => p.type === 'REFUND') ?? null;
   return {
-    activePayment: payment ? { method: payment.method, paidAt: payment.paidAt } : null,
+    activePayment: paymentRows[0] ? { method: paymentRows[0].method, paidAt: paymentRows[0].paidAt } : null,
+    activePayments: paymentRows.map((p) => ({ id: p.id, method: p.method, amount: p.amount, paidAt: p.paidAt, cashAccountId: p.cashAccountId })),
     refundPayment: refund ? { paidAt: refund.paidAt, reason: refund.reason } : null,
   };
 }

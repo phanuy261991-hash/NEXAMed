@@ -67,9 +67,14 @@ export const invoiceSchema = z.object({
   /** "Lưu tạm" (F8) — lễ tân đang nhập dở phương thức/tiền khách đưa, chưa bấm "Thu tiền". */
   pendingPaymentMethod: paymentMethodSchema.nullable(),
   pendingCashReceivedAmount: z.number().int().nullable(),
-  /** Có mặt khi `status='PAID'` — lịch sử thu hiệu lực gần nhất (v1 luôn tối đa 1 dòng). */
+  /** Có mặt khi `status='PAID'` — dòng thanh toán ĐẦU TIÊN (đủ cho hiển thị đơn giản khi chỉ có 1
+   * dòng — trường hợp phổ biến). Trả hỗn hợp (Ví tạm ứng) có 2 dòng thì dùng `payments[]` bên dưới
+   * để hiện đủ, 2 field này giữ nguyên để không phá màn hình đang dùng field đơn hiện có. */
   paymentMethod: paymentMethodSchema.nullable(),
   paidAt: z.string().nullable(),
+  /** Mọi dòng thanh toán hiệu lực của phiếu — thường 1 phần tử, 2 phần tử khi trả hỗn hợp (Ví tạm
+   * ứng: 1 dòng `WALLET` + 1 dòng tiền mặt/CK cho phần còn lại). Rỗng khi `status!=='PAID'`. */
+  payments: z.array(z.object({ method: paymentMethodSchema, amount: z.number().int() })),
   /** #085 — `true` khi lượt khám đã bị huỷ (khách bỏ về). Nguồn cho cảnh báo "Cần hoàn tiền". */
   encounterCancelled: z.boolean(),
   /** #085 — suy ra từ (`status='PAID'` && `encounterCancelled`), xem `needsRefund()` ở `@nexamed/core`. */
@@ -121,6 +126,34 @@ export const refundInvoiceRequestSchema = z.object({
   version: z.number().int(),
 });
 export type RefundInvoiceRequest = z.infer<typeof refundInvoiceRequestSchema>;
+
+/**
+ * `POST /billing/invoices/:encounterId/pay-with-wallet` — Ví tạm ứng. Trừ số dư ví hiện có; nếu
+ * không đủ VÀ tenant đã bật "Cho phép thanh toán hỗn hợp" (`wallet_mixed_payment_enabled`) thì bắt
+ * buộc kèm `remainderPaymentMethodCode` cho phần còn lại (server tự tính số tiền còn lại, không
+ * nhận từ client — tránh sai lệch số tiền thật cần thu). Không đủ mà tenant CHƯA bật → 409
+ * `WALLET_INSUFFICIENT_BALANCE` (kèm `details.shortfall`), dùng `topup-and-pay-with-wallet` bên dưới.
+ */
+export const payInvoiceWithWalletRequestSchema = z.object({
+  remainderPaymentMethodCode: paymentMethodSchema.optional(),
+  version: z.number().int(),
+});
+export type PayInvoiceWithWalletRequest = z.infer<typeof payInvoiceWithWalletRequestSchema>;
+
+/**
+ * `POST /billing/invoices/:encounterId/topup-and-pay-with-wallet` — nạp thêm vào ví TRƯỚC rồi chạy
+ * lại đúng logic `pay-with-wallet` trong CÙNG transaction (Luồng 2 PRD: "Nạp phần thiếu"/"Nạp mức
+ * chuẩn"). Quyền riêng `patient_wallet.topup` (có hành động nạp tiền thật, khác `pay-with-wallet`
+ * chỉ trừ ví có sẵn).
+ */
+export const topUpAndPayInvoiceWithWalletRequestSchema = z.object({
+  topUpAmount: z.number().int().positive('Số tiền nạp phải lớn hơn 0.'),
+  topUpPaymentMethodCode: paymentMethodSchema,
+  cashAccountId: z.string().uuid().optional(),
+  remainderPaymentMethodCode: paymentMethodSchema.optional(),
+  version: z.number().int(),
+});
+export type TopUpAndPayInvoiceWithWalletRequest = z.infer<typeof topUpAndPayInvoiceWithWalletRequestSchema>;
 
 /**
  * `date` tuỳ chọn (`YYYY-MM-DD`, giờ Việt Nam) — bỏ trống thì server mặc định "hôm nay", cùng quy

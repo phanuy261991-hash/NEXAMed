@@ -8,6 +8,7 @@ import { EncounterModule } from '../encounter/encounter.module';
 import { BillingModule } from '../billing/billing.module';
 import { PatientModule } from '../patient/patient.module';
 import { ClinicModule } from '../clinic/clinic.module';
+import { PatientWalletModule } from '../patient-wallet/patient-wallet.module';
 
 /**
  * Module điều phối (Sprint 3, Tiếp nhận) — không sở hữu bảng nghiệp vụ nào của riêng nó trừ
@@ -22,9 +23,13 @@ import { ClinicModule } from '../clinic/clinic.module';
  * mới cho hồ sơ đã bị gộp (`merged_into_id` khác null), cùng lý do trên.
  * `imports: [..., ClinicModule]` (docs/DECISIONS.md #114) — dùng `BusinessCodeService` sinh
  * `encounter_no` thay `formatDisplayCode` gọi trực tiếp trước đây.
+ * `imports: [..., PatientWalletModule]` (Ví tạm ứng) — auto-deduct NGAY khi phiếu thu vừa tạo lúc
+ * tiếp nhận: dùng `PatientWalletService.tryGetActiveWallet()`/`deduct()` rồi TỰ đánh dấu `invoice`
+ * đã thu bằng `InvoiceRepository`/`PaymentRepository` (đã có sẵn từ `BillingModule`) trong CÙNG
+ * transaction check-in/tiếp nhận trực tiếp — không đủ số dư thì bỏ qua, phiếu giữ nguyên UNPAID.
  */
 @Module({
-  imports: [AppointmentModule, EncounterModule, BillingModule, PatientModule, ClinicModule],
+  imports: [AppointmentModule, EncounterModule, BillingModule, PatientModule, ClinicModule, PatientWalletModule],
   controllers: [ReceptionController],
   providers: [ReceptionService, VitalSignRepository, EncounterServiceItemRepository],
 })

@@ -9,7 +9,7 @@ import { CircleNotch } from '@phosphor-icons/react';
  * phải thứ tự trong chuỗi class ở HTML, nên override qua `className` bị chữ trắng trên nền
  * trắng (phát hiện thật khi kiểm bằng trình duyệt ở S2-08, nút "Huỷ" vô hình).
  */
-type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'add' | 'amber' | 'amberSolid' | 'info';
+type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'add' | 'amber' | 'amberSolid' | 'info' | 'success' | 'dangerGhost';
 
 const VARIANT_CLASSNAME: Record<ButtonVariant, string> = {
   primary: 'bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800',
@@ -30,6 +30,13 @@ const VARIANT_CLASSNAME: Record<ButtonVariant, string> = {
   // cùng khuôn ghost-tint đã dùng cho `amber`, đổi màu xanh dương thương hiệu chính để tránh lẫn
   // với tín hiệu "đang diễn ra"/cảnh báo của amber.
   info: 'bg-white text-blue-600 ring-1 ring-inset ring-blue-300 hover:bg-blue-50 active:bg-blue-100',
+  // Hành động tích cực gắn với dòng tiền vào (ví dụ "Nạp tạm ứng") — tách khỏi `primary` (xanh
+  // dương thương hiệu chung) để đồng bộ với tông xanh lá của khối "Ví tạm ứng" (đúng mockup Artifact
+  // "Ví tạm ứng NEXAMed", nút `.btn-ok`).
+  success: 'bg-emerald-700 text-white hover:bg-emerald-800 active:bg-emerald-900',
+  // "Hoàn tiền & khoá ví" — khác `danger` (nền đỏ đặc, dùng cho hành động phá huỷ như "Hủy lượt
+  // khám") vì đây là thao tác quản lý ít khẩn cấp hơn — viền/chữ đỏ, nền trắng, đúng mockup `.btn-danger`.
+  dangerGhost: 'bg-white text-rose-700 ring-1 ring-inset ring-rose-300 hover:bg-rose-50 active:bg-rose-100',
 };
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {

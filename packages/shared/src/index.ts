@@ -23,6 +23,7 @@ export * from './prescription';
 export * from './billing';
 export * from './cashier-shift';
 export * from './cash-book';
+export * from './patient-wallet';
 export * from './business-code';
 export * from './audit-log';
 export * from './audit/action-labels';

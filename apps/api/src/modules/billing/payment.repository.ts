@@ -45,6 +45,37 @@ export class PaymentRepository {
     });
   }
 
+  /**
+   * Ví tạm ứng — tạo NHIỀU dòng Payment cho CÙNG 1 lần thu (ví dụ 1 dòng `WALLET` + 1 dòng tiền
+   * mặt/CK khi trả hỗn hợp), cùng `paidAt`/`cashierShiftId`. Vẫn dùng `create()` (số ít) cho luồng
+   * bình thường 1 phương thức — không đổi hành vi cũ. Mỗi dòng tự có `cashAccountId` riêng (`WALLET`
+   * luôn `null` — không phải tiền mặt vào két).
+   */
+  async createMany(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    actorId: string,
+    invoiceId: string,
+    rows: { method: string; amount: bigint; cashAccountId: string | null }[],
+    paidAt: Date,
+    cashierShiftId: string | null = null,
+  ): Promise<void> {
+    await tx.payment.createMany({
+      data: rows.map((r) => ({
+        tenantId,
+        invoiceId,
+        method: r.method,
+        amount: r.amount,
+        paidAt,
+        type: 'PAYMENT' as const,
+        cashierShiftId,
+        cashAccountId: r.cashAccountId,
+        createdBy: actorId,
+        updatedBy: actorId,
+      })),
+    });
+  }
+
   /** "Đánh dấu chưa thu" (huỷ nhầm) — soft-delete dòng payment hiệu lực, `reason` bắt buộc (CLAUDE.md: không xoá cứng). */
   voidActive(tx: Prisma.TransactionClient, tenantId: string, invoiceId: string, actorId: string, reason: string): Promise<Prisma.BatchPayload> {
     return tx.payment.updateMany({

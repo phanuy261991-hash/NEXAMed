@@ -1952,6 +1952,7 @@ export interface paths {
                                 cashVoucherApprovalEnabled: boolean;
                                 cashierDrawerSeparateEnabled: boolean;
                                 sidebarAutoCollapseEnabled: boolean;
+                                walletMixedPaymentEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -5830,6 +5831,10 @@ export interface paths {
                                 pendingCashReceivedAmount: number | null;
                                 paymentMethod: string | null;
                                 paidAt: string | null;
+                                payments: {
+                                    method: string;
+                                    amount: number;
+                                }[];
                                 encounterCancelled: boolean;
                                 needsRefund: boolean;
                                 refundedAt: string | null;
@@ -5948,6 +5953,10 @@ export interface paths {
                                 pendingCashReceivedAmount: number | null;
                                 paymentMethod: string | null;
                                 paidAt: string | null;
+                                payments: {
+                                    method: string;
+                                    amount: number;
+                                }[];
                                 encounterCancelled: boolean;
                                 needsRefund: boolean;
                                 refundedAt: string | null;
@@ -6094,6 +6103,10 @@ export interface paths {
                                 pendingCashReceivedAmount: number | null;
                                 paymentMethod: string | null;
                                 paidAt: string | null;
+                                payments: {
+                                    method: string;
+                                    amount: number;
+                                }[];
                                 encounterCancelled: boolean;
                                 needsRefund: boolean;
                                 refundedAt: string | null;
@@ -6255,6 +6268,10 @@ export interface paths {
                                 pendingCashReceivedAmount: number | null;
                                 paymentMethod: string | null;
                                 paidAt: string | null;
+                                payments: {
+                                    method: string;
+                                    amount: number;
+                                }[];
                                 encounterCancelled: boolean;
                                 needsRefund: boolean;
                                 refundedAt: string | null;
@@ -6417,6 +6434,10 @@ export interface paths {
                                 pendingCashReceivedAmount: number | null;
                                 paymentMethod: string | null;
                                 paidAt: string | null;
+                                payments: {
+                                    method: string;
+                                    amount: number;
+                                }[];
                                 encounterCancelled: boolean;
                                 needsRefund: boolean;
                                 refundedAt: string | null;
@@ -6556,6 +6577,10 @@ export interface paths {
                                 pendingCashReceivedAmount: number | null;
                                 paymentMethod: string | null;
                                 paidAt: string | null;
+                                payments: {
+                                    method: string;
+                                    amount: number;
+                                }[];
                                 encounterCancelled: boolean;
                                 needsRefund: boolean;
                                 refundedAt: string | null;
@@ -6598,6 +6623,340 @@ export interface paths {
                 };
                 /** @description Không có phiếu thu cho lượt khám này */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/invoices/{encounterId}/pay-with-wallet": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ví tạm ứng — trừ số dư ví HIỆN CÓ (không nạp thêm), cùng quyền invoice.update như "pay" */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    encounterId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        remainderPaymentMethodCode?: string;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                encounterId: string;
+                                invoiceNo: string;
+                                /** @enum {string} */
+                                status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
+                                totalAmount: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    examTypeCode: string;
+                                    examTypeName: string;
+                                    priceTypeCode: string | null;
+                                    unitCode: string | null;
+                                    unitPrice: number;
+                                    quantity: number;
+                                    lineTotal: number;
+                                }[];
+                                encounterNo: string;
+                                checkedInAt: string;
+                                /** Format: uuid */
+                                patientId: string;
+                                patientCode: string;
+                                fullName: string;
+                                departmentName: string;
+                                encounterVersion: number;
+                                printedAt: string | null;
+                                pendingPaymentMethod: string | null;
+                                pendingCashReceivedAmount: number | null;
+                                paymentMethod: string | null;
+                                paidAt: string | null;
+                                payments: {
+                                    method: string;
+                                    amount: number;
+                                }[];
+                                encounterCancelled: boolean;
+                                needsRefund: boolean;
+                                refundedAt: string | null;
+                                refundReason: string | null;
+                                version: number;
+                            } | null;
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu phương thức cho phần còn lại khi trả hỗn hợp */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền invoice.update */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có phiếu thu cho lượt khám này */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp, phiếu đã thu/đã đóng sổ, hoặc số dư ví không đủ (WALLET_INSUFFICIENT_BALANCE, kèm details.shortfall) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/invoices/{encounterId}/topup-and-pay-with-wallet": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ví tạm ứng — nạp thêm vào ví TRƯỚC rồi trừ ngay trong CÙNG transaction (Luồng "Nạp phần thiếu"/"Nạp mức chuẩn"), quyền riêng patient_wallet.topup */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    encounterId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        topUpAmount: number;
+                        topUpPaymentMethodCode: string;
+                        /** Format: uuid */
+                        cashAccountId?: string;
+                        remainderPaymentMethodCode?: string;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                encounterId: string;
+                                invoiceNo: string;
+                                /** @enum {string} */
+                                status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
+                                totalAmount: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    examTypeCode: string;
+                                    examTypeName: string;
+                                    priceTypeCode: string | null;
+                                    unitCode: string | null;
+                                    unitPrice: number;
+                                    quantity: number;
+                                    lineTotal: number;
+                                }[];
+                                encounterNo: string;
+                                checkedInAt: string;
+                                /** Format: uuid */
+                                patientId: string;
+                                patientCode: string;
+                                fullName: string;
+                                departmentName: string;
+                                encounterVersion: number;
+                                printedAt: string | null;
+                                pendingPaymentMethod: string | null;
+                                pendingCashReceivedAmount: number | null;
+                                paymentMethod: string | null;
+                                paidAt: string | null;
+                                payments: {
+                                    method: string;
+                                    amount: number;
+                                }[];
+                                encounterCancelled: boolean;
+                                needsRefund: boolean;
+                                refundedAt: string | null;
+                                refundReason: string | null;
+                                version: number;
+                            } | null;
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu phương thức cho phần còn lại khi trả hỗn hợp, hoặc chưa có quỹ nào để nhận tiền */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền patient_wallet.topup */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có phiếu thu cho lượt khám này */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp, phiếu đã thu/đã đóng sổ, hoặc ví đã khoá (WALLET_CLOSED) */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -10408,6 +10767,7 @@ export interface paths {
                                 cashVoucherApprovalEnabled: boolean;
                                 cashierDrawerSeparateEnabled: boolean;
                                 sidebarAutoCollapseEnabled: boolean;
+                                walletMixedPaymentEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -10507,6 +10867,7 @@ export interface paths {
                         cashVoucherApprovalEnabled?: boolean;
                         cashierDrawerSeparateEnabled?: boolean;
                         sidebarAutoCollapseEnabled?: boolean;
+                        walletMixedPaymentEnabled?: boolean;
                     };
                 };
             };
@@ -10565,6 +10926,7 @@ export interface paths {
                                 cashVoucherApprovalEnabled: boolean;
                                 cashierDrawerSeparateEnabled: boolean;
                                 sidebarAutoCollapseEnabled: boolean;
+                                walletMixedPaymentEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -10911,7 +11273,7 @@ export interface paths {
                             data: {
                                 items: {
                                     /** @enum {string} */
-                                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER";
+                                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT";
                                     label: string;
                                     prefix: string;
                                     template: string;
@@ -10984,7 +11346,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER";
+                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT";
                 };
                 cookie?: never;
             };
@@ -11007,7 +11369,7 @@ export interface paths {
                         "application/json": {
                             data: {
                                 /** @enum {string} */
-                                codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER";
+                                codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT";
                                 label: string;
                                 prefix: string;
                                 template: string;
@@ -17605,6 +17967,568 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/wallet": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Số dư ví tạm ứng của 1 bệnh nhân — null nếu chưa từng có ví */
+        get: {
+            parameters: {
+                query: {
+                    patientId: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                patientId: string;
+                                balance: number;
+                                /** @enum {string} */
+                                status: "ACTIVE" | "CLOSED";
+                                totalToppedUp: number;
+                                totalUsed: number;
+                                topUpCount: number;
+                                deductCount: number;
+                                lastTransactionAt: string | null;
+                                closedAt: string | null;
+                                version: number;
+                            } | null;
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền patient.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/wallet/transactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lịch sử giao dịch ví (nạp/cấn trừ/hoàn/tất toán) — cursor pagination, mới nhất trước */
+        get: {
+            parameters: {
+                query: {
+                    patientId: string;
+                    cursor?: string;
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** @enum {string} */
+                                    type: "TOPUP" | "DEDUCT" | "REFUND" | "SETTLEMENT";
+                                    amount: number;
+                                    balanceAfter: number;
+                                    /** Format: uuid */
+                                    invoiceId: string | null;
+                                    invoiceNo: string | null;
+                                    /** Format: uuid */
+                                    encounterId: string | null;
+                                    /** Format: uuid */
+                                    cashVoucherId: string | null;
+                                    voucherNo: string | null;
+                                    note: string | null;
+                                    createdByName: string;
+                                    createdAt: string;
+                                }[];
+                                nextCursor: string | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền patient.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/wallet/list": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Trang "Ví tạm ứng" tổng hợp toàn phòng khám — KPI + danh sách, quyền riêng patient_wallet.settle */
+        get: {
+            parameters: {
+                query?: {
+                    q?: string;
+                    status?: "ACTIVE" | "CLOSED";
+                    cursor?: string;
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    walletId: string;
+                                    /** Format: uuid */
+                                    patientId: string;
+                                    patientCode: string;
+                                    fullName: string;
+                                    phone: string | null;
+                                    balance: number;
+                                    totalToppedUp: number;
+                                    totalUsed: number;
+                                    lastTransactionAt: string | null;
+                                    /** @enum {string} */
+                                    status: "ACTIVE" | "CLOSED";
+                                }[];
+                                nextCursor: string | null;
+                                totalHeldBalance: number;
+                                activeWalletCount: number;
+                                toppedUpToday: number;
+                                deductedToday: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền patient_wallet.settle */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/wallet/topup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Nạp tạm ứng — tự tạo ví nếu bệnh nhân chưa từng có, sinh phiếu thu quỹ (cash_voucher) thật */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        patientId: string;
+                        amount: number;
+                        paymentMethodCode: string;
+                        /** Format: uuid */
+                        cashAccountId?: string;
+                        note?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                wallet: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    patientId: string;
+                                    balance: number;
+                                    /** @enum {string} */
+                                    status: "ACTIVE" | "CLOSED";
+                                    totalToppedUp: number;
+                                    totalUsed: number;
+                                    topUpCount: number;
+                                    deductCount: number;
+                                    lastTransactionAt: string | null;
+                                    closedAt: string | null;
+                                    version: number;
+                                };
+                                voucherNo: string;
+                                occurredAt: string;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Chưa có quỹ nào để nhận tiền */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền patient_wallet.topup */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy bệnh nhân */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Ví đã khoá (WALLET_CLOSED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/wallet/settle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Tất toán — hoàn số dư còn lại (nếu có, sinh phiếu chi) rồi khoá ví, quyền riêng patient_wallet.settle */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        patientId: string;
+                        paymentMethodCode?: string;
+                        /** Format: uuid */
+                        cashAccountId?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                wallet: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    patientId: string;
+                                    balance: number;
+                                    /** @enum {string} */
+                                    status: "ACTIVE" | "CLOSED";
+                                    totalToppedUp: number;
+                                    totalUsed: number;
+                                    topUpCount: number;
+                                    deductCount: number;
+                                    lastTransactionAt: string | null;
+                                    closedAt: string | null;
+                                    version: number;
+                                };
+                                voucherNo: string | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Còn số dư mà thiếu phương thức hoàn tiền, hoặc chưa có quỹ nào để chi tiền */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền patient_wallet.settle */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy ví của bệnh nhân này */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Ví đã khoá từ trước (WALLET_CLOSED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;

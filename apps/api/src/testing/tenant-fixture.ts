@@ -50,6 +50,9 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       // appointment/patient/user_account. diagnosis còn tham chiếu icd10_catalog (FK RESTRICT,
       // S3-05→07) nhưng icd10_catalog không thuộc phạm vi tenant nên không cần xoá ở đây.
       await prisma.vitalSign.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // wallet_transaction (Ví tạm ứng) tham chiếu CẢ invoice LẪN cash_voucher (FK RESTRICT, cả hai
+      // nullable) — phải xoá TRƯỚC CẢ HAI, tức trước khối payment/invoice và cash_voucher ngay dưới đây.
+      await prisma.walletTransaction.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // payment/invoice_line/invoice (Thu ngân cơ bản, Sprint 5/6) — payment tham chiếu invoice,
       // invoice_line tham chiếu CẢ invoice LẪN encounter_service_item (FK RESTRICT) nên phải xoá cả
       // 3 bảng này TRƯỚC encounter_service_item/encounter ngay dưới đây.
@@ -67,6 +70,9 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       // đâu cũng an toàn).
       await prisma.cashierShift.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.cashAccount.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // patient_wallet (Ví tạm ứng) tham chiếu patient (FK RESTRICT) — xoá trước patient (dòng dưới).
+      // wallet_transaction đã xoá ở trên nên an toàn xoá patient_wallet ở đây.
+      await prisma.patientWallet.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // encounter_service_item (docs/DECISIONS.md #080) — cùng lý do vital_sign, sub-resource của
       // encounter, không có self-reference nên xoá thẳng, không cần vòng lặp theo tầng.
       await prisma.encounterServiceItem.deleteMany({ where: { tenantId: { in: tenantIds } } });

@@ -4825,6 +4825,9 @@
                         },
                         "sidebarAutoCollapseEnabled": {
                           "type": "boolean"
+                        },
+                        "walletMixedPaymentEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -4844,7 +4847,8 @@
                         "cashierShiftMultiCashierEnabled",
                         "cashVoucherApprovalEnabled",
                         "cashierDrawerSeparateEnabled",
-                        "sidebarAutoCollapseEnabled"
+                        "sidebarAutoCollapseEnabled",
+                        "walletMixedPaymentEnabled"
                       ]
                     },
                     "meta": {
@@ -14479,6 +14483,25 @@
                             "null"
                           ]
                         },
+                        "payments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "method": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "amount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "method",
+                              "amount"
+                            ]
+                          }
+                        },
                         "encounterCancelled": {
                           "type": "boolean"
                         },
@@ -14520,6 +14543,7 @@
                         "pendingCashReceivedAmount",
                         "paymentMethod",
                         "paidAt",
+                        "payments",
                         "encounterCancelled",
                         "needsRefund",
                         "refundedAt",
@@ -14789,6 +14813,25 @@
                             "null"
                           ]
                         },
+                        "payments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "method": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "amount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "method",
+                              "amount"
+                            ]
+                          }
+                        },
                         "encounterCancelled": {
                           "type": "boolean"
                         },
@@ -14830,6 +14873,7 @@
                         "pendingCashReceivedAmount",
                         "paymentMethod",
                         "paidAt",
+                        "payments",
                         "encounterCancelled",
                         "needsRefund",
                         "refundedAt",
@@ -15161,6 +15205,25 @@
                             "null"
                           ]
                         },
+                        "payments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "method": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "amount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "method",
+                              "amount"
+                            ]
+                          }
+                        },
                         "encounterCancelled": {
                           "type": "boolean"
                         },
@@ -15202,6 +15265,7 @@
                         "pendingCashReceivedAmount",
                         "paymentMethod",
                         "paidAt",
+                        "payments",
                         "encounterCancelled",
                         "needsRefund",
                         "refundedAt",
@@ -15564,6 +15628,25 @@
                             "null"
                           ]
                         },
+                        "payments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "method": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "amount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "method",
+                              "amount"
+                            ]
+                          }
+                        },
                         "encounterCancelled": {
                           "type": "boolean"
                         },
@@ -15605,6 +15688,7 @@
                         "pendingCashReceivedAmount",
                         "paymentMethod",
                         "paidAt",
+                        "payments",
                         "encounterCancelled",
                         "needsRefund",
                         "refundedAt",
@@ -15978,6 +16062,25 @@
                             "null"
                           ]
                         },
+                        "payments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "method": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "amount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "method",
+                              "amount"
+                            ]
+                          }
+                        },
                         "encounterCancelled": {
                           "type": "boolean"
                         },
@@ -16019,6 +16122,7 @@
                         "pendingCashReceivedAmount",
                         "paymentMethod",
                         "paidAt",
+                        "payments",
                         "encounterCancelled",
                         "needsRefund",
                         "refundedAt",
@@ -16328,6 +16432,25 @@
                             "null"
                           ]
                         },
+                        "payments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "method": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "amount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "method",
+                              "amount"
+                            ]
+                          }
+                        },
                         "encounterCancelled": {
                           "type": "boolean"
                         },
@@ -16369,6 +16492,7 @@
                         "pendingCashReceivedAmount",
                         "paymentMethod",
                         "paidAt",
+                        "payments",
                         "encounterCancelled",
                         "needsRefund",
                         "refundedAt",
@@ -16453,6 +16577,864 @@
           },
           "404": {
             "description": "Không có phiếu thu cho lượt khám này",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/billing/invoices/{encounterId}/pay-with-wallet": {
+      "post": {
+        "tags": [
+          "billing"
+        ],
+        "summary": "Ví tạm ứng — trừ số dư ví HIỆN CÓ (không nạp thêm), cùng quyền invoice.update như \"pay\"",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "encounterId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "remainderPaymentMethodCode": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "version": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "encounterId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "invoiceNo": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "UNPAID",
+                            "PAID",
+                            "CANCELLED",
+                            "REFUNDED"
+                          ]
+                        },
+                        "totalAmount": {
+                          "type": "integer"
+                        },
+                        "lines": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "examTypeCode": {
+                                "type": "string"
+                              },
+                              "examTypeName": {
+                                "type": "string"
+                              },
+                              "priceTypeCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "unitCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "unitPrice": {
+                                "type": "integer"
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "lineTotal": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "examTypeCode",
+                              "examTypeName",
+                              "priceTypeCode",
+                              "unitCode",
+                              "unitPrice",
+                              "quantity",
+                              "lineTotal"
+                            ]
+                          }
+                        },
+                        "encounterNo": {
+                          "type": "string"
+                        },
+                        "checkedInAt": {
+                          "type": "string"
+                        },
+                        "patientId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "patientCode": {
+                          "type": "string"
+                        },
+                        "fullName": {
+                          "type": "string"
+                        },
+                        "departmentName": {
+                          "type": "string"
+                        },
+                        "encounterVersion": {
+                          "type": "integer"
+                        },
+                        "printedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "pendingPaymentMethod": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "minLength": 1
+                        },
+                        "pendingCashReceivedAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "paymentMethod": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "minLength": 1
+                        },
+                        "paidAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "payments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "method": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "amount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "method",
+                              "amount"
+                            ]
+                          }
+                        },
+                        "encounterCancelled": {
+                          "type": "boolean"
+                        },
+                        "needsRefund": {
+                          "type": "boolean"
+                        },
+                        "refundedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "refundReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "encounterId",
+                        "invoiceNo",
+                        "status",
+                        "totalAmount",
+                        "lines",
+                        "encounterNo",
+                        "checkedInAt",
+                        "patientId",
+                        "patientCode",
+                        "fullName",
+                        "departmentName",
+                        "encounterVersion",
+                        "printedAt",
+                        "pendingPaymentMethod",
+                        "pendingCashReceivedAmount",
+                        "paymentMethod",
+                        "paidAt",
+                        "payments",
+                        "encounterCancelled",
+                        "needsRefund",
+                        "refundedAt",
+                        "refundReason",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Thiếu phương thức cho phần còn lại khi trả hỗn hợp",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền invoice.update",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không có phiếu thu cho lượt khám này",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp, phiếu đã thu/đã đóng sổ, hoặc số dư ví không đủ (WALLET_INSUFFICIENT_BALANCE, kèm details.shortfall)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/billing/invoices/{encounterId}/topup-and-pay-with-wallet": {
+      "post": {
+        "tags": [
+          "billing"
+        ],
+        "summary": "Ví tạm ứng — nạp thêm vào ví TRƯỚC rồi trừ ngay trong CÙNG transaction (Luồng \"Nạp phần thiếu\"/\"Nạp mức chuẩn\"), quyền riêng patient_wallet.topup",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "encounterId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "topUpAmount": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "topUpPaymentMethodCode": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "cashAccountId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "remainderPaymentMethodCode": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "version": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "topUpAmount",
+                  "topUpPaymentMethodCode",
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "encounterId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "invoiceNo": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "UNPAID",
+                            "PAID",
+                            "CANCELLED",
+                            "REFUNDED"
+                          ]
+                        },
+                        "totalAmount": {
+                          "type": "integer"
+                        },
+                        "lines": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "examTypeCode": {
+                                "type": "string"
+                              },
+                              "examTypeName": {
+                                "type": "string"
+                              },
+                              "priceTypeCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "unitCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "unitPrice": {
+                                "type": "integer"
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "lineTotal": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "examTypeCode",
+                              "examTypeName",
+                              "priceTypeCode",
+                              "unitCode",
+                              "unitPrice",
+                              "quantity",
+                              "lineTotal"
+                            ]
+                          }
+                        },
+                        "encounterNo": {
+                          "type": "string"
+                        },
+                        "checkedInAt": {
+                          "type": "string"
+                        },
+                        "patientId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "patientCode": {
+                          "type": "string"
+                        },
+                        "fullName": {
+                          "type": "string"
+                        },
+                        "departmentName": {
+                          "type": "string"
+                        },
+                        "encounterVersion": {
+                          "type": "integer"
+                        },
+                        "printedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "pendingPaymentMethod": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "minLength": 1
+                        },
+                        "pendingCashReceivedAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "paymentMethod": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "minLength": 1
+                        },
+                        "paidAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "payments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "method": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "amount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "method",
+                              "amount"
+                            ]
+                          }
+                        },
+                        "encounterCancelled": {
+                          "type": "boolean"
+                        },
+                        "needsRefund": {
+                          "type": "boolean"
+                        },
+                        "refundedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "refundReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "encounterId",
+                        "invoiceNo",
+                        "status",
+                        "totalAmount",
+                        "lines",
+                        "encounterNo",
+                        "checkedInAt",
+                        "patientId",
+                        "patientCode",
+                        "fullName",
+                        "departmentName",
+                        "encounterVersion",
+                        "printedAt",
+                        "pendingPaymentMethod",
+                        "pendingCashReceivedAmount",
+                        "paymentMethod",
+                        "paidAt",
+                        "payments",
+                        "encounterCancelled",
+                        "needsRefund",
+                        "refundedAt",
+                        "refundReason",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Thiếu phương thức cho phần còn lại khi trả hỗn hợp, hoặc chưa có quỹ nào để nhận tiền",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền patient_wallet.topup",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không có phiếu thu cho lượt khám này",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp, phiếu đã thu/đã đóng sổ, hoặc ví đã khoá (WALLET_CLOSED)",
             "content": {
               "application/json": {
                 "schema": {
@@ -25078,6 +26060,9 @@
                         },
                         "sidebarAutoCollapseEnabled": {
                           "type": "boolean"
+                        },
+                        "walletMixedPaymentEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -25097,7 +26082,8 @@
                         "cashierShiftMultiCashierEnabled",
                         "cashVoucherApprovalEnabled",
                         "cashierDrawerSeparateEnabled",
-                        "sidebarAutoCollapseEnabled"
+                        "sidebarAutoCollapseEnabled",
+                        "walletMixedPaymentEnabled"
                       ]
                     },
                     "meta": {
@@ -25402,6 +26388,9 @@
                   },
                   "sidebarAutoCollapseEnabled": {
                     "type": "boolean"
+                  },
+                  "walletMixedPaymentEnabled": {
+                    "type": "boolean"
                   }
                 }
               }
@@ -25631,6 +26620,9 @@
                         },
                         "sidebarAutoCollapseEnabled": {
                           "type": "boolean"
+                        },
+                        "walletMixedPaymentEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -25650,7 +26642,8 @@
                         "cashierShiftMultiCashierEnabled",
                         "cashVoucherApprovalEnabled",
                         "cashierDrawerSeparateEnabled",
-                        "sidebarAutoCollapseEnabled"
+                        "sidebarAutoCollapseEnabled",
+                        "walletMixedPaymentEnabled"
                       ]
                     },
                     "meta": {
@@ -26155,7 +27148,9 @@
                                   "CASHIER_SHIFT",
                                   "CASH_RECEIPT",
                                   "CASH_PAYMENT",
-                                  "CASH_TRANSFER"
+                                  "CASH_TRANSFER",
+                                  "WALLET_TOPUP",
+                                  "WALLET_SETTLEMENT"
                                 ]
                               },
                               "label": {
@@ -26303,7 +27298,9 @@
                 "CASHIER_SHIFT",
                 "CASH_RECEIPT",
                 "CASH_PAYMENT",
-                "CASH_TRANSFER"
+                "CASH_TRANSFER",
+                "WALLET_TOPUP",
+                "WALLET_SETTLEMENT"
               ]
             },
             "required": true,
@@ -26362,7 +27359,9 @@
                             "CASHIER_SHIFT",
                             "CASH_RECEIPT",
                             "CASH_PAYMENT",
-                            "CASH_TRANSFER"
+                            "CASH_TRANSFER",
+                            "WALLET_TOPUP",
+                            "WALLET_SETTLEMENT"
                           ]
                         },
                         "label": {
@@ -41590,6 +42589,1241 @@
           },
           "403": {
             "description": "Không có quyền cash_voucher.report",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/wallet": {
+      "get": {
+        "tags": [
+          "patient-wallet"
+        ],
+        "summary": "Số dư ví tạm ứng của 1 bệnh nhân — null nếu chưa từng có ví",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "patientId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "patientId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "balance": {
+                          "type": "integer"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "ACTIVE",
+                            "CLOSED"
+                          ]
+                        },
+                        "totalToppedUp": {
+                          "type": "integer"
+                        },
+                        "totalUsed": {
+                          "type": "integer"
+                        },
+                        "topUpCount": {
+                          "type": "integer"
+                        },
+                        "deductCount": {
+                          "type": "integer"
+                        },
+                        "lastTransactionAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "closedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "patientId",
+                        "balance",
+                        "status",
+                        "totalToppedUp",
+                        "totalUsed",
+                        "topUpCount",
+                        "deductCount",
+                        "lastTransactionAt",
+                        "closedAt",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền patient.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/wallet/transactions": {
+      "get": {
+        "tags": [
+          "patient-wallet"
+        ],
+        "summary": "Lịch sử giao dịch ví (nạp/cấn trừ/hoàn/tất toán) — cursor pagination, mới nhất trước",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "patientId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "TOPUP",
+                                  "DEDUCT",
+                                  "REFUND",
+                                  "SETTLEMENT"
+                                ]
+                              },
+                              "amount": {
+                                "type": "integer"
+                              },
+                              "balanceAfter": {
+                                "type": "integer"
+                              },
+                              "invoiceId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "invoiceNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "encounterId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "cashVoucherId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "voucherNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "note": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdByName": {
+                                "type": "string"
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "type",
+                              "amount",
+                              "balanceAfter",
+                              "invoiceId",
+                              "invoiceNo",
+                              "encounterId",
+                              "cashVoucherId",
+                              "voucherNo",
+                              "note",
+                              "createdByName",
+                              "createdAt"
+                            ]
+                          }
+                        },
+                        "nextCursor": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "nextCursor"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền patient.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/wallet/list": {
+      "get": {
+        "tags": [
+          "patient-wallet"
+        ],
+        "summary": "Trang \"Ví tạm ứng\" tổng hợp toàn phòng khám — KPI + danh sách, quyền riêng patient_wallet.settle",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "required": false,
+            "name": "q",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ACTIVE",
+                "CLOSED"
+              ]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "walletId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "patientId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "patientCode": {
+                                "type": "string"
+                              },
+                              "fullName": {
+                                "type": "string"
+                              },
+                              "phone": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "balance": {
+                                "type": "integer"
+                              },
+                              "totalToppedUp": {
+                                "type": "integer"
+                              },
+                              "totalUsed": {
+                                "type": "integer"
+                              },
+                              "lastTransactionAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "ACTIVE",
+                                  "CLOSED"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "walletId",
+                              "patientId",
+                              "patientCode",
+                              "fullName",
+                              "phone",
+                              "balance",
+                              "totalToppedUp",
+                              "totalUsed",
+                              "lastTransactionAt",
+                              "status"
+                            ]
+                          }
+                        },
+                        "nextCursor": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "totalHeldBalance": {
+                          "type": "integer"
+                        },
+                        "activeWalletCount": {
+                          "type": "integer"
+                        },
+                        "toppedUpToday": {
+                          "type": "integer"
+                        },
+                        "deductedToday": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "nextCursor",
+                        "totalHeldBalance",
+                        "activeWalletCount",
+                        "toppedUpToday",
+                        "deductedToday"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền patient_wallet.settle",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/wallet/topup": {
+      "post": {
+        "tags": [
+          "patient-wallet"
+        ],
+        "summary": "Nạp tạm ứng — tự tạo ví nếu bệnh nhân chưa từng có, sinh phiếu thu quỹ (cash_voucher) thật",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "patientId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "amount": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "paymentMethodCode": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "cashAccountId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "note": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "patientId",
+                  "amount",
+                  "paymentMethodCode"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "wallet": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "patientId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "balance": {
+                              "type": "integer"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "ACTIVE",
+                                "CLOSED"
+                              ]
+                            },
+                            "totalToppedUp": {
+                              "type": "integer"
+                            },
+                            "totalUsed": {
+                              "type": "integer"
+                            },
+                            "topUpCount": {
+                              "type": "integer"
+                            },
+                            "deductCount": {
+                              "type": "integer"
+                            },
+                            "lastTransactionAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "closedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "version": {
+                              "type": "integer"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "patientId",
+                            "balance",
+                            "status",
+                            "totalToppedUp",
+                            "totalUsed",
+                            "topUpCount",
+                            "deductCount",
+                            "lastTransactionAt",
+                            "closedAt",
+                            "version"
+                          ]
+                        },
+                        "voucherNo": {
+                          "type": "string"
+                        },
+                        "occurredAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "wallet",
+                        "voucherNo",
+                        "occurredAt"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Chưa có quỹ nào để nhận tiền",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền patient_wallet.topup",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy bệnh nhân",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ví đã khoá (WALLET_CLOSED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/wallet/settle": {
+      "post": {
+        "tags": [
+          "patient-wallet"
+        ],
+        "summary": "Tất toán — hoàn số dư còn lại (nếu có, sinh phiếu chi) rồi khoá ví, quyền riêng patient_wallet.settle",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "patientId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "paymentMethodCode": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "cashAccountId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "patientId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "wallet": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "patientId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "balance": {
+                              "type": "integer"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "ACTIVE",
+                                "CLOSED"
+                              ]
+                            },
+                            "totalToppedUp": {
+                              "type": "integer"
+                            },
+                            "totalUsed": {
+                              "type": "integer"
+                            },
+                            "topUpCount": {
+                              "type": "integer"
+                            },
+                            "deductCount": {
+                              "type": "integer"
+                            },
+                            "lastTransactionAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "closedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "version": {
+                              "type": "integer"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "patientId",
+                            "balance",
+                            "status",
+                            "totalToppedUp",
+                            "totalUsed",
+                            "topUpCount",
+                            "deductCount",
+                            "lastTransactionAt",
+                            "closedAt",
+                            "version"
+                          ]
+                        },
+                        "voucherNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "wallet",
+                        "voucherNo"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Còn số dư mà thiếu phương thức hoàn tiền, hoặc chưa có quỹ nào để chi tiền",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền patient_wallet.settle",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy ví của bệnh nhân này",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ví đã khoá từ trước (WALLET_CLOSED)",
             "content": {
               "application/json": {
                 "schema": {

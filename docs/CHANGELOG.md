@@ -2,6 +2,18 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-09
+
+### "Ví tạm ứng" (Patient Advance-Payment Wallet) — hoàn tất, verify Playwright xong
+
+Bệnh nhân nộp tiền trước (`patient_wallet`), hệ thống tự cấn trừ (`wallet_transaction`) lúc tiếp nhận nếu đủ số dư — invoice tự `PAID`, vào thẳng hàng đợi khám không qua quầy. Thiếu tiền thì thu ngân xử lý ở phiếu thu: trừ ví/nạp thêm/**trả hỗn hợp** (trừ hết ví + thu phần còn lại tiền mặt/CK trên cùng 1 phiếu, bật qua công tắc `walletMixedPaymentEnabled` mới ở "Cấu hình thanh toán"). Huỷ lượt khám đã trừ ví → hoàn về ví (không hoàn tiền mặt). Tất toán (`clinic_admin`) khoá ví + sinh phiếu chi `PCU`. Trang tổng hợp `/cash-book/wallets`.
+
+Bước 0 mở rộng `Payment` từ 1 dòng/phiếu sang N dòng để hỗ trợ trả hỗn hợp (`revertPayment`/`refund` lặp mọi dòng hiệu lực), có test hồi quy xác nhận luồng cũ không đổi. Module mới `apps/api/src/modules/patient-wallet/`, `apps/web/src/features/patient-wallet/`. Xem chi tiết đầy đủ ở `docs/DECISIONS.md` #136.
+
+**Đã xác minh**: `apps/api` 748/748, `packages/core` 160/160, `packages/shared` 20/20, `apps/web` 5/5, `pnpm -w typecheck/lint/build` sạch (chunk 498.53 kB). Playwright qua Chrome thật 18/18 kịch bản pass (nạp ví + in phiếu, auto-deduct đủ/thiếu tiền, trả hỗn hợp tạo đúng 2 dòng Payment, huỷ+hoàn tiền cộng lại đúng số dư, tất toán khoá ví, trang tổng hợp), không lỗi console.
+
+**Bổ sung cùng ngày**: test race điều kiện auto-deduct (2 lượt tiếp nhận cùng bệnh nhân gần như đồng thời, ví chỉ đủ 1 lượt) — 5/5 lần chạy không flaky, không double-spend, không lượt tiếp nhận nào bị fail oan. Đối chiếu 4 KPI trang `/cash-book/wallets` với API — khớp tuyệt đối. Xem `docs/DECISIONS.md` #136.
+
 ## 2026-09-08 (7)
 
 ### "Bệnh nhân trong ngày" → "Trung tâm Điều phối Tiếp nhận"

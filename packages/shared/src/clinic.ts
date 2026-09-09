@@ -248,6 +248,13 @@ export const clinicSettingsSchema = z.object({
    * kể cả khi người dùng vừa tự mở lại tay ở trang trước đó — không tự khôi phục trạng thái mở lại.
    */
   sidebarAutoCollapseEnabled: z.boolean(),
+  /**
+   * "Ví tạm ứng" — TẮT (mặc định — mỗi phiếu thu chỉ 1 phương thức, giữ đúng hành vi hiện tại).
+   * BẬT: màn Chi tiết thanh toán cho phép trừ TOÀN BỘ số dư ví rồi thu PHẦN CÒN LẠI bằng tiền mặt/
+   * chuyển khoản trên CÙNG 1 phiếu (2 dòng `payment`) khi số dư không đủ — không bật thì số dư
+   * không đủ chỉ có đường "Nạp thêm" (đủ 100% mới trừ được) hoặc đổi hẳn sang phương thức khác.
+   */
+  walletMixedPaymentEnabled: z.boolean(),
 });
 export type ClinicSettings = z.infer<typeof clinicSettingsSchema>;
 
@@ -275,6 +282,7 @@ export const updateClinicSettingsRequestSchema = z.object({
   cashVoucherApprovalEnabled: z.boolean().optional(),
   cashierDrawerSeparateEnabled: z.boolean().optional(),
   sidebarAutoCollapseEnabled: z.boolean().optional(),
+  walletMixedPaymentEnabled: z.boolean().optional(),
 });
 export type UpdateClinicSettingsRequest = z.infer<typeof updateClinicSettingsRequestSchema>;
 
@@ -305,6 +313,8 @@ export const DEFAULT_CASHIER_SHIFT_MULTI_CASHIER_ENABLED = false;
 export const DEFAULT_CASH_VOUCHER_APPROVAL_ENABLED = false;
 /** Tắt theo mặc định — giữ nguyên "1 quỹ tiền mặt chung" tới khi chủ động bật (yêu cầu bật kèm "Đa thu ngân"). */
 export const DEFAULT_CASHIER_DRAWER_SEPARATE_ENABLED = false;
+/** Tắt theo mặc định — mỗi phiếu thu chỉ 1 phương thức, giữ đúng hành vi hiện tại tới khi chủ động bật. */
+export const DEFAULT_WALLET_MIXED_PAYMENT_ENABLED = false;
 /** Tắt theo mặc định (an toàn — giữ nguyên hành vi sidebar hiện tại tới khi chủ động bật). */
 export const DEFAULT_SIDEBAR_AUTO_COLLAPSE_ENABLED = false;
 

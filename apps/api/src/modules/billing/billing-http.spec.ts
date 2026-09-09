@@ -67,7 +67,15 @@ describe('HTTP e2e — /api/v1/billing/invoices', () => {
       .post('/api/v1/reception/direct')
       .set(authed(token))
       .send({ patientId, doctorId, checkedInAt, services, receptionTypeCode: 'RT_NEW', examFormCode: 'EF_NORMAL' });
-    return res.body.data as { id: string; encounterNo: string };
+    return { ...(res.body.data as { id: string; encounterNo: string }), patientId };
+  }
+
+  /** Nạp ví tạm ứng cho bệnh nhân (Ví tạm ứng) — dùng chung cho test pay-with-wallet/auto-deduct/refund/revert. */
+  async function topUpWallet(token: string, patientId: string, amount: number) {
+    return request(app.getHttpServer())
+      .post('/api/v1/wallet/topup')
+      .set(authed(token))
+      .send({ patientId, amount, paymentMethodCode: 'CASH' });
   }
 
   function pricedServices() {
@@ -245,6 +253,148 @@ describe('HTTP e2e — /api/v1/billing/invoices', () => {
         .send({ method: 'CASH', version: 1 });
       expect(res.status).toBe(409);
       expect(res.body.error.code).toBe('INVOICE_CLOSED');
+    });
+  });
+
+  describe('Ví tạm ứng — POST .../pay-with-wallet và .../topup-and-pay-with-wallet', () => {
+    it('ví đủ tiền → pay-with-wallet trừ đúng số dư, tạo đúng 1 dòng payment method=WALLET', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+      await topUpWallet(receptionistToken, encounter.patientId, 500_000);
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/billing/invoices/${encounter.id}/pay-with-wallet`)
+        .set(authed(receptionistToken))
+        .send({ version: 1 });
+      expect(res.status).toBe(200);
+      expect(res.body.data.status).toBe('PAID');
+      expect(res.body.data.payments).toEqual([{ method: 'WALLET', amount: 150_000 }]);
+
+      const wallet = await request(app.getHttpServer()).get('/api/v1/wallet').set(authed(receptionistToken)).query({ patientId: encounter.patientId });
+      expect(wallet.body.data.balance).toBe(350_000);
+    });
+
+    it('ví không đủ, chưa bật trả hỗn hợp → 409 WALLET_INSUFFICIENT_BALANCE kèm details.shortfall', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+      await topUpWallet(receptionistToken, encounter.patientId, 50_000);
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/billing/invoices/${encounter.id}/pay-with-wallet`)
+        .set(authed(receptionistToken))
+        .send({ version: 1 });
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('WALLET_INSUFFICIENT_BALANCE');
+      expect(res.body.error.details).toMatchObject({ balance: 50_000, due: 150_000, shortfall: 100_000 });
+    });
+
+    it('chưa từng có ví (chưa nạp lần nào) → 409 WALLET_INSUFFICIENT_BALANCE (balance=0)', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/billing/invoices/${encounter.id}/pay-with-wallet`)
+        .set(authed(receptionistToken))
+        .send({ version: 1 });
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('WALLET_INSUFFICIENT_BALANCE');
+      expect(res.body.error.details.balance).toBe(0);
+    });
+
+    it('topup-and-pay-with-wallet — nạp đúng phần thiếu rồi trừ ngay trong 1 lượt, số dư về 0', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+      await topUpWallet(receptionistToken, encounter.patientId, 50_000);
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/billing/invoices/${encounter.id}/topup-and-pay-with-wallet`)
+        .set(authed(receptionistToken))
+        .send({ topUpAmount: 100_000, topUpPaymentMethodCode: 'CASH', version: 1 });
+      expect(res.status).toBe(200);
+      expect(res.body.data.status).toBe('PAID');
+      expect(res.body.data.payments).toEqual([{ method: 'WALLET', amount: 150_000 }]);
+
+      const wallet = await request(app.getHttpServer()).get('/api/v1/wallet').set(authed(receptionistToken)).query({ patientId: encounter.patientId });
+      expect(wallet.body.data.balance).toBe(0);
+      expect(wallet.body.data.totalToppedUp).toBe(150_000);
+    });
+
+    it('trả hỗn hợp — TẮT (mặc định): ví thiếu + kèm remainderPaymentMethodCode vẫn 409 (không tự ý dùng)', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+      await topUpWallet(receptionistToken, encounter.patientId, 50_000);
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/billing/invoices/${encounter.id}/pay-with-wallet`)
+        .set(authed(receptionistToken))
+        .send({ version: 1, remainderPaymentMethodCode: 'CASH' });
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('WALLET_INSUFFICIENT_BALANCE');
+    });
+
+    it('trả hỗn hợp — BẬT: trừ hết ví + thu phần còn lại bằng CASH, tạo đúng 2 dòng payment', async () => {
+      await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(clinicAdminToken)).send({ walletMixedPaymentEnabled: true });
+      try {
+        const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+        await topUpWallet(receptionistToken, encounter.patientId, 50_000);
+
+        const res = await request(app.getHttpServer())
+          .post(`/api/v1/billing/invoices/${encounter.id}/pay-with-wallet`)
+          .set(authed(receptionistToken))
+          .send({ version: 1, remainderPaymentMethodCode: 'CASH' });
+        expect(res.status).toBe(200);
+        expect(res.body.data.status).toBe('PAID');
+        expect(res.body.data.payments).toEqual(
+          expect.arrayContaining([
+            { method: 'WALLET', amount: 50_000 },
+            { method: 'CASH', amount: 100_000 },
+          ]),
+        );
+        expect(res.body.data.payments).toHaveLength(2);
+
+        const wallet = await request(app.getHttpServer()).get('/api/v1/wallet').set(authed(receptionistToken)).query({ patientId: encounter.patientId });
+        expect(wallet.body.data.balance).toBe(0);
+      } finally {
+        await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(clinicAdminToken)).send({ walletMixedPaymentEnabled: false });
+      }
+    });
+
+    it('huỷ lượt khám đã trả bằng ví rồi hoàn tiền → số dư ví cộng lại đúng phần đã trừ', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+      await topUpWallet(receptionistToken, encounter.patientId, 500_000);
+      await request(app.getHttpServer()).post(`/api/v1/billing/invoices/${encounter.id}/pay-with-wallet`).set(authed(receptionistToken)).send({ version: 1 });
+      await cancelEncounter(encounter.id, 1);
+
+      const refundRes = await request(app.getHttpServer())
+        .post(`/api/v1/billing/invoices/${encounter.id}/refund`)
+        .set(authed(clinicAdminToken))
+        .send({ reason: 'Khách bỏ về', version: 2 });
+      expect(refundRes.status).toBe(200);
+      expect(refundRes.body.data.status).toBe('REFUNDED');
+
+      const wallet = await request(app.getHttpServer()).get('/api/v1/wallet').set(authed(receptionistToken)).query({ patientId: encounter.patientId });
+      expect(wallet.body.data.balance).toBe(500_000);
+    });
+
+    it('"Đánh dấu chưa thu" (revert-payment) phiếu đã trừ ví → cộng lại đúng số dư', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+      await topUpWallet(receptionistToken, encounter.patientId, 500_000);
+      await request(app.getHttpServer()).post(`/api/v1/billing/invoices/${encounter.id}/pay-with-wallet`).set(authed(receptionistToken)).send({ version: 1 });
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/billing/invoices/${encounter.id}/revert-payment`)
+        .set(authed(receptionistToken))
+        .send({ reason: 'Đánh dấu nhầm', version: 2 });
+      expect(res.status).toBe(200);
+      expect(res.body.data.status).toBe('UNPAID');
+
+      const wallet = await request(app.getHttpServer()).get('/api/v1/wallet').set(authed(receptionistToken)).query({ patientId: encounter.patientId });
+      expect(wallet.body.data.balance).toBe(500_000);
+    });
+
+    it('lễ tân (không có patient_wallet.topup theo cấu hình mặc định VẪN có — kiểm bác sĩ thay) → 403 cho topup-and-pay-with-wallet', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/billing/invoices/${encounter.id}/topup-and-pay-with-wallet`)
+        .set(authed(doctorAToken))
+        .send({ topUpAmount: 100_000, topUpPaymentMethodCode: 'CASH', version: 1 });
+      expect(res.status).toBe(403);
     });
   });
 

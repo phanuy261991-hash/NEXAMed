@@ -141,6 +141,12 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   // (receptionist+clinic_admin). Báo cáo dòng tiền (tổng hợp toàn phòng khám + xuất Excel) là báo
   // cáo quản trị — permission RIÊNG, mặc định CHỈ clinic_admin, đúng tinh thần `cashier_shift.manage`.
   { module: 'cash_voucher', action: 'report', description: 'Xem Sổ quỹ tổng hợp + Báo cáo dòng tiền' },
+  // "Ví tạm ứng" — nạp tiền là hành động thường ngày của thu ngân/lễ tân (cùng khuôn `cash_voucher.
+  // create`); hoàn tiền + khoá ví ("Tất toán") là hành động của Quản lý, mặc định CHỈ clinic_admin,
+  // đúng tinh thần `invoice.refund`/`cashier_shift.manage`. Xem số dư/lịch sử dùng chung
+  // `patient.read` có sẵn (không thêm permission đọc riêng — chốt qua AskUserQuestion).
+  { module: 'patient_wallet', action: 'topup', description: 'Nạp tiền vào ví tạm ứng của bệnh nhân' },
+  { module: 'patient_wallet', action: 'settle', description: 'Hoàn tiền & khoá ví tạm ứng (Tất toán)' },
 ] as const;
 
 export function permissionKey(p: Pick<PermissionDefinition, 'module' | 'action'>): string {
@@ -199,6 +205,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'cash_voucher.create': 'global',
     'cash_voucher.read': 'global',
     'cash_voucher.update': 'personal',
+    // "Ví tạm ứng" — lễ tân là người nạp tiền chính, cùng tinh thần `cash_voucher.create`.
+    'patient_wallet.topup': 'global',
   },
   nurse: {
     'patient.read': 'global',
@@ -316,6 +324,10 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'cash_voucher.update': 'global',
     'cash_voucher.approve': 'global',
     'cash_voucher.report': 'global',
+    // "Ví tạm ứng" — clinic_admin nạp được như lễ tân, cộng thêm hoàn tiền/khoá ví (DUY NHẤT vai
+    // trò này, cùng tinh thần `invoice.refund`).
+    'patient_wallet.topup': 'global',
+    'patient_wallet.settle': 'global',
   },
   system_admin: {
     'user_account.read': 'global',

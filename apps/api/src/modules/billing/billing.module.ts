@@ -7,6 +7,7 @@ import { ClinicModule } from '../clinic/clinic.module';
 import { CashierShiftModule } from '../cashier-shift/cashier-shift.module';
 import { CashBookModule } from '../cash-book/cash-book.module';
 import { ReferenceCatalogModule } from '../reference-catalog/reference-catalog.module';
+import { PatientWalletModule } from '../patient-wallet/patient-wallet.module';
 
 /**
  * Thu ngân cơ bản (Sprint 5/6, BIL-01→04) — sở hữu bảng `invoice`/`invoice_line`/`payment`.
@@ -26,9 +27,13 @@ import { ReferenceCatalogModule } from '../reference-catalog/reference-catalog.m
  * Repository giữa module trong 1 transaction", #042) — KHÔNG cần `forwardRef` (`cash-book` không
  * phụ thuộc ngược `billing`). `imports: [ReferenceCatalogModule]` — `InvoiceService` đọc
  * `REFERENCE_CATALOG_READER_PORT` để biết `countsAsCash` của phương thức thanh toán.
+ * `imports: [PatientWalletModule]` (Ví tạm ứng) — `InvoiceService` dùng `PatientWalletService` để
+ * (1) hoàn tiền lại ví khi `refund()`/`revertPayment()` gặp dòng `payment.method='WALLET'`, (2)
+ * trừ/nạp ví ở 2 endpoint mới `pay-with-wallet`/`topup-and-pay-with-wallet`. KHÔNG cần `forwardRef`
+ * — `PatientWalletModule` không import ngược lại `BillingModule`.
  */
 @Module({
-  imports: [ClinicModule, forwardRef(() => CashierShiftModule), CashBookModule, ReferenceCatalogModule],
+  imports: [ClinicModule, forwardRef(() => CashierShiftModule), CashBookModule, ReferenceCatalogModule, PatientWalletModule],
   controllers: [InvoiceController],
   providers: [InvoiceService, InvoiceRepository, PaymentRepository],
   exports: [InvoiceRepository, PaymentRepository],

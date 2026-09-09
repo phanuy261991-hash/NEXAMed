@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowCounterClockwise, ArrowLeft, Bank, CheckCircle, CreditCard, Money, Printer, Receipt, Warning, XCircle } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, ArrowLeft, Bank, CheckCircle, CreditCard, Money, Printer, Receipt, Wallet, Warning, XCircle } from '@phosphor-icons/react';
 import type { PaymentMethod } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
@@ -14,25 +14,29 @@ import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { formatVnd } from '../../shared/format/currency';
 import { useAuthStore } from '../auth/auth.store';
 import { useHasPermission } from '../auth/usePermission';
-import { useClinicPrintHeaderQuery } from '../clinic/clinic.queries';
+import { useClinicPrintHeaderQuery, useClinicSettingsQuery } from '../clinic/clinic.queries';
 import { OpenShiftDialog } from '../cashier-shift/OpenShiftDialog';
 import { useCurrentCashierShiftQuery } from '../cashier-shift/cashier-shift.queries';
 import { useCashierShiftRequiredEnabledQuery } from '../clinic/clinic.queries';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
+import { useWalletQuery } from '../patient-wallet/patient-wallet.queries';
 import { InvoicePrintView } from './InvoicePrintView';
 import {
   useBillingInvoiceQuery,
   useMarkInvoicePaidMutation,
+  usePayInvoiceWithWalletMutation,
   usePrintInvoiceMutation,
   useRefundInvoiceMutation,
   useRevertInvoicePaymentMutation,
   useSaveInvoiceDraftMutation,
+  useTopUpAndPayInvoiceWithWalletMutation,
 } from './invoice.queries';
 
-/** Icon riêng cho 2 mã mặc định (seed sẵn, xem migration `20260827121000_seed_payment_method_catalog`) — mã tuỳ biến khác dùng icon chung. */
+/** Icon riêng cho 3 mã mặc định (seed sẵn — CASH/BANK_TRANSFER ở migration `20260827121000_seed_payment_method_catalog`, WALLET ở `20260909100000_patient_wallet`) — mã tuỳ biến khác dùng icon chung. */
 const PAYMENT_METHOD_ICON: Record<string, typeof Money> = {
   CASH: Money,
   BANK_TRANSFER: Bank,
+  WALLET: Wallet,
 };
 
 function formatDateTime(iso: string): string {
@@ -45,7 +49,7 @@ function formatDateTime(iso: string): string {
   return `${hh}:${min} · ${dd}/${mm}/${vn.getUTCFullYear()}`;
 }
 
-const methodChipBase = 'flex items-center justify-center gap-1.5 rounded-md border-2 px-3 py-2 text-[13px] font-bold transition-colors';
+const methodChipBase = 'flex items-center justify-center gap-1.5 rounded-md border-2 px-3 py-2 text-[14px] font-bold transition-colors';
 const methodChipUnselected = 'border-slate-300 bg-white text-slate-700 hover:border-blue-400 hover:bg-brand-teal-tint';
 const methodChipSelected = 'border-brand-teal bg-brand-teal text-white';
 
@@ -79,11 +83,22 @@ export function InvoiceDetailPage() {
   const invoice = invoiceQuery.data ?? null;
   const paymentMethods = useMemo(() => paymentMethodQuery.data?.items.filter((i) => i.isActive) ?? [], [paymentMethodQuery.data]);
   const paymentMethodName = (code: PaymentMethod | null) => paymentMethods.find((i) => i.code === code)?.name ?? code ?? '—';
+  // Ví tạm ứng — chip riêng tách khỏi lưới phương thức thường (mockup đã chốt), nhóm còn lại
+  // KHÔNG hiện 'WALLET' lần thứ 2 trong lưới.
+  const nonWalletMethods = useMemo(() => paymentMethods.filter((i) => i.code !== 'WALLET'), [paymentMethods]);
+
+  const walletQuery = useWalletQuery(invoice?.patientId ?? '');
+  const wallet = walletQuery.data ?? null;
+  const walletActive = wallet?.status === 'ACTIVE';
+  const clinicSettingsQuery = useClinicSettingsQuery();
+  const mixedPaymentEnabled = clinicSettingsQuery.data?.walletMixedPaymentEnabled ?? false;
 
   useBreadcrumb([{ label: 'Thu ngân', to: '/billing' }, { label: invoice?.invoiceNo ?? 'Chi tiết thanh toán' }]);
 
   const [method, setMethod] = useState<PaymentMethod>('CASH');
   const [cashReceived, setCashReceived] = useState<number | undefined>(undefined);
+  const [useHybrid, setUseHybrid] = useState(false);
+  const [hybridRemainderMethod, setHybridRemainderMethod] = useState('');
   const [revertReason, setRevertReason] = useState('');
   const [revertOpen, setRevertOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -92,6 +107,15 @@ export function InvoiceDetailPage() {
   const [cancelOpen, setCancelOpen] = useState(false);
   const [refundReason, setRefundReason] = useState('');
   const [refundOpen, setRefundOpen] = useState(false);
+  // "Nạp phần thiếu"/"Nạp mức chuẩn" — bấm là nạp tiền + trừ ví + đóng phiếu ngay (1 thao tác, theo
+  // PRD), nhưng KHÔNG được chạy thẳng không hỏi lại — giữ số tiền dự định nạp ở đây để mở dialog
+  // xác nhận trước, tránh bấm nhầm làm mất tiền (chủ dự án phản hồi trực tiếp, đúng khuôn xác nhận
+  // của RefundDialog/CancelEncounterDialog — mọi thao tác đụng tiền trong app đều qua 1 bước xác nhận).
+  const [quickTopUpAmount, setQuickTopUpAmount] = useState<number | null>(null);
+
+  // Ví tạm ứng — số tiền còn thiếu nếu chọn WALLET (0 nếu đủ hoặc chưa chọn WALLET).
+  const walletShortfall = method === 'WALLET' && invoice ? Math.max(0, invoice.totalAmount - (wallet?.balance ?? 0)) : 0;
+  const walletCovered = method === 'WALLET' && invoice ? Math.min(wallet?.balance ?? 0, invoice.totalAmount) : 0;
 
   // Khôi phục "Lưu tạm" (F8) nếu có — nạp đúng 1 lần khi dữ liệu về, không ghi đè lúc người dùng đang gõ dở.
   useEffect(() => {
@@ -103,6 +127,8 @@ export function InvoiceDetailPage() {
   }, [invoice?.id]);
 
   const payMutation = useMarkInvoicePaidMutation(encounterId);
+  const payWithWalletMutation = usePayInvoiceWithWalletMutation(encounterId);
+  const topUpAndPayMutation = useTopUpAndPayInvoiceWithWalletMutation(encounterId);
   const revertMutation = useRevertInvoicePaymentMutation(encounterId);
   const draftMutation = useSaveInvoiceDraftMutation(encounterId);
   const printMutation = usePrintInvoiceMutation(encounterId);
@@ -125,6 +151,36 @@ export function InvoiceDetailPage() {
       setTimeout(() => window.print(), 100);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Có lỗi xảy ra, vui lòng thử lại.');
+    }
+  }
+
+  /** Ví tạm ứng — trừ ví hiện có (`topUpAmount` bỏ trống) hoặc nạp thêm rồi trừ ngay (2 nút gợi ý khi thiếu).
+   * Trả `true`/`false` để nơi gọi (dialog xác nhận "Nạp phần thiếu"/"Nạp mức chuẩn") biết đóng dialog
+   * đúng lúc thành công — KHÔNG đóng khi lỗi, để lỗi vẫn hiện + giữ dialog cho thử lại. */
+  async function handlePayWithWallet(topUpAmount?: number): Promise<boolean> {
+    if (!invoice) return false;
+    if (shiftRequired && !shiftFeatureUnavailable && !openShift) {
+      setOpenShiftDialogVisible(true);
+      return false;
+    }
+    setError(null);
+    try {
+      const remainderPaymentMethodCode = useHybrid && hybridRemainderMethod ? hybridRemainderMethod : undefined;
+      if (topUpAmount) {
+        await topUpAndPayMutation.mutateAsync({
+          version: invoice.version,
+          topUpAmount,
+          topUpPaymentMethodCode: 'CASH',
+          remainderPaymentMethodCode,
+        });
+      } else {
+        await payWithWalletMutation.mutateAsync({ version: invoice.version, remainderPaymentMethodCode });
+      }
+      setTimeout(() => window.print(), 100);
+      return true;
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Có lỗi xảy ra, vui lòng thử lại.');
+      return false;
     }
   }
 
@@ -248,6 +304,25 @@ export function InvoiceDetailPage() {
                 <span>Khoa: {invoice.departmentName}</span>
               </p>
             </div>
+            {/* Ví tạm ứng — chip số dư NGAY trong dải thông tin khách hàng (mockup đã chốt), chỉ hiện
+                khi bệnh nhân có ví ACTIVE. Xanh lá khi đủ chi trả phiếu đang xem, hổ phách khi thiếu. */}
+            {walletActive && wallet && (
+              <div
+                className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 ${
+                  wallet.balance >= invoice.totalAmount ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'
+                }`}
+              >
+                <Wallet size={16} weight="fill" className={wallet.balance >= invoice.totalAmount ? 'text-emerald-700' : 'text-amber-700'} aria-hidden="true" />
+                <div>
+                  <div className={`text-[10px] font-bold uppercase tracking-wide ${wallet.balance >= invoice.totalAmount ? 'text-emerald-700' : 'text-amber-700'}`}>
+                    Số dư ví
+                  </div>
+                  <div className={`text-[15px] font-bold leading-tight ${wallet.balance >= invoice.totalAmount ? 'text-emerald-700' : 'text-amber-700'}`}>
+                    {formatVnd(wallet.balance)}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {error && (
@@ -295,9 +370,20 @@ export function InvoiceDetailPage() {
               {invoice.status === 'UNPAID' ? (
                 <>
                   <div className="flex flex-col gap-1.5">
-                    <span className="text-xs font-bold text-slate-700">Phương thức thanh toán</span>
+                    <span className="text-sm font-bold text-slate-700">Phương thức thanh toán</span>
                     <div className="grid grid-cols-2 gap-1.5">
-                      {paymentMethods.map((item) => {
+                      {walletActive && (
+                        <button
+                          type="button"
+                          onClick={() => setMethod('WALLET')}
+                          className={`col-span-2 ${methodChipBase} ${method === 'WALLET' ? methodChipSelected : methodChipUnselected}`}
+                        >
+                          <Wallet size={15} weight="regular" aria-hidden="true" />
+                          Trừ ví tạm ứng
+                          {method !== 'WALLET' && wallet && <span className="ml-1 text-[11px] font-medium opacity-80">· còn lại {formatVnd(wallet.balance)}</span>}
+                        </button>
+                      )}
+                      {nonWalletMethods.map((item) => {
                         const IconComponent = PAYMENT_METHOD_ICON[item.code] ?? CreditCard;
                         return (
                           <button
@@ -316,7 +402,7 @@ export function InvoiceDetailPage() {
 
                   {method === 'CASH' && (
                     <div className="flex flex-col gap-1.5">
-                      <label htmlFor="invoice-cash-received" className="text-xs font-bold text-slate-700">
+                      <label htmlFor="invoice-cash-received" className="text-sm font-bold text-slate-700">
                         Tiền khách đưa
                       </label>
                       <MoneyInput
@@ -334,19 +420,109 @@ export function InvoiceDetailPage() {
                     </div>
                   )}
 
+                  {/* Ví tạm ứng — số dư không đủ: khối "Cần thu tối thiểu" + 2 nút gợi ý nạp nhanh
+                      (Luồng 2 PRD), cộng tuỳ chọn trả hỗn hợp khi tenant đã bật công tắc. */}
+                  {method === 'WALLET' && walletShortfall > 0 && (
+                    <div className="flex flex-col gap-2.5 rounded-md border border-amber-200 bg-amber-50 p-3">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-amber-800">
+                        <Warning size={14} weight="fill" aria-hidden="true" />
+                        Số dư ví không đủ
+                      </div>
+                      <div className="flex flex-col gap-1 text-xs">
+                        <div className="flex justify-between text-slate-700">
+                          <span>Phí dịch vụ</span>
+                          <span className="tabular-nums">{formatVnd(invoice.totalAmount)}</span>
+                        </div>
+                        <div className="flex justify-between text-slate-700">
+                          <span>Số dư ví</span>
+                          <span className="tabular-nums">{formatVnd(wallet?.balance ?? 0)}</span>
+                        </div>
+                        <div className="flex justify-between border-t border-amber-200 pt-1 text-sm font-bold text-amber-800">
+                          <span>Cần thu tối thiểu</span>
+                          <span className="tabular-nums">{formatVnd(walletShortfall)}</span>
+                        </div>
+                      </div>
+                      {!useHybrid && (
+                        <div className="flex flex-col gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setQuickTopUpAmount(walletShortfall)}
+                            disabled={topUpAndPayMutation.isPending}
+                            className="flex items-center justify-between gap-2 rounded-md border-2 border-amber-400 bg-amber-100 px-3 py-2.5 text-[13px] font-bold text-amber-900 shadow-sm hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <Wallet size={15} weight="fill" aria-hidden="true" />
+                              Nạp phần thiếu
+                            </span>
+                            <span className="text-[15px] font-bold tabular-nums">{formatVnd(walletShortfall)}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setQuickTopUpAmount(Math.ceil((walletShortfall + 1) / 1_000_000) * 1_000_000)}
+                            disabled={topUpAndPayMutation.isPending}
+                            className="flex items-center justify-between gap-2 rounded-md border-2 border-amber-400 bg-amber-100 px-3 py-2.5 text-[13px] font-bold text-amber-900 shadow-sm hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <Wallet size={15} weight="fill" aria-hidden="true" />
+                              Nạp mức chuẩn
+                            </span>
+                            <span className="text-[15px] font-bold tabular-nums">{formatVnd(Math.ceil((walletShortfall + 1) / 1_000_000) * 1_000_000)}</span>
+                          </button>
+                        </div>
+                      )}
+
+                      {mixedPaymentEnabled && (
+                        <div className="flex flex-col gap-1.5 border-t border-amber-200 pt-2.5">
+                          <button
+                            type="button"
+                            onClick={() => setUseHybrid((v) => !v)}
+                            className={`rounded-md border-2 px-2.5 py-2 text-left text-xs font-bold transition-colors ${
+                              useHybrid ? 'border-brand-teal bg-brand-teal text-white' : 'border-slate-300 bg-white text-slate-700 hover:border-blue-400'
+                            }`}
+                          >
+                            Trừ hết ví ({formatVnd(walletCovered)}) + thu phần còn lại ({formatVnd(walletShortfall)})
+                          </button>
+                          {useHybrid && (
+                            <div className="grid grid-cols-2 gap-1.5">
+                              {nonWalletMethods.map((item) => (
+                                <button
+                                  key={item.code}
+                                  type="button"
+                                  onClick={() => setHybridRemainderMethod(item.code)}
+                                  className={`${methodChipBase} ${hybridRemainderMethod === item.code ? methodChipSelected : methodChipUnselected}`}
+                                >
+                                  {item.name}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div className="flex flex-col gap-2">
                     <Button type="button" variant="secondary" onClick={() => void handleSaveDraft()} loading={draftMutation.isPending}>
                       Lưu tạm
                     </Button>
-                    <Button
-                      type="button"
-                      onClick={() => void handlePay()}
-                      loading={payMutation.isPending}
-                      disabled={method === 'CASH' && changeAmount !== null && changeAmount < 0}
-                    >
-                      <Receipt size={16} weight="bold" aria-hidden="true" />
-                      Thu tiền &amp; In phiếu
-                    </Button>
+                    {method === 'WALLET' ? (
+                      (walletShortfall === 0 || (useHybrid && hybridRemainderMethod !== '')) && (
+                        <Button type="button" onClick={() => void handlePayWithWallet()} loading={payWithWalletMutation.isPending}>
+                          <Receipt size={16} weight="bold" aria-hidden="true" />
+                          Thu tiền &amp; In phiếu
+                        </Button>
+                      )
+                    ) : (
+                      <Button
+                        type="button"
+                        onClick={() => void handlePay()}
+                        loading={payMutation.isPending}
+                        disabled={method === 'CASH' && changeAmount !== null && changeAmount < 0}
+                      >
+                        <Receipt size={16} weight="bold" aria-hidden="true" />
+                        Thu tiền &amp; In phiếu
+                      </Button>
+                    )}
                   </div>
                 </>
               ) : invoice.status === 'CANCELLED' ? (
@@ -479,6 +655,44 @@ export function InvoiceDetailPage() {
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {quickTopUpAmount !== null && invoice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4" role="dialog" aria-modal="true" aria-labelledby="quick-topup-title">
+          <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
+            <p id="quick-topup-title" className="text-sm font-semibold text-slate-900">
+              Nạp tiền &amp; thu ngay?
+            </p>
+            <p className="mt-1.5 text-xs text-slate-500">Số tiền nạp sẽ trừ ngay vào ví rồi thu luôn phiếu này — không sửa lại được sau khi xác nhận.</p>
+
+            <div className="mt-3 flex items-center gap-3 rounded-md bg-emerald-50/70 py-2.5 pl-2.5 pr-3">
+              <div className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-emerald-600 text-white">
+                <Wallet size={16} weight="fill" aria-hidden="true" />
+              </div>
+              <p className="text-xs leading-snug text-slate-700">
+                Nạp <span className="text-sm font-bold text-slate-900">{formatVnd(quickTopUpAmount)}</span> vào ví, thu đủ{' '}
+                <span className="text-sm font-bold text-slate-900">{formatVnd(invoice.totalAmount)}</span> cho phiếu {invoice.invoiceNo}.
+              </p>
+            </div>
+
+            <div className="mt-4 flex justify-end gap-2">
+              <Button type="button" variant="secondary" onClick={() => setQuickTopUpAmount(null)} disabled={topUpAndPayMutation.isPending}>
+                Huỷ
+              </Button>
+              <Button
+                type="button"
+                variant="success"
+                loading={topUpAndPayMutation.isPending}
+                onClick={async () => {
+                  const ok = await handlePayWithWallet(quickTopUpAmount);
+                  if (ok) setQuickTopUpAmount(null);
+                }}
+              >
+                Xác nhận nạp &amp; thu
+              </Button>
+            </div>
           </div>
         </div>
       )}

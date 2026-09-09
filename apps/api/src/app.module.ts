@@ -24,6 +24,7 @@ import { WorkShiftAssignmentModule } from './modules/work-shift-assignment/work-
 import { CashierShiftModule } from './modules/cashier-shift/cashier-shift.module';
 import { CashBookModule } from './modules/cash-book/cash-book.module';
 import { CashBookReportModule } from './modules/cash-book/cash-book-report.module';
+import { PatientWalletModule } from './modules/patient-wallet/patient-wallet.module';
 import { HealthModule } from './modules/health/health.module';
 import { TenantContextMiddleware } from './common/tenant-context.middleware';
 
@@ -54,6 +55,7 @@ import { TenantContextMiddleware } from './common/tenant-context.middleware';
     CashierShiftModule,
     CashBookModule,
     CashBookReportModule,
+    PatientWalletModule,
     HealthModule,
   ],
 })

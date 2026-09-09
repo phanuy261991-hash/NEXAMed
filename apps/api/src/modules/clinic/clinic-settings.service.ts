@@ -42,6 +42,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         cashVoucherApprovalEnabled,
         cashierDrawerSeparateEnabled,
         sidebarAutoCollapseEnabled,
+        walletMixedPaymentEnabled,
       ] = await Promise.all([
         this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
         this.clinicSettingsRepository.getSlotDurationMinutes(tx, tenantId),
@@ -60,6 +61,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getCashVoucherApprovalEnabled(tx, tenantId),
         this.clinicSettingsRepository.getCashierDrawerSeparateEnabled(tx, tenantId),
         this.clinicSettingsRepository.getSidebarAutoCollapseEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getWalletMixedPaymentEnabled(tx, tenantId),
       ]);
       return {
         businessHours,
@@ -79,6 +81,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         cashVoucherApprovalEnabled,
         cashierDrawerSeparateEnabled,
         sidebarAutoCollapseEnabled,
+        walletMixedPaymentEnabled,
       };
     });
   }
@@ -165,6 +168,11 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
     return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getBlockBookingOutsideWorkShiftEnabled(tx, tenantId));
   }
 
+  /** `ClinicConfigReaderPort` ("Ví tạm ứng") — module `billing` đọc qua port này (không có endpoint tự-phục vụ, chỉ backend rẽ nhánh lúc trừ ví thiếu tiền). */
+  getWalletMixedPaymentEnabled(tenantId: string): ReturnType<ClinicConfigReaderPort['getWalletMixedPaymentEnabled']> {
+    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getWalletMixedPaymentEnabled(tx, tenantId));
+  }
+
   async updateSettings(
     tenantId: string,
     actorId: string,
@@ -233,6 +241,9 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
       if (dto.sidebarAutoCollapseEnabled !== undefined) {
         await this.clinicSettingsRepository.upsertSidebarAutoCollapseEnabled(tx, tenantId, actorId, dto.sidebarAutoCollapseEnabled);
       }
+      if (dto.walletMixedPaymentEnabled !== undefined) {
+        await this.clinicSettingsRepository.upsertWalletMixedPaymentEnabled(tx, tenantId, actorId, dto.walletMixedPaymentEnabled);
+      }
 
       const hasChanges =
         dto.businessHours !== undefined ||
@@ -251,7 +262,8 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         dto.cashierShiftMultiCashierEnabled !== undefined ||
         dto.cashVoucherApprovalEnabled !== undefined ||
         dto.cashierDrawerSeparateEnabled !== undefined ||
-        dto.sidebarAutoCollapseEnabled !== undefined;
+        dto.sidebarAutoCollapseEnabled !== undefined ||
+        dto.walletMixedPaymentEnabled !== undefined;
       if (hasChanges) {
         await writeAuditLog(tx, tenantId, {
           actorId,
@@ -282,6 +294,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         cashVoucherApprovalEnabled,
         cashierDrawerSeparateEnabled,
         sidebarAutoCollapseEnabled,
+        walletMixedPaymentEnabled,
       ] = await Promise.all([
         this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
         this.clinicSettingsRepository.getSlotDurationMinutes(tx, tenantId),
@@ -300,6 +313,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getCashVoucherApprovalEnabled(tx, tenantId),
         this.clinicSettingsRepository.getCashierDrawerSeparateEnabled(tx, tenantId),
         this.clinicSettingsRepository.getSidebarAutoCollapseEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getWalletMixedPaymentEnabled(tx, tenantId),
       ]);
       return {
         businessHours,
@@ -319,6 +333,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         cashVoucherApprovalEnabled,
         cashierDrawerSeparateEnabled,
         sidebarAutoCollapseEnabled,
+        walletMixedPaymentEnabled,
       };
     });
   }

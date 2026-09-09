@@ -167,6 +167,8 @@ export function Sidebar() {
   // "Báo cáo dòng tiền" (Sổ quỹ & Thu chi GĐ2) — báo cáo quản trị tổng hợp toàn phòng khám, CHỈ
   // clinic_admin (`cash_voucher.report`), khác "Phiếu thu/chi"/"Sổ quỹ" (receptionist cũng thấy).
   const canSeeCashFlowReport = useHasPermission('cash_voucher', 'report');
+  // "Ví tạm ứng" tổng hợp toàn phòng khám — chỉ ai tất toán được (clinic_admin) mới cần xem trang này.
+  const canSeeWallets = useHasPermission('patient_wallet', 'settle');
   const canSeeWorkSchedule = useHasPermission('work_shift_assignment', 'create');
   // "Lịch làm việc nhân viên" — chỉ actor có scope GLOBAL (quản lý toàn phòng khám) mới thấy mục
   // này, khác canSeeWorkSchedule (personal cũng đủ để thấy "Lịch làm việc của tôi").
@@ -369,7 +371,7 @@ export function Sidebar() {
           {/* "Sổ quỹ & Thu chi" (Sổ quỹ & Thu chi GĐ1, ngoài kế hoạch, 2026-09-05) — phiếu thu/chi
               ngoài dịch vụ khám (tiền điện/nước, bán phế liệu...), tách nhóm riêng khỏi "Thu ngân"
               (là dòng tiền khám bệnh, khác bản chất). */}
-          {canSeeCashBook && (
+          {(canSeeCashBook || canSeeWallets) && (
             <li>
               <button
                 type="button"
@@ -405,6 +407,7 @@ export function Sidebar() {
                   <NavItem to="/cash-book/vouchers" label="Phiếu thu / Phiếu chi" icon={Vault} end collapsed={false} indent />
                   <NavItem to="/cash-book/ledger" label="Sổ quỹ" icon={BookOpen} collapsed={false} indent />
                   {canSeeCashFlowReport && <NavItem to="/cash-book/report" label="Báo cáo dòng tiền" icon={ChartLine} collapsed={false} indent />}
+                  {canSeeWallets && <NavItem to="/cash-book/wallets" label="Ví tạm ứng" icon={Wallet} collapsed={false} indent />}
                 </ul>
               )}
             </li>

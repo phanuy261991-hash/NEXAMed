@@ -38,6 +38,7 @@ export function PaymentConfigPane() {
   const multiCashierEnabled = settingsQuery.data?.cashierShiftMultiCashierEnabled ?? false;
   const cashVoucherApprovalEnabled = settingsQuery.data?.cashVoucherApprovalEnabled ?? false;
   const drawerSeparateEnabled = settingsQuery.data?.cashierDrawerSeparateEnabled ?? false;
+  const walletMixedPaymentEnabled = settingsQuery.data?.walletMixedPaymentEnabled ?? false;
 
   return (
     <div className="space-y-8">
@@ -197,6 +198,33 @@ export function PaymentConfigPane() {
               disabled={updateMutation.isPending || !multiCashierEnabled}
               onChange={(e) => updateMutation.mutate({ cashierDrawerSeparateEnabled: e.target.checked })}
               aria-label="Thủ quỹ riêng"
+            />
+            <span className="absolute inset-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-brand-teal peer-disabled:opacity-60" />
+            <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
+          </label>
+        </div>
+      </div>
+
+      <div className={sectionBoxClassName}>
+        <span className={sectionBadgeClassName}>Ví tạm ứng</span>
+
+        <div className="flex items-start justify-between gap-5">
+          <div>
+            <p className="text-[14.5px] font-bold text-slate-900">Cho phép thanh toán hỗn hợp</p>
+            <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
+              Tắt (mặc định): Ví tạm ứng chỉ trừ được khi đủ 100% số tiền cần thu, thiếu thì phải nạp thêm trước.
+              <br />
+              Bật: Cho phép trừ hết số dư ví rồi thu phần còn thiếu bằng tiền mặt/chuyển khoản trên cùng 1 phiếu thu.
+            </p>
+          </div>
+          <label className="relative mt-0.5 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center">
+            <input
+              type="checkbox"
+              className="peer sr-only"
+              checked={walletMixedPaymentEnabled}
+              disabled={updateMutation.isPending}
+              onChange={(e) => updateMutation.mutate({ walletMixedPaymentEnabled: e.target.checked })}
+              aria-label="Cho phép thanh toán hỗn hợp (ví tạm ứng)"
             />
             <span className="absolute inset-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-brand-teal peer-disabled:opacity-60" />
             <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />

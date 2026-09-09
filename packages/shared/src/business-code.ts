@@ -35,6 +35,8 @@ export const businessCodeTypeSchema = z.enum([
   'CASH_RECEIPT',
   'CASH_PAYMENT',
   'CASH_TRANSFER',
+  'WALLET_TOPUP',
+  'WALLET_SETTLEMENT',
 ]);
 export type BusinessCodeType = z.infer<typeof businessCodeTypeSchema>;
 
@@ -59,6 +61,10 @@ export const BUSINESS_CODE_TYPE_REGISTRY: Record<BusinessCodeType, { label: stri
   // "Sổ quỹ & Thu chi" GĐ2 — phiếu Chuyển quỹ (di chuyển tiền giữa 2 quỹ nội bộ, không phải Thu/
   // Chi thật). Không trùng PTQ/PCQ đã có.
   CASH_TRANSFER: { label: 'Mã phiếu chuyển quỹ', internalPrefix: 'PCK' },
+  // "Ví tạm ứng" — tách riêng khỏi CASH_RECEIPT/CASH_PAYMENT để mã phiếu tự phân biệt "tiền của
+  // bệnh nhân gửi tạm" với phiếu thu/chi quỹ thông thường, không trùng PTQ/PCQ/PCK đã có.
+  WALLET_TOPUP: { label: 'Mã phiếu thu tạm ứng', internalPrefix: 'PTU' },
+  WALLET_SETTLEMENT: { label: 'Mã phiếu hoàn ứng', internalPrefix: 'PCU' },
 };
 
 export const DEFAULT_BUSINESS_CODE_COUNTER_DIGITS = 6;

@@ -2,7 +2,9 @@ import { useMemo } from 'react';
 import { IdentificationBadge, Phone, MapPin, CalendarBlank, UsersThree, type Icon } from '@phosphor-icons/react';
 import type { PatientDetail } from '@nexamed/shared';
 import { Button } from '../../shared/ui/Button';
+import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { useAllWardsQuery, useProvincesQuery } from '../geo/geo.queries';
+import { useWalletQuery } from '../patient-wallet/patient-wallet.queries';
 import { AllergyBanner } from './AllergyBanner';
 import { GENDER_LABEL, computeAgeLabel, formatAddressLine } from './patient-form.utils';
 import { formatDobDisplay } from '../../shared/format/date';
@@ -42,6 +44,8 @@ export function PatientProfileHeader({
 }) {
   const provincesQuery = useProvincesQuery();
   const wardsQuery = useAllWardsQuery();
+  const walletQuery = useWalletQuery(patient.id);
+  const wallet = walletQuery.data;
   const provinceNameByCode = useMemo(
     () => Object.fromEntries((provincesQuery.data?.items ?? []).map((p) => [p.code, p.name])),
     [provincesQuery.data],
@@ -82,14 +86,19 @@ export function PatientProfileHeader({
           </div>
         </div>
 
-        {!merged && (canMerge || canEdit) && (
-          <div className="flex flex-shrink-0 gap-2">
-            {canMerge && (
+        {(wallet || (!merged && (canMerge || canEdit))) && (
+          <div className="flex flex-shrink-0 items-center gap-2">
+            {wallet && (
+              <StatusBadge tone={wallet.status === 'ACTIVE' ? 'success' : 'neutral'}>
+                {wallet.status === 'ACTIVE' ? 'Ví đang hoạt động' : 'Ví đã khoá'}
+              </StatusBadge>
+            )}
+            {!merged && canMerge && (
               <Button type="button" variant="secondary" onClick={onMerge}>
                 Gộp vào hồ sơ khác
               </Button>
             )}
-            {canEdit && (
+            {!merged && canEdit && (
               <Button type="button" onClick={onEdit}>
                 Sửa hồ sơ
               </Button>

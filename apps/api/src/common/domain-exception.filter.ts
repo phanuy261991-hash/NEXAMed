@@ -109,6 +109,10 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   // không hợp lệ (thiếu ràng buộc phụ thuộc), không phải xung đột trạng thái — dùng đúng mặc định
   // UNPROCESSABLE_ENTITY của filter (khai tường minh ở đây cho dễ tra).
   CASHIER_DRAWER_SEPARATE_REQUIRES_MULTI_CASHIER: HttpStatus.UNPROCESSABLE_ENTITY,
+  // Ví tạm ứng — số dư không đủ (chưa bật/không kèm trả hỗn hợp) và ví đã khoá là xung đột với
+  // trạng thái hiện có (số dư/trạng thái ví), không phải lỗi input.
+  WALLET_INSUFFICIENT_BALANCE: HttpStatus.CONFLICT,
+  WALLET_CLOSED: HttpStatus.CONFLICT,
 };
 
 /**
@@ -135,7 +139,16 @@ export class DomainExceptionFilter implements ExceptionFilter {
 
     if (exception instanceof DomainError) {
       const status = DOMAIN_ERROR_STATUS[exception.code] ?? HttpStatus.UNPROCESSABLE_ENTITY;
-      const details = 'lockedUntil' in exception ? { lockedUntil: (exception as { lockedUntil: Date }).lockedUntil } : undefined;
+      // Ví tạm ứng — `WalletInsufficientBalanceError` mang theo số liệu để FE hiện đúng khối "Cần
+      // thu tối thiểu" mà không phải gọi lại API tính riêng, cùng cơ chế duck-type với `lockedUntil`.
+      const details = 'lockedUntil' in exception
+        ? { lockedUntil: (exception as { lockedUntil: Date }).lockedUntil }
+        : 'shortfall' in exception
+          ? (() => {
+              const e = exception as unknown as { balance: number; due: number; shortfall: number };
+              return { balance: e.balance, due: e.due, shortfall: e.shortfall };
+            })()
+          : undefined;
       response.status(status).json({ error: { code: exception.code, message: exception.message, details } });
       return;
     }

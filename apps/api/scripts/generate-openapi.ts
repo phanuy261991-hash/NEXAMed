@@ -25,9 +25,21 @@ import {
   listBillingInvoicesQuerySchema,
   listBillingInvoicesResponseSchema,
   markInvoicePaidRequestSchema,
+  payInvoiceWithWalletRequestSchema,
   refundInvoiceRequestSchema,
   revertInvoicePaymentRequestSchema,
   saveInvoiceDraftRequestSchema,
+  topUpAndPayInvoiceWithWalletRequestSchema,
+  getPatientWalletQuerySchema,
+  listWalletsQuerySchema,
+  listWalletsResponseSchema,
+  listWalletTransactionsQuerySchema,
+  listWalletTransactionsResponseSchema,
+  patientWalletSchema,
+  settleWalletRequestSchema,
+  settleWalletResponseSchema,
+  topUpWalletRequestSchema,
+  topUpWalletResponseSchema,
   cancelAppointmentRequestSchema,
   cancelEncounterRequestSchema,
   reassignEncounterRequestSchema,
@@ -1119,6 +1131,46 @@ registry.registerPath({
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền invoice.print'),
     404: errorResponse('Không có phiếu thu cho lượt khám này'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/billing/invoices/{encounterId}/pay-with-wallet',
+  tags: ['billing'],
+  summary: 'Ví tạm ứng — trừ số dư ví HIỆN CÓ (không nạp thêm), cùng quyền invoice.update như "pay"',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: billingEncounterIdParams,
+    body: { content: { 'application/json': { schema: payInvoiceWithWalletRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Thành công', envelope(invoiceResponseSchema)),
+    400: errorResponse('Thiếu phương thức cho phần còn lại khi trả hỗn hợp'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền invoice.update'),
+    404: errorResponse('Không có phiếu thu cho lượt khám này'),
+    409: errorResponse('version không khớp, phiếu đã thu/đã đóng sổ, hoặc số dư ví không đủ (WALLET_INSUFFICIENT_BALANCE, kèm details.shortfall)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/billing/invoices/{encounterId}/topup-and-pay-with-wallet',
+  tags: ['billing'],
+  summary: 'Ví tạm ứng — nạp thêm vào ví TRƯỚC rồi trừ ngay trong CÙNG transaction (Luồng "Nạp phần thiếu"/"Nạp mức chuẩn"), quyền riêng patient_wallet.topup',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: billingEncounterIdParams,
+    body: { content: { 'application/json': { schema: topUpAndPayInvoiceWithWalletRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Thành công', envelope(invoiceResponseSchema)),
+    400: errorResponse('Thiếu phương thức cho phần còn lại khi trả hỗn hợp, hoặc chưa có quỹ nào để nhận tiền'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền patient_wallet.topup'),
+    404: errorResponse('Không có phiếu thu cho lượt khám này'),
+    409: errorResponse('version không khớp, phiếu đã thu/đã đóng sổ, hoặc ví đã khoá (WALLET_CLOSED)'),
   },
 });
 
@@ -2830,6 +2882,84 @@ registry.registerPath({
     200: jsonResponse('Thành công', envelope(cashFlowReportResponseSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền cash_voucher.report'),
+  },
+});
+
+// "Ví tạm ứng" — module `patient-wallet`. Đường dẫn dùng query param (?patientId=) thay vì
+// :patientId lồng trong path, xem comment `PatientWalletController`.
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/wallet',
+  tags: ['patient-wallet'],
+  summary: 'Số dư ví tạm ứng của 1 bệnh nhân — null nếu chưa từng có ví',
+  security: [{ bearerAuth: [] }],
+  request: { query: getPatientWalletQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(patientWalletSchema.nullable())),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền patient.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/wallet/transactions',
+  tags: ['patient-wallet'],
+  summary: 'Lịch sử giao dịch ví (nạp/cấn trừ/hoàn/tất toán) — cursor pagination, mới nhất trước',
+  security: [{ bearerAuth: [] }],
+  request: { query: listWalletTransactionsQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listWalletTransactionsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền patient.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/wallet/list',
+  tags: ['patient-wallet'],
+  summary: 'Trang "Ví tạm ứng" tổng hợp toàn phòng khám — KPI + danh sách, quyền riêng patient_wallet.settle',
+  security: [{ bearerAuth: [] }],
+  request: { query: listWalletsQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listWalletsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền patient_wallet.settle'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/wallet/topup',
+  tags: ['patient-wallet'],
+  summary: 'Nạp tạm ứng — tự tạo ví nếu bệnh nhân chưa từng có, sinh phiếu thu quỹ (cash_voucher) thật',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: topUpWalletRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(topUpWalletResponseSchema)),
+    400: errorResponse('Chưa có quỹ nào để nhận tiền'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền patient_wallet.topup'),
+    404: errorResponse('Không tìm thấy bệnh nhân'),
+    409: errorResponse('Ví đã khoá (WALLET_CLOSED)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/wallet/settle',
+  tags: ['patient-wallet'],
+  summary: 'Tất toán — hoàn số dư còn lại (nếu có, sinh phiếu chi) rồi khoá ví, quyền riêng patient_wallet.settle',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: settleWalletRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(settleWalletResponseSchema)),
+    400: errorResponse('Còn số dư mà thiếu phương thức hoàn tiền, hoặc chưa có quỹ nào để chi tiền'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền patient_wallet.settle'),
+    404: errorResponse('Không tìm thấy ví của bệnh nhân này'),
+    409: errorResponse('Ví đã khoá từ trước (WALLET_CLOSED)'),
   },
 });
 
