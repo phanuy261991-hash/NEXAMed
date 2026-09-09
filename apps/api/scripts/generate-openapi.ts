@@ -21,6 +21,7 @@ import {
   breakGlassResponseSchema,
   clinicPrintHeaderSchema,
   deferredPaymentStatusSchema,
+  applyInvoiceDiscountRequestSchema,
   invoiceResponseSchema,
   listBillingInvoicesQuerySchema,
   listBillingInvoicesResponseSchema,
@@ -1171,6 +1172,26 @@ registry.registerPath({
     403: errorResponse('Không có quyền patient_wallet.topup'),
     404: errorResponse('Không có phiếu thu cho lượt khám này'),
     409: errorResponse('version không khớp, phiếu đã thu/đã đóng sổ, hoặc ví đã khoá (WALLET_CLOSED)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/billing/invoices/{encounterId}/discount',
+  tags: ['billing'],
+  summary: 'Chiết khấu (Toàn hoá đơn hoặc Từng dịch vụ) — chỉ sửa được khi phiếu còn UNPAID, bắt buộc lý do, cùng quyền invoice.update như "pay"',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: billingEncounterIdParams,
+    body: { content: { 'application/json': { schema: applyInvoiceDiscountRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Thành công', envelope(invoiceResponseSchema)),
+    400: errorResponse('Thiếu lý do, % vượt quá 100, hoặc thân request không khớp mode'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền invoice.update'),
+    404: errorResponse('Không có phiếu thu cho lượt khám này'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION) hoặc phiếu không còn UNPAID (INVOICE_DISCOUNT_NOT_ALLOWED)'),
   },
 });
 

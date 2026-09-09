@@ -47,6 +47,12 @@ const FIELD_LABELS: Record<string, string> = {
   positionCode: 'Chức danh',
   invoiceNo: 'Mã phiếu thu',
   totalAmount: 'Tổng tiền',
+  dueAmount: 'Cần thu',
+  discountMode: 'Chế độ chiết khấu',
+  discountType: 'Loại chiết khấu',
+  discountValue: 'Giá trị chiết khấu',
+  discountAmount: 'Số tiền chiết khấu',
+  discountReason: 'Lý do chiết khấu',
   section: 'Mục',
   sections: 'Các mục ghi chú',
   content: 'Nội dung',
@@ -93,6 +99,12 @@ const KNOWN_VALUE_LABELS: Record<string, string> = {
   // payment method mặc định
   CASH: 'Tiền mặt',
   BANK_TRANSFER: 'Chuyển khoản',
+  // invoice.discountType / discountMode
+  PERCENT: 'Theo %',
+  AMOUNT: 'Theo số tiền',
+  TOTAL: 'Toàn hoá đơn',
+  PER_LINE: 'Từng dịch vụ',
+  NONE: 'Không chiết khấu',
 };
 
 /** Field kỹ thuật/nội bộ — không có ý nghĩa nghiệp vụ, luôn ẩn khỏi màn hình xem chi tiết. */

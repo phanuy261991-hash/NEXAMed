@@ -14165,6 +14165,12 @@
                               "totalAmount": {
                                 "type": "integer"
                               },
+                              "discountAmount": {
+                                "type": "integer"
+                              },
+                              "dueAmount": {
+                                "type": "integer"
+                              },
                               "status": {
                                 "type": "string",
                                 "enum": [
@@ -14203,6 +14209,8 @@
                               "departmentId",
                               "departmentName",
                               "totalAmount",
+                              "discountAmount",
+                              "dueAmount",
                               "status",
                               "paymentMethod",
                               "paidAt",
@@ -14415,6 +14423,25 @@
                               },
                               "lineTotal": {
                                 "type": "integer"
+                              },
+                              "discountType": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "PERCENT",
+                                  "AMOUNT"
+                                ]
+                              },
+                              "discountValue": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "discountAmount": {
+                                "type": "integer"
                               }
                             },
                             "required": [
@@ -14425,9 +14452,48 @@
                               "unitCode",
                               "unitPrice",
                               "quantity",
-                              "lineTotal"
+                              "lineTotal",
+                              "discountType",
+                              "discountValue",
+                              "discountAmount"
                             ]
                           }
+                        },
+                        "discountMode": {
+                          "type": "string",
+                          "enum": [
+                            "NONE",
+                            "TOTAL",
+                            "PER_LINE"
+                          ]
+                        },
+                        "discountType": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "PERCENT",
+                            "AMOUNT"
+                          ]
+                        },
+                        "discountValue": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "discountReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "discountAmount": {
+                          "type": "integer"
+                        },
+                        "dueAmount": {
+                          "type": "integer"
                         },
                         "encounterNo": {
                           "type": "string"
@@ -14531,6 +14597,12 @@
                         "status",
                         "totalAmount",
                         "lines",
+                        "discountMode",
+                        "discountType",
+                        "discountValue",
+                        "discountReason",
+                        "discountAmount",
+                        "dueAmount",
                         "encounterNo",
                         "checkedInAt",
                         "patientId",
@@ -14745,6 +14817,25 @@
                               },
                               "lineTotal": {
                                 "type": "integer"
+                              },
+                              "discountType": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "PERCENT",
+                                  "AMOUNT"
+                                ]
+                              },
+                              "discountValue": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "discountAmount": {
+                                "type": "integer"
                               }
                             },
                             "required": [
@@ -14755,9 +14846,48 @@
                               "unitCode",
                               "unitPrice",
                               "quantity",
-                              "lineTotal"
+                              "lineTotal",
+                              "discountType",
+                              "discountValue",
+                              "discountAmount"
                             ]
                           }
+                        },
+                        "discountMode": {
+                          "type": "string",
+                          "enum": [
+                            "NONE",
+                            "TOTAL",
+                            "PER_LINE"
+                          ]
+                        },
+                        "discountType": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "PERCENT",
+                            "AMOUNT"
+                          ]
+                        },
+                        "discountValue": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "discountReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "discountAmount": {
+                          "type": "integer"
+                        },
+                        "dueAmount": {
+                          "type": "integer"
                         },
                         "encounterNo": {
                           "type": "string"
@@ -14861,6 +14991,12 @@
                         "status",
                         "totalAmount",
                         "lines",
+                        "discountMode",
+                        "discountType",
+                        "discountValue",
+                        "discountReason",
+                        "discountAmount",
+                        "dueAmount",
                         "encounterNo",
                         "checkedInAt",
                         "patientId",
@@ -15137,6 +15273,25 @@
                               },
                               "lineTotal": {
                                 "type": "integer"
+                              },
+                              "discountType": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "PERCENT",
+                                  "AMOUNT"
+                                ]
+                              },
+                              "discountValue": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "discountAmount": {
+                                "type": "integer"
                               }
                             },
                             "required": [
@@ -15147,9 +15302,48 @@
                               "unitCode",
                               "unitPrice",
                               "quantity",
-                              "lineTotal"
+                              "lineTotal",
+                              "discountType",
+                              "discountValue",
+                              "discountAmount"
                             ]
                           }
+                        },
+                        "discountMode": {
+                          "type": "string",
+                          "enum": [
+                            "NONE",
+                            "TOTAL",
+                            "PER_LINE"
+                          ]
+                        },
+                        "discountType": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "PERCENT",
+                            "AMOUNT"
+                          ]
+                        },
+                        "discountValue": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "discountReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "discountAmount": {
+                          "type": "integer"
+                        },
+                        "dueAmount": {
+                          "type": "integer"
                         },
                         "encounterNo": {
                           "type": "string"
@@ -15253,6 +15447,12 @@
                         "status",
                         "totalAmount",
                         "lines",
+                        "discountMode",
+                        "discountType",
+                        "discountValue",
+                        "discountReason",
+                        "discountAmount",
+                        "dueAmount",
                         "encounterNo",
                         "checkedInAt",
                         "patientId",
@@ -15560,6 +15760,25 @@
                               },
                               "lineTotal": {
                                 "type": "integer"
+                              },
+                              "discountType": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "PERCENT",
+                                  "AMOUNT"
+                                ]
+                              },
+                              "discountValue": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "discountAmount": {
+                                "type": "integer"
                               }
                             },
                             "required": [
@@ -15570,9 +15789,48 @@
                               "unitCode",
                               "unitPrice",
                               "quantity",
-                              "lineTotal"
+                              "lineTotal",
+                              "discountType",
+                              "discountValue",
+                              "discountAmount"
                             ]
                           }
+                        },
+                        "discountMode": {
+                          "type": "string",
+                          "enum": [
+                            "NONE",
+                            "TOTAL",
+                            "PER_LINE"
+                          ]
+                        },
+                        "discountType": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "PERCENT",
+                            "AMOUNT"
+                          ]
+                        },
+                        "discountValue": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "discountReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "discountAmount": {
+                          "type": "integer"
+                        },
+                        "dueAmount": {
+                          "type": "integer"
                         },
                         "encounterNo": {
                           "type": "string"
@@ -15676,6 +15934,12 @@
                         "status",
                         "totalAmount",
                         "lines",
+                        "discountMode",
+                        "discountType",
+                        "discountValue",
+                        "discountReason",
+                        "discountAmount",
+                        "dueAmount",
                         "encounterNo",
                         "checkedInAt",
                         "patientId",
@@ -15994,6 +16258,25 @@
                               },
                               "lineTotal": {
                                 "type": "integer"
+                              },
+                              "discountType": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "PERCENT",
+                                  "AMOUNT"
+                                ]
+                              },
+                              "discountValue": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "discountAmount": {
+                                "type": "integer"
                               }
                             },
                             "required": [
@@ -16004,9 +16287,48 @@
                               "unitCode",
                               "unitPrice",
                               "quantity",
-                              "lineTotal"
+                              "lineTotal",
+                              "discountType",
+                              "discountValue",
+                              "discountAmount"
                             ]
                           }
+                        },
+                        "discountMode": {
+                          "type": "string",
+                          "enum": [
+                            "NONE",
+                            "TOTAL",
+                            "PER_LINE"
+                          ]
+                        },
+                        "discountType": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "PERCENT",
+                            "AMOUNT"
+                          ]
+                        },
+                        "discountValue": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "discountReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "discountAmount": {
+                          "type": "integer"
+                        },
+                        "dueAmount": {
+                          "type": "integer"
                         },
                         "encounterNo": {
                           "type": "string"
@@ -16110,6 +16432,12 @@
                         "status",
                         "totalAmount",
                         "lines",
+                        "discountMode",
+                        "discountType",
+                        "discountValue",
+                        "discountReason",
+                        "discountAmount",
+                        "dueAmount",
                         "encounterNo",
                         "checkedInAt",
                         "patientId",
@@ -16364,6 +16692,25 @@
                               },
                               "lineTotal": {
                                 "type": "integer"
+                              },
+                              "discountType": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "PERCENT",
+                                  "AMOUNT"
+                                ]
+                              },
+                              "discountValue": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "discountAmount": {
+                                "type": "integer"
                               }
                             },
                             "required": [
@@ -16374,9 +16721,48 @@
                               "unitCode",
                               "unitPrice",
                               "quantity",
-                              "lineTotal"
+                              "lineTotal",
+                              "discountType",
+                              "discountValue",
+                              "discountAmount"
                             ]
                           }
+                        },
+                        "discountMode": {
+                          "type": "string",
+                          "enum": [
+                            "NONE",
+                            "TOTAL",
+                            "PER_LINE"
+                          ]
+                        },
+                        "discountType": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "PERCENT",
+                            "AMOUNT"
+                          ]
+                        },
+                        "discountValue": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "discountReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "discountAmount": {
+                          "type": "integer"
+                        },
+                        "dueAmount": {
+                          "type": "integer"
                         },
                         "encounterNo": {
                           "type": "string"
@@ -16480,6 +16866,12 @@
                         "status",
                         "totalAmount",
                         "lines",
+                        "discountMode",
+                        "discountType",
+                        "discountValue",
+                        "discountReason",
+                        "discountAmount",
+                        "dueAmount",
                         "encounterNo",
                         "checkedInAt",
                         "patientId",
@@ -16724,6 +17116,25 @@
                               },
                               "lineTotal": {
                                 "type": "integer"
+                              },
+                              "discountType": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "PERCENT",
+                                  "AMOUNT"
+                                ]
+                              },
+                              "discountValue": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "discountAmount": {
+                                "type": "integer"
                               }
                             },
                             "required": [
@@ -16734,9 +17145,48 @@
                               "unitCode",
                               "unitPrice",
                               "quantity",
-                              "lineTotal"
+                              "lineTotal",
+                              "discountType",
+                              "discountValue",
+                              "discountAmount"
                             ]
                           }
+                        },
+                        "discountMode": {
+                          "type": "string",
+                          "enum": [
+                            "NONE",
+                            "TOTAL",
+                            "PER_LINE"
+                          ]
+                        },
+                        "discountType": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "PERCENT",
+                            "AMOUNT"
+                          ]
+                        },
+                        "discountValue": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "discountReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "discountAmount": {
+                          "type": "integer"
+                        },
+                        "dueAmount": {
+                          "type": "integer"
                         },
                         "encounterNo": {
                           "type": "string"
@@ -16840,6 +17290,12 @@
                         "status",
                         "totalAmount",
                         "lines",
+                        "discountMode",
+                        "discountType",
+                        "discountValue",
+                        "discountReason",
+                        "discountAmount",
+                        "dueAmount",
                         "encounterNo",
                         "checkedInAt",
                         "patientId",
@@ -17160,6 +17616,25 @@
                               },
                               "lineTotal": {
                                 "type": "integer"
+                              },
+                              "discountType": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "PERCENT",
+                                  "AMOUNT"
+                                ]
+                              },
+                              "discountValue": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "discountAmount": {
+                                "type": "integer"
                               }
                             },
                             "required": [
@@ -17170,9 +17645,48 @@
                               "unitCode",
                               "unitPrice",
                               "quantity",
-                              "lineTotal"
+                              "lineTotal",
+                              "discountType",
+                              "discountValue",
+                              "discountAmount"
                             ]
                           }
+                        },
+                        "discountMode": {
+                          "type": "string",
+                          "enum": [
+                            "NONE",
+                            "TOTAL",
+                            "PER_LINE"
+                          ]
+                        },
+                        "discountType": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "PERCENT",
+                            "AMOUNT"
+                          ]
+                        },
+                        "discountValue": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "discountReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "discountAmount": {
+                          "type": "integer"
+                        },
+                        "dueAmount": {
+                          "type": "integer"
                         },
                         "encounterNo": {
                           "type": "string"
@@ -17276,6 +17790,12 @@
                         "status",
                         "totalAmount",
                         "lines",
+                        "discountMode",
+                        "discountType",
+                        "discountValue",
+                        "discountReason",
+                        "discountAmount",
+                        "dueAmount",
                         "encounterNo",
                         "checkedInAt",
                         "patientId",
@@ -17435,6 +17955,599 @@
           },
           "409": {
             "description": "version không khớp, phiếu đã thu/đã đóng sổ, hoặc ví đã khoá (WALLET_CLOSED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/billing/invoices/{encounterId}/discount": {
+      "post": {
+        "tags": [
+          "billing"
+        ],
+        "summary": "Chiết khấu (Toàn hoá đơn hoặc Từng dịch vụ) — chỉ sửa được khi phiếu còn UNPAID, bắt buộc lý do, cùng quyền invoice.update như \"pay\"",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "encounterId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "mode": {
+                        "type": "string",
+                        "enum": [
+                          "NONE"
+                        ]
+                      },
+                      "reason": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "version": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "mode",
+                      "reason",
+                      "version"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "mode": {
+                        "type": "string",
+                        "enum": [
+                          "TOTAL"
+                        ]
+                      },
+                      "discountType": {
+                        "type": "string",
+                        "enum": [
+                          "PERCENT",
+                          "AMOUNT"
+                        ]
+                      },
+                      "discountValue": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0
+                      },
+                      "reason": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "version": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "mode",
+                      "discountType",
+                      "discountValue",
+                      "reason",
+                      "version"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "mode": {
+                        "type": "string",
+                        "enum": [
+                          "PER_LINE"
+                        ]
+                      },
+                      "lines": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "lineId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "discountType": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "enum": [
+                                "PERCENT",
+                                "AMOUNT"
+                              ]
+                            },
+                            "discountValue": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ],
+                              "exclusiveMinimum": 0
+                            }
+                          },
+                          "required": [
+                            "lineId",
+                            "discountType",
+                            "discountValue"
+                          ]
+                        },
+                        "minItems": 1
+                      },
+                      "reason": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "version": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "mode",
+                      "lines",
+                      "reason",
+                      "version"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "encounterId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "invoiceNo": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "UNPAID",
+                            "PAID",
+                            "CANCELLED",
+                            "REFUNDED"
+                          ]
+                        },
+                        "totalAmount": {
+                          "type": "integer"
+                        },
+                        "lines": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "examTypeCode": {
+                                "type": "string"
+                              },
+                              "examTypeName": {
+                                "type": "string"
+                              },
+                              "priceTypeCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "unitCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "unitPrice": {
+                                "type": "integer"
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "lineTotal": {
+                                "type": "integer"
+                              },
+                              "discountType": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "PERCENT",
+                                  "AMOUNT"
+                                ]
+                              },
+                              "discountValue": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "discountAmount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "examTypeCode",
+                              "examTypeName",
+                              "priceTypeCode",
+                              "unitCode",
+                              "unitPrice",
+                              "quantity",
+                              "lineTotal",
+                              "discountType",
+                              "discountValue",
+                              "discountAmount"
+                            ]
+                          }
+                        },
+                        "discountMode": {
+                          "type": "string",
+                          "enum": [
+                            "NONE",
+                            "TOTAL",
+                            "PER_LINE"
+                          ]
+                        },
+                        "discountType": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "PERCENT",
+                            "AMOUNT"
+                          ]
+                        },
+                        "discountValue": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "discountReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "discountAmount": {
+                          "type": "integer"
+                        },
+                        "dueAmount": {
+                          "type": "integer"
+                        },
+                        "encounterNo": {
+                          "type": "string"
+                        },
+                        "checkedInAt": {
+                          "type": "string"
+                        },
+                        "patientId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "patientCode": {
+                          "type": "string"
+                        },
+                        "fullName": {
+                          "type": "string"
+                        },
+                        "departmentName": {
+                          "type": "string"
+                        },
+                        "encounterVersion": {
+                          "type": "integer"
+                        },
+                        "printedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "pendingPaymentMethod": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "minLength": 1
+                        },
+                        "pendingCashReceivedAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "paymentMethod": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "minLength": 1
+                        },
+                        "paidAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "payments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "method": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "amount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "method",
+                              "amount"
+                            ]
+                          }
+                        },
+                        "encounterCancelled": {
+                          "type": "boolean"
+                        },
+                        "needsRefund": {
+                          "type": "boolean"
+                        },
+                        "refundedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "refundReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "encounterId",
+                        "invoiceNo",
+                        "status",
+                        "totalAmount",
+                        "lines",
+                        "discountMode",
+                        "discountType",
+                        "discountValue",
+                        "discountReason",
+                        "discountAmount",
+                        "dueAmount",
+                        "encounterNo",
+                        "checkedInAt",
+                        "patientId",
+                        "patientCode",
+                        "fullName",
+                        "departmentName",
+                        "encounterVersion",
+                        "printedAt",
+                        "pendingPaymentMethod",
+                        "pendingCashReceivedAmount",
+                        "paymentMethod",
+                        "paidAt",
+                        "payments",
+                        "encounterCancelled",
+                        "needsRefund",
+                        "refundedAt",
+                        "refundReason",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Thiếu lý do, % vượt quá 100, hoặc thân request không khớp mode",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền invoice.update",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không có phiếu thu cho lượt khám này",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp (CONCURRENT_MODIFICATION) hoặc phiếu không còn UNPAID (INVOICE_DISCOUNT_NOT_ALLOWED)",
             "content": {
               "application/json": {
                 "schema": {

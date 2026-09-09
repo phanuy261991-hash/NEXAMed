@@ -5,10 +5,13 @@ import {
   CASHIER_SHIFT_READER_PORT,
   CLINIC_CONFIG_READER_PORT,
   computeDailyBillingTotals,
+  computeDiscountAmount,
+  computeInvoiceDiscount,
   ConcurrentModificationError,
   getVietnamDateString,
   InvoiceAlreadyPaidError,
   InvoiceClosedError,
+  InvoiceDiscountNotAllowedError,
   InvoiceNotPaidError,
   InvoiceNotRefundableError,
   isInvoiceClosed,
@@ -21,6 +24,7 @@ import {
   type ReferenceCatalogReaderPort,
 } from '@nexamed/core';
 import type {
+  ApplyInvoiceDiscountRequest,
   Invoice as InvoiceDto,
   ListBillingInvoicesResponse,
   MarkInvoicePaidRequest,
@@ -38,14 +42,39 @@ import { PaymentRepository } from './payment.repository';
 import { CashAccountRepository } from '../cash-book/cash-account.repository';
 import { PatientWalletService } from '../patient-wallet/patient-wallet.service';
 
+/**
+ * Nguồn tính `dueAmount` (số tiền THẬT phải thu/đã thu) DUY NHẤT cho cả DTO trả về lẫn mọi thao tác
+ * tiền bạc bên dưới (`markPaid`/`payWithWalletCore`/tổng kết ngày) — xem `computeInvoiceDiscount()`
+ * ở `@nexamed/core`. KHÔNG đọc thẳng `row.totalAmount` làm số tiền phải thu ở bất kỳ đâu khác.
+ */
+function computeDue(row: { totalAmount: bigint; discountType: 'PERCENT' | 'AMOUNT' | null; discountValue: bigint | null; lines: { lineTotal: bigint; discountType: 'PERCENT' | 'AMOUNT' | null; discountValue: bigint | null }[] }) {
+  return computeInvoiceDiscount({
+    totalAmount: Number(row.totalAmount),
+    discountType: row.discountType,
+    discountValue: row.discountValue !== null ? Number(row.discountValue) : null,
+    lines: row.lines.map((l) => ({
+      lineTotal: Number(l.lineTotal),
+      discountType: l.discountType,
+      discountValue: l.discountValue !== null ? Number(l.discountValue) : null,
+    })),
+  });
+}
+
 function toInvoiceResponse(row: InvoiceWithLines): InvoiceDto {
   const encounterCancelled = row.encounter.status === 'CANCELLED';
+  const discount = computeDue(row);
   return {
     id: row.id,
     encounterId: row.encounterId,
     invoiceNo: row.invoiceNo,
     status: row.status,
     totalAmount: Number(row.totalAmount),
+    discountMode: discount.mode,
+    discountType: row.discountType,
+    discountValue: row.discountValue !== null ? Number(row.discountValue) : null,
+    discountReason: row.discountReason,
+    discountAmount: discount.discountAmount,
+    dueAmount: discount.dueAmount,
     encounterNo: row.encounter.encounterNo,
     checkedInAt: row.encounter.checkedInAt.toISOString(),
     encounterVersion: row.encounter.version,
@@ -62,6 +91,9 @@ function toInvoiceResponse(row: InvoiceWithLines): InvoiceDto {
       unitPrice: Number(line.unitPrice),
       quantity: line.quantity,
       lineTotal: Number(line.lineTotal),
+      discountType: line.discountType,
+      discountValue: line.discountValue !== null ? Number(line.discountValue) : null,
+      discountAmount: computeDiscountAmount(Number(line.lineTotal), line.discountType, line.discountValue !== null ? Number(line.discountValue) : null),
     })),
     printedAt: row.printedAt?.toISOString() ?? null,
     pendingPaymentMethod: row.pendingPaymentMethod,
@@ -135,7 +167,9 @@ export class InvoiceService {
 
     // #085 — nguồn tính duy nhất `computeDailyBillingTotals()` ở `@nexamed/core`, không cộng tay ở
     // đây nữa (giữ đúng quy ước "REFUNDED vẫn tính vào paidTotalAmount rồi trừ ra ở netTotalAmount").
-    const totals = computeDailyBillingTotals(rows.map((row) => ({ status: row.status, totalAmount: Number(row.totalAmount) })));
+    // Chiết khấu — dùng `dueAmount` (số tiền THẬT thu/hoàn), KHÔNG dùng `totalAmount` (gross) — nếu
+    // không tổng kết cuối ngày sẽ sai ngay khi có phiếu chiết khấu đầu tiên.
+    const totals = computeDailyBillingTotals(rows.map((row) => ({ status: row.status, dueAmount: computeDue(row).dueAmount })));
 
     return {
       items: rows.map((row) => this.toBillingListItem(row)),
@@ -145,6 +179,7 @@ export class InvoiceService {
 
   private toBillingListItem(row: BillingListRow): ListBillingInvoicesResponse['items'][number] {
     const encounterCancelled = row.encounter.status === 'CANCELLED';
+    const discount = computeDue(row);
     return {
       invoiceId: row.id,
       invoiceNo: row.invoiceNo,
@@ -157,6 +192,8 @@ export class InvoiceService {
       departmentId: row.encounter.departmentId,
       departmentName: row.encounter.department.name,
       totalAmount: Number(row.totalAmount),
+      discountAmount: discount.discountAmount,
+      dueAmount: discount.dueAmount,
       status: row.status,
       paymentMethod: row.activePayment?.method ?? null,
       paidAt: row.activePayment?.paidAt.toISOString() ?? null,
@@ -193,15 +230,17 @@ export class InvoiceService {
         }
         throw new ConcurrentModificationError();
       }
+      // Chiết khấu — thu ĐÚNG `dueAmount` (sau chiết khấu), KHÔNG phải `invoice.totalAmount`.
+      const dueAmount = BigInt(computeDue(invoice).dueAmount);
       const cashAccountId = await this.resolveCashAccountId(tx, tenantId, dto.method, drawerAccountId);
-      await this.paymentRepository.create(tx, tenantId, actorId, invoice.id, dto.method, invoice.totalAmount, paidAt, cashierShiftId, cashAccountId);
+      await this.paymentRepository.create(tx, tenantId, actorId, invoice.id, dto.method, dueAmount, paidAt, cashierShiftId, cashAccountId);
 
       await writeAuditLog(tx, tenantId, {
         actorId,
         action: 'invoice.paid',
         entityType: 'invoice',
         entityId: invoice.id,
-        afterJson: { method: dto.method, amount: invoice.totalAmount.toString() },
+        afterJson: { method: dto.method, amount: dueAmount.toString() },
         ip: meta.ip,
         userAgent: meta.userAgent,
       });
@@ -244,7 +283,8 @@ export class InvoiceService {
     const patientId = invoice.encounter.patient.id;
     const wallet = await this.walletService.tryGetActiveWallet(tx, tenantId, patientId);
     const balance = wallet?.balance ?? 0n;
-    const due = invoice.totalAmount;
+    // Chiết khấu — trừ ĐÚNG `dueAmount` (sau chiết khấu), KHÔNG phải `invoice.totalAmount`.
+    const due = BigInt(computeDue(invoice).dueAmount);
     const covered = balance < due ? balance : due;
     const remainder = due - covered;
 
@@ -379,7 +419,8 @@ export class InvoiceService {
    * #085 — "Hoàn tiền" thật cho lượt khám đã huỷ, quyền riêng `invoice.refund`. KHÁC hẳn
    * `revertPayment()` ở trên: đây là tiền đã vào két nay trả ra — tạo dòng `payment` type `REFUND`
    * ĐỐI ỨNG dòng đã thu (không xoá/sửa dòng cũ), giữ đủ vết 2 chiều để đối soát két cuối ngày.
-   * Chỉ hoàn TOÀN PHẦN ở v1 — số tiền lấy đúng `invoice.totalAmount` đã thu, không nhận từ client.
+   * Chỉ hoàn TOÀN PHẦN ở v1 — số tiền lấy đúng tổng `activePayments` đã thu (đã trừ chiết khấu nếu
+   * có, xem `markPaid()`/`payWithWalletCore()`), không nhận từ client.
    */
   async refund(tenantId: string, actorId: string, encounterId: string, dto: RefundInvoiceRequest, meta: RequestMeta): Promise<InvoiceDto> {
     // "Đa thu ngân"/"Thủ quỹ riêng" — xem comment ở markPaid() phía trên.
@@ -406,12 +447,15 @@ export class InvoiceService {
       }
       // `activePayments` chắc chắn có ≥1 phần tử ở đây — `canRefundInvoice` đã xác nhận
       // `status='PAID'`. Thường 1 dòng; 2 dòng khi trả hỗn hợp (Ví tạm ứng) — lặp qua TỪNG dòng,
-      // tạo đúng 1 dòng REFUND đối ứng mỗi dòng (cùng method/amount/cashAccountId), tổng hoàn =
-      // tổng các dòng = invoice.totalAmount (bất biến đã đảm bảo lúc thu). Dòng nào là `WALLET` thì
-      // CỘNG LẠI vào ví đúng phần tiền của dòng đó (không phải toàn bộ totalAmount).
+      // tạo đúng 1 dòng REFUND đối ứng mỗi dòng (cùng method/amount/cashAccountId). Tổng hoàn = tổng
+      // các dòng = số tiền THẬT đã thu tại thời điểm markPaid()/payWithWalletCore() (đã trừ chiết
+      // khấu nếu có — KHÔNG phải invoice.totalAmount gross). Dòng nào là `WALLET` thì CỘNG LẠI vào
+      // ví đúng phần tiền của dòng đó (không phải toàn bộ).
+      let refundedTotal = 0n;
       for (const p of invoice.activePayments) {
         const cashAccountId = await this.resolveCashAccountId(tx, tenantId, p.method, drawerAccountId);
         await this.paymentRepository.createRefund(tx, tenantId, actorId, invoice.id, p.method, p.amount, refundedAt, dto.reason, cashierShiftId, cashAccountId);
+        refundedTotal += p.amount;
         if (p.method === 'WALLET') {
           await this.walletService.creditBack(tx, tenantId, actorId, invoice.encounter.patient.id, p.amount, invoice.id, 'Hoàn tiền do huỷ lượt khám', meta);
         }
@@ -423,7 +467,7 @@ export class InvoiceService {
         entityType: 'invoice',
         entityId: invoice.id,
         beforeJson: { status: 'PAID' },
-        afterJson: { status: 'REFUNDED', amount: invoice.totalAmount.toString(), reason: dto.reason },
+        afterJson: { status: 'REFUNDED', amount: refundedTotal.toString(), reason: dto.reason },
         ip: meta.ip,
         userAgent: meta.userAgent,
       });
@@ -460,6 +504,47 @@ export class InvoiceService {
         ip: meta.ip,
         userAgent: meta.userAgent,
       });
+      const updated = await this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
+      return toInvoiceResponse(updated!);
+    });
+  }
+
+  /**
+   * Chiết khấu (chốt qua `AskUserQuestion`) — CHỈ sửa được khi phiếu còn `UNPAID` (đã "Thu tiền"
+   * thì phải "Đánh dấu chưa thu" trước, tránh phải tính lại chênh lệch thu thêm/hoàn lại — ngoài
+   * phạm vi "Thu ngân cơ bản" v1). `mode='NONE'` = xoá chiết khấu hiện có, cũng bắt buộc `reason`
+   * (đụng tiền cần ghi vết như mọi thao tác khác). Validate "Toàn hoá đơn"/"Từng dịch vụ" loại trừ
+   * lẫn nhau đã ở tầng schema (`applyInvoiceDiscountRequestSchema`, discriminated union theo
+   * `mode`) — service không cần kiểm tra lại.
+   */
+  async applyDiscount(tenantId: string, actorId: string, encounterId: string, dto: ApplyInvoiceDiscountRequest, meta: RequestMeta): Promise<InvoiceDto> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const invoice = await this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
+      if (!invoice) {
+        throw new NotFoundException();
+      }
+      const before = computeDue(invoice);
+
+      const count = await this.invoiceRepository.applyDiscount(tx, tenantId, invoice.id, dto.version, actorId, dto);
+      if (count === 0) {
+        const recheck = await this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
+        if (recheck && recheck.status !== 'UNPAID') {
+          throw new InvoiceDiscountNotAllowedError();
+        }
+        throw new ConcurrentModificationError();
+      }
+
+      await writeAuditLog(tx, tenantId, {
+        actorId,
+        action: dto.mode === 'NONE' ? 'invoice.discount_removed' : 'invoice.discount_applied',
+        entityType: 'invoice',
+        entityId: invoice.id,
+        beforeJson: { discountMode: before.mode, discountAmount: before.discountAmount, discountReason: invoice.discountReason },
+        afterJson: { mode: dto.mode, reason: dto.reason },
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
+
       const updated = await this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
       return toInvoiceResponse(updated!);
     });

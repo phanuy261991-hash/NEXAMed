@@ -647,4 +647,213 @@ describe('HTTP e2e — /api/v1/billing/invoices', () => {
       expect(items.find((i) => i.encounterId === encounter.id)).toBeUndefined();
     });
   });
+
+  describe('POST /api/v1/billing/invoices/:encounterId/discount — Chiết khấu', () => {
+    function twoLineServices() {
+      return [
+        { examTypeCode: 'KT', examTypeName: 'Khám thường', examTypePrice: 200_000, quantity: 1 },
+        { examTypeCode: 'SA', examTypeName: 'Siêu âm ổ bụng', examTypePrice: 250_000, quantity: 1 },
+      ];
+    }
+
+    it('mode TOTAL + PERCENT → dueAmount đúng, thu tiền thu đúng dueAmount (không phải totalAmount)', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices()); // totalAmount 150.000
+
+      const discountRes = await request(app.getHttpServer())
+        .post(`/api/v1/billing/invoices/${encounter.id}/discount`)
+        .set(authed(receptionistToken))
+        .send({ mode: 'TOTAL', discountType: 'PERCENT', discountValue: 10, reason: 'Khuyến mãi khai trương', version: 1 });
+      expect(discountRes.status).toBe(200);
+      expect(discountRes.body.data).toMatchObject({ discountMode: 'TOTAL', totalAmount: 150_000, discountAmount: 15_000, dueAmount: 135_000 });
+      expect(discountRes.body.data.version).toBe(2);
+
+      const payRes = await request(app.getHttpServer())
+        .post(`/api/v1/billing/invoices/${encounter.id}/pay`)
+        .set(authed(receptionistToken))
+        .send({ method: 'CASH', version: 2 });
+      expect(payRes.status).toBe(200);
+      expect(payRes.body.data.payments).toEqual([{ method: 'CASH', amount: 135_000 }]);
+    });
+
+    it('mode TOTAL + AMOUNT → chiết khấu đúng số tiền nhập', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/billing/invoices/${encounter.id}/discount`)
+        .set(authed(receptionistToken))
+        .send({ mode: 'TOTAL', discountType: 'AMOUNT', discountValue: 50_000, reason: 'Giảm giá nhân viên', version: 1 });
+      expect(res.status).toBe(200);
+      expect(res.body.data).toMatchObject({ discountAmount: 50_000, dueAmount: 100_000 });
+    });
+
+    it('mode PER_LINE — chỉ 1 trong 2 dòng chiết khấu, tổng đúng SUM từng dòng', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, twoLineServices()); // 200.000 + 250.000 = 450.000
+      const invoice = await request(app.getHttpServer()).get(`/api/v1/billing/invoices/${encounter.id}`).set(authed(receptionistToken));
+      const lineKT = invoice.body.data.lines.find((l: { examTypeCode: string }) => l.examTypeCode === 'KT');
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/billing/invoices/${encounter.id}/discount`)
+        .set(authed(receptionistToken))
+        .send({
+          mode: 'PER_LINE',
+          lines: [
+            { lineId: lineKT.id, discountType: 'PERCENT', discountValue: 10 }, // -20.000
+            { lineId: invoice.body.data.lines.find((l: { examTypeCode: string }) => l.examTypeCode === 'SA').id, discountType: null, discountValue: null },
+          ],
+          reason: 'Chiết khấu 1 dịch vụ',
+          version: 1,
+        });
+      expect(res.status).toBe(200);
+      expect(res.body.data).toMatchObject({ discountMode: 'PER_LINE', totalAmount: 450_000, discountAmount: 20_000, dueAmount: 430_000 });
+      const updatedLineKT = res.body.data.lines.find((l: { examTypeCode: string }) => l.examTypeCode === 'KT');
+      expect(updatedLineKT).toMatchObject({ discountType: 'PERCENT', discountValue: 10, discountAmount: 20_000 });
+      const updatedLineSA = res.body.data.lines.find((l: { examTypeCode: string }) => l.examTypeCode === 'SA');
+      expect(updatedLineSA).toMatchObject({ discountType: null, discountAmount: 0 });
+    });
+
+    it('dòng có discountType nhưng discountValue null (trạng thái dở dang, không phải lỗi input) → 200, coi như KHÔNG chiết khấu, không sập 500', async () => {
+      // Bug thật phát hiện lúc kiểm tay: FE có thể gửi 1 dòng "đã chọn %/Tiền nhưng chưa gõ số" —
+      // trước khi vá, InvoiceRepository.applyDiscount() gọi BigInt(null) ném TypeError không bắt
+      // được, sập 500 INTERNAL_ERROR thay vì xử lý êm đẹp.
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, twoLineServices());
+      const invoice = await request(app.getHttpServer()).get(`/api/v1/billing/invoices/${encounter.id}`).set(authed(receptionistToken));
+      const lineKT = invoice.body.data.lines.find((l: { examTypeCode: string }) => l.examTypeCode === 'KT');
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/billing/invoices/${encounter.id}/discount`)
+        .set(authed(receptionistToken))
+        .send({
+          mode: 'PER_LINE',
+          lines: [{ lineId: lineKT.id, discountType: 'PERCENT', discountValue: null }],
+          reason: 'Dở dang chưa gõ số',
+          version: 1,
+        });
+      expect(res.status).toBe(200);
+      expect(res.body.data).toMatchObject({ discountMode: 'NONE', discountAmount: 0, dueAmount: 450_000 });
+    });
+
+    it('chuyển từ TOTAL sang PER_LINE → xoá sạch chiết khấu TOTAL cũ', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, twoLineServices());
+      await request(app.getHttpServer())
+        .post(`/api/v1/billing/invoices/${encounter.id}/discount`)
+        .set(authed(receptionistToken))
+        .send({ mode: 'TOTAL', discountType: 'PERCENT', discountValue: 20, reason: 'Thử TOTAL trước', version: 1 });
+
+      const invoice = await request(app.getHttpServer()).get(`/api/v1/billing/invoices/${encounter.id}`).set(authed(receptionistToken));
+      const lineKT = invoice.body.data.lines.find((l: { examTypeCode: string }) => l.examTypeCode === 'KT');
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/billing/invoices/${encounter.id}/discount`)
+        .set(authed(receptionistToken))
+        .send({ mode: 'PER_LINE', lines: [{ lineId: lineKT.id, discountType: 'AMOUNT', discountValue: 30_000 }], reason: 'Đổi sang từng dịch vụ', version: 2 });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.discountMode).toBe('PER_LINE');
+      expect(res.body.data.discountType).toBeNull();
+      expect(res.body.data.discountValue).toBeNull();
+      expect(res.body.data.discountAmount).toBe(30_000);
+    });
+
+    it('mode NONE → xoá chiết khấu, dueAmount về đúng totalAmount', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+      await request(app.getHttpServer())
+        .post(`/api/v1/billing/invoices/${encounter.id}/discount`)
+        .set(authed(receptionistToken))
+        .send({ mode: 'TOTAL', discountType: 'PERCENT', discountValue: 10, reason: 'Áp trước', version: 1 });
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/billing/invoices/${encounter.id}/discount`)
+        .set(authed(receptionistToken))
+        .send({ mode: 'NONE', reason: 'Huỷ chiết khấu do nhập nhầm', version: 2 });
+      expect(res.status).toBe(200);
+      expect(res.body.data).toMatchObject({ discountMode: 'NONE', discountAmount: 0, dueAmount: 150_000 });
+    });
+
+    it('thiếu reason → 400', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/billing/invoices/${encounter.id}/discount`)
+        .set(authed(receptionistToken))
+        .send({ mode: 'TOTAL', discountType: 'PERCENT', discountValue: 10, reason: '', version: 1 });
+      expect(res.status).toBe(400);
+    });
+
+    it('% vượt quá 100 → 400', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/billing/invoices/${encounter.id}/discount`)
+        .set(authed(receptionistToken))
+        .send({ mode: 'TOTAL', discountType: 'PERCENT', discountValue: 150, reason: 'Nhập sai', version: 1 });
+      expect(res.status).toBe(400);
+    });
+
+    it('phiếu đã PAID → 409 INVOICE_DISCOUNT_NOT_ALLOWED', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+      await request(app.getHttpServer()).post(`/api/v1/billing/invoices/${encounter.id}/pay`).set(authed(receptionistToken)).send({ method: 'CASH', version: 1 });
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/billing/invoices/${encounter.id}/discount`)
+        .set(authed(receptionistToken))
+        .send({ mode: 'TOTAL', discountType: 'PERCENT', discountValue: 10, reason: 'Thử sau khi đã thu', version: 2 });
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('INVOICE_DISCOUNT_NOT_ALLOWED');
+    });
+
+    it('version cũ → 409 CONCURRENT_MODIFICATION', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/billing/invoices/${encounter.id}/discount`)
+        .set(authed(receptionistToken))
+        .send({ mode: 'TOTAL', discountType: 'PERCENT', discountValue: 10, reason: 'Version sai', version: 99 });
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('CONCURRENT_MODIFICATION');
+    });
+
+    it('tenant B chiết khấu phiếu tenant A → 404 (cách ly tenant)', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/billing/invoices/${encounter.id}/discount`)
+        .set(authed(tenantBReceptionistToken))
+        .send({ mode: 'TOTAL', discountType: 'PERCENT', discountValue: 10, reason: 'Tenant B', version: 1 });
+      expect(res.status).toBe(404);
+    });
+
+    it('tổng kết cuối ngày (GET /billing?date=) phản ánh đúng dueAmount sau chiết khấu', async () => {
+      const day = isoAt(11, 0, 28);
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices(), day); // 150.000
+      await request(app.getHttpServer())
+        .post(`/api/v1/billing/invoices/${encounter.id}/discount`)
+        .set(authed(receptionistToken))
+        .send({ mode: 'TOTAL', discountType: 'AMOUNT', discountValue: 50_000, reason: 'Giảm giá', version: 1 });
+      await request(app.getHttpServer()).post(`/api/v1/billing/invoices/${encounter.id}/pay`).set(authed(receptionistToken)).send({ method: 'CASH', version: 2 });
+
+      const res = await request(app.getHttpServer()).get('/api/v1/billing/invoices').set(authed(receptionistToken)).query({ date: '2026-08-28' });
+      expect(res.status).toBe(200);
+      const item = res.body.data.items.find((i: { encounterId: string }) => i.encounterId === encounter.id);
+      expect(item).toMatchObject({ totalAmount: 150_000, discountAmount: 50_000, dueAmount: 100_000 });
+      expect(res.body.data.paidTotalAmount).toBeGreaterThanOrEqual(100_000);
+      // Không được cộng nhầm totalAmount gross (150.000) — nếu bug thì test dưới sẽ fail vì tổng
+      // sẽ vượt quá tổng dueAmount thật của mọi phiếu PAID trong ngày.
+    });
+
+    it('hoàn tiền phiếu đã chiết khấu → hoàn đúng số THẬT đã thu (net), không phải totalAmount gross', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices()); // 150.000
+      await request(app.getHttpServer())
+        .post(`/api/v1/billing/invoices/${encounter.id}/discount`)
+        .set(authed(receptionistToken))
+        .send({ mode: 'TOTAL', discountType: 'PERCENT', discountValue: 20, reason: 'Giảm giá', version: 1 }); // due 120.000
+      await request(app.getHttpServer()).post(`/api/v1/billing/invoices/${encounter.id}/pay`).set(authed(receptionistToken)).send({ method: 'CASH', version: 2 });
+
+      const cancelled = await cancelEncounter(encounter.id, 1);
+      expect(cancelled.status).toBe(200);
+
+      const refundRes = await request(app.getHttpServer())
+        .post(`/api/v1/billing/invoices/${encounter.id}/refund`)
+        .set(authed(clinicAdminToken))
+        .send({ reason: 'Hoàn tiền do huỷ', version: 3 });
+      expect(refundRes.status).toBe(200);
+      expect(refundRes.body.data.status).toBe('REFUNDED');
+      expect(refundRes.body.data.payments).toEqual([{ method: 'CASH', amount: 120_000 }]);
+    });
+  });
 });

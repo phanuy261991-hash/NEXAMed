@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
+  ApplyInvoiceDiscountRequest,
   MarkInvoicePaidRequest,
   PayInvoiceWithWalletRequest,
   RefundInvoiceRequest,
@@ -10,6 +11,7 @@ import type {
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
 import {
+  applyInvoiceDiscount,
   getBillingInvoice,
   getBillingInvoiceList,
   markInvoicePaid,
@@ -114,6 +116,20 @@ export function useRefundInvoiceMutation(encounterId: string) {
     onSuccess: () => {
       void invalidate();
       // Tổng kết cuối ngày đổi (paidTotalAmount/refundedTotalAmount/netTotalAmount) — làm mới luôn.
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'invoice', 'list') });
+    },
+  });
+}
+
+/** Chiết khấu — thay đổi `dueAmount` nên phải làm mới cả tổng kết ngày ('invoice','list'), không chỉ chi tiết. */
+export function useApplyInvoiceDiscountMutation(encounterId: string) {
+  const { tenantId } = useAppConfig();
+  const queryClient = useQueryClient();
+  const invalidate = useInvalidateInvoice();
+  return useMutation({
+    mutationFn: (body: ApplyInvoiceDiscountRequest) => applyInvoiceDiscount(encounterId, body),
+    onSuccess: () => {
+      void invalidate();
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'invoice', 'list') });
     },
   });

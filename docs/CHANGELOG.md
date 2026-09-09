@@ -4,6 +4,16 @@
 
 ## 2026-09-09
 
+### Chiết khấu trên "Chi tiết thanh toán" + pill mệnh giá "Tiền khách đưa"
+
+Thu ngân áp chiết khấu %/tiền cho phiếu thu — "Toàn hoá đơn" hoặc "Từng dịch vụ" (2 cách loại trừ lẫn nhau, chọn 1 cho mỗi phiếu), bắt buộc lý do, chỉ sửa được khi phiếu còn "Chờ thu". Dòng chiết khấu hiện trên cả màn hình lẫn phiếu in. Thêm dãy pill mệnh giá tiền VNĐ (bấm cộng dồn) + nút "Vừa đủ" ở ô "Tiền khách đưa", cộng ô "Nhập số khác" cho khu vực gợi ý nạp Ví tạm ứng (chủ dự án yêu cầu thêm cùng phiên).
+
+Tách `totalAmount` (gross) khỏi `dueAmount` (net, số tiền THẬT thu/hoàn) — sửa lại mọi nơi tính tiền thật (thu tiền, trừ ví, tổng kết cuối ngày, danh sách Thu ngân, cảnh báo huỷ lượt khám...) để dùng `dueAmount`, tránh sai số khi có phiếu chiết khấu. Phát hiện + sửa 1 bug thật lúc code: audit log hoàn tiền trước đây ghi nhầm số gross thay vì số thật đã thu.
+
+**Redesign theo phản hồi trực tiếp trên `pnpm dev`, cùng ngày**: bỏ popup chọn cách chiết khấu, chuyển hẳn sang nhập ngay tại chỗ — mặc định chỉ hiện 2 nút chọn ("Từng dịch vụ"/"Toàn hoá đơn"), chọn 1 mới hiện ô nhập tương ứng (cột riêng trong bảng dịch vụ hoặc ô trong khung thanh toán). `TwoOptionToggle.tsx` mới (công tắc trượt dùng chung) — sửa 1 lần lệch vị trí do tính bằng `%`/`calc()` không đáng tin cậy, chuyển sang đo toạ độ thật (`getBoundingClientRect()`). Vá 1 bug sập 500 thật (đổi %/Tiền qua lại rồi rời ô chưa gõ số gửi lên trạng thái dở dang khiến `BigInt(null)` crash) — có test hồi quy. "Lý do chiết khấu" đổi sang không tự điền lại giá trị cũ mỗi lần tải trang. Xem chi tiết đầy đủ ở `docs/DECISIONS.md` #137.
+
+**Đã xác minh**: `packages/core` 170/170 (+10), `apps/api` 762/762 (+20, gồm test hồi quy bug 500), `packages/shared` 20/20, `apps/web` 5/5, `pnpm -w typecheck/lint/build` sạch (chunk 498.71 kB). **Chưa verify Playwright tự động** — xác nhận qua chủ dự án tự dùng `pnpm dev`, phản hồi từng vòng qua ảnh chụp.
+
 ### "Ví tạm ứng" (Patient Advance-Payment Wallet) — hoàn tất, verify Playwright xong
 
 Bệnh nhân nộp tiền trước (`patient_wallet`), hệ thống tự cấn trừ (`wallet_transaction`) lúc tiếp nhận nếu đủ số dư — invoice tự `PAID`, vào thẳng hàng đợi khám không qua quầy. Thiếu tiền thì thu ngân xử lý ở phiếu thu: trừ ví/nạp thêm/**trả hỗn hợp** (trừ hết ví + thu phần còn lại tiền mặt/CK trên cùng 1 phiếu, bật qua công tắc `walletMixedPaymentEnabled` mới ở "Cấu hình thanh toán"). Huỷ lượt khám đã trừ ví → hoàn về ví (không hoàn tiền mặt). Tất toán (`clinic_admin`) khoá ví + sinh phiếu chi `PCU`. Trang tổng hợp `/cash-book/wallets`.

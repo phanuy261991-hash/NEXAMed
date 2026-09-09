@@ -1,6 +1,7 @@
 import { Body, Controller, Get, HttpCode, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import {
+  applyInvoiceDiscountRequestSchema,
   listBillingInvoicesQuerySchema,
   markInvoicePaidRequestSchema,
   payInvoiceWithWalletRequestSchema,
@@ -105,6 +106,19 @@ export class InvoiceController {
     const dto = saveInvoiceDraftRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
     return this.invoiceService.saveDraft(tenantId, userId, encounterId, dto, extractRequestMeta(req));
+  }
+
+  /**
+   * Chiết khấu — cùng quyền `invoice.update` như `pay`/`save-draft` (chốt qua `AskUserQuestion`:
+   * mọi thu ngân/lễ tân đang xử lý phiếu đều làm được, không cần quyền/công tắc riêng).
+   */
+  @Post(':encounterId/discount')
+  @RequirePermission('invoice', 'update', { entityIdParam: 'encounterId' })
+  @HttpCode(200)
+  async applyDiscount(@Param('encounterId') encounterId: string, @Body() body: unknown, @Req() req: Request) {
+    const dto = applyInvoiceDiscountRequestSchema.parse(body);
+    const { userId, tenantId } = req.user!;
+    return this.invoiceService.applyDiscount(tenantId, userId, encounterId, dto, extractRequestMeta(req));
   }
 
   /** In phiếu thu (BIL-02) — ghi nhận `printedAt`, idempotent. Bố cục in nằm ở tầng web. */

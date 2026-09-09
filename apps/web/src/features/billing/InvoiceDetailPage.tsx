@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowCounterClockwise, ArrowLeft, Bank, CheckCircle, CreditCard, Money, Printer, Receipt, Wallet, Warning, XCircle } from '@phosphor-icons/react';
-import type { PaymentMethod } from '@nexamed/shared';
+import type { DiscountType, PaymentMethod } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
 import { CancelEncounterDialog } from '../../shared/ui/CancelEncounterDialog';
+import { CashTenderPills } from '../../shared/ui/CashTenderPills';
+import { TwoOptionToggle } from '../../shared/ui/TwoOptionToggle';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { MoneyInput } from '../../shared/ui/MoneyInput';
@@ -22,6 +24,7 @@ import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog
 import { useWalletQuery } from '../patient-wallet/patient-wallet.queries';
 import { InvoicePrintView } from './InvoicePrintView';
 import {
+  useApplyInvoiceDiscountMutation,
   useBillingInvoiceQuery,
   useMarkInvoicePaidMutation,
   usePayInvoiceWithWalletMutation,
@@ -52,6 +55,20 @@ function formatDateTime(iso: string): string {
 const methodChipBase = 'flex items-center justify-center gap-1.5 rounded-md border-2 px-3 py-2 text-[14px] font-bold transition-colors';
 const methodChipUnselected = 'border-slate-300 bg-white text-slate-700 hover:border-blue-400 hover:bg-brand-teal-tint';
 const methodChipSelected = 'border-brand-teal bg-brand-teal text-white';
+
+// Chiết khấu — nhập inline (không popup, chốt qua AskUserQuestion): 2 lựa chọn %/Tiền dùng
+// `TwoOptionToggle` (shared/ui) cho cả khối "Chiết khấu tổng" lẫn từng dòng dịch vụ trong bảng.
+const DISCOUNT_TYPE_OPTIONS = [
+  { value: 'PERCENT', label: '%' },
+  { value: 'AMOUNT', label: 'VNĐ' },
+] as const;
+
+// Mặc định chỉ hiện 2 lựa chọn cách chiết khấu — chọn 1 trong 2 mới hiện ô nhập tương ứng (chốt
+// theo yêu cầu trực tiếp), chưa chọn gì = giữ nguyên UNPAID không chiết khấu.
+const DISCOUNT_MODE_OPTIONS = [
+  { value: 'PER_LINE', label: 'Từng dịch vụ' },
+  { value: 'TOTAL', label: 'Toàn hoá đơn' },
+] as const;
 
 /**
  * "Chi tiết thanh toán" (Sprint 5/6, BIL-01→04) — trang riêng (không phải slide-over), đúng mockup
@@ -112,10 +129,27 @@ export function InvoiceDetailPage() {
   // xác nhận trước, tránh bấm nhầm làm mất tiền (chủ dự án phản hồi trực tiếp, đúng khuôn xác nhận
   // của RefundDialog/CancelEncounterDialog — mọi thao tác đụng tiền trong app đều qua 1 bước xác nhận).
   const [quickTopUpAmount, setQuickTopUpAmount] = useState<number | null>(null);
+  // "Nhập số khác" — cho gõ tay 1 mức nạp tuỳ ý ngay tại khối gợi ý (khác 2 mức có sẵn), dùng
+  // chung dialog xác nhận với `quickTopUpAmount` ở trên.
+  const [customTopUpOpen, setCustomTopUpOpen] = useState(false);
+  const [customTopUpAmount, setCustomTopUpAmount] = useState<number | undefined>(undefined);
+  // Chiết khấu — nhập inline (không popup): mặc định chỉ hiện 2 lựa chọn "Từng dịch vụ"/"Toàn hoá
+  // đơn" (chốt theo yêu cầu trực tiếp), chọn 1 trong 2 mới hiện ô nhập tương ứng — `null` = chưa
+  // chọn gì (đúng trạng thái phiếu chưa có chiết khấu). `discountReason` dùng CHUNG cho cả 2 cách.
+  const [discountReason, setDiscountReason] = useState('');
+  const [discountError, setDiscountError] = useState<string | null>(null);
+  const [discountEditMode, setDiscountEditMode] = useState<'TOTAL' | 'PER_LINE' | null>(null);
+  const [totalDiscountType, setTotalDiscountType] = useState<DiscountType>('PERCENT');
+  const [totalDiscountValue, setTotalDiscountValue] = useState<number | undefined>(undefined);
+  // Mỗi dòng LUÔN có sẵn `type` (mặc định PERCENT, giống khung tổng — chốt theo yêu cầu trực tiếp)
+  // — "không chiết khấu dòng này" chỉ được biểu diễn bằng `value` rỗng, không phải `type` rỗng, để
+  // tránh trạng thái dở dang "đã chọn kiểu nhưng chưa gõ số" gửi lên nửa vời.
+  const [lineDiscounts, setLineDiscounts] = useState<Record<string, { type: DiscountType; value: number | undefined }>>({});
 
-  // Ví tạm ứng — số tiền còn thiếu nếu chọn WALLET (0 nếu đủ hoặc chưa chọn WALLET).
-  const walletShortfall = method === 'WALLET' && invoice ? Math.max(0, invoice.totalAmount - (wallet?.balance ?? 0)) : 0;
-  const walletCovered = method === 'WALLET' && invoice ? Math.min(wallet?.balance ?? 0, invoice.totalAmount) : 0;
+  // Ví tạm ứng — số tiền còn thiếu nếu chọn WALLET (0 nếu đủ hoặc chưa chọn WALLET). Dùng
+  // `dueAmount` (sau chiết khấu), KHÔNG phải `totalAmount` (gross).
+  const walletShortfall = method === 'WALLET' && invoice ? Math.max(0, invoice.dueAmount - (wallet?.balance ?? 0)) : 0;
+  const walletCovered = method === 'WALLET' && invoice ? Math.min(wallet?.balance ?? 0, invoice.dueAmount) : 0;
 
   // Khôi phục "Lưu tạm" (F8) nếu có — nạp đúng 1 lần khi dữ liệu về, không ghi đè lúc người dùng đang gõ dở.
   useEffect(() => {
@@ -126,6 +160,21 @@ export function InvoiceDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [invoice?.id]);
 
+  // Chiết khấu — nạp lại đúng trạng thái đã lưu mỗi khi `discountMode` đổi (kể cả do CHÍNH lượt
+  // lưu vừa rồi của trang này) — không nạp lại theo mọi refetch khác (đổi phương thức thanh
+  // toán...) để không ghi đè lúc người dùng đang gõ dở ở phần chiết khấu. RIÊNG "Lý do" KHÔNG nạp
+  // sẵn từ `invoice.discountReason` (chốt theo yêu cầu trực tiếp) — mỗi lần sửa chiết khấu phải tự
+  // gõ lý do MỚI, tránh vô tình giữ nguyên lý do cũ không còn đúng cho lần sửa này.
+  useEffect(() => {
+    if (invoice) {
+      setDiscountEditMode(invoice.discountMode === 'NONE' ? null : invoice.discountMode);
+      setTotalDiscountType(invoice.discountType ?? 'PERCENT');
+      setTotalDiscountValue(invoice.discountValue ?? undefined);
+      setLineDiscounts(Object.fromEntries(invoice.lines.map((l) => [l.id, { type: l.discountType ?? 'PERCENT', value: l.discountValue ?? undefined }])));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [invoice?.id, invoice?.discountMode]);
+
   const payMutation = useMarkInvoicePaidMutation(encounterId);
   const payWithWalletMutation = usePayInvoiceWithWalletMutation(encounterId);
   const topUpAndPayMutation = useTopUpAndPayInvoiceWithWalletMutation(encounterId);
@@ -133,8 +182,65 @@ export function InvoiceDetailPage() {
   const draftMutation = useSaveInvoiceDraftMutation(encounterId);
   const printMutation = usePrintInvoiceMutation(encounterId);
   const refundMutation = useRefundInvoiceMutation(encounterId);
+  const discountMutation = useApplyInvoiceDiscountMutation(encounterId);
 
-  const changeAmount = method === 'CASH' && cashReceived !== undefined ? cashReceived - (invoice?.totalAmount ?? 0) : null;
+  /** Chiết khấu — tự lưu khi rời ô nhập (chốt qua AskUserQuestion), lý do dùng CHUNG bắt buộc. */
+  function requireDiscountReason(): string | null {
+    const trimmed = discountReason.trim();
+    if (!trimmed) {
+      setDiscountError('Nhập lý do trước khi lưu chiết khấu.');
+      return null;
+    }
+    setDiscountError(null);
+    return trimmed;
+  }
+
+  async function saveTotalDiscount() {
+    if (!invoice) return;
+    const hasValue = !!totalDiscountValue && totalDiscountValue > 0;
+    // Không có gì thay đổi thật (ô đang trống, phiếu vốn cũng chưa có chiết khấu) — bỏ qua êm,
+    // KHÔNG đòi lý do (tránh báo lỗi phiền khi người dùng chỉ lỡ bấm vào rồi rời ô ngay).
+    if (!hasValue && invoice.discountMode === 'NONE') return;
+    const reason = requireDiscountReason();
+    if (reason === null) return;
+    try {
+      if (!hasValue) {
+        await discountMutation.mutateAsync({ mode: 'NONE', reason, version: invoice.version });
+      } else {
+        await discountMutation.mutateAsync({ mode: 'TOTAL', discountType: totalDiscountType, discountValue: totalDiscountValue!, reason, version: invoice.version });
+      }
+    } catch (err) {
+      setDiscountError(err instanceof ApiError ? err.message : 'Có lỗi xảy ra, vui lòng thử lại.');
+    }
+  }
+
+  async function saveLineDiscounts() {
+    if (!invoice) return;
+    const lines = invoice.lines.map((l) => {
+      const draft = lineDiscounts[l.id];
+      const hasValue = !!draft?.value && draft.value > 0;
+      return { lineId: l.id, discountType: hasValue ? draft!.type : null, discountValue: hasValue ? draft!.value! : null };
+    });
+    const hasAny = lines.some((l) => l.discountType !== null);
+    if (!hasAny && invoice.discountMode === 'NONE') return;
+    const reason = requireDiscountReason();
+    if (reason === null) return;
+    try {
+      if (!hasAny) {
+        await discountMutation.mutateAsync({ mode: 'NONE', reason, version: invoice.version });
+      } else {
+        await discountMutation.mutateAsync({ mode: 'PER_LINE', lines, reason, version: invoice.version });
+      }
+    } catch (err) {
+      setDiscountError(err instanceof ApiError ? err.message : 'Có lỗi xảy ra, vui lòng thử lại.');
+    }
+  }
+
+  function updateLineDiscount(lineId: string, patch: Partial<{ type: DiscountType; value: number | undefined }>) {
+    setLineDiscounts((prev) => ({ ...prev, [lineId]: { type: prev[lineId]?.type ?? 'PERCENT', value: prev[lineId]?.value, ...patch } }));
+  }
+
+  const changeAmount = method === 'CASH' && cashReceived !== undefined ? cashReceived - (invoice?.dueAmount ?? 0) : null;
 
   async function handlePay() {
     if (!invoice) return;
@@ -309,15 +415,15 @@ export function InvoiceDetailPage() {
             {walletActive && wallet && (
               <div
                 className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 ${
-                  wallet.balance >= invoice.totalAmount ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'
+                  wallet.balance >= invoice.dueAmount ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'
                 }`}
               >
-                <Wallet size={16} weight="fill" className={wallet.balance >= invoice.totalAmount ? 'text-emerald-700' : 'text-amber-700'} aria-hidden="true" />
+                <Wallet size={16} weight="fill" className={wallet.balance >= invoice.dueAmount ? 'text-emerald-700' : 'text-amber-700'} aria-hidden="true" />
                 <div>
-                  <div className={`text-[10px] font-bold uppercase tracking-wide ${wallet.balance >= invoice.totalAmount ? 'text-emerald-700' : 'text-amber-700'}`}>
+                  <div className={`text-[10px] font-bold uppercase tracking-wide ${wallet.balance >= invoice.dueAmount ? 'text-emerald-700' : 'text-amber-700'}`}>
                     Số dư ví
                   </div>
-                  <div className={`text-[15px] font-bold leading-tight ${wallet.balance >= invoice.totalAmount ? 'text-emerald-700' : 'text-amber-700'}`}>
+                  <div className={`text-[15px] font-bold leading-tight ${wallet.balance >= invoice.dueAmount ? 'text-emerald-700' : 'text-amber-700'}`}>
                     {formatVnd(wallet.balance)}
                   </div>
                 </div>
@@ -343,28 +449,132 @@ export function InvoiceDetailPage() {
                     <th className="px-3 py-2.5 text-center">SL</th>
                     <th className="px-3 py-2.5 text-right">Đơn giá</th>
                     <th className="px-3 py-2.5 text-right">Thành tiền</th>
+                    {/* Cột "Chiết khấu" chỉ hiện khi đã chọn cách "Từng dịch vụ" ở khung bên phải. */}
+                    {discountEditMode === 'PER_LINE' && <th className="px-3 py-2.5 text-right">Chiết khấu</th>}
                   </tr>
                 </thead>
                 <tbody>
-                  {invoice.lines.map((line) => (
-                    <tr key={line.id} className="border-b border-slate-100 last:border-0">
-                      <td className="px-3 py-3 text-left">
-                        <div className="font-semibold text-slate-900">{line.examTypeName}</div>
-                        <div className="text-xs text-slate-500">{line.examTypeCode}</div>
-                      </td>
-                      <td className="px-3 py-3 text-center font-medium text-slate-700">{line.quantity}</td>
-                      <td className="px-3 py-3 text-right font-medium tabular-nums text-slate-700">{formatVnd(line.unitPrice)}</td>
-                      <td className="px-3 py-3 text-right font-bold tabular-nums text-slate-900">{formatVnd(line.lineTotal)}</td>
-                    </tr>
-                  ))}
+                  {invoice.lines.map((line) => {
+                    const draft = lineDiscounts[line.id];
+                    return (
+                      <tr key={line.id} className="border-b border-slate-100 last:border-0">
+                        <td className="px-3 py-3 text-left">
+                          <div className="font-semibold text-slate-900">{line.examTypeName}</div>
+                          <div className="text-xs text-slate-500">{line.examTypeCode}</div>
+                        </td>
+                        <td className="px-3 py-3 text-center font-medium text-slate-700">{line.quantity}</td>
+                        <td className="px-3 py-3 text-right font-medium tabular-nums text-slate-700">{formatVnd(line.unitPrice)}</td>
+                        <td className="px-3 py-3 text-right font-bold tabular-nums text-slate-900">{formatVnd(line.lineTotal)}</td>
+                        {discountEditMode === 'PER_LINE' && (
+                          <td className="px-3 py-3">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <input
+                                type="number"
+                                min={1}
+                                max={draft?.type === 'PERCENT' ? 100 : undefined}
+                                disabled={discountMutation.isPending}
+                                value={draft?.value ?? ''}
+                                onChange={(e) => updateLineDiscount(line.id, { value: e.target.value === '' ? undefined : Number(e.target.value) })}
+                                onBlur={() => void saveLineDiscounts()}
+                                placeholder="0"
+                                className="w-20 rounded-md border-2 border-slate-300 px-2 py-1.5 text-right text-sm font-bold text-slate-900 focus:border-blue-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-300"
+                              />
+                              {/* Mặc định %, giống khung tổng — "không chiết khấu dòng này" chỉ cần
+                                  để trống ô số, không cần bỏ chọn kiểu (chốt theo yêu cầu trực tiếp). */}
+                              <TwoOptionToggle
+                                options={DISCOUNT_TYPE_OPTIONS}
+                                value={draft?.type ?? 'PERCENT'}
+                                disabled={discountMutation.isPending}
+                                onChange={(next) => {
+                                  if (next !== null) updateLineDiscount(line.id, { type: next });
+                                }}
+                              />
+                            </div>
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
 
             <div className="flex flex-col gap-3.5 rounded-lg border border-slate-200 bg-white p-4">
-              <div className="flex items-baseline justify-between border-b border-dashed border-slate-200 pb-3">
-                <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Cần thu</span>
-                <span className="text-2xl font-bold tabular-nums text-slate-900">{formatVnd(invoice.totalAmount)}</span>
+              <div className="flex flex-col gap-1.5 border-b border-dashed border-slate-200 pb-3">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Tạm tính</span>
+                  <span className="text-sm font-bold tabular-nums text-slate-700">{formatVnd(invoice.totalAmount)}</span>
+                </div>
+
+                {/* Chiết khấu — mặc định chỉ hiện 2 lựa chọn cách làm, chọn 1 trong 2 mới hiện ô
+                    nhập tương ứng (chốt theo yêu cầu trực tiếp). "Từng dịch vụ" nhập ở bảng bên
+                    trái; "Toàn hoá đơn" nhập ngay tại đây, tự lưu khi rời ô. */}
+                {invoice.status === 'UNPAID' && (
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Chiết khấu</span>
+                      <TwoOptionToggle options={DISCOUNT_MODE_OPTIONS} value={discountEditMode} disabled={discountMutation.isPending} onChange={setDiscountEditMode} />
+                    </div>
+                    {discountEditMode === 'TOTAL' && (
+                      <div className="flex items-center justify-end gap-1.5">
+                        <input
+                          type="number"
+                          min={1}
+                          max={totalDiscountType === 'PERCENT' ? 100 : undefined}
+                          disabled={discountMutation.isPending}
+                          value={totalDiscountValue ?? ''}
+                          onChange={(e) => setTotalDiscountValue(e.target.value === '' ? undefined : Number(e.target.value))}
+                          onBlur={() => void saveTotalDiscount()}
+                          placeholder="0"
+                          className="w-20 rounded-md border-2 border-slate-300 px-2 py-1.5 text-right text-sm font-bold text-slate-900 focus:border-blue-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-300"
+                        />
+                        {/* Luôn có 1 kiểu đang chọn (bỏ chiết khấu = xoá Ô GIÁ TRỊ, không phải bỏ
+                            chọn kiểu) — bấm lại đúng kiểu đang chọn không làm gì. */}
+                        <TwoOptionToggle
+                          options={DISCOUNT_TYPE_OPTIONS}
+                          value={totalDiscountType}
+                          disabled={discountMutation.isPending}
+                          onChange={(next) => {
+                            if (next !== null) setTotalDiscountType(next);
+                          }}
+                        />
+                      </div>
+                    )}
+                    {discountEditMode === 'PER_LINE' && <p className="text-[11px] text-slate-500">Nhập trực tiếp ở cột "Chiết khấu" trong bảng dịch vụ bên trái.</p>}
+                  </div>
+                )}
+
+                {/* Dòng số tiền chiết khấu — chỉ hiện khi thật sự có áp dụng (discountAmount > 0). */}
+                {invoice.discountAmount > 0 && (
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wide text-emerald-700">
+                      Đã chiết khấu{invoice.discountMode === 'TOTAL' && invoice.discountType === 'PERCENT' ? ` (${invoice.discountValue}%)` : ''}
+                    </span>
+                    <span className="text-sm font-bold tabular-nums text-emerald-700">-{formatVnd(invoice.discountAmount)}</span>
+                  </div>
+                )}
+
+                {invoice.status === 'UNPAID' && (
+                  <div className="flex flex-col gap-1">
+                    <label htmlFor="discount-reason" className="text-sm font-semibold text-slate-800">
+                      Lý do chiết khấu
+                    </label>
+                    <input
+                      id="discount-reason"
+                      type="text"
+                      value={discountReason}
+                      onChange={(e) => setDiscountReason(e.target.value)}
+                      placeholder="Bắt buộc trước khi lưu chiết khấu"
+                      className="rounded-md border border-slate-300 px-3 py-2 text-[14px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    />
+                    {discountError && <p className="text-xs font-semibold text-rose-600">{discountError}</p>}
+                  </div>
+                )}
+
+                <div className="flex items-baseline justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Cần thu</span>
+                  <span className="text-2xl font-bold tabular-nums text-slate-900">{formatVnd(invoice.dueAmount)}</span>
+                </div>
               </div>
 
               {invoice.status === 'UNPAID' ? (
@@ -411,6 +621,17 @@ export function InvoiceDetailPage() {
                         onChange={setCashReceived}
                         className="rounded-md border-2 border-slate-300 px-3 py-2 text-right text-base font-bold text-slate-900 focus:border-blue-500 focus:outline-none"
                       />
+                      {/* Pill mệnh giá — bấm cộng dồn vào ô trên (chốt qua AskUserQuestion), cộng nút "Vừa đủ" tự điền đúng dueAmount. */}
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <CashTenderPills value={cashReceived ?? 0} onChange={setCashReceived} />
+                        <button
+                          type="button"
+                          onClick={() => setCashReceived(invoice.dueAmount)}
+                          className="rounded-full border-2 border-brand-teal bg-brand-teal-tint px-2.5 py-1 text-xs font-bold text-brand-teal hover:bg-brand-teal hover:text-white"
+                        >
+                          Vừa đủ
+                        </button>
+                      </div>
                       {changeAmount !== null && changeAmount >= 0 && (
                         <div className="flex items-baseline justify-between rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2">
                           <span className="text-xs font-bold text-emerald-700">Tiền trả lại</span>
@@ -430,8 +651,8 @@ export function InvoiceDetailPage() {
                       </div>
                       <div className="flex flex-col gap-1 text-xs">
                         <div className="flex justify-between text-slate-700">
-                          <span>Phí dịch vụ</span>
-                          <span className="tabular-nums">{formatVnd(invoice.totalAmount)}</span>
+                          <span>Cần thu</span>
+                          <span className="tabular-nums">{formatVnd(invoice.dueAmount)}</span>
                         </div>
                         <div className="flex justify-between text-slate-700">
                           <span>Số dư ví</span>
@@ -468,6 +689,30 @@ export function InvoiceDetailPage() {
                             </span>
                             <span className="text-[15px] font-bold tabular-nums">{formatVnd(Math.ceil((walletShortfall + 1) / 1_000_000) * 1_000_000)}</span>
                           </button>
+                          {/* "Nhập số khác" — gõ tay 1 mức tuỳ ý (khác 2 gợi ý cố định ở trên), chủ dự án yêu cầu trực tiếp. */}
+                          {customTopUpOpen ? (
+                            <div className="flex items-center gap-1.5">
+                              <MoneyInput
+                                id="invoice-custom-topup"
+                                value={customTopUpAmount}
+                                onChange={setCustomTopUpAmount}
+                                className="min-w-0 flex-1 rounded-md border-2 border-amber-300 bg-white px-2.5 py-2 text-right text-sm font-bold text-amber-900 focus:border-amber-500 focus:outline-none"
+                              />
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                className="shrink-0 px-2.5 py-2 text-xs"
+                                disabled={!customTopUpAmount || customTopUpAmount <= 0}
+                                onClick={() => setQuickTopUpAmount(customTopUpAmount!)}
+                              >
+                                Nạp
+                              </Button>
+                            </div>
+                          ) : (
+                            <button type="button" onClick={() => setCustomTopUpOpen(true)} className="self-start text-xs font-semibold text-amber-800 underline hover:text-amber-900">
+                              Nhập số khác
+                            </button>
+                          )}
                         </div>
                       )}
 
@@ -539,7 +784,7 @@ export function InvoiceDetailPage() {
                   {/* #085 — REFUNDED: hiện thêm vết hoàn tiền, KHÔNG còn "Đánh dấu chưa thu" (đã đóng sổ). */}
                   {invoice.status === 'REFUNDED' && (
                     <p className="rounded-md border border-violet-200 bg-violet-50 px-3 py-2.5 text-[13px] text-violet-800">
-                      Đã hoàn {formatVnd(invoice.totalAmount)}
+                      Đã hoàn {formatVnd(invoice.dueAmount)}
                       {invoice.refundedAt && <> · {formatDateTime(invoice.refundedAt)}</>}
                       {invoice.refundReason && (
                         <>
@@ -627,7 +872,7 @@ export function InvoiceDetailPage() {
                   <ArrowCounterClockwise size={16} weight="bold" aria-hidden="true" />
                 </div>
                 <p className="text-xs leading-snug text-slate-700">
-                  Trả lại <span className="text-sm font-bold text-slate-900">{formatVnd(invoice.totalAmount)}</span> cho khách.
+                  Trả lại <span className="text-sm font-bold text-slate-900">{formatVnd(invoice.dueAmount)}</span> cho khách.
                 </p>
               </div>
 
@@ -673,7 +918,7 @@ export function InvoiceDetailPage() {
               </div>
               <p className="text-xs leading-snug text-slate-700">
                 Nạp <span className="text-sm font-bold text-slate-900">{formatVnd(quickTopUpAmount)}</span> vào ví, thu đủ{' '}
-                <span className="text-sm font-bold text-slate-900">{formatVnd(invoice.totalAmount)}</span> cho phiếu {invoice.invoiceNo}.
+                <span className="text-sm font-bold text-slate-900">{formatVnd(invoice.dueAmount)}</span> cho phiếu {invoice.invoiceNo}.
               </p>
             </div>
 
@@ -687,7 +932,11 @@ export function InvoiceDetailPage() {
                 loading={topUpAndPayMutation.isPending}
                 onClick={async () => {
                   const ok = await handlePayWithWallet(quickTopUpAmount);
-                  if (ok) setQuickTopUpAmount(null);
+                  if (ok) {
+                    setQuickTopUpAmount(null);
+                    setCustomTopUpOpen(false);
+                    setCustomTopUpAmount(undefined);
+                  }
                 }}
               >
                 Xác nhận nạp &amp; thu

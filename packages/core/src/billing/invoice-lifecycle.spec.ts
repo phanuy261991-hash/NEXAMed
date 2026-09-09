@@ -54,7 +54,7 @@ describe('canRefundInvoice', () => {
 });
 
 describe('computeDailyBillingTotals', () => {
-  const make = (status: InvoiceLifecycleStatus, totalAmount: number) => ({ status, totalAmount });
+  const make = (status: InvoiceLifecycleStatus, dueAmount: number) => ({ status, dueAmount });
 
   it('danh sách rỗng → mọi số 0', () => {
     expect(computeDailyBillingTotals([])).toEqual({

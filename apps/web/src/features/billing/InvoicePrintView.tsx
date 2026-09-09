@@ -61,6 +61,8 @@ export function InvoicePrintView({
         </p>
       </div>
 
+      {/* Chiết khấu — cột "Chiết khấu" CHỈ hiện khi mode PER_LINE (từng dòng có mức riêng), ẩn hẳn
+          cho mọi phiếu không dùng tính năng này (giữ nguyên bố cục cũ). */}
       <table className="mt-6 w-full border-collapse text-sm">
         <thead>
           <tr className="border-b-2 border-slate-800 text-left">
@@ -69,6 +71,7 @@ export function InvoicePrintView({
             <th className="w-16 py-1.5 text-center">SL</th>
             <th className="w-24 py-1.5 text-right">Đơn giá</th>
             <th className="w-28 py-1.5 text-right">Thành tiền</th>
+            {invoice.discountMode === 'PER_LINE' && <th className="w-24 py-1.5 text-right">Chiết khấu</th>}
           </tr>
         </thead>
         <tbody>
@@ -79,13 +82,21 @@ export function InvoicePrintView({
               <td className="py-1.5 text-center">{line.quantity}</td>
               <td className="py-1.5 text-right">{formatVnd(line.unitPrice)}</td>
               <td className="py-1.5 text-right">{formatVnd(line.lineTotal)}</td>
+              {invoice.discountMode === 'PER_LINE' && <td className="py-1.5 text-right">{line.discountAmount > 0 ? `-${formatVnd(line.discountAmount)}` : '—'}</td>}
             </tr>
           ))}
         </tbody>
       </table>
 
-      <div className="mt-3 flex justify-end border-t-2 border-slate-800 pt-2 text-base font-bold">
-        <span>Tổng cộng: {formatVnd(invoice.totalAmount)}</span>
+      <div className="mt-3 flex flex-col items-end gap-1 border-t-2 border-slate-800 pt-2 text-sm">
+        <span>Tạm tính: {formatVnd(invoice.totalAmount)}</span>
+        {/* Chiết khấu — chỉ hiện khi thật sự có áp dụng. */}
+        {invoice.discountAmount > 0 && (
+          <span>
+            Chiết khấu{invoice.discountMode === 'TOTAL' && invoice.discountType === 'PERCENT' ? ` (${invoice.discountValue}%)` : ''}: -{formatVnd(invoice.discountAmount)}
+          </span>
+        )}
+        <span className="text-base font-bold">Cần thu: {formatVnd(invoice.dueAmount)}</span>
       </div>
 
       <p className="mt-2 text-sm">Phương thức: <strong>{paymentMethodLabel}</strong></p>

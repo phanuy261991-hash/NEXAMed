@@ -5714,6 +5714,8 @@ export interface paths {
                                     departmentId: string;
                                     departmentName: string;
                                     totalAmount: number;
+                                    discountAmount: number;
+                                    dueAmount: number;
                                     /** @enum {string} */
                                     status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                     paymentMethod: string | null;
@@ -5817,7 +5819,19 @@ export interface paths {
                                     unitPrice: number;
                                     quantity: number;
                                     lineTotal: number;
+                                    /** @enum {string|null} */
+                                    discountType: "PERCENT" | "AMOUNT" | null;
+                                    discountValue: number | null;
+                                    discountAmount: number;
                                 }[];
+                                /** @enum {string} */
+                                discountMode: "NONE" | "TOTAL" | "PER_LINE";
+                                /** @enum {string|null} */
+                                discountType: "PERCENT" | "AMOUNT" | null;
+                                discountValue: number | null;
+                                discountReason: string | null;
+                                discountAmount: number;
+                                dueAmount: number;
                                 encounterNo: string;
                                 checkedInAt: string;
                                 /** Format: uuid */
@@ -5939,7 +5953,19 @@ export interface paths {
                                     unitPrice: number;
                                     quantity: number;
                                     lineTotal: number;
+                                    /** @enum {string|null} */
+                                    discountType: "PERCENT" | "AMOUNT" | null;
+                                    discountValue: number | null;
+                                    discountAmount: number;
                                 }[];
+                                /** @enum {string} */
+                                discountMode: "NONE" | "TOTAL" | "PER_LINE";
+                                /** @enum {string|null} */
+                                discountType: "PERCENT" | "AMOUNT" | null;
+                                discountValue: number | null;
+                                discountReason: string | null;
+                                discountAmount: number;
+                                dueAmount: number;
                                 encounterNo: string;
                                 checkedInAt: string;
                                 /** Format: uuid */
@@ -6089,7 +6115,19 @@ export interface paths {
                                     unitPrice: number;
                                     quantity: number;
                                     lineTotal: number;
+                                    /** @enum {string|null} */
+                                    discountType: "PERCENT" | "AMOUNT" | null;
+                                    discountValue: number | null;
+                                    discountAmount: number;
                                 }[];
+                                /** @enum {string} */
+                                discountMode: "NONE" | "TOTAL" | "PER_LINE";
+                                /** @enum {string|null} */
+                                discountType: "PERCENT" | "AMOUNT" | null;
+                                discountValue: number | null;
+                                discountReason: string | null;
+                                discountAmount: number;
+                                dueAmount: number;
                                 encounterNo: string;
                                 checkedInAt: string;
                                 /** Format: uuid */
@@ -6254,7 +6292,19 @@ export interface paths {
                                     unitPrice: number;
                                     quantity: number;
                                     lineTotal: number;
+                                    /** @enum {string|null} */
+                                    discountType: "PERCENT" | "AMOUNT" | null;
+                                    discountValue: number | null;
+                                    discountAmount: number;
                                 }[];
+                                /** @enum {string} */
+                                discountMode: "NONE" | "TOTAL" | "PER_LINE";
+                                /** @enum {string|null} */
+                                discountType: "PERCENT" | "AMOUNT" | null;
+                                discountValue: number | null;
+                                discountReason: string | null;
+                                discountAmount: number;
+                                dueAmount: number;
                                 encounterNo: string;
                                 checkedInAt: string;
                                 /** Format: uuid */
@@ -6420,7 +6470,19 @@ export interface paths {
                                     unitPrice: number;
                                     quantity: number;
                                     lineTotal: number;
+                                    /** @enum {string|null} */
+                                    discountType: "PERCENT" | "AMOUNT" | null;
+                                    discountValue: number | null;
+                                    discountAmount: number;
                                 }[];
+                                /** @enum {string} */
+                                discountMode: "NONE" | "TOTAL" | "PER_LINE";
+                                /** @enum {string|null} */
+                                discountType: "PERCENT" | "AMOUNT" | null;
+                                discountValue: number | null;
+                                discountReason: string | null;
+                                discountAmount: number;
+                                dueAmount: number;
                                 encounterNo: string;
                                 checkedInAt: string;
                                 /** Format: uuid */
@@ -6563,7 +6625,19 @@ export interface paths {
                                     unitPrice: number;
                                     quantity: number;
                                     lineTotal: number;
+                                    /** @enum {string|null} */
+                                    discountType: "PERCENT" | "AMOUNT" | null;
+                                    discountValue: number | null;
+                                    discountAmount: number;
                                 }[];
+                                /** @enum {string} */
+                                discountMode: "NONE" | "TOTAL" | "PER_LINE";
+                                /** @enum {string|null} */
+                                discountType: "PERCENT" | "AMOUNT" | null;
+                                discountValue: number | null;
+                                discountReason: string | null;
+                                discountAmount: number;
+                                dueAmount: number;
                                 encounterNo: string;
                                 checkedInAt: string;
                                 /** Format: uuid */
@@ -6698,7 +6772,19 @@ export interface paths {
                                     unitPrice: number;
                                     quantity: number;
                                     lineTotal: number;
+                                    /** @enum {string|null} */
+                                    discountType: "PERCENT" | "AMOUNT" | null;
+                                    discountValue: number | null;
+                                    discountAmount: number;
                                 }[];
+                                /** @enum {string} */
+                                discountMode: "NONE" | "TOTAL" | "PER_LINE";
+                                /** @enum {string|null} */
+                                discountType: "PERCENT" | "AMOUNT" | null;
+                                discountValue: number | null;
+                                discountReason: string | null;
+                                discountAmount: number;
+                                dueAmount: number;
                                 encounterNo: string;
                                 checkedInAt: string;
                                 /** Format: uuid */
@@ -6867,7 +6953,19 @@ export interface paths {
                                     unitPrice: number;
                                     quantity: number;
                                     lineTotal: number;
+                                    /** @enum {string|null} */
+                                    discountType: "PERCENT" | "AMOUNT" | null;
+                                    discountValue: number | null;
+                                    discountAmount: number;
                                 }[];
+                                /** @enum {string} */
+                                discountMode: "NONE" | "TOTAL" | "PER_LINE";
+                                /** @enum {string|null} */
+                                discountType: "PERCENT" | "AMOUNT" | null;
+                                discountValue: number | null;
+                                discountReason: string | null;
+                                discountAmount: number;
+                                dueAmount: number;
                                 encounterNo: string;
                                 checkedInAt: string;
                                 /** Format: uuid */
@@ -6956,6 +7054,205 @@ export interface paths {
                     };
                 };
                 /** @description version không khớp, phiếu đã thu/đã đóng sổ, hoặc ví đã khoá (WALLET_CLOSED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/invoices/{encounterId}/discount": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Chiết khấu (Toàn hoá đơn hoặc Từng dịch vụ) — chỉ sửa được khi phiếu còn UNPAID, bắt buộc lý do, cùng quyền invoice.update như "pay" */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    encounterId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        mode: "NONE";
+                        reason: string;
+                        version: number;
+                    } | {
+                        /** @enum {string} */
+                        mode: "TOTAL";
+                        /** @enum {string} */
+                        discountType: "PERCENT" | "AMOUNT";
+                        discountValue: number;
+                        reason: string;
+                        version: number;
+                    } | {
+                        /** @enum {string} */
+                        mode: "PER_LINE";
+                        lines: {
+                            /** Format: uuid */
+                            lineId: string;
+                            /** @enum {string|null} */
+                            discountType: "PERCENT" | "AMOUNT" | null;
+                            discountValue: number | null;
+                        }[];
+                        reason: string;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                encounterId: string;
+                                invoiceNo: string;
+                                /** @enum {string} */
+                                status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
+                                totalAmount: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    examTypeCode: string;
+                                    examTypeName: string;
+                                    priceTypeCode: string | null;
+                                    unitCode: string | null;
+                                    unitPrice: number;
+                                    quantity: number;
+                                    lineTotal: number;
+                                    /** @enum {string|null} */
+                                    discountType: "PERCENT" | "AMOUNT" | null;
+                                    discountValue: number | null;
+                                    discountAmount: number;
+                                }[];
+                                /** @enum {string} */
+                                discountMode: "NONE" | "TOTAL" | "PER_LINE";
+                                /** @enum {string|null} */
+                                discountType: "PERCENT" | "AMOUNT" | null;
+                                discountValue: number | null;
+                                discountReason: string | null;
+                                discountAmount: number;
+                                dueAmount: number;
+                                encounterNo: string;
+                                checkedInAt: string;
+                                /** Format: uuid */
+                                patientId: string;
+                                patientCode: string;
+                                fullName: string;
+                                departmentName: string;
+                                encounterVersion: number;
+                                printedAt: string | null;
+                                pendingPaymentMethod: string | null;
+                                pendingCashReceivedAmount: number | null;
+                                paymentMethod: string | null;
+                                paidAt: string | null;
+                                payments: {
+                                    method: string;
+                                    amount: number;
+                                }[];
+                                encounterCancelled: boolean;
+                                needsRefund: boolean;
+                                refundedAt: string | null;
+                                refundReason: string | null;
+                                version: number;
+                            } | null;
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu lý do, % vượt quá 100, hoặc thân request không khớp mode */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền invoice.update */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có phiếu thu cho lượt khám này */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION) hoặc phiếu không còn UNPAID (INVOICE_DISCOUNT_NOT_ALLOWED) */
                 409: {
                     headers: {
                         [name: string]: unknown;

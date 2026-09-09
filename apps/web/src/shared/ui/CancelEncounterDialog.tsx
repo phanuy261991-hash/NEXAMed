@@ -69,7 +69,7 @@ export function CancelEncounterDialog({
                 <Warning size={16} weight="fill" aria-hidden="true" />
               </div>
               <p className="text-xs leading-snug text-slate-700">
-                Lượt khám này đã thu <span className="text-sm font-bold text-slate-900">{formatVnd(invoiceQuery.data!.totalAmount)}</span> — huỷ xong
+                Lượt khám này đã thu <span className="text-sm font-bold text-slate-900">{formatVnd(invoiceQuery.data!.dueAmount)}</span> — huỷ xong
                 cần hoàn tiền riêng ở Thu ngân.
               </p>
             </div>

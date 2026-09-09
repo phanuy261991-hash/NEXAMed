@@ -72,7 +72,7 @@ export function MyShiftVouchersDialog({ shift, onClose }: { shift: CashierShiftD
         kindLabel: 'Khám bệnh',
         label: item.fullName,
         subLabel: `${item.patientCode} · ${item.encounterNo}`,
-        amount: item.totalAmount,
+        amount: item.dueAmount,
         positive: item.status !== 'REFUNDED',
         statusLabel: item.status === 'REFUNDED' ? 'Đã hoàn tiền' : 'Đã thu',
         statusTone: item.status === 'REFUNDED' ? 'accent' : 'success',

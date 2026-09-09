@@ -1,4 +1,5 @@
 import type {
+  ApplyInvoiceDiscountRequest,
   Invoice,
   InvoiceResponse,
   ListBillingInvoicesResponse,
@@ -63,5 +64,12 @@ export async function saveInvoiceDraft(encounterId: string, body: SaveInvoiceDra
 export async function printInvoice(encounterId: string): Promise<Invoice> {
   return unwrap(
     await getApiClient().POST('/api/v1/billing/invoices/{encounterId}/print', { params: { path: { encounterId } } }),
+  ) as Invoice;
+}
+
+/** Chiết khấu (Toàn hoá đơn/Từng dịch vụ) — chỉ khi phiếu còn UNPAID, bắt buộc lý do. */
+export async function applyInvoiceDiscount(encounterId: string, body: ApplyInvoiceDiscountRequest): Promise<Invoice> {
+  return unwrap(
+    await getApiClient().POST('/api/v1/billing/invoices/{encounterId}/discount', { params: { path: { encounterId } }, body }),
   ) as Invoice;
 }

@@ -55,7 +55,9 @@ export function needsRefund(params: { invoiceStatus: InvoiceLifecycleStatus; enc
 
 export interface DailyBillingTotalsInput {
   status: InvoiceLifecycleStatus;
-  totalAmount: number;
+  /** Số tiền THẬT thu/hoàn/còn chờ thu — SAU chiết khấu (`computeInvoiceDiscount().dueAmount` ở
+   * `billing/invoice-discount.ts`), KHÔNG phải `invoice.totalAmount` (gross, trước chiết khấu). */
+  dueAmount: number;
 }
 
 export interface DailyBillingTotals {
@@ -93,17 +95,17 @@ export function computeDailyBillingTotals(invoices: readonly DailyBillingTotalsI
     switch (invoice.status) {
       case 'PAID':
         totals.paidCount += 1;
-        totals.paidTotalAmount += invoice.totalAmount;
+        totals.paidTotalAmount += invoice.dueAmount;
         break;
       case 'REFUNDED':
         totals.paidCount += 1;
-        totals.paidTotalAmount += invoice.totalAmount;
+        totals.paidTotalAmount += invoice.dueAmount;
         totals.refundedCount += 1;
-        totals.refundedTotalAmount += invoice.totalAmount;
+        totals.refundedTotalAmount += invoice.dueAmount;
         break;
       case 'UNPAID':
         totals.unpaidCount += 1;
-        totals.unpaidTotalAmount += invoice.totalAmount;
+        totals.unpaidTotalAmount += invoice.dueAmount;
         break;
       case 'CANCELLED':
         break;

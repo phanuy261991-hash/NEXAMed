@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { EncounterServiceItem, EncounterStatus, Invoice, InvoiceLine, Payment, Prisma } from '@prisma/client';
 import { computeInvoiceFromServiceItems, type ServiceItemForInvoice } from '@nexamed/core';
+import type { ApplyInvoiceDiscountRequest } from '@nexamed/shared';
 import { BusinessCodeService } from '../clinic/business-code.service';
 
 interface EncounterContext {
@@ -33,11 +34,21 @@ export interface InvoiceWithLines extends Invoice, PaymentSides {
   encounter: EncounterContext;
 }
 
+/** Field tối thiểu để tính `dueAmount` (chiết khấu "Từng dịch vụ") — không cần đủ `InvoiceLine`. */
+interface LineDiscountFields {
+  lineTotal: bigint;
+  discountType: Invoice['discountType'];
+  discountValue: bigint | null;
+}
+
 export interface BillingListRow extends PaymentSides {
   id: string;
   invoiceNo: string;
   status: Invoice['status'];
   totalAmount: bigint;
+  discountType: Invoice['discountType'];
+  discountValue: bigint | null;
+  lines: LineDiscountFields[];
   printedAt: Date | null;
   encounter: EncounterContext;
 }
@@ -51,6 +62,12 @@ const ACTIVE_PAYMENT_INCLUDE = {
   // Tie-break `createdAt asc` — trả hỗn hợp (Ví tạm ứng) tạo 2 dòng CÙNG `paidAt` (cùng 1 lệnh
   // `createMany`), cần thứ tự ổn định (dòng WALLET trước, dòng còn lại sau) để hiển thị nhất quán.
   payments: { where: { deletedAt: null }, orderBy: [{ paidAt: 'desc' as const }, { createdAt: 'asc' as const }] },
+} satisfies Prisma.InvoiceInclude;
+
+/** Chỉ đủ field tính `dueAmount` (chiết khấu "Từng dịch vụ") cho danh sách/tổng kết ngày — không
+ * cần đủ `InvoiceLine` như `findByEncounterId()` (tránh tải dư dữ liệu cho N phiếu/ngày). */
+const LINE_DISCOUNT_INCLUDE = {
+  lines: { where: { deletedAt: null }, select: { lineTotal: true, discountType: true, discountValue: true } },
 } satisfies Prisma.InvoiceInclude;
 
 /** Bối cảnh lượt khám/bệnh nhân — dùng chung cho cả chi tiết 1 phiếu thu lẫn danh sách trong ngày. */
@@ -168,7 +185,7 @@ export class InvoiceRepository {
     return tx.invoice
       .findMany({
         where: { tenantId, deletedAt: null, encounter: { checkedInAt: { gte: dayStart, lt: dayEnd } } },
-        include: { ...ENCOUNTER_CONTEXT_INCLUDE, ...ACTIVE_PAYMENT_INCLUDE },
+        include: { ...ENCOUNTER_CONTEXT_INCLUDE, ...ACTIVE_PAYMENT_INCLUDE, ...LINE_DISCOUNT_INCLUDE },
         orderBy: { encounter: { checkedInAt: 'asc' } },
       })
       .then((rows) => rows.map((row) => ({ ...row, ...toPaymentSides(row.payments) })));
@@ -263,6 +280,50 @@ export class InvoiceRepository {
         },
       })
       .then((r) => r.count);
+  }
+
+  /**
+   * Chiết khấu (chốt qua `AskUserQuestion`) — `WHERE version=? AND status='UNPAID'` (đúng khuôn
+   * `saveDraft`, chỉ sửa được khi phiếu chưa thu). 2 cách "Toàn hoá đơn"/"Từng dịch vụ" loại trừ
+   * lẫn nhau — LUÔN xoá sạch phía không dùng ở cả invoice lẫn MỌI dòng, tránh dữ liệu chiết khấu cũ
+   * còn sót lại từ lần áp trước theo cách khác (ví dụ đổi từ PER_LINE sang TOTAL).
+   */
+  async applyDiscount(tx: Prisma.TransactionClient, tenantId: string, id: string, expectedVersion: number, actorId: string, dto: ApplyInvoiceDiscountRequest): Promise<number> {
+    const invoiceDiscount =
+      dto.mode === 'TOTAL' ? { discountType: dto.discountType, discountValue: BigInt(dto.discountValue) } : { discountType: null, discountValue: null };
+
+    const count = await tx.invoice
+      .updateMany({
+        where: { tenantId, id, version: expectedVersion, deletedAt: null, status: 'UNPAID' },
+        data: { ...invoiceDiscount, discountReason: dto.reason, updatedBy: actorId, version: { increment: 1 } },
+      })
+      .then((r) => r.count);
+    if (count === 0) {
+      return 0;
+    }
+
+    // Luôn xoá sạch chiết khấu MỌI dòng trước — mode NONE/TOTAL không dùng dòng nào; mode PER_LINE
+    // xoá rồi set lại đúng những dòng client gửi (dòng không gửi hoặc discountType=null giữ null).
+    await tx.invoiceLine.updateMany({
+      where: { tenantId, invoiceId: id, deletedAt: null },
+      data: { discountType: null, discountValue: null, updatedBy: actorId, version: { increment: 1 } },
+    });
+
+    if (dto.mode === 'PER_LINE') {
+      // Phòng vệ: `discountValue` vẫn nullable ở schema kể cả khi `discountType` đã chọn (client có
+      // thể gửi dòng "đang chọn kiểu nhưng chưa gõ số" — trạng thái dở dang, không phải lỗi input).
+      // Coi dòng đó như KHÔNG chiết khấu (giữ `discountType: null` đã xoá sạch ở trên) thay vì
+      // `BigInt(null)` — ném `TypeError` không bắt được, sập 500 (bug thật gặp lúc kiểm tay).
+      for (const line of dto.lines) {
+        if (line.discountType === null || line.discountValue === null) continue;
+        await tx.invoiceLine.updateMany({
+          where: { tenantId, invoiceId: id, id: line.lineId, deletedAt: null },
+          data: { discountType: line.discountType, discountValue: BigInt(line.discountValue), updatedBy: actorId, version: { increment: 1 } },
+        });
+      }
+    }
+
+    return count;
   }
 
   /** Idempotent — chỉ set lần đầu (`WHERE printed_at IS NULL`), cùng khuôn `PrescriptionRepository.markPrintedIfNotYet()`. */

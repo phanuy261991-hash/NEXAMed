@@ -47,3 +47,16 @@ export class InvoiceNotRefundableError extends DomainError {
     super('Chỉ hoàn tiền được cho phiếu thu đã thu tiền của lượt khám đã huỷ.');
   }
 }
+
+/**
+ * Chiết khấu — chỉ sửa được khi phiếu còn `UNPAID` (chốt qua `AskUserQuestion`: muốn đổi chiết
+ * khấu của phiếu đã thu phải "Đánh dấu chưa thu" trước, không sửa trực tiếp trên phiếu đã PAID —
+ * tránh phải tính lại chênh lệch thu thêm/hoàn lại, ngoài phạm vi "Thu ngân cơ bản" v1).
+ */
+export class InvoiceDiscountNotAllowedError extends DomainError {
+  readonly code = 'INVOICE_DISCOUNT_NOT_ALLOWED';
+
+  constructor() {
+    super('Chỉ chỉnh chiết khấu khi phiếu đang ở trạng thái chờ thu.');
+  }
+}

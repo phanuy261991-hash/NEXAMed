@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { Minus, Plus } from '@phosphor-icons/react';
 import { formatVnd } from '../format/currency';
 
-/** Mệnh giá tiền giấy VNĐ đang lưu hành, từ lớn tới nhỏ. */
-const DENOMINATIONS = [500_000, 200_000, 100_000, 50_000, 20_000, 10_000, 5_000, 2_000, 1_000];
+/** Mệnh giá tiền giấy VNĐ đang lưu hành, từ lớn tới nhỏ — dùng chung với `CashTenderPills.tsx`. */
+export const DENOMINATIONS = [500_000, 200_000, 100_000, 50_000, 20_000, 10_000, 5_000, 2_000, 1_000];
 
 /**
  * "Máy tính mệnh giá" — bảng đếm tiền mặt theo từng tờ, tự cộng tổng (mockup "Chốt ca" duyệt

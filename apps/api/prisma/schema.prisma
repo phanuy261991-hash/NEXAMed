@@ -1547,6 +1547,19 @@ enum PaymentType {
   @@map("payment_type")
 }
 
+// Chiết khấu trên phiếu thu (chốt qua AskUserQuestion — xem invoice-discount.ts ở @nexamed/core).
+// PERCENT: discountValue là % nguyên 0-100. AMOUNT: discountValue là số tiền đồng, <= giá trị gốc
+// (invoice.totalAmount hoặc invoice_line.line_total tương ứng).
+enum DiscountType {
+  PERCENT
+  AMOUNT
+
+  // Tên khác cột `discount_type` (Invoice/InvoiceLine) để tránh trùng tên type/column trong cùng
+  // schema dù Postgres cho phép (2 namespace khác nhau) — theo đúng quy ước `payment_type`/
+  // `cash_account_type` (tên enum luôn khác tên cột lưu nó).
+  @@map("invoice_discount_type")
+}
+
 // Phiếu thu (Sprint 5/6, Thu ngân cơ bản, BIL-01→04) — .claude/docs/clinical-workflow.md mục
 // "Tiếp nhận": ĐÚNG 1 phiếu thu/lượt khám, tự động tạo trong CÙNG transaction với check-in/tiếp
 // nhận trực tiếp (ReceptionService), snapshot từ EncounterServiceItem có giá tại thời điểm đó —
@@ -1580,6 +1593,16 @@ model Invoice {
   // qua UI, chủ dự án yêu cầu trực tiếp 2026-08-27).
   pendingPaymentMethod      String?       @map("pending_payment_method")
   pendingCashReceivedAmount BigInt?       @map("pending_cash_received_amount")
+
+  // Chiết khấu (chốt qua AskUserQuestion) — CHỈ có ý nghĩa khi không dòng InvoiceLine nào có
+  // discount riêng (2 cách "Toàn hoá đơn"/"Từng dịch vụ" loại trừ lẫn nhau, ép ở tầng service +
+  // ghi đè null lẫn nhau lúc InvoiceRepository.applyDiscount()). NULL cả 3 cột = không chiết khấu.
+  // Chỉ sửa được khi status='UNPAID' — xem InvoiceService.applyDiscount(). Số tiền chiết khấu thật
+  // (discountAmount) KHÔNG lưu cột riêng — tính bằng computeInvoiceDiscount() (@nexamed/core) từ
+  // 2 cột này + totalAmount, đúng tinh thần "không lưu derived field" (như needsRefund()).
+  discountType   DiscountType? @map("discount_type")
+  discountValue  BigInt?       @map("discount_value")
+  discountReason String?       @map("discount_reason")
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -1621,6 +1644,12 @@ model InvoiceLine {
   unitPrice           BigInt  @map("unit_price")
   quantity            Int
   lineTotal           BigInt  @map("line_total")
+
+  // Chiết khấu "Từng dịch vụ" — CHỈ dùng khi Invoice.discountType/discountValue đang NULL (2 cách
+  // loại trừ lẫn nhau, xem comment model Invoice). NULL = dòng này không chiết khấu (cho phép chiết
+  // khấu một phần dịch vụ trong đơn). AMOUNT: <= lineTotal của CHÍNH dòng này.
+  discountType  DiscountType? @map("discount_type")
+  discountValue BigInt?       @map("discount_value")
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)

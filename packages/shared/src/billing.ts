@@ -28,6 +28,17 @@ export type InvoiceStatus = z.infer<typeof invoiceStatusSchema>;
 export const paymentMethodSchema = z.string().min(1);
 export type PaymentMethod = z.infer<typeof paymentMethodSchema>;
 
+/**
+ * Chiết khấu (chốt qua `AskUserQuestion`) — PERCENT: 0-100 (nguyên). AMOUNT: số tiền đồng.
+ * `discountAmount`/`dueAmount` là số ĐÃ TÍNH (không lưu cột riêng ở DB — `computeInvoiceDiscount()`
+ * ở `@nexamed/core`), trả kèm DTO để web không phải tự tính lại.
+ */
+export const discountTypeSchema = z.enum(['PERCENT', 'AMOUNT']);
+export type DiscountType = z.infer<typeof discountTypeSchema>;
+
+export const invoiceDiscountModeSchema = z.enum(['NONE', 'TOTAL', 'PER_LINE']);
+export type InvoiceDiscountMode = z.infer<typeof invoiceDiscountModeSchema>;
+
 export const invoiceLineSchema = z.object({
   id: z.string().uuid(),
   examTypeCode: z.string(),
@@ -37,6 +48,11 @@ export const invoiceLineSchema = z.object({
   unitPrice: z.number().int(),
   quantity: z.number().int(),
   lineTotal: z.number().int(),
+  /** Chiết khấu "Từng dịch vụ" — `null` khi dòng này không bị chiết khấu (kể cả khi mode PER_LINE). */
+  discountType: discountTypeSchema.nullable(),
+  discountValue: z.number().int().nullable(),
+  /** Số tiền chiết khấu đã tính của RIÊNG dòng này — 0 khi `discountType` null. */
+  discountAmount: z.number().int(),
 });
 export type InvoiceLine = z.infer<typeof invoiceLineSchema>;
 
@@ -50,8 +66,19 @@ export const invoiceSchema = z.object({
   encounterId: z.string().uuid(),
   invoiceNo: z.string(),
   status: invoiceStatusSchema,
+  /** Tổng tiền dịch vụ TRƯỚC chiết khấu (gross) — giữ nguyên ý nghĩa cũ, KHÔNG phải số tiền phải thu. */
   totalAmount: z.number().int(),
   lines: z.array(invoiceLineSchema),
+  /** Chiết khấu cấp HOÁ ĐƠN (mode TOTAL) — `null` khi không dùng cách này (mode NONE/PER_LINE). */
+  discountMode: invoiceDiscountModeSchema,
+  discountType: discountTypeSchema.nullable(),
+  discountValue: z.number().int().nullable(),
+  discountReason: z.string().nullable(),
+  /** Tổng tiền chiết khấu đã tính — 0 khi `discountMode==='NONE'`. */
+  discountAmount: z.number().int(),
+  /** `totalAmount - discountAmount` — số tiền THẬT phải thu/đã thu. Mọi nơi tính "Cần thu"/so sánh
+   * tiền khách đưa/số dư ví phải dùng field này, KHÔNG dùng `totalAmount`. */
+  dueAmount: z.number().int(),
   /** Bối cảnh lượt khám/bệnh nhân — gộp sẵn cho màn "Chi tiết thanh toán" (không phải gọi thêm request). */
   encounterNo: z.string(),
   checkedInAt: z.string(),
@@ -156,6 +183,62 @@ export const topUpAndPayInvoiceWithWalletRequestSchema = z.object({
 export type TopUpAndPayInvoiceWithWalletRequest = z.infer<typeof topUpAndPayInvoiceWithWalletRequestSchema>;
 
 /**
+ * `POST /billing/invoices/:encounterId/discount` — áp/sửa/xoá chiết khấu, CHỈ khi phiếu còn
+ * `UNPAID` (chốt qua `AskUserQuestion`: đã "Thu tiền" thì phải "Đánh dấu chưa thu" trước). Union
+ * theo `mode` để trạng thái sai (vừa TOTAL vừa PER_LINE, hoặc thiếu field bắt buộc của đúng nhánh)
+ * không thể biểu diễn được — không cần validate chéo thủ công ở service. `reason` bắt buộc ở CẢ 3
+ * nhánh (kể cả `NONE` — xoá chiết khấu cũng là thao tác đụng tiền cần ghi vết `audit_log`).
+ */
+const applyInvoiceDiscountNoneSchema = z.object({
+  mode: z.literal('NONE'),
+  reason: z.string().min(1, 'Phải nhập lý do.'),
+  version: z.number().int(),
+});
+
+const applyInvoiceDiscountTotalSchema = z.object({
+  mode: z.literal('TOTAL'),
+  discountType: discountTypeSchema,
+  discountValue: z.number().int().positive('Chiết khấu phải lớn hơn 0.'),
+  reason: z.string().min(1, 'Phải nhập lý do chiết khấu.'),
+  version: z.number().int(),
+});
+
+const applyInvoiceDiscountPerLineSchema = z.object({
+  mode: z.literal('PER_LINE'),
+  /** `discountType: null` = dòng đó KHÔNG chiết khấu (cho phép chiết khấu một phần dịch vụ). */
+  lines: z
+    .array(
+      z.object({
+        lineId: z.string().uuid(),
+        discountType: discountTypeSchema.nullable(),
+        discountValue: z.number().int().positive().nullable(),
+      }),
+    )
+    .min(1),
+  reason: z.string().min(1, 'Phải nhập lý do chiết khấu.'),
+  version: z.number().int(),
+});
+
+// `z.discriminatedUnion` chỉ nhận ZodObject thuần cho từng nhánh (không nhận `.refine()` lồng bên
+// trong — sẽ mất khả năng đọc `.shape` để tra discriminant) nên ràng buộc "% không vượt 100" đặt ở
+// `.superRefine()` NGOÀI union, áp cho cả 2 chỗ có thể chứa PERCENT (TOTAL và từng dòng PER_LINE).
+export const applyInvoiceDiscountRequestSchema = z
+  .discriminatedUnion('mode', [applyInvoiceDiscountNoneSchema, applyInvoiceDiscountTotalSchema, applyInvoiceDiscountPerLineSchema])
+  .superRefine((v, ctx) => {
+    if (v.mode === 'TOTAL' && v.discountType === 'PERCENT' && v.discountValue > 100) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Chiết khấu theo % không vượt quá 100.', path: ['discountValue'] });
+    }
+    if (v.mode === 'PER_LINE') {
+      v.lines.forEach((line, i) => {
+        if (line.discountType === 'PERCENT' && line.discountValue !== null && line.discountValue > 100) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Chiết khấu theo % không vượt quá 100.', path: ['lines', i, 'discountValue'] });
+        }
+      });
+    }
+  });
+export type ApplyInvoiceDiscountRequest = z.infer<typeof applyInvoiceDiscountRequestSchema>;
+
+/**
  * `date` tuỳ chọn (`YYYY-MM-DD`, giờ Việt Nam) — bỏ trống thì server mặc định "hôm nay", cùng quy
  * ước `receptionListQuerySchema`. Lọc theo `encounter.checkedInAt` (đúng ngày tiếp nhận, không
  * phải ngày thu tiền — v1 không tách 2 khái niệm này, đa số phiếu thu ngay trong ngày).
@@ -179,7 +262,12 @@ export const billingListItemSchema = z.object({
   fullName: z.string(),
   departmentId: z.string().uuid(),
   departmentName: z.string(),
+  /** Tổng tiền dịch vụ TRƯỚC chiết khấu (gross) — xem `dueAmount` bên dưới cho số tiền thật. */
   totalAmount: z.number().int(),
+  discountAmount: z.number().int(),
+  /** `totalAmount - discountAmount` — số tiền THẬT đã/sẽ thu, dùng cho cột "Tổng tiền" hiển thị và
+   * tổng kết cuối ngày (`paidTotalAmount`/`unpaidTotalAmount`/`netTotalAmount` bên dưới). */
+  dueAmount: z.number().int(),
   status: invoiceStatusSchema,
   paymentMethod: paymentMethodSchema.nullable(),
   paidAt: z.string().nullable(),
