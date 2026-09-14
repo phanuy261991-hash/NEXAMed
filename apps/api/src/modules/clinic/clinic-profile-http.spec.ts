@@ -103,8 +103,16 @@ describe('HTTP e2e — /api/v1/clinic-profile', () => {
       expect(res.body.data.phone).toBeNull();
       expect(res.body.data.email).toBeNull();
       expect(res.body.data.taxCode).toBeNull();
+      expect(res.body.data.licenseNo).toBeNull();
       expect(res.body.data.logoUrl).toBeNull();
       expect(res.body.data.printLogoUrl).toBeNull();
+      expect(res.body.data.facilityCode).toBeNull();
+      expect(res.body.data.professionalInChargeName).toBeNull();
+      expect(res.body.data.website).toBeNull();
+      expect(res.body.data.socialLinks).toEqual([]);
+      expect(res.body.data.bankAccountName).toBeNull();
+      expect(res.body.data.bankAccountNumber).toBeNull();
+      expect(res.body.data.bankName).toBeNull();
       expect(res.body.data.version).toBe(1);
       expect(typeof res.body.data.name).toBe('string');
     });
@@ -119,8 +127,19 @@ describe('HTTP e2e — /api/v1/clinic-profile', () => {
           address: '123 Đường Sức Khoẻ, Quận 1',
           email: 'lienhe@phongkhamabc.vn',
           taxCode: '0312345678',
+          licenseNo: 'GPHĐ-2026-0099',
           currency: 'USD',
           timezone: 'Asia/Bangkok',
+          facilityCode: 'CSKCB-00123',
+          professionalInChargeName: 'BS. Nguyễn Văn A',
+          website: 'phongkhamabc.vn',
+          socialLinks: [
+            { platform: 'FACEBOOK', url: 'facebook.com/phongkhamabc' },
+            { platform: 'ZALO', url: 'zalo.me/phongkhamabc' },
+          ],
+          bankAccountName: 'PHONG KHAM DA KHOA ABC',
+          bankAccountNumber: '0071001234567',
+          bankName: 'Vietcombank',
           version: 1,
         });
 
@@ -130,13 +149,28 @@ describe('HTTP e2e — /api/v1/clinic-profile', () => {
       expect(patch.body.data.address).toBe('123 Đường Sức Khoẻ, Quận 1');
       expect(patch.body.data.email).toBe('lienhe@phongkhamabc.vn');
       expect(patch.body.data.taxCode).toBe('0312345678');
+      expect(patch.body.data.licenseNo).toBe('GPHĐ-2026-0099');
       expect(patch.body.data.currency).toBe('USD');
       expect(patch.body.data.timezone).toBe('Asia/Bangkok');
+      expect(patch.body.data.facilityCode).toBe('CSKCB-00123');
+      expect(patch.body.data.professionalInChargeName).toBe('BS. Nguyễn Văn A');
+      expect(patch.body.data.website).toBe('phongkhamabc.vn');
+      expect(patch.body.data.socialLinks).toEqual([
+        { platform: 'FACEBOOK', url: 'facebook.com/phongkhamabc' },
+        { platform: 'ZALO', url: 'zalo.me/phongkhamabc' },
+      ]);
+      expect(patch.body.data.bankAccountName).toBe('PHONG KHAM DA KHOA ABC');
+      expect(patch.body.data.bankAccountNumber).toBe('0071001234567');
+      expect(patch.body.data.bankName).toBe('Vietcombank');
       expect(patch.body.data.version).toBe(2);
 
       const get = await request(app.getHttpServer()).get('/api/v1/clinic-profile').set(authed(clinicAdminToken));
       expect(get.body.data.name).toBe('Phòng khám Đa khoa ABC');
       expect(get.body.data.currency).toBe('USD');
+      expect(get.body.data.socialLinks).toEqual([
+        { platform: 'FACEBOOK', url: 'facebook.com/phongkhamabc' },
+        { platform: 'ZALO', url: 'zalo.me/phongkhamabc' },
+      ]);
     });
 
     it('PATCH thiếu quyền (receptionist) → 403', async () => {

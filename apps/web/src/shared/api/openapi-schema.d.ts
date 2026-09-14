@@ -11267,6 +11267,85 @@ export interface paths {
         };
         trace?: never;
     };
+    "/api/v1/backup-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** S6-01 (ADM-04) — trạng thái sao lưu Postgres gần nhất, chỉ clinic_admin xem được (tái dùng clinic_config.read) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                configured: boolean;
+                                lastRunAt: string | null;
+                                lastRunOk: boolean | null;
+                                lastSuccessAt: string | null;
+                                consecutiveFailures: number;
+                                lastError: string | null;
+                                needsAttention: boolean;
+                                /** @enum {string|null} */
+                                reason: "NEVER_RUN" | "LAST_RUN_FAILED" | "STALE" | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền clinic_config.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/clinic-settings/deferred-payment-enabled": {
         parameters: {
             query?: never;
@@ -11835,10 +11914,22 @@ export interface paths {
                                 /** @enum {string} */
                                 currency: "VND" | "USD" | "EUR" | "JPY" | "KRW" | "CNY" | "GBP" | "AUD" | "THB" | "SGD";
                                 taxCode: string | null;
+                                licenseNo: string | null;
                                 /** @enum {string} */
                                 timezone: "Asia/Ho_Chi_Minh" | "Asia/Bangkok" | "Asia/Singapore" | "Asia/Shanghai" | "Asia/Tokyo" | "Asia/Seoul" | "UTC" | "Europe/London" | "America/New_York" | "Australia/Sydney";
                                 logoUrl: string | null;
                                 printLogoUrl: string | null;
+                                facilityCode: string | null;
+                                professionalInChargeName: string | null;
+                                website: string | null;
+                                socialLinks: {
+                                    /** @enum {string} */
+                                    platform: "FACEBOOK" | "ZALO" | "TIKTOK" | "YOUTUBE" | "INSTAGRAM" | "OTHER";
+                                    url: string;
+                                }[];
+                                bankAccountName: string | null;
+                                bankAccountNumber: string | null;
+                                bankName: string | null;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -11901,8 +11992,20 @@ export interface paths {
                         /** @enum {string} */
                         currency?: "VND" | "USD" | "EUR" | "JPY" | "KRW" | "CNY" | "GBP" | "AUD" | "THB" | "SGD";
                         taxCode?: string | null;
+                        licenseNo?: string | null;
                         /** @enum {string} */
                         timezone?: "Asia/Ho_Chi_Minh" | "Asia/Bangkok" | "Asia/Singapore" | "Asia/Shanghai" | "Asia/Tokyo" | "Asia/Seoul" | "UTC" | "Europe/London" | "America/New_York" | "Australia/Sydney";
+                        facilityCode?: string | null;
+                        professionalInChargeName?: string | null;
+                        website?: string | null;
+                        socialLinks?: {
+                            /** @enum {string} */
+                            platform: "FACEBOOK" | "ZALO" | "TIKTOK" | "YOUTUBE" | "INSTAGRAM" | "OTHER";
+                            url: string;
+                        }[];
+                        bankAccountName?: string | null;
+                        bankAccountNumber?: string | null;
+                        bankName?: string | null;
                         version: number;
                     };
                 };
@@ -11923,10 +12026,22 @@ export interface paths {
                                 /** @enum {string} */
                                 currency: "VND" | "USD" | "EUR" | "JPY" | "KRW" | "CNY" | "GBP" | "AUD" | "THB" | "SGD";
                                 taxCode: string | null;
+                                licenseNo: string | null;
                                 /** @enum {string} */
                                 timezone: "Asia/Ho_Chi_Minh" | "Asia/Bangkok" | "Asia/Singapore" | "Asia/Shanghai" | "Asia/Tokyo" | "Asia/Seoul" | "UTC" | "Europe/London" | "America/New_York" | "Australia/Sydney";
                                 logoUrl: string | null;
                                 printLogoUrl: string | null;
+                                facilityCode: string | null;
+                                professionalInChargeName: string | null;
+                                website: string | null;
+                                socialLinks: {
+                                    /** @enum {string} */
+                                    platform: "FACEBOOK" | "ZALO" | "TIKTOK" | "YOUTUBE" | "INSTAGRAM" | "OTHER";
+                                    url: string;
+                                }[];
+                                bankAccountName: string | null;
+                                bankAccountNumber: string | null;
+                                bankName: string | null;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -12086,10 +12201,22 @@ export interface paths {
                                 /** @enum {string} */
                                 currency: "VND" | "USD" | "EUR" | "JPY" | "KRW" | "CNY" | "GBP" | "AUD" | "THB" | "SGD";
                                 taxCode: string | null;
+                                licenseNo: string | null;
                                 /** @enum {string} */
                                 timezone: "Asia/Ho_Chi_Minh" | "Asia/Bangkok" | "Asia/Singapore" | "Asia/Shanghai" | "Asia/Tokyo" | "Asia/Seoul" | "UTC" | "Europe/London" | "America/New_York" | "Australia/Sydney";
                                 logoUrl: string | null;
                                 printLogoUrl: string | null;
+                                facilityCode: string | null;
+                                professionalInChargeName: string | null;
+                                website: string | null;
+                                socialLinks: {
+                                    /** @enum {string} */
+                                    platform: "FACEBOOK" | "ZALO" | "TIKTOK" | "YOUTUBE" | "INSTAGRAM" | "OTHER";
+                                    url: string;
+                                }[];
+                                bankAccountName: string | null;
+                                bankAccountNumber: string | null;
+                                bankName: string | null;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -12209,10 +12336,22 @@ export interface paths {
                                 /** @enum {string} */
                                 currency: "VND" | "USD" | "EUR" | "JPY" | "KRW" | "CNY" | "GBP" | "AUD" | "THB" | "SGD";
                                 taxCode: string | null;
+                                licenseNo: string | null;
                                 /** @enum {string} */
                                 timezone: "Asia/Ho_Chi_Minh" | "Asia/Bangkok" | "Asia/Singapore" | "Asia/Shanghai" | "Asia/Tokyo" | "Asia/Seoul" | "UTC" | "Europe/London" | "America/New_York" | "Australia/Sydney";
                                 logoUrl: string | null;
                                 printLogoUrl: string | null;
+                                facilityCode: string | null;
+                                professionalInChargeName: string | null;
+                                website: string | null;
+                                socialLinks: {
+                                    /** @enum {string} */
+                                    platform: "FACEBOOK" | "ZALO" | "TIKTOK" | "YOUTUBE" | "INSTAGRAM" | "OTHER";
+                                    url: string;
+                                }[];
+                                bankAccountName: string | null;
+                                bankAccountNumber: string | null;
+                                bankName: string | null;
                                 version: number;
                             };
                             meta: Record<string, never>;

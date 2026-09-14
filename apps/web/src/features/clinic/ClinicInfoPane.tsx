@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
-import { Camera, CheckCircle, Image as ImageIcon } from '@phosphor-icons/react';
-import type { CurrencyCode, Timezone } from '@nexamed/shared';
+import { Camera, CheckCircle, ChatCircleDots, FacebookLogo, GlobeSimple, InstagramLogo, Plus, TiktokLogo, Trash, YoutubeLogo, Image as ImageIcon } from '@phosphor-icons/react';
+import { AU, CN, EU, GB, JP, KR, SG, TH, US, VN } from 'country-flag-icons/react/3x2';
+import type { CurrencyCode, SocialLink, SocialPlatform, Timezone } from '@nexamed/shared';
 import { useHasPermission } from '../auth/usePermission';
 import { ApiError, resolveApiUrl } from '../../shared/api/client';
 import { Button } from '../../shared/ui/Button';
@@ -18,24 +19,31 @@ import {
 const SECTION_BADGE_CLASS =
   'absolute -top-3 left-4 rounded-md bg-blue-600 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white';
 
+const FLAG_ICON_CLASS = 'h-3 w-4 rounded-[1.5px] object-cover';
+
 /**
  * Đơn vị tiền tệ/múi giờ — danh sách hiển thị đặt LẶP LẠI có chủ đích ở đây, KHÔNG import từ
  * `@nexamed/shared` (nguồn sự thật cho mã hợp lệ vẫn là `currency.ts`/`timezone.ts` bên đó, dùng
  * để validate ở server) — cùng lý do "giới hạn Rollup" đã ghi ở docs/DECISIONS.md #032/#036: hằng
  * số/hàm giá trị thuần từ `packages/shared` từng không import được vào `apps/web` qua `vite
  * build`. Đổi danh sách mã ở `packages/shared` thì phải sửa lại đúng bộ mã ở đây theo.
+ *
+ * Cờ quốc gia đổi từ emoji Unicode (🇻🇳...) sang icon SVG thật (`country-flag-icons`, nhúng lúc
+ * build — không phụ thuộc CDN/font hệ điều hành) — emoji cờ trước đây hiện thành text 2 chữ cái
+ * trên Windows/Chrome (hệ điều hành không có glyph cờ, fallback về mã vùng thô, xem ảnh chụp chủ
+ * dự án gửi), không phải icon như mong muốn.
  */
 const CURRENCY_OPTIONS: ComboboxOption[] = [
-  { value: 'VND', label: '🇻🇳 VND — Đồng Việt Nam' },
-  { value: 'USD', label: '🇺🇸 USD — Đô la Mỹ' },
-  { value: 'EUR', label: '🇪🇺 EUR — Euro' },
-  { value: 'JPY', label: '🇯🇵 JPY — Yên Nhật' },
-  { value: 'KRW', label: '🇰🇷 KRW — Won Hàn Quốc' },
-  { value: 'CNY', label: '🇨🇳 CNY — Nhân dân tệ' },
-  { value: 'GBP', label: '🇬🇧 GBP — Bảng Anh' },
-  { value: 'AUD', label: '🇦🇺 AUD — Đô la Úc' },
-  { value: 'THB', label: '🇹🇭 THB — Baht Thái' },
-  { value: 'SGD', label: '🇸🇬 SGD — Đô la Singapore' },
+  { value: 'VND', label: 'VND — Đồng Việt Nam', icon: <VN title="Việt Nam" className={FLAG_ICON_CLASS} /> },
+  { value: 'USD', label: 'USD — Đô la Mỹ', icon: <US title="Mỹ" className={FLAG_ICON_CLASS} /> },
+  { value: 'EUR', label: 'EUR — Euro', icon: <EU title="Liên minh Châu Âu" className={FLAG_ICON_CLASS} /> },
+  { value: 'JPY', label: 'JPY — Yên Nhật', icon: <JP title="Nhật Bản" className={FLAG_ICON_CLASS} /> },
+  { value: 'KRW', label: 'KRW — Won Hàn Quốc', icon: <KR title="Hàn Quốc" className={FLAG_ICON_CLASS} /> },
+  { value: 'CNY', label: 'CNY — Nhân dân tệ', icon: <CN title="Trung Quốc" className={FLAG_ICON_CLASS} /> },
+  { value: 'GBP', label: 'GBP — Bảng Anh', icon: <GB title="Anh" className={FLAG_ICON_CLASS} /> },
+  { value: 'AUD', label: 'AUD — Đô la Úc', icon: <AU title="Úc" className={FLAG_ICON_CLASS} /> },
+  { value: 'THB', label: 'THB — Baht Thái', icon: <TH title="Thái Lan" className={FLAG_ICON_CLASS} /> },
+  { value: 'SGD', label: 'SGD — Đô la Singapore', icon: <SG title="Singapore" className={FLAG_ICON_CLASS} /> },
 ];
 
 const TIMEZONE_OPTIONS: ComboboxOption[] = [
@@ -50,6 +58,24 @@ const TIMEZONE_OPTIONS: ComboboxOption[] = [
   { value: 'America/New_York', label: 'Mỹ — Miền Đông (GMT-5/-4)' },
   { value: 'Australia/Sydney', label: 'Úc — Sydney (GMT+10/+11)' },
 ];
+
+/**
+ * "Mạng xã hội" (2026-09-14) — nhãn + icon cố định cho từng nền tảng, đúng khuôn `SOCIAL_PLATFORMS`
+ * (`packages/shared/src/clinic.ts`, chỉ import TYPE `SocialPlatform` — danh sách giá trị đặt LẶP
+ * LẠI có chủ đích ở đây, cùng lý do "giới hạn Rollup" đã ghi ở `CURRENCY_OPTIONS` phía trên: hằng
+ * số giá trị thuần từ `packages/shared` không import được vào `apps/web` qua `vite build`). Đổi
+ * `SOCIAL_PLATFORMS` ở `packages/shared` thì phải sửa lại đúng bộ giá trị ở đây theo. `OTHER` dùng
+ * icon Globe chung.
+ */
+const SOCIAL_PLATFORM_META: Record<SocialPlatform, { label: string; icon: typeof FacebookLogo }> = {
+  FACEBOOK: { label: 'Facebook', icon: FacebookLogo },
+  ZALO: { label: 'Zalo', icon: ChatCircleDots },
+  TIKTOK: { label: 'TikTok', icon: TiktokLogo },
+  YOUTUBE: { label: 'YouTube', icon: YoutubeLogo },
+  INSTAGRAM: { label: 'Instagram', icon: InstagramLogo },
+  OTHER: { label: 'Khác', icon: GlobeSimple },
+};
+const SOCIAL_PLATFORM_LIST = Object.keys(SOCIAL_PLATFORM_META) as SocialPlatform[];
 
 interface LogoUploadBoxProps {
   label: string;
@@ -145,6 +171,14 @@ export function ClinicInfoPane() {
   const [address, setAddress] = useState('');
   const [email, setEmail] = useState('');
   const [taxCode, setTaxCode] = useState('');
+  const [licenseNo, setLicenseNo] = useState('');
+  const [facilityCode, setFacilityCode] = useState('');
+  const [professionalInChargeName, setProfessionalInChargeName] = useState('');
+  const [website, setWebsite] = useState('');
+  const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
+  const [bankAccountName, setBankAccountName] = useState('');
+  const [bankAccountNumber, setBankAccountNumber] = useState('');
+  const [bankName, setBankName] = useState('');
   const [currency, setCurrency] = useState<CurrencyCode>('VND');
   const [timezone, setTimezone] = useState<Timezone>('Asia/Ho_Chi_Minh');
   const [savedNotice, setSavedNotice] = useState(false);
@@ -159,6 +193,14 @@ export function ClinicInfoPane() {
     setAddress(query.data.address ?? '');
     setEmail(query.data.email ?? '');
     setTaxCode(query.data.taxCode ?? '');
+    setLicenseNo(query.data.licenseNo ?? '');
+    setFacilityCode(query.data.facilityCode ?? '');
+    setProfessionalInChargeName(query.data.professionalInChargeName ?? '');
+    setWebsite(query.data.website ?? '');
+    setSocialLinks(query.data.socialLinks ?? []);
+    setBankAccountName(query.data.bankAccountName ?? '');
+    setBankAccountNumber(query.data.bankAccountNumber ?? '');
+    setBankName(query.data.bankName ?? '');
     setCurrency(query.data.currency);
     setTimezone(query.data.timezone);
   }, [query.data, editing]);
@@ -170,6 +212,14 @@ export function ClinicInfoPane() {
       setAddress(query.data.address ?? '');
       setEmail(query.data.email ?? '');
       setTaxCode(query.data.taxCode ?? '');
+      setLicenseNo(query.data.licenseNo ?? '');
+      setFacilityCode(query.data.facilityCode ?? '');
+      setProfessionalInChargeName(query.data.professionalInChargeName ?? '');
+      setWebsite(query.data.website ?? '');
+      setSocialLinks(query.data.socialLinks ?? []);
+      setBankAccountName(query.data.bankAccountName ?? '');
+      setBankAccountNumber(query.data.bankAccountNumber ?? '');
+      setBankName(query.data.bankName ?? '');
       setCurrency(query.data.currency);
       setTimezone(query.data.timezone);
     }
@@ -185,6 +235,15 @@ export function ClinicInfoPane() {
         address: address.trim() === '' ? null : address,
         email: email.trim() === '' ? null : email,
         taxCode: taxCode.trim() === '' ? null : taxCode,
+        licenseNo: licenseNo.trim() === '' ? null : licenseNo,
+        facilityCode: facilityCode.trim() === '' ? null : facilityCode,
+        professionalInChargeName: professionalInChargeName.trim() === '' ? null : professionalInChargeName,
+        website: website.trim() === '' ? null : website,
+        // Bỏ qua dòng mới bấm "+" nhưng chưa gõ link — tránh lưu rác dòng rỗng.
+        socialLinks: socialLinks.filter((link) => link.url.trim() !== ''),
+        bankAccountName: bankAccountName.trim() === '' ? null : bankAccountName,
+        bankAccountNumber: bankAccountNumber.trim() === '' ? null : bankAccountNumber,
+        bankName: bankName.trim() === '' ? null : bankName,
         currency,
         timezone,
         version: query.data.version,
@@ -301,6 +360,73 @@ export function ClinicInfoPane() {
                   )}
                 </div>
 
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-slate-800">Mã cơ sở khám chữa bệnh</label>
+                  {editing ? (
+                    <input
+                      type="text"
+                      value={facilityCode}
+                      onChange={(e) => setFacilityCode(e.target.value)}
+                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    />
+                  ) : (
+                    <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">{query.data.facilityCode || '—'}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-slate-800">Số giấy phép hoạt động</label>
+                  {editing ? (
+                    <input
+                      type="text"
+                      value={licenseNo}
+                      onChange={(e) => setLicenseNo(e.target.value)}
+                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    />
+                  ) : (
+                    <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">{query.data.licenseNo || '—'}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-slate-800">Người chịu trách nhiệm chuyên môn</label>
+                  {editing ? (
+                    <input
+                      type="text"
+                      value={professionalInChargeName}
+                      onChange={(e) => setProfessionalInChargeName(e.target.value)}
+                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    />
+                  ) : (
+                    <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                      {query.data.professionalInChargeName || '—'}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-slate-800">Website</label>
+                  {editing ? (
+                    <input
+                      type="text"
+                      value={website}
+                      onChange={(e) => setWebsite(e.target.value)}
+                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    />
+                  ) : query.data.website ? (
+                    <a
+                      href={/^https?:\/\//i.test(query.data.website) ? query.data.website : `https://${query.data.website}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block truncate rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-blue-700 hover:underline"
+                    >
+                      {query.data.website}
+                    </a>
+                  ) : (
+                    <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">—</p>
+                  )}
+                </div>
+
                 <div className="sm:col-span-2">
                   <label className="mb-1 block text-sm font-semibold text-slate-800">Địa chỉ</label>
                   {editing ? (
@@ -319,6 +445,131 @@ export function ClinicInfoPane() {
           </div>
 
           <div className="relative rounded-lg border border-slate-200 p-6 pt-8">
+            <span className={SECTION_BADGE_CLASS}>Mạng xã hội</span>
+            {editing ? (
+              <div className="space-y-2">
+                {socialLinks.map((link, index) => {
+                  const Icon = SOCIAL_PLATFORM_META[link.platform].icon;
+                  return (
+                    <div key={index} className="flex items-center gap-2">
+                      <Icon size={18} weight="fill" className="shrink-0 text-slate-400" aria-hidden="true" />
+                      <select
+                        value={link.platform}
+                        onChange={(e) => {
+                          const platform = e.target.value as SocialPlatform;
+                          setSocialLinks((prev) => prev.map((l, i) => (i === index ? { ...l, platform } : l)));
+                        }}
+                        className="w-40 shrink-0 rounded-md border border-slate-300 px-2 py-2 text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                      >
+                        {SOCIAL_PLATFORM_LIST.map((p) => (
+                          <option key={p} value={p}>
+                            {SOCIAL_PLATFORM_META[p].label}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        type="text"
+                        value={link.url}
+                        onChange={(e) => {
+                          const url = e.target.value;
+                          setSocialLinks((prev) => prev.map((l, i) => (i === index ? { ...l, url } : l)));
+                        }}
+                        placeholder="Dán link vào đây"
+                        className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setSocialLinks((prev) => prev.filter((_, i) => i !== index))}
+                        aria-label="Xoá dòng mạng xã hội này"
+                        className="shrink-0 rounded-md p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                      >
+                        <Trash size={16} weight="regular" aria-hidden="true" />
+                      </button>
+                    </div>
+                  );
+                })}
+                <button
+                  type="button"
+                  onClick={() => setSocialLinks((prev) => [...prev, { platform: 'FACEBOOK', url: '' }])}
+                  className="flex items-center gap-1.5 rounded-md border border-dashed border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                >
+                  <Plus size={14} weight="bold" aria-hidden="true" />
+                  Thêm mạng xã hội
+                </button>
+              </div>
+            ) : (query.data.socialLinks ?? []).length === 0 ? (
+              <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">—</p>
+            ) : (
+              <div className="space-y-2">
+                {(query.data.socialLinks ?? []).map((link, index) => {
+                  const Icon = SOCIAL_PLATFORM_META[link.platform].icon;
+                  return (
+                    <div key={index} className="flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+                      <Icon size={18} weight="fill" className="shrink-0 text-slate-500" aria-hidden="true" />
+                      <span className="w-20 shrink-0 text-sm font-semibold text-slate-800">{SOCIAL_PLATFORM_META[link.platform].label}</span>
+                      <a
+                        href={/^https?:\/\//i.test(link.url) ? link.url : `https://${link.url}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="truncate text-sm text-blue-700 hover:underline"
+                      >
+                        {link.url}
+                      </a>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="relative rounded-lg border border-slate-200 p-6 pt-8">
+            <span className={SECTION_BADGE_CLASS}>Thông tin tài khoản & Thanh toán</span>
+            <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-3">
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-slate-800">Tên tài khoản ngân hàng</label>
+                {editing ? (
+                  <input
+                    type="text"
+                    value={bankAccountName}
+                    onChange={(e) => setBankAccountName(e.target.value)}
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                ) : (
+                  <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">{query.data.bankAccountName || '—'}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-slate-800">Số tài khoản</label>
+                {editing ? (
+                  <input
+                    type="text"
+                    value={bankAccountNumber}
+                    onChange={(e) => setBankAccountNumber(e.target.value)}
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                ) : (
+                  <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">{query.data.bankAccountNumber || '—'}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-slate-800">Ngân hàng</label>
+                {editing ? (
+                  <input
+                    type="text"
+                    value={bankName}
+                    onChange={(e) => setBankName(e.target.value)}
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                ) : (
+                  <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">{query.data.bankName || '—'}</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="relative rounded-lg border border-slate-200 p-6 pt-8">
             <span className={SECTION_BADGE_CLASS}>Hiển thị</span>
             <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
               <div>
@@ -326,8 +577,16 @@ export function ClinicInfoPane() {
                 {editing ? (
                   <Combobox id="clinic-currency" value={currency} onChange={(v) => setCurrency(v as CurrencyCode)} options={CURRENCY_OPTIONS} />
                 ) : (
-                  <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-                    {CURRENCY_OPTIONS.find((o) => o.value === query.data!.currency)?.label ?? query.data.currency}
+                  <p className="flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                    {(() => {
+                      const opt = CURRENCY_OPTIONS.find((o) => o.value === query.data!.currency);
+                      return (
+                        <>
+                          {opt?.icon}
+                          {opt?.label ?? query.data.currency}
+                        </>
+                      );
+                    })()}
                   </p>
                 )}
               </div>

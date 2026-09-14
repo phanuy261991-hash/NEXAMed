@@ -8,9 +8,17 @@ export interface UpdateClinicProfileData {
   email?: string | null;
   currency?: string;
   taxCode?: string | null;
+  licenseNo?: string | null;
   timezone?: string;
   logoKey?: string;
   printLogoKey?: string;
+  facilityCode?: string | null;
+  professionalInChargeName?: string | null;
+  website?: string | null;
+  socialLinksJson?: Prisma.InputJsonValue;
+  bankAccountName?: string | null;
+  bankAccountNumber?: string | null;
+  bankName?: string | null;
 }
 
 /**

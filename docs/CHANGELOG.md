@@ -2,6 +2,22 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-14 (4)
+
+### Mở rộng "Thông tin phòng khám" — Mã cơ sở KCB, Giấy phép, Người chịu trách nhiệm chuyên môn, Website, Mạng xã hội, Tài khoản & Thanh toán
+
+Thêm loạt trường mới vào trang "Thông tin phòng khám": Mã cơ sở khám chữa bệnh, Số giấy phép hoạt động (tái dùng cột `licenseNo` có sẵn), Người chịu trách nhiệm chuyên môn, Website — thêm vào khung "Thông tin cơ bản" hiện có. Khung mới "Mạng xã hội" (nhiều dòng, mỗi dòng chọn Nền tảng + Link, bấm "+" thêm dòng) và khung mới "Thông tin tài khoản & Thanh toán" (Tên tài khoản ngân hàng/Số tài khoản/Ngân hàng). Không kiểm định dạng URL cho Website/link mạng xã hội (giống cách xử lý SĐT/Mã số thuế hiện tại).
+
+Migration `20260914130000_tenant_profile_extended_fields` (7 cột mới trên `tenant`, không permission mới). Icon nền tảng mạng xã hội đổi từ cờ emoji Unicode (đã thử trước đó, không hiển thị đúng trên Windows/Chrome) sang icon SVG thật của `@phosphor-icons/react`.
+
+**Đã xác minh thật**: `apps/api` `clinic-profile-http.spec.ts` 18/18 pass (mở rộng 2 test), `pnpm -w typecheck/lint/build` sạch toàn workspace, chunk khởi động không đổi (499.41 kB). Xem chi tiết `docs/DECISIONS.md` #140.
+
+### Cờ tiền tệ dạng icon SVG thay text 2 chữ cái
+
+Cờ Unicode (🇻🇳/🇺🇸...) trước đây hiện thành text 2 chữ cái trên Windows/Chrome (hệ điều hành không có glyph cờ). Đổi sang `country-flag-icons` (SVG nhúng lúc build, không phụ thuộc CDN/font hệ điều hành). `Combobox.tsx` (shared) thêm field `icon?: ReactNode` tuỳ chọn cho `ComboboxOption` — hiện cả ở danh sách xổ xuống lẫn ô đã chọn (ô input chỉ nhận text nên icon là 1 phần tử `absolute` đè lên). Áp dụng cho combobox "Đơn vị tiền tệ" ở "Thông tin phòng khám".
+
+**Đã xác minh thật**: `pnpm -w typecheck/lint/build/test` sạch toàn workspace, chunk khởi động không đổi (499.41 kB — `country-flag-icons` chỉ nằm trong chunk lazy `ClinicConfigPage`).
+
 ## 2026-09-14 (3)
 
 ### Chuỗi chỉnh sửa trực tiếp sau "Chế độ phòng khám 1 người" (#138)

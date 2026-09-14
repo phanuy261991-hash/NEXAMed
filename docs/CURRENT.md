@@ -207,6 +207,8 @@ Hoàn tất phần treo theo đúng thứ tự đã ghi ở bản trước: type
 
 **Ghi chú**: #138 ("Chế độ phòng khám 1 người") và #139 (chuỗi chỉnh sửa trực tiếp sau đó: đổi tên "Chế độ xử lý nhanh", vá 3 bug KPI/tên lặp, tách "In phiếu" thành màn riêng cho cả 2 luồng chốt ca, redesign "bảng tóm tắt Chốt ca") đã xong, verify Playwright đầy đủ — xem `docs/DECISIONS.md` #138/#139 và `docs/CHANGELOG.md` 2026-09-14 để nắm chi tiết, mục "Giai đoạn" ở đây chưa kịp viết tường thuật riêng.
 
+**Cờ tiền tệ dạng icon SVG + mở rộng "Thông tin phòng khám" (14/09/2026, cùng ngày, ngoài kế hoạch, chủ dự án yêu cầu trực tiếp) — ĐÃ CODE + TEST XONG.** (1) Cờ Unicode ở combobox "Đơn vị tiền tệ" hiện thành text 2 chữ cái trên Windows/Chrome — đổi sang `country-flag-icons` (SVG nhúng lúc build), `Combobox.tsx` (shared) thêm field `icon?: ReactNode` tuỳ chọn dùng chung được cho mọi nơi khác. (2) Thêm Mã cơ sở khám chữa bệnh/Số giấy phép hoạt động (tái dùng `licenseNo` có sẵn, chưa từng lộ qua UI)/Người chịu trách nhiệm chuyên môn/Website vào khung "Thông tin cơ bản"; 2 khung mới "Mạng xã hội" (nhiều dòng, chọn Nền tảng + Link) và "Thông tin tài khoản & Thanh toán". Migration `20260914130000_tenant_profile_extended_fields`, không permission mới. Xem chi tiết `docs/DECISIONS.md` #140. **Đã xác minh**: `apps/api` `clinic-profile-http.spec.ts` 18/18, `pnpm -w typecheck/lint/build` sạch, chunk khởi động không đổi (499.41 kB). **Đã verify qua trình duyệt thật (chủ dự án)** — phát hiện 1 lỗi runtime do cache React Query cũ giữ từ trước khi restart `pnpm dev` (không phải bug code), đã hết sau khi tải lại trang; đã thêm phòng vệ `?? []` cho `socialLinks` phòng trường hợp tương tự.
+
 ## Đã có
 
 - `CLAUDE.md` — quy tắc và ràng buộc dự án (đã bổ sung quy định viết code hướng tái sử dụng).

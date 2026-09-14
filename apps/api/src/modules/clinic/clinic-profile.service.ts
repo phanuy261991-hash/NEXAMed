@@ -8,7 +8,7 @@ import {
   sniffImageExtension,
   type StoragePort,
 } from '@nexamed/core';
-import type { ClinicPrintHeader, ClinicProfile, UpdateClinicProfileRequest } from '@nexamed/shared';
+import type { ClinicPrintHeader, ClinicProfile, SocialLink, UpdateClinicProfileRequest } from '@nexamed/shared';
 import { randomUUID } from 'node:crypto';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
@@ -65,7 +65,15 @@ export class ClinicProfileService {
       if (dto.email !== undefined) patch.email = dto.email;
       if (dto.currency !== undefined) patch.currency = dto.currency;
       if (dto.taxCode !== undefined) patch.taxCode = dto.taxCode;
+      if (dto.licenseNo !== undefined) patch.licenseNo = dto.licenseNo;
       if (dto.timezone !== undefined) patch.timezone = dto.timezone;
+      if (dto.facilityCode !== undefined) patch.facilityCode = dto.facilityCode;
+      if (dto.professionalInChargeName !== undefined) patch.professionalInChargeName = dto.professionalInChargeName;
+      if (dto.website !== undefined) patch.website = dto.website;
+      if (dto.socialLinks !== undefined) patch.socialLinksJson = dto.socialLinks;
+      if (dto.bankAccountName !== undefined) patch.bankAccountName = dto.bankAccountName;
+      if (dto.bankAccountNumber !== undefined) patch.bankAccountNumber = dto.bankAccountNumber;
+      if (dto.bankName !== undefined) patch.bankName = dto.bankName;
 
       const updatedCount = await this.clinicProfileRepository.updateIfVersionMatches(tx, tenantId, dto.version, actorId, patch);
       if (updatedCount === 0) {
@@ -172,9 +180,17 @@ export class ClinicProfileService {
       email: tenant.email,
       currency: tenant.currency as ClinicProfile['currency'],
       taxCode: tenant.taxCode,
+      licenseNo: tenant.licenseNo,
       timezone: tenant.timezone as ClinicProfile['timezone'],
       logoUrl: tenant.logoKey ? this.signFileUrl(tenant.id, tenant.logoKey, encryptionKey) : null,
       printLogoUrl: tenant.printLogoKey ? this.signFileUrl(tenant.id, tenant.printLogoKey, encryptionKey) : null,
+      facilityCode: tenant.facilityCode,
+      professionalInChargeName: tenant.professionalInChargeName,
+      website: tenant.website,
+      socialLinks: Array.isArray(tenant.socialLinksJson) ? (tenant.socialLinksJson as unknown as SocialLink[]) : [],
+      bankAccountName: tenant.bankAccountName,
+      bankAccountNumber: tenant.bankAccountNumber,
+      bankName: tenant.bankName,
       version: tenant.version,
     };
   }

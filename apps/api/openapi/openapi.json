@@ -27852,6 +27852,163 @@
         }
       }
     },
+    "/api/v1/backup-status": {
+      "get": {
+        "tags": [
+          "clinic"
+        ],
+        "summary": "S6-01 (ADM-04) — trạng thái sao lưu Postgres gần nhất, chỉ clinic_admin xem được (tái dùng clinic_config.read)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "configured": {
+                          "type": "boolean"
+                        },
+                        "lastRunAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "lastRunOk": {
+                          "type": [
+                            "boolean",
+                            "null"
+                          ]
+                        },
+                        "lastSuccessAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "consecutiveFailures": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "lastError": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "needsAttention": {
+                          "type": "boolean"
+                        },
+                        "reason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "NEVER_RUN",
+                            "LAST_RUN_FAILED",
+                            "STALE"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "configured",
+                        "lastRunAt",
+                        "lastRunOk",
+                        "lastSuccessAt",
+                        "consecutiveFailures",
+                        "lastError",
+                        "needsAttention",
+                        "reason"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền clinic_config.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/clinic-settings/deferred-payment-enabled": {
       "get": {
         "tags": [
@@ -28809,6 +28966,12 @@
                             "null"
                           ]
                         },
+                        "licenseNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "timezone": {
                           "type": "string",
                           "enum": [
@@ -28836,6 +28999,69 @@
                             "null"
                           ]
                         },
+                        "facilityCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "professionalInChargeName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "website": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "socialLinks": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "platform": {
+                                "type": "string",
+                                "enum": [
+                                  "FACEBOOK",
+                                  "ZALO",
+                                  "TIKTOK",
+                                  "YOUTUBE",
+                                  "INSTAGRAM",
+                                  "OTHER"
+                                ]
+                              },
+                              "url": {
+                                "type": "string",
+                                "minLength": 1
+                              }
+                            },
+                            "required": [
+                              "platform",
+                              "url"
+                            ]
+                          }
+                        },
+                        "bankAccountName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "bankAccountNumber": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "bankName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -28847,9 +29073,17 @@
                         "email",
                         "currency",
                         "taxCode",
+                        "licenseNo",
                         "timezone",
                         "logoUrl",
                         "printLogoUrl",
+                        "facilityCode",
+                        "professionalInChargeName",
+                        "website",
+                        "socialLinks",
+                        "bankAccountName",
+                        "bankAccountNumber",
+                        "bankName",
                         "version"
                       ]
                     },
@@ -28990,6 +29224,12 @@
                       "null"
                     ]
                   },
+                  "licenseNo": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
                   "timezone": {
                     "type": "string",
                     "enum": [
@@ -29003,6 +29243,69 @@
                       "Europe/London",
                       "America/New_York",
                       "Australia/Sydney"
+                    ]
+                  },
+                  "facilityCode": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "professionalInChargeName": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "website": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "socialLinks": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "platform": {
+                          "type": "string",
+                          "enum": [
+                            "FACEBOOK",
+                            "ZALO",
+                            "TIKTOK",
+                            "YOUTUBE",
+                            "INSTAGRAM",
+                            "OTHER"
+                          ]
+                        },
+                        "url": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "platform",
+                        "url"
+                      ]
+                    }
+                  },
+                  "bankAccountName": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "bankAccountNumber": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "bankName": {
+                    "type": [
+                      "string",
+                      "null"
                     ]
                   },
                   "version": {
@@ -29070,6 +29373,12 @@
                             "null"
                           ]
                         },
+                        "licenseNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "timezone": {
                           "type": "string",
                           "enum": [
@@ -29097,6 +29406,69 @@
                             "null"
                           ]
                         },
+                        "facilityCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "professionalInChargeName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "website": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "socialLinks": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "platform": {
+                                "type": "string",
+                                "enum": [
+                                  "FACEBOOK",
+                                  "ZALO",
+                                  "TIKTOK",
+                                  "YOUTUBE",
+                                  "INSTAGRAM",
+                                  "OTHER"
+                                ]
+                              },
+                              "url": {
+                                "type": "string",
+                                "minLength": 1
+                              }
+                            },
+                            "required": [
+                              "platform",
+                              "url"
+                            ]
+                          }
+                        },
+                        "bankAccountName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "bankAccountNumber": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "bankName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -29108,9 +29480,17 @@
                         "email",
                         "currency",
                         "taxCode",
+                        "licenseNo",
                         "timezone",
                         "logoUrl",
                         "printLogoUrl",
+                        "facilityCode",
+                        "professionalInChargeName",
+                        "website",
+                        "socialLinks",
+                        "bankAccountName",
+                        "bankAccountNumber",
+                        "bankName",
                         "version"
                       ]
                     },
@@ -29409,6 +29789,12 @@
                             "null"
                           ]
                         },
+                        "licenseNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "timezone": {
                           "type": "string",
                           "enum": [
@@ -29436,6 +29822,69 @@
                             "null"
                           ]
                         },
+                        "facilityCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "professionalInChargeName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "website": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "socialLinks": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "platform": {
+                                "type": "string",
+                                "enum": [
+                                  "FACEBOOK",
+                                  "ZALO",
+                                  "TIKTOK",
+                                  "YOUTUBE",
+                                  "INSTAGRAM",
+                                  "OTHER"
+                                ]
+                              },
+                              "url": {
+                                "type": "string",
+                                "minLength": 1
+                              }
+                            },
+                            "required": [
+                              "platform",
+                              "url"
+                            ]
+                          }
+                        },
+                        "bankAccountName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "bankAccountNumber": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "bankName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -29447,9 +29896,17 @@
                         "email",
                         "currency",
                         "taxCode",
+                        "licenseNo",
                         "timezone",
                         "logoUrl",
                         "printLogoUrl",
+                        "facilityCode",
+                        "professionalInChargeName",
+                        "website",
+                        "socialLinks",
+                        "bankAccountName",
+                        "bankAccountNumber",
+                        "bankName",
                         "version"
                       ]
                     },
@@ -29681,6 +30138,12 @@
                             "null"
                           ]
                         },
+                        "licenseNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "timezone": {
                           "type": "string",
                           "enum": [
@@ -29708,6 +30171,69 @@
                             "null"
                           ]
                         },
+                        "facilityCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "professionalInChargeName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "website": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "socialLinks": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "platform": {
+                                "type": "string",
+                                "enum": [
+                                  "FACEBOOK",
+                                  "ZALO",
+                                  "TIKTOK",
+                                  "YOUTUBE",
+                                  "INSTAGRAM",
+                                  "OTHER"
+                                ]
+                              },
+                              "url": {
+                                "type": "string",
+                                "minLength": 1
+                              }
+                            },
+                            "required": [
+                              "platform",
+                              "url"
+                            ]
+                          }
+                        },
+                        "bankAccountName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "bankAccountNumber": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "bankName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -29719,9 +30245,17 @@
                         "email",
                         "currency",
                         "taxCode",
+                        "licenseNo",
                         "timezone",
                         "logoUrl",
                         "printLogoUrl",
+                        "facilityCode",
+                        "professionalInChargeName",
+                        "website",
+                        "socialLinks",
+                        "bankAccountName",
+                        "bankAccountNumber",
+                        "bankName",
                         "version"
                       ]
                     },

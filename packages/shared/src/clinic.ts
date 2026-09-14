@@ -387,10 +387,33 @@ export const soloClinicWorkflowStatusSchema = z.object({ enabled: z.boolean() })
 export type SoloClinicWorkflowStatus = z.infer<typeof soloClinicWorkflowStatusSchema>;
 
 /**
+ * "Nền tảng mạng xã hội" (mở rộng "Thông tin phòng khám" 2026-09-14) — enum cố định ở tầng Zod
+ * (đã hỏi và chốt: chọn Nền tảng + ô Link, không chỉ 1 ô URL tự do). `OTHER` cho nền tảng không có
+ * trong danh sách — vẫn hiện được icon chung, không chặn nhập.
+ */
+export const SOCIAL_PLATFORMS = ['FACEBOOK', 'ZALO', 'TIKTOK', 'YOUTUBE', 'INSTAGRAM', 'OTHER'] as const;
+export const socialPlatformSchema = z.enum(SOCIAL_PLATFORMS);
+export type SocialPlatform = z.infer<typeof socialPlatformSchema>;
+
+/** 1 dòng "Mạng xã hội" — `url` không kiểm định dạng (đã hỏi và chốt, cùng cách `phone`/`taxCode`
+ *  đang xử lý, không ép URL như `email`). */
+export const socialLinkSchema = z.object({
+  platform: socialPlatformSchema,
+  url: z.string().min(1),
+});
+export type SocialLink = z.infer<typeof socialLinkSchema>;
+
+/**
  * Trang "Thông tin phòng khám" (2026-08-13, `/admin/system-config`) — mở rộng `tenant`
  * (`.claude/docs/data-model.md`, `docs/DECISIONS.md` #041). Dùng lại quyền `clinic_config.read`/
  * `.update` sẵn có, không thêm permission mới. `currency`/`timezone` chỉ lưu giá trị hiển thị,
  * chưa nối vào logic tính toán/ngày giờ hệ thống — xem comment ở `currency.ts`/`timezone.ts`.
+ *
+ * Mở rộng 2026-09-14 (yêu cầu chủ dự án): `facilityCode`/`professionalInChargeName`/`website`
+ * (text tự do), `licenseNo` (cột có sẵn từ trước, chưa từng lộ qua endpoint này — nay mới thêm),
+ * `socialLinks` (mảng, không giới hạn số dòng cứng ở API), 3 trường "Thông tin tài khoản & Thanh
+ * toán" (`bankAccountName`/`bankAccountNumber`/`bankName`) — tất cả nullable/tự do, không kiểm
+ * định dạng.
  */
 export const clinicProfileSchema = z.object({
   name: z.string(),
@@ -399,9 +422,17 @@ export const clinicProfileSchema = z.object({
   email: z.string().nullable(),
   currency: currencyCodeSchema,
   taxCode: z.string().nullable(),
+  licenseNo: z.string().nullable(),
   timezone: timezoneSchema,
   logoUrl: z.string().nullable(),
   printLogoUrl: z.string().nullable(),
+  facilityCode: z.string().nullable(),
+  professionalInChargeName: z.string().nullable(),
+  website: z.string().nullable(),
+  socialLinks: z.array(socialLinkSchema),
+  bankAccountName: z.string().nullable(),
+  bankAccountNumber: z.string().nullable(),
+  bankName: z.string().nullable(),
   version: z.number().int(),
 });
 export type ClinicProfile = z.infer<typeof clinicProfileSchema>;
@@ -430,7 +461,15 @@ export const updateClinicProfileRequestSchema = z.object({
   email: z.string().email().nullable().optional(),
   currency: currencyCodeSchema.optional(),
   taxCode: z.string().nullable().optional(),
+  licenseNo: z.string().nullable().optional(),
   timezone: timezoneSchema.optional(),
+  facilityCode: z.string().nullable().optional(),
+  professionalInChargeName: z.string().nullable().optional(),
+  website: z.string().nullable().optional(),
+  socialLinks: z.array(socialLinkSchema).optional(),
+  bankAccountName: z.string().nullable().optional(),
+  bankAccountNumber: z.string().nullable().optional(),
+  bankName: z.string().nullable().optional(),
   version: z.number().int().positive(),
 });
 export type UpdateClinicProfileRequest = z.infer<typeof updateClinicProfileRequestSchema>;

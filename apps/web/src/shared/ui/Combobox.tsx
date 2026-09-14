@@ -1,9 +1,17 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { CaretDown } from '@phosphor-icons/react';
 
 export interface ComboboxOption {
   value: string;
   label: string;
+  /**
+   * Icon nhỏ đứng trước `label` (ví dụ cờ quốc gia cho Đơn vị tiền tệ, `ClinicInfoPane.tsx`) —
+   * tuỳ chọn, không ảnh hưởng các Combobox khác không truyền field này. Chỉ hiện được ở danh sách
+   * xổ xuống VÀ ở ô đã đóng khi có lựa chọn (không hiện lúc đang gõ tìm — ô lúc đó hiện text query
+   * thô) — ô input là `<input type="text">` thuần nên icon luôn là 1 phần tử `absolute` ĐÈ LÊN,
+   * không nhúng được vào bên trong giá trị text của input.
+   */
+  icon?: ReactNode;
 }
 
 /**
@@ -124,8 +132,17 @@ export function Combobox({
     }
   }
 
+  // Chỉ hiện icon ở ô ĐÃ ĐÓNG (đang hiện `selected.label`) — lúc mở/đang gõ, input hiện text query
+  // thô, gắn icon đè lên sẽ đè cả lên ký tự đầu người dùng đang gõ.
+  const showLeadingIcon = !open && Boolean(selected?.icon);
+
   return (
     <div ref={containerRef} className="relative">
+      {showLeadingIcon && (
+        <span aria-hidden="true" className="pointer-events-none absolute left-2.5 top-1/2 flex -translate-y-1/2 items-center">
+          {selected!.icon}
+        </span>
+      )}
       <input
         id={id}
         type="text"
@@ -145,7 +162,7 @@ export function Combobox({
           setOpen(true);
         }}
         onKeyDown={handleKeyDown}
-        className="w-full rounded-md border border-slate-300 py-2 pl-3 pr-9 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50 disabled:text-slate-800"
+        className={`w-full rounded-md border border-slate-300 py-2 ${showLeadingIcon ? 'pl-8' : 'pl-3'} pr-9 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50 disabled:text-slate-800`}
       />
 
       <button
@@ -186,6 +203,11 @@ export function Combobox({
                   i === highlighted ? 'bg-blue-50 text-blue-700' : 'text-slate-900'
                 } ${opt.value === value ? 'font-semibold' : ''}`}
               >
+                {opt.icon && (
+                  <span aria-hidden="true" className="mr-2 flex shrink-0 items-center">
+                    {opt.icon}
+                  </span>
+                )}
                 {opt.label}
               </li>
             ))

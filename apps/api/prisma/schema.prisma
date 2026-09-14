@@ -44,6 +44,19 @@ model Tenant {
   logoKey      String? @map("logo_key")
   printLogoKey String? @map("print_logo_key")
 
+  // Mở rộng "Thông tin phòng khám" (2026-09-14) — mọi cột nullable, tự do, KHÔNG kiểm định dạng
+  // (đã hỏi và chốt: cùng cách phone/taxCode đang xử lý, không ép URL như email). `socialLinksJson`
+  // là mảng `{platform, url}` (packages/shared/src/clinic.ts `socialLinkSchema`) — số lượng dòng
+  // không giới hạn cứng ở DB, kiểm ở Zod. `licenseNo` (cột có sẵn từ trước) tái dùng cho "Số giấy
+  // phép hoạt động" — trước nay chưa từng lộ qua endpoint `clinic-profile`, giờ mới thêm.
+  facilityCode             String? @map("facility_code")
+  professionalInChargeName String? @map("professional_in_charge_name")
+  website                  String?
+  socialLinksJson          Json    @default("[]") @map("social_links_json") @db.JsonB
+  bankAccountName          String? @map("bank_account_name")
+  bankAccountNumber        String? @map("bank_account_number")
+  bankName                 String? @map("bank_name")
+
   // 8 cột bắt buộc (trừ tenant_id — bảng này là gốc của tenant)
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -1613,13 +1626,13 @@ model Invoice {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant    Tenant        @relation(fields: [tenantId], references: [id])
+  tenant             Tenant              @relation(fields: [tenantId], references: [id])
   // Composite FK (tenant_id, encounter_id) -> encounter(tenant_id, id): chống trỏ chéo tenant.
   // UNIQUE(tenant_id, encounter_id) (không phải @unique kép — chỉ 1 index duy nhất) ép đúng 1
   // phiếu thu/lượt khám (BIL-01), cũng là FK phía ngược Encounter.invoice ở model trên.
-  encounter Encounter     @relation(fields: [tenantId, encounterId], references: [tenantId, id])
-  lines     InvoiceLine[]
-  payments  Payment[]
+  encounter          Encounter           @relation(fields: [tenantId, encounterId], references: [tenantId, id])
+  lines              InvoiceLine[]
+  payments           Payment[]
   // Ví tạm ứng — dòng DEDUCT/REFUND của `wallet_transaction` liên quan tới chính phiếu thu này.
   walletTransactions WalletTransaction[]
 
@@ -1830,13 +1843,13 @@ model CashVoucher {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant         Tenant        @relation(fields: [tenantId], references: [id])
+  tenant             Tenant              @relation(fields: [tenantId], references: [id])
   // Composite FK (tenant_id, cash_account_id) -> cash_account(tenant_id, id).
-  cashAccount    CashAccount   @relation(fields: [tenantId, cashAccountId], references: [tenantId, id])
+  cashAccount        CashAccount         @relation(fields: [tenantId, cashAccountId], references: [tenantId, id])
   // Composite FK (tenant_id, counter_account_id) -> cash_account(tenant_id, id), NULLABLE — quỹ ĐÍCH của phiếu Chuyển quỹ.
-  counterAccount CashAccount?  @relation("CashVoucherCounterAccount", fields: [tenantId, counterAccountId], references: [tenantId, id])
+  counterAccount     CashAccount?        @relation("CashVoucherCounterAccount", fields: [tenantId, counterAccountId], references: [tenantId, id])
   // Composite FK (tenant_id, cashier_shift_id) -> cashier_shift(tenant_id, id), NULLABLE.
-  cashierShift   CashierShift? @relation(fields: [tenantId, cashierShiftId], references: [tenantId, id])
+  cashierShift       CashierShift?       @relation(fields: [tenantId, cashierShiftId], references: [tenantId, id])
   // Ví tạm ứng — dòng TOPUP/SETTLEMENT của `wallet_transaction` liên quan tới chính phiếu quỹ này.
   walletTransactions WalletTransaction[]
 
@@ -2036,13 +2049,13 @@ model WalletTransaction {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant      Tenant         @relation(fields: [tenantId], references: [id])
+  tenant      Tenant        @relation(fields: [tenantId], references: [id])
   // Composite FK (tenant_id, wallet_id) -> patient_wallet(tenant_id, id): chống trỏ chéo tenant.
-  wallet      PatientWallet  @relation(fields: [tenantId, walletId], references: [tenantId, id])
+  wallet      PatientWallet @relation(fields: [tenantId, walletId], references: [tenantId, id])
   // Composite FK (tenant_id, invoice_id) -> invoice(tenant_id, id), NULLABLE.
-  invoice     Invoice?       @relation(fields: [tenantId, invoiceId], references: [tenantId, id])
+  invoice     Invoice?      @relation(fields: [tenantId, invoiceId], references: [tenantId, id])
   // Composite FK (tenant_id, cash_voucher_id) -> cash_voucher(tenant_id, id), NULLABLE.
-  cashVoucher CashVoucher?   @relation(fields: [tenantId, cashVoucherId], references: [tenantId, id])
+  cashVoucher CashVoucher?  @relation(fields: [tenantId, cashVoucherId], references: [tenantId, id])
 
   @@unique([tenantId, id])
   @@map("wallet_transaction")
