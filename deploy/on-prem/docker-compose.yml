@@ -74,8 +74,12 @@ services:
       # hỏng không báo lỗi (bug thật phát hiện lúc verify S4-05). Đặt "true" trong .env CHỈ khi
       # đã có TLS thật trước nginx.
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      # S6-01 (docs/DECISIONS.md #141) — đọc trạng thái backup do container `backup` ghi ra, cùng
+      # volume `backup_status_data` mount ở service đó (dưới), CHỈ ĐỌC ở đây.
+      BACKUP_STATUS_FILE: /data/backup-status/backup-status.json
     volumes:
       - api_storage:/data/storage
+      - backup_status_data:/data/backup-status:ro
     restart: unless-stopped
 
   web:
@@ -103,13 +107,20 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       BACKUP_HOUR: ${BACKUP_HOUR:-2}
       BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+      # S6-01 (docs/DECISIONS.md #141) — file trạng thái (JSON) ghi sau MỖI lần chạy, container
+      # `api` đọc qua cùng volume `backup_status_data` (mount read-only ở service đó, trên).
+      BACKUP_STATUS_FILE: /status/backup-status.json
     volumes:
       # Mặc định ghi vào thư mục cạnh compose — ĐỔI sang ổ đĩa/ổ ngoài thật ở BACKUP_HOST_DIR
       # trong .env trước khi dùng thật cho pilot (một thư mục cùng ổ với postgres_data không bảo
-      # vệ được khỏi hỏng ổ đĩa — xem docs/Deploy.md, cảnh báo đầy đủ ở S6-01/S6-02, chưa làm).
+      # vệ được khỏi hỏng ổ đĩa — xem docs/Deploy.md, diễn tập phục hồi đầy đủ ở S6-02).
       - ${BACKUP_HOST_DIR:-./backup-data}:/backups
+      - backup_status_data:/status
     restart: unless-stopped
 
 volumes:
   postgres_data:
   api_storage:
+  # S6-01 — nội bộ container, KHÔNG bind-mount ra host (khác `backup-data`/`postgres_data`): chỉ
+  # 1 file JSON nhỏ trạng thái backup, không phải dữ liệu cần backup/khôi phục.
+  backup_status_data:

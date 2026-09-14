@@ -1,5 +1,6 @@
 import type {
   AllowStaffSelfScheduleStatus,
+  BackupStatusResponse,
   SidebarAutoCollapseStatus,
   BusinessCodeTemplateItem,
   BusinessCodeType,
@@ -70,6 +71,11 @@ export async function getSidebarAutoCollapseStatus(): Promise<SidebarAutoCollaps
 /** "Chế độ phòng khám 1 người" (2026-09-14) — tự-phục vụ, không cần `clinic_config.read` (đúng khuôn `getDeferredPaymentStatus`). */
 export async function getSoloClinicWorkflowStatus(): Promise<SoloClinicWorkflowStatus> {
   return unwrap(await getApiClient().GET('/api/v1/clinic-settings/solo-clinic-workflow-enabled')) as SoloClinicWorkflowStatus;
+}
+
+/** S6-01 (ADM-04) — chỉ `clinic_admin` gọi được (`clinic_config.read`), dùng cho banner cảnh báo toàn cục. */
+export async function getBackupStatus(): Promise<BackupStatusResponse> {
+  return unwrap(await getApiClient().GET('/api/v1/backup-status')) as BackupStatusResponse;
 }
 
 /** Trang "Thông tin phòng khám" (2026-08-13) — GET/PATCH cùng contract `clinic-settings` phía trên. */

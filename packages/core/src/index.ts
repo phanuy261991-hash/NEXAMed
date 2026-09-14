@@ -37,3 +37,4 @@ export * from './system-actor';
 export * from './work-shift-assignment/month-lock';
 export * from './cashier-shift/shift-label';
 export * from './cashier-shift/compute-shift-totals';
+export * from './backup/backup-status';

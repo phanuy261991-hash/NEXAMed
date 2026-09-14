@@ -26,6 +26,7 @@ import {
   createFloor,
   createRoom,
   getAllowStaffSelfScheduleStatus,
+  getBackupStatus,
   getSidebarAutoCollapseStatus,
   getSoloClinicWorkflowStatus,
   getCashierShiftRequiredStatus,
@@ -62,6 +63,23 @@ export function useClinicSettingsQuery() {
   return useQuery({
     queryKey: queryKey(tenantId, 'clinic', 'settings'),
     queryFn: getClinicSettings,
+  });
+}
+
+/**
+ * S6-01 (ADM-04) — banner cảnh báo backup toàn cục (`BackupStatusBanner.tsx`), chỉ `clinic_admin`
+ * gọi được (`clinic_config.read`) — `enabled` bắt buộc truyền vào, tránh gửi request 403 cho MỌI
+ * vai trò khác trên MỌI trang (khác các hook tự-phục vụ khác trong file này vốn ai đăng nhập cũng
+ * gọi được). 10 phút/lần đủ — ngưỡng cảnh báo tính theo GIỜ (`DEFAULT_BACKUP_STALE_THRESHOLD_HOURS`
+ * ở `@nexamed/core`), không cần realtime.
+ */
+export function useBackupStatusQuery(enabled: boolean) {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'clinic', 'backup-status'),
+    queryFn: getBackupStatus,
+    enabled,
+    refetchInterval: 10 * 60 * 1000,
   });
 }
 

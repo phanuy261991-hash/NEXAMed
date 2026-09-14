@@ -342,7 +342,7 @@ Container đều đặt `restart: unless-stopped` — MỘT KHI Docker Desktop �
 
 ### 2.5. Còn treo — chưa làm ở phiên S4-05 này (thuộc S6-01/S6-02/S6-03/S6-04/S6-07)
 
-- Sao lưu **tự động theo LỊCH thật + cảnh báo khi thất bại** — `deploy/on-prem/backup/` mới có lịch cố định hằng ngày + log thất bại ra `docker logs`, CHƯA có cơ chế cảnh báo chủ động (email/SMS) khi backup lỗi liên tục.
+- ~~Sao lưu tự động theo LỊCH thật + cảnh báo khi thất bại~~ **ĐÃ LÀM XONG (14/09/2026, S6-01, `docs/DECISIONS.md` #141)** — `backup.sh` ghi trạng thái (JSON, atomic) sau mỗi lần chạy ra volume dùng chung `backup_status_data`; `GET /api/v1/backup-status` (chỉ `clinic_admin`) đọc qua `BackupStatusPort`; banner đỏ toàn cục (`BackupStatusBanner.tsx`, lazy) hiện khi lần chạy gần nhất thất bại HOẶC quá 30 giờ chưa có lần thành công nào. Không phải email/SMS thật (v1: qua banner trong app, cùng tinh thần ADM-06 break-glass) — `BACKUP_STATUS_FILE` tuỳ chọn, máy dev không đặt thì banner tự tắt, không cảnh báo giả.
 - **Diễn tập phục hồi thật — ĐÃ LÀM MỘT PHẦN** (01/09/2026, `docs/DECISIONS.md` #099): xác nhận restore hoạt động đúng, phát hiện + sửa 1 bug thật chặn hoàn toàn (xem mục 2.3c). Chưa làm: đo thời gian phục hồi thật trên máy chủ pilot thật (chỉ mới đo trên máy dev), chưa lặp lại diễn tập định kỳ (nên làm lại mỗi khi có thay đổi schema lớn).
 - Rà soát bảo mật theo checklist `.claude/docs/security-audit.md` đầy đủ (S6-03) — S4-05 chỉ đảm bảo các ràng buộc đã chốt từ trước (không superuser cho role app, không log PII...) không bị phá vỡ lúc đóng gói, chưa phải audit toàn diện.
 - Đo hiệu năng p95 API trên cấu hình máy chủ pilot THẬT (S6-04) — trước đó chỉ đo trên máy dev.

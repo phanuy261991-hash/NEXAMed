@@ -26,6 +26,7 @@ import { CashBookModule } from './modules/cash-book/cash-book.module';
 import { CashBookReportModule } from './modules/cash-book/cash-book-report.module';
 import { PatientWalletModule } from './modules/patient-wallet/patient-wallet.module';
 import { HealthModule } from './modules/health/health.module';
+import { BackupStatusModule } from './modules/backup-status/backup-status.module';
 import { TenantContextMiddleware } from './common/tenant-context.middleware';
 
 @Module({
@@ -57,6 +58,7 @@ import { TenantContextMiddleware } from './common/tenant-context.middleware';
     CashBookReportModule,
     PatientWalletModule,
     HealthModule,
+    BackupStatusModule,
   ],
 })
 export class AppModule implements NestModule {

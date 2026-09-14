@@ -2,6 +2,16 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-14 (5)
+
+### S6-01 — Sao lưu tự động: cảnh báo khi thất bại/trễ hạn (ADM-04)
+
+Sprint 6 (Triển khai và GA) bắt đầu — S6-01. `deploy/on-prem/backup/backup.sh` đã có lịch chạy hằng ngày từ S4-05 nhưng chỉ ghi log Docker, không ai theo dõi. Thêm: ghi trạng thái sau mỗi lần chạy ra file JSON (volume dùng chung với container `api`), banner đỏ toàn cục cho `clinic_admin` khi lần chạy gần nhất thất bại HOẶC quá 30 giờ chưa có lần thành công nào — bắt cả lỗi rõ ràng lẫn tình huống "im lặng" (container backup bị dừng/crash).
+
+Port mới `BackupStatusPort` (`packages/core`), endpoint `GET /backup-status` (tái dùng `clinic_config.read`). Máy dev không đặt biến `BACKUP_STATUS_FILE` nên banner tự tắt, không cảnh báo giả.
+
+**Đã xác minh thật**: `packages/core` 7/7, `apps/api` 12/12 test mới (adapter + HTTP e2e), Docker thật (build ảnh backup, chạy container join network Postgres dev — xác nhận thành công/thất bại/giữ `lastSuccessAt` qua nhiều lần chạy đều đúng). `pnpm -w typecheck/lint/build` sạch, chunk khởi động 499.86 kB (banner đã lazy). Xem chi tiết `docs/DECISIONS.md` #141.
+
 ## 2026-09-14 (4)
 
 ### Mở rộng "Thông tin phòng khám" — Mã cơ sở KCB, Giấy phép, Người chịu trách nhiệm chuyên môn, Website, Mạng xã hội, Tài khoản & Thanh toán

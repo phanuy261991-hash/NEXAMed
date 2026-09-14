@@ -79,6 +79,7 @@ import {
   businessCodeTypeSchema,
   listBusinessCodeTemplatesResponseSchema,
   updateBusinessCodeTemplateRequestSchema,
+  backupStatusResponseSchema,
   clinicProfileSchema,
   clinicSettingsSchema,
   clinicalNoteResponseSchema,
@@ -1800,6 +1801,19 @@ registry.registerPath({
   security: [{ bearerAuth: [] }],
   responses: {
     200: jsonResponse('Thành công', envelope(clinicSettingsSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinic_config.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/backup-status',
+  tags: ['clinic'],
+  summary: 'S6-01 (ADM-04) — trạng thái sao lưu Postgres gần nhất, chỉ clinic_admin xem được (tái dùng clinic_config.read)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(backupStatusResponseSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền clinic_config.read'),
   },

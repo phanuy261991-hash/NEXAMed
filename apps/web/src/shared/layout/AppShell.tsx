@@ -1,10 +1,15 @@
-import { Suspense, type ReactNode } from 'react';
+import { Suspense, lazy, type ReactNode } from 'react';
 import { RoomSessionGate } from '../../features/clinic/RoomSessionGate';
 import { PageFallback } from '../ui/PageFallback';
 import { BreadcrumbProvider } from './breadcrumb.context';
 import { Sidebar } from './Sidebar';
 import { SidebarProvider } from './sidebar.context';
 import { TopBar } from './TopBar';
+
+// S6-01 (docs/DECISIONS.md #141) — lazy, đúng khuôn các mục nhỏ ở TopBar.tsx: chỉ `clinic_admin`
+// mới thấy nội dung thật, không đáng để cả app tải sẵn code này trong chunk khởi động (đo thật
+// làm chunk chính vượt ngưỡng 500 kB, xem comment lúc build).
+const BackupStatusBanner = lazy(() => import('./BackupStatusBanner').then((m) => ({ default: m.BackupStatusBanner })));
 
 /**
  * Bố cục chính sau đăng nhập — App Shell v2 (.claude/docs/ui-guidelines.md mục 8,
@@ -30,6 +35,12 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Sidebar />
           <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
             <TopBar />
+            {/* S6-01 (docs/DECISIONS.md #141) — banner cảnh báo toàn cục, tự ẩn khi không có gì
+                cần báo (null render). Đặt SAU TopBar để không phá layout Sidebar h-dvh.
+                `fallback={null}` — không có gì để hiện trong lúc tải chunk, tự thế chỗ khi xong. */}
+            <Suspense fallback={null}>
+              <BackupStatusBanner />
+            </Suspense>
             {/* Suspense bọc RIÊNG vùng nội dung (không bọc cả app) — Sidebar/TopBar vẫn hiện
                 nguyên trong lúc chunk JS của route lazy đang tải, không nháy cả màn hình. */}
             <main className="flex-1 overflow-y-auto">

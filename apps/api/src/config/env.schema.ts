@@ -18,6 +18,11 @@ export const envSchema = z.object({
   // (NODE_ENV==='production' → secure) khi không đặt biến này; đặt "false" tường minh cho bản
   // on-prem HTTP-only, "true" bắt buộc khi có TLS (VPS/cloud — xem docs/Deploy.md Phần 0.2).
   COOKIE_SECURE: z.enum(['true', 'false']).optional(),
+  // Đường dẫn file trạng thái sao lưu do `deploy/on-prem/backup/backup.sh` ghi ra (S6-01, ADM-04)
+  // — CHỈ đặt ở bản on-prem thật (docker-compose.yml mount volume dùng chung với container
+  // `backup`). Để trống (mặc định, đúng cho máy dev — không chạy container backup) thì
+  // `GET /backup-status` trả `configured: false`, FE không hiện banner cảnh báo giả.
+  BACKUP_STATUS_FILE: z.string().min(1).optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
