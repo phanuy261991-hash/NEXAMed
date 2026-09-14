@@ -8,7 +8,18 @@ type ReceiptFormat = 'roll' | 'a5' | 'a4';
 
 const FORMAT_LABEL: Record<ReceiptFormat, string> = { roll: 'Cuộn nhỏ', a5: 'Khổ A5', a4: 'Khổ A4' };
 
-function formatDateTimeVn(iso: string): string {
+export function computeCashierShiftDiff(shift: CashierShiftDetail): number {
+  return (shift.countedCashAmount ?? 0) - (shift.expectedCashAmount ?? 0);
+}
+
+/** "Tổng doanh thu ca" (`docs/DECISIONS.md` #120) — dùng chung cho phiếu in lẫn "bảng tóm tắt Chốt ca". */
+export function computeCashierShiftTotalRevenue(shift: CashierShiftDetail): number {
+  const cashNet = (shift.cashInAmount ?? 0) - (shift.cashOutAmount ?? 0);
+  const nonCashNet = shift.nonCashBreakdown.reduce((sum, item) => sum + item.amount, 0);
+  return cashNet + nonCashNet;
+}
+
+export function formatDateTimeVn(iso: string): string {
   const d = new Date(iso);
   const vn = new Date(d.getTime() + 7 * 60 * 60_000);
   const hh = String(vn.getUTCHours()).padStart(2, '0');
@@ -43,11 +54,8 @@ export function CashierShiftReceiptView({
   onAfterPrint?: () => void;
 }) {
   const [format, setFormat] = useState<ReceiptFormat>('roll');
-  const diff = (shift.countedCashAmount ?? 0) - (shift.expectedCashAmount ?? 0);
-  /** "Tổng doanh thu ca" (`docs/DECISIONS.md` #120) — cùng công thức `CloseShiftDialog.tsx`. */
-  const cashNet = (shift.cashInAmount ?? 0) - (shift.cashOutAmount ?? 0);
-  const nonCashNet = shift.nonCashBreakdown.reduce((sum, item) => sum + item.amount, 0);
-  const totalRevenue = cashNet + nonCashNet;
+  const diff = computeCashierShiftDiff(shift);
+  const totalRevenue = computeCashierShiftTotalRevenue(shift);
 
   function handlePrint() {
     window.print();

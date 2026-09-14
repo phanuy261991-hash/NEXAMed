@@ -2,6 +2,18 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-14 (3)
+
+### Chuỗi chỉnh sửa trực tiếp sau "Chế độ phòng khám 1 người" (#138)
+
+Đổi tên "Chế độ phòng khám 1 người" → "Chế độ xử lý nhanh" (bỏ badge "MỚI"). Vá 3 bug thật phát hiện lúc dùng thử: lặp tên "BS. BS." ở khối tổng kết ca khám, khung 5 ô KPI tràn ra ngoài viền (thiếu `min-w-0`, đổi sang lưới đều 5 cột), icon check quá nhỏ dễ vỡ nét ở màn xác nhận. Làm nổi bật khung "Có ca thu ngân đang mở", bỏ chữ thừa "(chủ phòng khám / kế toán)", tăng cỡ chữ 2 khung ghi chú xác nhận.
+
+**Tách "In phiếu" thành màn riêng** cho cả 2 luồng chốt ca (mặc định lẫn "Chế độ xử lý nhanh") — màn thành công giờ chỉ còn nội dung xác nhận, bấm "In phiếu" mới mở dialog riêng chứa phiếu in.
+
+**Redesign màn thành công "Chốt ca" mặc định thành "bảng tóm tắt Chốt ca"** — mockup Artifact duyệt 3 vòng (dọc → lưới 2 cột → giãn ngang đúng bề rộng dialog thật) trước khi code: dòng xác nhận gọn + lưới 2 cột lớn (trái: doanh thu ca + thông tin ca, phải: lưới 3×2 chi tiết tiền + dòng "Nộp về" nổi bật). Trích 2 hàm tính dùng chung với phiếu in, tránh trùng công thức.
+
+**Đã xác minh thật**: `pnpm -w typecheck/lint/build` sạch, chunk web không đổi (499.40 kB), Playwright qua Chrome thật cả 2 luồng (khớp số lẫn có chênh lệch để xác nhận màu đỏ). Xem chi tiết `docs/DECISIONS.md` #139.
+
 ## 2026-09-14 (2)
 
 ### "Chế độ phòng khám 1 người" (Solo Clinic Workflow)

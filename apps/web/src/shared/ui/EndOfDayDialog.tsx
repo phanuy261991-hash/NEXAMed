@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CalendarBlank, CheckCircle, Warning, X } from '@phosphor-icons/react';
+import { CalendarBlank, CheckCircle, Printer, Warning, X } from '@phosphor-icons/react';
 import type { CashierShiftDetail } from '@nexamed/shared';
 import { getVietnamTodayDateString } from '../../features/appointment/schedule-grid.utils';
 import { useReceptionListQuery } from '../../features/reception/reception.queries';
@@ -89,7 +89,7 @@ export function EndOfDayDialog({
               Chưa có ca thu ngân đang mở
             </h2>
             <p className="mt-2 text-[13px] leading-relaxed text-slate-500">
-              &quot;Chế độ phòng khám 1 người&quot; gộp Đóng ca khám cùng Chốt ca thu ngân trong 1 lần xác nhận — cần mở ca thu ngân trước khi tiếp tục.
+              &quot;Chế độ xử lý nhanh&quot; gộp Đóng ca khám cùng Chốt ca thu ngân trong 1 lần xác nhận — cần mở ca thu ngân trước khi tiếp tục.
             </p>
             <div className="mt-5 flex justify-center gap-2.5">
               <Button type="button" variant="secondary" onClick={onClose}>
@@ -136,6 +136,7 @@ function EndOfDayWizard({
   const [error, setError] = useState<string | null>(null);
   const [phase, setPhase] = useState<'idle' | 'doctorEnded' | 'shiftClosed'>('idle');
   const [closedShift, setClosedShift] = useState<CashierShiftDetail | null>(null);
+  const [receiptOpen, setReceiptOpen] = useState(false);
 
   const listQuery = useReceptionListQuery(today, doctorId, false, false);
   const pendingCount = (listQuery.data?.items ?? []).filter((i) => i.status === 'CHECKED_IN' || i.status === 'IN_CONSULTATION').length;
@@ -188,8 +189,9 @@ function EndOfDayWizard({
   const isSaving = setAvailability.isPending || closeMutation.isPending || approveMutation.isPending;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4" role="dialog" aria-modal="true" aria-labelledby="eod-title">
-      <div className="flex max-h-[92vh] w-full max-w-[820px] flex-col rounded-xl bg-white shadow-xl">
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4" role="dialog" aria-modal="true" aria-labelledby="eod-title">
+      <div className="flex max-h-[92vh] w-full max-w-[900px] flex-col rounded-xl bg-white shadow-xl">
         <div className="flex-shrink-0 border-b border-slate-100 px-6 pt-6 pb-4">
           <div className="flex items-start justify-between gap-6">
             <div>
@@ -216,13 +218,10 @@ function EndOfDayWizard({
 
         <div className="scroll-hover flex-1 overflow-y-auto px-6 py-5">
           {closedShift ? (
-            <div>
-              <div className="mb-4 flex flex-col gap-2">
-                <ChecklistRow>Ca khám đã đóng — {doctorSummaryQuery.data?.completedCount ?? 0} lượt hoàn thành, {doctorSummaryQuery.data?.cancelledCount ?? 0} huỷ</ChecklistRow>
-                <ChecklistRow>Ca thu ngân đã chốt — nộp về {formatVnd(closedShift.submittedAmount ?? 0)}</ChecklistRow>
-                {closedShift.status === 'APPROVED' && <ChecklistRow>Phiếu chốt ca đã tự động chuyển &quot;Đã duyệt&quot;</ChecklistRow>}
-              </div>
-              {clinicHeaderQuery.data && <CashierShiftReceiptView shift={closedShift} clinicHeader={clinicHeaderQuery.data} />}
+            <div className="flex flex-col gap-2">
+              <ChecklistRow>Ca khám đã đóng — {doctorSummaryQuery.data?.completedCount ?? 0} lượt hoàn thành, {doctorSummaryQuery.data?.cancelledCount ?? 0} huỷ</ChecklistRow>
+              <ChecklistRow>Ca thu ngân đã chốt — nộp về {formatVnd(closedShift.submittedAmount ?? 0)}</ChecklistRow>
+              {closedShift.status === 'APPROVED' && <ChecklistRow>Phiếu chốt ca đã tự động chuyển &quot;Đã duyệt&quot;</ChecklistRow>}
             </div>
           ) : (
             <>
@@ -259,9 +258,12 @@ function EndOfDayWizard({
                     </div>
                   )}
 
-                  <div className="mt-4 flex items-center gap-2 text-xs font-bold text-blue-700">
-                    <CheckCircle size={16} weight="fill" aria-hidden="true" />
-                    Có ca thu ngân đang mở — sẽ gộp Chốt ca ngay sau bước này
+                  <div className="mt-5 flex items-center gap-2.5 rounded-lg border border-blue-200 bg-blue-50 px-3.5 py-2.5">
+                    <CheckCircle size={20} weight="fill" className="flex-shrink-0 text-blue-600" aria-hidden="true" />
+                    <p className="text-[13.5px] leading-snug">
+                      <span className="font-bold text-blue-800">Có ca thu ngân đang mở</span>
+                      <span className="font-medium text-blue-600"> — sẽ gộp Chốt ca ngay sau bước này</span>
+                    </p>
                   </div>
 
                   <p className="mt-4 mb-3 text-sm font-medium text-slate-500">Hệ thống tự động tổng hợp mọi phiếu thu phát sinh trong ca — số liệu bên dưới không sửa được.</p>
@@ -298,7 +300,7 @@ function EndOfDayWizard({
                   extraNotice={
                     <div className="mt-4 flex gap-2.5 rounded-lg border border-brand-teal/25 bg-brand-teal-tint px-4 py-3">
                       <CheckCircle size={16} weight="fill" className="mt-0.5 flex-shrink-0 text-brand-teal-active" aria-hidden="true" />
-                      <p className="text-xs font-medium leading-relaxed text-brand-teal-active">
+                      <p className="text-[13px] font-medium leading-relaxed text-brand-teal-active">
                         Sau khi xác nhận: ca khám <strong>đóng</strong>, ca thu ngân <strong>chốt</strong>
                         {canApprove ? (
                           <>
@@ -335,7 +337,11 @@ function EndOfDayWizard({
         )}
 
         {closedShift && (
-          <div className="flex flex-shrink-0 justify-end border-t border-slate-100 px-6 py-4">
+          <div className="flex flex-shrink-0 items-center justify-end gap-2 border-t border-slate-100 px-6 py-4">
+            <Button type="button" variant="secondary" onClick={() => setReceiptOpen(true)} className="inline-flex items-center gap-1.5">
+              <Printer size={16} weight="regular" aria-hidden="true" />
+              In phiếu
+            </Button>
             <Button type="button" onClick={onDone}>
               Về Hàng đợi khám
             </Button>
@@ -343,16 +349,35 @@ function EndOfDayWizard({
         )}
       </div>
     </div>
+
+    {receiptOpen && closedShift && clinicHeaderQuery.data && (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/45 p-4" role="dialog" aria-modal="true" aria-labelledby="eod-receipt-title">
+        <div className="flex max-h-[92vh] w-full max-w-[620px] flex-col rounded-xl bg-white shadow-xl">
+          <div className="flex flex-shrink-0 items-center justify-between border-b border-slate-100 px-6 pt-6 pb-4">
+            <h2 id="eod-receipt-title" className="text-lg font-bold text-slate-900">
+              Phiếu bàn giao ca
+            </h2>
+            <button type="button" onClick={() => setReceiptOpen(false)} className="text-slate-400 hover:text-slate-700" aria-label="Đóng">
+              <X size={20} weight="bold" aria-hidden="true" />
+            </button>
+          </div>
+          <div className="scroll-hover flex-1 overflow-y-auto px-6 py-5">
+            <CashierShiftReceiptView shift={closedShift} clinicHeader={clinicHeaderQuery.data} onAfterPrint={() => setReceiptOpen(false)} />
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
 
 function ChecklistRow({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-2.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3.5 py-2.5">
-      <span className="flex h-[22px] w-[22px] flex-shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white">
-        <CheckCircle size={13} weight="bold" aria-hidden="true" />
+    <div className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
+      <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white">
+        <CheckCircle size={17} weight="fill" aria-hidden="true" />
       </span>
-      <span className="text-[13.5px] font-bold text-emerald-800">{children}</span>
+      <span className="text-[14.5px] font-bold text-emerald-800">{children}</span>
     </div>
   );
 }

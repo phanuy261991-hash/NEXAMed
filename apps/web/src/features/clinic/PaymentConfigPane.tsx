@@ -130,13 +130,13 @@ export function PaymentConfigPane() {
               Bật: Mỗi thu ngân mở ca riêng, làm việc song song — phiếu thu/hoàn tiền tự gắn đúng vào ca của người xử
               lý, chốt ca chỉ tính đúng giao dịch của người đó.
               {soloClinicWorkflowEnabled && (
-                <span className="mt-1 block font-semibold text-amber-600">Phải tắt &quot;Chế độ phòng khám 1 người&quot; ở dưới trước.</span>
+                <span className="mt-1 block font-semibold text-amber-600">Phải tắt &quot;Chế độ xử lý nhanh&quot; ở dưới trước.</span>
               )}
             </p>
           </div>
           <label
             className={`relative mt-0.5 inline-flex h-6 w-11 flex-shrink-0 items-center ${soloClinicWorkflowEnabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
-            title={soloClinicWorkflowEnabled ? 'Phải tắt "Chế độ phòng khám 1 người" trước' : undefined}
+            title={soloClinicWorkflowEnabled ? 'Phải tắt "Chế độ xử lý nhanh" trước' : undefined}
           >
             <input
               type="checkbox"
@@ -158,17 +158,12 @@ export function PaymentConfigPane() {
             dialog nhỏ hiện tại — xem `EndOfDayDialog.tsx`. */}
         <div className="mt-4 flex items-start justify-between gap-5 rounded-lg border border-brand-teal/20 bg-brand-teal-tint p-3.5">
           <div>
-            <p className="flex items-center gap-2 text-[14.5px] font-bold text-slate-900">
-              Chế độ phòng khám 1 người
-              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-extrabold text-blue-700">MỚI</span>
-            </p>
+            <p className="text-[14.5px] font-bold text-slate-900">Chế độ xử lý nhanh</p>
             <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
-              Tắt (mặc định): &quot;Đóng ca hôm nay&quot;, &quot;Chốt ca&quot; thu ngân, &quot;Duyệt phiếu&quot; là 3 thao tác
-              tách biệt như hiện tại.
+              Tắt (mặc định): Đóng ca, Chốt ca thu ngân và Duyệt phiếu được thực hiện riêng biệt.
               <br />
-              Bật: Bấm &quot;Đóng ca hôm nay&quot; mở 1 màn hình duy nhất gộp Tổng kết ngày → Chốt ca thu ngân → tự động
-              Duyệt phiếu — không cần thao tác Duyệt riêng. Dành cho phòng khám chỉ 1 người tự làm hết Tiếp nhận/Khám/
-              Thu ngân.
+              Bật: Gộp các bước Tổng kết ngày → Chốt ca thu ngân → Duyệt phiếu vào một quy trình khi thực hiện Đóng
+              ca. Phù hợp với phòng khám có quy mô nhỏ hoặc mô hình vận hành kiêm nhiệm.
               {multiCashierEnabled && (
                 <span className="mt-1 block font-semibold text-amber-600">Phải tắt &quot;Nhiều thu ngân cùng lúc&quot; ở trên trước.</span>
               )}
@@ -184,7 +179,7 @@ export function PaymentConfigPane() {
               checked={soloClinicWorkflowEnabled}
               disabled={updateMutation.isPending || multiCashierEnabled}
               onChange={(e) => updateMutation.mutate({ soloClinicWorkflowEnabled: e.target.checked })}
-              aria-label="Chế độ phòng khám 1 người"
+              aria-label="Chế độ xử lý nhanh"
             />
             <span className="absolute inset-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-brand-teal peer-disabled:opacity-60" />
             <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />

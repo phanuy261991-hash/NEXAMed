@@ -282,7 +282,7 @@ export function CloseShiftHandoverStep({
       </div>
 
       <div className="mt-4 flex items-center justify-between rounded-lg border border-slate-200 p-4">
-        <span className="text-sm font-semibold text-slate-700">Tiền mặt nộp về (chủ phòng khám / kế toán)</span>
+        <span className="text-sm font-semibold text-slate-700">Tiền mặt nộp về</span>
         <span className="text-xl font-bold text-blue-700">{formatVnd(submittedAmount)}</span>
       </div>
 
@@ -303,7 +303,7 @@ export function CloseShiftHandoverStep({
       {extraNotice}
 
       <div className="mt-4 flex gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
-        <p className="text-xs font-medium text-amber-800">
+        <p className="text-[13px] font-medium text-amber-800">
           Sau khi xác nhận, dữ liệu ca này bị khoá hoàn toàn — bạn không tự sửa lại được. Muốn sửa/huỷ phải có tài khoản Quản lý duyệt mở khoá.
         </p>
       </div>

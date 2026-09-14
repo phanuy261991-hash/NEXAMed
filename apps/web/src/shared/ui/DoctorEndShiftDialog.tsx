@@ -72,7 +72,7 @@ export function DoctorEndShiftDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4" role="dialog" aria-modal="true" aria-labelledby="doctor-end-shift-title">
-      <div className="max-h-[calc(100dvh-72px)] w-full max-w-[900px] overflow-y-auto rounded-xl bg-white p-8 shadow-md ring-1 ring-slate-200">
+      <div className="max-h-[calc(100dvh-72px)] w-full max-w-[960px] overflow-y-auto rounded-xl bg-white p-8 shadow-md ring-1 ring-slate-200">
         <form onSubmit={(e) => void handleSubmit(e)}>
           <div className="flex items-start justify-between gap-6">
             <div>
@@ -159,7 +159,7 @@ export function DoctorShiftSummaryPanel({ doctorId }: { doctorId: string }) {
           {getInitials(doctorName)}
         </div>
         <div className="flex min-w-0 flex-col gap-px">
-          <span className="text-[15px] font-bold text-slate-900">BS. {doctorName}</span>
+          <span className="text-[15px] font-bold text-slate-900">{doctorName}</span>
           <span className="text-[12.5px] font-medium text-brand-teal-active">đã hoàn thành ngày làm việc hôm nay với:</span>
         </div>
       </div>
@@ -167,17 +167,17 @@ export function DoctorShiftSummaryPanel({ doctorId }: { doctorId: string }) {
       {summaryQuery.isError ? (
         <p className="text-xs font-medium text-rose-700">Không tải được số liệu hôm nay.</p>
       ) : summary ? (
-        <div className="flex items-stretch gap-2.5">
-          <ShiftStatTile icon={Stethoscope} iconColor="text-blue-600" iconBg="bg-blue-50" label="Đã gọi khám" value={summary.calledCount} unit="ca" primary />
-          <ShiftStatTile icon={CheckCircle} iconColor="text-emerald-600" iconBg="bg-emerald-50" label="Đã hoàn thành" value={summary.completedCount} unit="ca" primary />
+        <div className="grid grid-cols-5 gap-2.5">
+          <ShiftStatTile icon={Stethoscope} iconColor="text-blue-600" iconBg="bg-blue-50" label="Đã gọi khám" value={summary.calledCount} unit="ca" />
+          <ShiftStatTile icon={CheckCircle} iconColor="text-emerald-600" iconBg="bg-emerald-50" label="Đã hoàn thành" value={summary.completedCount} unit="ca" />
           <ShiftStatTile icon={Clock} iconColor="text-slate-600" iconBg="bg-slate-100" label="TB / ca" value={summary.avgConsultMinutes} unit="phút" />
           <ShiftStatTile icon={Prohibit} iconColor="text-rose-600" iconBg="bg-rose-50" label="Huỷ khám" value={summary.cancelledCount} unit="ca" attention />
           <ShiftStatTile icon={Pill} iconColor="text-violet-600" iconBg="bg-violet-50" label="Đơn thuốc" value={summary.prescriptionCount} unit="đơn" />
         </div>
       ) : (
-        <div className="flex items-stretch gap-2.5" aria-hidden="true">
-          <ShiftStatTileSkeleton primary />
-          <ShiftStatTileSkeleton primary />
+        <div className="grid grid-cols-5 gap-2.5" aria-hidden="true">
+          <ShiftStatTileSkeleton />
+          <ShiftStatTileSkeleton />
           <ShiftStatTileSkeleton />
           <ShiftStatTileSkeleton />
           <ShiftStatTileSkeleton />
@@ -187,7 +187,9 @@ export function DoctorShiftSummaryPanel({ doctorId }: { doctorId: string }) {
   );
 }
 
-/** Trích xuất dùng chung — lần dùng thứ hai ở `EndOfDayDialog.tsx` ("Chế độ phòng khám 1 người"). */
+/** Trích xuất dùng chung — lần dùng thứ hai ở `EndOfDayDialog.tsx` ("Chế độ phòng khám 1 người").
+ * 5 ô LUÔN cùng kích thước (lưới `grid-cols-5` đều cột) — trước đây 2 ô đầu to hơn 3 ô sau
+ * (`flex-[1.2]` vs `flex-[0.92]`) tạo cảm giác lệch bậc thang, đã bỏ để đồng nhất. */
 export function ShiftStatTile({
   icon: Icon,
   iconColor,
@@ -195,7 +197,6 @@ export function ShiftStatTile({
   label,
   value,
   unit,
-  primary = false,
   attention = false,
 }: {
   icon: typeof Stethoscope;
@@ -204,32 +205,31 @@ export function ShiftStatTile({
   label: string;
   value: number | null;
   unit: string;
-  primary?: boolean;
   attention?: boolean;
 }) {
   return (
-    <div className={`flex items-center gap-[11px] rounded-[11px] border border-brand-teal/15 bg-white ${primary ? 'flex-[1.2] px-3.5 py-3.5' : 'flex-[0.92] px-3 py-2.5'}`}>
-      <div className={`flex flex-shrink-0 items-center justify-center rounded-full ${iconBg} ${primary ? 'h-[42px] w-[42px]' : 'h-[34px] w-[34px]'}`}>
-        <Icon size={primary ? 20 : 16} weight="bold" className={iconColor} aria-hidden="true" />
+    <div className="flex min-w-0 items-center gap-2.5 rounded-[11px] border border-brand-teal/15 bg-white px-3 py-3">
+      <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full ${iconBg}`}>
+        <Icon size={17} weight="bold" className={iconColor} aria-hidden="true" />
       </div>
       <div className="flex min-w-0 flex-col gap-0.5">
-        <span className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-wide text-slate-500">{label}</span>
-        <span className={`tabular-nums font-bold leading-tight ${attention ? 'text-rose-700' : 'text-slate-900'} ${primary ? 'text-[26px]' : 'text-[19px]'}`}>
+        <span className="text-[11px] font-bold uppercase leading-tight tracking-wide text-slate-600">{label}</span>
+        <span className={`text-[20px] font-bold leading-tight tabular-nums ${attention ? 'text-rose-700' : 'text-slate-900'}`}>
           {value ?? '—'}
-          {value !== null && <span className="ml-0.5 text-[12.5px] font-semibold text-slate-500">{unit}</span>}
+          {value !== null && <span className="ml-0.5 text-[12px] font-semibold text-slate-500">{unit}</span>}
         </span>
       </div>
     </div>
   );
 }
 
-export function ShiftStatTileSkeleton({ primary = false }: { primary?: boolean }) {
+export function ShiftStatTileSkeleton() {
   return (
-    <div className={`flex items-center gap-[11px] rounded-[11px] border border-brand-teal/15 bg-white ${primary ? 'flex-[1.2] px-3.5 py-3.5' : 'flex-[0.92] px-3 py-2.5'}`}>
-      <Skeleton className={`flex-shrink-0 rounded-full ${primary ? 'h-[42px] w-[42px]' : 'h-[34px] w-[34px]'}`} />
+    <div className="flex min-w-0 items-center gap-2.5 rounded-[11px] border border-brand-teal/15 bg-white px-3 py-3">
+      <Skeleton className="h-9 w-9 flex-shrink-0 rounded-full" />
       <div className="flex min-w-0 flex-col gap-1.5">
         <Skeleton className="h-2 w-14" />
-        <Skeleton className={primary ? 'h-5 w-10' : 'h-4 w-8'} />
+        <Skeleton className="h-4 w-10" />
       </div>
     </div>
   );
