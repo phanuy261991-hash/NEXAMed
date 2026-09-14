@@ -84,6 +84,18 @@ export class ClinicSettingsController {
     return { enabled };
   }
 
+  /**
+   * "Chế độ phòng khám 1 người" (2026-09-14) — tự-phục vụ, KHÔNG gắn `@RequirePermission` (đúng
+   * khuôn `getSidebarAutoCollapseEnabled` ở trên): bác sĩ (không chỉ `clinic_admin`) cần biết công
+   * tắc này để `TopBar.tsx` mở đúng dialog "Đóng ca hôm nay" (nhỏ) hay "Kết thúc ngày làm việc" (gộp).
+   */
+  @Get('solo-clinic-workflow-enabled')
+  async getSoloClinicWorkflowEnabled(@Req() req: Request) {
+    const { tenantId } = req.user!;
+    const enabled = await this.clinicSettingsService.getSoloClinicWorkflowEnabled(tenantId);
+    return { enabled };
+  }
+
   @Patch()
   @RequirePermission('clinic_config', 'update')
   async update(@Body() body: unknown, @Req() req: Request) {

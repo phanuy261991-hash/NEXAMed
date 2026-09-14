@@ -17,6 +17,7 @@ import {
   appointmentSummarySchema,
   allowStaffSelfScheduleStatusSchema,
   sidebarAutoCollapseStatusSchema,
+  soloClinicWorkflowStatusSchema,
   breakGlassRequestSchema,
   breakGlassResponseSchema,
   clinicPrintHeaderSchema,
@@ -1860,6 +1861,18 @@ registry.registerPath({
   security: [{ bearerAuth: [] }],
   responses: {
     200: jsonResponse('Thành công', envelope(sidebarAutoCollapseStatusSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/clinic-settings/solo-clinic-workflow-enabled',
+  tags: ['clinic'],
+  summary: '"Chế độ phòng khám 1 người" — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /clinic-settings/deferred-payment-enabled)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(soloClinicWorkflowStatusSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
   },
 });

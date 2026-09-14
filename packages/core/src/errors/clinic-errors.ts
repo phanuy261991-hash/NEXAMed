@@ -85,3 +85,20 @@ export class CashierDrawerSeparateRequiresMultiCashierError extends DomainError 
     super('Phải bật "Đa thu ngân" trước khi bật "Thủ quỹ riêng".');
   }
 }
+
+/**
+ * "Chế độ phòng khám 1 người" và "Đa thu ngân" loại trừ lẫn nhau (mockup Artifact đã duyệt,
+ * 2026-09-14) — bật cái này thì phải tắt cái kia trước, khoá cứng 2 chiều ở cả UI (`PaymentConfigPane.tsx`
+ * disable + chữ giải thích) lẫn Service (phòng client bỏ qua disable, gửi thẳng request).
+ */
+export class SoloClinicWorkflowConflictsWithMultiCashierError extends DomainError {
+  readonly code = 'SOLO_CLINIC_WORKFLOW_CONFLICTS_WITH_MULTI_CASHIER';
+
+  constructor(turningOn: 'SOLO_CLINIC_WORKFLOW' | 'MULTI_CASHIER') {
+    super(
+      turningOn === 'SOLO_CLINIC_WORKFLOW'
+        ? 'Phải tắt "Nhiều thu ngân cùng lúc" trước khi bật "Chế độ phòng khám 1 người".'
+        : 'Phải tắt "Chế độ phòng khám 1 người" trước khi bật "Nhiều thu ngân cùng lúc".',
+    );
+  }
+}

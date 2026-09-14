@@ -2,6 +2,22 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-14 (2)
+
+### "Chế độ phòng khám 1 người" (Solo Clinic Workflow)
+
+Phòng khám chỉ 1 người (bác sĩ tự làm Tiếp nhận/Khám/Thu ngân) bật công tắc mới `soloClinicWorkflowEnabled` (mặc định TẮT, "Cấu hình thanh toán") — bấm "Đóng ca hôm nay" mở 1 màn hình gộp "Kết thúc ngày làm việc" (Tổng kết ngày → Kiểm đếm tiền mặt → Đối soát → Hoàn tất) thay vì phải thao tác 3 nơi tách biệt (Đóng ca khám/Chốt ca thu ngân/Duyệt phiếu). Xác nhận cuối cùng chạy tuần tự cả 3 bước, tự động Duyệt nếu actor có quyền. Loại trừ lẫn nhau 2 chiều với "Đa thu ngân". Trích xuất `WizardStepper.tsx`/`CloseShiftSteps.tsx` dùng chung giữa `CloseShiftDialog.tsx` cũ và `EndOfDayDialog.tsx` mới.
+
+Bug thật phát hiện lúc verify Playwright: màn thành công không hiện sau khi hoàn tất (component cha unmount wizard ngay khi ca thu ngân vừa đóng làm query "ca đang mở" trả về null) — đã sửa bằng cách khoá lại ca đã bắt được lần đầu, không phụ thuộc giá trị query sống nữa.
+
+**Đã xác minh thật**: `packages/core` 170/170, `packages/shared` 20/20, `apps/web` 5/5, `apps/api` 770/770 pass, `pnpm -w typecheck/lint/build` sạch (chunk 499.40 kB). Playwright qua Chrome thật xác nhận toàn bộ luồng + toggle khoá chéo, không lỗi console/HTTP. Xem chi tiết `docs/DECISIONS.md` #138.
+
+## 2026-09-14
+
+### Verify Playwright cho Chiết khấu trên "Chi tiết thanh toán" (#137)
+
+Hoàn tất phần verify Playwright tự động còn treo từ #137 (2026-09-09). Dữ liệu test tạo qua HTTP API — xác nhận đúng thiết kế: chiết khấu "Toàn hoá đơn"/"Từng dịch vụ" loại trừ lẫn nhau, tính đúng `dueAmount`, không crash ở kịch bản chọn kiểu rồi rời ô không gõ số (bug 500 cũ đã sửa), F5 giữ đúng số tiền và không tự điền lại "Lý do chiết khấu" cũ, pill mệnh giá + nút "Vừa đủ" đúng, Thu tiền thành công. Không phát hiện bug mới. Xem chi tiết `docs/DECISIONS.md` #137.
+
 ## 2026-09-09
 
 ### Chiết khấu trên "Chi tiết thanh toán" + pill mệnh giá "Tiền khách đưa"

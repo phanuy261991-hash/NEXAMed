@@ -26,6 +26,7 @@ describe('HTTP e2e — /api/v1/rooms và /api/v1/clinic-settings', () => {
 
   let clinicAdminToken: string;
   let receptionistToken: string;
+  let doctorToken: string;
   let tenantBAdminToken: string;
 
   async function createUserWithRole(tenantId: string, roleName: string) {
@@ -73,6 +74,7 @@ describe('HTTP e2e — /api/v1/rooms và /api/v1/clinic-settings', () => {
 
     clinicAdminToken = await createUserWithRole(fixture.tenantA.id, 'clinic_admin');
     receptionistToken = await createUserWithRole(fixture.tenantA.id, 'receptionist');
+    doctorToken = await createUserWithRole(fixture.tenantA.id, 'doctor');
     tenantBAdminToken = await createUserWithRole(fixture.tenantB.id, 'clinic_admin');
   });
 
@@ -376,6 +378,70 @@ describe('HTTP e2e — /api/v1/rooms và /api/v1/clinic-settings', () => {
       expect(restore.body.data.cashierShiftMultiCashierEnabled).toBe(false);
     });
 
+    it('GET lúc chưa cấu hình → soloClinicWorkflowEnabled mặc định false ("Chế độ phòng khám 1 người")', async () => {
+      const res = await request(app.getHttpServer()).get('/api/v1/clinic-settings').set(authed(tenantBAdminToken));
+      expect(res.status).toBe(200);
+      expect(res.body.data.soloClinicWorkflowEnabled).toBe(false);
+    });
+
+    it('PATCH soloClinicWorkflowEnabled=true khi cashierShiftMultiCashierEnabled đang bật → 422', async () => {
+      await request(app.getHttpServer())
+        .patch('/api/v1/clinic-settings')
+        .set(authed(clinicAdminToken))
+        .send({ cashierShiftMultiCashierEnabled: true });
+
+      const res = await request(app.getHttpServer())
+        .patch('/api/v1/clinic-settings')
+        .set(authed(clinicAdminToken))
+        .send({ soloClinicWorkflowEnabled: true });
+      expect(res.status).toBe(422);
+      expect(res.body.error.code).toBe('SOLO_CLINIC_WORKFLOW_CONFLICTS_WITH_MULTI_CASHIER');
+
+      const get = await request(app.getHttpServer()).get('/api/v1/clinic-settings').set(authed(clinicAdminToken));
+      expect(get.body.data.soloClinicWorkflowEnabled).toBe(false);
+
+      await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(clinicAdminToken)).send({ cashierShiftMultiCashierEnabled: false });
+    });
+
+    it('PATCH cashierShiftMultiCashierEnabled=true khi soloClinicWorkflowEnabled đang bật → 422', async () => {
+      await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(clinicAdminToken)).send({ soloClinicWorkflowEnabled: true });
+
+      const res = await request(app.getHttpServer())
+        .patch('/api/v1/clinic-settings')
+        .set(authed(clinicAdminToken))
+        .send({ cashierShiftMultiCashierEnabled: true });
+      expect(res.status).toBe(422);
+      expect(res.body.error.code).toBe('SOLO_CLINIC_WORKFLOW_CONFLICTS_WITH_MULTI_CASHIER');
+
+      const get = await request(app.getHttpServer()).get('/api/v1/clinic-settings').set(authed(clinicAdminToken));
+      expect(get.body.data.cashierShiftMultiCashierEnabled).toBe(false);
+
+      // Khôi phục về mặc định — tenant A dùng chung cho các describe khác trong file này.
+      const restore = await request(app.getHttpServer())
+        .patch('/api/v1/clinic-settings')
+        .set(authed(clinicAdminToken))
+        .send({ soloClinicWorkflowEnabled: false });
+      expect(restore.status).toBe(200);
+      expect(restore.body.data.soloClinicWorkflowEnabled).toBe(false);
+    });
+
+    it('PATCH cả 2 công tắc CÙNG false + 1 true trong 1 request vẫn hợp lệ (không tự xung đột với chính field đang tắt)', async () => {
+      const res = await request(app.getHttpServer())
+        .patch('/api/v1/clinic-settings')
+        .set(authed(clinicAdminToken))
+        .send({ soloClinicWorkflowEnabled: true, cashierShiftMultiCashierEnabled: false });
+      expect(res.status).toBe(200);
+      expect(res.body.data.soloClinicWorkflowEnabled).toBe(true);
+      expect(res.body.data.cashierShiftMultiCashierEnabled).toBe(false);
+
+      const restore = await request(app.getHttpServer())
+        .patch('/api/v1/clinic-settings')
+        .set(authed(clinicAdminToken))
+        .send({ soloClinicWorkflowEnabled: false });
+      expect(restore.status).toBe(200);
+      expect(restore.body.data.soloClinicWorkflowEnabled).toBe(false);
+    });
+
     it('PATCH slotDurationMinutes → 200, GET phản ánh đúng giá trị mới', async () => {
       const patch = await request(app.getHttpServer())
         .patch('/api/v1/clinic-settings')
@@ -567,6 +633,44 @@ describe('HTTP e2e — /api/v1/rooms và /api/v1/clinic-settings', () => {
     it('tenant B độc lập — bật ở tenant A không ảnh hưởng tenant B', async () => {
       const res = await request(app.getHttpServer())
         .get('/api/v1/clinic-settings/sidebar-auto-collapse-enabled')
+        .set(authed(tenantBAdminToken));
+      expect(res.body.data.enabled).toBe(false);
+    });
+  });
+
+  describe('/api/v1/clinic-settings/solo-clinic-workflow-enabled ("Chế độ phòng khám 1 người")', () => {
+    it('không có access token → 401', async () => {
+      const res = await request(app.getHttpServer()).get('/api/v1/clinic-settings/solo-clinic-workflow-enabled');
+      expect(res.status).toBe(401);
+    });
+
+    it('bác sĩ (KHÔNG có clinic_config.read) → vẫn 200 (tự-phục vụ, đúng khuôn deferred-payment-enabled)', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/v1/clinic-settings/solo-clinic-workflow-enabled')
+        .set(authed(doctorToken));
+      expect(res.status).toBe(200);
+      expect(typeof res.body.data.enabled).toBe('boolean');
+    });
+
+    it('mặc định false khi chưa cấu hình, PATCH bật → GET tự-phục vụ phản ánh đúng ngay', async () => {
+      const before = await request(app.getHttpServer())
+        .get('/api/v1/clinic-settings/solo-clinic-workflow-enabled')
+        .set(authed(tenantBAdminToken));
+      expect(before.body.data.enabled).toBe(false);
+
+      await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(clinicAdminToken)).send({ soloClinicWorkflowEnabled: true });
+
+      const after = await request(app.getHttpServer())
+        .get('/api/v1/clinic-settings/solo-clinic-workflow-enabled')
+        .set(authed(doctorToken));
+      expect(after.body.data.enabled).toBe(true);
+
+      await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(clinicAdminToken)).send({ soloClinicWorkflowEnabled: false });
+    });
+
+    it('tenant B độc lập — bật ở tenant A không ảnh hưởng tenant B', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/v1/clinic-settings/solo-clinic-workflow-enabled')
         .set(authed(tenantBAdminToken));
       expect(res.body.data.enabled).toBe(false);
     });

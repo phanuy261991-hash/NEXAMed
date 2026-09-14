@@ -255,6 +255,18 @@ export const clinicSettingsSchema = z.object({
    * không đủ chỉ có đường "Nạp thêm" (đủ 100% mới trừ được) hoặc đổi hẳn sang phương thức khác.
    */
   walletMixedPaymentEnabled: z.boolean(),
+  /**
+   * "Chế độ phòng khám 1 người" (2026-09-14, chủ dự án yêu cầu trực tiếp — mockup Artifact đã
+   * duyệt) — TẮT (mặc định, giữ đúng hành vi hiện tại): "Đóng ca hôm nay" (bác sĩ) vẫn là dialog
+   * nhỏ riêng, tách biệt hoàn toàn khỏi "Chốt ca" thu ngân + "Duyệt phiếu" (3 thao tác thủ công ở
+   * 3 nơi). BẬT: bấm "Đóng ca hôm nay" mở màn hình gộp "Kết thúc ngày làm việc" (Tổng kết ngày →
+   * Kiểm đếm tiền mặt → Đối soát → Hoàn tất), tự động Chốt ca thu ngân VÀ Duyệt phiếu luôn (nếu
+   * actor có sẵn `cashier_shift.manage`) trong CÙNG 1 lần xác nhận — dành cho phòng khám chỉ 1
+   * người tự làm hết Tiếp nhận/Khám/Thu ngân. **Loại trừ lẫn nhau với `cashierShiftMultiCashierEnabled`**
+   * (không có ý nghĩa cùng lúc — phòng khám 1 người không thể có nhiều thu ngân song song) — validate
+   * ở `ClinicSettingsService.updateSettings()`, lỗi `SOLO_CLINIC_WORKFLOW_CONFLICTS_WITH_MULTI_CASHIER`.
+   */
+  soloClinicWorkflowEnabled: z.boolean(),
 });
 export type ClinicSettings = z.infer<typeof clinicSettingsSchema>;
 
@@ -283,6 +295,7 @@ export const updateClinicSettingsRequestSchema = z.object({
   cashierDrawerSeparateEnabled: z.boolean().optional(),
   sidebarAutoCollapseEnabled: z.boolean().optional(),
   walletMixedPaymentEnabled: z.boolean().optional(),
+  soloClinicWorkflowEnabled: z.boolean().optional(),
 });
 export type UpdateClinicSettingsRequest = z.infer<typeof updateClinicSettingsRequestSchema>;
 
@@ -317,6 +330,8 @@ export const DEFAULT_CASHIER_DRAWER_SEPARATE_ENABLED = false;
 export const DEFAULT_WALLET_MIXED_PAYMENT_ENABLED = false;
 /** Tắt theo mặc định (an toàn — giữ nguyên hành vi sidebar hiện tại tới khi chủ động bật). */
 export const DEFAULT_SIDEBAR_AUTO_COLLAPSE_ENABLED = false;
+/** Tắt theo mặc định (an toàn — giữ nguyên 3 thao tác tách biệt hiện tại tới khi chủ động bật). */
+export const DEFAULT_SOLO_CLINIC_WORKFLOW_ENABLED = false;
 
 /**
  * `GET /clinic-settings/cashier-shift-blind-close-enabled` — chiếu tối thiểu tự-phục vụ, cùng lý
@@ -361,6 +376,15 @@ export type AllowStaffSelfScheduleStatus = z.infer<typeof allowStaffSelfSchedule
  */
 export const sidebarAutoCollapseStatusSchema = z.object({ enabled: z.boolean() });
 export type SidebarAutoCollapseStatus = z.infer<typeof sidebarAutoCollapseStatusSchema>;
+
+/**
+ * `GET /clinic-settings/solo-clinic-workflow-enabled` — chiếu tối thiểu tự-phục vụ, cùng lý do
+ * `sidebarAutoCollapseStatusSchema` ở trên: bác sĩ (không chỉ `clinic_admin`) cần biết công tắc
+ * này để `TopBar.tsx` mở đúng dialog "Đóng ca hôm nay" (nhỏ, cũ) hay "Kết thúc ngày làm việc" (gộp,
+ * mới) khi bấm nút — không có `clinic_config.read`.
+ */
+export const soloClinicWorkflowStatusSchema = z.object({ enabled: z.boolean() });
+export type SoloClinicWorkflowStatus = z.infer<typeof soloClinicWorkflowStatusSchema>;
 
 /**
  * Trang "Thông tin phòng khám" (2026-08-13, `/admin/system-config`) — mở rộng `tenant`

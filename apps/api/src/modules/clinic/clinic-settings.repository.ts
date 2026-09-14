@@ -18,6 +18,7 @@ import {
   DEFAULT_NO_SHOW_THRESHOLD_MINUTES,
   DEFAULT_OVERDUE_WAIT_WARNING_MINUTES,
   DEFAULT_SIDEBAR_AUTO_COLLAPSE_ENABLED,
+  DEFAULT_SOLO_CLINIC_WORKFLOW_ENABLED,
   DEFAULT_SLOT_DURATION_MINUTES,
   DEFAULT_WALLET_MIXED_PAYMENT_ENABLED,
   DEFAULT_WORK_SHIFT_ASSIGNMENT_LOCK_GRACE_DAYS,
@@ -87,6 +88,10 @@ const sidebarAutoCollapseSchema = z.boolean();
 // "Ví tạm ứng" — tắt theo mặc định (mỗi phiếu thu chỉ 1 phương thức) cho tenant chưa từng cấu hình.
 const WALLET_MIXED_PAYMENT_ENABLED_KEY = 'wallet_mixed_payment_enabled';
 const walletMixedPaymentEnabledSchema = z.boolean();
+// "Chế độ phòng khám 1 người" (2026-09-14) — tắt theo mặc định (an toàn, giữ nguyên 3 thao tác
+// tách biệt hiện tại) cho tenant chưa từng cấu hình.
+const SOLO_CLINIC_WORKFLOW_ENABLED_KEY = 'solo_clinic_workflow_enabled';
+const soloClinicWorkflowEnabledSchema = z.boolean();
 // "Cấu hình mẫu mã phát sinh" (docs/DECISIONS.md #114, 2026-09-03) — 1 object JSON duy nhất,
 // khoá theo loại mã (7 loại), chỉ chứa entry của loại mã ĐÃ được tenant chủ động sửa (loại chưa
 // đụng tới thì KHÔNG có key — service tự áp mặc định khớp hành vi cũ, xem `BusinessCodeService`).
@@ -312,6 +317,19 @@ export class ClinicSettingsRepository {
 
   upsertWalletMixedPaymentEnabled(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
     return this.upsert(tx, tenantId, actorId, WALLET_MIXED_PAYMENT_ENABLED_KEY, value);
+  }
+
+  async getSoloClinicWorkflowEnabled(tx: Prisma.TransactionClient, tenantId: string): Promise<boolean> {
+    const setting = await tx.tenantSetting.findFirst({ where: { tenantId, key: SOLO_CLINIC_WORKFLOW_ENABLED_KEY } });
+    if (!setting) {
+      return DEFAULT_SOLO_CLINIC_WORKFLOW_ENABLED;
+    }
+    const parsed = soloClinicWorkflowEnabledSchema.safeParse(setting.valueJson);
+    return parsed.success ? parsed.data : DEFAULT_SOLO_CLINIC_WORKFLOW_ENABLED;
+  }
+
+  upsertSoloClinicWorkflowEnabled(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
+    return this.upsert(tx, tenantId, actorId, SOLO_CLINIC_WORKFLOW_ENABLED_KEY, value);
   }
 
   /** Chỉ trả entry của loại mã tenant ĐÃ chủ động cấu hình — loại mã vắng mặt nghĩa là "dùng mặc

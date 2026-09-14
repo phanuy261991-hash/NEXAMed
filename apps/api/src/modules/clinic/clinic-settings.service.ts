@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { CashierDrawerSeparateRequiresMultiCashierError, type ClinicConfigReaderPort } from '@nexamed/core';
+import {
+  CashierDrawerSeparateRequiresMultiCashierError,
+  SoloClinicWorkflowConflictsWithMultiCashierError,
+  type ClinicConfigReaderPort,
+} from '@nexamed/core';
 import type { ClinicSettings, UpdateClinicSettingsRequest } from '@nexamed/shared';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
@@ -43,6 +47,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         cashierDrawerSeparateEnabled,
         sidebarAutoCollapseEnabled,
         walletMixedPaymentEnabled,
+        soloClinicWorkflowEnabled,
       ] = await Promise.all([
         this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
         this.clinicSettingsRepository.getSlotDurationMinutes(tx, tenantId),
@@ -62,6 +67,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getCashierDrawerSeparateEnabled(tx, tenantId),
         this.clinicSettingsRepository.getSidebarAutoCollapseEnabled(tx, tenantId),
         this.clinicSettingsRepository.getWalletMixedPaymentEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getSoloClinicWorkflowEnabled(tx, tenantId),
       ]);
       return {
         businessHours,
@@ -82,8 +88,14 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         cashierDrawerSeparateEnabled,
         sidebarAutoCollapseEnabled,
         walletMixedPaymentEnabled,
+        soloClinicWorkflowEnabled,
       };
     });
+  }
+
+  /** `GET /clinic-settings/solo-clinic-workflow-enabled` — chiếu tối thiểu tự-phục vụ, xem comment ở `packages/shared/src/clinic.ts`. */
+  getSoloClinicWorkflowEnabled(tenantId: string): Promise<boolean> {
+    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getSoloClinicWorkflowEnabled(tx, tenantId));
   }
 
   /** `GET /clinic-settings/sidebar-auto-collapse-enabled` — chiếu tối thiểu tự-phục vụ, xem comment ở `packages/shared/src/clinic.ts`. */
@@ -190,6 +202,16 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
           throw new CashierDrawerSeparateRequiresMultiCashierError();
         }
       }
+      // "Chế độ phòng khám 1 người" ⇄ "Đa thu ngân" loại trừ lẫn nhau — đọc giá trị SẼ CÓ sau khi
+      // patch này áp dụng (cùng kỹ thuật `cashierDrawerSeparateEnabled` ở trên), chặn CẢ HAI chiều
+      // bật cùng lúc, kể cả khi client cố tình gửi cả 2 field `true` trong CÙNG 1 request.
+      if (dto.soloClinicWorkflowEnabled === true || dto.cashierShiftMultiCashierEnabled === true) {
+        const soloEnabled = dto.soloClinicWorkflowEnabled ?? (await this.clinicSettingsRepository.getSoloClinicWorkflowEnabled(tx, tenantId));
+        const multiCashierEnabled = dto.cashierShiftMultiCashierEnabled ?? (await this.clinicSettingsRepository.getCashierShiftMultiCashierEnabled(tx, tenantId));
+        if (soloEnabled && multiCashierEnabled) {
+          throw new SoloClinicWorkflowConflictsWithMultiCashierError(dto.soloClinicWorkflowEnabled === true ? 'SOLO_CLINIC_WORKFLOW' : 'MULTI_CASHIER');
+        }
+      }
       if (dto.businessHours !== undefined) {
         await this.clinicSettingsRepository.upsertBusinessHours(tx, tenantId, actorId, dto.businessHours);
       }
@@ -244,6 +266,9 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
       if (dto.walletMixedPaymentEnabled !== undefined) {
         await this.clinicSettingsRepository.upsertWalletMixedPaymentEnabled(tx, tenantId, actorId, dto.walletMixedPaymentEnabled);
       }
+      if (dto.soloClinicWorkflowEnabled !== undefined) {
+        await this.clinicSettingsRepository.upsertSoloClinicWorkflowEnabled(tx, tenantId, actorId, dto.soloClinicWorkflowEnabled);
+      }
 
       const hasChanges =
         dto.businessHours !== undefined ||
@@ -263,7 +288,8 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         dto.cashVoucherApprovalEnabled !== undefined ||
         dto.cashierDrawerSeparateEnabled !== undefined ||
         dto.sidebarAutoCollapseEnabled !== undefined ||
-        dto.walletMixedPaymentEnabled !== undefined;
+        dto.walletMixedPaymentEnabled !== undefined ||
+        dto.soloClinicWorkflowEnabled !== undefined;
       if (hasChanges) {
         await writeAuditLog(tx, tenantId, {
           actorId,
@@ -295,6 +321,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         cashierDrawerSeparateEnabled,
         sidebarAutoCollapseEnabled,
         walletMixedPaymentEnabled,
+        soloClinicWorkflowEnabled,
       ] = await Promise.all([
         this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
         this.clinicSettingsRepository.getSlotDurationMinutes(tx, tenantId),
@@ -314,6 +341,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getCashierDrawerSeparateEnabled(tx, tenantId),
         this.clinicSettingsRepository.getSidebarAutoCollapseEnabled(tx, tenantId),
         this.clinicSettingsRepository.getWalletMixedPaymentEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getSoloClinicWorkflowEnabled(tx, tenantId),
       ]);
       return {
         businessHours,
@@ -334,6 +362,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         cashierDrawerSeparateEnabled,
         sidebarAutoCollapseEnabled,
         walletMixedPaymentEnabled,
+        soloClinicWorkflowEnabled,
       };
     });
   }

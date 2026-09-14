@@ -27,6 +27,7 @@ import {
   createRoom,
   getAllowStaffSelfScheduleStatus,
   getSidebarAutoCollapseStatus,
+  getSoloClinicWorkflowStatus,
   getCashierShiftRequiredStatus,
   getClinicPrintHeader,
   getClinicProfile,
@@ -116,6 +117,19 @@ export function useSidebarAutoCollapseEnabledQuery() {
   });
 }
 
+/**
+ * "Chế độ phòng khám 1 người" — `TopBar.tsx` dùng riêng hook này (KHÔNG dùng
+ * `useClinicSettingsQuery()`): bác sĩ (không chỉ `clinic_admin`) cần biết công tắc này để mở đúng
+ * dialog "Đóng ca hôm nay", cùng lý do `useDeferredPaymentEnabledQuery` ở trên.
+ */
+export function useSoloClinicWorkflowEnabledQuery() {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'clinic', 'solo-clinic-workflow-enabled'),
+    queryFn: getSoloClinicWorkflowStatus,
+  });
+}
+
 export function useUpdateClinicSettingsMutation() {
   const { tenantId } = useAppConfig();
   const queryClient = useQueryClient();
@@ -136,6 +150,8 @@ export function useUpdateClinicSettingsMutation() {
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'cashier-shift-required-enabled') });
       // "Tự động thu gọn menu khi chuyển trang" — Sidebar.tsx đọc qua hook tự-phục vụ riêng, làm mới luôn.
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'sidebar-auto-collapse-enabled') });
+      // "Chế độ phòng khám 1 người" — TopBar.tsx đọc qua hook tự-phục vụ riêng, làm mới luôn.
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'solo-clinic-workflow-enabled') });
     },
   });
 }

@@ -111,6 +111,9 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   // không hợp lệ (thiếu ràng buộc phụ thuộc), không phải xung đột trạng thái — dùng đúng mặc định
   // UNPROCESSABLE_ENTITY của filter (khai tường minh ở đây cho dễ tra).
   CASHIER_DRAWER_SEPARATE_REQUIRES_MULTI_CASHIER: HttpStatus.UNPROCESSABLE_ENTITY,
+  // "Chế độ phòng khám 1 người" ⇄ "Đa thu ngân" loại trừ lẫn nhau — cùng nhóm input không hợp lệ
+  // (thiếu ràng buộc phụ thuộc) với CASHIER_DRAWER_SEPARATE_REQUIRES_MULTI_CASHIER ở trên.
+  SOLO_CLINIC_WORKFLOW_CONFLICTS_WITH_MULTI_CASHIER: HttpStatus.UNPROCESSABLE_ENTITY,
   // Ví tạm ứng — số dư không đủ (chưa bật/không kèm trả hỗn hợp) và ví đã khoá là xung đột với
   // trạng thái hiện có (số dư/trạng thái ví), không phải lỗi input.
   WALLET_INSUFFICIENT_BALANCE: HttpStatus.CONFLICT,

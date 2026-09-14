@@ -3,7 +3,12 @@ import { CaretRight, Clock, GearSix, House, IdentificationBadge, Pause, Play, Si
 import { Link, useMatch, useNavigate } from 'react-router-dom';
 import { logout } from '../../features/auth/auth.api';
 import { useAuthStore } from '../../features/auth/auth.store';
-import { useDoctorAvailabilityPolicyQuery, useDoctorAvailabilityTodayQuery, useSetDoctorAvailabilityMutation } from '../../features/clinic/clinic.queries';
+import {
+  useDoctorAvailabilityPolicyQuery,
+  useDoctorAvailabilityTodayQuery,
+  useSetDoctorAvailabilityMutation,
+  useSoloClinicWorkflowEnabledQuery,
+} from '../../features/clinic/clinic.queries';
 import { useClosingTimeReminder } from '../../features/clinic/useClosingTimeReminder';
 import { getInitials } from '../format/initials';
 import { formatClockTime } from '../format/time';
@@ -28,6 +33,13 @@ const DoctorQueueButton = lazy(() =>
  */
 const DoctorBreakDialog = lazy(() => import('../ui/DoctorBreakDialog').then((m) => ({ default: m.DoctorBreakDialog })));
 const DoctorEndShiftDialog = lazy(() => import('../ui/DoctorEndShiftDialog').then((m) => ({ default: m.DoctorEndShiftDialog })));
+/**
+ * "Chế độ phòng khám 1 người" (mockup Artifact đã duyệt, 2026-09-14) — thay `DoctorEndShiftDialog`
+ * (dialog nhỏ) bằng màn hình gộp "Kết thúc ngày làm việc" (Đóng ca khám + Chốt ca thu ngân + tự
+ * động Duyệt) khi `ClinicSettings.soloClinicWorkflowEnabled` bật — KHÔNG thêm lối vào mới, vẫn
+ * đúng 1 nút "Đóng ca hôm nay"/nhắc tự động hết giờ làm việc hiện có.
+ */
+const EndOfDayDialog = lazy(() => import('../ui/EndOfDayDialog').then((m) => ({ default: m.EndOfDayDialog })));
 
 /**
  * "Thông tin tài khoản" (menu avatar) — kéo theo query Khoa/Phòng + 3 danh mục tham chiếu (Học
@@ -72,6 +84,8 @@ export function TopBar() {
   // "Tạm nghỉ / Đóng ca" — board trả CHỈ bác sĩ BREAK/ENDED hôm nay, không có dòng = ACTIVE ngầm định.
   const availabilityQuery = useDoctorAvailabilityTodayQuery(isDoctor);
   const policyQuery = useDoctorAvailabilityPolicyQuery();
+  const soloClinicWorkflowQuery = useSoloClinicWorkflowEnabledQuery();
+  const soloClinicWorkflowEnabled = soloClinicWorkflowQuery.data?.enabled ?? false;
   const setAvailability = useSetDoctorAvailabilityMutation();
   const myAvailability = availabilityQuery.data?.items.find((i) => i.doctorId === user?.id);
   const status = myAvailability?.status ?? 'ACTIVE';
@@ -327,7 +341,15 @@ export function TopBar() {
         {breakDialogOpen && user && (
           <DoctorBreakDialog doctorId={user.id} onDone={() => setBreakDialogOpen(false)} onClose={() => setBreakDialogOpen(false)} />
         )}
-        {endShiftDialog && user && (
+        {endShiftDialog && user && soloClinicWorkflowEnabled && (
+          <EndOfDayDialog
+            doctorId={user.id}
+            trigger={endShiftDialog.trigger}
+            onDone={() => setEndShiftDialog(null)}
+            onClose={() => setEndShiftDialog(null)}
+          />
+        )}
+        {endShiftDialog && user && !soloClinicWorkflowEnabled && (
           <DoctorEndShiftDialog
             doctorId={user.id}
             trigger={endShiftDialog.trigger}

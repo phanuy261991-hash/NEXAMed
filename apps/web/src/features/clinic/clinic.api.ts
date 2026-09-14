@@ -25,6 +25,7 @@ import type {
   RoomSummary,
   SetDoctorAvailabilityRequest,
   SetRoomSessionRequest,
+  SoloClinicWorkflowStatus,
   UpdateClinicProfileRequest,
   UpdateClinicSettingsRequest,
   UpdateExamStationRequest,
@@ -64,6 +65,11 @@ export async function getCashierShiftRequiredStatus(): Promise<CashierShiftRequi
 /** "Tự động thu gọn menu khi chuyển trang" (2026-09-07) — tự-phục vụ, không cần `clinic_config.read` (đúng khuôn `getDeferredPaymentStatus`). */
 export async function getSidebarAutoCollapseStatus(): Promise<SidebarAutoCollapseStatus> {
   return unwrap(await getApiClient().GET('/api/v1/clinic-settings/sidebar-auto-collapse-enabled')) as SidebarAutoCollapseStatus;
+}
+
+/** "Chế độ phòng khám 1 người" (2026-09-14) — tự-phục vụ, không cần `clinic_config.read` (đúng khuôn `getDeferredPaymentStatus`). */
+export async function getSoloClinicWorkflowStatus(): Promise<SoloClinicWorkflowStatus> {
+  return unwrap(await getApiClient().GET('/api/v1/clinic-settings/solo-clinic-workflow-enabled')) as SoloClinicWorkflowStatus;
 }
 
 /** Trang "Thông tin phòng khám" (2026-08-13) — GET/PATCH cùng contract `clinic-settings` phía trên. */

@@ -12,7 +12,7 @@ const WEEKDAY_LABELS_VI = ['Chủ nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư',
 
 /** `dateStr` dạng `YYYY-MM-DD` (ngày lịch VN, đã đúng từ `getVietnamTodayDateString()`) — chỉ cần
  * suy ra thứ trong tuần, không liên quan múi giờ hiển thị nên dùng `Date.UTC` thuần cho gọn. */
-function formatTodayChipLabel(dateStr: string): string {
+export function formatTodayChipLabel(dateStr: string): string {
   const [yearStr, monthStr, dayStr] = dateStr.split('-');
   const year = Number(yearStr);
   const month = Number(monthStr);
@@ -55,7 +55,6 @@ export function DoctorEndShiftDialog({
   const [error, setError] = useState<string | null>(null);
   const today = getVietnamTodayDateString();
   const listQuery = useReceptionListQuery(today, doctorId, false, false);
-  const summaryQuery = useDoctorShiftSummaryQuery(doctorId);
   const mutation = useSetDoctorAvailabilityMutation();
 
   const pendingCount = (listQuery.data?.items ?? []).filter((i) => i.status === 'CHECKED_IN' || i.status === 'IN_CONSULTATION').length;
@@ -70,9 +69,6 @@ export function DoctorEndShiftDialog({
       setError(err instanceof ApiError ? err.message : 'Không đóng ca được, vui lòng thử lại.');
     }
   }
-
-  const summary = summaryQuery.data;
-  const doctorName = summary?.doctorName || '...';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4" role="dialog" aria-modal="true" aria-labelledby="doctor-end-shift-title">
@@ -100,60 +96,7 @@ export function DoctorEndShiftDialog({
             </div>
           )}
 
-          <div className="mt-6 rounded-2xl border border-brand-teal/20 bg-brand-teal-panel px-5 py-[18px]">
-            <div className="mb-4 flex items-center gap-3">
-              <div className="flex h-[38px] w-[38px] flex-shrink-0 items-center justify-center rounded-full border-[1.5px] border-brand-teal/30 bg-white text-[13px] font-bold text-brand-teal-active">
-                {getInitials(doctorName)}
-              </div>
-              <div className="flex min-w-0 flex-col gap-px">
-                <span className="text-[15px] font-bold text-slate-900">BS. {doctorName}</span>
-                <span className="text-[12.5px] font-medium text-brand-teal-active">đã hoàn thành ngày làm việc hôm nay với:</span>
-              </div>
-            </div>
-
-            {summaryQuery.isError ? (
-              <p className="text-xs font-medium text-rose-700">Không tải được số liệu hôm nay.</p>
-            ) : summary ? (
-              <div className="flex items-stretch gap-2.5">
-                <ShiftStatTile icon={Stethoscope} iconColor="text-blue-600" iconBg="bg-blue-50" label="Đã gọi khám" value={summary.calledCount} unit="ca" primary />
-                <ShiftStatTile
-                  icon={CheckCircle}
-                  iconColor="text-emerald-600"
-                  iconBg="bg-emerald-50"
-                  label="Đã hoàn thành"
-                  value={summary.completedCount}
-                  unit="ca"
-                  primary
-                />
-                <ShiftStatTile
-                  icon={Clock}
-                  iconColor="text-slate-600"
-                  iconBg="bg-slate-100"
-                  label="TB / ca"
-                  value={summary.avgConsultMinutes}
-                  unit="phút"
-                />
-                <ShiftStatTile
-                  icon={Prohibit}
-                  iconColor="text-rose-600"
-                  iconBg="bg-rose-50"
-                  label="Huỷ khám"
-                  value={summary.cancelledCount}
-                  unit="ca"
-                  attention
-                />
-                <ShiftStatTile icon={Pill} iconColor="text-violet-600" iconBg="bg-violet-50" label="Đơn thuốc" value={summary.prescriptionCount} unit="đơn" />
-              </div>
-            ) : (
-              <div className="flex items-stretch gap-2.5" aria-hidden="true">
-                <ShiftStatTileSkeleton primary />
-                <ShiftStatTileSkeleton primary />
-                <ShiftStatTileSkeleton />
-                <ShiftStatTileSkeleton />
-                <ShiftStatTileSkeleton />
-              </div>
-            )}
-          </div>
+          <DoctorShiftSummaryPanel doctorId={doctorId} />
 
           {pendingCount > 0 && (
             <div className="mt-[18px] flex items-center gap-3 rounded-md bg-amber-50/70 py-2 pl-2.5 pr-3">
@@ -199,7 +142,53 @@ export function DoctorEndShiftDialog({
   );
 }
 
-function ShiftStatTile({
+/**
+ * "Tổng hợp ca khám hôm nay" — lời chào có tên bác sĩ + 5 chỉ số trên nền `brand-teal-panel`.
+ * Trích xuất dùng chung (lần dùng thứ hai ở `EndOfDayDialog.tsx`, "Chế độ phòng khám 1 người") —
+ * tự gọi `useDoctorShiftSummaryQuery(doctorId)`, không cần nơi gọi truyền số liệu vào.
+ */
+export function DoctorShiftSummaryPanel({ doctorId }: { doctorId: string }) {
+  const summaryQuery = useDoctorShiftSummaryQuery(doctorId);
+  const summary = summaryQuery.data;
+  const doctorName = summary?.doctorName || '...';
+
+  return (
+    <div className="mt-6 rounded-2xl border border-brand-teal/20 bg-brand-teal-panel px-5 py-[18px]">
+      <div className="mb-4 flex items-center gap-3">
+        <div className="flex h-[38px] w-[38px] flex-shrink-0 items-center justify-center rounded-full border-[1.5px] border-brand-teal/30 bg-white text-[13px] font-bold text-brand-teal-active">
+          {getInitials(doctorName)}
+        </div>
+        <div className="flex min-w-0 flex-col gap-px">
+          <span className="text-[15px] font-bold text-slate-900">BS. {doctorName}</span>
+          <span className="text-[12.5px] font-medium text-brand-teal-active">đã hoàn thành ngày làm việc hôm nay với:</span>
+        </div>
+      </div>
+
+      {summaryQuery.isError ? (
+        <p className="text-xs font-medium text-rose-700">Không tải được số liệu hôm nay.</p>
+      ) : summary ? (
+        <div className="flex items-stretch gap-2.5">
+          <ShiftStatTile icon={Stethoscope} iconColor="text-blue-600" iconBg="bg-blue-50" label="Đã gọi khám" value={summary.calledCount} unit="ca" primary />
+          <ShiftStatTile icon={CheckCircle} iconColor="text-emerald-600" iconBg="bg-emerald-50" label="Đã hoàn thành" value={summary.completedCount} unit="ca" primary />
+          <ShiftStatTile icon={Clock} iconColor="text-slate-600" iconBg="bg-slate-100" label="TB / ca" value={summary.avgConsultMinutes} unit="phút" />
+          <ShiftStatTile icon={Prohibit} iconColor="text-rose-600" iconBg="bg-rose-50" label="Huỷ khám" value={summary.cancelledCount} unit="ca" attention />
+          <ShiftStatTile icon={Pill} iconColor="text-violet-600" iconBg="bg-violet-50" label="Đơn thuốc" value={summary.prescriptionCount} unit="đơn" />
+        </div>
+      ) : (
+        <div className="flex items-stretch gap-2.5" aria-hidden="true">
+          <ShiftStatTileSkeleton primary />
+          <ShiftStatTileSkeleton primary />
+          <ShiftStatTileSkeleton />
+          <ShiftStatTileSkeleton />
+          <ShiftStatTileSkeleton />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Trích xuất dùng chung — lần dùng thứ hai ở `EndOfDayDialog.tsx` ("Chế độ phòng khám 1 người"). */
+export function ShiftStatTile({
   icon: Icon,
   iconColor,
   iconBg,
@@ -234,7 +223,7 @@ function ShiftStatTile({
   );
 }
 
-function ShiftStatTileSkeleton({ primary = false }: { primary?: boolean }) {
+export function ShiftStatTileSkeleton({ primary = false }: { primary?: boolean }) {
   return (
     <div className={`flex items-center gap-[11px] rounded-[11px] border border-brand-teal/15 bg-white ${primary ? 'flex-[1.2] px-3.5 py-3.5' : 'flex-[0.92] px-3 py-2.5'}`}>
       <Skeleton className={`flex-shrink-0 rounded-full ${primary ? 'h-[42px] w-[42px]' : 'h-[34px] w-[34px]'}`} />
