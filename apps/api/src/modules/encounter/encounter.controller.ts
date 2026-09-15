@@ -1,5 +1,5 @@
-import { Body, Controller, Get, HttpCode, Param, Patch, Post, Put, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
-import type { Request } from 'express';
+import { Body, Controller, Get, HttpCode, Param, Patch, Post, Put, Query, Req, Res, UseGuards, UseInterceptors } from '@nestjs/common';
+import type { Request, Response } from 'express';
 import { AuditView } from '../../common/audit-view.decorator';
 import { AuditViewInterceptor } from '../../common/audit-view.interceptor';
 import {
@@ -8,6 +8,8 @@ import {
   amendPrescriptionRequestSchema,
   cancelEncounterRequestSchema,
   completeConsultationRequestSchema,
+  exportPatientMedicalRecordQuerySchema,
+  exportPatientMedicalRecordRequestSchema,
   patientClinicalSummaryQuerySchema,
   reassignEncounterRequestSchema,
   releaseEncounterRequestSchema,
@@ -42,6 +44,28 @@ export class EncounterController {
     const dto = patientClinicalSummaryQuerySchema.parse(query);
     const { tenantId } = req.user!;
     return this.encounterService.getPatientClinicalSummary(tenantId, dto.patientId);
+  }
+
+  /**
+   * "Xuất bệnh án PDF" (S6-06, ADM-05) — POST (không GET) vì `reason` bắt buộc nằm ở BODY, không
+   * phải query string (`.claude/docs/security-audit.md`: cấm PII/PHI vào URL — lý do xuất do nhân
+   * viên gõ tay có thể vô tình chứa tên/chẩn đoán bệnh nhân). `patientId` vẫn ở query (không nhạy
+   * cảm, chỉ là tham chiếu, cùng khuôn `patient-clinical-summary`). Quyền riêng
+   * `patient.export_medical_record` (KHÁC `patient.read`) — xem docstring `EncounterService.
+   * exportMedicalRecordPdf()`.
+   */
+  @Post('patient-medical-record/export')
+  @HttpCode(200)
+  @RequirePermission('patient', 'export_medical_record')
+  async exportPatientMedicalRecord(@Query() query: unknown, @Body() body: unknown, @Req() req: Request, @Res() res: Response): Promise<void> {
+    const { patientId } = exportPatientMedicalRecordQuerySchema.parse(query);
+    const { reason } = exportPatientMedicalRecordRequestSchema.parse(body);
+    const { tenantId, userId } = req.user!;
+    const { pdf, patientCode, encounterCount } = await this.encounterService.exportMedicalRecordPdf(tenantId, patientId, reason);
+    await this.encounterService.recordMedicalRecordExportAudit(tenantId, userId, patientId, reason, encounterCount, extractRequestMeta(req));
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="benh-an-${patientCode}.pdf"`);
+    res.send(pdf);
   }
 
   @Post(':id/start')

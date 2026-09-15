@@ -18,4 +18,16 @@ export class GeoRepository {
       orderBy: [{ provinceCode: 'asc' }, { sortOrder: 'asc' }],
     });
   }
+
+  /** "Xuất bệnh án PDF" (S6-06) — tra tên theo mã cho ĐÚNG vài mã cần (địa chỉ 1 bệnh nhân), tránh
+   * tải toàn bộ danh mục như `listProvinces()`/`listWards()` (dựng cho bảng tra cứu toàn bộ). */
+  findProvincesByCodes(tx: Prisma.TransactionClient, codes: string[]): Promise<Province[]> {
+    if (codes.length === 0) return Promise.resolve([]);
+    return tx.province.findMany({ where: { code: { in: codes } } });
+  }
+
+  findWardsByCodes(tx: Prisma.TransactionClient, codes: string[]): Promise<Ward[]> {
+    if (codes.length === 0) return Promise.resolve([]);
+    return tx.ward.findMany({ where: { code: { in: codes } } });
+  }
 }

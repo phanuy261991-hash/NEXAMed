@@ -24,6 +24,13 @@ export function setAccessToken(token: string | undefined): void {
   currentAccessToken = token;
 }
 
+/** Đọc access token hiện tại — dùng cho `fetch()` tay ngoài `getApiClient()`/`downloadFile()` (ví
+ * dụ tải nhị phân qua POST kèm body, S6-06), tránh mở rộng `downloadFile()` (đè nặng chunk khởi
+ * động — mọi *.api.ts của route đã lazy đều import `client.ts` qua `getApiClient()`). */
+export function getAccessToken(): string | undefined {
+  return currentAccessToken;
+}
+
 /**
  * Gọi 1 lần ở `AppBootstrap` — dọn phiên (điều hướng `/login` qua `RequireAuth`) khi access token
  * đã hết hạn (15 phút, `.claude/docs/security-audit.md`) VÀ refresh token (cookie) cũng không còn
@@ -176,10 +183,10 @@ export async function uploadFile<T>(path: string, formData: FormData): Promise<T
 }
 
 /**
- * Tải file nhị phân (Excel mẫu/xuất) — không qua envelope `{data,meta}`, cùng lý do `uploadFile`
- * không dùng `openapi-fetch`. `filenameFallback` dùng khi server không trả `Content-Disposition`
- * (không nên xảy ra, phòng vệ). Kích hoạt tải bằng thẻ `<a>` ẩn — trình duyệt thật (không phải
- * artifact sandbox) nên không bị chặn.
+ * Tải file nhị phân (Excel mẫu/xuất, PDF...) — không qua envelope `{data,meta}`, cùng lý do
+ * `uploadFile` không dùng `openapi-fetch`. `filenameFallback` dùng khi server không trả
+ * `Content-Disposition` (không nên xảy ra, phòng vệ). Kích hoạt tải bằng thẻ `<a>` ẩn — trình
+ * duyệt thật (không phải artifact sandbox) nên không bị chặn.
  */
 export async function downloadFile(path: string, filenameFallback: string): Promise<void> {
   if (!currentConfig) {

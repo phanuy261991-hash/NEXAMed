@@ -22,6 +22,9 @@ import { ClinicModule } from '../clinic/clinic.module';
  * hoạt động, đúng khuôn `REFERENCE_CATALOG_READER_PORT` export từ `ReferenceCatalogModule`.
  * `PatientRepository` cũng export thẳng (S5-06, PAT-04) — `PatientMergeModule` (module điều phối
  * riêng, xem `patient-merge.module.ts`) cần đọc/ghi `mergedIntoId` trong cùng transaction gộp.
+ * `PatientService` export thẳng (S6-06, ADM-05) — "Xuất bệnh án PDF" ở `EncounterModule` gọi lại
+ * `getPatient()` có sẵn (đủ thông tin hành chính + tiền sử ĐÃ giải mã CCCD) thay vì tự lặp lại
+ * logic giải mã/lắp ráp `PatientDetail` lần thứ hai.
  */
 @Module({
   imports: [ClinicModule],
@@ -34,6 +37,6 @@ import { ClinicModule } from '../clinic/clinic.module';
     PatientFamilyHistoryRepository,
     { provide: PATIENT_READER_PORT, useClass: PatientReaderAdapter },
   ],
-  exports: [PatientRepository, PatientAllergenRepository, PatientConditionRepository, PatientFamilyHistoryRepository, PATIENT_READER_PORT],
+  exports: [PatientService, PatientRepository, PatientAllergenRepository, PatientConditionRepository, PatientFamilyHistoryRepository, PATIENT_READER_PORT],
 })
 export class PatientModule {}

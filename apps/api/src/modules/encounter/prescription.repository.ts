@@ -68,6 +68,21 @@ export class PrescriptionRepository {
     return { ...row, items: mapItems(row.items) };
   }
 
+  /** "Xuất bệnh án PDF" (S6-06) — đơn ĐANG HIỆU LỰC của NHIỀU lượt khám trong 1 query (partial
+   * unique đảm bảo tối đa 1 dòng/lượt khám, đúng `findActiveForEncounter()`), nhóm theo `encounterId`. */
+  async findActiveForEncounters(tx: Prisma.TransactionClient, tenantId: string, encounterIds: string[]): Promise<Map<string, PrescriptionWithItems>> {
+    if (encounterIds.length === 0) return new Map();
+    const rows = (await tx.prescription.findMany({
+      where: { tenantId, encounterId: { in: encounterIds }, deletedAt: null },
+      include: { items: { where: { deletedAt: null }, include: { drug: { select: { name: true, activeIngredient: true } } }, orderBy: { createdAt: 'asc' } } },
+    })) as RawPrescriptionWithItems[];
+    const result = new Map<string, PrescriptionWithItems>();
+    for (const row of rows) {
+      result.set(row.encounterId, { ...row, items: mapItems(row.items) });
+    }
+    return result;
+  }
+
   async findById(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<PrescriptionWithItems | null> {
     const row = (await tx.prescription.findFirst({
       where: { tenantId, id, deletedAt: null },

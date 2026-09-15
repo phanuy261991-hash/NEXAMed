@@ -258,6 +258,37 @@ export class EncounterRepository {
     });
   }
 
+  /**
+   * "Xuất bệnh án PDF" (S6-06, ADM-05) — TOÀN BỘ lượt khám `COMPLETED` của một bệnh nhân, KHÔNG cap
+   * (khác `listHistoryForPatient()` giới hạn `CONSULTATION_HISTORY_LIMIT` cho panel tiền sử màn
+   * khám). Chỉ lấy `COMPLETED` — lượt khám nháp/huỷ chưa có nội dung lâm sàng đã ký để xuất.
+   * `checkedInAt asc` — đọc như nhật ký theo thời gian (cũ → mới), khác `listHistoryForPatient()`
+   * (mới → cũ, panel tiền sử ưu tiên hiện gần nhất trước).
+   */
+  listAllCompletedForPatient(tx: Prisma.TransactionClient, tenantId: string, patientId: string): Promise<Encounter[]> {
+    return tx.encounter.findMany({
+      where: { tenantId, patientId, status: 'COMPLETED', deletedAt: null },
+      orderBy: { checkedInAt: 'asc' },
+    });
+  }
+
+  /** Sinh hiệu MỚI NHẤT của mỗi lượt khám trong danh sách — dùng cho "Xuất bệnh án PDF" (S6-06).
+   * Đọc thẳng `tx.vitalSign` (module `encounter` đã đọc bảng này qua include ở nơi khác — xem
+   * comment `EncounterWithConsultationPatient`/`findPatientClinicalSummary()`, không phá ranh giới
+   * "module `reception` sở hữu GHI bảng `vital_sign`"). */
+  async listLatestVitalSignsForEncounters(tx: Prisma.TransactionClient, tenantId: string, encounterIds: string[]): Promise<Map<string, VitalSign>> {
+    if (encounterIds.length === 0) return new Map();
+    const rows = await tx.vitalSign.findMany({
+      where: { tenantId, encounterId: { in: encounterIds }, deletedAt: null },
+      orderBy: { measuredAt: 'desc' },
+    });
+    const result = new Map<string, VitalSign>();
+    for (const row of rows) {
+      if (!result.has(row.encounterId)) result.set(row.encounterId, row);
+    }
+    return result;
+  }
+
   /** Toàn bộ id lượt khám thuộc một bệnh nhân — hạ tầng cho `EncounterReaderPort.findIdsByPatientId()`. */
   async findIdsByPatientId(tx: Prisma.TransactionClient, tenantId: string, patientId: string): Promise<string[]> {
     const rows = await tx.encounter.findMany({ where: { tenantId, patientId }, select: { id: true } });

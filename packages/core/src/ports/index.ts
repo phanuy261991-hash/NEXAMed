@@ -12,3 +12,4 @@ export * from './encounter-reader.port';
 export * from './work-shift-assignment-reader.port';
 export * from './cashier-shift-reader.port';
 export * from './backup-status.port';
+export * from './pdf-renderer.port';

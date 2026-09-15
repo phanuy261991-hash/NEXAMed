@@ -38,3 +38,4 @@ export * from './work-shift-assignment/month-lock';
 export * from './cashier-shift/shift-label';
 export * from './cashier-shift/compute-shift-totals';
 export * from './backup/backup-status';
+export * from './medical-record/render-patient-medical-record-html';

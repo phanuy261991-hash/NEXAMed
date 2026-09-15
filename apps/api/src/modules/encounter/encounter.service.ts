@@ -9,9 +9,11 @@ import {
   EncounterNotInConsultationError,
   EncounterNotReassignableError,
   EncounterPaymentRequiredError,
+  PDF_RENDERER_PORT,
   PrescriptionAlreadySignedError,
   PrescriptionEmptyError,
   PrescriptionRequiresDiagnosisError,
+  renderPatientMedicalRecordHtml,
   SIGNATURE_PORT,
   assertEncounterTransition,
   evaluateVitalSignWarnings,
@@ -20,6 +22,9 @@ import {
   resolveDoctorDepartmentRouting,
   type ClinicConfigReaderPort,
   type DoctorDirectoryPort,
+  type MedicalRecordEncounterEntry,
+  type PatientMedicalRecordDocument,
+  type PdfRendererPort,
   type PrescriptionDrugLine,
   type SignaturePort,
 } from '@nexamed/core';
@@ -64,13 +69,29 @@ import { toEncounterSummary } from './encounter.mapper';
 import { PatientAllergenRepository } from '../patient/patient-allergen.repository';
 import { PatientConditionRepository } from '../patient/patient-condition.repository';
 import { PatientFamilyHistoryRepository } from '../patient/patient-family-history.repository';
+import { PatientService } from '../patient/patient.service';
 import { InvoiceRepository } from '../billing/invoice.repository';
+import { ClinicProfileService } from '../clinic/clinic-profile.service';
+import { GeoRepository } from '../geo/geo.repository';
 
 const TEMPERATURE_DECI_PER_CELSIUS = 10;
 /** Số lần khám cũ tối đa hiện trong panel tiền sử (ENC-01) — danh sách tóm tắt, không phân trang ở v1. */
 const CONSULTATION_HISTORY_LIMIT = 20;
 /** Số dòng sinh hiệu gần nhất hiện ở trang "Hồ sơ bệnh nhân" (dải KPI + bảng). */
 const PATIENT_VITALS_HISTORY_LIMIT = 5;
+/** "Xuất bệnh án PDF" (S6-06) — nhãn tiếng Việt 6 mục SOAP theo đúng thứ tự hiển thị màn khám. Lặp
+ * lại nhỏ so với `CLINICAL_SECTION_LABEL` (`apps/web/.../clinical-display.tsx`) — không trích xuất
+ * dùng chung, xem comment đầu `render-patient-medical-record-html.ts`. */
+const CLINICAL_NOTE_SECTION_LABELS: [keyof ClinicalNoteResponse, string][] = [
+  ['reasonForVisit', 'Lý do khám'],
+  ['illnessProgress', 'Quá trình bệnh lý'],
+  ['preliminaryDiagnosis', 'Chẩn đoán'],
+  ['generalExam', 'Kết quả khám toàn thân'],
+  ['regionalExam', 'Kết quả khám bộ phận'],
+  ['plan', 'Kế hoạch'],
+];
+/** Nhãn giới tính — lặp lại nhỏ so với `GENDER_LABEL` (`apps/web/.../patient-form.utils.ts`), cùng lý do trên. */
+const GENDER_LABEL: Record<string, string> = { male: 'Nam', female: 'Nữ', other: 'Khác' };
 
 /**
  * Điều phối use case chuyển trạng thái `encounter` (Sprint 3) — "Bắt đầu khám"
@@ -89,10 +110,14 @@ export class EncounterService {
     private readonly patientAllergenRepository: PatientAllergenRepository,
     private readonly patientConditionRepository: PatientConditionRepository,
     private readonly patientFamilyHistoryRepository: PatientFamilyHistoryRepository,
+    private readonly patientService: PatientService,
     private readonly invoiceRepository: InvoiceRepository,
+    private readonly clinicProfileService: ClinicProfileService,
+    private readonly geoRepository: GeoRepository,
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
     @Inject(SIGNATURE_PORT) private readonly signaturePort: SignaturePort,
     @Inject(CLINIC_CONFIG_READER_PORT) private readonly clinicConfigReader: ClinicConfigReaderPort,
+    @Inject(PDF_RENDERER_PORT) private readonly pdfRenderer: PdfRendererPort,
   ) {}
 
   /**
@@ -443,6 +468,132 @@ export class EncounterService {
       lastCompletedVisitAt: summary.lastCompletedVisitAt?.toISOString() ?? null,
       recentVitalSigns: summary.vitalSigns.map((v) => this.toPatientVitalSignHistoryItem(v)),
     };
+  }
+
+  /**
+   * "Xuất bệnh án PDF" (S6-06, ADM-05) — gộp thông tin hành chính + tiền sử (qua `PatientService.
+   * getPatient()`, đã giải mã CCCD sẵn) + TOÀN BỘ lượt khám `COMPLETED` (không cap, khác panel tiền
+   * sử màn khám) thành 1 chuỗi HTML (`renderPatientMedicalRecordHtml()`, `packages/core`, thuần) rồi
+   * đưa qua `PdfRendererPort` (Puppeteer/Chromium) ra buffer PDF thật. Gate quyền
+   * `patient.export_medical_record` ở controller — KHÁC `patient.read` (chỉ xem KPI/tiền sử tóm
+   * tắt), vì bản PDF chứa TRỌN VẸN nội dung đã ký (SOAP/chẩn đoán/đơn thuốc).
+   */
+  async exportMedicalRecordPdf(tenantId: string, patientId: string, reason: string): Promise<{ pdf: Buffer; patientCode: string; encounterCount: number }> {
+    // Ngoài transaction chính — cùng lý do `doctorDirectory.getUserFullNames()` ở `getConsultationDetail()`
+    // (mỗi port/service tự mở transaction riêng, tránh `$transaction` lồng nhau).
+    const patient = await this.patientService.getPatient(tenantId, patientId);
+    const clinicHeader = await this.clinicProfileService.getPrintHeader(tenantId);
+
+    const provinceCode = patient.address?.province;
+    const wardCode = patient.address?.ward;
+    const { provinces, wards, encounterRows, diagnosesByEncounter, notesByEncounter, prescriptionByEncounter, vitalsByEncounter } =
+      await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+        const [provinces, wards, encounterRows] = await Promise.all([
+          this.geoRepository.findProvincesByCodes(tx, provinceCode ? [provinceCode] : []),
+          this.geoRepository.findWardsByCodes(tx, wardCode ? [wardCode] : []),
+          this.encounterRepository.listAllCompletedForPatient(tx, tenantId, patientId),
+        ]);
+        const encounterIds = encounterRows.map((e) => e.id);
+        const [diagnosesByEncounter, notesByEncounter, prescriptionByEncounter, vitalsByEncounter] = await Promise.all([
+          this.diagnosisRepository.listForEncounters(tx, tenantId, encounterIds),
+          this.clinicalNoteRepository.listForEncounters(tx, tenantId, encounterIds),
+          this.prescriptionRepository.findActiveForEncounters(tx, tenantId, encounterIds),
+          this.encounterRepository.listLatestVitalSignsForEncounters(tx, tenantId, encounterIds),
+        ]);
+        return { provinces, wards, encounterRows, diagnosesByEncounter, notesByEncounter, prescriptionByEncounter, vitalsByEncounter };
+      });
+    const addressLine =
+      [patient.address?.street, patient.address?.neighborhood, wards[0]?.name ?? wardCode, provinces[0]?.name ?? provinceCode].filter(Boolean).join(', ') || null;
+
+    const doctorIds = [...new Set(encounterRows.map((e) => e.doctorId).filter((v): v is string => v !== null))];
+    const doctorNames = doctorIds.length > 0 ? await this.doctorDirectory.getUserFullNames(tenantId, doctorIds) : new Map<string, string>();
+
+    const encounters: MedicalRecordEncounterEntry[] = encounterRows.map((e) => {
+      const noteRows = notesByEncounter.get(e.id) ?? [];
+      const noteResponse = this.toClinicalNoteResponse(noteRows);
+      const prescriptionRow = prescriptionByEncounter.get(e.id);
+      const vitalSign = vitalsByEncounter.get(e.id);
+      return {
+        encounterNo: e.encounterNo,
+        checkedInAt: e.checkedInAt.toISOString(),
+        doctorName: e.doctorId ? (doctorNames.get(e.doctorId) ?? null) : null,
+        chiefComplaint: e.chiefComplaint,
+        vitalSigns: vitalSign
+          ? {
+              measuredAt: vitalSign.measuredAt.toISOString(),
+              pulse: vitalSign.pulse,
+              temperatureC: vitalSign.temperatureDeciC !== null ? vitalSign.temperatureDeciC / TEMPERATURE_DECI_PER_CELSIUS : null,
+              bpSystolic: vitalSign.bpSystolic,
+              bpDiastolic: vitalSign.bpDiastolic,
+              respiratoryRate: vitalSign.respiratoryRate,
+              spo2: vitalSign.spo2,
+              weightGram: vitalSign.weightGram,
+              heightMm: vitalSign.heightMm,
+            }
+          : null,
+        diagnoses: (diagnosesByEncounter.get(e.id) ?? []).map((d) => ({ icd10Code: d.icd10Code, icd10Name: d.icd10.nameVi, type: d.type, note: d.note })),
+        clinicalNoteSections: CLINICAL_NOTE_SECTION_LABELS.map(([key, label]) => ({ label, content: noteResponse[key]?.content ?? '' })),
+        prescriptionItems: (prescriptionRow?.items ?? []).map((i) => ({
+          drugName: i.drugName,
+          dose: i.dose,
+          frequency: i.frequency,
+          durationDays: i.durationDays,
+          quantity: i.quantity,
+          instruction: i.instruction,
+        })),
+        signedAt: prescriptionRow?.signedAt ? prescriptionRow.signedAt.toISOString() : (noteRows[0]?.signedAt?.toISOString() ?? null),
+      };
+    });
+
+    const document: PatientMedicalRecordDocument = {
+      clinic: { name: clinicHeader.name, address: clinicHeader.address, phone: clinicHeader.phone },
+      patient: {
+        patientCode: patient.patientCode,
+        fullName: patient.fullName,
+        dob: patient.dob,
+        genderLabel: GENDER_LABEL[patient.gender] ?? patient.gender,
+        phone: patient.phone,
+        address: addressLine,
+        nationalId: patient.nationalId,
+        occupation: patient.occupation,
+        ethnicity: patient.ethnicity,
+        nationality: patient.nationality,
+        personalHistory: patient.personalHistory,
+        allergenNames: patient.allergens.map((a) => a.name),
+        conditionNames: patient.conditions.map((c) => c.icd10Name),
+        familyHistoryLines: patient.familyHistoryRows.map(
+          (f) => `${f.relationLabel}: ${f.icd10Name}${f.ageOfOnsetYears != null ? ` (${f.ageOfOnsetYears} tuổi)` : ''}`,
+        ),
+      },
+      encounters,
+      generatedAt: new Date().toISOString(),
+      reason,
+    };
+
+    const html = renderPatientMedicalRecordHtml(document);
+    const pdf = await this.pdfRenderer.renderHtmlToPdf(html);
+    return { pdf, patientCode: patient.patientCode, encounterCount: encounters.length };
+  }
+
+  /**
+   * Ghi audit cho "Xuất bệnh án PDF" (S6-06) — TÁCH khỏi `exportMedicalRecordPdf()` để controller
+   * tự quyết định gọi sau khi render THÀNH CÔNG (không ghi audit cho lần render lỗi giữa chừng).
+   * Bắt buộc có `reason` — `.claude/docs/security-audit.md`: "Export dữ liệu ghi audit kèm phạm vi
+   * bản ghi và lý do export" (khác các export Excel #142 không thu thập lý do vì UI khi đó không
+   * có ô nhập nào).
+   */
+  async recordMedicalRecordExportAudit(tenantId: string, actorId: string, patientId: string, reason: string, encounterCount: number, meta: RequestMeta): Promise<void> {
+    await this.unitOfWork.runInTenantScope(tenantId, (tx) =>
+      writeAuditLog(tx, tenantId, {
+        actorId,
+        action: 'patient.medical_record_exported',
+        entityType: 'patient',
+        entityId: patientId,
+        afterJson: { reason, encounterCount },
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      }),
+    );
   }
 
   /**

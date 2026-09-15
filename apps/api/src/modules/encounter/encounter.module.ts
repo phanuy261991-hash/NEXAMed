@@ -3,6 +3,7 @@ import { ENCOUNTER_READER_PORT } from '@nexamed/core';
 import { PatientModule } from '../patient/patient.module';
 import { ClinicModule } from '../clinic/clinic.module';
 import { BillingModule } from '../billing/billing.module';
+import { GeoModule } from '../geo/geo.module';
 import { EncounterController } from './encounter.controller';
 import { EncounterService } from './encounter.service';
 import { EncounterRepository } from './encounter.repository';
@@ -26,9 +27,11 @@ import { EncounterReaderAdapter } from '../../infrastructure/encounter/encounter
  * `exports: [..., PrescriptionRepository]` — "Đóng ca hôm nay" (popup tổng hợp) cần đếm đơn thuốc
  * đã ký hôm nay của bác sĩ, `DoctorAvailabilityModule` đã `imports: [EncounterModule]` sẵn (dùng
  * chung `EncounterRepository`) nên dùng chung luôn `PrescriptionRepository`, đúng tiền lệ #042.
+ * `imports: [..., GeoModule]` (S6-06, ADM-05) — "Xuất bệnh án PDF" tra tên Tỉnh/Phường-Xã theo mã
+ * để in địa chỉ đầy đủ (`patient.address` chỉ lưu mã, xem `GeoRepository.findProvincesByCodes()`).
  */
 @Module({
-  imports: [PatientModule, ClinicModule, BillingModule],
+  imports: [PatientModule, ClinicModule, BillingModule, GeoModule],
   controllers: [EncounterController],
   providers: [
     EncounterService,

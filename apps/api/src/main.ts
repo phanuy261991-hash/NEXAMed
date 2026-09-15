@@ -13,6 +13,9 @@ import { syncRolePermissionsForAllTenants } from './infrastructure/persistence/s
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.setGlobalPrefix('api/v1', { exclude: ['health'] });
+  // Bắt buộc để `OnModuleDestroy` chạy khi container nhận SIGTERM (S6-06) — `PuppeteerPdfRendererAdapter`
+  // cần đóng tiến trình Chromium đang giữ, không tự tắt theo NestJS mặc định nếu thiếu dòng này.
+  app.enableShutdownHooks();
 
   const configService = app.get(ConfigService);
   app.enableCors({ origin: configService.getOrThrow<string>('WEB_ORIGIN'), credentials: true });

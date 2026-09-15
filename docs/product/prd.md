@@ -327,8 +327,8 @@ Các câu hỏi cần trả lời, kèm hạn chót vì chúng ảnh hưởng t�
 
 | Phase | Nội dung | Điều kiện bắt đầu |
 |---|---|---|
-| v1 | Đặt lịch, tiếp nhận, khám bệnh, kê đơn in, **thu ngân cơ bản** (BIL-01→04, Sprint 5/6 — `docs/DECISIONS.md` #072) | Đang thực hiện |
-| v1.1 | Gộp hồ sơ, xuất PDF bệnh án, nhắc lịch SMS/Zalo | Sau GA v1, pilot ổn định 4 tuần |
+| v1 | Đặt lịch, tiếp nhận, khám bệnh, kê đơn in, **thu ngân cơ bản** (BIL-01→04, Sprint 5/6 — `docs/DECISIONS.md` #072), **gộp hồ sơ trùng** (PAT-04, S5-06) và **xuất PDF bệnh án** (ADM-05, S6-06 — Sprint 6, trước GA, theo `docs/product/plan.md` mục 9) | Đang thực hiện |
+| v1.1 | Nhắc lịch SMS/Zalo | Sau GA v1, pilot ổn định 4 tuần |
 | **v1.5** | **Gói chuyên khoa: Nhi khoa (trước) → Sản phụ khoa (sau)** — cam kết với 2 khách hàng thật đã có (`docs/DECISIONS.md` #070/#071). Viết cụ thể từng gói trên kernel hiện có, không dựng khung "Specialty Pack" trước; gating gói (`tenant.enabled_specialties`) làm cùng gói đầu tiên | Sau GA v1. Mỗi gói cần bác sĩ chuyên khoa tương ứng thẩm định mẫu bệnh án + luồng dữ liệu (đã xong cho cả 2) |
 | v2 | Viện phí đầy đủ (bảng giá đa đối tượng, công nợ/trả góp theo lộ trình), báo cáo doanh thu | Sau v1.1, có ít nhất 3 khách hàng đang dùng |
 | v2.1 | Dược và kho thuốc | Sau v2 |

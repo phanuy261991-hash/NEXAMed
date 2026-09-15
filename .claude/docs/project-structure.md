@@ -66,6 +66,7 @@ nexamed/
 | `InsuranceGatewayPort` | no-op, trả `NOT_IMPLEMENTED` | cổng giám định BHYT |
 | `NotificationPort` | no-op, ghi log nhắc lịch | SMS / Zalo OA / email |
 | `PatientIdentityPort` | trả chính `patient.id` của tenant | master patient index liên tenant |
+| `PdfRendererPort` (S6-06, xuất bệnh án PDF) | `puppeteer-core` + Chromium hệ thống | không đổi — chỉ thay adapter nếu đổi engine render |
 
 Adapter no-op **phải tồn tại và được đăng ký**, không để service gọi vào `undefined`. Khi triển khai thật, chỉ thay đăng ký DI trong module, không sửa service.
 

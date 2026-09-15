@@ -1477,4 +1477,134 @@ describe('HTTP e2e — /api/v1/encounters', () => {
       expect(res.body.data.recentVitalSigns).toEqual([]);
     });
   });
+
+  /**
+   * "Xuất bệnh án PDF" (S6-06, ADM-05) — `POST /encounters/patient-medical-record/export`. Quyền
+   * RIÊNG `patient.export_medical_record` (mặc định chỉ doctor/clinic_admin — KHÁC `patient.read`
+   * mà receptionist cũng có). Không kiểm nội dung PDF byte-by-byte (đúng tiền lệ test Excel export
+   * ở `cash-book-report-http.spec.ts` — chỉ kiểm status/header/audit log).
+   */
+  describe('POST /api/v1/encounters/patient-medical-record/export — S6-06', () => {
+    async function patientWithCompletedEncounter(hour: number) {
+      const patientRes = await request(app.getHttpServer())
+        .post('/api/v1/patients')
+        .set(authed(receptionistToken))
+        .send({ fullName: 'Bệnh nhân e2e (xuất PDF)', dob: '1985-05-05', gender: 'male', phone: '0933555666', nationalId: randomNationalId() });
+      const patientId = patientRes.body.data.id as string;
+
+      const appointmentRes = await request(app.getHttpServer())
+        .post('/api/v1/appointments')
+        .set(authed(receptionistToken))
+        .send({ doctorId: doctorAUserId, fullName: 'Bệnh nhân e2e (xuất PDF)', phone: '0933555666', scheduledAt: isoAt(hour, 0), source: 'phone' as const });
+      const appointment = appointmentRes.body.data as { id: string; version: number };
+
+      const checkInRes = await request(app.getHttpServer())
+        .post('/api/v1/reception/check-in')
+        .set(authed(receptionistToken))
+        .send({
+          appointmentId: appointment.id,
+          patientId,
+          version: appointment.version,
+          doctorId: doctorAUserId,
+          services: [{ examTypeCode: 'KT', examTypeName: 'Khám thường', examTypePrice: 150_000, quantity: 1 }],
+          receptionTypeCode: 'RT_NEW',
+          examFormCode: 'EF_NORMAL',
+        });
+      const encounterId = checkInRes.body.data.id as string;
+      await payInvoice(encounterId);
+      await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/start`).set(authed(doctorAToken)).send({ version: 1 });
+      await request(app.getHttpServer())
+        .put(`/api/v1/encounters/${encounterId}/clinical-note`)
+        .set(authed(doctorAToken))
+        .send({
+          reasonForVisit: { content: 'Đau đầu 2 ngày' },
+          illnessProgress: { content: '' },
+          preliminaryDiagnosis: { content: 'Theo dõi' },
+          generalExam: { content: '' },
+          regionalExam: { content: '' },
+          plan: { content: '' },
+        });
+      await request(app.getHttpServer())
+        .put(`/api/v1/encounters/${encounterId}/diagnoses`)
+        .set(authed(doctorAToken))
+        .send({ diagnoses: [{ icd10Code: 'A00.0', type: 'PRIMARY' as const }] });
+      await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/complete`).set(authed(doctorAToken)).send({ version: 2 });
+      return patientId;
+    }
+
+    it('bác sĩ (patient.export_medical_record=global) xuất được → 200, content-type PDF, ghi đúng audit log kèm reason', async () => {
+      const patientId = await patientWithCompletedEncounter(9);
+
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/encounters/patient-medical-record/export')
+        .query({ patientId })
+        .set(authed(doctorAToken))
+        .send({ reason: 'Bệnh nhân yêu cầu để khám chuyên khoa' });
+
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toBe('application/pdf');
+      expect(res.headers['content-disposition']).toContain('.pdf');
+
+      const auditRow = await privileged.auditLog.findFirst({
+        where: { tenantId: fixture.tenantA.id, action: 'patient.medical_record_exported', entityId: patientId },
+        orderBy: { occurredAt: 'desc' },
+      });
+      expect(auditRow).not.toBeNull();
+      expect((auditRow?.afterJson as { reason?: string; encounterCount?: number })?.reason).toBe('Bệnh nhân yêu cầu để khám chuyên khoa');
+      expect((auditRow?.afterJson as { reason?: string; encounterCount?: number })?.encounterCount).toBe(1);
+    });
+
+    it('bệnh nhân chưa có lượt khám hoàn tất nào vẫn xuất được (chỉ thông tin hành chính + tiền sử)', async () => {
+      const patientRes = await request(app.getHttpServer())
+        .post('/api/v1/patients')
+        .set(authed(receptionistToken))
+        .send({ fullName: 'Bệnh nhân e2e (chưa khám)', dob: '2000-01-01', gender: 'female', phone: '0933777888', nationalId: randomNationalId() });
+      const patientId = patientRes.body.data.id as string;
+
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/encounters/patient-medical-record/export')
+        .query({ patientId })
+        .set(authed(doctorAToken))
+        .send({ reason: 'Kiểm tra hồ sơ' });
+
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toBe('application/pdf');
+    });
+
+    it('thiếu reason → 400', async () => {
+      const patientId = await patientWithCompletedEncounter(10);
+
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/encounters/patient-medical-record/export')
+        .query({ patientId })
+        .set(authed(doctorAToken))
+        .send({});
+
+      expect(res.status).toBe(400);
+    });
+
+    it('lễ tân (chỉ patient.read, KHÔNG có patient.export_medical_record) → 403', async () => {
+      const patientId = await patientWithCompletedEncounter(11);
+
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/encounters/patient-medical-record/export')
+        .query({ patientId })
+        .set(authed(receptionistToken))
+        .send({ reason: 'Thử quyền' });
+
+      expect(res.status).toBe(403);
+    });
+
+    it('cách ly tenant — patientId của tenant khác → 404', async () => {
+      const patientId = await patientWithCompletedEncounter(12);
+
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/encounters/patient-medical-record/export')
+        .query({ patientId })
+        .set(authed(tenantBDoctorToken))
+        .send({ reason: 'Thử cách ly tenant' });
+
+      expect(res.status).toBe(404);
+    });
+  });
 });

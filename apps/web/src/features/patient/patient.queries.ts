@@ -5,6 +5,7 @@ import { queryKey } from '../../shared/api/query-keys';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
 import {
   createPatient,
+  exportPatientMedicalRecord,
   findPatientsByNationalId,
   findPatientsByPhone,
   getPatient,
@@ -127,6 +128,13 @@ export function usePatientByNationalIdQuery(nationalId: string, excludePatientId
     queryKey: queryKey(tenantId, 'patient', 'by-national-id', debounced, excludePatientId),
     queryFn: () => findPatientsByNationalId(debounced, excludePatientId),
     enabled,
+  });
+}
+
+/** "Xuất bệnh án PDF" (S6-06, ADM-05) — không invalidate cache nào (thuần tải file). */
+export function useExportPatientMedicalRecordMutation(patientId: string) {
+  return useMutation({
+    mutationFn: (reason: string) => exportPatientMedicalRecord(patientId, reason),
   });
 }
 

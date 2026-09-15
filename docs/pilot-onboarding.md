@@ -139,4 +139,6 @@ Tìm nhầm khách? Dùng icon **kính lúp tìm kiếm** cạnh ô SĐT — m�
 
 **Cần xem/sửa gấp một hồ sơ ngoài quyền của mình (bác sĩ trực khác đã ký, cấp cứu...)?** Dùng "Phá kính" (break-glass) — hệ thống yêu cầu nhập lại mật khẩu + lý do, **có ghi vết đầy đủ** (ai, lúc nào, vì sao) trong Nhật ký hoạt động. Không phải cách né tránh quy trình — chỉ dùng khi thật sự cần thiết, chủ phòng khám sẽ soát lại định kỳ.
 
+**Hệ thống báo lỗi/không vào được, hoặc nghi ngờ mất dữ liệu?** Xem `docs/troubleshooting.md` (S6-07) — hướng dẫn chi tiết việc gì tự xử lý được, việc gì phải báo ngay cho người phụ trách kỹ thuật. Không tự ý thử lại nhiều lần liên tục (có thể tạo dữ liệu trùng).
+
 **Hệ thống báo lỗi/không vào được?** Ghi lại: đang làm gì, thông báo lỗi hiện chữ gì, giờ xảy ra — báo ngay cho người phụ trách kỹ thuật, không tự ý thử lại nhiều lần liên tục (có thể tạo dữ liệu trùng).

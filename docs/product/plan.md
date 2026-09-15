@@ -186,7 +186,7 @@ Phần đệm lỗi ở sprint này lớn có chủ ý. Nếu pilot ít lỗi, d
 | S6-07 | Tài liệu vận hành: cài đặt, sao lưu, phục hồi, xử lý sự cố thường gặp | — | 3 | FE2 |
 | S6-08 | Đệm + checklist GA | — | 6 | Cả nhóm |
 
-**Mốc tuần 12 — GA v1**. Điều kiện:
+**Mốc tuần 12 — GA v1**. Theo dõi sống ở `docs/GA-checklist.md` (S6-08). Điều kiện:
 - [ ] Pilot ngừng dùng sổ giấy, chạy hoàn toàn trên hệ thống ít nhất 5 ngày làm việc — **bao gồm cả sổ thu tiền** (điều kiện này chính là lý do "Thu ngân cơ bản" được đưa vào v1, xem S5-08 và `docs/DECISIONS.md` #072: không có thu ngân thì phòng khám buộc phải giữ sổ tiền, không đạt được mốc GA)
 - [ ] Đạt các chỉ số ở mục 5 của PRD: tiếp nhận < 90 giây, hồ sơ khám < 3 phút, ICD-10 > 95%, đơn in > 90%
 - [ ] Sao lưu tự động chạy đúng 7 ngày liên tiếp, phục hồi thử thành công

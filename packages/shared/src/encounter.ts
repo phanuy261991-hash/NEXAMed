@@ -306,6 +306,22 @@ export const patientClinicalSummaryQuerySchema = z.object({
 export type PatientClinicalSummaryQuery = z.infer<typeof patientClinicalSummaryQuerySchema>;
 
 /**
+ * "Xuất bệnh án PDF" (S6-06, ADM-05) — `patientId` ở query (không nhạy cảm, chỉ là tham chiếu),
+ * `reason` BẮT BUỘC ở BODY (không phải query string) — `.claude/docs/security-audit.md`: "không
+ * đưa PII/PHI vào... URL/query string"; lý do xuất do nhân viên gõ tay có thể vô tình chứa tên/chẩn
+ * đoán bệnh nhân, không đặt lên URL (sẽ vào access log/lịch sử trình duyệt).
+ */
+export const exportPatientMedicalRecordQuerySchema = z.object({
+  patientId: z.string().uuid(),
+});
+export type ExportPatientMedicalRecordQuery = z.infer<typeof exportPatientMedicalRecordQuerySchema>;
+
+export const exportPatientMedicalRecordRequestSchema = z.object({
+  reason: z.string().min(1, 'Vui lòng nhập lý do xuất bệnh án'),
+});
+export type ExportPatientMedicalRecordRequest = z.infer<typeof exportPatientMedicalRecordRequestSchema>;
+
+/**
  * Danh sách Tiếp nhận (`GET /reception/list`) — CHỈ hồ sơ ĐÃ được tiếp nhận (đã có `encounter`),
  * theo dõi trạng thái từ lúc vào tới lúc khám xong trong ngày: "Đã tiếp nhận" (`CHECKED_IN`) →
  * "Đang khám" (`IN_CONSULTATION`) → "Đã khám xong" (`COMPLETED`); `CANCELLED` ("bỏ về") cũng hiện

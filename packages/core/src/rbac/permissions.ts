@@ -20,6 +20,10 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   { module: 'patient', action: 'create', description: 'Tạo hồ sơ bệnh nhân' },
   { module: 'patient', action: 'update', description: 'Sửa hồ sơ bệnh nhân' },
   { module: 'patient', action: 'merge', description: 'Gộp hồ sơ bệnh nhân trùng' },
+  // Xuất bệnh án PDF (S6-06, ADM-05) — TÁCH khỏi `patient.read` (global cho cả 4 vai trò lâm sàng,
+  // chỉ xem KPI/tiền sử tóm tắt): bản PDF gồm TRỌN VẸN nội dung đã ký (SOAP/chẩn đoán/đơn thuốc
+  // mọi lượt khám), nhạy cảm hơn hẳn — cùng tiền lệ tách quyền hẹp `invoice.refund`/`cash_voucher.report`.
+  { module: 'patient', action: 'export_medical_record', description: 'Xuất bệnh án PDF (toàn bộ lượt khám)' },
   { module: 'appointment', action: 'read', description: 'Xem lịch hẹn' },
   { module: 'appointment', action: 'create', description: 'Tạo lịch hẹn' },
   { module: 'appointment', action: 'update', description: 'Sửa lịch hẹn' },
@@ -232,6 +236,9 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     // thẳng lại `patient.allergyNote`, không chỉ lưu riêng cho lượt khám (yêu cầu chủ dự án
     // 2026-08-20, xem docs/DECISIONS.md).
     'patient.update': 'global',
+    // Xuất bệnh án PDF (S6-06) — mặc định cấp cho doctor/clinic_admin (nội dung đã ký, sát nghĩa
+    // "hồ sơ chuyên môn"), KHÔNG cấp mặc định cho nurse/receptionist (chỉ xem qua `patient.read`).
+    'patient.export_medical_record': 'global',
     'appointment.read': 'personal',
     'appointment.create': 'personal',
     'appointment.update': 'personal',
@@ -267,6 +274,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'patient.create': 'global',
     'patient.update': 'global',
     'patient.merge': 'global',
+    'patient.export_medical_record': 'global',
     'appointment.read': 'global',
     'appointment.create': 'global',
     'appointment.update': 'global',

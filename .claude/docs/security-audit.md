@@ -34,6 +34,7 @@ Seed cụ thể nằm trong `apps/api/prisma/seed/permissions.seed.ts` (nguồn 
 | `patient.create` | global | none | none | global | none |
 | `patient.update` | global | none | global | global | none |
 | `patient.merge` | none | none | none | global | none |
+| `patient.export_medical_record` (S6-06, xuất bệnh án PDF) | none | none | global | global | none |
 | `appointment.read/create/update/cancel` | global | none | personal | global | none |
 | `encounter.read` | global | global | global | global | none |
 | `encounter.create` | global | none | none | global | none |

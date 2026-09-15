@@ -8,7 +8,7 @@ import type {
   PatientDetail,
   UpdatePatientRequest,
 } from '@nexamed/shared';
-import { getApiClient, unwrap, uploadFile } from '../../shared/api/client';
+import { ApiError, getAccessToken, getApiClient, resolveApiUrl, unwrap, uploadFile } from '../../shared/api/client';
 
 export async function listPatients(params: {
   q?: string;
@@ -30,6 +30,40 @@ export async function getPatientClinicalSummary(patientId: string): Promise<Pati
   return unwrap(
     await getApiClient().GET('/api/v1/encounters/patient-clinical-summary', { params: { query: { patientId } } }),
   ) as PatientClinicalSummaryResponse;
+}
+
+/**
+ * "Xuất bệnh án PDF" (S6-06, ADM-05) — POST kèm `reason` ở BODY, KHÔNG phải query string
+ * (`.claude/docs/security-audit.md`: cấm PII/PHI vào URL — lý do xuất nhân viên gõ tay có thể vô
+ * tình chứa tên/chẩn đoán bệnh nhân). Tự gọi `fetch` (không qua `downloadFile()` dùng chung — endpoint
+ * trả `.pdf` nhị phân qua `@Res()`, không có envelope `{data,meta}`; viết riêng ở đây thay vì mở
+ * rộng `downloadFile()`/`client.ts` để không đè thêm byte vào chunk khởi động, chỉ chunk lazy của
+ * trang "Hồ sơ bệnh nhân" phải tải thêm).
+ */
+export async function exportPatientMedicalRecord(patientId: string, reason: string): Promise<void> {
+  const token = getAccessToken();
+  const response = await fetch(`${resolveApiUrl('/api/v1/encounters/patient-medical-record/export')}?patientId=${patientId}`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: JSON.stringify({ reason }),
+  });
+  if (!response.ok) {
+    const body: unknown = await response.json().catch(() => null);
+    const err = (body as { error?: { code?: string; message?: string; details?: unknown } } | null)?.error;
+    throw new ApiError(err?.code ?? 'UNKNOWN_ERROR', err?.message ?? 'Không xuất được bệnh án.', err?.details);
+  }
+  const disposition = response.headers.get('Content-Disposition') ?? '';
+  const filename = /filename="?([^"]+)"?/.exec(disposition)?.[1] ?? `benh-an-${patientId}.pdf`;
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 export async function createPatient(body: CreatePatientRequest): Promise<PatientDetail> {

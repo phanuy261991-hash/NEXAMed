@@ -140,6 +140,8 @@ Máy chủ đặt tại phòng khám **KHÔNG BAO GIỜ cần internet, kể c�
 
 `api`/`migrate` dùng CHUNG một Dockerfile lúc build → CHUNG một ảnh `nexamed-api` lúc chạy (không tách ảnh riêng) — cố ý, để không phải build/đồng bộ 2 ảnh mỗi lần đổi code.
 
+**S6-06 (ADM-05, xuất bệnh án PDF)** — ảnh `nexamed-api` nay cài thêm `chromium` qua apt (Debian bookworm) để `puppeteer-core` render HTML→PDF (không dùng `puppeteer` đầy đủ tự tải Chromium bundled, tránh phụ thuộc mạng lúc build — xem `docs/DECISIONS.md`). `docker-compose.yml` đặt sẵn `CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium` cho service `api` — người cài đặt không cần cấu hình gì thêm.
+
 ### 2.1b. Hai giai đoạn — build ở máy dev/CI, chỉ nạp ảnh ở máy khách (`docs/DECISIONS.md` #098)
 
 Mã nguồn `.ts`, lịch sử `.git`, và tài liệu nội bộ là tài sản trí tuệ, **tuyệt đối không được lộ cho máy khách**. Vì vậy triển khai on-prem đi qua đúng 2 giai đoạn tách biệt:

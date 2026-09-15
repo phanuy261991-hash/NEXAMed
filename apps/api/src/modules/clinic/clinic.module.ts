@@ -73,7 +73,9 @@ import { BusinessCodeService } from './business-code.service';
   ],
   // `WorkShiftService` export thêm cho `WorkShiftAssignmentModule` (Nhập Excel — tra mã ca, thuần
   // đọc `list()` có sẵn, không cần port riêng cho một lệnh đọc). `BusinessCodeService` export cho
-  // mọi module sinh mã nghiệp vụ (docs/DECISIONS.md #114).
-  exports: [CLINIC_CONFIG_READER_PORT, WorkShiftService, BusinessCodeService],
+  // mọi module sinh mã nghiệp vụ (docs/DECISIONS.md #114). `ClinicProfileService` export thêm
+  // (S6-06, ADM-05) — "Xuất bệnh án PDF" ở `EncounterModule` cần `getPrintHeader()` để in tiêu đề
+  // phòng khám, đúng khuôn tự-phục vụ đã dùng cho Thu ngân/Kê đơn.
+  exports: [CLINIC_CONFIG_READER_PORT, WorkShiftService, BusinessCodeService, ClinicProfileService],
 })
 export class ClinicModule {}

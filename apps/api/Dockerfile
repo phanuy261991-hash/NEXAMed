@@ -15,8 +15,11 @@ WORKDIR /repo
 
 # `argon2` (S1-04) không có prebuilt binary cho mọi tổ hợp glibc/Node — cần biên dịch native từ
 # nguồn (node-gyp: python3/make/g++). `openssl` — Prisma engine cần dò đúng phiên bản libssl lúc
-# `prisma generate`/runtime (thiếu thì tự chọn nhầm openssl-1.1.x, cảnh báo lúc build).
-RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ openssl \
+# `prisma generate`/runtime (thiếu thì tự chọn nhầm openssl-1.1.x, cảnh báo lúc build). `chromium`
+# (S6-06, ADM-05 — xuất bệnh án PDF) — dùng qua `puppeteer-core` (KHÔNG dùng `puppeteer` đầy đủ tự
+# tải Chromium bundled: tránh phụ thuộc mạng lúc `pnpm install`, đúng bài học mạng chậm/treo #097),
+# apt tự kéo đủ thư viện runtime cần thiết (libnss3, libatk...) mà không phải liệt kê tay từng gói.
+RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ openssl chromium \
   && rm -rf /var/lib/apt/lists/*
 
 # Cài dependency toàn workspace trước, tách riêng khỏi COPY source — tận dụng cache layer Docker:

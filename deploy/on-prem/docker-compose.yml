@@ -77,6 +77,9 @@ services:
       # S6-01 (docs/DECISIONS.md #141) — đọc trạng thái backup do container `backup` ghi ra, cùng
       # volume `backup_status_data` mount ở service đó (dưới), CHỈ ĐỌC ở đây.
       BACKUP_STATUS_FILE: /data/backup-status/backup-status.json
+      # S6-06 (ADM-05) — Chromium cài qua apt trong apps/api/Dockerfile, luôn đúng đường dẫn này
+      # trong container, không cần người cài đặt tự sửa.
+      CHROMIUM_EXECUTABLE_PATH: /usr/bin/chromium
     volumes:
       - api_storage:/data/storage
       - backup_status_data:/data/backup-status:ro

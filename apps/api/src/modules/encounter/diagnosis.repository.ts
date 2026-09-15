@@ -23,6 +23,24 @@ export class DiagnosisRepository {
     }) as Promise<DiagnosisWithIcd10Name[]>;
   }
 
+  /** "Xuất bệnh án PDF" (S6-06) — chẩn đoán của NHIỀU lượt khám trong 1 query (tránh N+1 khi bệnh
+   * nhân có nhiều lượt khám), nhóm lại theo `encounterId` ở tầng gọi. */
+  async listForEncounters(tx: Prisma.TransactionClient, tenantId: string, encounterIds: string[]): Promise<Map<string, DiagnosisWithIcd10Name[]>> {
+    if (encounterIds.length === 0) return new Map();
+    const rows = (await tx.diagnosis.findMany({
+      where: { tenantId, encounterId: { in: encounterIds }, deletedAt: null },
+      include: { icd10: { select: { nameVi: true } } },
+      orderBy: [{ type: 'asc' }, { createdAt: 'asc' }],
+    })) as DiagnosisWithIcd10Name[];
+    const result = new Map<string, DiagnosisWithIcd10Name[]>();
+    for (const row of rows) {
+      const list = result.get(row.encounterId) ?? [];
+      list.push(row);
+      result.set(row.encounterId, list);
+    }
+    return result;
+  }
+
   async countPrimary(tx: Prisma.TransactionClient, tenantId: string, encounterId: string): Promise<number> {
     return tx.diagnosis.count({ where: { tenantId, encounterId, type: 'PRIMARY', deletedAt: null } });
   }

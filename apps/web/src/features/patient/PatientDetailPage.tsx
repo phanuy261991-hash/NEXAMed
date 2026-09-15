@@ -21,6 +21,7 @@ import { PatientAdministrativeInfoCard } from './PatientAdministrativeInfoCard';
 import { PatientVitalHistoryTable } from './PatientVitalHistoryTable';
 import { PatientHistorySummaryCard } from './PatientHistorySummaryCard';
 import { PatientEditDialog } from './PatientEditDialog';
+import { MedicalRecordExportDialog } from './MedicalRecordExportDialog';
 import { PatientWalletTab } from '../patient-wallet/PatientWalletTab';
 
 type ProfileTabId = 'info' | 'wallet' | 'record' | 'history';
@@ -45,12 +46,14 @@ export function PatientDetailPage() {
   const updateHistoryMutation = useUpdatePatientMutation(patientId);
   const canEdit = useHasPermission('patient', 'update');
   const canMerge = useHasPermission('patient', 'merge');
+  const canExportMedicalRecord = useHasPermission('patient', 'export_medical_record');
 
   const [activeTab, setActiveTab] = useState<ProfileTabId>('info');
   const [editing, setEditing] = useState(false);
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [searchingMergeTarget, setSearchingMergeTarget] = useState(false);
   const [mergeTarget, setMergeTarget] = useState<PatientSummary | null>(null);
+  const [exportingMedicalRecord, setExportingMedicalRecord] = useState(false);
 
   useBreadcrumb([
     { label: 'Hồ sơ Bệnh nhân' },
@@ -120,9 +123,11 @@ export function PatientDetailPage() {
         patient={patient}
         canEdit={canEdit}
         canMerge={canMerge}
+        canExportMedicalRecord={canExportMedicalRecord}
         merged={merged}
         onEdit={() => setEditing(true)}
         onMerge={() => setSearchingMergeTarget(true)}
+        onExportMedicalRecord={() => setExportingMedicalRecord(true)}
       />
 
       <PatientClinicalKpiRow
@@ -205,6 +210,8 @@ export function PatientDetailPage() {
           onSuccess={() => setMergeTarget(null)}
         />
       )}
+
+      {exportingMedicalRecord && <MedicalRecordExportDialog patientId={patient.id} onClose={() => setExportingMedicalRecord(false)} />}
     </div>
   );
 }

@@ -31,16 +31,20 @@ export function PatientProfileHeader({
   patient,
   canEdit,
   canMerge,
+  canExportMedicalRecord,
   merged,
   onEdit,
   onMerge,
+  onExportMedicalRecord,
 }: {
   patient: PatientDetail;
   canEdit: boolean;
   canMerge: boolean;
+  canExportMedicalRecord: boolean;
   merged: boolean;
   onEdit: () => void;
   onMerge: () => void;
+  onExportMedicalRecord: () => void;
 }) {
   const provincesQuery = useProvincesQuery();
   const wardsQuery = useAllWardsQuery();
@@ -86,12 +90,17 @@ export function PatientProfileHeader({
           </div>
         </div>
 
-        {(wallet || (!merged && (canMerge || canEdit))) && (
+        {(wallet || (!merged && (canMerge || canEdit || canExportMedicalRecord))) && (
           <div className="flex flex-shrink-0 items-center gap-2">
             {wallet && (
               <StatusBadge tone={wallet.status === 'ACTIVE' ? 'success' : 'neutral'}>
                 {wallet.status === 'ACTIVE' ? 'Ví đang hoạt động' : 'Ví đã khoá'}
               </StatusBadge>
+            )}
+            {!merged && canExportMedicalRecord && (
+              <Button type="button" variant="secondary" onClick={onExportMedicalRecord}>
+                Xuất bệnh án PDF
+              </Button>
             )}
             {!merged && canMerge && (
               <Button type="button" variant="secondary" onClick={onMerge}>

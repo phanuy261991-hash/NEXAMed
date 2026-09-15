@@ -8,6 +8,19 @@ export class ClinicalNoteRepository {
     return tx.clinicalNote.findMany({ where: { tenantId, encounterId, deletedAt: null } });
   }
 
+  /** "Xuất bệnh án PDF" (S6-06) — ghi chú khám của NHIỀU lượt khám trong 1 query, nhóm theo `encounterId` ở tầng gọi. */
+  async listForEncounters(tx: Prisma.TransactionClient, tenantId: string, encounterIds: string[]): Promise<Map<string, ClinicalNote[]>> {
+    if (encounterIds.length === 0) return new Map();
+    const rows = await tx.clinicalNote.findMany({ where: { tenantId, encounterId: { in: encounterIds }, deletedAt: null } });
+    const result = new Map<string, ClinicalNote[]>();
+    for (const row of rows) {
+      const list = result.get(row.encounterId) ?? [];
+      list.push(row);
+      result.set(row.encounterId, list);
+    }
+    return result;
+  }
+
   /**
    * Tìm-hoặc-tạo theo `(encounterId, section)` — đúng MỘT dòng hiệu lực/section (unique partial
    * index trong migration). `expectedVersion` vắng mặt (`undefined`) nghĩa là client cho rằng

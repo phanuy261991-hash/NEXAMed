@@ -2,6 +2,24 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-15 (3)
+
+### S6-06/07/08 — Xuất bệnh án PDF, tài liệu xử lý sự cố, checklist GA v1
+
+Sprint 6 làm nốt 3 việc không cần máy chủ pilot thật (còn lại S6-02/S6-04 cần pilot thật).
+
+**S6-06 (ADM-05, P1)** — "Xuất bệnh án PDF" sinh PDF THẬT ở backend (`puppeteer-core` + Chromium hệ thống, port mới `PdfRendererPort` — port thứ 9 của dự án), gồm toàn bộ hồ sơ bệnh nhân (hành chính + tiền sử + mọi lượt khám đã hoàn tất). Permission riêng `patient.export_medical_record` (mặc định `doctor`/`clinic_admin`, khác `patient.read` cấp cho cả 4 vai trò lâm sàng — nội dung PDF nhạy cảm hơn KPI tóm tắt). `POST /encounters/patient-medical-record/export` — lý do xuất bắt buộc ở BODY (không phải query string, tránh lộ PII/PHI qua URL/log). Nút "Xuất bệnh án PDF" ở đầu trang "Hồ sơ bệnh nhân". Sửa `apps/api/Dockerfile` (thêm `chromium` qua apt) + `deploy/on-prem/docker-compose.yml` (`CHROMIUM_EXECUTABLE_PATH`).
+
+Bug hiệu năng thật phát hiện lúc build (không phải lúc dùng thử): mở rộng hàm tải file dùng chung để hỗ trợ POST đẩy chunk khởi động web vượt 500kB lần đầu tiên — sửa bằng viết logic tải riêng cho tính năng này trong chunk lazy của trang bệnh nhân thay vì sửa hàm dùng chung, chunk khởi động về lại dưới ngưỡng (499.96 kB).
+
+**S6-07** — `docs/troubleshooting.md` mới: xử lý sự cố thường gặp cho nhân viên phòng khám không rành IT (khác `docs/Deploy.md` cho người cài đặt kỹ thuật), dựa trên sự cố thật đã gặp trong các phiên trước.
+
+**S6-08** — `docs/GA-checklist.md` mới: theo dõi sống điều kiện gate GA v1 + chỉ số PRD, phần lớn còn `[ ]` chờ dữ liệu pilot thật.
+
+**Đã xác minh thật**: `packages/core` +4 test, `apps/api` +5 test HTTP e2e dùng Chromium thật (không mock) — 781/792 test pass (1 flake đã biết, không liên quan). `pnpm -w typecheck/lint/build` sạch toàn workspace, chunk web 499.96 kB. Boot thật `node dist/main.js` xác nhận DI wiring đúng.
+
+**Verify Chrome thật hoàn tất cùng ngày** (`puppeteer-core` trỏ Chrome cài sẵn): nút "Xuất bệnh án PDF" đúng cho bác sĩ, ẩn đúng cho lễ tân (không có quyền) — xác nhận RBAC frontend qua UI thật. Request thật trả đúng PDF, byte khớp chính xác với server sinh ra. Phát hiện + sửa 1 sự cố vận hành quen thuộc (permission mới chưa `pnpm db:seed`). 1 giới hạn công cụ kiểm thử (Chrome huỷ bước lưu file `blob:` khi click tự động qua CDP) đã xác nhận KHÔNG phải lỗi sản phẩm bằng đối chứng với "Xuất Excel" có sẵn — bị ảnh hưởng giống hệt. Xem chi tiết `docs/DECISIONS.md` #144.
+
 ## 2026-09-15 (2)
 
 ### S6-05 — Lưu nháp offline cho form khám (ENC-06)

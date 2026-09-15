@@ -110,6 +110,7 @@ const ACTION_LABELS: Record<string, string> = {
   'patient.photo_updated': 'Đổi ảnh đại diện',
   'patient.merged': 'Gộp hồ sơ trùng',
   'patient.viewed': 'Xem hồ sơ bệnh nhân',
+  'patient.medical_record_exported': 'Xuất bệnh án PDF',
   'encounter.viewed': 'Xem hồ sơ khám',
 
   // drug
