@@ -2,6 +2,16 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-15 (5)
+
+### Kho Thuốc & Vật tư y tế — chốt hướng mở rộng v1, kế hoạch 5 giai đoạn (chưa code)
+
+Chủ dự án yêu cầu xây phân hệ kho thuốc/VTYT dựa trên 4 tài liệu tham khảo (mâu thuẫn nhau ở vài điểm cấu trúc) — đối lập với `CLAUDE.md`/quyết định Sprint 4 (2026-08-25) từng giữ v1 ở mức "kê đơn không kho". Đã hỏi và xác nhận đảo hướng qua nhiều vòng `AskUserQuestion`: đưa vào v1 ngay, mô hình quầy thuốc tuỳ phòng khám, phạm vi đầy đủ. Lập kế hoạch 5 giai đoạn qua `EnterPlanMode` (mở rộng `drug` sẵn có thay vì bảng `items` mới, chuỗi quy đổi đơn vị N bậc, thẻ kho append-only làm nguồn sự thật, nguyên tắc "đơn thuốc là y lệnh — chỉ Phiếu xuất kho mới sinh tiền/trừ kho"). Mockup Giai đoạn 1 (Danh mục Thuốc & Vật tư, panel chi tiết kiểu KiotViet) đã qua 4 vòng chỉnh sửa. **Chưa viết code nghiệp vụ nào** — xem đầy đủ `docs/DECISIONS.md` #146.
+
+### Cổng Đơn thuốc quốc gia — thêm port rỗng `EPrescriptionGatewayPort`
+
+Đối chiếu đặc tả API chính thức (QĐ 808) với schema hiện có — phát hiện 2 điều kiện chặn cứng (chữ ký số CA thật, đăng ký mã liên thông thủ công) khiến đây đúng là hạng mục v3 (BHYT + chữ ký số) theo `prd.md` Appendix A. Chủ dự án xác nhận chưa đăng ký với cổng, nên chỉ thêm 1 port rỗng (đúng khuôn `InsuranceGatewayPort`) để chỗ sẵn, không thêm cột schema nào. **Đã xác minh thật**: `pnpm -w typecheck/lint/build` sạch, chunk web không đổi (499.96 kB). Xem `docs/DECISIONS.md` #147.
+
 ## 2026-09-15 (4)
 
 ### S6-01 — Hoàn tất verify Playwright banner cảnh báo sao lưu

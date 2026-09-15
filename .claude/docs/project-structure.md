@@ -64,6 +64,7 @@ nexamed/
 | `EventBusPort` | in-memory, đồng bộ trong transaction | RabbitMQ hoặc Kafka |
 | `SignaturePort` | no-op, chỉ ghi `signed_at`/`signed_by` | tích hợp CA, ký PKCS#7 |
 | `InsuranceGatewayPort` | no-op, trả `NOT_IMPLEMENTED` | cổng giám định BHYT |
+| `EPrescriptionGatewayPort` | no-op, trả `NOT_IMPLEMENTED` | cổng Đơn thuốc quốc gia (donthuocquocgia.vn, QĐ 808) — chặn bởi `SignaturePort` chưa có chữ ký số CA thật + mã liên thông cơ sở/bác sĩ phải đăng ký thủ công |
 | `NotificationPort` | no-op, ghi log nhắc lịch | SMS / Zalo OA / email |
 | `PatientIdentityPort` | trả chính `patient.id` của tenant | master patient index liên tenant |
 | `PdfRendererPort` (S6-06, xuất bệnh án PDF) | `puppeteer-core` + Chromium hệ thống | không đổi — chỉ thay adapter nếu đổi engine render |
