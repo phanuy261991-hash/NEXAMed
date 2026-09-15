@@ -40,11 +40,21 @@ function useInvalidateConsultation(id: string) {
   return () => queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'encounter', 'consultation', id) });
 }
 
+/**
+ * `networkMode: 'always'` (ENC-06) — mặc định TanStack Query v5 (`'online'`) sẽ TẠM DỪNG mutation
+ * (không gọi `mutationFn`, không throw, không resolve) khi `navigator.onLine === false`, tự chạy
+ * lại khi có mạng — bug thật phát hiện lúc test Playwright: `mutateAsync()` treo VÔ THỜI HẠN lúc
+ * offline thay vì reject nhanh (fetch thật chỉ mất ~30ms để fail khi mất mạng, đã xác nhận bằng
+ * script riêng), khiến `catch` trong `EncounterConsultationPage.tsx` không bao giờ chạy tới — mất
+ * hẳn banner "Mất mạng" hiển thị TRỰC TIẾP lúc còn mở trang (chỉ còn cứu được nhờ `beforeunload`
+ * lúc đóng tab, không phải cơ chế chính). Bắt buộc GỌI THẬT ngay cả khi offline để `catch` bắt được
+ * lỗi mạng thật và lưu nháp ngay lập tức — đúng tinh thần ENC-06. */
 export function useSaveDiagnosesMutation(id: string) {
   const invalidate = useInvalidateConsultation(id);
   return useMutation({
     mutationFn: (body: SaveDiagnosesRequest) => saveDiagnoses(id, body),
     onSuccess: () => void invalidate(),
+    networkMode: 'always',
   });
 }
 
@@ -66,11 +76,14 @@ export function useRecordVitalSignsMutation(id: string) {
   });
 }
 
+/** `networkMode: 'always'` — xem docstring `useSaveDiagnosesMutation` ở trên (cùng lý do, cùng
+ * tính năng ENC-06, endpoint này là nơi autosave chính chạy mỗi 4 giây). */
 export function useSaveClinicalNoteMutation(id: string) {
   const invalidate = useInvalidateConsultation(id);
   return useMutation({
     mutationFn: (body: SaveClinicalNoteRequest) => saveClinicalNote(id, body),
     onSuccess: () => void invalidate(),
+    networkMode: 'always',
   });
 }
 

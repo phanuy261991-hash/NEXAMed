@@ -254,6 +254,7 @@ Các dấu hiệu cần dừng lại và tính lại kế hoạch, thay vì cố
 | Triển khai khách hàng thứ hai, đo thời gian cài đặt (mục tiêu dưới 1 ngày) | Tuần 14+ |
 | Kiểm điểm sau dự án: so ước lượng với thực tế từng sprint, ghi lại để ước lượng v1.1 chính xác hơn | Tuần 13 |
 | Bắt đầu v1.1 (gộp hồ sơ, xuất PDF, nhắc lịch) | Sau 4 tuần pilot ổn định |
+| **PWA Offline toàn diện** (định hướng bản SaaS/cloud, KHÔNG phải v1 on-premise) — xem `docs/product/pwa-offline-analysis.md` cho phân tích đầy đủ + điều kiện tiên quyết trước khi bắt đầu | Sau khi có lộ trình SaaS/cloud rõ ràng |
 
 ---
 

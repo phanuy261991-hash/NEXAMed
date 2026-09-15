@@ -13,13 +13,17 @@ import {
   Plus,
   Stethoscope,
   Warning,
+  WifiSlash,
   X,
   XCircle,
 } from '@phosphor-icons/react';
 import type { ClinicalNoteSection, ConsultationDetailResponse, DiagnosisType, EncounterHistoryItem, SaveClinicalNoteRequest } from '@nexamed/shared';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { useAutoCollapseSidebar } from '../../shared/layout/sidebar.context';
-import { ApiError } from '../../shared/api/client';
+import { ApiError, isNetworkError } from '../../shared/api/client';
+import { clearOfflineDraft, readOfflineDraft, writeOfflineDraft } from '../../shared/offline-draft-storage';
+import { useOnlineRetry } from '../../shared/hooks/useOnlineRetry';
+import { formatClockTime } from '../../shared/format/time';
 import { ActionMenu } from '../../shared/ui/ActionMenu';
 import { Button } from '../../shared/ui/Button';
 import { BreakGlassDialog } from '../../shared/ui/BreakGlassDialog';
@@ -148,6 +152,10 @@ export function EncounterConsultationPage() {
   const [diagnoses, setDiagnoses] = useState<DiagnosisDraft[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
   const [draftSaved, setDraftSaved] = useState(false);
+  /** ENC-06 — ISO timestamp lúc ghi nháp offline gần nhất, `null` = không có nháp nào đang chờ đồng
+   * bộ. Khác `draftSaved` (đã lưu THÀNH CÔNG lên server) — trạng thái này nghĩa là NGƯỢC LẠI: chưa
+   * lên được server, chỉ có bản sao tạm trên máy. */
+  const [offlineDraftPendingAt, setOfflineDraftPendingAt] = useState<string | null>(null);
   const [vitalsDialogOpen, setVitalsDialogOpen] = useState(false);
   /** "Xem chi tiết đợt khám cũ" (mockup đã duyệt 2026-08-29) — thẻ đã bấm trong panel "Lịch sử khám", `null` = dialog đóng. */
   const [openHistoryItem, setOpenHistoryItem] = useState<EncounterHistoryItem | null>(null);
@@ -220,8 +228,16 @@ export function EncounterConsultationPage() {
   clinicalRef.current = clinical;
   const clinicalVersionsRef = useRef(clinicalVersions);
   clinicalVersionsRef.current = clinicalVersions;
+  const diagnosesRef = useRef(diagnoses);
+  diagnosesRef.current = diagnoses;
   /** `true` = có thay đổi ở ghi chú lâm sàng chưa lưu lên server. */
   const dirtyRef = useRef(false);
+  /** ENC-06 — `true` = có nháp offline (ghi chú và/hoặc chẩn đoán) chưa đồng bộ được lên server,
+   * đang chờ `attemptResync()`. Tách khỏi `dirtyRef` (chỉ riêng ghi chú) vì chẩn đoán không có khái
+   * niệm "dirty" thông thường (lưu ngay mỗi lần đổi) — chỉ trở thành "dirty" khi lưu thất bại vì
+   * mất mạng. */
+  const offlineDraftDirtyRef = useRef(false);
+  const offlineDraftKey = `nexamed:encounter-draft:${encounterId}`;
   /** Bỏ qua đúng 1 lần đánh dấu "dirty" ngay sau khi nạp dữ liệu từ server — tránh autosave tưởng
    * nhầm việc NẠP dữ liệu là NGƯỜI DÙNG vừa gõ. */
   const skipNextDirtyRef = useRef(false);
@@ -239,6 +255,23 @@ export function EncounterConsultationPage() {
   /** Timeout dự phòng bật lại scroll-spy nếu sự kiện `scrollend` không bắn (một số trình duyệt/tình huống). */
   const programmaticScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  /** Trích `version` từng mục ghi chú từ response server — dùng CHUNG cho `populateFromServer` lẫn
+   * khôi phục nháp offline (ENC-06, `attemptResync` gọi ngay lúc mount cần versions THẬT của
+   * server, không phải `clinicalVersionsRef.current` — ref đó vẫn là state CŨ/rỗng của lượt trước
+   * tại đúng thời điểm effect nạp dữ liệu chạy, vì `setClinicalVersions` chưa kịp áp dụng ở lần
+   * render kế tiếp — bug thật phát hiện lúc test Playwright, gây `500` "UNIQUE constraint" do gửi
+   * `version: undefined` cho một section ĐÃ tồn tại trên server). */
+  function extractClinicalVersions(note: ConsultationDetailResponse['clinicalNote']): Partial<Record<ClinicalKey, number>> {
+    return {
+      reasonForVisit: note.reasonForVisit?.version,
+      illnessProgress: note.illnessProgress?.version,
+      preliminaryDiagnosis: note.preliminaryDiagnosis?.version,
+      generalExam: note.generalExam?.version,
+      regionalExam: note.regionalExam?.version,
+      plan: note.plan?.version,
+    };
+  }
+
   /** Đổ dữ liệu server vào form — dùng lúc nạp lần đầu MỖI lượt khám (effect dưới) và lúc bấm "Huỷ" giữa chừng sửa (`handleCancelEdit`). */
   function populateFromServer(data: ConsultationDetailResponse) {
     const note = data.clinicalNote;
@@ -253,14 +286,7 @@ export function EncounterConsultationPage() {
       regionalExam: note.regionalExam?.content ?? '',
       plan: note.plan?.content ?? '',
     });
-    setClinicalVersions({
-      reasonForVisit: note.reasonForVisit?.version,
-      illnessProgress: note.illnessProgress?.version,
-      preliminaryDiagnosis: note.preliminaryDiagnosis?.version,
-      generalExam: note.generalExam?.version,
-      regionalExam: note.regionalExam?.version,
-      plan: note.plan?.version,
-    });
+    setClinicalVersions(extractClinicalVersions(note));
     setDiagnoses(data.diagnoses.map((d) => ({ icd10Code: d.icd10Code, icd10Name: d.icd10Name, type: d.type, note: d.note ?? undefined, amendmentReason: d.amendmentReason })));
     dirtyRef.current = false;
   }
@@ -275,9 +301,24 @@ export function EncounterConsultationPage() {
       setEditingCompleted(false);
       setFormError(null);
       setDraftSaved(false);
+      setOfflineDraftPendingAt(null);
       setHistoryPanelTab(query.data.history.length === 0 ? 'personal' : 'visits');
       setLoadedForId(encounterId);
+
+      // ENC-06 — còn nháp offline chưa đồng bộ được từ lần trước (mất mạng lúc đang gõ, rồi đóng
+      // tab/tải lại trang trước khi kịp gửi lên server): ưu tiên HƠN dữ liệu server (chắc chắn cũ
+      // hơn vì chưa từng lưu được), tự đồng bộ ngay lập tức thay vì đợi debounce/sự kiện online.
+      const offlineDraft = readOfflineDraft<{ clinical: ClinicalDraft; diagnoses: DiagnosisDraft[] }>(offlineDraftKey);
+      if (offlineDraft) {
+        setClinical(offlineDraft.payload.clinical);
+        setDiagnoses(offlineDraft.payload.diagnoses);
+        dirtyRef.current = true;
+        offlineDraftDirtyRef.current = true;
+        setOfflineDraftPendingAt(offlineDraft.savedAt);
+        void attemptResync(offlineDraft.payload.clinical, offlineDraft.payload.diagnoses, extractClinicalVersions(query.data.clinicalNote));
+      }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `offlineDraftKey`/`attemptResync` đổi identity mỗi render (đóng closure qua tham số/ref khi gọi), chỉ cần chạy lại đúng lúc đổi lượt khám như các state khác trong mảng dep.
   }, [query.isSuccess, query.data, loadedForId, encounterId]);
 
   /** Khớp đúng payload `PUT .../clinical-note` từ state form — dùng chung cho "Lưu nháp"/"Lưu thay đổi", autosave định kỳ, và flush lúc rời trang. */
@@ -296,6 +337,82 @@ export function EncounterConsultationPage() {
   function hasRequiredClinicalFields(c: ClinicalDraft): boolean {
     return c.reasonForVisit.trim() !== '' && c.preliminaryDiagnosis.trim() !== '';
   }
+
+  /**
+   * ENC-06 — ghi nháp offline (`localStorage`) khi phát hiện MẤT MẠNG thật lúc tự lưu lên server
+   * (không gọi khi lỗi là 400/403/409 — những lỗi đó vẫn xử lý như cũ, không phải lưới an toàn
+   * offline). Gọi lại từ `runAutosave`/`handleSaveDraft`/`persistDiagnoses`/lúc rời trang.
+   */
+  function saveOfflineSnapshot(c: ClinicalDraft, d: DiagnosisDraft[]) {
+    offlineDraftDirtyRef.current = true;
+    writeOfflineDraft(offlineDraftKey, { clinical: c, diagnoses: d });
+    setOfflineDraftPendingAt(new Date().toISOString());
+  }
+
+  /**
+   * Thử gửi lại nháp offline lên server — gọi từ sự kiện `online`/retry định kỳ (`useOnlineRetry`
+   * dưới) và ngay sau khi khôi phục nháp lúc mở lại trang. Nhận `override` để dùng NGAY dữ liệu vừa
+   * đọc từ `localStorage` thay vì đọc qua ref (ref chỉ cập nhật ở lượt render kế tiếp sau
+   * `setClinical`/`setDiagnoses`, gọi ngay sau đó sẽ đọc trúng giá trị CŨ nếu không truyền tham số).
+   * Chỉ xoá nháp + tắt banner khi CẢ HAI phần (ghi chú + chẩn đoán) đồng bộ thành công; lỗi mạng thì
+   * giữ nguyên trạng thái chờ (không phải lỗi hiển thị, chỉ là "vẫn đang offline"); lỗi nghiệp vụ
+   * thật (409/403...) thì hiện rõ qua `formError` như luồng lưu bình thường, KHÔNG tự xoá nháp (để
+   * bác sĩ còn cơ hội sửa/thử lại thủ công, tránh mất dữ liệu).
+   */
+  async function attemptResync(
+    overrideClinical?: ClinicalDraft,
+    overrideDiagnoses?: DiagnosisDraft[],
+    overrideVersions?: Partial<Record<ClinicalKey, number>>,
+  ) {
+    if (!offlineDraftDirtyRef.current) return;
+    const c = overrideClinical ?? clinicalRef.current;
+    const d = overrideDiagnoses ?? diagnosesRef.current;
+    // `overrideVersions` BẮT BUỘC dùng khi gọi ngay lúc mount (restore) — `clinicalVersionsRef`
+    // vẫn là state RỖNG của lần render trước tại thời điểm này, `setClinicalVersions` của
+    // `populateFromServer` (cùng effect, gọi trước đó) chưa kịp áp dụng (xem docstring
+    // `extractClinicalVersions`).
+    const v = overrideVersions ?? clinicalVersionsRef.current;
+    let clinicalOk = true;
+    let diagnosesOk = true;
+
+    if (dirtyRef.current && hasRequiredClinicalFields(c)) {
+      try {
+        const result = await saveClinicalNoteMutation.mutateAsync(buildClinicalNotePayload(c, v));
+        setClinicalVersions(extractClinicalVersions(result));
+        dirtyRef.current = false;
+      } catch (err) {
+        clinicalOk = false;
+        if (!isNetworkError(err)) {
+          handleSaveError(err, 'clinical_note', () => void attemptResync(), 'Không đồng bộ được ghi chú đã lưu tạm, vui lòng kiểm tra lại.');
+        }
+      }
+    }
+
+    if (d.length > 0) {
+      try {
+        const result = await saveDiagnosesMutation.mutateAsync({ diagnoses: d.map((x) => ({ icd10Code: x.icd10Code, type: x.type, note: x.note })) });
+        setDiagnoses(
+          result.items.map((x) => ({ icd10Code: x.icd10Code, icd10Name: x.icd10Name, type: x.type, note: x.note ?? undefined, amendmentReason: x.amendmentReason })),
+        );
+      } catch (err) {
+        diagnosesOk = false;
+        if (!isNetworkError(err)) {
+          handleSaveError(err, 'diagnosis', () => void attemptResync(), 'Không đồng bộ được chẩn đoán đã lưu tạm, vui lòng kiểm tra lại.');
+        }
+      }
+    }
+
+    if (clinicalOk && diagnosesOk) {
+      offlineDraftDirtyRef.current = false;
+      clearOfflineDraft(offlineDraftKey);
+      setOfflineDraftPendingAt(null);
+      setDraftSaved(true);
+    }
+  }
+
+  // ENC-06 — thử gửi lại nháp offline ngay khi trình duyệt báo có mạng trở lại, CỘNG retry mỗi 15
+  // giây trong lúc còn nháp chờ (dự phòng sự kiện `online` báo sai — mạng captive portal/proxy).
+  useOnlineRetry(offlineDraftPendingAt !== null, () => void attemptResync());
 
   // Autosave ghi chú lâm sàng — CHỈ khi đang khám dở (chưa "Hoàn tất khám"): mỗi lần `clinical` đổi,
   // đợi ~4 giây ngừng gõ (debounce) rồi tự lưu lên server, không cần bác sĩ nhớ bấm "Lưu nháp". Lỗi
@@ -320,19 +437,17 @@ export function EncounterConsultationPage() {
     if (!hasRequiredClinicalFields(c)) return;
     try {
       const result = await saveClinicalNoteMutation.mutateAsync(buildClinicalNotePayload(c, clinicalVersionsRef.current));
-      setClinicalVersions({
-        reasonForVisit: result.reasonForVisit?.version,
-        illnessProgress: result.illnessProgress?.version,
-        preliminaryDiagnosis: result.preliminaryDiagnosis?.version,
-        generalExam: result.generalExam?.version,
-        regionalExam: result.regionalExam?.version,
-        plan: result.plan?.version,
-      });
+      setClinicalVersions(extractClinicalVersions(result));
       dirtyRef.current = false;
       setDraftSaved(true);
-    } catch {
-      // Im lặng — autosave chạy nền, không làm phiền bác sĩ đang gõ. Vòng debounce kế tiếp (gõ thêm
-      // ký tự bất kỳ) hoặc bấm "Lưu nháp" thủ công sẽ thử lại; lỗi dai dẳng sẽ lộ ra rõ ràng khi đó.
+    } catch (err) {
+      // ENC-06 — mất mạng thật thì lưu nháp offline (banner rõ ràng, không còn "im lặng" như trước
+      // — bug thật đã biết: tắt trình duyệt lúc offline mất trắng nội dung). Lỗi nghiệp vụ khác vẫn
+      // im lặng như cũ — autosave chạy nền, không làm phiền bác sĩ đang gõ; vòng debounce kế tiếp
+      // hoặc bấm "Lưu nháp" thủ công sẽ thử lại, lỗi dai dẳng sẽ lộ ra rõ ràng khi đó.
+      if (isNetworkError(err)) {
+        saveOfflineSnapshot(c, diagnosesRef.current);
+      }
     }
   }
 
@@ -348,11 +463,32 @@ export function EncounterConsultationPage() {
       if (dirtyRef.current) {
         const c = clinicalRef.current;
         if (hasRequiredClinicalFields(c)) {
-          void saveClinicalNoteRaw(encounterId, buildClinicalNotePayload(c, clinicalVersionsRef.current)).catch(() => {});
+          // ENC-06 — mất mạng đúng lúc rời trang thì lưu nháp offline thay vì nuốt lỗi hoàn toàn;
+          // `loadedForId`/mount-effect của lượt khám này (nếu quay lại) sẽ tự khôi phục + đồng bộ.
+          void saveClinicalNoteRaw(encounterId, buildClinicalNotePayload(c, clinicalVersionsRef.current)).catch((err) => {
+            if (isNetworkError(err)) {
+              writeOfflineDraft(`nexamed:encounter-draft:${encounterId}`, { clinical: c, diagnoses: diagnosesRef.current });
+            }
+          });
         }
         dirtyRef.current = false;
       }
     };
+  }, [encounterId]);
+
+  // ENC-06 — lưới an toàn cuối cùng cho trường hợp ĐÓNG HẲN TAB/trình duyệt lúc offline (React
+  // effect cleanup ở trên KHÔNG chắc chạy khi đóng tab, chỉ chạy chắc chắn khi unmount trong SPA).
+  // Ghi đồng bộ (không await được `beforeunload`) thẳng vào `localStorage` — luôn thành công dù
+  // mất mạng, vì không cần gọi server. Không cần kiểm tra `isNetworkError` ở đây vì không hề gọi
+  // API — chỉ chụp nhanh state hiện có phòng hờ.
+  useEffect(() => {
+    function handleBeforeUnload() {
+      if (dirtyRef.current || offlineDraftDirtyRef.current) {
+        writeOfflineDraft(`nexamed:encounter-draft:${encounterId}`, { clinical: clinicalRef.current, diagnoses: diagnosesRef.current });
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [encounterId]);
 
   function scrollToTab(sectionId: keyof typeof sectionRefs) {
@@ -481,6 +617,14 @@ export function EncounterConsultationPage() {
         result.items.map((d) => ({ icd10Code: d.icd10Code, icd10Name: d.icd10Name, type: d.type, note: d.note ?? undefined, amendmentReason: d.amendmentReason })),
       );
     } catch (err) {
+      // ENC-06 — mất mạng: vẫn ÁP DỤNG thay đổi cục bộ (đúng ý định bác sĩ vừa bấm, khác hành vi cũ
+      // là giữ nguyên danh sách trước đó khi lưu thất bại) + lưu nháp offline, KHÔNG hiện lỗi đỏ (sẽ
+      // tự đồng bộ khi có mạng). Lỗi nghiệp vụ khác (409/403...) giữ nguyên hành vi cũ.
+      if (isNetworkError(err)) {
+        setDiagnoses(next);
+        saveOfflineSnapshot(clinicalRef.current, next);
+        return;
+      }
       handleSaveError(err, 'diagnosis', () => void persistDiagnoses(next), 'Không lưu được chẩn đoán, vui lòng thử lại.');
     }
   }
@@ -604,6 +748,12 @@ export function EncounterConsultationPage() {
       setDraftSaved(true);
       if (editingCompleted) setEditingCompleted(false);
     } catch (err) {
+      // ENC-06 — bấm "Lưu nháp"/"Lưu thay đổi" thủ công đúng lúc mất mạng: lưu nháp offline thay vì
+      // báo lỗi đỏ chung chung, tự đồng bộ khi có mạng lại (không thoát chế độ sửa, giữ nguyên form).
+      if (isNetworkError(err)) {
+        saveOfflineSnapshot(clinical, diagnosesRef.current);
+        return;
+      }
       handleSaveError(err, 'clinical_note', () => void handleSaveDraft(), 'Không lưu được ghi chú, vui lòng thử lại.');
     }
   }
@@ -1094,7 +1244,17 @@ export function EncounterConsultationPage() {
               {formError}
             </div>
           )}
-          {!formError && draftSaved && (
+          {/* ENC-06 — banner "chưa đồng bộ" ưu tiên hơn "Đã lưu" (draftSaved): đang có nháp offline
+              nghĩa là nội dung MỚI NHẤT chưa chắc đã lên server, không nên hiện "Đã lưu" gây hiểu
+              lầm. Amber (`.claude/docs/ui-guidelines.md` mục 2.1, "Lưu ý/Đang chờ") — đây là trạng
+              thái tạm thời tự khắc phục được, không phải lỗi nghiêm trọng như `formError` (rose). */}
+          {!formError && offlineDraftPendingAt && (
+            <div className="flex items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-[13px] font-semibold text-amber-800">
+              <WifiSlash size={16} weight="fill" className="flex-shrink-0" aria-hidden="true" />
+              Mất mạng — đã lưu tạm trên máy lúc {formatClockTime(offlineDraftPendingAt)}, đang tự đồng bộ khi có mạng lại
+            </div>
+          )}
+          {!formError && !offlineDraftPendingAt && draftSaved && (
             <span className="flex items-center gap-1.5 font-medium text-emerald-600">
               <CheckCircle size={14} weight="fill" aria-hidden="true" /> Đã lưu
             </span>

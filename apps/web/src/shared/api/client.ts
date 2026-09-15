@@ -117,6 +117,17 @@ export class ApiError extends Error {
 }
 
 /**
+ * Lỗi MẤT MẠNG thật (fetch không tới được server — DNS/CORS/timeout/offline) khác lỗi NGHIỆP VỤ
+ * server đã trả lời (`ApiError`, ví dụ 400/403/409). `unwrap()` chỉ ném `ApiError` khi có phản hồi
+ * HTTP thật; `fetch` thất bại trước khi có phản hồi ném `TypeError`/`DOMException` thô, không đi
+ * qua `unwrap()`. Dùng để quyết định có nên lưu nháp offline (ENC-06, `shared/hooks/
+ * useOnlineRetry.ts`) hay hiện lỗi nghiệp vụ bình thường như cũ.
+ */
+export function isNetworkError(err: unknown): boolean {
+  return !(err instanceof ApiError);
+}
+
+/**
  * Ghép `apiBaseUrl` vào đường dẫn tương đối server trả về (ví dụ `photoUrl`/`logoUrl` dạng
  * `/api/v1/files/<token>` từ `signFileToken`, xem `apps/api/src/infrastructure/storage/
  * signed-url.ts`) — BUG THẬT phát hiện lúc kiểm bằng trình duyệt (2026-08-13): `<img src="/api/

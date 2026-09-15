@@ -2,6 +2,33 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-15 (2)
+
+### S6-05 — Lưu nháp offline cho form khám (ENC-06)
+
+Autosave ghi chú SOAP (mỗi 4 giây) và lưu chẩn đoán (ngay mỗi lần đổi) trước đây IM LẶNG nuốt lỗi khi mất mạng — không có lưới an toàn phía client, có thể mất trắng nội dung nếu đóng trình duyệt lúc offline. Thêm: phát hiện lỗi mạng thật (`isNetworkError()`, phân biệt với lỗi nghiệp vụ server trả về) → lưu nháp vào `localStorage` (`shared/offline-draft-storage.ts`, dùng chung) → banner amber "Mất mạng — đã lưu tạm..." → tự đồng bộ khi có mạng lại (`shared/hooks/useOnlineRetry.ts`, sự kiện `online` + retry 15s) hoặc ngay lúc mở lại trang (khôi phục từ `localStorage`, ưu tiên hơn dữ liệu server).
+
+**Bug hạ tầng thật phát hiện lúc verify Playwright**: TanStack Query v5 mặc định `networkMode: 'online'` khiến `mutateAsync()` TREO VÔ THỜI HẠN khi `navigator.onLine=false` (không throw, không resolve) thay vì reject nhanh như fetch thật (~30ms đã đo) — vô hiệu hoá hoàn toàn cơ chế phát hiện lỗi mạng. Sửa bằng `networkMode: 'always'` cho đúng 2 mutation liên quan (`useSaveClinicalNoteMutation`/`useSaveDiagnosesMutation`). Cũng phát hiện + sửa bug version-staleness: gọi đồng bộ ngay sau khi nạp dữ liệu server đọc nhầm state React CŨ (chưa kịp áp dụng qua re-render), gửi `version: undefined` cho section đã tồn tại → 500 lỗi unique constraint.
+
+**Đã xác minh thật qua Playwright + Chrome thật** (không giả lập, dùng `context.setOffline()`): gõ ghi chú/thêm chẩn đoán lúc mất mạng → banner hiện đúng trong ~5s, `localStorage` chứa đúng nội dung; đóng tab lúc offline, có mạng lại, mở lại trang → tự khôi phục + tự đồng bộ, xác nhận dữ liệu đúng trên server qua API. `pnpm -w typecheck/lint/build` sạch, chunk web không đổi (499.93 kB). Xem chi tiết `docs/DECISIONS.md` #143.
+
+## 2026-09-15
+
+### S6-03 — Rà soát bảo mật đầy đủ theo checklist `.claude/docs/security-audit.md`
+
+Rà soát toàn diện bằng 2 agent Explore song song + tự kiểm chứng lại các phát hiện quan trọng. Phần lớn hệ thống PASS (mã hoá PII, cấm xoá cứng, JWT/Argon2id/khoá tài khoản, break-glass, audit log DB grant, không hardcode role ở backend...). Sửa 4 lỗ hổng/vi phạm thật:
+
+1. **Rate limit tra cứu bệnh nhân** — `GET /patients`, `/check-duplicate`, `/by-phone`, `/by-national-id` trước đây không giới hạn, có thể dò CCCD/SĐT/mã bệnh nhân bằng cách quét. Thêm throttler `patient-lookup` (50 request/phút/IP, `iam.module.ts`).
+2. **`CashVoucherRepository.list()` không giới hạn** — bỏ trống `from`/`to` trả về toàn bộ lịch sử thu-chi của tenant. Mặc định 90 ngày gần nhất khi bỏ trống (`CashVoucherService.resolveDateRange()`, dùng `toVietnamDateParts`).
+3. **Export không ghi audit log** — 3 endpoint `cash-book/*/export` + `work-shift-assignments/export` không ghi gì. Thêm `recordExportAudit()` ở 2 service liên quan.
+4. **3 chỗ hardcode `'doctor'` ngoài `workflow-roles.ts`** (`TopBar.tsx`, `RoomSessionGate.tsx`, `clinic.queries.ts`) — xác nhận qua `docs/DECISIONS.md` #054/#094 đây đều là quyết định nghiệp vụ có chủ ý (không phải bug), gom về hằng số mới `DOCTOR_ONLY_ROLES` (khác `DOCTOR_QUEUE_ROLES`) để không lệch nguồn như sự cố #119.
+
+**Đã xác minh thật**: 8 test HTTP mới (rate limit 429 thật, mặc định/tường minh phạm vi ngày, audit log export cả 4 endpoint), `apps/api` 787/787 pass, `pnpm -w typecheck/lint/build` sạch, chunk web 499.88 kB. Xem chi tiết `docs/DECISIONS.md` #142.
+
+### Verify Playwright — mở rộng "Thông tin phòng khám" (#140)
+
+Verify hoàn tất qua Chrome thật: sửa+lưu đủ 7 trường mới (Mã cơ sở KCB/Số giấy phép/Người chịu trách nhiệm chuyên môn/Website/1 dòng Mạng xã hội/Tên tài khoản+Số tài khoản+Ngân hàng), PATCH trả đúng dữ liệu, F5 giữ nguyên, không lỗi console. Phát hiện 1 sự cố môi trường (không phải bug sản phẩm): tiến trình `pnpm dev` (api :3001) đang chạy là bản cũ chưa nạp code #140/#141 sau lần dừng tạm để regenerate Prisma Client — khởi động lại tiến trình thì đúng ngay. Dữ liệu test đã dọn sạch khỏi tenant dev qua UI thật. Xem `docs/DECISIONS.md` #140.
+
 ## 2026-09-14 (5)
 
 ### S6-01 — Sao lưu tự động: cảnh báo khi thất bại/trễ hạn (ADM-04)
