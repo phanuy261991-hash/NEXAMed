@@ -20,6 +20,7 @@ import type {
 } from '@nexamed/shared';
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { useAuthStore } from '../auth/auth.store';
+import { DOCTOR_ONLY_ROLES } from '../auth/workflow-roles';
 import { queryKey } from '../../shared/api/query-keys';
 import {
   createExamStation,
@@ -261,8 +262,6 @@ export function useUpdateRoomMutation() {
   });
 }
 
-const DOCTOR_ROLE = 'doctor';
-
 /**
  * "Phòng làm việc hôm nay" (docs/DECISIONS.md #054) — chỉ bật cho vai trò `doctor`; tenant 0-1
  * phòng active thì `items` rỗng/1 phần tử, `RoomSessionGate.tsx` tự không hiện gì thêm (quyết
@@ -271,7 +270,7 @@ const DOCTOR_ROLE = 'doctor';
 export function useRoomOptionsQuery() {
   const { tenantId } = useAppConfig();
   const user = useAuthStore((s) => s.user);
-  const isDoctor = user?.roles.includes(DOCTOR_ROLE) ?? false;
+  const isDoctor = user?.roles.some((role) => DOCTOR_ONLY_ROLES.includes(role)) ?? false;
   return useQuery({
     queryKey: queryKey(tenantId, 'clinic', 'room-options'),
     queryFn: getRoomOptions,

@@ -1,7 +1,10 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 import { REFERENCE_CATALOG_READER_PORT, type ReferenceCatalogReaderPort } from '@nexamed/core';
 import type { CashBookLedgerResponse, CashFlowReportResponse, CashVoucher, ListCashVouchersQuery } from '@nexamed/shared';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
+import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
+import type { RequestMeta } from '../../common/request-meta';
 import { CashAccountRepository } from './cash-account.repository';
 import { CashVoucherRepository } from './cash-voucher.repository';
 import { CashVoucherService } from './cash-voucher.service';
@@ -46,6 +49,36 @@ export class CashBookReportService {
     private readonly paymentRepository: PaymentRepository,
     @Inject(REFERENCE_CATALOG_READER_PORT) private readonly referenceCatalogReader: ReferenceCatalogReaderPort,
   ) {}
+
+  /**
+   * Ghi audit cho hành động EXPORT (S6-03, `.claude/docs/security-audit.md` mục "Audit log" +
+   * "Dữ liệu định danh": "Export dữ liệu ghi audit kèm phạm vi bản ghi và lý do export") — trước
+   * đây 3 endpoint export của module này (`ledger/export`, `vouchers/export`,
+   * `cash-flow-report/export`) hoàn toàn không ghi gì. Không có UI thu thập "lý do export" ở các
+   * màn hình này (khác break-glass) nên chỉ ghi ĐÚNG phạm vi bộ lọc đang xuất (`scope`) — đủ để
+   * trả lời "ai xuất cái gì, khi nào" khi cần truy vết. `entityId: tenantId` — đúng khuôn các thao
+   * tác cấp-tenant khác (`clinic-profile.service.ts`, `clinic-settings.service.ts`) vì bản export
+   * không gắn với đúng 1 bản ghi cụ thể mà là một lát cắt theo bộ lọc.
+   */
+  async recordExportAudit(
+    tenantId: string,
+    actorId: string,
+    action: string,
+    scope: Prisma.InputJsonValue,
+    meta: RequestMeta,
+  ): Promise<void> {
+    await this.unitOfWork.runInTenantScope(tenantId, (tx) =>
+      writeAuditLog(tx, tenantId, {
+        actorId,
+        action,
+        entityType: 'cash_book_export',
+        entityId: tenantId,
+        afterJson: scope,
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      }),
+    );
+  }
 
   async getLedger(tenantId: string, cashAccountId: string, from?: string, to?: string): Promise<CashBookLedgerResponse> {
     const fromAt = from ? startOfDayVn(from) : undefined;

@@ -4,6 +4,7 @@ import { cashFlowReportQuerySchema, getCashBookLedgerQuerySchema, listCashVouche
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
+import { extractRequestMeta } from '../../common/request-meta';
 import { CashBookReportService } from './cash-book-report.service';
 import { CashBookExportService } from './cash-book-export.service';
 
@@ -37,9 +38,10 @@ export class CashBookReportController {
   @RequirePermission('cash_voucher', 'read')
   async exportLedger(@Query() query: unknown, @Req() req: Request, @Res() res: Response): Promise<void> {
     const dto = getCashBookLedgerQuerySchema.parse(query);
-    const { tenantId } = req.user!;
+    const { userId, tenantId } = req.user!;
     const ledger = await this.reportService.getLedger(tenantId, dto.cashAccountId, dto.from, dto.to);
     const buffer = await this.exportService.buildCashBookLedgerExcel(ledger, dto.from, dto.to);
+    await this.reportService.recordExportAudit(tenantId, userId, 'cash_book_ledger.exported', dto, extractRequestMeta(req));
     res.setHeader('Content-Type', EXCEL_CONTENT_TYPE);
     res.setHeader('Content-Disposition', `attachment; filename="so-quy-${dto.from ?? 'tat-ca'}_${dto.to ?? 'tat-ca'}.xlsx"`);
     res.send(buffer);
@@ -51,9 +53,10 @@ export class CashBookReportController {
   @RequirePermission('cash_voucher', 'read')
   async exportVouchers(@Query() query: unknown, @Req() req: Request, @Res() res: Response): Promise<void> {
     const dto = listCashVouchersQuerySchema.parse(query);
-    const { tenantId } = req.user!;
+    const { userId, tenantId } = req.user!;
     const data = await this.reportService.getVoucherExportData(tenantId, dto);
     const buffer = await this.exportService.buildCashVoucherListExcel(dto.from, dto.to, data);
+    await this.reportService.recordExportAudit(tenantId, userId, 'cash_voucher.exported', dto, extractRequestMeta(req));
     res.setHeader('Content-Type', EXCEL_CONTENT_TYPE);
     res.setHeader('Content-Disposition', `attachment; filename="phieu-thu-chi-${dto.from ?? 'tat-ca'}_${dto.to ?? 'tat-ca'}.xlsx"`);
     res.send(buffer);
@@ -71,9 +74,10 @@ export class CashBookReportController {
   @RequirePermission('cash_voucher', 'report')
   async exportCashFlowReport(@Query() query: unknown, @Req() req: Request, @Res() res: Response): Promise<void> {
     const dto = cashFlowReportQuerySchema.parse(query);
-    const { tenantId } = req.user!;
+    const { userId, tenantId } = req.user!;
     const report = await this.reportService.getCashFlowReport(tenantId, dto.from, dto.to);
     const buffer = await this.exportService.buildCashFlowReportExcel(dto.from, dto.to, report);
+    await this.reportService.recordExportAudit(tenantId, userId, 'cash_flow_report.exported', dto, extractRequestMeta(req));
     res.setHeader('Content-Type', EXCEL_CONTENT_TYPE);
     res.setHeader('Content-Disposition', `attachment; filename="bao-cao-dong-tien-${dto.from}_${dto.to}.xlsx"`);
     res.send(buffer);

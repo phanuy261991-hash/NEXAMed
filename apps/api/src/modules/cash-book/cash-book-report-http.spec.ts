@@ -251,11 +251,18 @@ describe('HTTP e2e — Sổ quỹ & Thu chi Giai đoạn 2', () => {
       expect(paymentIndex).toBeLessThan(transferIndex);
     });
 
-    it('Xuất Excel (GET /cash-book/ledger/export) → 200, content-type .xlsx, lễ tân (cash_voucher.read) gọi được', async () => {
+    it('Xuất Excel (GET /cash-book/ledger/export) → 200, content-type .xlsx, lễ tân (cash_voucher.read) gọi được, GHI AUDIT LOG (S6-03)', async () => {
       const res = await request(app.getHttpServer()).get(`/api/v1/cash-book/ledger/export?cashAccountId=${cashAccountId}`).set(authed(receptionistToken));
       expect(res.status).toBe(200);
       expect(res.headers['content-type']).toContain('spreadsheetml');
       expect(res.headers['content-disposition']).toContain('.xlsx');
+
+      const auditRow = await privileged.auditLog.findFirst({
+        where: { tenantId: fixture.tenantA.id, action: 'cash_book_ledger.exported', entityId: fixture.tenantA.id },
+        orderBy: { occurredAt: 'desc' },
+      });
+      expect(auditRow).not.toBeNull();
+      expect((auditRow?.afterJson as { cashAccountId?: string })?.cashAccountId).toBe(cashAccountId);
     });
 
     it('Xuất Excel — tenant B tra quỹ tenant A → 404', async () => {
@@ -270,11 +277,17 @@ describe('HTTP e2e — Sổ quỹ & Thu chi Giai đoạn 2', () => {
       expect(res.status).toBe(401);
     });
 
-    it('lễ tân (cash_voucher.read, KHÔNG cần cash_voucher.report) → 200, content-type .xlsx', async () => {
+    it('lễ tân (cash_voucher.read, KHÔNG cần cash_voucher.report) → 200, content-type .xlsx, GHI AUDIT LOG (S6-03)', async () => {
       const res = await request(app.getHttpServer()).get('/api/v1/cash-book/vouchers/export').set(authed(receptionistToken));
       expect(res.status).toBe(200);
       expect(res.headers['content-type']).toContain('spreadsheetml');
       expect(res.headers['content-disposition']).toContain('.xlsx');
+
+      const auditRow = await privileged.auditLog.findFirst({
+        where: { tenantId: fixture.tenantA.id, action: 'cash_voucher.exported', entityId: fixture.tenantA.id },
+        orderBy: { occurredAt: 'desc' },
+      });
+      expect(auditRow).not.toBeNull();
     });
 
     it('lọc theo direction/status áp đúng — đúng khuôn GET /cash-vouchers', async () => {
@@ -329,11 +342,17 @@ describe('HTTP e2e — Sổ quỹ & Thu chi Giai đoạn 2', () => {
       expect(bankAccountBucket.totalIncome).toBeGreaterThanOrEqual(transferAmount); // quỹ đích: được cộng.
     });
 
-    it('Xuất Excel → 200, content-type .xlsx', async () => {
+    it('Xuất Excel → 200, content-type .xlsx, GHI AUDIT LOG (S6-03)', async () => {
       const res = await request(app.getHttpServer()).get(`/api/v1/cash-book/cash-flow-report/export?from=${today}&to=${today}`).set(authed(clinicAdminToken));
       expect(res.status).toBe(200);
       expect(res.headers['content-type']).toContain('spreadsheetml');
       expect(res.headers['content-disposition']).toContain('.xlsx');
+
+      const auditRow = await privileged.auditLog.findFirst({
+        where: { tenantId: fixture.tenantA.id, action: 'cash_flow_report.exported', entityId: fixture.tenantA.id },
+        orderBy: { occurredAt: 'desc' },
+      });
+      expect(auditRow).not.toBeNull();
     });
   });
 

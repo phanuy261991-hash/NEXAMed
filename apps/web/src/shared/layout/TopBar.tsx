@@ -10,6 +10,7 @@ import {
   useSoloClinicWorkflowEnabledQuery,
 } from '../../features/clinic/clinic.queries';
 import { useClosingTimeReminder } from '../../features/clinic/useClosingTimeReminder';
+import { DOCTOR_ONLY_ROLES } from '../../features/auth/workflow-roles';
 import { getInitials } from '../format/initials';
 import { formatClockTime } from '../format/time';
 import { useBreadcrumbItems } from './breadcrumb.context';
@@ -67,7 +68,7 @@ export function TopBar() {
   // `clinic_admin`) — theo yêu cầu chủ dự án, không phải mọi trang/mọi vai trò quản lý được.
   const isOnEncounterPage = useMatch('/encounters/:id') !== null;
   const isOnDoctorQueuePage = useMatch('/reception/doctor-queue') !== null;
-  const isDoctor = user?.roles.includes('doctor') ?? false;
+  const isDoctor = user?.roles.some((role) => DOCTOR_ONLY_ROLES.includes(role)) ?? false;
   // Bánh răng "Ca trực" (Tạm nghỉ/Đóng ca) chỉ có ý nghĩa ở 2 màn hình bác sĩ thực sự làm việc với
   // hàng đợi/bệnh nhân — mockup chốt trực tiếp với chủ dự án, không hiện ở mọi trang khác (khác 3
   // badge trạng thái bên dưới, vẫn hiện toàn app, không đổi).

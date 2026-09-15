@@ -315,4 +315,31 @@ describe('HTTP e2e — /api/v1/work-shift-assignments', () => {
         .send({ allowStaffSelfScheduleEnabled: true });
     });
   });
+
+  describe('Xuất Excel (GET /work-shift-assignments/export)', () => {
+    it('clinic_admin (scope global) → 200, content-type .xlsx, GHI AUDIT LOG (S6-03)', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/v1/work-shift-assignments/export')
+        .query({ month: '2026-09' })
+        .set(authed(clinicAdminToken));
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toContain('spreadsheetml');
+      expect(res.headers['content-disposition']).toContain('.xlsx');
+
+      const auditRow = await privileged.auditLog.findFirst({
+        where: { tenantId: fixture.tenantA.id, action: 'work_shift_assignment.exported', entityId: fixture.tenantA.id },
+        orderBy: { occurredAt: 'desc' },
+      });
+      expect(auditRow).not.toBeNull();
+      expect((auditRow?.afterJson as { month?: string })?.month).toBe('2026-09');
+    });
+
+    it('bác sĩ (scope personal, không phải global) → 403', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/v1/work-shift-assignments/export')
+        .query({ month: '2026-09' })
+        .set(authed(doctorAToken));
+      expect(res.status).toBe(403);
+    });
+  });
 });

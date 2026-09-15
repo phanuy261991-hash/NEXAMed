@@ -443,4 +443,36 @@ describe('HTTP e2e — /api/v1/cash-vouchers', () => {
       expect(res.body.data.items.every((a: { id: string }) => a.id !== cashAccountId)).toBe(true);
     });
   });
+
+  describe('S6-03 — mặc định phạm vi ngày khi bỏ trống from/to (chống trả toàn bộ lịch sử không giới hạn)', () => {
+    it('phiếu 100 ngày trước KHÔNG hiện trong GET /cash-vouchers không kèm from/to; phiếu hôm nay VẪN hiện', async () => {
+      const oldDate = new Date(Date.now() - 100 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const oldRes = await createVoucher(cashierToken, 'EXPENSE', 77_000, { occurredAt: oldDate, description: 'Phiếu 100 ngày trước (ngoài mặc định 90 ngày)' });
+      expect(oldRes.status).toBe(200);
+      const oldVoucherId = oldRes.body.data.id as string;
+
+      const recentRes = await createVoucher(cashierToken, 'EXPENSE', 88_000, { description: 'Phiếu hôm nay (trong mặc định 90 ngày)' });
+      expect(recentRes.status).toBe(200);
+      const recentVoucherId = recentRes.body.data.id as string;
+
+      const listRes = await request(app.getHttpServer()).get('/api/v1/cash-vouchers').set(authed(cashierToken));
+      expect(listRes.status).toBe(200);
+      const ids = listRes.body.data.items.map((v: { id: string }) => v.id);
+      expect(ids).not.toContain(oldVoucherId);
+      expect(ids).toContain(recentVoucherId);
+    });
+
+    it('vẫn xem được phiếu cũ khi CHỦ ĐỘNG truyền from bao trùm — mặc định chỉ áp dụng lúc bỏ trống', async () => {
+      const oldDate = new Date(Date.now() - 100 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const oldRes = await createVoucher(cashierToken, 'EXPENSE', 66_000, { occurredAt: oldDate, description: 'Phiếu cũ khác, tra bằng from tường minh' });
+      const oldVoucherId = oldRes.body.data.id as string;
+
+      const listRes = await request(app.getHttpServer())
+        .get(`/api/v1/cash-vouchers?from=${oldDate}&to=${oldDate}`)
+        .set(authed(cashierToken));
+      expect(listRes.status).toBe(200);
+      const ids = listRes.body.data.items.map((v: { id: string }) => v.id);
+      expect(ids).toContain(oldVoucherId);
+    });
+  });
 });

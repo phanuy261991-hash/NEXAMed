@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuthStore } from '../auth/auth.store';
+import { DOCTOR_ONLY_ROLES } from '../auth/workflow-roles';
 import { getVietnamTodayDateString } from '../appointment/schedule-grid.utils';
 import { RoomSessionDialog } from './RoomSessionDialog';
 import { useMyRoomSessionQuery, useRoomOptionsQuery } from './clinic.queries';
@@ -31,7 +32,7 @@ function dismissKey(userId: string): string {
  */
 export function RoomSessionGate() {
   const user = useAuthStore((s) => s.user);
-  const isDoctor = user?.roles.includes('doctor') ?? false;
+  const isDoctor = user?.roles.some((role) => DOCTOR_ONLY_ROLES.includes(role)) ?? false;
   const [dismissedForNow, setDismissedForNow] = useState(() => (user ? sessionStorage.getItem(dismissKey(user.id)) === '1' : false));
 
   const roomOptions = useRoomOptionsQuery();

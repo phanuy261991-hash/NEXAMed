@@ -7,6 +7,7 @@ import {
   ConcurrentModificationError,
   DOCTOR_DIRECTORY_PORT,
   maxDataScope,
+  toVietnamDateParts,
   type CashierShiftReaderPort,
   type ClinicConfigReaderPort,
   type DoctorDirectoryPort,
@@ -134,11 +135,41 @@ export class CashVoucherService {
     return this.toDto(tenantId, row);
   }
 
+  /**
+   * `to` mặc định = hôm nay (giờ Việt Nam), `from` mặc định = 90 ngày trước `to` — chỉ áp dụng khi
+   * client bỏ trống tham số tương ứng. Dùng `toVietnamDateParts` (giống `BusinessCodeService`,
+   * `format-display-code.ts`) thay vì cắt mốc ngày trực tiếp bằng `new Date()` phía server (CLAUDE.md).
+   */
+  private resolveDateRange(query: ListCashVouchersQuery): { from: Date; to: Date } {
+    const nowParts = toVietnamDateParts(new Date());
+    const todayStr = `${nowParts.year}-${String(nowParts.month).padStart(2, '0')}-${String(nowParts.day).padStart(2, '0')}`;
+    const toStr = query.to ?? todayStr;
+
+    let fromStr = query.from;
+    if (!fromStr) {
+      const ninetyDaysAgoParts = toVietnamDateParts(new Date(Date.now() - 90 * 24 * 60 * 60 * 1000));
+      fromStr = `${ninetyDaysAgoParts.year}-${String(ninetyDaysAgoParts.month).padStart(2, '0')}-${String(ninetyDaysAgoParts.day).padStart(2, '0')}`;
+    }
+
+    return {
+      from: new Date(`${fromStr}T00:00:00+07:00`),
+      to: new Date(`${toStr}T23:59:59.999+07:00`),
+    };
+  }
+
   async list(tenantId: string, query: ListCashVouchersQuery): Promise<ListCashVouchersResponse> {
+    // S6-03 (rà soát bảo mật): `from`/`to` bỏ trống trước đây khiến Prisma bỏ hẳn điều kiện lọc
+    // ngày, trả VỀ TOÀN BỘ lịch sử thu-chi của tenant không giới hạn — vi phạm .claude/docs/
+    // security-audit.md ("không thêm endpoint trả danh sách... không phân trang"). Web luôn gửi
+    // kèm from/to (mặc định "đầu tháng → hôm nay", CashVoucherListPage.tsx) nên hành vi UI không
+    // đổi; chỉ chặn đường gọi API trực tiếp bỏ qua bộ lọc. Mặc định 90 ngày gần nhất — không ép
+    // `from`/`to` bắt buộc ở schema để không phá `cash-voucher-http.spec.ts` đang gọi không kèm
+    // tham số (kỳ vọng thấy MỌI phiếu test vừa tạo, thường trong vài giây/phút gần đây).
+    const { from, to } = this.resolveDateRange(query);
     const rows = await this.unitOfWork.runInTenantScope(tenantId, (tx) =>
       this.cashVoucherRepository.list(tx, tenantId, {
-        from: query.from ? new Date(`${query.from}T00:00:00+07:00`) : undefined,
-        to: query.to ? new Date(`${query.to}T23:59:59.999+07:00`) : undefined,
+        from,
+        to,
         direction: query.direction,
         status: query.status,
         cashierShiftId: query.cashierShiftId,

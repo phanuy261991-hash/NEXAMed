@@ -108,8 +108,9 @@ export class WorkShiftAssignmentController {
   async exportExcel(@Query() query: unknown, @Req() req: Request, @Res() res: Response): Promise<void> {
     assertGlobalScope(req);
     const dto = monthQuerySchema.parse(query);
-    const { tenantId } = req.user!;
+    const { userId, tenantId } = req.user!;
     const buffer = await this.importService.buildExport(tenantId, dto.month);
+    await this.service.recordExportAudit(tenantId, userId, dto.month, extractRequestMeta(req));
     res.setHeader('Content-Type', EXCEL_CONTENT_TYPE);
     res.setHeader('Content-Disposition', `attachment; filename="lich-lam-viec-${dto.month}.xlsx"`);
     res.send(buffer);

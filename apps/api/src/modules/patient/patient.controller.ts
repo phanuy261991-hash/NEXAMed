@@ -14,6 +14,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { SkipThrottle, ThrottlerGuard } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { z } from 'zod';
 import {
@@ -55,8 +56,18 @@ export class PatientController {
    * param), không khớp hình dạng "xem một danh sách nhiều bệnh nhân". Audit cho thao tác xem
    * danh sách (nếu cần) là việc khác, chưa có yêu cầu cụ thể ở PRD/security-audit.md.
    */
+  /**
+   * Rate limit `patient-lookup` (S6-03, `.claude/docs/security-audit.md` mục "Ràng buộc khi viết
+   * code" — "Rate limit riêng cho endpoint tra cứu bệnh nhân, chống dò dữ liệu bằng cách quét
+   * mã") — trước đây 4 endpoint GET dưới đây (list/check-duplicate/by-phone/by-national-id) không
+   * có giới hạn nào. `@SkipThrottle({ login: true })` vì `ThrottlerGuard` mặc định áp MỌI throttler
+   * đã đăng ký (`iam.module.ts`) lên route được gắn guard — bỏ qua bucket `login` (10/phút, quá
+   * chặt cho tra cứu bình thường), chỉ giữ `patient-lookup` (30/phút).
+   */
   @Get()
   @RequirePermission('patient', 'read')
+  @UseGuards(ThrottlerGuard)
+  @SkipThrottle({ login: true })
   async list(@Query() query: unknown, @Req() req: Request) {
     const dto = listPatientsQuerySchema.parse(query);
     const { tenantId } = req.user!;
@@ -69,6 +80,8 @@ export class PatientController {
    */
   @Get('check-duplicate')
   @RequirePermission('patient', 'read')
+  @UseGuards(ThrottlerGuard)
+  @SkipThrottle({ login: true })
   async checkDuplicate(@Query() query: unknown, @Req() req: Request) {
     const dto = checkPatientDuplicateQuerySchema.parse(query);
     const { tenantId } = req.user!;
@@ -81,6 +94,8 @@ export class PatientController {
    */
   @Get('by-phone')
   @RequirePermission('patient', 'read')
+  @UseGuards(ThrottlerGuard)
+  @SkipThrottle({ login: true })
   async findByPhone(@Query() query: unknown, @Req() req: Request) {
     const dto = patientByPhoneQuerySchema.parse(query);
     const { tenantId } = req.user!;
@@ -93,6 +108,8 @@ export class PatientController {
    */
   @Get('by-national-id')
   @RequirePermission('patient', 'read')
+  @UseGuards(ThrottlerGuard)
+  @SkipThrottle({ login: true })
   async findByNationalId(@Query() query: unknown, @Req() req: Request) {
     const dto = patientByNationalIdQuerySchema.parse(query);
     const { tenantId } = req.user!;

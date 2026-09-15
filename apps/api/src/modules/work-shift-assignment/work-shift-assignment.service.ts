@@ -313,6 +313,25 @@ export class WorkShiftAssignmentService implements WorkShiftAssignmentReaderPort
     });
   }
 
+  /**
+   * Ghi audit cho "Xuất Excel" (S6-03, `.claude/docs/security-audit.md` mục "Audit log") — trước
+   * đây `GET /work-shift-assignments/export` không ghi gì. Không có UI thu thập "lý do export" ở
+   * màn hình này nên chỉ ghi phạm vi (tháng đã xuất) — đúng khuôn `CashBookReportService.recordExportAudit()`.
+   */
+  async recordExportAudit(tenantId: string, actorId: string, month: string, meta: RequestMeta): Promise<void> {
+    await this.unitOfWork.runInTenantScope(tenantId, (tx) =>
+      writeAuditLog(tx, tenantId, {
+        actorId,
+        action: 'work_shift_assignment.exported',
+        entityType: 'work_shift_assignment',
+        entityId: tenantId,
+        afterJson: { month },
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      }),
+    );
+  }
+
   async list(tenantId: string, actorId: string, dataScope: DataScope, query: ListWorkShiftAssignmentsQuery): Promise<ListWorkShiftAssignmentsResponse> {
     const graceDays = await this.clinicConfigReader.getWorkShiftAssignmentLockGraceDays(tenantId);
     const today = getVietnamDateString();

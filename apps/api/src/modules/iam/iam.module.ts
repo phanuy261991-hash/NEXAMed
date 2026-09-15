@@ -35,6 +35,19 @@ import { ClinicModule } from '../clinic/clinic.module';
  * tương lai chưa bàn tới. Xem docs/DECISIONS.md #014 (break-glass coi login đã có rate limit sẵn
  * làm tiền lệ).
  *
+ * `patient-lookup` (S6-03, rà soát bảo mật): thêm riêng cho 4 endpoint tra cứu bệnh nhân
+ * (`GET /patients`, `/check-duplicate`, `/by-phone`, `/by-national-id`, `PatientController`) —
+ * trước đây KHÔNG có rate limit nào, vi phạm `.claude/docs/security-audit.md` ("Rate limit riêng
+ * cho endpoint tra cứu bệnh nhân — chống dò dữ liệu bằng cách quét mã"). 50 request/phút/IP —
+ * cao hơn `login` (10) vì đây là thao tác nghiệp vụ bình thường của lễ tân (gõ tìm kiếm nhiều
+ * lần/phút), khác đăng nhập; đủ thấp để làm chậm đáng kể việc quét tuần tự mã bệnh nhân/CCCD/SĐT,
+ * đủ cao để không đụng `patient-http.spec.ts` (24 lệnh gọi tới 4 route này trong cùng 1 file/app
+ * instance — cùng loại rủi ro throttler-đụng-test đã ghi nhận ở `user-account-hr-profile-http.
+ * spec.ts`). `ThrottlerModule` tự đánh dấu `@Global()` nội bộ (thư viện) nên không cần
+ * `PatientModule` tự import lại. Lưu ý: khoá theo IP mặc định — nhiều nhân viên cùng dùng
+ * NAT/router chung của một phòng khám sẽ CHIA SẺ chung 1 bucket (giống `login` đã chấp nhận từ
+ * trước), cân nhắc tăng nếu pilot thật báo bị chặn nhầm.
+ *
  * `@Global()` (S2-01): `BreakGlassService` cần visible từ MỌI module domain tương lai
  * (patient/appointment/encounter/prescription) vì `PermissionGuard` (đặt ở `CommonModule`,
  * cũng global) inject nó — Nest resolve dependency của một global provider theo context của
@@ -50,7 +63,10 @@ import { ClinicModule } from '../clinic/clinic.module';
 @Module({
   imports: [
     JwtModule.register({}),
-    ThrottlerModule.forRoot([{ name: 'login', ttl: 60_000, limit: 10 }]),
+    ThrottlerModule.forRoot([
+      { name: 'login', ttl: 60_000, limit: 10 },
+      { name: 'patient-lookup', ttl: 60_000, limit: 50 },
+    ]),
     // Cần REFERENCE_CATALOG_READER_PORT cho UserAccountService (mở rộng ADM-01, tự động vô hiệu
     // hoá tài khoản theo Trạng thái làm việc) — không có chiều ngược lại (ReferenceCatalogModule
     // không import IamModule), không circular.
