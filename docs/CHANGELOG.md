@@ -2,6 +2,14 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-15 (4)
+
+### S6-01 — Hoàn tất verify Playwright banner cảnh báo sao lưu
+
+Việc treo duy nhất còn lại của S6-01 (#141): banner `BackupStatusBanner.tsx` trước đây chỉ verify qua Docker thật + HTTP e2e, chưa qua trình duyệt thật. Hoá ra không cần dựng container `backup` thật như dự tính — `LocalFileBackupStatusAdapter` chỉ đọc file JSON tại `BACKUP_STATUS_FILE` mỗi request, không quan tâm ai ghi ra file đó. Đặt tạm biến này trỏ 1 file JSON tay + khởi động lại API dev, rồi dùng Chrome thật (Playwright) đăng nhập `dev.admin`, lần lượt ghi đè file JSON theo 4 kịch bản + `page.reload()`.
+
+**Đã xác minh thật**: cả 3 lý do cảnh báo (`LAST_RUN_FAILED`/`STALE`/`NEVER_RUN`) hiện đúng banner đỏ + đúng nội dung, trạng thái lành mạnh ẩn banner đúng, không lỗi console. Đã khôi phục `.env`/API về đúng baseline sau khi kiểm. Không đổi code/schema. Xem chi tiết `docs/DECISIONS.md` #145.
+
 ## 2026-09-15 (3)
 
 ### S6-06/07/08 — Xuất bệnh án PDF, tài liệu xử lý sự cố, checklist GA v1

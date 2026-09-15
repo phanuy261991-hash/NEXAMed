@@ -2478,3 +2478,17 @@ Restart dev server xong đã khôi phục đúng `nest start --watch` (không đ
 
 **S6-08 — `docs/GA-checklist.md`** (mới) — dựng khung checklist theo dõi sống 5 điều kiện gate GA v1 (`docs/product/plan.md` mục 9) + bảng chỉ số PRD mục 5, điền đúng trạng thái hiện tại (đa số vẫn `[ ]` vì cần dữ liệu pilot thật — KHÔNG tự đánh dấu xong). Nối tham chiếu ở `plan.md` mục 9.
 
+## 145 — S6-01: hoàn tất verify Playwright banner cảnh báo sao lưu
+
+**Ngày**: 2026-09-15. Chủ dự án yêu cầu hoàn tất mục treo duy nhất còn lại của S6-01 (#141) — banner `BackupStatusBanner.tsx` mới chỉ verify qua Docker thật + HTTP e2e, chưa qua trình duyệt thật, lúc đó đánh giá là "cần dựng container `backup` thật trong 1 stack đầy đủ, không khả thi trên máy dev thường".
+
+**Đánh giá lại: không cần Docker.** Đọc lại `LocalFileBackupStatusAdapter.read()` (`apps/api/src/infrastructure/backup-status/local-file.adapter.ts`) xác nhận nó chỉ đọc file JSON tại đường dẫn `BACKUP_STATUS_FILE` MỖI REQUEST (không cache lúc khởi động, không quan tâm ai/cái gì ghi ra file đó — container `backup` thật hay tay). Vậy chỉ cần: (1) đặt tạm biến `BACKUP_STATUS_FILE` trong `apps/api/.env` trỏ tới 1 file JSON tự viết đúng schema (`lastRunAt`/`lastRunOk`/`lastSuccessAt`/`consecutiveFailures`/`lastError`); (2) khởi động lại tiến trình API dev (biến môi trường chỉ đọc lúc boot qua `ConfigModule`, khác bản thân file JSON đọc lại mỗi request); (3) dùng Chrome thật (Playwright, `executablePath` trỏ Chrome cài sẵn — đúng tiền lệ nhiều phiên trước) đăng nhập `dev.admin` rồi ghi đè file JSON + `page.reload()` giữa các kịch bản (không cần khởi động lại API lần nữa vì chỉ đổi NỘI DUNG file, không đổi biến môi trường).
+
+**Đã xác minh thật qua Chrome thật** (`playwright-core`, tái dùng cache node_modules còn sót lại từ phiên #124/#125 trong scratchpad để khỏi cài lại): đăng nhập `dev.admin` (clinic_admin) rồi lần lượt ghi 4 trạng thái file, mỗi lần `page.reload()` (React Query `staleTime` mặc định 0 nên tự refetch, không cần xoá cache tay):
+- `LAST_RUN_FAILED` → banner đỏ hiện đúng, kèm đúng `lastError` đã ghi trong file.
+- `STALE` (lastRunOk=true, lastSuccessAt 40 giờ trước — vượt ngưỡng mặc định 30h) → banner hiện đúng, đúng giờ đã format theo giờ VN.
+- `NEVER_RUN` (lastSuccessAt=null) → banner hiện đúng thông điệp "Chưa từng sao lưu thành công lần nào".
+- Lành mạnh (lastRunOk=true, lastSuccessAt 1 giờ trước) → banner KHÔNG hiện.
+
+Không lỗi console ở cả 4 lượt. Sau khi verify xong, xoá dòng `BACKUP_STATUS_FILE` khỏi `.env` và khởi động lại API dev để về đúng baseline cũ (máy dev không cấu hình biến này, banner tự tắt — hành vi mặc định không đổi). Không đổi code/schema — thuần bổ sung bằng chứng verify còn thiếu. Không còn mục nào treo cho S6-01.
+
