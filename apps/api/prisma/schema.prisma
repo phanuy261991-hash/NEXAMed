@@ -91,6 +91,10 @@ model Tenant {
   diagnoses              Diagnosis[]
   clinicalNotes          ClinicalNote[]
   drugs                  Drug[]
+  drugUnits              DrugUnit[]
+  drugIngredients        DrugIngredient[]
+  suppliers              Supplier[]
+  warehouses             Warehouse[]
   prescriptions          Prescription[]
   prescriptionItems      PrescriptionItem[]
   patientAllergens       PatientAllergen[]
@@ -425,8 +429,10 @@ model Department {
   // "Hàng đợi ảo" (#064) — mọi encounter thuộc một Khoa cụ thể (bắt buộc), dù đã gán bác sĩ hay
   // còn trong hàng chờ chung.
   encounters     Encounter[]
+  // Kho Thuốc & Vật tư GĐ1 (docs/DECISIONS.md #146) — "Khoa/Phòng quản lý" tuỳ chọn của một kho.
+  warehouses     Warehouse[]
 
-  // Đích của composite FK (tenant_id, id) từ user_account/encounter.
+  // Đích của composite FK (tenant_id, id) từ user_account/encounter/warehouse.
   @@unique([tenantId, id])
   @@map("department")
 }
@@ -644,6 +650,13 @@ enum ReferenceCatalogCategory {
   // quầy"/Sổ quỹ sắp làm (CHƯA xây ở migration này, chỉ danh mục). Không seed cứng, mã tự sinh như
   // UNIT/PAYMENT_METHOD. Có thêm cột `direction` riêng (xem enum ReferenceCatalogDirection).
   INCOME_EXPENSE_TYPE
+  // Kho Thuốc & Vật tư y tế GĐ1 (docs/DECISIONS.md #146) — Hoạt chất chuẩn (dùng cho
+  // `drug_ingredient.active_ingredient_code`, thay bảng `active_ingredients` riêng của tài liệu
+  // tham khảo — tái dùng CRUD/UI/sinh mã có sẵn), Nhóm thuốc, Đường dùng. Không seed cứng (không có
+  // nguồn dữ liệu chính thức), mã tự sinh ngắn tuần tự như UNIT/PAYMENT_METHOD.
+  ACTIVE_INGREDIENT
+  DRUG_GROUP
+  DRUG_ROUTE
 
   @@map("reference_catalog_category")
 }
@@ -1446,15 +1459,46 @@ model ClinicalNote {
 // 2026-08-25): không tồn kho, không giá bán — chỉ đủ để ghi nhận/tìm kiếm lúc kê đơn. Khi có kho
 // thuốc thật (v2.1), thêm bảng riêng tham chiếu tới đây, không sửa bảng này (xem
 // docs/product/future-modules-reference.md mục 2.2.1).
+// Kho Thuốc & Vật tư y tế, Giai đoạn 1 (docs/DECISIONS.md #146) — mở rộng bảng `drug` sẵn có
+// (Sprint 4, S4-03) thay vì tạo bảng `items` mới, đạt mục tiêu "Single Master Table" mà không phải
+// migrate dữ liệu `drug`/`prescription_item` đang chạy thật tại pilot. `unit`/`activeIngredient`/
+// `concentration` GIỮ NGUYÊN làm dữ liệu cũ (đúng cách `patient.allergyNote` được giữ khi thêm
+// `patient_allergen`) — hồ sơ thuốc tạo TRƯỚC GĐ1 vẫn đọc được, không backfill ngược.
+enum DrugItemType {
+  MEDICINE
+  SUPPLY
+
+  @@map("drug_item_type")
+}
+
 model Drug {
-  id               String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId         String  @map("tenant_id") @db.Uuid
+  id               String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String       @map("tenant_id") @db.Uuid
   code             String
   name             String
-  activeIngredient String? @map("active_ingredient")
+  activeIngredient String?      @map("active_ingredient")
   unit             String?
   concentration    String?
-  isActive         Boolean @default(true) @map("is_active")
+  isActive         Boolean      @default(true) @map("is_active")
+  // GĐ1 — Thuốc hay Vật tư y tế. Mặc định MEDICINE cho dữ liệu cũ (migration backfill).
+  itemType         DrugItemType @default(MEDICINE) @map("item_type")
+  // Có quản lý theo lô + hạn dùng không — quyết định giá vốn đích danh theo lô (true) hay bình
+  // quân gia quyền (false, GĐ2). Mặc định true, khớp hành vi ngầm định trước GĐ1.
+  isBatchManaged   Boolean      @default(true) @map("is_batch_managed")
+  // Đơn vị NHỎ NHẤT — đơn vị mà tồn kho được tính (GĐ2), xuất kho lẻ tới đơn vị này. Nullable vì
+  // dữ liệu cũ (trước GĐ1) không có; bắt buộc ở tầng Zod cho mặt hàng tạo mới.
+  baseUnitCode     String?      @map("base_unit_code")
+  // Giá bán mặc định, đồng, THEO ĐƠN VỊ NHỎ NHẤT — bigint (CLAUDE.md cấm decimal cho tiền).
+  defaultSellPrice BigInt?      @map("default_sell_price")
+  // Mã tham chiếu reference_catalog category DRUG_GROUP/DRUG_ROUTE (không FK cứng, đúng cách
+  // patient.ethnicity/encounter.exam_type_code tham chiếu bảng đa-category này).
+  drugGroupCode    String?      @map("drug_group_code")
+  routeCode        String?      @map("route_code")
+  // Mã thuốc QĐ 130 (Cổng Đơn thuốc quốc gia, #147) — chuẩn bị trước, chưa tích hợp cổng thật.
+  nationalCode     String?      @map("national_code")
+  manufacturer     String?
+  minStockAlert    Int?         @map("min_stock_alert")
+  maxStockAlert    Int?         @map("max_stock_alert")
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -1467,10 +1511,133 @@ model Drug {
 
   tenant            Tenant             @relation(fields: [tenantId], references: [id])
   prescriptionItems PrescriptionItem[]
+  units             DrugUnit[]
+  ingredients       DrugIngredient[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, code])
   @@map("drug")
+}
+
+// Chuỗi quy đổi đơn vị N bậc (docs/DECISIONS.md #146) — mỗi dòng lưu hệ số quy đổi ra bậc NGAY
+// DƯỚI (sortOrder 0 = bậc ngay trên đơn vị nhỏ nhất của drug). Tổng quy đổi ra đơn vị nhỏ nhất là
+// TÍCH LUỸ các factorToUnitBelow từ bậc 0 tới bậc đó — tính bằng hàm thuần `computeUnitConversion()`
+// (packages/core), KHÔNG lưu cột tổng (tránh 2 nguồn sự thật, cùng nguyên tắc exam_type_price
+// không lưu số tiền đã tính). 0 dòng cho một `drug` = mặt hàng chỉ dùng đúng 1 đơn vị.
+model DrugUnit {
+  id                String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId          String  @map("tenant_id") @db.Uuid
+  drugId            String  @map("drug_id") @db.Uuid
+  unitCode          String  @map("unit_code")
+  sortOrder         Int     @map("sort_order")
+  factorToUnitBelow Int     @map("factor_to_unit_below")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  drug   Drug   @relation(fields: [tenantId, drugId], references: [tenantId, id])
+
+  // Unique thật (tenant_id, drug_id, sort_order) WHERE deleted_at IS NULL là PARTIAL — khai raw SQL
+  // trong migration (cùng lý do patient.nationalIdHash), không khai @@unique ở đây.
+  @@map("drug_unit")
+}
+
+// Hoạt chất & hàm lượng (docs/DECISIONS.md #146) — sửa lỗ hổng an toàn có thật: `drug.
+// activeIngredient` (text tự do) khiến thuốc phối hợp (Panadol Extra = Paracetamol+Caffeine) bị bỏ
+// sót cảnh báo trùng hoạt chất với Hapacol (chỉ Paracetamol) vì so chuỗi không khớp. Từ GĐ1,
+// `findDuplicateActiveIngredients` (packages/core) so theo MÃ hoạt chất (activeIngredientCode, tham
+// chiếu reference_catalog category ACTIVE_INGREDIENT), không so chuỗi text nữa.
+model DrugIngredient {
+  id                   String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId             String  @map("tenant_id") @db.Uuid
+  drugId               String  @map("drug_id") @db.Uuid
+  activeIngredientCode String  @map("active_ingredient_code")
+  // Hàm lượng ×1000 (số nguyên — đúng tiền lệ vital_sign, cấm decimal cho số liệu y tế).
+  strengthValue        Int     @map("strength_value")
+  strengthUnitCode     String  @map("strength_unit_code")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  drug   Drug   @relation(fields: [tenantId, drugId], references: [tenantId, id])
+
+  // Unique thật (tenant_id, drug_id, active_ingredient_code) WHERE deleted_at IS NULL là PARTIAL —
+  // khai raw SQL trong migration, không khai @@unique ở đây (cùng lý do drug_unit ở trên).
+  @@map("drug_ingredient")
+}
+
+// Nhà cung cấp (docs/DECISIONS.md #146, GĐ1) — RIÊNG theo tenant, mã tự sinh ngắn tuần tự
+// (formatShortSequentialCode, tiền tố "NCC", đúng khuôn work_shift #113/#101) — không nhập tay.
+model Supplier {
+  id          String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId    String  @map("tenant_id") @db.Uuid
+  code        String
+  name        String
+  taxCode     String? @map("tax_code")
+  phone       String?
+  address     String?
+  contactName String? @map("contact_name")
+  isActive    Boolean @default(true) @map("is_active")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, code])
+  @@map("supplier")
+}
+
+// Kho (docs/DECISIONS.md #146, GĐ1) — RIÊNG theo tenant, đúng khuôn `floor`/`room` (#054/#055):
+// seed 1 kho mặc định lúc tạo tenant (`ensureDefaultWarehouse`, apps/api/src/infrastructure/
+// persistence/seed-tenant-roles.ts), web tự ẩn UI kho khi tenant chỉ có 1 kho. Mã tự sinh ngắn
+// tuần tự, tiền tố "KH".
+model Warehouse {
+  id           String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String  @map("tenant_id") @db.Uuid
+  departmentId String? @map("department_id") @db.Uuid
+  code         String
+  name         String
+  isDefault    Boolean @default(false) @map("is_default")
+  isActive     Boolean @default(true) @map("is_active")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant     Tenant      @relation(fields: [tenantId], references: [id])
+  // department_id nullable — FK chỉ áp khi có giá trị (Postgres MATCH SIMPLE, cùng mẫu room.floor).
+  department Department? @relation(fields: [tenantId, departmentId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, code])
+  @@map("warehouse")
 }
 
 // Đơn thuốc (Sprint 4, S4-01/02/04) — .claude/docs/clinical-workflow.md mục "Kê đơn (v1: chỉ in

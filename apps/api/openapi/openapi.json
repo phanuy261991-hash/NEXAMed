@@ -24916,6 +24916,101 @@
                     "type": "string",
                     "minLength": 1
                   },
+                  "itemType": {
+                    "type": "string",
+                    "enum": [
+                      "MEDICINE",
+                      "SUPPLY"
+                    ]
+                  },
+                  "isBatchManaged": {
+                    "type": "boolean",
+                    "default": true
+                  },
+                  "baseUnitCode": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "defaultSellPrice": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "drugGroupCode": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "routeCode": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "nationalCode": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "manufacturer": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "minStockAlert": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "maxStockAlert": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "ingredients": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "activeIngredientCode": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "strengthValue": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "strengthUnitCode": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "activeIngredientCode",
+                        "strengthValue",
+                        "strengthUnitCode"
+                      ]
+                    },
+                    "default": []
+                  },
+                  "units": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "unitCode": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "sortOrder": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "factorToUnitBelow": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0
+                        }
+                      },
+                      "required": [
+                        "unitCode",
+                        "sortOrder",
+                        "factorToUnitBelow"
+                      ]
+                    },
+                    "default": []
+                  },
                   "activeIngredient": {
                     "type": "string",
                     "minLength": 1
@@ -24931,7 +25026,9 @@
                 },
                 "required": [
                   "code",
-                  "name"
+                  "name",
+                  "itemType",
+                  "baseUnitCode"
                 ]
               }
             }
@@ -24957,6 +25054,146 @@
                         },
                         "name": {
                           "type": "string"
+                        },
+                        "itemType": {
+                          "type": "string",
+                          "enum": [
+                            "MEDICINE",
+                            "SUPPLY"
+                          ]
+                        },
+                        "isBatchManaged": {
+                          "type": "boolean"
+                        },
+                        "baseUnitCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "defaultSellPrice": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "drugGroupCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "routeCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "nationalCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "manufacturer": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "minStockAlert": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "maxStockAlert": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "ingredients": {
+                          "type": "array",
+                          "items": {
+                            "allOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "activeIngredientCode": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "strengthValue": {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  },
+                                  "strengthUnitCode": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "required": [
+                                  "activeIngredientCode",
+                                  "strengthValue",
+                                  "strengthUnitCode"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  }
+                                },
+                                "required": [
+                                  "id"
+                                ]
+                              }
+                            ]
+                          }
+                        },
+                        "units": {
+                          "type": "array",
+                          "items": {
+                            "allOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "unitCode": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "sortOrder": {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  },
+                                  "factorToUnitBelow": {
+                                    "type": "integer",
+                                    "exclusiveMinimum": 0
+                                  }
+                                },
+                                "required": [
+                                  "unitCode",
+                                  "sortOrder",
+                                  "factorToUnitBelow"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  }
+                                },
+                                "required": [
+                                  "id"
+                                ]
+                              }
+                            ]
+                          }
                         },
                         "activeIngredient": {
                           "type": [
@@ -24987,6 +25224,18 @@
                         "id",
                         "code",
                         "name",
+                        "itemType",
+                        "isBatchManaged",
+                        "baseUnitCode",
+                        "defaultSellPrice",
+                        "drugGroupCode",
+                        "routeCode",
+                        "nationalCode",
+                        "manufacturer",
+                        "minStockAlert",
+                        "maxStockAlert",
+                        "ingredients",
+                        "units",
                         "activeIngredient",
                         "unit",
                         "concentration",
@@ -25125,6 +25374,18 @@
           },
           {
             "schema": {
+              "type": "string",
+              "enum": [
+                "MEDICINE",
+                "SUPPLY"
+              ]
+            },
+            "required": false,
+            "name": "itemType",
+            "in": "query"
+          },
+          {
+            "schema": {
               "anyOf": [
                 {
                   "type": "boolean"
@@ -25170,6 +25431,146 @@
                               "name": {
                                 "type": "string"
                               },
+                              "itemType": {
+                                "type": "string",
+                                "enum": [
+                                  "MEDICINE",
+                                  "SUPPLY"
+                                ]
+                              },
+                              "isBatchManaged": {
+                                "type": "boolean"
+                              },
+                              "baseUnitCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "defaultSellPrice": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "drugGroupCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "routeCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "nationalCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "manufacturer": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "minStockAlert": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "maxStockAlert": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "ingredients": {
+                                "type": "array",
+                                "items": {
+                                  "allOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "activeIngredientCode": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        },
+                                        "strengthValue": {
+                                          "type": "integer",
+                                          "minimum": 0
+                                        },
+                                        "strengthUnitCode": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        }
+                                      },
+                                      "required": [
+                                        "activeIngredientCode",
+                                        "strengthValue",
+                                        "strengthUnitCode"
+                                      ]
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "id": {
+                                          "type": "string",
+                                          "format": "uuid"
+                                        }
+                                      },
+                                      "required": [
+                                        "id"
+                                      ]
+                                    }
+                                  ]
+                                }
+                              },
+                              "units": {
+                                "type": "array",
+                                "items": {
+                                  "allOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "unitCode": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        },
+                                        "sortOrder": {
+                                          "type": "integer",
+                                          "minimum": 0
+                                        },
+                                        "factorToUnitBelow": {
+                                          "type": "integer",
+                                          "exclusiveMinimum": 0
+                                        }
+                                      },
+                                      "required": [
+                                        "unitCode",
+                                        "sortOrder",
+                                        "factorToUnitBelow"
+                                      ]
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "id": {
+                                          "type": "string",
+                                          "format": "uuid"
+                                        }
+                                      },
+                                      "required": [
+                                        "id"
+                                      ]
+                                    }
+                                  ]
+                                }
+                              },
                               "activeIngredient": {
                                 "type": [
                                   "string",
@@ -25199,6 +25600,18 @@
                               "id",
                               "code",
                               "name",
+                              "itemType",
+                              "isBatchManaged",
+                              "baseUnitCode",
+                              "defaultSellPrice",
+                              "drugGroupCode",
+                              "routeCode",
+                              "nationalCode",
+                              "manufacturer",
+                              "minStockAlert",
+                              "maxStockAlert",
+                              "ingredients",
+                              "units",
                               "activeIngredient",
                               "unit",
                               "concentration",
@@ -25326,6 +25739,122 @@
                     "type": "string",
                     "minLength": 1
                   },
+                  "itemType": {
+                    "type": "string",
+                    "enum": [
+                      "MEDICINE",
+                      "SUPPLY"
+                    ]
+                  },
+                  "isBatchManaged": {
+                    "type": "boolean"
+                  },
+                  "baseUnitCode": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1
+                  },
+                  "defaultSellPrice": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": 0
+                  },
+                  "drugGroupCode": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1
+                  },
+                  "routeCode": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1
+                  },
+                  "nationalCode": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1
+                  },
+                  "manufacturer": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1
+                  },
+                  "minStockAlert": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": 0
+                  },
+                  "maxStockAlert": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": 0
+                  },
+                  "ingredients": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "activeIngredientCode": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "strengthValue": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "strengthUnitCode": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "activeIngredientCode",
+                        "strengthValue",
+                        "strengthUnitCode"
+                      ]
+                    }
+                  },
+                  "units": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "unitCode": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "sortOrder": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "factorToUnitBelow": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0
+                        }
+                      },
+                      "required": [
+                        "unitCode",
+                        "sortOrder",
+                        "factorToUnitBelow"
+                      ]
+                    }
+                  },
                   "activeIngredient": {
                     "type": [
                       "string",
@@ -25383,6 +25912,146 @@
                         "name": {
                           "type": "string"
                         },
+                        "itemType": {
+                          "type": "string",
+                          "enum": [
+                            "MEDICINE",
+                            "SUPPLY"
+                          ]
+                        },
+                        "isBatchManaged": {
+                          "type": "boolean"
+                        },
+                        "baseUnitCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "defaultSellPrice": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "drugGroupCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "routeCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "nationalCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "manufacturer": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "minStockAlert": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "maxStockAlert": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "ingredients": {
+                          "type": "array",
+                          "items": {
+                            "allOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "activeIngredientCode": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "strengthValue": {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  },
+                                  "strengthUnitCode": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "required": [
+                                  "activeIngredientCode",
+                                  "strengthValue",
+                                  "strengthUnitCode"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  }
+                                },
+                                "required": [
+                                  "id"
+                                ]
+                              }
+                            ]
+                          }
+                        },
+                        "units": {
+                          "type": "array",
+                          "items": {
+                            "allOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "unitCode": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "sortOrder": {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  },
+                                  "factorToUnitBelow": {
+                                    "type": "integer",
+                                    "exclusiveMinimum": 0
+                                  }
+                                },
+                                "required": [
+                                  "unitCode",
+                                  "sortOrder",
+                                  "factorToUnitBelow"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  }
+                                },
+                                "required": [
+                                  "id"
+                                ]
+                              }
+                            ]
+                          }
+                        },
                         "activeIngredient": {
                           "type": [
                             "string",
@@ -25412,6 +26081,18 @@
                         "id",
                         "code",
                         "name",
+                        "itemType",
+                        "isBatchManaged",
+                        "baseUnitCode",
+                        "defaultSellPrice",
+                        "drugGroupCode",
+                        "routeCode",
+                        "nationalCode",
+                        "manufacturer",
+                        "minStockAlert",
+                        "maxStockAlert",
+                        "ingredients",
+                        "units",
                         "activeIngredient",
                         "unit",
                         "concentration",
@@ -25527,6 +26208,1222 @@
           },
           "409": {
             "description": "Trùng mã thuốc, hoặc version không khớp (CONCURRENT_MODIFICATION)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/suppliers": {
+      "post": {
+        "tags": [
+          "drug"
+        ],
+        "summary": "Nhà cung cấp (Kho Thuốc & Vật tư y tế GĐ1, docs/DECISIONS.md #146) — tạo mới, mã tự sinh",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "taxCode": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "phone": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "address": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "contactName": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tạo thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "taxCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "phone": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "address": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "contactName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "isActive": {
+                          "type": "boolean"
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "code",
+                        "name",
+                        "taxCode",
+                        "phone",
+                        "address",
+                        "contactName",
+                        "isActive",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền drug.manage",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "drug"
+        ],
+        "summary": "Danh sách Nhà cung cấp",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "required": false,
+            "name": "includeInactive",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "taxCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "phone": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "address": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "contactName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "isActive": {
+                                "type": "boolean"
+                              },
+                              "version": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "code",
+                              "name",
+                              "taxCode",
+                              "phone",
+                              "address",
+                              "contactName",
+                              "isActive",
+                              "version"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền drug.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/suppliers/{id}": {
+      "patch": {
+        "tags": [
+          "drug"
+        ],
+        "summary": "Sửa/ẩn Nhà cung cấp — bắt buộc kèm version hiện có",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "taxCode": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1
+                  },
+                  "phone": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1
+                  },
+                  "address": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1
+                  },
+                  "contactName": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1
+                  },
+                  "isActive": {
+                    "type": "boolean"
+                  },
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sửa thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "taxCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "phone": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "address": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "contactName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "isActive": {
+                          "type": "boolean"
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "code",
+                        "name",
+                        "taxCode",
+                        "phone",
+                        "address",
+                        "contactName",
+                        "isActive",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền drug.manage",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy (không tồn tại hoặc thuộc tenant khác)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp (CONCURRENT_MODIFICATION)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/warehouses": {
+      "post": {
+        "tags": [
+          "drug"
+        ],
+        "summary": "Kho (Kho Thuốc & Vật tư y tế GĐ1, docs/DECISIONS.md #146) — tạo mới, mã tự sinh",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "departmentId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "isDefault": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tạo thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "departmentId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "departmentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "isDefault": {
+                          "type": "boolean"
+                        },
+                        "isActive": {
+                          "type": "boolean"
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "code",
+                        "name",
+                        "departmentId",
+                        "departmentName",
+                        "isDefault",
+                        "isActive",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền drug.manage",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "drug"
+        ],
+        "summary": "Danh sách Kho",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "departmentId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "departmentName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "isDefault": {
+                                "type": "boolean"
+                              },
+                              "isActive": {
+                                "type": "boolean"
+                              },
+                              "version": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "code",
+                              "name",
+                              "departmentId",
+                              "departmentName",
+                              "isDefault",
+                              "isActive",
+                              "version"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền drug.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/warehouses/{id}": {
+      "patch": {
+        "tags": [
+          "drug"
+        ],
+        "summary": "Sửa/ẩn Kho — bắt buộc kèm version hiện có",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "departmentId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "uuid"
+                  },
+                  "isDefault": {
+                    "type": "boolean"
+                  },
+                  "isActive": {
+                    "type": "boolean"
+                  },
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sửa thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "departmentId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "departmentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "isDefault": {
+                          "type": "boolean"
+                        },
+                        "isActive": {
+                          "type": "boolean"
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "code",
+                        "name",
+                        "departmentId",
+                        "departmentName",
+                        "isDefault",
+                        "isActive",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền drug.manage",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy (không tồn tại hoặc thuộc tenant khác)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp (CONCURRENT_MODIFICATION)",
             "content": {
               "application/json": {
                 "schema": {
@@ -30430,7 +32327,10 @@
                 "EMPLOYMENT_TYPE",
                 "UNIT",
                 "PAYMENT_METHOD",
-                "INCOME_EXPENSE_TYPE"
+                "INCOME_EXPENSE_TYPE",
+                "ACTIVE_INGREDIENT",
+                "DRUG_GROUP",
+                "DRUG_ROUTE"
               ]
             },
             "required": true,
@@ -30488,7 +32388,10 @@
                                   "EMPLOYMENT_TYPE",
                                   "UNIT",
                                   "PAYMENT_METHOD",
-                                  "INCOME_EXPENSE_TYPE"
+                                  "INCOME_EXPENSE_TYPE",
+                                  "ACTIVE_INGREDIENT",
+                                  "DRUG_GROUP",
+                                  "DRUG_ROUTE"
                                 ]
                               },
                               "code": {
@@ -30754,7 +32657,10 @@
                       "EMPLOYMENT_TYPE",
                       "UNIT",
                       "PAYMENT_METHOD",
-                      "INCOME_EXPENSE_TYPE"
+                      "INCOME_EXPENSE_TYPE",
+                      "ACTIVE_INGREDIENT",
+                      "DRUG_GROUP",
+                      "DRUG_ROUTE"
                     ]
                   },
                   "code": {
@@ -30873,7 +32779,10 @@
                             "EMPLOYMENT_TYPE",
                             "UNIT",
                             "PAYMENT_METHOD",
-                            "INCOME_EXPENSE_TYPE"
+                            "INCOME_EXPENSE_TYPE",
+                            "ACTIVE_INGREDIENT",
+                            "DRUG_GROUP",
+                            "DRUG_ROUTE"
                           ]
                         },
                         "code": {
@@ -31237,7 +33146,10 @@
                             "EMPLOYMENT_TYPE",
                             "UNIT",
                             "PAYMENT_METHOD",
-                            "INCOME_EXPENSE_TYPE"
+                            "INCOME_EXPENSE_TYPE",
+                            "ACTIVE_INGREDIENT",
+                            "DRUG_GROUP",
+                            "DRUG_ROUTE"
                           ]
                         },
                         "code": {
@@ -31546,7 +33458,10 @@
                             "EMPLOYMENT_TYPE",
                             "UNIT",
                             "PAYMENT_METHOD",
-                            "INCOME_EXPENSE_TYPE"
+                            "INCOME_EXPENSE_TYPE",
+                            "ACTIVE_INGREDIENT",
+                            "DRUG_GROUP",
+                            "DRUG_ROUTE"
                           ]
                         },
                         "code": {
@@ -31826,7 +33741,10 @@
                             "EMPLOYMENT_TYPE",
                             "UNIT",
                             "PAYMENT_METHOD",
-                            "INCOME_EXPENSE_TYPE"
+                            "INCOME_EXPENSE_TYPE",
+                            "ACTIVE_INGREDIENT",
+                            "DRUG_GROUP",
+                            "DRUG_ROUTE"
                           ]
                         },
                         "code": {

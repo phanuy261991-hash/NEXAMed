@@ -2,6 +2,24 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-15 (6)
+
+### Kho Thuốc & Vật tư y tế — Giai đoạn 1: code xong (schema + backend + frontend), verify Playwright thật
+
+Tiếp ngay sau khi chốt kế hoạch 5 giai đoạn (#146) và duyệt mockup GĐ1 (2 vòng chỉnh trực tiếp: panel chi tiết đổi từ "xổ trong bảng" kiểu KiotViet sang panel trượt phải; nút "Thêm mặt hàng" đổi từ 2 nút cạnh nhau sang 1 nút + menu xổ ra). Câu hỏi treo duy nhất của mockup (vị trí sidebar) chốt: dùng lại chỗ "Danh mục thuốc" cũ trong nhóm "Quản trị", không tách nhóm riêng.
+
+**Schema** — migration `20260915140000_pharmacy_catalog_gd1` (viết tay, môi trường không có TTY): mở rộng `drug` (`item_type` MEDICINE/SUPPLY, `is_batch_managed`, `base_unit_code`, `default_sell_price`, `drug_group_code`, `route_code`, `national_code`, `manufacturer`, `min_stock_alert`, `max_stock_alert` — cột cũ giữ nguyên làm dữ liệu legacy). 4 bảng mới: `drug_unit` (chuỗi quy đổi N bậc), `drug_ingredient` (hoạt chất & hàm lượng, sửa lỗ hổng "thuốc phối hợp bị bỏ sót cảnh báo trùng hoạt chất" ở tầng dữ liệu), `supplier`, `warehouse` (seed "Kho chính" tự động). 3 category `reference_catalog` mới (`ACTIVE_INGREDIENT`/`DRUG_GROUP`/`DRUG_ROUTE`) — đơn vị tái dùng category `UNIT` có sẵn.
+
+**Backend**: mở rộng module `drug` (không tạo module `pharmacy` riêng). `DrugController/Service/Repository` mở rộng bulk-replace hoạt chất/đơn vị trong cùng transaction. `SupplierController/Service/Repository`, `WarehouseController/Service/Repository` mới — dùng chung `drug.read`/`.manage`, không permission mới. Mã Nhà cung cấp/Kho tự sinh ngắn (`NCC`/`KH`, đúng khuôn `work_shift`).
+
+**Frontend**: `PharmacyCatalogPage.tsx` (3 pill: Thuốc & Vật tư/Nhà cung cấp/Kho), `DrugCatalogPane.tsx` viết lại theo mockup đã chốt, `SupplierPane.tsx`/`WarehousePane.tsx` mới, 3 pill mới trong "Danh mục dùng chung" (Hoạt chất/Nhóm thuốc/Đường dùng, tái dùng `ReferenceCatalogPane.tsx`).
+
+**Cố ý hoãn**: nâng cấp cảnh báo trùng hoạt chất (PRE-02) sang so theo mã — đụng luồng kê đơn đang chạy thật tại pilot, để dành việc riêng.
+
+**Đã xác minh thật**: `packages/core` 193/193 (+6), `apps/api` 820/820 (+18), `packages/shared` 20/20, `apps/web` 5/5, `pnpm -w lint/typecheck/build` sạch (chunk khởi động 500.01 kB, vượt trần 10 byte — ghi vào `docs/CURRENT.md`). Playwright qua Chrome thật xác nhận toàn bộ luồng CRUD 3 pill + panel chi tiết + menu thêm mặt hàng, 0 lỗi console. Xem chi tiết `docs/DECISIONS.md` #148.
+
+**Còn treo**: đồng bộ tài liệu cấu trúc (`CLAUDE.md`/`architecture.md`/`data-model.md`/`ERD.md`/`prd.md`/`plan.md`) cho GĐ1 — việc đầu tiên của phiên kế tiếp, trước khi làm GĐ2.
+
 ## 2026-09-15 (5)
 
 ### Kho Thuốc & Vật tư y tế — chốt hướng mở rộng v1, kế hoạch 5 giai đoạn (chưa code)

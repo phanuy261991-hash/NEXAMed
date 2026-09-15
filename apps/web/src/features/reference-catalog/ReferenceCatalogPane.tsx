@@ -37,6 +37,11 @@ const AUTO_CODE_CATEGORIES: ReferenceCatalogCategory[] = [
   'UNIT',
   'PAYMENT_METHOD',
   'INCOME_EXPENSE_TYPE',
+  // Kho Thuốc & Vật tư y tế GĐ1 (docs/DECISIONS.md #146) — cùng lý do UNIT/PAYMENT_METHOD ở trên,
+  // không có nguồn dữ liệu chính thức.
+  'ACTIVE_INGREDIENT',
+  'DRUG_GROUP',
+  'DRUG_ROUTE',
 ];
 
 /**

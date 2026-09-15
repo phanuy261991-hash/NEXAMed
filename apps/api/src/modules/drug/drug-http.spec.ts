@@ -43,16 +43,23 @@ describe('HTTP e2e — /api/v1/drugs', () => {
     return { Authorization: `Bearer ${token}` };
   }
 
-  async function createDrug(token: string, overrides: Partial<{ code: string; name: string }> = {}) {
+  async function createDrug(
+    token: string,
+    overrides: Partial<{ code: string; name: string; itemType: 'MEDICINE' | 'SUPPLY'; ingredients: unknown[]; units: unknown[] }> = {},
+  ) {
     const res = await request(app.getHttpServer())
       .post('/api/v1/drugs')
       .set(authed(token))
       .send({
         code: overrides.code ?? `DRG-${randomUUID().slice(0, 8)}`,
         name: overrides.name ?? 'Paracetamol 500mg',
+        itemType: overrides.itemType ?? 'MEDICINE',
+        baseUnitCode: 'VIEN',
         activeIngredient: 'Paracetamol',
         unit: 'Viên',
         concentration: '500mg',
+        ingredients: overrides.ingredients ?? [],
+        units: overrides.units ?? [],
       });
     return res;
   }
@@ -164,5 +171,57 @@ describe('HTTP e2e — /api/v1/drugs', () => {
       .set(authed(tenantBAdminToken))
       .send({ name: 'Sửa từ tenant khác', version: 1 });
     expect(patchRes.status).toBe(404);
+  });
+
+  // Kho Thuốc & Vật tư y tế GĐ1 (docs/DECISIONS.md #146).
+  it('GĐ1 — tạo thuốc kèm hoạt chất + chuỗi quy đổi đơn vị, đọc lại đủ dữ liệu', async () => {
+    const res = await createDrug(clinicAdminToken, {
+      name: 'Panadol Extra GĐ1',
+      ingredients: [
+        { activeIngredientCode: 'PARA', strengthValue: 500000, strengthUnitCode: 'MG' },
+        { activeIngredientCode: 'CAF', strengthValue: 65000, strengthUnitCode: 'MG' },
+      ],
+      units: [
+        { unitCode: 'Vỉ', sortOrder: 0, factorToUnitBelow: 10 },
+        { unitCode: 'Hộp', sortOrder: 1, factorToUnitBelow: 10 },
+      ],
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.data.itemType).toBe('MEDICINE');
+    expect(res.body.data.ingredients).toHaveLength(2);
+    expect(res.body.data.units).toHaveLength(2);
+    expect(res.body.data.units.map((u: { unitCode: string }) => u.unitCode)).toEqual(['Vỉ', 'Hộp']);
+  });
+
+  it('GĐ1 — sửa thuốc thay TOÀN BỘ hoạt chất (bulk-replace, không cộng dồn)', async () => {
+    const created = await createDrug(clinicAdminToken, {
+      ingredients: [{ activeIngredientCode: 'PARA', strengthValue: 500000, strengthUnitCode: 'MG' }],
+    });
+    const drugId = created.body.data.id as string;
+
+    const patchRes = await request(app.getHttpServer())
+      .patch(`/api/v1/drugs/${drugId}`)
+      .set(authed(clinicAdminToken))
+      .send({ version: 1, ingredients: [{ activeIngredientCode: 'IBU', strengthValue: 400000, strengthUnitCode: 'MG' }] });
+    expect(patchRes.status).toBe(200);
+    expect(patchRes.body.data.ingredients).toHaveLength(1);
+    expect(patchRes.body.data.ingredients[0].activeIngredientCode).toBe('IBU');
+  });
+
+  it('GĐ1 — Vật tư y tế kèm hoạt chất → 400 (vật tư không có hoạt chất/hàm lượng)', async () => {
+    const res = await createDrug(clinicAdminToken, {
+      itemType: 'SUPPLY',
+      ingredients: [{ activeIngredientCode: 'PARA', strengthValue: 500000, strengthUnitCode: 'MG' }],
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('GĐ1 — lọc theo itemType=SUPPLY chỉ trả vật tư, không lẫn thuốc', async () => {
+    await createDrug(clinicAdminToken, { name: 'Bơm tiêm GĐ1', itemType: 'SUPPLY' });
+    await createDrug(clinicAdminToken, { name: 'Amlodipin GĐ1', itemType: 'MEDICINE' });
+    const res = await request(app.getHttpServer()).get('/api/v1/drugs').query({ itemType: 'SUPPLY' }).set(authed(doctorToken));
+    expect(res.status).toBe(200);
+    expect(res.body.data.items.every((d: { itemType: string }) => d.itemType === 'SUPPLY')).toBe(true);
+    expect(res.body.data.items.some((d: { name: string }) => d.name === 'Bơm tiêm GĐ1')).toBe(true);
   });
 });

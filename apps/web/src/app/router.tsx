@@ -25,7 +25,7 @@ import { NotFoundPage } from './NotFoundPage';
  * nhận default export. Không đổi các file trang sang default export để giữ nguyên quy ước
  * named export của toàn bộ codebase.
  */
-const DrugCatalogPane = lazy(() => import('../features/drug/DrugCatalogPane').then((m) => ({ default: m.DrugCatalogPane })));
+const PharmacyCatalogPage = lazy(() => import('../features/drug/PharmacyCatalogPage').then((m) => ({ default: m.PharmacyCatalogPage })));
 const PatientListPage = lazy(() => import('../features/patient/PatientListPage').then((m) => ({ default: m.PatientListPage })));
 const PatientNewPage = lazy(() => import('../features/patient/PatientNewPage').then((m) => ({ default: m.PatientNewPage })));
 const PatientDetailPage = lazy(() => import('../features/patient/PatientDetailPage').then((m) => ({ default: m.PatientDetailPage })));
@@ -160,9 +160,10 @@ export const router = createBrowserRouter([
           </RequireAnyPermissionRoute>
         ),
       },
-      // Sprint 4, S4-03 — trang "Danh mục thuốc" thật, thay ComingSoonPage cũ. Chỉ thuốc (v1 không
-      // quản lý vật tư y tế/kho — xem docs/product/future-modules-reference.md mục 2.2.1).
-      { path: 'admin/catalog-pharmacy', element: <RequirePermissionRoute module="drug" action="manage"><DrugCatalogPane /></RequirePermissionRoute> },
+      // Sprint 4, S4-03 — trang "Danh mục thuốc" thật, thay ComingSoonPage cũ. Mở rộng thành "Danh
+      // mục Thuốc & Vật tư" (Kho Thuốc & Vật tư y tế GĐ1, docs/DECISIONS.md #146) — Thuốc/Vật tư y
+      // tế/Nhà cung cấp/Kho, vẫn chưa có tồn kho/nhập-xuất (GĐ2-3, chưa xây).
+      { path: 'admin/catalog-pharmacy', element: <RequirePermissionRoute module="drug" action="manage"><PharmacyCatalogPage /></RequirePermissionRoute> },
       { path: 'admin/system-config', element: <RequirePermissionRoute module="clinic_config" action="update"><ClinicConfigPage /></RequirePermissionRoute> },
       // S5-05 (ADM-03) — "Nhật ký hoạt động", lọc theo bệnh nhân/người dùng/khoảng ngày.
       { path: 'admin/activity-log', element: <RequirePermissionRoute module="audit_log" action="read"><ActivityLogPage /></RequirePermissionRoute> },

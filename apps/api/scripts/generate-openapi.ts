@@ -54,6 +54,14 @@ import {
   savePrescriptionItemsRequestSchema,
   signPrescriptionRequestSchema,
   updateDrugRequestSchema,
+  createSupplierRequestSchema,
+  updateSupplierRequestSchema,
+  supplierSummarySchema,
+  listSuppliersResponseSchema,
+  createWarehouseRequestSchema,
+  updateWarehouseRequestSchema,
+  warehouseSummarySchema,
+  listWarehousesResponseSchema,
   cashAccountSchema,
   createCashAccountRequestSchema,
   updateCashAccountRequestSchema,
@@ -1659,6 +1667,105 @@ registry.registerPath({
     403: errorResponse('Không có quyền drug.manage'),
     404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
     409: errorResponse('Trùng mã thuốc, hoặc version không khớp (CONCURRENT_MODIFICATION)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/suppliers',
+  tags: ['drug'],
+  summary: 'Nhà cung cấp (Kho Thuốc & Vật tư y tế GĐ1, docs/DECISIONS.md #146) — tạo mới, mã tự sinh',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createSupplierRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Tạo thành công', envelope(supplierSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền drug.manage'),
+  },
+});
+
+const listSuppliersQuerySchema = z.object({ includeInactive: z.enum(['true', 'false']).optional() });
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/suppliers',
+  tags: ['drug'],
+  summary: 'Danh sách Nhà cung cấp',
+  security: [{ bearerAuth: [] }],
+  request: { query: listSuppliersQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listSuppliersResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền drug.read'),
+  },
+});
+
+const supplierIdParams = z.object({ id: z.string().uuid() });
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/suppliers/{id}',
+  tags: ['drug'],
+  summary: 'Sửa/ẩn Nhà cung cấp — bắt buộc kèm version hiện có',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: supplierIdParams,
+    body: { content: { 'application/json': { schema: updateSupplierRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Sửa thành công', envelope(supplierSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền drug.manage'),
+    404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/warehouses',
+  tags: ['drug'],
+  summary: 'Kho (Kho Thuốc & Vật tư y tế GĐ1, docs/DECISIONS.md #146) — tạo mới, mã tự sinh',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createWarehouseRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Tạo thành công', envelope(warehouseSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền drug.manage'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/warehouses',
+  tags: ['drug'],
+  summary: 'Danh sách Kho',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(listWarehousesResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền drug.read'),
+  },
+});
+
+const warehouseIdParams = z.object({ id: z.string().uuid() });
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/warehouses/{id}',
+  tags: ['drug'],
+  summary: 'Sửa/ẩn Kho — bắt buộc kèm version hiện có',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: warehouseIdParams,
+    body: { content: { 'application/json': { schema: updateWarehouseRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Sửa thành công', envelope(warehouseSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền drug.manage'),
+    404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION)'),
   },
 });
 

@@ -1,15 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { CreateDrugRequest, UpdateDrugRequest } from '@nexamed/shared';
+import type { CreateDrugRequest, DrugItemType, UpdateDrugRequest } from '@nexamed/shared';
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
 import { createDrug, listDrugs, updateDrug } from './drug.api';
 
 /** Dữ liệu do `clinic_admin` sửa qua UI quản lý — không `staleTime: Infinity`, invalidate sau mỗi mutation. */
-export function useDrugsQuery(params: { q?: string; includeInactive?: boolean } = {}) {
+export function useDrugsQuery(params: { q?: string; itemType?: DrugItemType; includeInactive?: boolean } = {}) {
   const { tenantId } = useAppConfig();
   return useQuery({
-    queryKey: queryKey(tenantId, 'drug', params.q ?? '', params.includeInactive ? 'all' : 'active'),
-    queryFn: () => listDrugs({ q: params.q, includeInactive: params.includeInactive ?? false }),
+    queryKey: queryKey(tenantId, 'drug', params.q ?? '', params.itemType ?? 'ANY', params.includeInactive ? 'all' : 'active'),
+    queryFn: () => listDrugs({ q: params.q, itemType: params.itemType, includeInactive: params.includeInactive ?? false }),
   });
 }
 

@@ -9973,6 +9973,7 @@ export interface paths {
             parameters: {
                 query?: {
                     q?: string;
+                    itemType?: "MEDICINE" | "SUPPLY";
                     includeInactive?: boolean | ("true" | "false");
                 };
                 header?: never;
@@ -9994,6 +9995,33 @@ export interface paths {
                                     id: string;
                                     code: string;
                                     name: string;
+                                    /** @enum {string} */
+                                    itemType: "MEDICINE" | "SUPPLY";
+                                    isBatchManaged: boolean;
+                                    baseUnitCode: string | null;
+                                    defaultSellPrice: number | null;
+                                    drugGroupCode: string | null;
+                                    routeCode: string | null;
+                                    nationalCode: string | null;
+                                    manufacturer: string | null;
+                                    minStockAlert: number | null;
+                                    maxStockAlert: number | null;
+                                    ingredients: ({
+                                        activeIngredientCode: string;
+                                        strengthValue: number;
+                                        strengthUnitCode: string;
+                                    } & {
+                                        /** Format: uuid */
+                                        id: string;
+                                    })[];
+                                    units: ({
+                                        unitCode: string;
+                                        sortOrder: number;
+                                        factorToUnitBelow: number;
+                                    } & {
+                                        /** Format: uuid */
+                                        id: string;
+                                    })[];
                                     activeIngredient: string | null;
                                     unit: string | null;
                                     concentration: string | null;
@@ -10051,6 +10079,30 @@ export interface paths {
                     "application/json": {
                         code: string;
                         name: string;
+                        /** @enum {string} */
+                        itemType: "MEDICINE" | "SUPPLY";
+                        /** @default true */
+                        isBatchManaged?: boolean;
+                        baseUnitCode: string;
+                        defaultSellPrice?: number;
+                        drugGroupCode?: string;
+                        routeCode?: string;
+                        nationalCode?: string;
+                        manufacturer?: string;
+                        minStockAlert?: number;
+                        maxStockAlert?: number;
+                        /** @default [] */
+                        ingredients?: {
+                            activeIngredientCode: string;
+                            strengthValue: number;
+                            strengthUnitCode: string;
+                        }[];
+                        /** @default [] */
+                        units?: {
+                            unitCode: string;
+                            sortOrder: number;
+                            factorToUnitBelow: number;
+                        }[];
                         activeIngredient?: string;
                         unit?: string;
                         concentration?: string;
@@ -10070,6 +10122,33 @@ export interface paths {
                                 id: string;
                                 code: string;
                                 name: string;
+                                /** @enum {string} */
+                                itemType: "MEDICINE" | "SUPPLY";
+                                isBatchManaged: boolean;
+                                baseUnitCode: string | null;
+                                defaultSellPrice: number | null;
+                                drugGroupCode: string | null;
+                                routeCode: string | null;
+                                nationalCode: string | null;
+                                manufacturer: string | null;
+                                minStockAlert: number | null;
+                                maxStockAlert: number | null;
+                                ingredients: ({
+                                    activeIngredientCode: string;
+                                    strengthValue: number;
+                                    strengthUnitCode: string;
+                                } & {
+                                    /** Format: uuid */
+                                    id: string;
+                                })[];
+                                units: ({
+                                    unitCode: string;
+                                    sortOrder: number;
+                                    factorToUnitBelow: number;
+                                } & {
+                                    /** Format: uuid */
+                                    id: string;
+                                })[];
                                 activeIngredient: string | null;
                                 unit: string | null;
                                 concentration: string | null;
@@ -10161,6 +10240,27 @@ export interface paths {
                     "application/json": {
                         code?: string;
                         name?: string;
+                        /** @enum {string} */
+                        itemType?: "MEDICINE" | "SUPPLY";
+                        isBatchManaged?: boolean;
+                        baseUnitCode?: string | null;
+                        defaultSellPrice?: number | null;
+                        drugGroupCode?: string | null;
+                        routeCode?: string | null;
+                        nationalCode?: string | null;
+                        manufacturer?: string | null;
+                        minStockAlert?: number | null;
+                        maxStockAlert?: number | null;
+                        ingredients?: {
+                            activeIngredientCode: string;
+                            strengthValue: number;
+                            strengthUnitCode: string;
+                        }[];
+                        units?: {
+                            unitCode: string;
+                            sortOrder: number;
+                            factorToUnitBelow: number;
+                        }[];
                         activeIngredient?: string | null;
                         unit?: string | null;
                         concentration?: string | null;
@@ -10182,6 +10282,33 @@ export interface paths {
                                 id: string;
                                 code: string;
                                 name: string;
+                                /** @enum {string} */
+                                itemType: "MEDICINE" | "SUPPLY";
+                                isBatchManaged: boolean;
+                                baseUnitCode: string | null;
+                                defaultSellPrice: number | null;
+                                drugGroupCode: string | null;
+                                routeCode: string | null;
+                                nationalCode: string | null;
+                                manufacturer: string | null;
+                                minStockAlert: number | null;
+                                maxStockAlert: number | null;
+                                ingredients: ({
+                                    activeIngredientCode: string;
+                                    strengthValue: number;
+                                    strengthUnitCode: string;
+                                } & {
+                                    /** Format: uuid */
+                                    id: string;
+                                })[];
+                                units: ({
+                                    unitCode: string;
+                                    sortOrder: number;
+                                    factorToUnitBelow: number;
+                                } & {
+                                    /** Format: uuid */
+                                    id: string;
+                                })[];
                                 activeIngredient: string | null;
                                 unit: string | null;
                                 concentration: string | null;
@@ -10238,6 +10365,566 @@ export interface paths {
                     };
                 };
                 /** @description Trùng mã thuốc, hoặc version không khớp (CONCURRENT_MODIFICATION) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/suppliers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Danh sách Nhà cung cấp */
+        get: {
+            parameters: {
+                query?: {
+                    includeInactive?: "true" | "false";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                    taxCode: string | null;
+                                    phone: string | null;
+                                    address: string | null;
+                                    contactName: string | null;
+                                    isActive: boolean;
+                                    version: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền drug.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Nhà cung cấp (Kho Thuốc & Vật tư y tế GĐ1, docs/DECISIONS.md #146) — tạo mới, mã tự sinh */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        name: string;
+                        taxCode?: string;
+                        phone?: string;
+                        address?: string;
+                        contactName?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Tạo thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                code: string;
+                                name: string;
+                                taxCode: string | null;
+                                phone: string | null;
+                                address: string | null;
+                                contactName: string | null;
+                                isActive: boolean;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền drug.manage */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/suppliers/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Sửa/ẩn Nhà cung cấp — bắt buộc kèm version hiện có */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        name?: string;
+                        taxCode?: string | null;
+                        phone?: string | null;
+                        address?: string | null;
+                        contactName?: string | null;
+                        isActive?: boolean;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Sửa thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                code: string;
+                                name: string;
+                                taxCode: string | null;
+                                phone: string | null;
+                                address: string | null;
+                                contactName: string | null;
+                                isActive: boolean;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền drug.manage */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại hoặc thuộc tenant khác) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/warehouses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Danh sách Kho */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                    /** Format: uuid */
+                                    departmentId: string | null;
+                                    departmentName: string | null;
+                                    isDefault: boolean;
+                                    isActive: boolean;
+                                    version: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền drug.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Kho (Kho Thuốc & Vật tư y tế GĐ1, docs/DECISIONS.md #146) — tạo mới, mã tự sinh */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        name: string;
+                        /** Format: uuid */
+                        departmentId?: string;
+                        isDefault?: boolean;
+                    };
+                };
+            };
+            responses: {
+                /** @description Tạo thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                code: string;
+                                name: string;
+                                /** Format: uuid */
+                                departmentId: string | null;
+                                departmentName: string | null;
+                                isDefault: boolean;
+                                isActive: boolean;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền drug.manage */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/warehouses/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Sửa/ẩn Kho — bắt buộc kèm version hiện có */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        name?: string;
+                        /** Format: uuid */
+                        departmentId?: string | null;
+                        isDefault?: boolean;
+                        isActive?: boolean;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Sửa thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                code: string;
+                                name: string;
+                                /** Format: uuid */
+                                departmentId: string | null;
+                                departmentName: string | null;
+                                isDefault: boolean;
+                                isActive: boolean;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền drug.manage */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại hoặc thuộc tenant khác) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION) */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -12441,7 +13128,7 @@ export interface paths {
                 };
                 header?: never;
                 path: {
-                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE";
+                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE";
                 };
                 cookie?: never;
             };
@@ -12459,7 +13146,7 @@ export interface paths {
                                     /** Format: uuid */
                                     id: string;
                                     /** @enum {string} */
-                                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE";
+                                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE";
                                     code: string;
                                     name: string;
                                     sortOrder: number;
@@ -12563,7 +13250,7 @@ export interface paths {
                 content: {
                     "application/json": {
                         /** @enum {string} */
-                        category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE";
+                        category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE";
                         code?: string;
                         name: string;
                         /** @default 0 */
@@ -12598,7 +13285,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
@@ -12711,7 +13398,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
@@ -12833,7 +13520,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
@@ -12956,7 +13643,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE";
                                 code: string;
                                 name: string;
                                 sortOrder: number;

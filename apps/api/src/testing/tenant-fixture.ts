@@ -107,8 +107,14 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       // dù test S2-01 hiện chưa seed dữ liệu gộp hồ sơ (PAT-04 chưa hiện thực).
       await prisma.patient.updateMany({ where: { tenantId: { in: tenantIds } }, data: { mergedIntoId: null } });
       await prisma.patient.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // drug_unit/drug_ingredient (Kho Thuốc & Vật tư y tế GĐ1, #146) tham chiếu drug (FK RESTRICT)
+      // — xoá trước drug.
+      await prisma.drugUnit.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await prisma.drugIngredient.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // drug (Sprint 4, S4-03) — prescription_item đã xoá ở trên nên an toàn xoá drug ở đây.
       await prisma.drug.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // supplier (#146) không bị FK nào tham chiếu — xoá tự do.
+      await prisma.supplier.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.codeSequence.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.userSession.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.rolePermission.deleteMany({ where: { tenantId: { in: tenantIds } } });
@@ -123,6 +129,8 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       await prisma.doctorAvailability.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // cashier_shift đã xoá sớm hơn ở trên (cùng cash_voucher/cash_account, xem comment ở đó).
       await prisma.userAccount.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // warehouse (#146) tham chiếu department (FK RESTRICT, tuỳ chọn) — xoá trước department.
+      await prisma.warehouse.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // department (mở rộng ADM-01) tham chiếu tenant (FK RESTRICT); user_account.department_id
       // tham chiếu department — đã xoá userAccount ở trên nên an toàn xoá department ở đây.
       await prisma.department.deleteMany({ where: { tenantId: { in: tenantIds } } });

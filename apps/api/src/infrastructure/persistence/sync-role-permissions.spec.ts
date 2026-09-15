@@ -51,6 +51,9 @@ describe('syncRolePermissionsForTenant / ForAllTenants', () => {
     // "Thu chi tại quầy" GĐ1 — seedDefaultRolesForTenant() nay cũng seed 1 quỹ tiền mặt mặc định
     // (cash_account) qua CodeSequenceRepository (code_sequence) — cả hai FK RESTRICT→tenant.
     await privileged.cashAccount.deleteMany({ where: { tenantId: { in: [tenantAId, tenantBId] } } });
+    // Kho Thuốc & Vật tư y tế GĐ1 (docs/DECISIONS.md #146) — seedDefaultRolesForTenant() nay cũng
+    // seed 1 Kho mặc định (warehouse), cùng FK RESTRICT→tenant như cash_account ở trên.
+    await privileged.warehouse.deleteMany({ where: { tenantId: { in: [tenantAId, tenantBId] } } });
     await privileged.codeSequence.deleteMany({ where: { tenantId: { in: [tenantAId, tenantBId] } } });
     await privileged.tenant.deleteMany({ where: { id: { in: [tenantAId, tenantBId] } } });
     await privileged.$disconnect();

@@ -1,9 +1,19 @@
 import { Injectable } from '@nestjs/common';
-import type { Drug, Prisma } from '@prisma/client';
+import type { Drug, DrugItemType, Prisma } from '@prisma/client';
 
 export interface CreateDrugData {
   code: string;
   name: string;
+  itemType: DrugItemType;
+  isBatchManaged: boolean;
+  baseUnitCode: string | null;
+  defaultSellPrice: bigint | null;
+  drugGroupCode: string | null;
+  routeCode: string | null;
+  nationalCode: string | null;
+  manufacturer: string | null;
+  minStockAlert: number | null;
+  maxStockAlert: number | null;
   activeIngredient: string | null;
   unit: string | null;
   concentration: string | null;
@@ -12,13 +22,42 @@ export interface CreateDrugData {
 export interface UpdateDrugData {
   code?: string;
   name?: string;
+  itemType?: DrugItemType;
+  isBatchManaged?: boolean;
+  baseUnitCode?: string | null;
+  defaultSellPrice?: bigint | null;
+  drugGroupCode?: string | null;
+  routeCode?: string | null;
+  nationalCode?: string | null;
+  manufacturer?: string | null;
+  minStockAlert?: number | null;
+  maxStockAlert?: number | null;
   activeIngredient?: string | null;
   unit?: string | null;
   concentration?: string | null;
   isActive?: boolean;
 }
 
-/** Chỗ DUY NHẤT gọi Prisma cho bảng `drug` (Sprint 4, S4-03) — theo .claude/docs/coding-standards.md. */
+/** Kèm hoạt chất/đơn vị quy đổi (GĐ1) — `DrugService` map sang `DrugSummary.ingredients/units`. */
+export type DrugWithDetails = Drug & {
+  ingredients: { id: string; activeIngredientCode: string; strengthValue: number; strengthUnitCode: string }[];
+  units: { id: string; unitCode: string; sortOrder: number; factorToUnitBelow: number }[];
+};
+
+const DETAIL_INCLUDE = {
+  ingredients: {
+    where: { deletedAt: null },
+    orderBy: { createdAt: 'asc' as const },
+    select: { id: true, activeIngredientCode: true, strengthValue: true, strengthUnitCode: true },
+  },
+  units: {
+    where: { deletedAt: null },
+    orderBy: { sortOrder: 'asc' as const },
+    select: { id: true, unitCode: true, sortOrder: true, factorToUnitBelow: true },
+  },
+} satisfies Prisma.DrugInclude;
+
+/** Chỗ DUY NHẤT gọi Prisma cho bảng `drug` (Sprint 4, S4-03; mở rộng GĐ1, docs/DECISIONS.md #146). */
 @Injectable()
 export class DrugRepository {
   create(tx: Prisma.TransactionClient, tenantId: string, actorId: string, data: CreateDrugData): Promise<Drug> {
@@ -29,13 +68,22 @@ export class DrugRepository {
     return tx.drug.findFirst({ where: { tenantId, id, deletedAt: null } });
   }
 
+  findByIdWithDetails(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<DrugWithDetails | null> {
+    return tx.drug.findFirst({ where: { tenantId, id, deletedAt: null }, include: DETAIL_INCLUDE });
+  }
+
   findByIds(tx: Prisma.TransactionClient, tenantId: string, ids: string[]): Promise<Drug[]> {
     return tx.drug.findMany({ where: { tenantId, id: { in: ids }, deletedAt: null } });
   }
 
   /** `q` — tìm theo tên/mã/hoạt chất (contains, không phân biệt hoa thường) — dùng lúc kê đơn. */
-  list(tx: Prisma.TransactionClient, tenantId: string, params: { q?: string; includeInactive: boolean }): Promise<Drug[]> {
-    const where: Prisma.DrugWhereInput = { tenantId, deletedAt: null, ...(params.includeInactive ? {} : { isActive: true }) };
+  list(tx: Prisma.TransactionClient, tenantId: string, params: { q?: string; itemType?: DrugItemType; includeInactive: boolean }): Promise<DrugWithDetails[]> {
+    const where: Prisma.DrugWhereInput = {
+      tenantId,
+      deletedAt: null,
+      ...(params.itemType ? { itemType: params.itemType } : {}),
+      ...(params.includeInactive ? {} : { isActive: true }),
+    };
     if (params.q) {
       where.OR = [
         { name: { contains: params.q, mode: 'insensitive' } },
@@ -43,7 +91,7 @@ export class DrugRepository {
         { activeIngredient: { contains: params.q, mode: 'insensitive' } },
       ];
     }
-    return tx.drug.findMany({ where, orderBy: { name: 'asc' } });
+    return tx.drug.findMany({ where, include: DETAIL_INCLUDE, orderBy: { name: 'asc' } });
   }
 
   async updateIfVersionMatches(

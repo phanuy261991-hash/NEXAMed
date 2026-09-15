@@ -43,6 +43,35 @@ export async function ensureDefaultCashAccount(tx: Prisma.TransactionClient, ten
   });
 }
 
+/** Kho Thuốc & Vật tư y tế GĐ1 (docs/DECISIONS.md #146) — tiền tố mã `warehouse`, theo tenant,
+ * đúng khuôn CASH_ACCOUNT_CODE_PREFIX ở trên. */
+const WAREHOUSE_CODE_PREFIX = 'KH';
+
+/**
+ * Kho Thuốc & Vật tư y tế GĐ1 — tạo Kho mặc định NẾU tenant chưa có, đúng khuôn
+ * `ensureDefaultCashAccount`/`department` "Khoa chung" (#064): điều kiện tiên quyết để module Kho
+ * (GĐ2+) luôn có ít nhất 1 kho để nhập/xuất, và để web tự ẩn UI chọn kho khi tenant chỉ có 1 kho.
+ */
+export async function ensureDefaultWarehouse(tx: Prisma.TransactionClient, tenantId: string, actorId: string): Promise<void> {
+  const existingDefault = await tx.warehouse.findFirst({ where: { tenantId, isDefault: true } });
+  if (existingDefault) {
+    return;
+  }
+  const seq = await codeSequenceRepository.next(tx, tenantId, WAREHOUSE_CODE_PREFIX, actorId);
+  const code = formatShortSequentialCode(WAREHOUSE_CODE_PREFIX, seq);
+  await tx.warehouse.create({
+    data: {
+      tenantId,
+      code,
+      name: 'Kho chính',
+      isDefault: true,
+      isActive: true,
+      createdBy: actorId,
+      updatedBy: actorId,
+    },
+  });
+}
+
 /**
  * Seed 5 vai trò mặc định (is_system_default = true) + ma trận role_permission, VÀ Khoa mặc định
  * ("Khoa chung", `docs/DECISIONS.md` #064) cho MỘT tenant, theo DEFAULT_ROLE_PERMISSIONS
@@ -67,6 +96,7 @@ export async function seedDefaultRolesForTenant(
   }
 
   await ensureDefaultCashAccount(tx as Prisma.TransactionClient, tenantId, actorId);
+  await ensureDefaultWarehouse(tx as Prisma.TransactionClient, tenantId, actorId);
 
   const permissions = await tx.permission.findMany();
   const permissionIdByKey = new Map(permissions.map((p) => [permissionKey(p), p.id]));

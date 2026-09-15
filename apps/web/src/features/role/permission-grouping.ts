@@ -22,7 +22,7 @@ const MODULE_LABELS: Record<string, string> = {
   // hiện lúc xem trang Vai trò & Phân quyền — tên module thô hiện ra thay vì tiếng Việt, đúng cơ
   // chế fallback `moduleLabel()` mô tả ở trên).
   allergen_catalog: 'Danh mục Dị nguyên',
-  drug: 'Danh mục thuốc',
+  drug: 'Danh mục Thuốc & Vật tư',
   invoice: 'Phiếu thu',
   doctor_availability: 'Tạm nghỉ / Đóng ca',
   work_shift_assignment: 'Đăng ký ca làm việc',

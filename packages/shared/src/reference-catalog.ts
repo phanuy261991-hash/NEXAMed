@@ -45,6 +45,11 @@ export const referenceCatalogCategorySchema = z.enum([
   // liệu chính thức). Có thêm `direction` (Chi tiền/Thu tiền, 2 giá trị CỐ ĐỊNH — xem
   // `referenceCatalogDirectionSchema` bên dưới), khác các category khác không có trường này.
   'INCOME_EXPENSE_TYPE',
+  // Kho Thuốc & Vật tư y tế GĐ1 (docs/DECISIONS.md #146) — Hoạt chất chuẩn (drug_ingredient.
+  // active_ingredient_code), Nhóm thuốc, Đường dùng. Không seed cứng, mã tự sinh như UNIT.
+  'ACTIVE_INGREDIENT',
+  'DRUG_GROUP',
+  'DRUG_ROUTE',
 ]);
 export type ReferenceCatalogCategory = z.infer<typeof referenceCatalogCategorySchema>;
 

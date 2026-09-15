@@ -4,7 +4,7 @@ import { getApiClient, unwrap } from '../../shared/api/client';
 export async function listDrugs(query: ListDrugsQuery): Promise<ListDrugsResponse> {
   return unwrap(
     await getApiClient().GET('/api/v1/drugs', {
-      params: { query: { q: query.q, includeInactive: query.includeInactive ? 'true' : undefined } },
+      params: { query: { q: query.q, itemType: query.itemType, includeInactive: query.includeInactive ? 'true' : undefined } },
     }),
   ) as ListDrugsResponse;
 }

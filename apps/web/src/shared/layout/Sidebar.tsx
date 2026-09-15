@@ -499,8 +499,8 @@ export function Sidebar() {
                   {canSeeCatalogParaclinical && (
                     <NavItem to="/admin/catalog-paraclinical" label="Danh mục cận lâm sàng" icon={Flask} collapsed={false} indent />
                   )}
-                  {/* Đổi nhãn từ "Danh mục Dược và Vật tư" (Sprint 4) — v1 chỉ quản lý danh mục thuốc, không vật tư/kho (docs/product/future-modules-reference.md mục 2.2.1). */}
-                  {canSeeCatalogPharmacy && <NavItem to="/admin/catalog-pharmacy" label="Danh mục thuốc" icon={Pill} collapsed={false} indent />}
+                  {/* Đổi nhãn "Danh mục thuốc" → "Danh mục Thuốc & Vật tư" (Kho Thuốc & Vật tư y tế GĐ1, docs/DECISIONS.md #146) — mở rộng quản lý cả Vật tư y tế/Nhà cung cấp/Kho. */}
+                  {canSeeCatalogPharmacy && <NavItem to="/admin/catalog-pharmacy" label="Danh mục Thuốc & Vật tư" icon={Pill} collapsed={false} indent />}
                   {canSeeSystemConfig && <NavItem to="/admin/system-config" label="Cấu hình hệ thống" icon={SlidersHorizontal} collapsed={false} indent />}
                   {canSeeActivityLog && <NavItem to="/admin/activity-log" label="Nhật ký hoạt động" icon={ClockCounterClockwise} collapsed={false} indent />}
                 </ul>
