@@ -256,7 +256,7 @@ Cân nặng/chiều cao lưu số nguyên (gram, mm) để tránh số thực; n
 ### prescription / prescription_item
 `prescription`: `encounter_id`, `signed_at`, `signed_by`, `signature_payload` (null ở v1), `printed_at`.
 `prescription_item`: `drug_id`, `dose`, `frequency`, `duration_days`, `quantity`, `instruction`.
-v1 không trừ tồn kho, không có `unit_price` — dược/kho ngoài phạm vi.
+Vẫn không có cột giá/trừ kho trên chính bảng này ở GĐ1 Kho Thuốc — nguyên tắc đã chốt "đơn thuốc là y lệnh, chỉ Phiếu xuất kho (GĐ3, chưa xây) mới sinh tiền/trừ kho" (`docs/DECISIONS.md` #146), 1 đơn có thể ứng với N phiếu xuất kho sau này. `findDuplicateActiveIngredients`/PRE-02 vẫn so theo `active_ingredient` text cũ — CHƯA rewire sang `drug_ingredient` có cấu trúc (cố ý hoãn, xem #148).
 
 ### audit_log
 `tenant_id`, `actor_id`, `action`, `entity_type`, `entity_id`, `before_json`, `after_json`, `ip`, `user_agent`, `occurred_at`. Append-only — không `updated_at`, không `deleted_at`, không `version`.
@@ -272,14 +272,31 @@ v1 không trừ tồn kho, không có `unit_price` — dược/kho ngoài phạm
 - `user_session (tenant_id, user_id, expires_at DESC) WHERE deleted_at IS NULL` — tra phiên còn hiệu lực của một user (thu hồi hàng loạt khi đổi vai trò/tenant, S2-07).
 - Partial index `WHERE deleted_at IS NULL` cho các bảng lâm sàng.
 
-### drug
-Danh mục thuốc **theo tenant** ở v1 (phòng khám tự nhập): `code`, `name`, `active_ingredient`, `unit`, `concentration`, `is_active`. Khi có danh mục thuốc dùng chung ở v2.1, thêm `drug_catalog` toàn hệ thống và cột `drug.catalog_code` tham chiếu.
+### drug / drug_unit / drug_ingredient / supplier / warehouse (Kho Thuốc & Vật tư y tế GĐ1, `docs/DECISIONS.md` #146/#148)
+
+Danh mục thuốc **theo tenant** (phòng khám tự nhập) — mở rộng ngay trên bảng `drug` sẵn có từ S4-03 (không tạo bảng `items` mới, đúng nguyên tắc kế hoạch 5 giai đoạn #146). Cột cũ (`code` — vẫn nhập tay, không đổi sang tự sinh, `name`, `active_ingredient`, `unit`, `concentration`, `is_active`) giữ nguyên làm dữ liệu legacy. Thêm 10 cột: `item_type` (enum `MEDICINE`/`SUPPLY`, mặc định `MEDICINE`), `is_batch_managed` (boolean — GĐ2 dùng để quyết định có bắt nhập lô/HSD hay không, GĐ1 chỉ lưu), `base_unit_code` (tham chiếu `reference_catalog` category `UNIT`), `default_sell_price` (bigint, đồng), `drug_group_code`/`route_code` (tham chiếu category `DRUG_GROUP`/`DRUG_ROUTE` mới, xem dưới), `national_code` (mã thuốc quốc gia — chuẩn bị cho `EPrescriptionGatewayPort`/cổng Đơn thuốc quốc gia, `docs/DECISIONS.md` #147, chưa tích hợp thật), `manufacturer`, `min_stock_alert`/`max_stock_alert` (int — GĐ2 mới có tồn kho để so sánh, GĐ1 chỉ lưu ngưỡng).
+
+**"Giá bán theo từng đơn vị cụ thể" (mở rộng tiếp GĐ1, `docs/DECISIONS.md` #150)**: `unit_pricing_enabled` (boolean, mặc định `false` — công tắc THEO TỪNG MẶT HÀNG, không phải cấu hình toàn tenant). Mặc định TẮT: giá mỗi bậc quy đổi suy ra từ `default_sell_price` theo tỷ lệ `factor_to_unit_below` (hành vi gốc, không đổi). Bật: mỗi bậc — kể cả đơn vị nhỏ nhất (`default_sell_price`) — có giá RIÊNG, không còn suy ra theo tỷ lệ; bắt buộc nhập đủ giá MỌI bậc, validate ở tầng Zod (`checkUnitPricingRequired`, `packages/shared/src/drug.ts`, `superRefine` dùng chung create/update), không phải CHECK constraint DB.
+
+`drug_unit` (chuỗi quy đổi đơn vị N bậc — ví dụ Viên → Vỉ → Hộp): `drug_id` (composite FK), `unit_code` (tham chiếu category `UNIT`), `sort_order`, `factor_to_unit_below` (int — hệ số quy đổi sang đơn vị liền kề bậc dưới trong chuỗi), `sell_price` (bigint, nullable — CHỈ có ý nghĩa khi `drug.unit_pricing_enabled=true`, #150). Partial unique `(tenant_id, drug_id, sort_order) WHERE deleted_at IS NULL`.
+
+`drug_ingredient` (hoạt chất & hàm lượng — sửa lỗ hổng "thuốc phối hợp nhiều hoạt chất bị bỏ sót cảnh báo trùng" ở tầng dữ liệu, PRE-02 CHƯA rewire sang bảng này, xem `prescription_item` ở trên): `drug_id` (composite FK), `active_ingredient_code` (tham chiếu category `ACTIVE_INGREDIENT` mới), `strength_value` (int, hàm lượng ×1000 — đúng tiền lệ `vital_sign`, cấm decimal cho số liệu y tế, `CHECK(strength_value >= 0)`), `strength_unit_code`. Partial unique `(tenant_id, drug_id, active_ingredient_code) WHERE deleted_at IS NULL`.
+
+`supplier` (Nhà cung cấp, theo tenant): `code` (tự sinh ngắn tuần tự, tiền tố `NCC`, qua `CodeSequenceRepository` — KHÔNG dùng `BusinessCodeService`/khuôn `<prefix><yyMM><seq6>`, vì đây là danh mục tĩnh không phải chứng từ theo tháng), `name`, `tax_code`, `phone`, `address`, `contact_name`, `is_active`. Unique `(tenant_id, code)`.
+
+`warehouse` (Kho, theo tenant): `code` (tự sinh ngắn tuần tự, tiền tố `KH`, cùng cơ chế `supplier`), `name`, `department_id` (composite FK, nullable — Khoa/Phòng quản lý kho, thuần mô tả), `is_default` (đúng 1 kho mặc định/tenant, partial unique `(tenant_id) WHERE is_default AND deleted_at IS NULL`, đúng khuôn `department.is_default` #064). Tự seed "Kho chính" (`is_default=true`) lúc tạo tenant mới, backfill cho tenant cũ lúc API khởi động (`ensureDefaultWarehouse()`, đúng khuôn `ensureDefaultCashAccount`).
+
+3 category `reference_catalog` mới: `ACTIVE_INGREDIENT` (Hoạt chất), `DRUG_GROUP` (Nhóm thuốc), `DRUG_ROUTE` (Đường dùng) — không seed cứng, `clinic_admin` tự thêm qua UI (trang "Danh mục Thuốc & Vật tư", `/admin/catalog-pharmacy`, tái dùng `ReferenceCatalogPane.tsx`), cùng khuôn `UNIT`/`PAYMENT_METHOD`. Đơn vị (`base_unit_code`/`drug_unit.unit_code`/`drug_ingredient.strength_unit_code`) TÁI DÙNG category `UNIT` có sẵn, không tạo category đơn vị riêng.
+
+Quyền: `supplier`/`warehouse` dùng lại `drug.read`/`drug.manage` (không permission mới) — cả 3 pill (Thuốc & Vật tư/Nhà cung cấp/Kho) cùng 1 trang, cùng gate `drug.manage` ở cấp trang.
+
+**Còn treo (GĐ1 xong, chưa làm)**: GĐ2 (Nhập kho & tồn theo lô — `inventory_batch`/`stock_balance`/`stock_ledger`/`stock_receipt`) → GĐ3 (Xuất kho theo đơn + FEFO + tiền thuốc — duy nhất chạm bảng `invoice` đang chạy thật, khuyến nghị thử tại 1 pilot trước khi GA rộng) → GĐ4 (Kiểm kê/điều chuyển/báo cáo) → GĐ5 (trải nghiệm kê đơn: tìm không dấu, macro, điều hướng bàn phím). Xem `docs/DECISIONS.md` #146 để biết lộ trình đầy đủ.
 
 Sơ đồ quan hệ đầy đủ và ràng buộc DB xem `ERD.md` ở thư mục gốc.
 
 ## Chỗ để sẵn cho v2
 
-Không tạo bảng `invoice`, `payment`, `stock_movement`, `inventory_batch` ở v1. Khi thêm sau, gắn vào `encounter_id` và tuân thủ đủ bộ cột bắt buộc ở trên.
+`invoice`/`payment` đã hiện thực từ Sprint 5/6 (Thu ngân cơ bản, xem `docs/DECISIONS.md` #084) — không còn ở "chỗ để sẵn". `stock_movement`/`inventory_batch` nay thuộc lộ trình Kho Thuốc & Vật tư y tế GĐ2 (trong v1, đã lên kế hoạch — xem mục `drug` ở trên), không còn là "v2". Khi thêm, gắn vào `encounter_id`/`drug_id` và tuân thủ đủ bộ cột bắt buộc ở trên.
 
 ## Migration
 

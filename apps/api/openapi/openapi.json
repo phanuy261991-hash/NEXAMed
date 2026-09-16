@@ -24935,6 +24935,10 @@
                     "type": "integer",
                     "minimum": 0
                   },
+                  "unitPricingEnabled": {
+                    "type": "boolean",
+                    "default": false
+                  },
                   "drugGroupCode": {
                     "type": "string",
                     "minLength": 1
@@ -25001,6 +25005,13 @@
                         "factorToUnitBelow": {
                           "type": "integer",
                           "exclusiveMinimum": 0
+                        },
+                        "sellPrice": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ],
+                          "minimum": 0
                         }
                       },
                       "required": [
@@ -25076,6 +25087,9 @@
                             "integer",
                             "null"
                           ]
+                        },
+                        "unitPricingEnabled": {
+                          "type": "boolean"
                         },
                         "drugGroupCode": {
                           "type": [
@@ -25172,6 +25186,13 @@
                                   "factorToUnitBelow": {
                                     "type": "integer",
                                     "exclusiveMinimum": 0
+                                  },
+                                  "sellPrice": {
+                                    "type": [
+                                      "integer",
+                                      "null"
+                                    ],
+                                    "minimum": 0
                                   }
                                 },
                                 "required": [
@@ -25228,6 +25249,7 @@
                         "isBatchManaged",
                         "baseUnitCode",
                         "defaultSellPrice",
+                        "unitPricingEnabled",
                         "drugGroupCode",
                         "routeCode",
                         "nationalCode",
@@ -25453,6 +25475,9 @@
                                   "null"
                                 ]
                               },
+                              "unitPricingEnabled": {
+                                "type": "boolean"
+                              },
                               "drugGroupCode": {
                                 "type": [
                                   "string",
@@ -25548,6 +25573,13 @@
                                         "factorToUnitBelow": {
                                           "type": "integer",
                                           "exclusiveMinimum": 0
+                                        },
+                                        "sellPrice": {
+                                          "type": [
+                                            "integer",
+                                            "null"
+                                          ],
+                                          "minimum": 0
                                         }
                                       },
                                       "required": [
@@ -25604,6 +25636,7 @@
                               "isBatchManaged",
                               "baseUnitCode",
                               "defaultSellPrice",
+                              "unitPricingEnabled",
                               "drugGroupCode",
                               "routeCode",
                               "nationalCode",
@@ -25763,6 +25796,9 @@
                     ],
                     "minimum": 0
                   },
+                  "unitPricingEnabled": {
+                    "type": "boolean"
+                  },
                   "drugGroupCode": {
                     "type": [
                       "string",
@@ -25846,6 +25882,13 @@
                         "factorToUnitBelow": {
                           "type": "integer",
                           "exclusiveMinimum": 0
+                        },
+                        "sellPrice": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ],
+                          "minimum": 0
                         }
                       },
                       "required": [
@@ -25933,6 +25976,9 @@
                             "integer",
                             "null"
                           ]
+                        },
+                        "unitPricingEnabled": {
+                          "type": "boolean"
                         },
                         "drugGroupCode": {
                           "type": [
@@ -26029,6 +26075,13 @@
                                   "factorToUnitBelow": {
                                     "type": "integer",
                                     "exclusiveMinimum": 0
+                                  },
+                                  "sellPrice": {
+                                    "type": [
+                                      "integer",
+                                      "null"
+                                    ],
+                                    "minimum": 0
                                   }
                                 },
                                 "required": [
@@ -26085,6 +26138,7 @@
                         "isBatchManaged",
                         "baseUnitCode",
                         "defaultSellPrice",
+                        "unitPricingEnabled",
                         "drugGroupCode",
                         "routeCode",
                         "nationalCode",

@@ -25,61 +25,98 @@ export const drugIngredientInputSchema = z.object({
 export type DrugIngredientInput = z.infer<typeof drugIngredientInputSchema>;
 
 /** 1 bậc trong chuỗi quy đổi đơn vị — `sortOrder` 0 = bậc ngay trên đơn vị nhỏ nhất,
- * `factorToUnitBelow` = hệ số quy đổi ra bậc NGAY DƯỚI (xem `computeUnitConversion`, @nexamed/core). */
+ * `factorToUnitBelow` = hệ số quy đổi ra bậc NGAY DƯỚI (xem `computeUnitConversion`, @nexamed/core).
+ * `sellPrice` — giá bán RIÊNG của bậc này, CHỈ bắt buộc khi `unitPricingEnabled=true` ở `drug`
+ * (validate ở `checkUnitPricingRequired` dưới, không phải ở đây vì cần biết `unitPricingEnabled`
+ * của object cha). */
 export const drugUnitInputSchema = z.object({
   unitCode: z.string().min(1),
   sortOrder: z.number().int().nonnegative(),
   factorToUnitBelow: z.number().int().positive(),
+  sellPrice: z.number().int().nonnegative().nullable().optional(),
 });
 export type DrugUnitInput = z.infer<typeof drugUnitInputSchema>;
 
-export const createDrugRequestSchema = z.object({
-  code: z.string().min(1),
-  name: z.string().min(1),
-  itemType: drugItemTypeSchema,
-  isBatchManaged: z.boolean().default(true),
-  // Bắt buộc ở tầng Zod cho mặt hàng TẠO MỚI (dù cột DB nullable — dữ liệu trước GĐ1 không có) —
-  // cùng cách "bắt buộc ở ứng dụng, nullable ở DB" đã áp dụng cho reception_type_code/exam_form_code.
-  baseUnitCode: z.string().min(1),
-  defaultSellPrice: z.number().int().nonnegative().optional(),
-  drugGroupCode: z.string().min(1).optional(),
-  routeCode: z.string().min(1).optional(),
-  nationalCode: z.string().min(1).optional(),
-  manufacturer: z.string().min(1).optional(),
-  minStockAlert: z.number().int().nonnegative().optional(),
-  maxStockAlert: z.number().int().nonnegative().optional(),
-  // Vật tư y tế KHÔNG có hoạt chất/hàm lượng (yêu cầu chủ dự án) — validate ở service, không ở đây
-  // (Zod không biết được itemType đã xác nhận đúng trước khi tới schema này).
-  ingredients: z.array(drugIngredientInputSchema).default([]),
-  units: z.array(drugUnitInputSchema).default([]),
-  // Cột cũ (S4-03) — vẫn nhận được cho tương thích ngược, KHÔNG còn hiện trên form nhập liệu mới.
-  activeIngredient: z.string().min(1).optional(),
-  unit: z.string().min(1).optional(),
-  concentration: z.string().min(1).optional(),
-});
+/** Bắt buộc nhập đủ giá bán (đơn vị nhỏ nhất + MỌI bậc quy đổi) khi bật "Giá theo từng đơn vị cụ
+ * thể" (mở rộng GĐ1, chủ dự án yêu cầu trực tiếp) — mặc định TẮT thì không bắt buộc gì thêm, giá
+ * mỗi bậc suy ra theo tỷ lệ quy đổi từ `defaultSellPrice`. */
+function checkUnitPricingRequired(
+  data: { unitPricingEnabled?: boolean; defaultSellPrice?: number | null; units?: DrugUnitInput[] },
+  ctx: z.RefinementCtx,
+): void {
+  if (!data.unitPricingEnabled) return;
+  if (data.defaultSellPrice === undefined || data.defaultSellPrice === null) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Bắt buộc nhập giá bán cho đơn vị nhỏ nhất khi bật "Giá theo từng đơn vị cụ thể".',
+      path: ['defaultSellPrice'],
+    });
+  }
+  (data.units ?? []).forEach((u, i) => {
+    if (u.sellPrice === undefined || u.sellPrice === null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Bắt buộc nhập giá bán cho đơn vị này khi bật "Giá theo từng đơn vị cụ thể".',
+        path: ['units', i, 'sellPrice'],
+      });
+    }
+  });
+}
+
+export const createDrugRequestSchema = z
+  .object({
+    code: z.string().min(1),
+    name: z.string().min(1),
+    itemType: drugItemTypeSchema,
+    isBatchManaged: z.boolean().default(true),
+    // Bắt buộc ở tầng Zod cho mặt hàng TẠO MỚI (dù cột DB nullable — dữ liệu trước GĐ1 không có) —
+    // cùng cách "bắt buộc ở ứng dụng, nullable ở DB" đã áp dụng cho reception_type_code/exam_form_code.
+    baseUnitCode: z.string().min(1),
+    defaultSellPrice: z.number().int().nonnegative().optional(),
+    // Mặc định TẮT — xem `checkUnitPricingRequired`.
+    unitPricingEnabled: z.boolean().default(false),
+    drugGroupCode: z.string().min(1).optional(),
+    routeCode: z.string().min(1).optional(),
+    nationalCode: z.string().min(1).optional(),
+    manufacturer: z.string().min(1).optional(),
+    minStockAlert: z.number().int().nonnegative().optional(),
+    maxStockAlert: z.number().int().nonnegative().optional(),
+    // Vật tư y tế KHÔNG có hoạt chất/hàm lượng (yêu cầu chủ dự án) — validate ở service, không ở đây
+    // (Zod không biết được itemType đã xác nhận đúng trước khi tới schema này).
+    ingredients: z.array(drugIngredientInputSchema).default([]),
+    units: z.array(drugUnitInputSchema).default([]),
+    // Cột cũ (S4-03) — vẫn nhận được cho tương thích ngược, KHÔNG còn hiện trên form nhập liệu mới.
+    activeIngredient: z.string().min(1).optional(),
+    unit: z.string().min(1).optional(),
+    concentration: z.string().min(1).optional(),
+  })
+  .superRefine(checkUnitPricingRequired);
 export type CreateDrugRequest = z.infer<typeof createDrugRequestSchema>;
 
-export const updateDrugRequestSchema = z.object({
-  code: z.string().min(1).optional(),
-  name: z.string().min(1).optional(),
-  itemType: drugItemTypeSchema.optional(),
-  isBatchManaged: z.boolean().optional(),
-  baseUnitCode: z.string().min(1).nullable().optional(),
-  defaultSellPrice: z.number().int().nonnegative().nullable().optional(),
-  drugGroupCode: z.string().min(1).nullable().optional(),
-  routeCode: z.string().min(1).nullable().optional(),
-  nationalCode: z.string().min(1).nullable().optional(),
-  manufacturer: z.string().min(1).nullable().optional(),
-  minStockAlert: z.number().int().nonnegative().nullable().optional(),
-  maxStockAlert: z.number().int().nonnegative().nullable().optional(),
-  ingredients: z.array(drugIngredientInputSchema).optional(),
-  units: z.array(drugUnitInputSchema).optional(),
-  activeIngredient: z.string().min(1).nullable().optional(),
-  unit: z.string().min(1).nullable().optional(),
-  concentration: z.string().min(1).nullable().optional(),
-  isActive: z.boolean().optional(),
-  version: z.number().int().positive(),
-});
+export const updateDrugRequestSchema = z
+  .object({
+    code: z.string().min(1).optional(),
+    name: z.string().min(1).optional(),
+    itemType: drugItemTypeSchema.optional(),
+    isBatchManaged: z.boolean().optional(),
+    baseUnitCode: z.string().min(1).nullable().optional(),
+    defaultSellPrice: z.number().int().nonnegative().nullable().optional(),
+    unitPricingEnabled: z.boolean().optional(),
+    drugGroupCode: z.string().min(1).nullable().optional(),
+    routeCode: z.string().min(1).nullable().optional(),
+    nationalCode: z.string().min(1).nullable().optional(),
+    manufacturer: z.string().min(1).nullable().optional(),
+    minStockAlert: z.number().int().nonnegative().nullable().optional(),
+    maxStockAlert: z.number().int().nonnegative().nullable().optional(),
+    ingredients: z.array(drugIngredientInputSchema).optional(),
+    units: z.array(drugUnitInputSchema).optional(),
+    activeIngredient: z.string().min(1).nullable().optional(),
+    unit: z.string().min(1).nullable().optional(),
+    concentration: z.string().min(1).nullable().optional(),
+    isActive: z.boolean().optional(),
+    version: z.number().int().positive(),
+  })
+  .superRefine(checkUnitPricingRequired);
 export type UpdateDrugRequest = z.infer<typeof updateDrugRequestSchema>;
 
 export const drugIngredientItemSchema = drugIngredientInputSchema.and(z.object({ id: z.string().uuid() }));
@@ -96,6 +133,7 @@ export const drugSummarySchema = z.object({
   isBatchManaged: z.boolean(),
   baseUnitCode: z.string().nullable(),
   defaultSellPrice: z.number().int().nullable(),
+  unitPricingEnabled: z.boolean(),
   drugGroupCode: z.string().nullable(),
   routeCode: z.string().nullable(),
   nationalCode: z.string().nullable(),

@@ -2,6 +2,33 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-16 (2)
+
+### "Giá bán theo từng đơn vị cụ thể" — mở rộng tiếp GĐ1 Kho Thuốc & Vật tư y tế
+
+Chủ dự án yêu cầu xem lại phần "Giá bán" trước khi làm tiếp GĐ2. Thêm công tắc THEO TỪNG MẶT HÀNG (`drug.unit_pricing_enabled`, mặc định tắt): tắt thì giá mỗi bậc quy đổi suy ra theo tỷ lệ từ `default_sell_price` (hành vi cũ); bật thì mỗi bậc — kể cả đơn vị nhỏ nhất — có giá riêng lưu ở `drug_unit.sell_price`, bắt buộc nhập đủ mọi bậc.
+
+Migration `20260916090000_drug_unit_pricing`. `packages/shared/src/drug.ts` thêm validate `checkUnitPricingRequired` (superRefine). Backend `apps/api/src/modules/drug/` wiring đầy đủ, không permission mới. Frontend `DrugCatalogPane.tsx`: công tắc + ô giá riêng từng dòng quy đổi + panel chi tiết hiện breakdown giá theo đơn vị. Sửa 1 lần theo phản hồi trực tiếp: nhãn "Giá bán mặc định" đổi động thành "Giá bán (tên đơn vị nhỏ nhất)" khi bật công tắc, tránh hiểu lầm chữ "mặc định".
+
+**Đã xác minh thật**: `drug-http.spec.ts` +4 test (16/16), `pnpm -w typecheck/lint` sạch toàn workspace, Playwright qua Chrome thật (bật/tắt công tắc, validate chặn thiếu giá, panel chi tiết hiện đúng giá riêng không suy ra theo tỷ lệ). Xem chi tiết `docs/DECISIONS.md` #150.
+
+## 2026-09-16 (1)
+
+### GĐ1 Kho Thuốc: đồng bộ tài liệu cấu trúc + redesign sidebar + 3 bug thật
+
+Làm nốt việc treo từ #148 (đồng bộ tài liệu), sau đó chủ dự án phản hồi trực tiếp trên bản chạy thật qua nhiều lượt liên tiếp.
+
+**Đồng bộ tài liệu**: cập nhật `CLAUDE.md`, `.claude/docs/architecture.md`, `.claude/docs/data-model.md`, `docs/ERD.md` (v1.48), `docs/product/prd.md` (v1.4, mục 4.8 mới INV-01→05), `docs/product/plan.md` (v1.1) cho Giai đoạn 1 Kho Thuốc & Vật tư y tế.
+
+**Redesign sidebar**: chuyển 3 pill (Hoạt chất/Nhóm thuốc/Đường dùng) sang trang "Danh mục Thuốc và Vật Tư"; tạo 2 nhóm sidebar mới "Quản lý kho" (chứa "Danh mục Thuốc và Vật Tư", route giữ nguyên) và "Quản lý nhà cung cấp" (tách "Nhà cung cấp" thành trang riêng mới `/suppliers`) — cả hai đặt dưới "Sổ quỹ & Thu chi", tách khỏi nhóm "Quản trị" cũ. Sửa kèm 1 lỗi tiềm ẩn: nhóm "Quản trị" tự mở nhầm do so khớp tiền tố `/admin` quá rộng.
+
+**3 bug thật phát hiện lúc chủ dự án dùng thử `DrugCatalogPane.tsx`** (đã xác nhận sửa đúng qua Playwright + Chrome thật):
+1. Chuỗi quy đổi đơn vị hiện MÃ (`DV00015`) thay vì TÊN (`Hộp`) — thiếu tra `unitOptions`/`unitNameByCode`.
+2. Đổi công thức hiển thị theo yêu cầu: từ quy đổi thẳng về đơn vị nhỏ nhất sang tuần tự từng bậc liền kề (`1 Hộp = 5 Vỉ · 1 Vỉ = 20 Viên`).
+3. Header modal "Thêm thuốc"/"Thêm vật tư y tế" dính sát mép — thiếu khối bọc padding cho `ModalHeader` ở bố cục 3 vùng (header/nội dung cuộn/footer cố định), khác 2 modal Kho/Nhà cung cấp (bố cục đơn giản hơn, không dính).
+
+**Đã xác minh thật**: `pnpm -w typecheck/lint` sạch toàn workspace, Playwright qua Chrome thật (nhiều kích thước cửa sổ). Không có migration/schema/permission nào đổi. Xem chi tiết `docs/DECISIONS.md` #149.
+
 ## 2026-09-15 (6)
 
 ### Kho Thuốc & Vật tư y tế — Giai đoạn 1: code xong (schema + backend + frontend), verify Playwright thật

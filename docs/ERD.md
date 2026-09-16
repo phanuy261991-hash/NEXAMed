@@ -1,7 +1,7 @@
 # ERD: NEXAMed v1
 
-**Version**: v1.46 — 09/09/2026 (xem mục 9 để biết lịch sử thay đổi)
-**Phạm vi**: chỉ các bảng thuộc v1 (Đặt lịch, Tiếp nhận, Khám bệnh, Kê đơn). Bảng của v2+ (viện phí, kho thuốc, BHYT) **không** tạo ở giai đoạn này.
+**Version**: v1.49 — 16/09/2026 (xem mục 9 để biết lịch sử thay đổi)
+**Phạm vi**: các bảng thuộc v1 (Đặt lịch, Tiếp nhận, Khám bệnh, Kê đơn) cộng các mở rộng phạm vi đã chốt (Thu ngân cơ bản, Sổ quỹ & Thu chi, Ví tạm ứng, Kho Thuốc & Vật tư y tế GĐ1 — xem `CLAUDE.md`). Bảng của v2+ (viện phí đầy đủ, BHYT) và các giai đoạn sau của Kho Thuốc (GĐ2-5, đã lên kế hoạch nhưng chưa code) **không** tạo ở giai đoạn này.
 **Căn cứ**: `docs/product/prd.md` v1.0, `docs/product/plan.md` v1.0, `.claude/docs/data-model.md`
 
 ---
@@ -26,6 +26,48 @@ erDiagram
     TENANT ||--o{ CODE_SEQUENCE : "cap ma"
     TENANT ||--o{ PATIENT : "quan ly"
     TENANT ||--o{ DRUG : "danh muc thuoc"
+    TENANT ||--o{ SUPPLIER : "nha cung cap"
+    TENANT ||--o{ WAREHOUSE : "co kho"
+    DRUG ||--o{ DRUG_UNIT : "quy doi don vi"
+    DRUG ||--o{ DRUG_INGREDIENT : "hoat chat & ham luong"
+    DEPARTMENT ||--o{ WAREHOUSE : "quan ly (tuy chon)"
+    SUPPLIER {
+        uuid id PK
+        uuid tenant_id FK
+        text code UK
+        text name
+        text tax_code
+        text phone
+        text address
+        text contact_name
+        boolean is_active
+    }
+    WAREHOUSE {
+        uuid id PK
+        uuid tenant_id FK
+        text code UK
+        text name
+        uuid department_id FK
+        boolean is_default
+        boolean is_active
+    }
+    DRUG_UNIT {
+        uuid id PK
+        uuid tenant_id FK
+        uuid drug_id FK
+        text unit_code
+        int sort_order
+        int factor_to_unit_below
+        bigint sell_price
+    }
+    DRUG_INGREDIENT {
+        uuid id PK
+        uuid tenant_id FK
+        uuid drug_id FK
+        text active_ingredient_code
+        int strength_value
+        text strength_unit_code
+    }
     TENANT ||--o{ DEPARTMENT : "co"
     TENANT ||--o{ DEPARTMENT_TYPE : "co"
     TENANT ||--o{ ROLE : "co"
@@ -411,6 +453,17 @@ erDiagram
         text unit
         text concentration
         boolean is_active
+        text item_type
+        boolean is_batch_managed
+        text base_unit_code
+        bigint default_sell_price
+        boolean unit_pricing_enabled
+        text drug_group_code
+        text route_code
+        text national_code
+        text manufacturer
+        int min_stock_alert
+        int max_stock_alert
     }
 
     ICD10_CATALOG {
@@ -581,7 +634,7 @@ Bản ghi từ CẢ HAI luồng cùng xuất hiện trong "Danh sách tiếp nh�
 | `icd10_catalog` | Toàn hệ thống | Không có `tenant_id`, read-only lúc chạy, seed từ danh mục Bộ Y tế — v1.17 seed ĐỦ Chương I-XXII (15.844 mã, S3-01 mở khoá một phần, `docs/DECISIONS.md` #056). `search_key` là tên tiếng Việt đã bỏ dấu và viết thường (tái dùng `nexamed_unaccent_lower()` của `patient`), phục vụ tìm kiếm không dấu. `chapter_code`/`chapter_name`, `block_code`/`block_name`, `group_code`/`group_name` tách từ 3 cấp phân loại của WHO (thay field `chapter` đơn lẻ ở bản thiết kế trước v1.17). `chapter_code` là số La Mã ("I".."XXII") — thứ tự hiển thị đúng phải sắp ở tầng ứng dụng qua `romanToInt()` (`packages/core`), không sắp được theo thứ tự chuỗi ở DB. `gender_restriction`/`usage_restriction` chỉ hiển thị cảnh báo mềm ở trang tra cứu — chưa có logic chặn (thuộc S3-06/07, chưa xây) |
 | `reference_catalog` | Toàn hệ thống | Dân tộc/Quốc tịch (`docs/DECISIONS.md` #037, đảo ngược #034) + Nguồn khách hàng/Loại khám (Sprint 3, v1.11) + Loại tiếp nhận/Hình thức khám/Lý do ưu tiên/Loại giá dịch vụ (v1.13, `docs/DECISIONS.md` #052) + Nghề nghiệp (v1.21, `docs/DECISIONS.md` #061, đảo ngược tiếp phần `occupation` của #034 — không seed cứng, `clinic_admin` tự thêm qua UI) + Học vị/Học hàm, Chức danh, Trạng thái làm việc, Hình thức làm việc (v1.22, mở rộng ADM-01, `docs/DECISIONS.md` #063 — 2 category đầu không seed cứng cùng lý do `OCCUPATION`; 2 category sau seed sẵn giá trị chuẩn) + Đơn vị tính (v1.27, 26/08/2026, mã tự sinh — không seed cứng) + Hình thức thanh toán (`PAYMENT_METHOD`, v1.32, seed sẵn `CASH`/`BANK_TRANSFER`, cột `counts_as_cash` — v1.39) + Loại thu chi (`INCOME_EXPENSE_TYPE`, v1.44, `docs/DECISIONS.md` #121, mã tự sinh tiền tố `TC` — thêm cột `direction`, enum `reference_catalog_direction`, CHỈ có ý nghĩa với category này, 2 giá trị `INCOME`/`EXPENSE` cố định không quản lý qua UI, dùng chung với `cash_voucher.direction` ở mục 3.6) — tái dùng nguyên bảng này thay vì tạo bảng riêng. Không `tenant_id`, **quản lý được qua API** bởi `clinic_admin` (khác `icd10_catalog`/`permission` — read-only lúc chạy) — "xoá" là `is_active=false` (soft), role DB không có quyền `DELETE`. Cột `price`/`unit` (bigint/text, nullable) chỉ có ý nghĩa với category `EXAM_TYPE` — lưu để hiển thị, chưa tính viện phí. Cột `deactivates_account` (boolean, mặc định `false`, v1.22) chỉ có ý nghĩa với category `EMPLOYMENT_STATUS` — mục "Nghỉ việc" đặt `true` để `user_account.employment_status_code` trỏ tới nó tự động vô hiệu hoá tài khoản, tách khỏi `code` (vốn sửa được qua UI) để không phụ thuộc vào việc admin không đổi tên mã. Cột `description` (text, nullable, v1.27) chỉ có ý nghĩa với category `UNIT` |
 | `province` / `ward` | Toàn hệ thống | Tỉnh/Phường-Xã theo sáp nhập hành chính 2025, mã Bộ Nội vụ (`docs/DECISIONS.md` #038, đảo ngược tiếp phần Tỉnh/Xã của #034). Không `tenant_id`, **read-only lúc chạy** (giống `icd10_catalog`, khác `reference_catalog` — không có endpoint quản lý qua API). `ward.code` (8 chữ số) duy nhất toàn quốc, dùng thẳng làm PK |
-| `drug` | Theo tenant | **Đã hiện thực (Sprint 4, S4-03)** — v1 phòng khám tự nhập danh mục thuốc của mình (theo PRD mục 8), không tồn kho/giá bán ("Trường hợp A" đã chốt, `docs/DECISIONS.md` 2026-08-25 — xem `docs/product/future-modules-reference.md` §2.2.1 cho hướng có kho ở v2.1). Khi có danh mục thuốc quốc gia dùng chung, thêm bảng `drug_catalog` toàn hệ thống và cho `drug.catalog_code` tham chiếu tới |
+| `drug` | Theo tenant | **Đã hiện thực (Sprint 4, S4-03; mở rộng GĐ1 Kho Thuốc v1.48, `docs/DECISIONS.md` #146/#148)** — v1 phòng khám tự nhập danh mục Thuốc & Vật tư y tế của mình. Cột gốc S4-03 giữ nguyên làm dữ liệu legacy; GĐ1 thêm 10 cột (`item_type`, `is_batch_managed`, `base_unit_code`, `default_sell_price`, `drug_group_code`/`route_code`, `national_code`, `manufacturer`, `min_stock_alert`/`max_stock_alert`) — xem mục 3.7. Đảo ngược quyết định "dược/kho ngoài v1" của Sprint 4 |
 | `exam_type_price` | Theo tenant | **Mới (v1.28, `docs/DECISIONS.md` #079, 2026-08-26)** — "Đơn giá dịch vụ": nhiều dòng đơn giá cho một mục `reference_catalog` category `EXAM_TYPE`, khác Loại giá dịch vụ (`price_type_code`) và/hoặc khoảng ngày hiệu lực. TÁCH THEO TENANT (khác `reference_catalog` cha — toàn hệ thống) vì giá dịch vụ khác nhau thật giữa các phòng khám dù cùng tên dịch vụ. `exam_type_code`/`price_type_code`/`unit_code` lưu thẳng mã, không FK composite thật (cùng cách mọi cột khác tham chiếu `reference_catalog`). Sửa/xoá tự do (không phải `SignableEntity`, không giữ lịch sử giá) — quản lý bằng bulk-replace (đúng khuôn `diagnosis`). C20 chặn chồng lấn ngày hiệu lực cùng (dịch vụ, Loại giá dịch vụ) ở tầng DB |
 
 ### 3.6 Thu ngân (Sprint 5/6, BIL-01→04)
@@ -662,6 +715,27 @@ Permission mới `cash_voucher.report` (Sổ quỹ tổng hợp + Báo cáo dòn
 
 **Báo cáo dòng tiền** — `totalIncome`/`totalExpense` TOÀN PHÒNG KHÁM loại trừ mọi phiếu Chuyển quỹ (không phải doanh thu/chi phí thật — **KHÔNG** phải "báo cáo doanh thu theo kỳ" bị loại khỏi phạm vi v1, xem `CLAUDE.md`); nhóm theo quỹ (`byAccount`) thì CÓ tính cả 2 chiều Chuyển quỹ (đứng từ góc 1 quỹ, tiền thật sự ra/vào). Xuất Excel qua `exceljs` (backend-only, đúng nguyên tắc hiệu năng #073).
 
+### 3.7 Kho Thuốc & Vật tư y tế — Giai đoạn 1 (`docs/DECISIONS.md` #146/#148)
+
+**Đã hiện thực (v1.48, 15/09/2026)** — đảo ngược quyết định "dược/kho ngoài v1" của Sprint 4 (2026-08-25). Lộ trình 5 giai đoạn đã chốt qua `EnterPlanMode`: **GĐ1 Danh mục nền (xong)** → GĐ2 Nhập kho & tồn theo lô (`inventory_batch`/`stock_balance`/`stock_ledger`/`stock_receipt`, chưa xây) → GĐ3 Xuất kho theo đơn + FEFO + tiền thuốc (**duy nhất chạm bảng `invoice` đang chạy thật**, khuyến nghị thử tại 1 phòng khám pilot trước khi GA rộng) → GĐ4 Kiểm kê/điều chuyển/báo cáo → GĐ5 Trải nghiệm kê đơn (tìm không dấu, macro, điều hướng bàn phím). Nguyên tắc xuyên suốt: mở rộng `drug` sẵn có (không tạo bảng `items` mới); chuỗi quy đổi đơn vị N bậc; thẻ kho append-only (`stock_ledger`, GĐ2) là nguồn sự thật; "đơn thuốc là y lệnh — chỉ Phiếu xuất kho mới sinh tiền/trừ kho" (1 đơn ↔ N phiếu xuất, GĐ3).
+
+| Bảng | Vai trò | Đặc thù |
+|---|---|---|
+| `drug_unit` | Chuỗi quy đổi đơn vị N bậc | `unit_code` (tham chiếu category `UNIT`), `sort_order`, `factor_to_unit_below` (int — hệ số quy đổi sang đơn vị liền kề bậc dưới, vd Hộp→Vỉ→Viên). Partial unique `(tenant_id, drug_id, sort_order) WHERE deleted_at IS NULL` |
+| `drug_ingredient` | Hoạt chất & hàm lượng | Sửa lỗ hổng "thuốc phối hợp nhiều hoạt chất bị bỏ sót cảnh báo trùng" ở tầng DỮ LIỆU (PRE-02 CHƯA rewire thuật toán sang bảng này — cố ý hoãn, đụng luồng kê đơn đang chạy thật tại pilot, xem #148). `active_ingredient_code` (tham chiếu category `ACTIVE_INGREDIENT` mới), `strength_value` (int, hàm lượng ×1000 — cấm decimal cho số liệu y tế, đúng tiền lệ `vital_sign`), `strength_unit_code`. Partial unique `(tenant_id, drug_id, active_ingredient_code) WHERE deleted_at IS NULL` |
+| `supplier` | Nhà cung cấp | `code` (tự sinh ngắn tuần tự, tiền tố `NCC` — KHÔNG qua `BusinessCodeService`/khuôn tháng-năm, đây là danh mục tĩnh), `name`, `tax_code`/`phone`/`address`/`contact_name`, `is_active`. Unique `(tenant_id, code)` |
+| `warehouse` | Kho | `code` (tự sinh, tiền tố `KH`), `name`, `department_id` (composite FK, nullable — Khoa/Phòng quản lý, thuần mô tả), `is_default` (đúng 1 kho mặc định/tenant). Tự seed "Kho chính" lúc tạo tenant mới, backfill cho tenant cũ lúc API khởi động (`ensureDefaultWarehouse()`, đúng khuôn `ensureDefaultCashAccount`) |
+
+3 category `reference_catalog` mới: `ACTIVE_INGREDIENT` (Hoạt chất), `DRUG_GROUP` (Nhóm thuốc), `DRUG_ROUTE` (Đường dùng) — không seed cứng, `clinic_admin` tự thêm qua UI. Đơn vị (`drug.base_unit_code`/`drug_unit.unit_code`/`drug_ingredient.strength_unit_code`) TÁI DÙNG category `UNIT` có sẵn, không tạo category đơn vị riêng.
+
+Quyền: `supplier`/`warehouse` dùng lại `drug.read`/`drug.manage` (không permission mới) — trang "Danh mục Thuốc & Vật tư" (`/admin/catalog-pharmacy`, đổi tên từ "Danh mục thuốc" S4-03) gom cả 3 (Thuốc & Vật tư/Nhà cung cấp/Kho) cùng 1 trang, cùng gate `drug.manage`. 3 pill danh mục (Hoạt chất/Nhóm thuốc/Đường dùng) cũng đặt ở đúng trang này (tái dùng `ReferenceCatalogPane.tsx`, dời từ "Danh mục dùng chung" sang theo yêu cầu chủ dự án — cùng nhóm nội dung Kho Thuốc).
+
+`apps/web` KHÔNG mở phụ thuộc `packages/core` cho riêng chỗ hiển thị chuỗi quy đổi đơn vị (`DrugCatalogPane.tsx` viết lại 1 bản nhỏ cục bộ thay vì import `computeUnitConversion()` có sẵn ở `packages/core/src/inventory/compute-unit-conversion.ts`) — cân nhắc rủi ro/lợi ích cho 1 chỗ dùng duy nhất, tránh mở tiền lệ `apps/web → packages/core` lần đầu tiên trong dự án.
+
+Chunk khởi động web đo được **500.01 kB — vượt trần 500 kB đúng 10 byte** sau thay đổi này (nguyên nhân chỉ từ đổi nhãn text ở `Sidebar.tsx`, không phải code GĐ1 thật — 4 trang mới đều nằm gọn trong chunk lazy riêng). Chưa tách chunk xử lý, ghi vào `docs/CURRENT.md` mục "Đang chờ".
+
+**Giá bán theo từng đơn vị cụ thể (v1.49, chủ dự án yêu cầu trực tiếp, `docs/DECISIONS.md` #150)** — mở rộng tiếp GĐ1. Trước đây giá mỗi bậc quy đổi LUÔN suy ra từ `drug.default_sell_price` (đơn vị nhỏ nhất) theo tỷ lệ `factor_to_unit_below`. Nay thêm công tắc THEO TỪNG MẶT HÀNG: `drug.unit_pricing_enabled` (boolean, mặc định `false` — giữ nguyên hành vi cũ). Bật thì `drug_unit.sell_price` (bigint, nullable — chỉ có ý nghĩa khi công tắc bật) lưu giá RIÊNG của đúng bậc đó, KHÔNG suy ra theo tỷ lệ nữa (vd 1 Viên lẻ có thể đắt hơn/rẻ hơn tỷ lệ quy đổi từ 1 Vỉ). Bắt buộc nhập đủ giá MỌI bậc (kể cả `default_sell_price` của đơn vị nhỏ nhất) khi bật — validate ở `packages/shared/src/drug.ts` (`checkUnitPricingRequired`, `superRefine` dùng chung create/update), không phải CHECK constraint DB. Không bảng mới, không permission mới.
+
 ---
 
 ## 4. Ràng buộc ở tầng cơ sở dữ liệu
@@ -695,6 +769,9 @@ Những ràng buộc này đặt ở DB, không chỉ ở tầng ứng dụng.
 | C23 | `UNIQUE (tenant_id, user_id, work_date, work_shift_id) WHERE deleted_at IS NULL` | `work_shift_assignment` | "Đăng ký ca làm việc" Giai đoạn 2 (v1.37, `docs/DECISIONS.md` #102) — chặn đăng ký trùng ĐÚNG 1 ca/ngày, vẫn cho nhiều ca KHÁC nhau cùng ngày (Sáng+Chiều). Cũng là arbiter cho `createMany({skipDuplicates:true})` khi bulk-apply/sao chép |
 | C24 | `UNIQUE (tenant_id) WHERE status='OPEN' AND deleted_at IS NULL` | `cashier_shift` | "Chốt ca" (v1.39, `docs/DECISIONS.md` #112) — v1 chỉ 1 két dùng chung toàn tenant, chặn có quá 1 ca `OPEN` cùng lúc kể cả mở đồng thời (double bảo vệ cùng `CashierShiftAlreadyOpenError` ở Service) |
 | C25 | `CHECK ((counter_account_id IS NULL AND income_expense_type_code IS NOT NULL) OR (counter_account_id IS NOT NULL AND income_expense_type_code IS NULL AND cash_account_id <> counter_account_id))` | `cash_voucher` | Sổ quỹ & Thu chi GĐ2 (v1.45) — đúng 1 trong 2 hình dạng: phiếu Thu/Chi thường (bắt buộc Loại thu chi) HOẶC phiếu Chuyển quỹ (bắt buộc quỹ đích, không Loại thu chi, không tự chuyển cho chính mình) |
+| C26 | `UNIQUE (tenant_id) WHERE is_default AND deleted_at IS NULL` | `warehouse` | Kho Thuốc & Vật tư y tế GĐ1 (v1.48, `docs/DECISIONS.md` #148) — đúng 1 kho mặc định/tenant, cùng khuôn C16 (`department.is_default`) |
+| C27 | `UNIQUE (tenant_id, drug_id, sort_order) WHERE deleted_at IS NULL` | `drug_unit` | GĐ1 — mỗi bậc trong chuỗi quy đổi đơn vị chỉ có đúng 1 dòng hiệu lực, cùng khuôn C3/C14 |
+| C28 | `UNIQUE (tenant_id, drug_id, active_ingredient_code) WHERE deleted_at IS NULL` | `drug_ingredient` | GĐ1 — gỡ rồi gán lại đúng hoạt chất đã từng gỡ không vi phạm unique, cùng khuôn C18/C19 |
 
 ---
 
@@ -740,6 +817,7 @@ Khớp với `docs/product/plan.md`.
 | Ngoài kế hoạch, sau S4 (2026-08-26) | `encounter_service_item` — "Chỉ định dịch vụ khám" đổi từ 1 dịch vụ/lượt khám sang danh sách nhiều dịch vụ + cascade giá thật theo `exam_type_price` (`docs/DECISIONS.md` #080) |
 | Ngoài kế hoạch, sau S5-S6 (2026-09-03) | `cashier_shift` (BIL-05, "Chốt ca" — đối soát tiền mặt/két, `docs/DECISIONS.md` #112), xem mục 3.6 |
 | Ngoài kế hoạch, sau S5-S6 (2026-09-05) | `cash_account`, `cash_voucher` (Sổ quỹ & Thu chi GĐ1 — "Thu chi tại quầy", `docs/DECISIONS.md` #121/#122), xem mục 3.6 |
+| Ngoài kế hoạch, sau S5-S6 (2026-09-15) | `drug_unit`, `drug_ingredient`, `supplier`, `warehouse` (Kho Thuốc & Vật tư y tế GĐ1, mở rộng `drug` sẵn có — `docs/DECISIONS.md` #146/#148), xem mục 3.7 |
 
 Khuyến nghị: tạo đủ 8 cột bắt buộc **ngay từ migration đầu tiên của mỗi bảng**, kể cả khi tính năng dùng tới chúng ở sprint sau. Thêm cột vào bảng đã có dữ liệu thật tốn hơn nhiều.
 
@@ -752,9 +830,9 @@ Ghi ra đây để không ai vô tình tạo sớm, và để thiết kế v1 kh
 | Bảng dự kiến | Phase | Điểm neo vào v1 |
 |---|---|---|
 | `service`, `service_order` | v2 | `encounter_id` |
-| `inventory_batch`, `stock_movement` | v2.1 | `drug_id`, `prescription_item_id` |
+| `inventory_batch`, `stock_balance`, `stock_ledger`, `stock_receipt` | Kho Thuốc GĐ2 (trong v1, đã lên kế hoạch #146, chưa code) | `drug_id`, `warehouse_id` |
+| `stock_issue` (Phiếu xuất kho) | Kho Thuốc GĐ3 (trong v1, đã lên kế hoạch #146, chưa code — duy nhất chạm `invoice` đang chạy thật) | `drug_id`, `prescription_item_id`, `invoice_id` |
 | `insurance_claim` | v3 | `encounter_id`, `insurance_card_id` |
-| `drug_catalog` (toàn hệ thống) | v2.1 | `drug.catalog_code` |
 | `lab_order`, `lab_result` | v3+ | `encounter_id` |
 
 Khi thêm, các bảng này vẫn phải đủ 8 cột bắt buộc và tuân thủ C1-C10.
@@ -767,7 +845,7 @@ Khi thêm, các bảng này vẫn phải đủ 8 cột bắt buộc và tuân th
 |---|---|---|---|
 | E1 | Yêu cầu chữ ký số (Q2 trong PRD) | Nếu bắt buộc, `signature_payload` phải tách thành bảng riêng lưu chứng thư và chuỗi ký, không để cột `bytea` đơn giản | Tuần 2 |
 | E2 | Thời hạn lưu trữ (Q1 trong PRD) | Ảnh hưởng chiến lược phân vùng `audit_log` theo thời gian. Nếu lưu trên 10 năm, nên partition theo năm ngay từ đầu | Tuần 2 |
-| E3 | Danh mục thuốc quốc gia | Nếu có nguồn dùng chung, `drug` chuyển thành bảng ánh xạ thay vì danh mục độc lập | Tuần 5 |
+| E3 | Danh mục thuốc quốc gia | **Đã giải quyết một phần (v1.47/#147, v1.48/#146)** — không chuyển `drug` thành bảng ánh xạ; thay vào đó thêm `drug.national_code` (chuẩn bị đối chiếu) + port rỗng `EPrescriptionGatewayPort`. Còn chặn bởi chữ ký số CA thật (`SignaturePort` vẫn no-op) và đăng ký mã liên thông thủ công với đơn vị vận hành cổng — đúng hạng mục "BHYT + chữ ký số" xếp v3 | Đã xử lý |
 | E4 | Nhiều chi nhánh của cùng chủ (Q6) | Nếu cần ở v1, phải thêm khái niệm `organization` trên `tenant` và bảng nối người dùng với nhiều tenant | Tuần 4 |
 
 ---
@@ -824,3 +902,5 @@ Khi thêm, các bảng này vẫn phải đủ 8 cột bắt buộc và tuân th
 | v1.45 | 07/09/2026 | "Sổ quỹ & Thu chi" Giai đoạn 2 — Sổ quỹ + Báo cáo dòng tiền + Chuyển quỹ + Thủ quỹ riêng (`docs/DECISIONS.md` #124, chốt qua `EnterPlanMode`, `jiggly-meandering-leaf.md`). `cash_voucher` thêm `counter_account_id` (nullable, có giá trị = phiếu Chuyển quỹ), `is_auto_generated` (phiếu tự sinh lúc Chốt ca khác lập tay); `income_expense_type_code` đổi NOT NULL → NULLABLE + CHECK mới (C25) ép đúng 1 trong 2 hình dạng. `cash_account` thêm `owner_user_id` (chủ két riêng `type='DRAWER'`). `cashier_shift` thêm `drawer_account_id` (snapshot két riêng gắn với ca, tự cấp lúc mở khi bật "Thủ quỹ riêng" — lúc Chốt ca tự sinh phiếu Chuyển quỹ gộp về quỹ CASH mặc định, CỐ Ý `cashier_shift_id=NULL` trên phiếu đó để "Tính toán lại" không tự tham chiếu cộng dồn — bug thật phát hiện lúc viết test). `tenant_setting` thêm `cashier_drawer_separate_enabled` (bắt buộc đi cùng "Đa thu ngân", validate ở Service). Permission mới `cash_voucher.report` (CHỈ `clinic_admin`, tách khỏi `cash_voucher.read`). "Chuyển quỹ" lập tay chặn cứng theo `cash_account.manage` (không phải `cash_voucher.create`). Không bảng mới, không migration schema nào khác ngoài 3 cột + C25. Migration `20260907090000_cash_book_transfer_and_drawer`. Xem mục 3.6. |
 | v1.46 | 09/09/2026 | Chiết khấu trên "Chi tiết thanh toán" + pill mệnh giá "Tiền khách đưa" (`docs/DECISIONS.md` #137, chủ dự án yêu cầu trực tiếp). Migration `20260909110000_invoice_discount` — enum MỚI `invoice_discount_type` (`PERCENT`/`AMOUNT`); `invoice` thêm `discount_type`/`discount_value`/`discount_reason` (nullable); `invoice_line` thêm `discount_type`/`discount_value` (nullable). 2 cách LOẠI TRỪ LẪN NHAU (Toàn hoá đơn ở cấp `invoice`, Từng dịch vụ ở cấp `invoice_line`), lý do bắt buộc, chỉ sửa được khi `status` còn `UNPAID`. KHÔNG lưu số tiền chiết khấu đã tính — hàm thuần `computeInvoiceDiscount()` (`@nexamed/core`) tính `dueAmount` (số tiền THẬT thu/hoàn, khác `total_amount` gross) mỗi lần đọc, dùng ở mọi nơi tính tiền thật (thu tiền, trừ ví, tổng kết cuối ngày). Không bảng mới, không cột C mới. Xem mục 3.6. |
 | v1.47 | 14/09/2026 | Mở rộng "Thông tin phòng khám" (`docs/DECISIONS.md` #140, chủ dự án yêu cầu trực tiếp). Migration `20260914130000_tenant_profile_extended_fields` — `tenant` thêm 7 cột nullable: `facility_code`, `professional_in_charge_name`, `website`, `social_links_json JSONB DEFAULT '[]'` (mảng `{platform, url}`), `bank_account_name`, `bank_account_number`, `bank_name`. Không kiểm định dạng (kể cả website/link mạng xã hội). `license_no` (cột có sẵn từ ADM-01) lần đầu lộ qua endpoint `clinic-profile`. Không bảng mới, không permission mới. |
+| v1.48 | 15/09/2026 | Kho Thuốc & Vật tư y tế — Giai đoạn 1 (`docs/DECISIONS.md` #146/#148, chủ dự án yêu cầu trực tiếp, đảo ngược quyết định "dược/kho ngoài v1" của Sprint 4). Migration `20260915140000_pharmacy_catalog_gd1` (viết tay). Mở rộng `drug` thêm 10 cột (`item_type` enum `drug_item_type` MEDICINE/SUPPLY, `is_batch_managed`, `base_unit_code`, `default_sell_price`, `drug_group_code`/`route_code`, `national_code`, `manufacturer`, `min_stock_alert`/`max_stock_alert` — cột gốc S4-03 giữ nguyên). 4 bảng MỚI: `drug_unit` (chuỗi quy đổi đơn vị N bậc, thêm C27), `drug_ingredient` (hoạt chất & hàm lượng, thêm C28 — sửa lỗ hổng "thuốc phối hợp bị bỏ sót cảnh báo trùng" ở tầng dữ liệu, PRE-02 CHƯA rewire thuật toán), `supplier` (Nhà cung cấp, mã tự sinh `NCC`), `warehouse` (Kho, mã tự sinh `KH`, thêm C26 — đúng 1 kho mặc định/tenant, tự seed "Kho chính"). 3 category `reference_catalog` mới `ACTIVE_INGREDIENT`/`DRUG_GROUP`/`DRUG_ROUTE` (không seed cứng). Không permission mới (dùng lại `drug.read`/`drug.manage`). Xem mục 3.7. Còn treo: GĐ2 (Nhập kho & tồn theo lô) trở đi chưa bắt đầu, xem mục 7. |
+| v1.49 | 16/09/2026 | "Giá bán theo từng đơn vị cụ thể" (`docs/DECISIONS.md` #150, chủ dự án yêu cầu trực tiếp — xem lại phần giá bán GĐ1 trước khi làm tiếp). Migration `20260916090000_drug_unit_pricing` (viết tay): `drug` thêm `unit_pricing_enabled BOOLEAN NOT NULL DEFAULT false` (công tắc THEO TỪNG MẶT HÀNG); `drug_unit` thêm `sell_price BIGINT` (nullable, chỉ có ý nghĩa khi công tắc bật). Mặc định TẮT giữ nguyên hành vi cũ (giá suy ra theo tỷ lệ quy đổi từ `default_sell_price`); bật thì mỗi bậc — kể cả đơn vị nhỏ nhất — có giá riêng, KHÔNG suy ra theo tỷ lệ, bắt buộc nhập đủ mọi bậc (validate ở tầng Zod `packages/shared`, không phải CHECK DB). Không bảng mới, không C mới, không permission mới. Xem mục 3.7. |

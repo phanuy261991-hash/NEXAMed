@@ -26,6 +26,10 @@ import { NotFoundPage } from './NotFoundPage';
  * named export của toàn bộ codebase.
  */
 const PharmacyCatalogPage = lazy(() => import('../features/drug/PharmacyCatalogPage').then((m) => ({ default: m.PharmacyCatalogPage })));
+// "Quản lý nhà cung cấp" — tách khỏi "Danh mục Thuốc và Vật Tư" thành trang/nhóm menu riêng.
+const SupplierManagementPage = lazy(() =>
+  import('../features/drug/SupplierManagementPage').then((m) => ({ default: m.SupplierManagementPage })),
+);
 const PatientListPage = lazy(() => import('../features/patient/PatientListPage').then((m) => ({ default: m.PatientListPage })));
 const PatientNewPage = lazy(() => import('../features/patient/PatientNewPage').then((m) => ({ default: m.PatientNewPage })));
 const PatientDetailPage = lazy(() => import('../features/patient/PatientDetailPage').then((m) => ({ default: m.PatientDetailPage })));
@@ -161,9 +165,13 @@ export const router = createBrowserRouter([
         ),
       },
       // Sprint 4, S4-03 — trang "Danh mục thuốc" thật, thay ComingSoonPage cũ. Mở rộng thành "Danh
-      // mục Thuốc & Vật tư" (Kho Thuốc & Vật tư y tế GĐ1, docs/DECISIONS.md #146) — Thuốc/Vật tư y
-      // tế/Nhà cung cấp/Kho, vẫn chưa có tồn kho/nhập-xuất (GĐ2-3, chưa xây).
+      // mục Thuốc và Vật Tư" (Kho Thuốc & Vật tư y tế GĐ1, docs/DECISIONS.md #146) — Thuốc/Vật tư y
+      // tế/Kho, vẫn chưa có tồn kho/nhập-xuất (GĐ2-3, chưa xây). "Nhà cung cấp" tách sang route
+      // riêng /suppliers, xem dưới.
       { path: 'admin/catalog-pharmacy', element: <RequirePermissionRoute module="drug" action="manage"><PharmacyCatalogPage /></RequirePermissionRoute> },
+      // "Quản lý nhà cung cấp" — nhóm sidebar riêng, tách khỏi "Danh mục Thuốc và Vật Tư" (cùng
+      // quyền drug.manage, không permission mới).
+      { path: 'suppliers', element: <RequirePermissionRoute module="drug" action="manage"><SupplierManagementPage /></RequirePermissionRoute> },
       { path: 'admin/system-config', element: <RequirePermissionRoute module="clinic_config" action="update"><ClinicConfigPage /></RequirePermissionRoute> },
       // S5-05 (ADM-03) — "Nhật ký hoạt động", lọc theo bệnh nhân/người dùng/khoảng ngày.
       { path: 'admin/activity-log', element: <RequirePermissionRoute module="audit_log" action="read"><ActivityLogPage /></RequirePermissionRoute> },

@@ -8,6 +8,7 @@ export interface CreateDrugData {
   isBatchManaged: boolean;
   baseUnitCode: string | null;
   defaultSellPrice: bigint | null;
+  unitPricingEnabled: boolean;
   drugGroupCode: string | null;
   routeCode: string | null;
   nationalCode: string | null;
@@ -26,6 +27,7 @@ export interface UpdateDrugData {
   isBatchManaged?: boolean;
   baseUnitCode?: string | null;
   defaultSellPrice?: bigint | null;
+  unitPricingEnabled?: boolean;
   drugGroupCode?: string | null;
   routeCode?: string | null;
   nationalCode?: string | null;
@@ -41,7 +43,7 @@ export interface UpdateDrugData {
 /** Kèm hoạt chất/đơn vị quy đổi (GĐ1) — `DrugService` map sang `DrugSummary.ingredients/units`. */
 export type DrugWithDetails = Drug & {
   ingredients: { id: string; activeIngredientCode: string; strengthValue: number; strengthUnitCode: string }[];
-  units: { id: string; unitCode: string; sortOrder: number; factorToUnitBelow: number }[];
+  units: { id: string; unitCode: string; sortOrder: number; factorToUnitBelow: number; sellPrice: bigint | null }[];
 };
 
 const DETAIL_INCLUDE = {
@@ -53,7 +55,7 @@ const DETAIL_INCLUDE = {
   units: {
     where: { deletedAt: null },
     orderBy: { sortOrder: 'asc' as const },
-    select: { id: true, unitCode: true, sortOrder: true, factorToUnitBelow: true },
+    select: { id: true, unitCode: true, sortOrder: true, factorToUnitBelow: true, sellPrice: true },
   },
 } satisfies Prisma.DrugInclude;
 

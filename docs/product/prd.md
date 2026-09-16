@@ -20,7 +20,7 @@ Hệ thống thay thế sổ giấy và file Excel bằng bệnh án điện t�
 | Team | 3-5 developer |
 | Timeline đề xuất | Pilot tuần 8, GA tuần 12 (xem mục 7 về rủi ro timeline) |
 
-**Ngoài phạm vi v1**: dược/kho, viện phí và thanh toán, tích hợp BHYT và cổng giám định, báo cáo doanh thu, ứng dụng cho bệnh nhân, chữ ký số theo chuẩn CA.
+**Ngoài phạm vi v1**: viện phí đầy đủ (bảng giá đa đối tượng, công nợ/trả góp), tích hợp BHYT và cổng giám định, báo cáo doanh thu theo kỳ, ứng dụng cho bệnh nhân, chữ ký số theo chuẩn CA. (**Dược/kho** đảo ngược vào v1 — chốt 2026-09-15, xem mục 4.8.)
 
 ---
 
@@ -187,6 +187,24 @@ Phạm vi giới hạn ở **thu ngân mức 1** (một phiếu thu cho một l�
 
 **Ghi chú kiến trúc phân quyền (chốt 2026-08-08, thay thế mô tả "5 vai trò cố định" ở bản v1.0)**: hệ thống dùng RBAC kết hợp Data Scope (4 mức: `none`/`personal`/`department`/`global`) thay vì quyền on/off đơn thuần. Chi tiết đầy đủ xem `.claude/docs/security-audit.md`. Mức `branch` (đa chi nhánh) **chưa triển khai** — khớp với quyết định hoãn ở câu hỏi Q6 mục 10 bên dưới; ADM-07 (UI cấu hình) là P1, có thể lùi nếu timeline căng (xem mục 7).
 
+### 4.8 Kho Thuốc & Vật tư y tế (mở rộng phạm vi v1, chốt 2026-09-15 — `docs/DECISIONS.md` #146)
+
+> *Là phòng khám có quầy thuốc, tôi muốn quản lý được thuốc/vật tư theo lô, biết còn tồn bao nhiêu, và xuất kho đúng khi bán/kê đơn — để không phải ghi sổ kho song song.*
+
+Đảo ngược quyết định "dược/kho ngoài v1" của Sprint 4 (2026-08-25) — chủ dự án yêu cầu trực tiếp sau khi gửi 4 tài liệu tham khảo, đối chiếu và chốt qua nhiều vòng `AskUserQuestion`/`EnterPlanMode`. Lộ trình **5 giai đoạn**, mỗi giai đoạn đi đủ chu trình mockup → duyệt → code → verify → cập nhật tài liệu trước khi sang giai đoạn kế tiếp — không dựng khung chung cho cả 5 giai đoạn trước.
+
+| ID | Yêu cầu | Ưu tiên |
+|---|---|---|
+| INV-01 | Danh mục Thuốc & Vật tư y tế theo tenant — loại mặt hàng (Thuốc/Vật tư y tế), chuỗi quy đổi đơn vị N bậc, hoạt chất & hàm lượng (thuốc), giá bán mặc định, mã thuốc quốc gia (chuẩn bị đối chiếu, chưa tích hợp cổng thật), Nhà cung cấp, Kho | P1 |
+| INV-02 | Nhập kho theo lô (số lô, hạn dùng), tồn kho theo lô/kho, thẻ kho append-only làm nguồn sự thật | P1 (Giai đoạn 2, chưa xây) |
+| INV-03 | Xuất kho theo đơn thuốc — nguyên tắc "đơn thuốc là y lệnh, chỉ Phiếu xuất kho mới sinh tiền/trừ kho" (1 đơn ↔ N phiếu xuất), FEFO (hết hạn trước xuất trước), tiền thuốc gộp/tách khỏi phiếu thu công khám | P1 (Giai đoạn 3, chưa xây — **duy nhất chạm bảng `invoice` đang chạy thật tại pilot**, khuyến nghị thử tại 1 phòng khám trước khi GA rộng) |
+| INV-04 | Kiểm kê định kỳ, điều chuyển giữa kho, báo cáo Nhập-Xuất-Tồn | P2 (Giai đoạn 4, chưa xây) |
+| INV-05 | Trải nghiệm kê đơn có tồn kho: tìm không dấu, macro, điều hướng bàn phím, cảnh báo/chặn kê vượt tồn | P2 (Giai đoạn 5, chưa xây — cố ý xếp cuối vì phải viết lại bộ chọn thuốc khi đã có tồn kho) |
+
+**Đã hoàn tất**: INV-01 phần Danh mục nền (Giai đoạn 1, `docs/DECISIONS.md` #148, 15/09/2026) — mở rộng bảng `drug` sẵn có (không tạo bảng `items` mới). Nhà cung cấp/Kho đã có CRUD; nhập/xuất kho thật (INV-02/03) chưa xây.
+
+**Vẫn ngoài v1**: bảng giá thuốc đa đối tượng, công nợ/trả góp tiền thuốc, tích hợp cổng Đơn thuốc quốc gia thật (chặn bởi chữ ký số CA thật chưa có + đăng ký mã liên thông thủ công với đơn vị vận hành cổng — đã chuẩn bị port rỗng `EPrescriptionGatewayPort`, `docs/DECISIONS.md` #147).
+
 ---
 
 ## 5. Success Metrics
@@ -317,7 +335,7 @@ Các câu hỏi cần trả lời, kèm hạn chót vì chúng ảnh hưởng t�
 | Q4 | Ai chịu trách nhiệm vận hành máy chủ tại phòng khám? | Tuần 6 | Nếu không ai, phải làm bộ cài tự động và cơ chế hỗ trợ từ xa |
 | Q5 | Phòng khám pilot cụ thể là đơn vị nào? | Tuần 3 | Chặn mốc tuần 8 |
 | Q6 | Có cần hỗ trợ nhiều chi nhánh của cùng một chủ ngay ở v1 không? | ~~Tuần 4~~ — **đã trả lời phần kiến trúc 2026-08-25** | **Không làm ở v1**, nhưng hướng đã CHỐT (`docs/DECISIONS.md` #075): `tenant` = công ty, chi nhánh là `branch` bên trong; bệnh nhân + mã dùng chung toàn công ty; chỉ code khi có khách chuỗi thật. Q6 không còn là câu hỏi kiến trúc bỏ ngỏ, chỉ còn là câu hỏi thời điểm thương mại. **Ràng buộc**: khách chuỗi buộc phải dùng hạ tầng tập trung (một database chung) |
-| Q7 | Danh mục thuốc lấy từ đâu, hay để phòng khám tự nhập? | Tuần 5 | Ảnh hưởng khối lượng nhập liệu ban đầu khi triển khai |
+| Q7 | Danh mục thuốc lấy từ đâu, hay để phòng khám tự nhập? | ~~Tuần 5~~ — **đã trả lời 2026-09-15** | Phòng khám tự nhập (đúng S4-03), Kho Thuốc & Vật tư y tế GĐ1 chỉ thêm `national_code` để CHUẨN BỊ đối chiếu về sau với danh mục thuốc quốc gia (Cổng Đơn thuốc quốc gia, `docs/DECISIONS.md` #147) — chưa có nguồn dùng chung thật, chưa tích hợp |
 
 ---
 
@@ -327,12 +345,11 @@ Các câu hỏi cần trả lời, kèm hạn chót vì chúng ảnh hưởng t�
 
 | Phase | Nội dung | Điều kiện bắt đầu |
 |---|---|---|
-| v1 | Đặt lịch, tiếp nhận, khám bệnh, kê đơn in, **thu ngân cơ bản** (BIL-01→04, Sprint 5/6 — `docs/DECISIONS.md` #072), **gộp hồ sơ trùng** (PAT-04, S5-06) và **xuất PDF bệnh án** (ADM-05, S6-06 — Sprint 6, trước GA, theo `docs/product/plan.md` mục 9) | Đang thực hiện |
+| v1 | Đặt lịch, tiếp nhận, khám bệnh, kê đơn in, **thu ngân cơ bản** (BIL-01→04, Sprint 5/6 — `docs/DECISIONS.md` #072), **gộp hồ sơ trùng** (PAT-04, S5-06), **xuất PDF bệnh án** (ADM-05, S6-06 — Sprint 6, trước GA, theo `docs/product/plan.md` mục 9), và **Kho Thuốc & Vật tư y tế** (INV-01→05, mục 4.8 — GĐ1 Danh mục nền đã xong 15/09/2026, GĐ2-5 chưa xây, `docs/DECISIONS.md` #146) | Đang thực hiện |
 | v1.1 | Nhắc lịch SMS/Zalo | Sau GA v1, pilot ổn định 4 tuần |
 | **v1.5** | **Gói chuyên khoa: Nhi khoa (trước) → Sản phụ khoa (sau)** — cam kết với 2 khách hàng thật đã có (`docs/DECISIONS.md` #070/#071). Viết cụ thể từng gói trên kernel hiện có, không dựng khung "Specialty Pack" trước; gating gói (`tenant.enabled_specialties`) làm cùng gói đầu tiên | Sau GA v1. Mỗi gói cần bác sĩ chuyên khoa tương ứng thẩm định mẫu bệnh án + luồng dữ liệu (đã xong cho cả 2) |
 | v2 | Viện phí đầy đủ (bảng giá đa đối tượng, công nợ/trả góp theo lộ trình), báo cáo doanh thu | Sau v1.1, có ít nhất 3 khách hàng đang dùng |
-| v2.1 | Dược và kho thuốc | Sau v2 |
-| v3 | Tích hợp BHYT và cổng giám định, chữ ký số | Sau khi làm rõ yêu cầu pháp lý và có nhu cầu thực từ khách hàng |
+| v3 | Tích hợp BHYT và cổng giám định, chữ ký số (gồm tích hợp thật Cổng Đơn thuốc quốc gia — chặn bởi 2 điều kiện ở mục 4.8) | Sau khi làm rõ yêu cầu pháp lý và có nhu cầu thực từ khách hàng |
 | v3+ | Hồ sơ bệnh nhân dùng chung liên chi nhánh, cận lâm sàng (LIS/PACS) | Khi có khách hàng chuỗi |
 
 ### B. Thuật ngữ

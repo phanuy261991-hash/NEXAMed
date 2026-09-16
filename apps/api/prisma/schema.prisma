@@ -1488,8 +1488,14 @@ model Drug {
   // Đơn vị NHỎ NHẤT — đơn vị mà tồn kho được tính (GĐ2), xuất kho lẻ tới đơn vị này. Nullable vì
   // dữ liệu cũ (trước GĐ1) không có; bắt buộc ở tầng Zod cho mặt hàng tạo mới.
   baseUnitCode     String?      @map("base_unit_code")
-  // Giá bán mặc định, đồng, THEO ĐƠN VỊ NHỎ NHẤT — bigint (CLAUDE.md cấm decimal cho tiền).
+  // Giá bán mặc định, đồng, THEO ĐƠN VỊ NHỎ NHẤT — bigint (CLAUDE.md cấm decimal cho tiền). Khi
+  // unitPricingEnabled=true, đây vẫn là giá của ĐÚNG đơn vị nhỏ nhất (không suy ra từ đâu khác).
   defaultSellPrice BigInt?      @map("default_sell_price")
+  // Công tắc THEO TỪNG MẶT HÀNG (mở rộng GĐ1, chủ dự án yêu cầu trực tiếp) — mặc định false: giá
+  // mỗi bậc quy đổi SUY RA từ defaultSellPrice theo tỷ lệ (hành vi gốc). true: mỗi bậc trong
+  // DrugUnit có giá bán RIÊNG (DrugUnit.sellPrice), không suy ra theo tỷ lệ — vd giá lẻ 1 Viên khác
+  // hẳn giá quy ra từ 1 Vỉ/1 Hộp. Bật thì bắt buộc nhập đủ giá mọi bậc (validate ở packages/shared).
+  unitPricingEnabled Boolean     @default(false) @map("unit_pricing_enabled")
   // Mã tham chiếu reference_catalog category DRUG_GROUP/DRUG_ROUTE (không FK cứng, đúng cách
   // patient.ethnicity/encounter.exam_type_code tham chiếu bảng đa-category này).
   drugGroupCode    String?      @map("drug_group_code")
@@ -1531,6 +1537,9 @@ model DrugUnit {
   unitCode          String  @map("unit_code")
   sortOrder         Int     @map("sort_order")
   factorToUnitBelow Int     @map("factor_to_unit_below")
+  // Giá bán RIÊNG của đúng bậc này — CHỈ có ý nghĩa khi Drug.unitPricingEnabled=true (mở rộng GĐ1).
+  // Nullable vì mặc định KHÔNG dùng (giá suy ra theo tỷ lệ quy đổi từ Drug.defaultSellPrice).
+  sellPrice         BigInt? @map("sell_price")
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)

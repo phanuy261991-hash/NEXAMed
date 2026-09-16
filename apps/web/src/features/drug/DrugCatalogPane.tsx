@@ -24,17 +24,20 @@ const inputClassName =
 
 const ITEM_TYPE_LABEL: Record<DrugItemType, string> = { MEDICINE: 'Thuốc', SUPPLY: 'Vật tư y tế' };
 
-/** Tính lại chuỗi quy đổi CHỈ để hiển thị — bản local thuần, không import `computeUnitConversion`
- * (@nexamed/core) vì `apps/web` chưa từng phụ thuộc `packages/core` (chỉ `packages/shared`); chỉ 1
+/** Định dạng chuỗi quy đổi TUẦN TỰ — mỗi bậc so với ĐÚNG bậc liền kề nhỏ hơn (vd "1 Hộp = 5 Vỉ ·
+ * 1 Vỉ = 20 Viên"), KHÔNG quy đổi thẳng về đơn vị nhỏ nhất như bản trước (chủ dự án phản hồi trực
+ * tiếp — "1 Hộp = 100 Viên" gộp 2 bậc khó đọc hơn tách riêng). Bản local thuần, không import
+ * `computeUnitConversion` (@nexamed/core) vì `apps/web` chưa từng phụ thuộc `packages/core`; chỉ 1
  * chỗ dùng nên không đáng mở phụ thuộc mới, xem CLAUDE.md "trùng lặp lần 2 mới trích xuất". */
-function computeUnitLevels(baseUnitCode: string, links: { unitCode: string; factorToUnitBelow: number }[]): { unitCode: string; factorToBaseUnit: number }[] {
-  const levels = [{ unitCode: baseUnitCode, factorToBaseUnit: 1 }];
-  let cumulative = 1;
-  for (const link of links) {
-    cumulative *= link.factorToUnitBelow;
-    levels.push({ unitCode: link.unitCode, factorToBaseUnit: cumulative });
-  }
-  return levels;
+function formatUnitChainSequential(
+  baseUnitCode: string,
+  links: { unitCode: string; factorToUnitBelow: number }[],
+  label: (code: string) => string,
+): string {
+  return links
+    .map((link, i) => `1 ${label(link.unitCode)} = ${link.factorToUnitBelow.toLocaleString('vi-VN')} ${label(i === 0 ? baseUnitCode : links[i - 1]!.unitCode)}`)
+    .reverse()
+    .join(' · ');
 }
 
 interface FormIngredientRow {
@@ -46,12 +49,16 @@ interface FormIngredientRow {
 interface FormUnitRow {
   unitCode: string;
   factorToUnitBelow: string;
+  /** Giá bán RIÊNG của bậc này — CHỈ dùng khi bật "Giá theo từng đơn vị cụ thể" (mở rộng GĐ1). */
+  sellPriceDisplay: string;
 }
 
 /**
  * Danh mục Thuốc & Vật tư y tế (Sprint 4, S4-03; mở rộng Giai đoạn 1 của Kho Thuốc & Vật tư y tế —
  * docs/DECISIONS.md #146, mockup Artifact duyệt qua nhiều vòng). Pill "Thuốc & Vật tư" trong trang
- * `/admin/catalog-pharmacy` (2 pill còn lại: `SupplierPane`/`WarehousePane`).
+ * "Danh mục Thuốc và Vật Tư" (`/admin/catalog-pharmacy`, nay ở nhóm sidebar "Quản lý kho") — pill
+ * còn lại trong cùng trang: `WarehousePane` ("Kho"). `SupplierPane` đã tách sang trang/nhóm menu
+ * riêng "Quản lý nhà cung cấp" (`/suppliers`).
  *
  * Panel chi tiết trượt phải (KHÔNG xổ ngay dưới dòng như bản KiotViet tham khảo — phản hồi trực
  * tiếp: xổ trong bảng đẩy vỡ danh sách). GĐ1 CHƯA có tồn kho (GĐ2-3, chưa xây) nên panel chỉ có
@@ -281,8 +288,12 @@ export function DrugCatalogPane() {
             </div>
             <div className="scroll-hover min-h-0 flex-1 overflow-y-auto px-5 py-4">
               <DetailField label="Đơn vị cơ bản" value={selectedItem.baseUnitCode ? (unitNameByCode.get(selectedItem.baseUnitCode) ?? selectedItem.baseUnitCode) : selectedItem.unit} />
-              <DetailField label="Quy đổi" value={formatUnitChain(selectedItem)} />
-              <DetailField label="Giá bán" value={selectedItem.defaultSellPrice !== null ? `${selectedItem.defaultSellPrice.toLocaleString('vi-VN')} đ` : null} />
+              <DetailField label="Quy đổi" value={formatUnitChain(selectedItem, unitNameByCode)} />
+              {selectedItem.unitPricingEnabled ? (
+                <DetailField label="Giá bán theo đơn vị" value={formatUnitPrices(selectedItem, unitNameByCode)} />
+              ) : (
+                <DetailField label="Giá bán" value={selectedItem.defaultSellPrice !== null ? `${selectedItem.defaultSellPrice.toLocaleString('vi-VN')} đ` : null} />
+              )}
               <DetailField
                 label="Định mức tồn"
                 value={selectedItem.minStockAlert !== null || selectedItem.maxStockAlert !== null ? `${selectedItem.minStockAlert ?? '—'} - ${selectedItem.maxStockAlert ?? '—'}` : null}
@@ -352,18 +363,33 @@ function DetailField({ label, value }: { label: string; value: string | null | u
   );
 }
 
-function formatUnitChain(item: DrugSummary): string | null {
-  if (!item.baseUnitCode || item.units.length === 0) return null;
+/** `unitNameByCode` — bug thật phát hiện lúc chủ dự án dùng thử: bỏ tham số này thì chuỗi hiện
+ * MÃ đơn vị (vd `DV00015`) thay vì tên đã chọn (vd `Hộp`) vì `unitCode` lưu trên `drug_unit` chính
+ * là mã tham chiếu `reference_catalog`, không phải tên hiển thị. */
+function formatUnitChain(item: DrugSummary, unitNameByCode: Map<string, string>): string | null {
+  const baseUnitCode = item.baseUnitCode;
+  if (!baseUnitCode || item.units.length === 0) return null;
+  const label = (code: string) => unitNameByCode.get(code) ?? code;
   const sorted = [...item.units].sort((a, b) => a.sortOrder - b.sortOrder);
-  const levels = computeUnitLevels(
-    item.baseUnitCode,
+  return formatUnitChainSequential(
+    baseUnitCode,
     sorted.map((u) => ({ unitCode: u.unitCode, factorToUnitBelow: u.factorToUnitBelow })),
+    label,
   );
-  return levels
-    .slice()
-    .reverse()
-    .map((l) => `1 ${l.unitCode}${l.factorToBaseUnit > 1 ? ` = ${l.factorToBaseUnit.toLocaleString('vi-VN')} ${item.baseUnitCode}` : ''}`)
-    .join(' · ');
+}
+
+/** Giá bán RIÊNG từng đơn vị (chỉ có ý nghĩa khi `unitPricingEnabled=true`, mở rộng GĐ1 — chủ dự án
+ * yêu cầu trực tiếp: viên/vỉ/hộp có giá lệch tỷ lệ, không suy ra từ giá đơn vị nhỏ nhất). */
+function formatUnitPrices(item: DrugSummary, unitNameByCode: Map<string, string>): string | null {
+  const baseUnitCode = item.baseUnitCode;
+  if (!baseUnitCode || item.defaultSellPrice === null) return null;
+  const label = (code: string) => unitNameByCode.get(code) ?? code;
+  const sorted = [...item.units].sort((a, b) => a.sortOrder - b.sortOrder);
+  const parts = [`${label(baseUnitCode)}: ${item.defaultSellPrice.toLocaleString('vi-VN')} đ`];
+  for (const u of sorted) {
+    if (u.sellPrice !== null && u.sellPrice !== undefined) parts.push(`${label(u.unitCode)}: ${u.sellPrice.toLocaleString('vi-VN')} đ`);
+  }
+  return parts.join(' · ');
 }
 
 function DrugFormModal({
@@ -394,6 +420,7 @@ function DrugFormModal({
     isBatchManaged: boolean;
     baseUnitCode: string;
     defaultSellPrice?: number;
+    unitPricingEnabled: boolean;
     drugGroupCode?: string;
     routeCode?: string;
     nationalCode?: string;
@@ -412,6 +439,9 @@ function DrugFormModal({
   const [isBatchManaged, setIsBatchManaged] = useState(item?.isBatchManaged ?? true);
   const [baseUnitCode, setBaseUnitCode] = useState(item?.baseUnitCode ?? '');
   const [defaultSellPrice, setDefaultSellPrice] = useState<number | undefined>(item?.defaultSellPrice ?? undefined);
+  // "Giá theo từng đơn vị cụ thể" (mở rộng GĐ1, chủ dự án yêu cầu trực tiếp) — mặc định TẮT, giá
+  // mỗi bậc quy đổi suy ra từ defaultSellPrice theo tỷ lệ; bật thì mỗi bậc có giá riêng, bắt buộc.
+  const [unitPricingEnabled, setUnitPricingEnabled] = useState(item?.unitPricingEnabled ?? false);
   const [drugGroupCode, setDrugGroupCode] = useState(item?.drugGroupCode ?? '');
   const [routeCode, setRouteCode] = useState(item?.routeCode ?? '');
   const [nationalCode, setNationalCode] = useState(item?.nationalCode ?? '');
@@ -421,10 +451,19 @@ function DrugFormModal({
   const [ingredients, setIngredients] = useState<FormIngredientRow[]>(
     (item?.ingredients ?? []).map((i) => ({ activeIngredientCode: i.activeIngredientCode, strengthValueDisplay: String(i.strengthValue / 1000), strengthUnitCode: i.strengthUnitCode })),
   );
-  const [units, setUnits] = useState<FormUnitRow[]>((item?.units ?? []).map((u) => ({ unitCode: u.unitCode, factorToUnitBelow: String(u.factorToUnitBelow) })));
+  const [units, setUnits] = useState<FormUnitRow[]>(
+    (item?.units ?? []).map((u) => ({
+      unitCode: u.unitCode,
+      factorToUnitBelow: String(u.factorToUnitBelow),
+      sellPriceDisplay: u.sellPrice !== null && u.sellPrice !== undefined ? String(u.sellPrice) : '',
+    })),
+  );
 
   const { flashVisible, triggerFlash } = useSaveFlash();
-  const isInvalid = code.trim() === '' || name.trim() === '' || baseUnitCode.trim() === '';
+  const validUnitRows = units.filter((r) => r.unitCode && r.factorToUnitBelow.trim() !== '');
+  const missingUnitPricing =
+    unitPricingEnabled && (defaultSellPrice === undefined || validUnitRows.some((r) => r.sellPriceDisplay.trim() === ''));
+  const isInvalid = code.trim() === '' || name.trim() === '' || baseUnitCode.trim() === '' || missingUnitPricing;
 
   function buildDto() {
     return {
@@ -434,6 +473,7 @@ function DrugFormModal({
       isBatchManaged,
       baseUnitCode: baseUnitCode.trim(),
       defaultSellPrice,
+      unitPricingEnabled,
       drugGroupCode: isMedicine ? drugGroupCode.trim() || undefined : undefined,
       routeCode: isMedicine ? routeCode.trim() || undefined : undefined,
       nationalCode: isMedicine ? nationalCode.trim() || undefined : undefined,
@@ -447,7 +487,12 @@ function DrugFormModal({
             strengthUnitCode: r.strengthUnitCode,
           }))
         : [],
-      units: units.filter((r) => r.unitCode && r.factorToUnitBelow.trim() !== '').map((r, i) => ({ unitCode: r.unitCode, sortOrder: i, factorToUnitBelow: Number(r.factorToUnitBelow) })),
+      units: validUnitRows.map((r, i) => ({
+        unitCode: r.unitCode,
+        sortOrder: i,
+        factorToUnitBelow: Number(r.factorToUnitBelow),
+        sellPrice: unitPricingEnabled && r.sellPriceDisplay.trim() !== '' ? Number(r.sellPriceDisplay) : undefined,
+      })),
     };
   }
 
@@ -469,22 +514,27 @@ function DrugFormModal({
     triggerFlash();
   }
 
+  // Bug thật phát hiện lúc chủ dự án dùng thử: `unitCode` là MÃ tham chiếu reference_catalog (vd
+  // `DV00015`), không phải tên hiển thị — phải tra qua `unitOptions`.
+  const unitLabel = (code: string) => unitOptions.find((o) => o.value === code)?.label ?? code;
   const unitChainSummary =
     baseUnitCode && units.length > 0
-      ? computeUnitLevels(
+      ? formatUnitChainSequential(
           baseUnitCode,
           units.filter((r) => r.unitCode && r.factorToUnitBelow.trim() !== '').map((r) => ({ unitCode: r.unitCode, factorToUnitBelow: Number(r.factorToUnitBelow) || 0 })),
+          unitLabel,
         )
-          .slice()
-          .reverse()
-          .map((l) => `1 ${l.unitCode}${l.factorToBaseUnit > 1 ? ` = ${l.factorToBaseUnit.toLocaleString('vi-VN')} ${baseUnitCode}` : ''}`)
-          .join(' · ')
       : null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
       <form className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-xl" onSubmit={handleSubmit}>
-        <ModalHeader icon={isMedicine ? Pill : FirstAidKit} title={mode === 'create' ? `Thêm ${ITEM_TYPE_LABEL[itemType].toLowerCase()}` : `Sửa ${ITEM_TYPE_LABEL[itemType].toLowerCase()}`} onClose={onCancel} />
+        {/* Header CỐ ĐỊNH cần tự có padding riêng — KHÔNG được nằm trong vùng cuộn (đúng khuôn
+            `CashVoucherFormDialog.tsx`/`ExamTypeFormModal.tsx`, bug thật phát hiện lúc chủ dự án
+            dùng thử: thiếu `px-5 pt-5` khiến icon/tiêu đề/nút đóng dính sát mép modal). */}
+        <div className="flex-shrink-0 px-5 pt-5">
+          <ModalHeader icon={isMedicine ? Pill : FirstAidKit} title={mode === 'create' ? `Thêm ${ITEM_TYPE_LABEL[itemType].toLowerCase()}` : `Sửa ${ITEM_TYPE_LABEL[itemType].toLowerCase()}`} onClose={onCancel} />
+        </div>
 
         <div className="scroll-hover min-h-0 flex-1 space-y-6 overflow-y-auto px-5 pb-6 pt-4">
           <SaveFlashBanner visible={flashVisible} />
@@ -613,6 +663,25 @@ function DrugFormModal({
               <p className="mt-1 text-xs text-slate-500">Đơn vị mà tồn kho sẽ được tính khi có module Kho.</p>
             </div>
 
+            {/* "Giá theo từng đơn vị cụ thể" (mở rộng GĐ1, chủ dự án yêu cầu trực tiếp) — mặc định
+                TẮT: giá suy ra theo tỷ lệ quy đổi (hành vi gốc). Bật: mỗi bậc có giá riêng, bắt
+                buộc nhập đủ (xem `missingUnitPricing`). Chưa có `shared/ui/Toggle.tsx` dùng chung
+                — pattern hand-roll này đã lặp 4 lần ở `features/clinic/*ConfigPane.tsx`, đây là
+                lần thứ 5, cân nhắc trích xuất ở lượt sau (không chặn tính năng này). */}
+            <div className="mb-4 flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-4 py-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-800">Giá theo từng đơn vị cụ thể</p>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  Tắt: giá mỗi đơn vị tự suy ra theo tỷ lệ quy đổi từ giá đơn vị nhỏ nhất. Bật: nhập giá riêng cho từng đơn vị (vd giá 1 Viên khác giá quy đổi từ 1 Vỉ/1 Hộp).
+                </p>
+              </div>
+              <label className="relative mt-0.5 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center">
+                <input type="checkbox" className="peer sr-only" checked={unitPricingEnabled} onChange={(e) => setUnitPricingEnabled(e.target.checked)} />
+                <span className="absolute inset-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-blue-600" />
+                <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
+              </label>
+            </div>
+
             <span className="mb-1.5 block text-sm font-semibold text-slate-800">Quy đổi lên đơn vị lớn hơn</span>
             <div className="space-y-2">
               {units.map((row, i) => (
@@ -633,7 +702,19 @@ function DrugFormModal({
                     inputMode="numeric"
                     className="w-20 rounded-lg border border-slate-300 px-2.5 py-2 text-[15px] font-semibold tabular-nums text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   />
-                  <span className="text-sm font-semibold text-slate-700">{i === 0 ? unitOptions.find((o) => o.value === baseUnitCode)?.label ?? baseUnitCode : units[i - 1]?.unitCode}</span>
+                  <span className="text-sm font-semibold text-slate-700">{i === 0 ? unitLabel(baseUnitCode) : unitLabel(units[i - 1]?.unitCode ?? '')}</span>
+                  {unitPricingEnabled && (
+                    <div className="relative ml-2 w-28">
+                      <MoneyInput
+                        id={`unit-price-${i}`}
+                        value={row.sellPriceDisplay === '' ? undefined : Number(row.sellPriceDisplay)}
+                        onChange={(v) => setUnits((rows) => rows.map((r, idx) => (idx === i ? { ...r, sellPriceDisplay: v === undefined ? '' : String(v) } : r)))}
+                        placeholder="Giá bán"
+                        className="w-full rounded-lg border border-slate-300 px-2.5 py-2 pr-6 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                      />
+                      <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-500">đ</span>
+                    </div>
+                  )}
                   <button
                     type="button"
                     aria-label="Xoá bậc quy đổi"
@@ -647,7 +728,7 @@ function DrugFormModal({
             </div>
             <button
               type="button"
-              onClick={() => setUnits((rows) => [...rows, { unitCode: '', factorToUnitBelow: '' }])}
+              onClick={() => setUnits((rows) => [...rows, { unitCode: '', factorToUnitBelow: '', sellPriceDisplay: '' }])}
               className="mt-3 flex items-center gap-1.5 rounded-lg border border-dashed border-blue-400 px-3 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50"
             >
               <Plus size={15} weight="bold" aria-hidden="true" />
@@ -658,13 +739,18 @@ function DrugFormModal({
             <div className="mt-6 grid grid-cols-1 gap-x-3 gap-y-3 sm:grid-cols-3">
               <div>
                 <label htmlFor="drug-price" className="mb-1.5 block text-sm font-semibold text-slate-800">
-                  Giá bán mặc định
+                  {/* Đổi nhãn theo trạng thái công tắc — "mặc định" gây hiểu lầm khi bật (chủ dự án
+                      phản hồi trực tiếp): lúc đó đây KHÔNG còn là giá gốc để suy ra giá khác, mà là
+                      giá RIÊNG của đúng 1 đơn vị (đơn vị nhỏ nhất), ngang hàng Vỉ/Hộp. */}
+                  {unitPricingEnabled ? `Giá bán (${baseUnitCode ? unitLabel(baseUnitCode) : 'đơn vị nhỏ nhất'})` : 'Giá bán mặc định'}
                 </label>
                 <div className="relative">
                   <MoneyInput id="drug-price" value={defaultSellPrice} onChange={setDefaultSellPrice} className={`${inputClassName} pr-9`} />
                   <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-500">đ</span>
                 </div>
-                <p className="mt-1 text-xs text-slate-500">Theo đơn vị nhỏ nhất.</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  {unitPricingEnabled ? 'Giá riêng của đúng đơn vị này, không suy ra từ đâu khác — bắt buộc.' : 'Theo đơn vị nhỏ nhất.'}
+                </p>
               </div>
               <div>
                 <label htmlFor="drug-min-stock" className="mb-1.5 block text-sm font-semibold text-slate-800">

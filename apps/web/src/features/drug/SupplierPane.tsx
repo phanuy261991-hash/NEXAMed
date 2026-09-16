@@ -23,8 +23,9 @@ interface ModalState {
   item?: SupplierSummary;
 }
 
-/** Nhà cung cấp (Kho Thuốc & Vật tư y tế GĐ1, docs/DECISIONS.md #146) — pill con của "Danh mục
- * Thuốc & Vật tư". Mã tự sinh (tiền tố NCC) — không có ô nhập mã, đúng khuôn `WorkShiftPane`. */
+/** Nhà cung cấp (Kho Thuốc & Vật tư y tế GĐ1, docs/DECISIONS.md #146) — nay được dùng ở trang riêng
+ * `SupplierManagementPage.tsx` (nhóm sidebar "Quản lý nhà cung cấp", tách khỏi "Danh mục Thuốc và
+ * Vật Tư"). Mã tự sinh (tiền tố NCC) — không có ô nhập mã, đúng khuôn `WorkShiftPane`. */
 export function SupplierPane() {
   const canManage = useHasPermission('drug', 'manage');
   const [includeInactive, setIncludeInactive] = useState(false);

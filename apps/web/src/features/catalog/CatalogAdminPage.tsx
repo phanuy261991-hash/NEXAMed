@@ -28,11 +28,6 @@ const PILLS: ConfigScreenPill[] = [
   // Chuẩn bị cho chức năng "Thu chi tại quầy"/Sổ quỹ sắp làm (chủ dự án yêu cầu trực tiếp
   // 2026-09-05) — CHỈ danh mục, chức năng thu chi thật chưa xây.
   { key: 'income-expense-type', label: 'Loại thu chi' },
-  // Kho Thuốc & Vật tư y tế Giai đoạn 1 (docs/DECISIONS.md #146) — tái dùng nguyên trang này thay
-  // vì tạo bảng riêng, cùng lý do UNIT/PAYMENT_METHOD ở trên.
-  { key: 'active-ingredient', label: 'Hoạt chất' },
-  { key: 'drug-group', label: 'Nhóm thuốc' },
-  { key: 'drug-route', label: 'Đường dùng' },
 ];
 const FIRST_PILL = PILLS[0]!;
 
@@ -73,10 +68,6 @@ export function CatalogAdminPage() {
       {activePillKey === 'price-type' && <ReferenceCatalogPane category="PRICE_TYPE" categoryLabel="Loại giá dịch vụ" />}
       {activePillKey === 'unit' && <ReferenceCatalogPane category="UNIT" categoryLabel="Đơn vị tính" />}
       {activePillKey === 'payment-method' && <ReferenceCatalogPane category="PAYMENT_METHOD" categoryLabel="Hình thức thanh toán" />}
-      {activePillKey === 'income-expense-type' && <ReferenceCatalogPane category="INCOME_EXPENSE_TYPE" categoryLabel="Loại thu chi" />}
-      {activePillKey === 'active-ingredient' && <ReferenceCatalogPane category="ACTIVE_INGREDIENT" categoryLabel="Hoạt chất" />}
-      {activePillKey === 'drug-group' && <ReferenceCatalogPane category="DRUG_GROUP" categoryLabel="Nhóm thuốc" />}
-      {activePillKey === 'drug-route' && <ReferenceCatalogPane category="DRUG_ROUTE" categoryLabel="Đường dùng" />}
       {activePillKey === 'province' && <GeoPane mode="province" />}
       {activePillKey === 'ward' && <GeoPane mode="ward" />}
     </ConfigScreenShell>

@@ -45,7 +45,15 @@ describe('HTTP e2e — /api/v1/drugs', () => {
 
   async function createDrug(
     token: string,
-    overrides: Partial<{ code: string; name: string; itemType: 'MEDICINE' | 'SUPPLY'; ingredients: unknown[]; units: unknown[] }> = {},
+    overrides: Partial<{
+      code: string;
+      name: string;
+      itemType: 'MEDICINE' | 'SUPPLY';
+      ingredients: unknown[];
+      units: unknown[];
+      defaultSellPrice: number;
+      unitPricingEnabled: boolean;
+    }> = {},
   ) {
     const res = await request(app.getHttpServer())
       .post('/api/v1/drugs')
@@ -60,6 +68,8 @@ describe('HTTP e2e — /api/v1/drugs', () => {
         concentration: '500mg',
         ingredients: overrides.ingredients ?? [],
         units: overrides.units ?? [],
+        ...(overrides.defaultSellPrice !== undefined ? { defaultSellPrice: overrides.defaultSellPrice } : {}),
+        ...(overrides.unitPricingEnabled !== undefined ? { unitPricingEnabled: overrides.unitPricingEnabled } : {}),
       });
     return res;
   }
@@ -191,6 +201,58 @@ describe('HTTP e2e — /api/v1/drugs', () => {
     expect(res.body.data.ingredients).toHaveLength(2);
     expect(res.body.data.units).toHaveLength(2);
     expect(res.body.data.units.map((u: { unitCode: string }) => u.unitCode)).toEqual(['Vỉ', 'Hộp']);
+    expect(res.body.data.unitPricingEnabled).toBe(false);
+  });
+
+  it('Giá theo từng đơn vị — mặc định TẮT, không bắt buộc giá riêng từng bậc', async () => {
+    const res = await createDrug(clinicAdminToken, {
+      name: 'Amoxicillin GĐ1',
+      defaultSellPrice: 2000,
+      units: [{ unitCode: 'Vỉ', sortOrder: 0, factorToUnitBelow: 10 }],
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.data.unitPricingEnabled).toBe(false);
+    expect(res.body.data.units[0].sellPrice).toBeNull();
+  });
+
+  it('Giá theo từng đơn vị — bật nhưng thiếu giá đơn vị nhỏ nhất → 400', async () => {
+    const res = await createDrug(clinicAdminToken, {
+      name: 'Cefixim GĐ1',
+      unitPricingEnabled: true,
+      units: [{ unitCode: 'Vỉ', sortOrder: 0, factorToUnitBelow: 10, sellPrice: 9000 }],
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('Giá theo từng đơn vị — bật nhưng thiếu giá 1 bậc quy đổi → 400', async () => {
+    const res = await createDrug(clinicAdminToken, {
+      name: 'Cefixim GĐ1b',
+      unitPricingEnabled: true,
+      defaultSellPrice: 500,
+      units: [
+        { unitCode: 'Vỉ', sortOrder: 0, factorToUnitBelow: 10, sellPrice: 9000 },
+        { unitCode: 'Hộp', sortOrder: 1, factorToUnitBelow: 10 },
+      ],
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('Giá theo từng đơn vị — bật + đủ giá mọi bậc → 200, đọc lại đúng giá riêng từng đơn vị', async () => {
+    const res = await createDrug(clinicAdminToken, {
+      name: 'Cefixim GĐ1c',
+      unitPricingEnabled: true,
+      defaultSellPrice: 500,
+      units: [
+        { unitCode: 'Vỉ', sortOrder: 0, factorToUnitBelow: 10, sellPrice: 9000 },
+        { unitCode: 'Hộp', sortOrder: 1, factorToUnitBelow: 10, sellPrice: 85000 },
+      ],
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.data.unitPricingEnabled).toBe(true);
+    expect(res.body.data.defaultSellPrice).toBe(500);
+    const byUnit = Object.fromEntries(res.body.data.units.map((u: { unitCode: string; sellPrice: number }) => [u.unitCode, u.sellPrice]));
+    expect(byUnit['Vỉ']).toBe(9000);
+    expect(byUnit['Hộp']).toBe(85000);
   });
 
   it('GĐ1 — sửa thuốc thay TOÀN BỘ hoạt chất (bulk-replace, không cộng dồn)', async () => {

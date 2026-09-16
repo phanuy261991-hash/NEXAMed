@@ -17,9 +17,11 @@ import {
   SidebarSimple,
   SlidersHorizontal,
   Stethoscope,
+  Truck,
   UserPlus,
   Users,
   Vault,
+  Warehouse,
   BookOpen,
   ChartLine,
   Wallet,
@@ -65,11 +67,28 @@ const BILLING_GROUP_PATHS = ['/billing'];
 const CASH_BOOK_GROUP_PATHS = ['/cash-book'];
 /** Đường dẫn thuộc nhóm "Lịch làm việc" (Giai đoạn 2 #101). */
 const WORK_SCHEDULE_GROUP_PATHS = ['/work-schedule'];
+/** Đường dẫn thuộc nhóm "Quản lý kho" (Kho Thuốc & Vật tư y tế GĐ1, docs/DECISIONS.md #146) — tách
+ * "Danh mục Thuốc và Vật Tư" khỏi "Quản trị" theo yêu cầu chủ dự án, đặt ngay dưới "Sổ quỹ & Thu
+ * chi". Route GIỮ NGUYÊN `/admin/catalog-pharmacy` (không đổi permission/route, chỉ đổi vị trí
+ * hiển thị trong sidebar — cùng cách đã làm với "Hồ sơ Bệnh nhân"/`PATIENT_RECORDS_GROUP_PATHS`). */
+const WAREHOUSE_GROUP_PATHS = ['/admin/catalog-pharmacy'];
+/** Đường dẫn thuộc nhóm "Quản lý nhà cung cấp" — tách "Nhà cung cấp" khỏi pill con của "Danh mục
+ * Thuốc và Vật Tư" thành trang/nhóm menu riêng (route mới `/suppliers`, cùng quyền `drug.manage`). */
+const SUPPLIER_GROUP_PATHS = ['/suppliers'];
 /** Đường dẫn thuộc nhóm "Quản trị" — có 2 mục con thật (Danh mục dùng chung, Cấu hình hệ thống) và
  * 4 mục "Sắp ra mắt" đặt chỗ theo yêu cầu chủ dự án (docs/DECISIONS.md #046, ComingSoonPage — vẫn
  * KHÔNG viết logic/schema nghiệp vụ, không mở rộng phạm vi v1). Thêm ADM-01/03 vào đây khi có UI
- * thật. */
-const ADMIN_GROUP_PATHS = ['/admin'];
+ * thật. Danh sách CHÍNH XÁC (không phải tiền tố `/admin`) — `/admin/catalog-pharmacy` đã tách sang
+ * "Quản lý kho" ở trên, và so khớp tiền tố đơn giản sẽ khớp nhầm (`/admin/catalog-pharmacy` bắt
+ * đầu bằng `/admin/catalog`). */
+const ADMIN_GROUP_PATHS = [
+  '/admin/catalog',
+  '/admin/catalog-organization',
+  '/admin/catalog-clinical',
+  '/admin/catalog-paraclinical',
+  '/admin/system-config',
+  '/admin/activity-log',
+];
 
 interface NavItemProps {
   to: string;
@@ -132,13 +151,20 @@ export function Sidebar() {
     PATIENT_RECORDS_GROUP_PATHS.some((path) => location.pathname.startsWith(path)),
   );
   const [adminGroupOpen, setAdminGroupOpen] = useState(
-    ADMIN_GROUP_PATHS.some((path) => location.pathname.startsWith(path)),
+    // So khớp CHÍNH XÁC (không phải tiền tố) — xem comment ở khai báo ADMIN_GROUP_PATHS.
+    ADMIN_GROUP_PATHS.includes(location.pathname),
   );
   const [billingGroupOpen, setBillingGroupOpen] = useState(
     BILLING_GROUP_PATHS.some((path) => location.pathname.startsWith(path)),
   );
   const [cashBookGroupOpen, setCashBookGroupOpen] = useState(
     CASH_BOOK_GROUP_PATHS.some((path) => location.pathname.startsWith(path)),
+  );
+  const [warehouseGroupOpen, setWarehouseGroupOpen] = useState(
+    WAREHOUSE_GROUP_PATHS.some((path) => location.pathname.startsWith(path)),
+  );
+  const [supplierGroupOpen, setSupplierGroupOpen] = useState(
+    SUPPLIER_GROUP_PATHS.some((path) => location.pathname.startsWith(path)),
   );
   const [workScheduleGroupOpen, setWorkScheduleGroupOpen] = useState(
     WORK_SCHEDULE_GROUP_PATHS.some((path) => location.pathname.startsWith(path)),
@@ -179,6 +205,8 @@ export function Sidebar() {
   const adminGroupExpanded = adminGroupOpen && !collapsed;
   const billingGroupExpanded = billingGroupOpen && !collapsed;
   const cashBookGroupExpanded = cashBookGroupOpen && !collapsed;
+  const warehouseGroupExpanded = warehouseGroupOpen && !collapsed;
+  const supplierGroupExpanded = supplierGroupOpen && !collapsed;
   const workScheduleGroupExpanded = workScheduleGroupOpen && !collapsed;
 
   return (
@@ -413,6 +441,88 @@ export function Sidebar() {
             </li>
           )}
 
+          {/* "Quản lý kho" (Kho Thuốc & Vật tư y tế GĐ1, docs/DECISIONS.md #146) — tách khỏi
+              "Quản trị" theo yêu cầu chủ dự án, route giữ nguyên /admin/catalog-pharmacy. */}
+          {canSeeCatalogPharmacy && (
+            <li>
+              <button
+                type="button"
+                title={collapsed ? 'Quản lý kho' : undefined}
+                onClick={() => {
+                  if (collapsed) {
+                    setCollapsed(false);
+                    setWarehouseGroupOpen(true);
+                  } else {
+                    setWarehouseGroupOpen((v) => !v);
+                  }
+                }}
+                aria-expanded={warehouseGroupExpanded}
+                className={`flex w-full items-center gap-3 rounded-md py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800/60 hover:text-white ${
+                  collapsed ? 'justify-center px-2' : 'px-3'
+                }`}
+              >
+                <Warehouse size={collapsed ? 20 : 18} weight="regular" aria-hidden="true" className="flex-shrink-0" />
+                {!collapsed && (
+                  <>
+                    <span className="truncate text-left">Quản lý kho</span>
+                    <CaretRight
+                      size={13}
+                      weight="bold"
+                      aria-hidden="true"
+                      className={`ml-auto flex-shrink-0 transition-transform ${warehouseGroupExpanded ? 'rotate-90' : ''}`}
+                    />
+                  </>
+                )}
+              </button>
+              {warehouseGroupExpanded && (
+                <ul className="mt-0.5 flex flex-col gap-0.5 border-l border-slate-800 pl-3.5">
+                  <NavItem to="/admin/catalog-pharmacy" label="Danh mục Thuốc và Vật Tư" icon={Pill} collapsed={false} indent />
+                </ul>
+              )}
+            </li>
+          )}
+
+          {/* "Quản lý nhà cung cấp" — tách "Nhà cung cấp" khỏi pill con của "Danh mục Thuốc và Vật
+              Tư" thành trang/nhóm menu riêng theo yêu cầu chủ dự án, đặt ngay dưới "Quản lý kho". */}
+          {canSeeCatalogPharmacy && (
+            <li>
+              <button
+                type="button"
+                title={collapsed ? 'Quản lý nhà cung cấp' : undefined}
+                onClick={() => {
+                  if (collapsed) {
+                    setCollapsed(false);
+                    setSupplierGroupOpen(true);
+                  } else {
+                    setSupplierGroupOpen((v) => !v);
+                  }
+                }}
+                aria-expanded={supplierGroupExpanded}
+                className={`flex w-full items-center gap-3 rounded-md py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800/60 hover:text-white ${
+                  collapsed ? 'justify-center px-2' : 'px-3'
+                }`}
+              >
+                <Truck size={collapsed ? 20 : 18} weight="regular" aria-hidden="true" className="flex-shrink-0" />
+                {!collapsed && (
+                  <>
+                    <span className="truncate text-left">Quản lý nhà cung cấp</span>
+                    <CaretRight
+                      size={13}
+                      weight="bold"
+                      aria-hidden="true"
+                      className={`ml-auto flex-shrink-0 transition-transform ${supplierGroupExpanded ? 'rotate-90' : ''}`}
+                    />
+                  </>
+                )}
+              </button>
+              {supplierGroupExpanded && (
+                <ul className="mt-0.5 flex flex-col gap-0.5 border-l border-slate-800 pl-3.5">
+                  <NavItem to="/suppliers" label="Nhà cung cấp" icon={Truck} collapsed={false} indent />
+                </ul>
+              )}
+            </li>
+          )}
+
           {canSeeWorkSchedule && (
             <li>
               <button
@@ -499,8 +609,6 @@ export function Sidebar() {
                   {canSeeCatalogParaclinical && (
                     <NavItem to="/admin/catalog-paraclinical" label="Danh mục cận lâm sàng" icon={Flask} collapsed={false} indent />
                   )}
-                  {/* Đổi nhãn "Danh mục thuốc" → "Danh mục Thuốc & Vật tư" (Kho Thuốc & Vật tư y tế GĐ1, docs/DECISIONS.md #146) — mở rộng quản lý cả Vật tư y tế/Nhà cung cấp/Kho. */}
-                  {canSeeCatalogPharmacy && <NavItem to="/admin/catalog-pharmacy" label="Danh mục Thuốc & Vật tư" icon={Pill} collapsed={false} indent />}
                   {canSeeSystemConfig && <NavItem to="/admin/system-config" label="Cấu hình hệ thống" icon={SlidersHorizontal} collapsed={false} indent />}
                   {canSeeActivityLog && <NavItem to="/admin/activity-log" label="Nhật ký hoạt động" icon={ClockCounterClockwise} collapsed={false} indent />}
                 </ul>

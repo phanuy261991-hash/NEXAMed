@@ -19,6 +19,7 @@ export class DrugUnitRepository {
           unitCode: item.unitCode,
           sortOrder: item.sortOrder,
           factorToUnitBelow: item.factorToUnitBelow,
+          sellPrice: item.sellPrice === undefined || item.sellPrice === null ? null : BigInt(item.sellPrice),
           createdBy: actorId,
           updatedBy: actorId,
         })),

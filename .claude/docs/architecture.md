@@ -24,12 +24,13 @@ Tên module trùng nhau giữa web và api.
 | `reception` | Tiếp nhận/check-in, tạo encounter, sinh hiệu ban đầu |
 | `encounter` | Lượt khám: state machine, chẩn đoán ICD-10, ghi chú lâm sàng |
 | `prescription` | Kê đơn thuốc, ký đơn, in đơn |
+| `drug` | Danh mục Thuốc & Vật tư y tế (`drug`/`drug_unit`/`drug_ingredient`), Nhà cung cấp (`supplier`), Kho (`warehouse`) — Kho Thuốc & Vật tư y tế GĐ1, mở rộng phạm vi v1 (`docs/DECISIONS.md` #146/#148). Không tạo module `pharmacy` riêng — mở rộng module này qua từng giai đoạn (GĐ2 nhập kho & tồn theo lô, GĐ3 xuất kho + FEFO + tiền thuốc, GĐ4 kiểm kê/báo cáo, GĐ5 trải nghiệm kê đơn — chưa xây) |
 | `iam` | Tài khoản, vai trò, phiên đăng nhập, audit log |
 | `clinic` | Tenant, cấu hình phòng khám, phòng, danh mục nội bộ |
 | `reference-catalog` | Danh mục dùng chung toàn hệ thống (Dân tộc, Quốc tịch — không tenant_id, khác "danh mục nội bộ" của `clinic`), quản lý được qua API bởi `clinic_admin` (`docs/DECISIONS.md` #037) |
 | `billing` | Thu ngân cơ bản (Sprint 5/6, BIL-01→04, `docs/DECISIONS.md` #072/#084) — phiếu thu (`invoice`/`invoice_line`/`payment`), tự động tạo lúc tiếp nhận, đánh dấu đã thu/chưa thu, tổng kết cuối ngày. KHÔNG phải "Price Book"/công nợ/BHYT — xem `CLAUDE.md` ranh giới v1 |
 
-**Ngoài v1 (không tạo module, không viết code):** `pharmacy`, `insurance`, `report`.
+**Ngoài v1 (không tạo module, không viết code):** `insurance`, `report`.
 
 ## Tầng trong API (bắt buộc theo thứ tự)
 

@@ -10000,6 +10000,7 @@ export interface paths {
                                     isBatchManaged: boolean;
                                     baseUnitCode: string | null;
                                     defaultSellPrice: number | null;
+                                    unitPricingEnabled: boolean;
                                     drugGroupCode: string | null;
                                     routeCode: string | null;
                                     nationalCode: string | null;
@@ -10018,6 +10019,7 @@ export interface paths {
                                         unitCode: string;
                                         sortOrder: number;
                                         factorToUnitBelow: number;
+                                        sellPrice?: number | null;
                                     } & {
                                         /** Format: uuid */
                                         id: string;
@@ -10085,6 +10087,8 @@ export interface paths {
                         isBatchManaged?: boolean;
                         baseUnitCode: string;
                         defaultSellPrice?: number;
+                        /** @default false */
+                        unitPricingEnabled?: boolean;
                         drugGroupCode?: string;
                         routeCode?: string;
                         nationalCode?: string;
@@ -10102,6 +10106,7 @@ export interface paths {
                             unitCode: string;
                             sortOrder: number;
                             factorToUnitBelow: number;
+                            sellPrice?: number | null;
                         }[];
                         activeIngredient?: string;
                         unit?: string;
@@ -10127,6 +10132,7 @@ export interface paths {
                                 isBatchManaged: boolean;
                                 baseUnitCode: string | null;
                                 defaultSellPrice: number | null;
+                                unitPricingEnabled: boolean;
                                 drugGroupCode: string | null;
                                 routeCode: string | null;
                                 nationalCode: string | null;
@@ -10145,6 +10151,7 @@ export interface paths {
                                     unitCode: string;
                                     sortOrder: number;
                                     factorToUnitBelow: number;
+                                    sellPrice?: number | null;
                                 } & {
                                     /** Format: uuid */
                                     id: string;
@@ -10245,6 +10252,7 @@ export interface paths {
                         isBatchManaged?: boolean;
                         baseUnitCode?: string | null;
                         defaultSellPrice?: number | null;
+                        unitPricingEnabled?: boolean;
                         drugGroupCode?: string | null;
                         routeCode?: string | null;
                         nationalCode?: string | null;
@@ -10260,6 +10268,7 @@ export interface paths {
                             unitCode: string;
                             sortOrder: number;
                             factorToUnitBelow: number;
+                            sellPrice?: number | null;
                         }[];
                         activeIngredient?: string | null;
                         unit?: string | null;
@@ -10287,6 +10296,7 @@ export interface paths {
                                 isBatchManaged: boolean;
                                 baseUnitCode: string | null;
                                 defaultSellPrice: number | null;
+                                unitPricingEnabled: boolean;
                                 drugGroupCode: string | null;
                                 routeCode: string | null;
                                 nationalCode: string | null;
@@ -10305,6 +10315,7 @@ export interface paths {
                                     unitCode: string;
                                     sortOrder: number;
                                     factorToUnitBelow: number;
+                                    sellPrice?: number | null;
                                 } & {
                                     /** Format: uuid */
                                     id: string;
