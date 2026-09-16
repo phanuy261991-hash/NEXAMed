@@ -22,8 +22,17 @@ export const ADMIN_ANY_PERMISSIONS: ReadonlyArray<readonly [string, string]> = [
   ['reference_catalog', 'manage'],
   ['user_account', 'manage'],
   ['role_permission', 'manage'],
-  ['drug', 'manage'],
+  ['drug', 'create'],
+  ['drug', 'update'],
   ['allergen_catalog', 'manage'],
   ['clinic_config', 'update'],
   ['audit_log', 'read'],
+];
+
+/** "Danh mục Thuốc và Vật Tư"/"Quản lý nhà cung cấp"/"Kho" — trước gộp `drug.manage`, tách thành
+ * `create`/`update` (docs/DECISIONS.md #156). Dùng chung cho route guard (`router.tsx`) và ẩn/hiện
+ * menu (`Sidebar.tsx`), tránh lặp mảng ở 2 nơi như comment đầu file đã nêu. */
+export const DRUG_MANAGE_PERMISSIONS: ReadonlyArray<readonly [string, string]> = [
+  ['drug', 'create'],
+  ['drug', 'update'],
 ];

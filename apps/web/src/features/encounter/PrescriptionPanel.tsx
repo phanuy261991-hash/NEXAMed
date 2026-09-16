@@ -4,7 +4,10 @@ import type { PrescriptionItem, PrescriptionResponse } from '@nexamed/shared';
 import { useAuthStore } from '../auth/auth.store';
 import { useClinicPrintHeaderQuery } from '../clinic/clinic.queries';
 import { Button } from '../../shared/ui/Button';
+import { Combobox } from '../../shared/ui/Combobox';
 import { EmptyState } from '../../shared/ui/EmptyState';
+import { appendSentence } from '../../shared/format/append-sentence';
+import { useCreateReferenceCatalogItemMutation, useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { DrugPicker } from './DrugPicker';
 import { PrescriptionPrintView } from './PrescriptionPrintView';
 import {
@@ -71,6 +74,16 @@ export function PrescriptionPanel({
 }) {
   const doctorName = useAuthStore((s) => s.user?.displayName ?? s.user?.fullName) ?? '';
   const clinicQuery = useClinicPrintHeaderQuery();
+  // "Thời điểm dùng thuốc" (docs/DECISIONS.md #155) — chỉ gợi ý ghép câu vào ô "Hướng dẫn dùng"
+  // của từng dòng thuốc, không phải trường lưu riêng trên `prescription_item`.
+  const usageTimingQuery = useReferenceCatalogQuery('DRUG_USAGE_TIMING');
+  const createUsageTimingMutation = useCreateReferenceCatalogItemMutation('DRUG_USAGE_TIMING');
+  const usageTimingOptions = (usageTimingQuery.data?.items ?? []).map((i) => ({ value: i.code, label: i.name }));
+  async function onCreateUsageTimingOption(name: string) {
+    const created = await createUsageTimingMutation.mutateAsync({ category: 'DRUG_USAGE_TIMING', name, sortOrder: 0 });
+    return { value: created.code, label: created.name };
+  }
+  const usageTimingSentenceByCode = new Map((usageTimingQuery.data?.items ?? []).map((i) => [i.code, i.description ?? i.fullName ?? i.name]));
 
   const saveMutation = useSavePrescriptionItemsMutation(encounterId);
   const signMutation = useSignPrescriptionMutation(encounterId);
@@ -217,8 +230,38 @@ export function PrescriptionPanel({
                       <LineInput label="Số ngày" type="number" value={line.durationDays} onBlurCommit={(v) => persistDraft(draftLines.map((l) => (l.drugId === line.drugId ? { ...l, durationDays: v } : l)))} onChange={(v) => updateLine(line.drugId, { durationDays: v })} disabled={!canEdit} />
                       <LineInput label="Số lượng" type="number" value={line.quantity} onBlurCommit={(v) => persistDraft(draftLines.map((l) => (l.drugId === line.drugId ? { ...l, quantity: v } : l)))} onChange={(v) => updateLine(line.drugId, { quantity: v })} disabled={!canEdit} />
                     </div>
-                    <div className="mt-2">
-                      <LineInput label="Hướng dẫn dùng" value={line.instruction} onBlurCommit={(v) => persistDraft(draftLines.map((l) => (l.drugId === line.drugId ? { ...l, instruction: v } : l)))} onChange={(v) => updateLine(line.drugId, { instruction: v })} disabled={!canEdit} />
+                    <div className="mt-2 flex items-end gap-2">
+                      <div className="flex-1">
+                        <LineInput
+                          label="Hướng dẫn dùng"
+                          value={line.instruction}
+                          onBlurCommit={(v) => persistDraft(draftLines.map((l) => (l.drugId === line.drugId ? { ...l, instruction: v } : l)))}
+                          onChange={(v) => updateLine(line.drugId, { instruction: v })}
+                          disabled={!canEdit}
+                        />
+                      </div>
+                      {canEdit && (
+                        <div className="w-40">
+                          <label className="flex flex-col gap-0.5 text-xs font-semibold text-slate-600">
+                            Gợi ý thời điểm
+                            <Combobox
+                              id={`usage-timing-suggest-${line.drugId}`}
+                              value=""
+                              onChange={(code) => {
+                                const sentence = usageTimingSentenceByCode.get(code);
+                                if (!sentence) return;
+                                const nextInstruction = appendSentence(line.instruction, sentence);
+                                updateLine(line.drugId, { instruction: nextInstruction });
+                                persistDraft(draftLines.map((l) => (l.drugId === line.drugId ? { ...l, instruction: nextInstruction } : l)));
+                              }}
+                              options={usageTimingOptions}
+                              allowCreate
+                              onCreateOption={onCreateUsageTimingOption}
+                              placeholder="Chọn để chèn..."
+                            />
+                          </label>
+                        </div>
+                      )}
                     </div>
                   </div>
                   {canEdit && (

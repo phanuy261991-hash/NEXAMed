@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react';
 import { PencilSimple, Plus, Truck } from '@phosphor-icons/react';
 import type { SupplierSummary } from '@nexamed/shared';
-import { useHasPermission } from '../auth/usePermission';
+import { useHasAnyPermission } from '../auth/usePermission';
+import { DRUG_MANAGE_PERMISSIONS } from '../auth/admin-permissions';
 import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
@@ -27,7 +28,7 @@ interface ModalState {
  * `SupplierManagementPage.tsx` (nhóm sidebar "Quản lý nhà cung cấp", tách khỏi "Danh mục Thuốc và
  * Vật Tư"). Mã tự sinh (tiền tố NCC) — không có ô nhập mã, đúng khuôn `WorkShiftPane`. */
 export function SupplierPane() {
-  const canManage = useHasPermission('drug', 'manage');
+  const canManage = useHasAnyPermission(DRUG_MANAGE_PERMISSIONS);
   const [includeInactive, setIncludeInactive] = useState(false);
   const [modal, setModal] = useState<ModalState | null>(null);
 

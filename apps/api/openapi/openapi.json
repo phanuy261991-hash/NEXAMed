@@ -25452,7 +25452,7 @@
             }
           },
           "403": {
-            "description": "Không có quyền drug.manage",
+            "description": "Không có quyền drug.create",
             "content": {
               "application/json": {
                 "schema": {
@@ -26594,7 +26594,7 @@
             }
           },
           "403": {
-            "description": "Không có quyền drug.manage",
+            "description": "Không có quyền drug.update",
             "content": {
               "application/json": {
                 "schema": {
@@ -26843,7 +26843,7 @@
             }
           },
           "403": {
-            "description": "Không có quyền drug.manage",
+            "description": "Không có quyền drug.create",
             "content": {
               "application/json": {
                 "schema": {
@@ -27236,7 +27236,7 @@
             }
           },
           "403": {
-            "description": "Không có quyền drug.manage",
+            "description": "Không có quyền drug.update",
             "content": {
               "application/json": {
                 "schema": {
@@ -27467,7 +27467,7 @@
             }
           },
           "403": {
-            "description": "Không có quyền drug.manage",
+            "description": "Không có quyền drug.create",
             "content": {
               "application/json": {
                 "schema": {
@@ -27810,7 +27810,7 @@
             }
           },
           "403": {
-            "description": "Không có quyền drug.manage",
+            "description": "Không có quyền drug.update",
             "content": {
               "application/json": {
                 "schema": {
@@ -32784,7 +32784,8 @@
                 "STORAGE_CONDITION",
                 "MANUFACTURER",
                 "COUNTRY_OF_ORIGIN",
-                "STORAGE_LOCATION"
+                "STORAGE_LOCATION",
+                "DRUG_USAGE_TIMING"
               ]
             },
             "required": true,
@@ -32850,7 +32851,8 @@
                                   "STORAGE_CONDITION",
                                   "MANUFACTURER",
                                   "COUNTRY_OF_ORIGIN",
-                                  "STORAGE_LOCATION"
+                                  "STORAGE_LOCATION",
+                                  "DRUG_USAGE_TIMING"
                                 ]
                               },
                               "code": {
@@ -33138,7 +33140,8 @@
                       "STORAGE_CONDITION",
                       "MANUFACTURER",
                       "COUNTRY_OF_ORIGIN",
-                      "STORAGE_LOCATION"
+                      "STORAGE_LOCATION",
+                      "DRUG_USAGE_TIMING"
                     ]
                   },
                   "code": {
@@ -33265,7 +33268,8 @@
                             "STORAGE_CONDITION",
                             "MANUFACTURER",
                             "COUNTRY_OF_ORIGIN",
-                            "STORAGE_LOCATION"
+                            "STORAGE_LOCATION",
+                            "DRUG_USAGE_TIMING"
                           ]
                         },
                         "code": {
@@ -33651,7 +33655,8 @@
                             "STORAGE_CONDITION",
                             "MANUFACTURER",
                             "COUNTRY_OF_ORIGIN",
-                            "STORAGE_LOCATION"
+                            "STORAGE_LOCATION",
+                            "DRUG_USAGE_TIMING"
                           ]
                         },
                         "code": {
@@ -33982,7 +33987,8 @@
                             "STORAGE_CONDITION",
                             "MANUFACTURER",
                             "COUNTRY_OF_ORIGIN",
-                            "STORAGE_LOCATION"
+                            "STORAGE_LOCATION",
+                            "DRUG_USAGE_TIMING"
                           ]
                         },
                         "code": {
@@ -34284,7 +34290,8 @@
                             "STORAGE_CONDITION",
                             "MANUFACTURER",
                             "COUNTRY_OF_ORIGIN",
-                            "STORAGE_LOCATION"
+                            "STORAGE_LOCATION",
+                            "DRUG_USAGE_TIMING"
                           ]
                         },
                         "code": {

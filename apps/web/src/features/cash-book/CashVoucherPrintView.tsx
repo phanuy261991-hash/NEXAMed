@@ -47,20 +47,20 @@ export function CashVoucherPrintView({
 
         <div className="mt-5 space-y-1.5 text-sm text-slate-700">
           <p>
-            <span className="text-slate-400">{isIncome ? 'Người nộp tiền:' : 'Người nhận tiền:'}</span>{' '}
+            <span className="text-slate-500">{isIncome ? 'Người nộp tiền:' : 'Người nhận tiền:'}</span>{' '}
             <strong className="text-slate-900">{voucher.partnerName ?? '—'}</strong>
           </p>
           <p>
-            <span className="text-slate-400">Lý do {isIncome ? 'thu' : 'chi'}:</span> <strong className="text-slate-900">{voucher.description}</strong>
+            <span className="text-slate-500">Lý do {isIncome ? 'thu' : 'chi'}:</span> <strong className="text-slate-900">{voucher.description}</strong>
           </p>
           <p>
-            <span className="text-slate-400">Loại thu chi:</span> <strong className="text-slate-900">{incomeExpenseTypeLabel}</strong>
+            <span className="text-slate-500">Loại thu chi:</span> <strong className="text-slate-900">{incomeExpenseTypeLabel}</strong>
           </p>
           <p>
-            <span className="text-slate-400">Hình thức:</span> <strong className="text-slate-900">{paymentMethodLabel}</strong>
+            <span className="text-slate-500">Hình thức:</span> <strong className="text-slate-900">{paymentMethodLabel}</strong>
           </p>
           <p>
-            <span className="text-slate-400">Quỹ:</span> <strong className="text-slate-900">{cashAccountName}</strong>
+            <span className="text-slate-500">Quỹ:</span> <strong className="text-slate-900">{cashAccountName}</strong>
           </p>
         </div>
 
@@ -82,7 +82,7 @@ export function CashVoucherPrintView({
           </div>
           <div>
             <p className="font-semibold">{isIncome ? 'Người nộp tiền' : 'Người nhận tiền'}</p>
-            <p className="mt-14 text-xs text-slate-400">(Ký, ghi rõ họ tên)</p>
+            <p className="mt-14 text-xs text-slate-500">(Ký, ghi rõ họ tên)</p>
           </div>
         </div>
       </div>

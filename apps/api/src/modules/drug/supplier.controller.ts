@@ -8,7 +8,8 @@ import { extractRequestMeta } from '../../common/request-meta';
 import { SupplierService } from './supplier.service';
 
 /** Nhà cung cấp (Kho Thuốc & Vật tư y tế GĐ1, docs/DECISIONS.md #146) — dùng chung `drug.read`/
- * `drug.manage` (cùng trang "Danh mục Thuốc & Vật tư" ở web, route đã gate `drug.manage`). */
+ * `drug.create`/`drug.update` (tách từ `drug.manage` gộp cũ, #156; cùng trang "Danh mục Thuốc &
+ * Vật tư" ở web). */
 @Controller('suppliers')
 @UseGuards(JwtAuthGuard, PermissionGuard)
 export class SupplierController {
@@ -22,7 +23,7 @@ export class SupplierController {
   }
 
   @Post()
-  @RequirePermission('drug', 'manage')
+  @RequirePermission('drug', 'create')
   @HttpCode(200)
   async create(@Body() body: unknown, @Req() req: Request) {
     const dto = createSupplierRequestSchema.parse(body);
@@ -31,7 +32,7 @@ export class SupplierController {
   }
 
   @Patch(':id')
-  @RequirePermission('drug', 'manage')
+  @RequirePermission('drug', 'update')
   async update(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = updateSupplierRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;

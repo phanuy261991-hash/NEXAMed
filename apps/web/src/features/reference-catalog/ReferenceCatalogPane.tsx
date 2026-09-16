@@ -50,6 +50,9 @@ const AUTO_CODE_CATEGORIES: ReferenceCatalogCategory[] = [
   'MANUFACTURER',
   'COUNTRY_OF_ORIGIN',
   'STORAGE_LOCATION',
+  // "Thời điểm dùng thuốc" (docs/DECISIONS.md #155) — cùng lý do không có nguồn dữ liệu chính thức
+  // cho mã tự sinh khi admin thêm mục tuỳ biến ngoài 9 mục đã seed.
+  'DRUG_USAGE_TIMING',
 ];
 
 /**
@@ -68,18 +71,30 @@ const DESCRIPTION_STATUS_CATEGORIES: ReferenceCatalogCategory[] = [
 ];
 
 /**
- * Nhóm tác dụng dược lý/Đường dùng/Dạng bào chế (Kho Thuốc GĐ1, docs/DECISIONS.md #152) — 3
- * category có nguồn dữ liệu chính thức Bộ Y tế/BHYT, hiện thêm 2 cột "Mã BYT"/"Tên đầy đủ chuẩn"
- * trong bảng danh sách. CHỈ ĐỌC — không có ô nhập ở form Thêm/Sửa vì seed luôn đồng bộ lại theo
- * file nguồn (`docs/data/nhom-tac-dung-duoc-ly.md`/`duong-dung-thuoc.md`/`dang-bao-che.md`) mỗi
+ * Nhóm tác dụng dược lý/Đường dùng/Dạng bào chế/Điều kiện bảo quản/Thời điểm dùng thuốc (Kho Thuốc
+ * GĐ1, docs/DECISIONS.md #152/#153/#155) — 5 category có nguồn dữ liệu chính thức Bộ Y tế/BHYT,
+ * hiện thêm 2 cột "Mã BYT"/"Tên đầy đủ chuẩn" trong bảng danh sách. CHỈ ĐỌC — không có ô nhập ở
+ * form Thêm/Sửa vì seed luôn đồng bộ lại theo file nguồn (`docs/data/nhom-tac-dung-duoc-ly.md`/
+ * `duong-dung-thuoc.md`/`dang-bao-che.md`/`dieu-kien-bao-quan.md`/`thoi-diem-dung-thuoc.md`) mỗi
  * lần chạy, sửa tay qua form sẽ bị ghi đè lại mà không rõ vì sao.
  */
-const BYT_TAXONOMY_CATEGORIES: ReferenceCatalogCategory[] = ['DRUG_GROUP', 'DRUG_ROUTE', 'DOSAGE_FORM'];
+const BYT_TAXONOMY_CATEGORIES: ReferenceCatalogCategory[] = [
+  'DRUG_GROUP',
+  'DRUG_ROUTE',
+  'DOSAGE_FORM',
+  'STORAGE_CONDITION',
+  'DRUG_USAGE_TIMING',
+];
 
-/** Trong 3 category trên, chỉ 2 category này có cột "Mô tả/Ví dụ" ở file nguồn (nhom-tac-dung-
+/** Trong 5 category trên, các category này có cột "Mô tả/Ví dụ" ở file nguồn (nhom-tac-dung-
  * duoc-ly.md không có) — tách riêng khỏi DESCRIPTION_STATUS_CATEGORIES vì KHÔNG đi kèm cột/ô
- * "Trạng thái" trong form (2 category này vẫn quản lý ẩn/hiện qua action Xoá/Khôi phục như cũ). */
-const BYT_TAXONOMY_DESCRIPTION_CATEGORIES: ReferenceCatalogCategory[] = ['DRUG_ROUTE', 'DOSAGE_FORM'];
+ * "Trạng thái" trong form (các category này vẫn quản lý ẩn/hiện qua action Xoá/Khôi phục như cũ). */
+const BYT_TAXONOMY_DESCRIPTION_CATEGORIES: ReferenceCatalogCategory[] = [
+  'DRUG_ROUTE',
+  'DOSAGE_FORM',
+  'STORAGE_CONDITION',
+  'DRUG_USAGE_TIMING',
+];
 
 const inputClassName =
   'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';

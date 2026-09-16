@@ -665,6 +665,11 @@ enum ReferenceCatalogCategory {
   MANUFACTURER
   COUNTRY_OF_ORIGIN
   STORAGE_LOCATION
+  // "Thời điểm dùng thuốc" (docs/DECISIONS.md #155) — chủ dự án gửi 2 master data (Cách dùng +
+  // Thời điểm dùng), chốt qua phân tích + AskUserQuestion: CHỈ thêm category này, bỏ hẳn "Cách
+  // dùng" (M01-M99) vì ~80% trùng lặp với DRUG_ROUTE/DOSAGE_FORM đã có. Không thêm cột nào trên
+  // `drug`/`prescription_item` — chỉ dùng làm gợi ý ghép câu cho ô text tự do có sẵn.
+  DRUG_USAGE_TIMING
 
   @@map("reference_catalog_category")
 }

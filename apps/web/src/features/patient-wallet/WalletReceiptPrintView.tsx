@@ -56,22 +56,22 @@ export function WalletReceiptPrintView({
 
         <div className="mt-5 space-y-1.5 text-sm text-slate-700">
           <p>
-            <span className="text-slate-400">Họ tên:</span> <strong className="text-slate-900">{patientFullName}</strong>
+            <span className="text-slate-500">Họ tên:</span> <strong className="text-slate-900">{patientFullName}</strong>
           </p>
           <p>
-            <span className="text-slate-400">Mã bệnh nhân:</span> <strong className="text-slate-900">{patientCode}</strong>
+            <span className="text-slate-500">Mã bệnh nhân:</span> <strong className="text-slate-900">{patientCode}</strong>
           </p>
           <p>
-            <span className="text-slate-400">Lý do nộp:</span> <strong className="text-slate-900">{note ?? 'Nạp tạm ứng'}</strong>
+            <span className="text-slate-500">Lý do nộp:</span> <strong className="text-slate-900">{note ?? 'Nạp tạm ứng'}</strong>
           </p>
           <p>
-            <span className="text-slate-400">Hình thức:</span> <strong className="text-slate-900">{paymentMethodLabel}</strong>
+            <span className="text-slate-500">Hình thức:</span> <strong className="text-slate-900">{paymentMethodLabel}</strong>
           </p>
           <p>
-            <span className="text-slate-400">Số dư trước:</span> <strong className="text-slate-900">{formatVnd(balanceBefore)}</strong>
+            <span className="text-slate-500">Số dư trước:</span> <strong className="text-slate-900">{formatVnd(balanceBefore)}</strong>
           </p>
           <p>
-            <span className="text-slate-400">Số dư sau:</span> <strong className="text-slate-900">{formatVnd(balanceAfter)}</strong>
+            <span className="text-slate-500">Số dư sau:</span> <strong className="text-slate-900">{formatVnd(balanceAfter)}</strong>
           </p>
         </div>
 
@@ -83,11 +83,11 @@ export function WalletReceiptPrintView({
         <div className="mt-12 flex justify-between text-center text-sm">
           <div>
             <p className="font-semibold">Người nộp tiền</p>
-            <p className="mt-14 text-xs text-slate-400">(Ký, ghi rõ họ tên)</p>
+            <p className="mt-14 text-xs text-slate-500">(Ký, ghi rõ họ tên)</p>
           </div>
           <div>
             <p className="font-semibold">Thu ngân</p>
-            <p className="mt-14 text-xs text-slate-400">(Ký, ghi rõ họ tên)</p>
+            <p className="mt-14 text-xs text-slate-500">(Ký, ghi rõ họ tên)</p>
           </div>
         </div>
       </div>

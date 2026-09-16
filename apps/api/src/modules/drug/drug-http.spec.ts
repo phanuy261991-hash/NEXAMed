@@ -157,7 +157,7 @@ describe('HTTP e2e — /api/v1/drugs', () => {
     expect(res.body.data.items.some((d: { name: string }) => d.name === 'Cefixim 200mg')).toBe(true);
   });
 
-  it('receptionist (drug.read) xem được danh sách nhưng không tạo được thuốc (thiếu drug.manage) → 403', async () => {
+  it('receptionist (drug.read) xem được danh sách nhưng không tạo được thuốc (thiếu drug.create) → 403', async () => {
     const listRes = await request(app.getHttpServer()).get('/api/v1/drugs').set(authed(receptionistToken));
     expect(listRes.status).toBe(200);
 

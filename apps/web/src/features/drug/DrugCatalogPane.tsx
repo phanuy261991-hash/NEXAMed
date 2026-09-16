@@ -1,7 +1,8 @@
 import { useMemo, useRef, useState } from 'react';
 import { CaretDown, MagnifyingGlass, PencilSimple, Pill, Plus, Trash, Eye, FirstAidKit, X } from '@phosphor-icons/react';
 import type { DrugControlType, DrugIngredientInput, DrugItemType, DrugSummary, DrugUnitInput, ReferenceCatalogCategory } from '@nexamed/shared';
-import { useHasPermission } from '../auth/usePermission';
+import { useHasAnyPermission } from '../auth/usePermission';
+import { DRUG_MANAGE_PERMISSIONS } from '../auth/admin-permissions';
 import { Button } from '../../shared/ui/Button';
 import { Combobox, type ComboboxOption } from '../../shared/ui/Combobox';
 import { MoneyInput } from '../../shared/ui/MoneyInput';
@@ -18,6 +19,7 @@ import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
 import { useRowSelection } from '../../shared/hooks/useRowSelection';
 import { useSaveFlash } from '../../shared/hooks/useSaveFlash';
 import { useCreateReferenceCatalogItemMutation, useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
+import { appendSentence } from '../../shared/format/append-sentence';
 import { useCreateDrugMutation, useDrugsQuery, useUpdateDrugMutation } from './drug.queries';
 
 const inputClassName =
@@ -114,7 +116,7 @@ interface FormUnitRow {
  * ĐÚNG 1 khối "Thông tin chi tiết", không dựng khung Tồn theo lô/Thẻ kho giả.
  */
 export function DrugCatalogPane() {
-  const canManage = useHasPermission('drug', 'manage');
+  const canManage = useHasAnyPermission(DRUG_MANAGE_PERMISSIONS);
 
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search, 300);
@@ -139,6 +141,18 @@ export function DrugCatalogPane() {
   const manufacturerCatalog = useCatalogCombobox('MANUFACTURER');
   const countryOfOriginCatalog = useCatalogCombobox('COUNTRY_OF_ORIGIN');
   const storageLocationCatalog = useCatalogCombobox('STORAGE_LOCATION');
+  // "Thời điểm dùng thuốc" (docs/DECISIONS.md #155) — CHỈ dùng làm gợi ý ghép câu cho ô "Cách
+  // dùng" (`usageInstruction`), không phải trường lưu riêng nên không tái dùng nguyên
+  // `useCatalogCombobox` (cần thêm `description` để ghép câu, `nameByCode` không đủ) — nhưng vẫn
+  // giữ "thêm nhanh" (`allowCreate`) đúng chuẩn mọi ô danh mục khác trong form này (#151).
+  const usageTimingQuery = useReferenceCatalogQuery('DRUG_USAGE_TIMING');
+  const createUsageTimingMutation = useCreateReferenceCatalogItemMutation('DRUG_USAGE_TIMING');
+  const usageTimingOptions: ComboboxOption[] = (usageTimingQuery.data?.items ?? []).map((i) => ({ value: i.code, label: i.name }));
+  async function onCreateUsageTimingOption(name: string): Promise<ComboboxOption> {
+    const created = await createUsageTimingMutation.mutateAsync({ category: 'DRUG_USAGE_TIMING', name, sortOrder: 0 });
+    return { value: created.code, label: created.name };
+  }
+  const usageTimingSentenceByCode = new Map((usageTimingQuery.data?.items ?? []).map((i) => [i.code, i.description ?? i.fullName ?? i.name]));
 
   const drugGroupOptions: ComboboxOption[] = (drugGroupQuery.data?.items ?? []).map((i) => ({ value: i.code, label: i.name }));
   const drugRouteOptions: ComboboxOption[] = (drugRouteQuery.data?.items ?? []).map((i) => ({ value: i.code, label: i.name }));
@@ -441,6 +455,9 @@ export function DrugCatalogPane() {
           manufacturerCatalog={manufacturerCatalog}
           countryOfOriginCatalog={countryOfOriginCatalog}
           storageLocationCatalog={storageLocationCatalog}
+          usageTimingOptions={usageTimingOptions}
+          usageTimingSentenceByCode={usageTimingSentenceByCode}
+          onCreateUsageTimingOption={onCreateUsageTimingOption}
           submitting={createMutation.isPending || updateMutation.isPending}
           onCancel={() => setModal(null)}
           onSubmit={async (dto) => {
@@ -508,6 +525,9 @@ function DrugFormModal({
   manufacturerCatalog,
   countryOfOriginCatalog,
   storageLocationCatalog,
+  usageTimingOptions,
+  usageTimingSentenceByCode,
+  onCreateUsageTimingOption,
   submitting,
   onCancel,
   onSubmit,
@@ -524,6 +544,9 @@ function DrugFormModal({
   manufacturerCatalog: CatalogCombobox;
   countryOfOriginCatalog: CatalogCombobox;
   storageLocationCatalog: CatalogCombobox;
+  usageTimingOptions: ComboboxOption[];
+  usageTimingSentenceByCode: Map<string, string>;
+  onCreateUsageTimingOption: (name: string) => Promise<ComboboxOption>;
   submitting: boolean;
   onCancel: () => void;
   onSubmit: (dto: {
@@ -698,7 +721,7 @@ function DrugFormModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
-      <form className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-xl" onSubmit={handleSubmit}>
+      <form className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl bg-white shadow-xl" onSubmit={handleSubmit}>
         {/* Header CỐ ĐỊNH cần tự có padding riêng — KHÔNG được nằm trong vùng cuộn (đúng khuôn
             `CashVoucherFormDialog.tsx`/`ExamTypeFormModal.tsx`, bug thật phát hiện lúc chủ dự án
             dùng thử: thiếu `px-5 pt-5` khiến icon/tiêu đề/nút đóng dính sát mép modal). */}
@@ -718,7 +741,7 @@ function DrugFormModal({
                 Quản lý theo lô &amp; hạn dùng
               </label>
             </div>
-            <div className="grid grid-cols-1 gap-x-3 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-4">
               <div className="sm:col-span-2">
                 <label htmlFor="drug-name" className="mb-1.5 block text-sm font-semibold text-slate-800">
                   Tên {isMedicine ? 'thương mại' : 'mặt hàng'}
@@ -1015,7 +1038,7 @@ function DrugFormModal({
               <span className="absolute -top-3 left-4 rounded-md bg-blue-600 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white">
                 Hướng dẫn sử dụng &amp; Bảo quản
               </span>
-              <div className="grid grid-cols-1 gap-x-3 gap-y-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-x-3 gap-y-3 sm:grid-cols-3">
                 <div>
                   <label htmlFor="drug-default-dosage" className="mb-1.5 block text-sm font-semibold text-slate-800">
                     Liều dùng mặc định
@@ -1038,6 +1061,27 @@ function DrugFormModal({
                     onChange={(e) => setUsageInstruction(e.target.value)}
                     placeholder="Vd: Uống sau khi ăn no"
                     className={inputClassName}
+                  />
+                </div>
+                <div>
+                  {/* "Thời điểm dùng thuốc" (docs/DECISIONS.md #155) — CHỈ giúp soạn nhanh câu ở ô
+                      "Cách dùng" bên cạnh, không lưu thành trường riêng nào trên `drug`. Chọn xong
+                      tự reset về rỗng (không phải giá trị "đang chọn" cố định) vì đây là hành động
+                      chèn câu, không phải field ràng buộc 1-giá-trị. */}
+                  <label htmlFor="drug-usage-timing-suggest" className="mb-1.5 block text-sm font-semibold text-slate-800">
+                    Gợi ý thời điểm dùng
+                  </label>
+                  <Combobox
+                    id="drug-usage-timing-suggest"
+                    value=""
+                    onChange={(code) => {
+                      const sentence = usageTimingSentenceByCode.get(code);
+                      if (sentence) setUsageInstruction((prev) => appendSentence(prev, sentence));
+                    }}
+                    options={usageTimingOptions}
+                    allowCreate
+                    onCreateOption={onCreateUsageTimingOption}
+                    placeholder="Chọn để chèn câu gợi ý..."
                   />
                 </div>
                 <div>
@@ -1072,7 +1116,7 @@ function DrugFormModal({
                   </label>
                   <input id="drug-barcode" value={barcode} onChange={(e) => setBarcode(e.target.value)} className={inputClassName} />
                 </div>
-                <div className="sm:col-span-2">
+                <div className="sm:col-span-3">
                   <Textarea
                     id="drug-contraindications"
                     label="Chống chỉ định / Cảnh báo"

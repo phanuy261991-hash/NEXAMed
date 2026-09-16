@@ -5,7 +5,7 @@ import { ChangePasswordPage } from '../features/auth/ChangePasswordPage';
 import { LoginPage } from '../features/auth/LoginPage';
 import { RequireAuth } from '../features/auth/RequireAuth';
 import { RequireAnyPermissionRoute, RequireDoctorQueueRoute, RequirePermissionRoute } from '../features/auth/RequirePermissionRoute';
-import { ADMIN_ANY_PERMISSIONS, ADMIN_ORG_PERMISSIONS } from '../features/auth/admin-permissions';
+import { ADMIN_ANY_PERMISSIONS, ADMIN_ORG_PERMISSIONS, DRUG_MANAGE_PERMISSIONS } from '../features/auth/admin-permissions';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { AppShell } from '../shared/layout/AppShell';
 import { ComingSoonPage } from '../shared/ui/ComingSoonPage';
@@ -26,6 +26,8 @@ import { NotFoundPage } from './NotFoundPage';
  * named export của toàn bộ codebase.
  */
 const PharmacyCatalogPage = lazy(() => import('../features/drug/PharmacyCatalogPage').then((m) => ({ default: m.PharmacyCatalogPage })));
+// "Danh mục kho" — tách khỏi "Thuốc & Vật tư" thành trang riêng (docs/DECISIONS.md #157).
+const WarehouseCatalogPage = lazy(() => import('../features/drug/WarehouseCatalogPage').then((m) => ({ default: m.WarehouseCatalogPage })));
 // "Quản lý nhà cung cấp" — tách khỏi "Danh mục Thuốc và Vật Tư" thành trang/nhóm menu riêng.
 const SupplierManagementPage = lazy(() =>
   import('../features/drug/SupplierManagementPage').then((m) => ({ default: m.SupplierManagementPage })),
@@ -168,10 +170,34 @@ export const router = createBrowserRouter([
       // mục Thuốc và Vật Tư" (Kho Thuốc & Vật tư y tế GĐ1, docs/DECISIONS.md #146) — Thuốc/Vật tư y
       // tế/Kho, vẫn chưa có tồn kho/nhập-xuất (GĐ2-3, chưa xây). "Nhà cung cấp" tách sang route
       // riêng /suppliers, xem dưới.
-      { path: 'admin/catalog-pharmacy', element: <RequirePermissionRoute module="drug" action="manage"><PharmacyCatalogPage /></RequirePermissionRoute> },
+      {
+        path: 'admin/catalog-pharmacy',
+        element: (
+          <RequireAnyPermissionRoute permissions={DRUG_MANAGE_PERMISSIONS}>
+            <PharmacyCatalogPage />
+          </RequireAnyPermissionRoute>
+        ),
+      },
+      // "Danh mục kho" — tách khỏi "Thuốc & Vật tư" thành trang riêng (docs/DECISIONS.md #157, cùng
+      // quyền drug.create/drug.update, không permission mới).
+      {
+        path: 'admin/catalog-warehouse',
+        element: (
+          <RequireAnyPermissionRoute permissions={DRUG_MANAGE_PERMISSIONS}>
+            <WarehouseCatalogPage />
+          </RequireAnyPermissionRoute>
+        ),
+      },
       // "Quản lý nhà cung cấp" — nhóm sidebar riêng, tách khỏi "Danh mục Thuốc và Vật Tư" (cùng
-      // quyền drug.manage, không permission mới).
-      { path: 'suppliers', element: <RequirePermissionRoute module="drug" action="manage"><SupplierManagementPage /></RequirePermissionRoute> },
+      // quyền drug.create/drug.update, tách từ drug.manage gộp cũ #156, không permission mới).
+      {
+        path: 'suppliers',
+        element: (
+          <RequireAnyPermissionRoute permissions={DRUG_MANAGE_PERMISSIONS}>
+            <SupplierManagementPage />
+          </RequireAnyPermissionRoute>
+        ),
+      },
       { path: 'admin/system-config', element: <RequirePermissionRoute module="clinic_config" action="update"><ClinicConfigPage /></RequirePermissionRoute> },
       // S5-05 (ADM-03) — "Nhật ký hoạt động", lọc theo bệnh nhân/người dùng/khoảng ngày.
       { path: 'admin/activity-log', element: <RequirePermissionRoute module="audit_log" action="read"><ActivityLogPage /></RequirePermissionRoute> },

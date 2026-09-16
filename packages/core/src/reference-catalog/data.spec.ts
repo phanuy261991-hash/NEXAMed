@@ -3,11 +3,13 @@ import {
   DOSAGE_FORM_ITEMS,
   DRUG_GROUP_ITEMS,
   DRUG_ROUTE_ITEMS,
+  DRUG_USAGE_TIMING_ITEMS,
   EMPLOYMENT_STATUS_ITEMS,
   EMPLOYMENT_TYPE_ITEMS,
   ETHNICITY_ITEMS,
   NATIONALITY_ITEMS,
   OCCUPATION_ITEMS,
+  STORAGE_CONDITION_ITEMS,
 } from './data';
 
 describe('reference-catalog seed data', () => {
@@ -84,6 +86,38 @@ describe('reference-catalog seed data', () => {
       name: 'Khác',
       fullName: 'Dạng bào chế khác',
       description: 'Các dạng bào chế đặc biệt khác',
+    });
+  });
+
+  it('STORAGE_CONDITION_ITEMS: đúng 8 điều kiện bảo quản, không trùng code/bytCode, đủ fullName/description, "Khác" đứng cuối', () => {
+    expect(STORAGE_CONDITION_ITEMS).toHaveLength(8);
+    expect(new Set(STORAGE_CONDITION_ITEMS.map((i) => i.code)).size).toBe(8);
+    expect(new Set(STORAGE_CONDITION_ITEMS.map((i) => i.bytCode)).size).toBe(8);
+    expect(STORAGE_CONDITION_ITEMS.every((i) => i.bytCode)).toBe(true);
+    expect(STORAGE_CONDITION_ITEMS.every((i) => i.fullName)).toBe(true);
+    expect(STORAGE_CONDITION_ITEMS.every((i) => i.description)).toBe(true);
+    expect(STORAGE_CONDITION_ITEMS[STORAGE_CONDITION_ITEMS.length - 1]).toMatchObject({
+      code: 'S99',
+      bytCode: '9',
+      name: 'Khác',
+      fullName: 'Điều kiện bảo quản khác',
+      description: 'Theo chỉ dẫn cụ thể trên nhãn nhà sản xuất',
+    });
+  });
+
+  it('DRUG_USAGE_TIMING_ITEMS: đúng 9 thời điểm dùng thuốc, không trùng code/bytCode, đủ fullName/description, "Khác" đứng cuối', () => {
+    expect(DRUG_USAGE_TIMING_ITEMS).toHaveLength(9);
+    expect(new Set(DRUG_USAGE_TIMING_ITEMS.map((i) => i.code)).size).toBe(9);
+    expect(new Set(DRUG_USAGE_TIMING_ITEMS.map((i) => i.bytCode)).size).toBe(9);
+    expect(DRUG_USAGE_TIMING_ITEMS.every((i) => i.bytCode)).toBe(true);
+    expect(DRUG_USAGE_TIMING_ITEMS.every((i) => i.fullName)).toBe(true);
+    expect(DRUG_USAGE_TIMING_ITEMS.every((i) => i.description)).toBe(true);
+    expect(DRUG_USAGE_TIMING_ITEMS[DRUG_USAGE_TIMING_ITEMS.length - 1]).toMatchObject({
+      code: 'T99',
+      bytCode: '99',
+      name: 'Khác',
+      fullName: 'Thời điểm khác',
+      description: 'Theo chỉ định cụ thể của bác sĩ kê đơn',
     });
   });
 });

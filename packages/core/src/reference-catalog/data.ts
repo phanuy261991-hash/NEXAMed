@@ -20,9 +20,16 @@
  *   để chuẩn bị, chưa dùng ở đâu vì BHYT ngoài phạm vi v1), description = cột "Mô tả/Ví dụ" hoặc
  *   "Mô tả/Phân loại" (CHỈ có ở duong-dung-thuoc.md/dang-bao-che.md — nhom-tac-dung-duoc-ly.md
  *   không có cột này, DRUG_GROUP_ITEMS không set description).
+ * - STORAGE_CONDITION_ITEMS (docs/DECISIONS.md #153) — "docs/data/dieu-kien-bao-quan.md", cùng
+ *   khuôn field DRUG_ROUTE_ITEMS/DOSAGE_FORM_ITEMS ở trên (file gốc có cả cột Mô tả): code = "Mã
+ *   UI", name = "Tên ngắn UI", fullName = "Tên đầy đủ chuẩn", bytCode = "Mã Bộ Y tế", description =
+ *   "Mô tả chi tiết".
+ * - DRUG_USAGE_TIMING_ITEMS (docs/DECISIONS.md #155) — "docs/data/thoi-diem-dung-thuoc.md" (trích
+ *   phần II của file gốc `cachdungthoidiemdung.md`, phần I "Cách dùng thuốc" M01-M99 KHÔNG seed —
+ *   xem #155), cùng khuôn field như trên, description = "Quy tắc thời gian chi tiết".
  *
  * sortOrder khớp đúng thứ tự trong file gốc: dân tộc = chính mã số, quốc tịch/nghề nghiệp/nhóm
- * thuốc/đường dùng/dạng bào chế = thứ tự dòng.
+ * thuốc/đường dùng/dạng bào chế/điều kiện bảo quản/thời điểm dùng thuốc = thứ tự dòng.
  */
 
 export interface ReferenceCatalogSeedItem {
@@ -31,14 +38,15 @@ export interface ReferenceCatalogSeedItem {
   sortOrder: number;
   /** Chỉ có ý nghĩa với EMPLOYMENT_STATUS_ITEMS — xem comment cột `deactivatesAccount` ở schema.prisma. */
   deactivatesAccount?: boolean;
-  /** Chỉ có ý nghĩa với DRUG_GROUP_ITEMS/DRUG_ROUTE_ITEMS/DOSAGE_FORM_ITEMS — xem comment cột
-   * `bytCode` ở schema.prisma (docs/DECISIONS.md #152). */
+  /** Chỉ có ý nghĩa với DRUG_GROUP_ITEMS/DRUG_ROUTE_ITEMS/DOSAGE_FORM_ITEMS/STORAGE_CONDITION_ITEMS
+   * — xem comment cột `bytCode` ở schema.prisma (docs/DECISIONS.md #152/#153). */
   bytCode?: string;
-  /** Chỉ có ý nghĩa với DRUG_GROUP_ITEMS/DRUG_ROUTE_ITEMS/DOSAGE_FORM_ITEMS — xem comment cột
-   * `fullName` ở schema.prisma (docs/DECISIONS.md #152). */
+  /** Chỉ có ý nghĩa với DRUG_GROUP_ITEMS/DRUG_ROUTE_ITEMS/DOSAGE_FORM_ITEMS/STORAGE_CONDITION_ITEMS
+   * — xem comment cột `fullName` ở schema.prisma (docs/DECISIONS.md #152/#153). */
   fullName?: string;
   /** Tái dùng cột `description` có sẵn (UNIT_SEED_ITEMS đã dùng cột này riêng, xem `unit-seed-
-   * data.ts`) — với DRUG_ROUTE_ITEMS/DOSAGE_FORM_ITEMS đây là cột "Mô tả/Ví dụ" của file gốc. */
+   * data.ts`) — với DRUG_ROUTE_ITEMS/DOSAGE_FORM_ITEMS/STORAGE_CONDITION_ITEMS đây là cột "Mô
+   * tả/Ví dụ" của file gốc. */
   description?: string;
 }
 
@@ -256,4 +264,160 @@ export const DOSAGE_FORM_ITEMS: readonly ReferenceCatalogSeedItem[] = [
   { code: 'F14', bytCode: 'MD', name: 'Miếng dán', fullName: 'Miếng dán qua da', description: 'Miếng dán thấm qua da', sortOrder: 14 },
   { code: 'F15', bytCode: 'CT', name: 'Cao / Trà dược liệu', fullName: 'Cao thuốc / Trà nhúng dược liệu', description: 'Cao lỏng, cao đặc, trà túi lọc dược liệu', sortOrder: 15 },
   { code: 'F99', bytCode: 'KH', name: 'Khác', fullName: 'Dạng bào chế khác', description: 'Các dạng bào chế đặc biệt khác', sortOrder: 16 },
+];
+
+/**
+ * "Điều kiện bảo quản" (`STORAGE_CONDITION`, Kho Thuốc #151, docs/DECISIONS.md #153) — chủ dự án
+ * cung cấp `docs/data/dieu-kien-bao-quan.md`. Category này ban đầu (#151) không seed cứng (mã tự
+ * sinh) vì lúc đó chưa có nguồn dữ liệu chính thức — nay seed sẵn, vẫn quản lý thêm/sửa/ẩn được
+ * qua UI như DRUG_ROUTE/DOSAGE_FORM (đúng khuôn field, kể cả cột Mô tả).
+ */
+export const STORAGE_CONDITION_ITEMS: readonly ReferenceCatalogSeedItem[] = [
+  {
+    code: 'S01',
+    bytCode: '1',
+    name: 'Thường (Thoáng mát)',
+    fullName: 'Điều kiện thường (Thoáng mát)',
+    description: 'Nơi khô ráo, nhiệt độ 15°C - 30°C, độ ẩm ≤ 75%, tránh ánh nắng trực tiếp',
+    sortOrder: 1,
+  },
+  {
+    code: 'S02',
+    bytCode: '2',
+    name: 'Mát (15°C - 25°C)',
+    fullName: 'Nơi mát',
+    description: 'Nhiệt độ từ 15°C - 25°C',
+    sortOrder: 2,
+  },
+  {
+    code: 'S03',
+    bytCode: '3',
+    name: 'Lạnh (2°C - 8°C)',
+    fullName: 'Kho lạnh / Tủ lạnh',
+    description: 'Nhiệt độ từ 2°C - 8°C (Vắc xin, sinh phẩm, Insulin)',
+    sortOrder: 3,
+  },
+  {
+    code: 'S04',
+    bytCode: '4',
+    name: 'Đông lạnh (≤ -15°C)',
+    fullName: 'Kho đông lạnh',
+    description: 'Nhiệt độ ≤ -15°C',
+    sortOrder: 4,
+  },
+  {
+    code: 'S05',
+    bytCode: '5',
+    name: 'Tránh ánh sáng',
+    fullName: 'Tránh ánh sáng trực tiếp',
+    description: 'Bảo quản trong bao bì kín, Tránh ánh sáng chiếu trực tiếp',
+    sortOrder: 5,
+  },
+  {
+    code: 'S06',
+    bytCode: '6',
+    name: 'Tránh ẩm (Độ ẩm ≤ 60%)',
+    fullName: 'Nơi khô ráo (Khống chế độ ẩm)',
+    description: 'Bảo quản nơi khô ráo, độ ẩm tương đối ≤ 60%',
+    sortOrder: 6,
+  },
+  {
+    code: 'S07',
+    bytCode: '7',
+    name: 'Kiểm soát đặc biệt',
+    fullName: 'Hướng thần / Nghiện / Tiền chất',
+    description: 'Kho/Tủ riêng có khóa chắc chắn theo quy định Dược chính',
+    sortOrder: 7,
+  },
+  {
+    code: 'S99',
+    bytCode: '9',
+    name: 'Khác',
+    fullName: 'Điều kiện bảo quản khác',
+    description: 'Theo chỉ dẫn cụ thể trên nhãn nhà sản xuất',
+    sortOrder: 8,
+  },
+];
+
+/**
+ * "Thời điểm dùng thuốc" (`DRUG_USAGE_TIMING`, Kho Thuốc #151, docs/DECISIONS.md #155) — chủ dự án
+ * cung cấp `docs/data/thoi-diem-dung-thuoc.md` (trích phần II của `cachdungthoidiemdung.md`, phần
+ * I "Cách dùng thuốc" M01-M99 CHỦ ĐÍCH không seed — ~80% trùng lặp với DRUG_ROUTE/DOSAGE_FORM đã
+ * có, xem #155). `description` ở đây là cột "Quy tắc thời gian chi tiết" — dùng làm câu gợi ý ghép
+ * vào ô text tự do `drug.usageInstruction`/`prescriptionItem.instruction`, không lưu thành cột
+ * riêng nào.
+ */
+export const DRUG_USAGE_TIMING_ITEMS: readonly ReferenceCatalogSeedItem[] = [
+  {
+    code: 'T01',
+    bytCode: '1',
+    name: 'Sau ăn',
+    fullName: 'Uống sau khi ăn',
+    description: 'Uống ngay sau bữa ăn hoặc sau ăn 15 - 30 phút',
+    sortOrder: 1,
+  },
+  {
+    code: 'T02',
+    bytCode: '2',
+    name: 'Trước ăn',
+    fullName: 'Uống trước khi ăn',
+    description: 'Uống trước bữa ăn 30 - 60 phút (khi bụng rỗng)',
+    sortOrder: 2,
+  },
+  {
+    code: 'T03',
+    bytCode: '3',
+    name: 'Trong khi ăn',
+    fullName: 'Uống cùng bữa ăn',
+    description: 'Uống ngay trong khi đang ăn bữa chính',
+    sortOrder: 3,
+  },
+  {
+    code: 'T04',
+    bytCode: '4',
+    name: 'Sáng',
+    fullName: 'Uống vào buổi sáng',
+    description: 'Uống sau khi thức dậy hoặc sau bữa ăn sáng',
+    sortOrder: 4,
+  },
+  {
+    code: 'T05',
+    bytCode: '5',
+    name: 'Tối / Trước ngủ',
+    fullName: 'Uống buổi tối / Trước khi đi ngủ',
+    description: 'Uống trước khi đi ngủ 30 phút',
+    sortOrder: 5,
+  },
+  {
+    code: 'T06',
+    bytCode: '6',
+    name: 'Khi đau / Khi cần',
+    fullName: 'Sử dụng khi có triệu chứng',
+    description: 'Chỉ dùng khi xuất hiện triệu chứng (đau, sốt, lên cơn hen...)',
+    sortOrder: 6,
+  },
+  {
+    code: 'T07',
+    bytCode: '7',
+    name: 'Cách giờ cố định',
+    fullName: 'Uống cách mỗi X giờ',
+    description: 'Uống đều đặn cách nhau mỗi 8h hoặc 12h (thường dùng cho kháng sinh)',
+    sortOrder: 7,
+  },
+  {
+    code: 'T08',
+    bytCode: '8',
+    name: 'Tùy thời điểm',
+    fullName: 'Không phụ thuộc bữa ăn',
+    description: 'Có thể uống lúc nào trong ngày, không ảnh hưởng bởi thức ăn',
+    sortOrder: 8,
+  },
+  {
+    code: 'T99',
+    bytCode: '99',
+    name: 'Khác',
+    fullName: 'Thời điểm khác',
+    description: 'Theo chỉ định cụ thể của bác sĩ kê đơn',
+    sortOrder: 9,
+  },
 ];

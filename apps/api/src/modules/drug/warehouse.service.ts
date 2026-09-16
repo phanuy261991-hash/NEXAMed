@@ -11,8 +11,9 @@ import { WarehouseRepository, type UpdateWarehouseData, type WarehouseWithDepart
 const WAREHOUSE_CODE_PREFIX = 'KH';
 
 /** Kho (Kho Thuốc & Vật tư y tế GĐ1, docs/DECISIONS.md #146) — module `drug`, dùng chung `drug.read`/
- * `drug.manage`. Seed 1 kho mặc định lúc tạo tenant (`ensureDefaultWarehouse`, đúng khuôn `floor`/
- * `room` #054/#055) — web tự ẩn UI khi tenant chỉ có 1 kho. */
+ * `drug.create`/`drug.update` (tách từ `drug.manage` gộp cũ, #156). Seed 1 kho mặc định lúc tạo
+ * tenant (`ensureDefaultWarehouse`, đúng khuôn `floor`/`room` #054/#055) — web tự ẩn UI khi tenant
+ * chỉ có 1 kho. */
 @Injectable()
 export class WarehouseService {
   constructor(

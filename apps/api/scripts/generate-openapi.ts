@@ -1630,7 +1630,7 @@ registry.registerPath({
   responses: {
     200: jsonResponse('Tạo thành công', envelope(drugSummarySchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
-    403: errorResponse('Không có quyền drug.manage'),
+    403: errorResponse('Không có quyền drug.create'),
     409: errorResponse('Trùng mã thuốc trong tenant (DRUG_DUPLICATE_CODE)'),
   },
 });
@@ -1664,7 +1664,7 @@ registry.registerPath({
   responses: {
     200: jsonResponse('Sửa thành công', envelope(drugSummarySchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
-    403: errorResponse('Không có quyền drug.manage'),
+    403: errorResponse('Không có quyền drug.update'),
     404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
     409: errorResponse('Trùng mã thuốc, hoặc version không khớp (CONCURRENT_MODIFICATION)'),
   },
@@ -1680,7 +1680,7 @@ registry.registerPath({
   responses: {
     200: jsonResponse('Tạo thành công', envelope(supplierSummarySchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
-    403: errorResponse('Không có quyền drug.manage'),
+    403: errorResponse('Không có quyền drug.create'),
   },
 });
 
@@ -1715,7 +1715,7 @@ registry.registerPath({
   responses: {
     200: jsonResponse('Sửa thành công', envelope(supplierSummarySchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
-    403: errorResponse('Không có quyền drug.manage'),
+    403: errorResponse('Không có quyền drug.update'),
     404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
     409: errorResponse('version không khớp (CONCURRENT_MODIFICATION)'),
   },
@@ -1731,7 +1731,7 @@ registry.registerPath({
   responses: {
     200: jsonResponse('Tạo thành công', envelope(warehouseSummarySchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
-    403: errorResponse('Không có quyền drug.manage'),
+    403: errorResponse('Không có quyền drug.create'),
   },
 });
 
@@ -1763,7 +1763,7 @@ registry.registerPath({
   responses: {
     200: jsonResponse('Sửa thành công', envelope(warehouseSummarySchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
-    403: errorResponse('Không có quyền drug.manage'),
+    403: errorResponse('Không có quyền drug.update'),
     404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
     409: errorResponse('version không khớp (CONCURRENT_MODIFICATION)'),
   },

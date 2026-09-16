@@ -30,7 +30,7 @@ import {
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../features/auth/auth.store';
 import { useHasAnyPermission, useDataScope, useHasPermission } from '../../features/auth/usePermission';
-import { ADMIN_ANY_PERMISSIONS, ADMIN_ORG_PERMISSIONS } from '../../features/auth/admin-permissions';
+import { ADMIN_ANY_PERMISSIONS, ADMIN_ORG_PERMISSIONS, DRUG_MANAGE_PERMISSIONS } from '../../features/auth/admin-permissions';
 import { DOCTOR_QUEUE_ROLES } from '../../features/auth/workflow-roles';
 import { useSidebarAutoCollapseEnabledQuery } from '../../features/clinic/clinic.queries';
 import { useAutoCollapseSidebarOnNavigate, useSidebar } from './sidebar.context';
@@ -73,7 +73,8 @@ const WORK_SCHEDULE_GROUP_PATHS = ['/work-schedule'];
  * hiển thị trong sidebar — cùng cách đã làm với "Hồ sơ Bệnh nhân"/`PATIENT_RECORDS_GROUP_PATHS`). */
 const WAREHOUSE_GROUP_PATHS = ['/admin/catalog-pharmacy'];
 /** Đường dẫn thuộc nhóm "Quản lý nhà cung cấp" — tách "Nhà cung cấp" khỏi pill con của "Danh mục
- * Thuốc và Vật Tư" thành trang/nhóm menu riêng (route mới `/suppliers`, cùng quyền `drug.manage`). */
+ * Thuốc và Vật Tư" thành trang/nhóm menu riêng (route mới `/suppliers`, cùng quyền `drug.create`/
+ * `drug.update`, tách từ `drug.manage` gộp cũ #156). */
 const SUPPLIER_GROUP_PATHS = ['/suppliers'];
 /** Đường dẫn thuộc nhóm "Quản trị" — có 2 mục con thật (Danh mục dùng chung, Cấu hình hệ thống) và
  * 4 mục "Sắp ra mắt" đặt chỗ theo yêu cầu chủ dự án (docs/DECISIONS.md #046, ComingSoonPage — vẫn
@@ -86,6 +87,9 @@ const ADMIN_GROUP_PATHS = [
   '/admin/catalog-organization',
   '/admin/catalog-clinical',
   '/admin/catalog-paraclinical',
+  // "Danh mục kho" — chuyển từ nhóm "Quản lý kho" xuống đây theo yêu cầu chủ dự án (16/09/2026,
+  // docs/DECISIONS.md #157), route/quyền giữ nguyên (`/admin/catalog-pharmacy` KHÔNG chuyển).
+  '/admin/catalog-warehouse',
   '/admin/system-config',
   '/admin/activity-log',
 ];
@@ -180,7 +184,7 @@ export function Sidebar() {
   const canSeeCatalogClinical = isAdmin;
   // "Danh mục cận lâm sàng" còn là ComingSoonPage, chưa có permission route thật — cùng lý do trên.
   const canSeeCatalogParaclinical = isAdmin;
-  const canSeeCatalogPharmacy = useHasPermission('drug', 'manage');
+  const canSeeCatalogPharmacy = useHasAnyPermission(DRUG_MANAGE_PERMISSIONS);
   const canSeeSystemConfig = useHasPermission('clinic_config', 'update');
   const canSeeActivityLog = useHasPermission('audit_log', 'read');
   const canSeePatients = useHasPermission('patient', 'read');
@@ -476,7 +480,7 @@ export function Sidebar() {
               </button>
               {warehouseGroupExpanded && (
                 <ul className="mt-0.5 flex flex-col gap-0.5 border-l border-slate-800 pl-3.5">
-                  <NavItem to="/admin/catalog-pharmacy" label="Danh mục Thuốc và Vật Tư" icon={Pill} collapsed={false} indent />
+                  <NavItem to="/admin/catalog-pharmacy" label="Thuốc & Vật tư" icon={Pill} collapsed={false} indent />
                 </ul>
               )}
             </li>
@@ -609,6 +613,9 @@ export function Sidebar() {
                   {canSeeCatalogParaclinical && (
                     <NavItem to="/admin/catalog-paraclinical" label="Danh mục cận lâm sàng" icon={Flask} collapsed={false} indent />
                   )}
+                  {/* "Danh mục kho" — chuyển từ nhóm "Quản lý kho" xuống đây theo yêu cầu chủ dự án
+                      (16/09/2026, docs/DECISIONS.md #157), route/quyền giữ nguyên. */}
+                  {canSeeCatalogPharmacy && <NavItem to="/admin/catalog-warehouse" label="Danh mục kho" icon={Warehouse} collapsed={false} indent />}
                   {canSeeSystemConfig && <NavItem to="/admin/system-config" label="Cấu hình hệ thống" icon={SlidersHorizontal} collapsed={false} indent />}
                   {canSeeActivityLog && <NavItem to="/admin/activity-log" label="Nhật ký hoạt động" icon={ClockCounterClockwise} collapsed={false} indent />}
                 </ul>

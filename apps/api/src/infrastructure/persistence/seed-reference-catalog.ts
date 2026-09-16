@@ -9,7 +9,9 @@ import {
   formatShortSequentialCode,
   NATIONALITY_ITEMS,
   OCCUPATION_ITEMS,
+  DRUG_USAGE_TIMING_ITEMS,
   REFERENCE_CATALOG_SHORT_CODE_PREFIXES,
+  STORAGE_CONDITION_ITEMS,
   UNIT_SEED_ITEMS,
 } from '@nexamed/core';
 import { GlobalCodeSequenceRepository } from './global-code-sequence.repository';
@@ -116,6 +118,54 @@ export async function seedReferenceCatalog(prisma: PrismaClient): Promise<void> 
       where: { category_code: { category: 'DOSAGE_FORM', code: item.code } },
       create: {
         category: 'DOSAGE_FORM',
+        code: item.code,
+        name: item.name,
+        sortOrder: item.sortOrder,
+        bytCode: item.bytCode,
+        fullName: item.fullName,
+        description: item.description,
+      },
+      update: {
+        name: item.name,
+        sortOrder: item.sortOrder,
+        bytCode: item.bytCode,
+        fullName: item.fullName,
+        description: item.description,
+      },
+    });
+  }
+
+  // "Điều kiện bảo quản" (docs/DECISIONS.md #153) — cùng khuôn DRUG_ROUTE/DOSAGE_FORM ở trên (có
+  // cột description).
+  for (const item of STORAGE_CONDITION_ITEMS) {
+    await prisma.referenceCatalog.upsert({
+      where: { category_code: { category: 'STORAGE_CONDITION', code: item.code } },
+      create: {
+        category: 'STORAGE_CONDITION',
+        code: item.code,
+        name: item.name,
+        sortOrder: item.sortOrder,
+        bytCode: item.bytCode,
+        fullName: item.fullName,
+        description: item.description,
+      },
+      update: {
+        name: item.name,
+        sortOrder: item.sortOrder,
+        bytCode: item.bytCode,
+        fullName: item.fullName,
+        description: item.description,
+      },
+    });
+  }
+
+  // "Thời điểm dùng thuốc" (docs/DECISIONS.md #155) — cùng khuôn DRUG_ROUTE/DOSAGE_FORM/
+  // STORAGE_CONDITION ở trên (có cột description).
+  for (const item of DRUG_USAGE_TIMING_ITEMS) {
+    await prisma.referenceCatalog.upsert({
+      where: { category_code: { category: 'DRUG_USAGE_TIMING', code: item.code } },
+      create: {
+        category: 'DRUG_USAGE_TIMING',
         code: item.code,
         name: item.name,
         sortOrder: item.sortOrder,

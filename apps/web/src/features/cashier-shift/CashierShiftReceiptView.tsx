@@ -179,16 +179,16 @@ function FormalReceipt({
 
         <div className="mb-6 grid grid-cols-2 gap-x-6 gap-y-2 text-sm text-slate-700">
           <div>
-            <span className="text-slate-400">Ca làm việc:</span> <span className="font-semibold text-slate-900">{shift.shiftLabel}</span>
+            <span className="text-slate-500">Ca làm việc:</span> <span className="font-semibold text-slate-900">{shift.shiftLabel}</span>
           </div>
           <div>
-            <span className="text-slate-400">Thu ngân:</span> <span className="font-semibold text-slate-900">{shift.cashierName}</span>
+            <span className="text-slate-500">Thu ngân:</span> <span className="font-semibold text-slate-900">{shift.cashierName}</span>
           </div>
           <div>
-            <span className="text-slate-400">Giờ mở ca:</span> <span className="font-semibold text-slate-900">{formatDateTimeVn(shift.openedAt)}</span>
+            <span className="text-slate-500">Giờ mở ca:</span> <span className="font-semibold text-slate-900">{formatDateTimeVn(shift.openedAt)}</span>
           </div>
           <div>
-            <span className="text-slate-400">Giờ chốt ca:</span> <span className="font-semibold text-slate-900">{shift.closedAt ? formatDateTimeVn(shift.closedAt) : '—'}</span>
+            <span className="text-slate-500">Giờ chốt ca:</span> <span className="font-semibold text-slate-900">{shift.closedAt ? formatDateTimeVn(shift.closedAt) : '—'}</span>
           </div>
         </div>
 

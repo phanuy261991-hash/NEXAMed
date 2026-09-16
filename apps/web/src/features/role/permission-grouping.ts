@@ -32,6 +32,9 @@ const MODULE_LABELS: Record<string, string> = {
   // nhưng quên thêm nhãn ở đây, chủ dự án phát hiện qua ảnh chụp trang Vai trò & Phân quyền.
   cash_account: 'Quỹ',
   cash_voucher: 'Phiếu thu/chi',
+  // "Ví tạm ứng" (docs/DECISIONS.md #136, 2026-09-09) — cùng lỗ hổng lặp lại: module mới thêm
+  // permission nhưng quên thêm nhãn ở đây, chủ dự án phát hiện lúc xem trang Vai trò & Phân quyền.
+  patient_wallet: 'Ví tạm ứng',
 };
 
 export function moduleLabel(module: string): string {

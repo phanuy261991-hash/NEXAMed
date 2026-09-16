@@ -10,8 +10,9 @@ import { DrugService } from './drug.service';
 /**
  * Danh mục thuốc (Sprint 4, S4-03) — `drug.read` mở cho mọi vai trò lâm sàng (bác sĩ tìm thuốc lúc
  * kê đơn qua chính endpoint list này, không endpoint riêng — cùng khuôn `reference_catalog`),
- * `drug.manage` chỉ `clinic_admin`. "Xoá" = `isActive=false` qua PATCH (không endpoint riêng, khác
- * `reference_catalog` — cùng khuôn `room` vì `drug` có `version`/optimistic lock).
+ * `drug.create`/`drug.update` chỉ `clinic_admin` (tách từ `drug.manage` gộp cũ, docs/DECISIONS.md
+ * #156). "Xoá" = `isActive=false` qua PATCH (không endpoint riêng, khác `reference_catalog` — cùng
+ * khuôn `room` vì `drug` có `version`/optimistic lock).
  */
 @Controller('drugs')
 @UseGuards(JwtAuthGuard, PermissionGuard)
@@ -27,7 +28,7 @@ export class DrugController {
   }
 
   @Post()
-  @RequirePermission('drug', 'manage')
+  @RequirePermission('drug', 'create')
   @HttpCode(200)
   async create(@Body() body: unknown, @Req() req: Request) {
     const dto = createDrugRequestSchema.parse(body);
@@ -36,7 +37,7 @@ export class DrugController {
   }
 
   @Patch(':id')
-  @RequirePermission('drug', 'manage')
+  @RequirePermission('drug', 'update')
   async update(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = updateDrugRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;

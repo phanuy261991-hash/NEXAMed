@@ -12,7 +12,7 @@ import { SupplierRepository, type UpdateSupplierData } from './supplier.reposito
 const SUPPLIER_CODE_PREFIX = 'NCC';
 
 /** Nhà cung cấp (Kho Thuốc & Vật tư y tế GĐ1, docs/DECISIONS.md #146) — module `drug`, gate bằng
- * `drug.read`/`drug.manage` (cùng trang "Danh mục Thuốc & Vật tư", không thêm permission mới). */
+ * `drug.read`/`drug.create`/`drug.update` (tách từ `drug.manage` gộp cũ, #156). */
 @Injectable()
 export class SupplierService {
   constructor(

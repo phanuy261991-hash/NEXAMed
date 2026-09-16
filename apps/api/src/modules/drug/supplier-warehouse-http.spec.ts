@@ -15,7 +15,8 @@ import { seedDefaultRolesForTenant } from '../../infrastructure/persistence/seed
 
 /**
  * HTTP e2e — Nhà cung cấp + Kho (Kho Thuốc & Vật tư y tế GĐ1, docs/DECISIONS.md #146). Dùng chung
- * `drug.read`/`drug.manage` (không permission mới), mã tự sinh ngắn tuần tự (NCC/KH).
+ * `drug.read`/`drug.create`/`drug.update` (tách từ `drug.manage` gộp cũ #156), mã tự sinh ngắn
+ * tuần tự (NCC/KH).
  */
 describe('HTTP e2e — /api/v1/suppliers, /api/v1/warehouses', () => {
   let app: INestApplication;
@@ -93,7 +94,7 @@ describe('HTTP e2e — /api/v1/suppliers, /api/v1/warehouses', () => {
     expect(res.body.data.isActive).toBe(true);
   });
 
-  it('receptionist (drug.read) xem được danh sách nhưng không tạo được (thiếu drug.manage) → 403', async () => {
+  it('receptionist (drug.read) xem được danh sách nhưng không tạo được (thiếu drug.create) → 403', async () => {
     const listRes = await request(app.getHttpServer()).get('/api/v1/suppliers').set(authed(receptionistToken));
     expect(listRes.status).toBe(200);
 

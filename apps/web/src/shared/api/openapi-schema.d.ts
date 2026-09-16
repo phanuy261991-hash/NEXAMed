@@ -10224,7 +10224,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Không có quyền drug.manage */
+                /** @description Không có quyền drug.create */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -10414,7 +10414,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Không có quyền drug.manage */
+                /** @description Không có quyền drug.update */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -10598,7 +10598,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Không có quyền drug.manage */
+                /** @description Không có quyền drug.create */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -10696,7 +10696,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Không có quyền drug.manage */
+                /** @description Không có quyền drug.update */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -10877,7 +10877,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Không có quyền drug.manage */
+                /** @description Không có quyền drug.create */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -10974,7 +10974,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Không có quyền drug.manage */
+                /** @description Không có quyền drug.update */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -13208,7 +13208,7 @@ export interface paths {
                 };
                 header?: never;
                 path: {
-                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION";
+                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING";
                 };
                 cookie?: never;
             };
@@ -13226,7 +13226,7 @@ export interface paths {
                                     /** Format: uuid */
                                     id: string;
                                     /** @enum {string} */
-                                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION";
+                                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING";
                                     code: string;
                                     name: string;
                                     sortOrder: number;
@@ -13332,7 +13332,7 @@ export interface paths {
                 content: {
                     "application/json": {
                         /** @enum {string} */
-                        category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION";
+                        category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING";
                         code?: string;
                         name: string;
                         /** @default 0 */
@@ -13367,7 +13367,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
@@ -13482,7 +13482,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
@@ -13606,7 +13606,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
@@ -13731,7 +13731,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING";
                                 code: string;
                                 name: string;
                                 sortOrder: number;

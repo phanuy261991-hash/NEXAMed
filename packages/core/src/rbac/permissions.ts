@@ -73,10 +73,13 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   { module: 'allergen_catalog', action: 'create', description: 'Tạo dị nguyên mới (không sửa/ẩn)' },
   { module: 'allergen_catalog', action: 'manage', description: 'Thêm/sửa/ẩn Nhóm dị nguyên và Dị nguyên' },
   // Danh mục thuốc (Sprint 4, S4-03) — theo tenant (khác allergen_catalog/reference_catalog toàn hệ
-  // thống). `drug.read` mở cho mọi vai trò lâm sàng (bác sĩ tìm thuốc lúc kê đơn), `drug.manage`
-  // chỉ clinic_admin, cùng khuôn reference_catalog.*.
+  // thống). `drug.read` mở cho mọi vai trò lâm sàng (bác sĩ tìm thuốc lúc kê đơn). `create`/`update`
+  // tách riêng (docs/DECISIONS.md #156, chủ dự án yêu cầu — trước gộp `manage`, cột "Thêm"/"Sửa" ở
+  // trang Vai trò & Phân quyền luôn trống) — dùng chung cho cả `drug`/`supplier`/`warehouse` (cùng
+  // module `drug`, #146/#148), hiện chỉ `clinic_admin` có cả hai (`global`).
   { module: 'drug', action: 'read', description: 'Xem danh mục thuốc' },
-  { module: 'drug', action: 'manage', description: 'Thêm/sửa/ẩn thuốc trong danh mục' },
+  { module: 'drug', action: 'create', description: 'Thêm thuốc/vật tư/nhà cung cấp/kho mới' },
+  { module: 'drug', action: 'update', description: 'Sửa/ẩn thuốc/vật tư/nhà cung cấp/kho' },
   // Thu ngân cơ bản (Sprint 5/6, BIL-01→04) — không có `invoice.create` riêng: phiếu thu luôn tạo
   // tự động kèm `encounter.create` (check-in/tiếp nhận trực tiếp), không có endpoint tạo riêng.
   { module: 'invoice', action: 'read', description: 'Xem phiếu thu' },
@@ -297,7 +300,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'allergen_catalog.create': 'global',
     'allergen_catalog.manage': 'global',
     'drug.read': 'global',
-    'drug.manage': 'global',
+    'drug.create': 'global',
+    'drug.update': 'global',
     // Thu ngân cơ bản — clinic_admin giám sát/xử lý được như lễ tân, cùng mức encounter.*.
     'invoice.read': 'global',
     'invoice.update': 'global',

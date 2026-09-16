@@ -164,7 +164,7 @@ export function CashVoucherDetailDialog({ voucherId, onClose }: { voucherId: str
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
-      <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-6 shadow-xl">
+      <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-6 shadow-xl">
         <ModalHeader
           icon={Receipt}
           title={voucher?.voucherNo ?? 'Chi tiết phiếu'}
@@ -180,61 +180,61 @@ export function CashVoucherDetailDialog({ voucherId, onClose }: { voucherId: str
           }
         />
 
-        {voucherQuery.isLoading && <p className="text-sm text-slate-500">Đang tải...</p>}
+        {voucherQuery.isLoading && <p className="text-sm text-slate-700">Đang tải...</p>}
         {error && <ErrorBanner message={error} onRetry={() => setError(null)} />}
 
         {voucher && (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-x-5 gap-y-2.5 text-sm text-slate-700">
+            <div className="grid grid-cols-2 gap-x-10 gap-y-3.5 text-sm text-slate-700">
               <div>
-                <span className="text-slate-400">Chiều tiền:</span>{' '}
-                <span className="font-semibold text-slate-900">{isTransfer ? 'Chuyển quỹ' : voucher.direction === 'INCOME' ? 'Phiếu thu' : 'Phiếu chi'}</span>
+                <span className="text-slate-700">Chiều tiền:</span>{' '}
+                <span className="font-medium text-slate-900">{isTransfer ? 'Chuyển quỹ' : voucher.direction === 'INCOME' ? 'Phiếu thu' : 'Phiếu chi'}</span>
               </div>
               <div>
-                <span className="text-slate-400">Ngày phát sinh:</span>{' '}
-                <span className="font-semibold text-slate-900">{formatDateTime(voucher.occurredAt)}</span>
+                <span className="text-slate-700">Ngày phát sinh:</span>{' '}
+                <span className="font-medium text-slate-900">{formatDateTime(voucher.occurredAt)}</span>
               </div>
               {isTransfer ? (
                 <div>
-                  <span className="text-slate-400">Quỹ đích:</span> <span className="font-semibold text-slate-900">{counterAccountName}</span>
+                  <span className="text-slate-700">Quỹ đích:</span> <span className="font-medium text-slate-900">{counterAccountName}</span>
                 </div>
               ) : (
                 <div>
-                  <span className="text-slate-400">Loại thu chi:</span> <span className="font-semibold text-slate-900">{incomeExpenseTypeLabel}</span>
+                  <span className="text-slate-700">Loại thu chi:</span> <span className="font-medium text-slate-900">{incomeExpenseTypeLabel}</span>
                 </div>
               )}
               <div>
-                <span className="text-slate-400">Hình thức:</span> <span className="font-semibold text-slate-900">{paymentMethodLabel}</span>
+                <span className="text-slate-700">Hình thức:</span> <span className="font-medium text-slate-900">{paymentMethodLabel}</span>
               </div>
               <div>
-                <span className="text-slate-400">{isTransfer ? 'Quỹ nguồn:' : 'Quỹ:'}</span> <span className="font-semibold text-slate-900">{cashAccountName}</span>
+                <span className="text-slate-700">{isTransfer ? 'Quỹ nguồn:' : 'Quỹ:'}</span> <span className="font-medium text-slate-900">{cashAccountName}</span>
               </div>
               {!isTransfer && (
                 <div>
-                  <span className="text-slate-400">{voucher.direction === 'INCOME' ? 'Người nộp:' : 'Người nhận:'}</span>{' '}
-                  <span className="font-semibold text-slate-900">{voucher.partnerName ?? '—'}</span>
+                  <span className="text-slate-700">{voucher.direction === 'INCOME' ? 'Người nộp:' : 'Người nhận:'}</span>{' '}
+                  <span className="font-medium text-slate-900">{voucher.partnerName ?? '—'}</span>
                 </div>
               )}
               <div className="col-span-2">
-                <span className="text-slate-400">Diễn giải:</span> <span className="font-semibold text-slate-900">{voucher.description}</span>
+                <span className="text-slate-700">Diễn giải:</span> <span className="font-medium text-slate-900">{voucher.description}</span>
               </div>
               {voucher.note && (
                 <div className="col-span-2">
-                  <span className="text-slate-400">Ghi chú:</span> <span className="text-slate-700">{voucher.note}</span>
+                  <span className="text-slate-700">Ghi chú:</span> <span className="text-slate-700">{voucher.note}</span>
                 </div>
               )}
               <div className="col-span-2">
-                <span className="text-slate-400">Người lập:</span> <span className="font-semibold text-slate-900">{voucher.createdByName}</span>
+                <span className="text-slate-700">Người lập:</span> <span className="font-medium text-slate-900">{voucher.createdByName}</span>
               </div>
               {voucher.approvedByName && (
                 <div className="col-span-2">
-                  <span className="text-slate-400">{voucher.status === 'REJECTED' ? 'Từ chối bởi:' : 'Duyệt bởi:'}</span>{' '}
-                  <span className="font-semibold text-slate-900">{voucher.approvedByName}</span>
+                  <span className="text-slate-700">{voucher.status === 'REJECTED' ? 'Từ chối bởi:' : 'Duyệt bởi:'}</span>{' '}
+                  <span className="font-medium text-slate-900">{voucher.approvedByName}</span>
                 </div>
               )}
               {voucher.rejectionReason && (
                 <div className="col-span-2 text-rose-600">
-                  <span className="text-slate-400">Lý do từ chối:</span> {voucher.rejectionReason}
+                  <span className="text-slate-700">Lý do từ chối:</span> {voucher.rejectionReason}
                 </div>
               )}
             </div>

@@ -62,6 +62,10 @@ export const referenceCatalogCategorySchema = z.enum([
   'MANUFACTURER',
   'COUNTRY_OF_ORIGIN',
   'STORAGE_LOCATION',
+  // "Thời điểm dùng thuốc" (docs/DECISIONS.md #155) — chỉ dùng làm gợi ý ghép câu cho ô text tự do
+  // `drug.usageInstruction`/`prescriptionItem.instruction` có sẵn, KHÔNG thêm cột mới nào. "Cách
+  // dùng" (M01-M99) trong file gốc bị bỏ hẳn vì ~80% trùng lặp với DRUG_ROUTE/DOSAGE_FORM.
+  'DRUG_USAGE_TIMING',
 ]);
 export type ReferenceCatalogCategory = z.infer<typeof referenceCatalogCategorySchema>;
 

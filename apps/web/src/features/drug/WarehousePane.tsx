@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react';
 import { PencilSimple, Plus, Warehouse as WarehouseIcon } from '@phosphor-icons/react';
 import type { WarehouseSummary } from '@nexamed/shared';
-import { useHasPermission } from '../auth/usePermission';
+import { useHasAnyPermission } from '../auth/usePermission';
+import { DRUG_MANAGE_PERMISSIONS } from '../auth/admin-permissions';
 import { Button } from '../../shared/ui/Button';
 import { Combobox } from '../../shared/ui/Combobox';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
@@ -31,7 +32,7 @@ interface ModalState {
  * tư". Đúng 1 tenant có đúng 1 kho mặc định — chọn "Đặt làm kho mặc định" tự bỏ cờ khỏi kho cũ
  * (server xử lý, xem `WarehouseService.clearDefaultExcept`). Mã tự sinh (tiền tố KH). */
 export function WarehousePane() {
-  const canManage = useHasPermission('drug', 'manage');
+  const canManage = useHasAnyPermission(DRUG_MANAGE_PERMISSIONS);
   const [modal, setModal] = useState<ModalState | null>(null);
 
   const query = useWarehousesQuery();

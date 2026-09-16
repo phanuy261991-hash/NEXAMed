@@ -2,6 +2,54 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-16 (9)
+
+### Sửa 3 lỗi giao diện nhỏ: nhãn/khung "Chi tiết phiếu thu/chi", nhãn "Ví tạm ứng" thiếu
+
+`CashVoucherDetailDialog.tsx` — nhãn quá mờ so với dữ liệu (3 vòng chỉnh trực tiếp: `text-slate-400`→`text-slate-500`→`text-slate-700`, dữ liệu `font-semibold`→`font-medium`), khung chật (`max-w-lg`→`max-w-2xl`, giãn khoảng cách trường). Cùng lỗi nhãn mờ ở 3 phiếu in khác (`CashVoucherPrintView`/`CashierShiftReceiptView`/`WalletReceiptPrintView`) — sửa màu nhãn cho nhất quán.
+
+`permission-grouping.ts` thêm nhãn tiếng Việt còn thiếu cho module `patient_wallet` ("Ví tạm ứng") ở trang "Vai trò & Phân quyền".
+
+**Đã xác minh thật**: `pnpm -w typecheck/lint/build` sạch toàn workspace. Xem chi tiết `docs/DECISIONS.md` #158.
+
+## 2026-09-16 (8)
+
+### Tách "Thuốc & Vật tư" thành trang đơn, "Danh mục kho" chuyển vào "Quản trị"
+
+Trang "Danh mục Thuốc và Vật Tư" (11 pill lẫn CRUD thuốc thật với danh mục phân loại) tách làm 2 theo yêu cầu chủ dự án: "Thuốc & Vật tư" (route giữ nguyên, bỏ pill, chỉ còn CRUD thuốc) và "Danh mục kho" (route mới `/admin/catalog-warehouse`, 10 pill danh mục/phân loại) — "Danh mục kho" chuyển hẳn vào nhóm "Quản trị", đặt dưới "Danh mục cận lâm sàng".
+
+**Đã xác minh thật**: `pnpm -w typecheck/lint/build` sạch toàn workspace, chunk web không đổi bất thường. Xem chi tiết `docs/DECISIONS.md` #157.
+
+## 2026-09-16 (7)
+
+### Seed "Thời điểm dùng thuốc" + tách quyền `drug.manage` thành `drug.create`/`drug.update`
+
+Seed danh mục mới `DRUG_USAGE_TIMING` (9 dòng, T01-T08+T99) từ file chủ dự án gửi — sau khi phân tích, chốt CHỈ thêm "Thời điểm dùng" (không trùng lặp), bỏ hẳn "Cách dùng" (trùng ~80% với Đường dùng/Dạng bào chế đã seed #152). Thêm combobox "Gợi ý thời điểm dùng" (ghép câu vào ô text tự do, có "thêm nhanh") ở Danh mục Thuốc và dòng kê đơn. Bug thật phát hiện lúc chủ dự án kiểm tra: quên nối vòng lặp seed thật vào script, đã vá.
+
+Tách quyền `drug.manage` (gộp thêm+sửa+ẩn) thành `drug.create`/`drug.update` riêng — chủ dự án hỏi trực tiếp vì sao trang "Vai trò & Phân quyền" hiện cột Thêm/Sửa trống cho module Thuốc. Migration xoá sạch permission+role_permission cũ, seed lại permission mới, `syncRolePermissionsForAllTenants()` tự cấp lại cho `clinic_admin`.
+
+**Đã xác minh thật**: `packages/core` 192/192, `apps/api` 819/820 (1 flake đã biết, pass riêng), `pnpm -w typecheck/lint/build` sạch toàn workspace. Migration đã áp thật lên Postgres dev, xác nhận qua query Prisma trực tiếp. Xem chi tiết `docs/DECISIONS.md` #155/#156.
+
+## 2026-09-16 (6)
+
+### Tách chunk `vendor` khỏi chunk khởi động web — hết vượt trần 500 kB
+
+Xử lý mục treo từ #148/#151 (chunk khởi động 507.90 kB, vượt trần `.claude/docs/coding-standards.md`). `apps/web/vite.config.mts` thêm `build.rollupOptions.output.manualChunks` tách 8 thư viện dùng chung toàn app (react/react-dom/react-router/@tanstack/react-query/zod/zustand/openapi-fetch) thành chunk `vendor` riêng, không đụng cơ chế lazy theo route đã có.
+
+2 lần thử sai trước khi ra bản đúng (gộp mọi `node_modules` hoặc thêm cả `@phosphor-icons/react` vào regex đều làm `vendor` phình to hơn vì kéo cả lib chỉ dùng ở 1-2 trang lazy vào chung chunk eager) — regex cuối cùng chỉ khớp đúng 8 package trên. Kết quả: `vendor` 338.51 kB + `index` 169.26 kB, tổng không đổi so với trước (507.77 kB ≈ 507.90 kB), hết cảnh báo build.
+
+**Đã xác minh thật**: build web hết cảnh báo "Some chunks are larger than 500 kB", `pnpm -w typecheck/lint/build` sạch toàn workspace, `apps/api` 820/820 (1 flake `icd10-http.spec.ts` đã biết, pass riêng), `apps/web`/`packages/shared`/`packages/core` test pass — thuần cấu hình build, không đổi runtime. Xem chi tiết `docs/DECISIONS.md` #154.
+
+## 2026-09-16 (5)
+
+### Seed master data cho Điều kiện bảo quản (STORAGE_CONDITION)
+
+Chủ dự án gửi `Dieukienbaoquan.md` (8 dòng, cùng khuôn cột như 3 file đã seed ở #152), yêu cầu nạp đầy đủ mọi cột vào category `STORAGE_CONDITION` (đã tạo từ #151, chưa seed cứng). Giữ nguyên mapping đã chốt ở #152 dù file nguồn tự gắn nhãn cột khác (`name`=Tên ngắn UI, `fullName`=Tên đầy đủ chuẩn).
+
+Copy byte-for-byte vào `docs/data/dieu-kien-bao-quan.md`. `packages/core/src/reference-catalog/data.ts` thêm `STORAGE_CONDITION_ITEMS` (8 dòng, S01-S07 + S99). `seed-reference-catalog.ts` thêm 1 vòng lặp upsert theo `(category, code)`. `ReferenceCatalogPane.tsx` thêm `STORAGE_CONDITION` vào `BYT_TAXONOMY_CATEGORIES`/`BYT_TAXONOMY_DESCRIPTION_CATEGORIES` — hiện cột "Mã BYT"/"Tên đầy đủ chuẩn"/"Mô tả" CHỈ ĐỌC, đúng khuôn 3 category #152. Không migration mới.
+
+**Đã xác minh thật**: `packages/core` `data.spec.ts` +1 test (191/191), `apps/api` 820/820 pass (1 flake `icd10-http.spec.ts` đã biết, pass riêng), `pnpm -w typecheck/lint/build` sạch toàn workspace. `db:seed` chạy thật trên Postgres dev, query trực tiếp qua Prisma xác nhận đúng 8 dòng active đủ 5 cột khớp file gốc. Xem chi tiết `docs/DECISIONS.md` #153.
+
 ## 2026-09-16 (4)
 
 ### Seed master data cho Nhóm tác dụng dược lý / Đường dùng thuốc / Dạng bào chế
