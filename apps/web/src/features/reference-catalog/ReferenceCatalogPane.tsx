@@ -67,6 +67,20 @@ const DESCRIPTION_STATUS_CATEGORIES: ReferenceCatalogCategory[] = [
   'INCOME_EXPENSE_TYPE',
 ];
 
+/**
+ * Nhóm tác dụng dược lý/Đường dùng/Dạng bào chế (Kho Thuốc GĐ1, docs/DECISIONS.md #152) — 3
+ * category có nguồn dữ liệu chính thức Bộ Y tế/BHYT, hiện thêm 2 cột "Mã BYT"/"Tên đầy đủ chuẩn"
+ * trong bảng danh sách. CHỈ ĐỌC — không có ô nhập ở form Thêm/Sửa vì seed luôn đồng bộ lại theo
+ * file nguồn (`docs/data/nhom-tac-dung-duoc-ly.md`/`duong-dung-thuoc.md`/`dang-bao-che.md`) mỗi
+ * lần chạy, sửa tay qua form sẽ bị ghi đè lại mà không rõ vì sao.
+ */
+const BYT_TAXONOMY_CATEGORIES: ReferenceCatalogCategory[] = ['DRUG_GROUP', 'DRUG_ROUTE', 'DOSAGE_FORM'];
+
+/** Trong 3 category trên, chỉ 2 category này có cột "Mô tả/Ví dụ" ở file nguồn (nhom-tac-dung-
+ * duoc-ly.md không có) — tách riêng khỏi DESCRIPTION_STATUS_CATEGORIES vì KHÔNG đi kèm cột/ô
+ * "Trạng thái" trong form (2 category này vẫn quản lý ẩn/hiện qua action Xoá/Khôi phục như cũ). */
+const BYT_TAXONOMY_DESCRIPTION_CATEGORIES: ReferenceCatalogCategory[] = ['DRUG_ROUTE', 'DOSAGE_FORM'];
+
 const inputClassName =
   'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 
@@ -180,10 +194,14 @@ export function ReferenceCatalogPane({
                     />
                   </th>
                   <th className="w-24 px-4 py-2.5 text-center">Mã</th>
+                  {BYT_TAXONOMY_CATEGORIES.includes(category) && <th className="w-24 px-4 py-2.5 text-center">Mã BYT</th>}
                   <th className="px-4 py-2.5 text-left">Tên hiển thị</th>
+                  {BYT_TAXONOMY_CATEGORIES.includes(category) && <th className="px-4 py-2.5 text-left">Tên đầy đủ chuẩn</th>}
                   {category === 'EXAM_TYPE' && <th className="w-32 px-4 py-2.5 text-center">Đơn giá</th>}
                   {category === 'INCOME_EXPENSE_TYPE' && <th className="w-28 px-4 py-2.5 text-center">Loại</th>}
-                  {DESCRIPTION_STATUS_CATEGORIES.includes(category) && <th className="px-4 py-2.5 text-left">Mô tả</th>}
+                  {(DESCRIPTION_STATUS_CATEGORIES.includes(category) || BYT_TAXONOMY_DESCRIPTION_CATEGORIES.includes(category)) && (
+                    <th className="px-4 py-2.5 text-left">Mô tả</th>
+                  )}
                   {DESCRIPTION_STATUS_CATEGORIES.includes(category) && <th className="w-32 px-4 py-2.5 text-center">Trạng thái</th>}
                   <th className="w-24 px-4 py-2.5 text-center">Thứ tự</th>
                   {canManage && <th className="w-32 px-4 py-2.5 text-center">Thao tác</th>}
@@ -196,6 +214,9 @@ export function ReferenceCatalogPane({
                       <SelectionCheckbox checked={rowSelection.isSelected(item.id)} onChange={() => rowSelection.toggle(item.id)} ariaLabel={`Chọn ${item.name}`} />
                     </td>
                     <td className="px-4 py-2 text-center text-sm font-bold text-slate-800">{item.code}</td>
+                    {BYT_TAXONOMY_CATEGORIES.includes(category) && (
+                      <td className="px-4 py-2 text-center font-medium text-slate-600">{item.bytCode ?? '—'}</td>
+                    )}
                     <td className="px-4 py-2 text-left font-medium text-slate-900">
                       {item.name}
                       {/* Category có cột "Trạng thái" riêng (Đang sử dụng/Ngưng sử dụng) — badge "Đã ẩn" ở đây sẽ trùng lặp thông tin. */}
@@ -205,6 +226,11 @@ export function ReferenceCatalogPane({
                         </span>
                       )}
                     </td>
+                    {BYT_TAXONOMY_CATEGORIES.includes(category) && (
+                      <td className="max-w-xs truncate px-4 py-2 text-left text-slate-600" title={item.fullName ?? undefined}>
+                        {item.fullName ?? '—'}
+                      </td>
+                    )}
                     {category === 'EXAM_TYPE' && (
                       <td className="px-4 py-2 text-center font-medium text-slate-600">
                         {item.prices && item.prices.length > 0 ? (
@@ -221,7 +247,7 @@ export function ReferenceCatalogPane({
                         </StatusBadge>
                       </td>
                     )}
-                    {DESCRIPTION_STATUS_CATEGORIES.includes(category) && (
+                    {(DESCRIPTION_STATUS_CATEGORIES.includes(category) || BYT_TAXONOMY_DESCRIPTION_CATEGORIES.includes(category)) && (
                       <td className="max-w-xs truncate px-4 py-2 text-left font-medium text-slate-600" title={item.description ?? undefined}>
                         {item.description ?? '—'}
                       </td>

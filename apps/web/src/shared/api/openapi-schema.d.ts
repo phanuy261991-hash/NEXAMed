@@ -13248,6 +13248,8 @@ export interface paths {
                                     countsAsCash: boolean;
                                     /** @enum {string|null} */
                                     direction: "EXPENSE" | "INCOME" | null;
+                                    bytCode: string | null;
+                                    fullName: string | null;
                                 }[];
                             };
                             meta: Record<string, never>;
@@ -13387,6 +13389,8 @@ export interface paths {
                                 countsAsCash: boolean;
                                 /** @enum {string|null} */
                                 direction: "EXPENSE" | "INCOME" | null;
+                                bytCode: string | null;
+                                fullName: string | null;
                             };
                             meta: Record<string, never>;
                         };
@@ -13500,6 +13504,8 @@ export interface paths {
                                 countsAsCash: boolean;
                                 /** @enum {string|null} */
                                 direction: "EXPENSE" | "INCOME" | null;
+                                bytCode: string | null;
+                                fullName: string | null;
                             };
                             meta: Record<string, never>;
                         };
@@ -13622,6 +13628,8 @@ export interface paths {
                                 countsAsCash: boolean;
                                 /** @enum {string|null} */
                                 direction: "EXPENSE" | "INCOME" | null;
+                                bytCode: string | null;
+                                fullName: string | null;
                             };
                             meta: Record<string, never>;
                         };
@@ -13745,6 +13753,8 @@ export interface paths {
                                 countsAsCash: boolean;
                                 /** @enum {string|null} */
                                 direction: "EXPENSE" | "INCOME" | null;
+                                bytCode: string | null;
+                                fullName: string | null;
                             };
                             meta: Record<string, never>;
                         };

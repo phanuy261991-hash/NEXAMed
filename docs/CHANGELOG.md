@@ -2,6 +2,20 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-16 (4)
+
+### Seed master data cho Nhóm tác dụng dược lý / Đường dùng thuốc / Dạng bào chế
+
+Chủ dự án gửi 3 file chuẩn hoá theo Bộ Y tế/BHYT (`NhomTacDungDuocLy.md`/`DuongDungThuoc.md`/`DangBaoChe.md`), yêu cầu nạp vào 3 category `reference_catalog` đã tạo trước đó nhưng chưa seed cứng (`DRUG_GROUP`/`DRUG_ROUTE`/`DOSAGE_FORM`).
+
+Mỗi file có 4-5 cột (Mã UI/Mã BYT/Tên ngắn UI/Tên đầy đủ chuẩn/Mô tả) nhưng bảng chỉ có `code`/`name` — chốt qua 2 vòng `AskUserQuestion` (vòng 2 sau phản hồi trực tiếp của chủ dự án khi thấy thiếu cột): nạp ĐẦY ĐỦ, không bỏ cột nào. Thêm 2 cột mới `byt_code` (mã liên thông BHYT, Quyết định 130/QĐ-BYT — chuẩn bị tích hợp sau này) và `full_name` (tên đầy đủ chuẩn ngành) — CHỈ có ý nghĩa với 3 category này. Cột `description` có sẵn mở rộng sang lưu "Mô tả/Ví dụ" cho DRUG_ROUTE/DOSAGE_FORM (DRUG_GROUP không có cột này ở nguồn).
+
+2 migration `20260916150000_reference_catalog_byt_code` → `20260916160000_reference_catalog_full_name`. Seed 28 Nhóm tác dụng dược lý + 18 Đường dùng + 16 Dạng bào chế (`docs/data/nhom-tac-dung-duoc-ly.md`/`duong-dung-thuoc.md`/`dang-bao-che.md`, copy byte-for-byte) — upsert idempotent theo `(category, code)`, đúng khuôn `OCCUPATION_ITEMS`.
+
+Sau phản hồi trực tiếp của chủ dự án (ảnh chụp bảng "Nhóm thuốc" chưa thấy 2 cột mới), đã bổ sung hiển thị ở `ReferenceCatalogPane.tsx`: cột "Mã BYT" + "Tên đầy đủ chuẩn" cho cả 3 category, cột "Mô tả" mở rộng thêm cho DRUG_ROUTE/DOSAGE_FORM — tất cả CHỈ ĐỌC (seed luôn đồng bộ lại theo nguồn, không có ô nhập ở form). `openapi:generate`/`api:codegen` chạy lại.
+
+**Đã xác minh thật**: `packages/core` `data.spec.ts` +3 test (193/193), seed chạy 2 lần xác nhận idempotent qua query DB trực tiếp (28/18/16 dòng active, đủ 5 cột khớp file gốc), `apps/api` 809/820 pass (1 flake `icd10-http.spec.ts` đã biết, không liên quan), `pnpm -w typecheck` sạch toàn workspace, `apps/web` typecheck/build sạch. Playwright qua Chrome thật xác nhận cả 3 bảng hiện đúng cột mới (ảnh chụp "Dạng bào chế" đủ 16 dòng F01-F99). Xem chi tiết `docs/DECISIONS.md` #152.
+
 ## 2026-09-16 (3)
 
 ### Rà soát Kho Thuốc theo tài liệu quy chuẩn quản lý VTYT — Rx/OTC, phân loại kiểm soát, 8 trường Thuốc, danh mục hoá + "thêm nhanh"

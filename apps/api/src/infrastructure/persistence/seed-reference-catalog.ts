@@ -1,5 +1,8 @@
 import type { PrismaClient } from '@prisma/client';
 import {
+  DOSAGE_FORM_ITEMS,
+  DRUG_GROUP_ITEMS,
+  DRUG_ROUTE_ITEMS,
   EMPLOYMENT_STATUS_ITEMS,
   EMPLOYMENT_TYPE_ITEMS,
   ETHNICITY_ITEMS,
@@ -63,6 +66,70 @@ export async function seedReferenceCatalog(prisma: PrismaClient): Promise<void> 
       where: { category_code: { category: 'OCCUPATION', code: item.code } },
       create: { category: 'OCCUPATION', code: item.code, name: item.name, sortOrder: item.sortOrder },
       update: { name: item.name, sortOrder: item.sortOrder },
+    });
+  }
+
+  // Kho Thuốc GĐ1 (docs/DECISIONS.md #152) — 3 danh mục có nguồn dữ liệu chính thức, nạp ĐẦY ĐỦ
+  // mọi cột của file gốc (mã UI/mã BYT/tên đầy đủ/mô tả), khác ACTIVE_INGREDIENT/STORAGE_
+  // CONDITION/... (không seed cứng). `bytCode`/`fullName`/`description` không phải field admin
+  // sửa được qua UI (khác `name`/`sortOrder`) nên seed luôn ghi đè lại theo nguồn, cùng khuôn
+  // ETHNICITY/NATIONALITY/OCCUPATION ở trên.
+  for (const item of DRUG_GROUP_ITEMS) {
+    await prisma.referenceCatalog.upsert({
+      where: { category_code: { category: 'DRUG_GROUP', code: item.code } },
+      create: {
+        category: 'DRUG_GROUP',
+        code: item.code,
+        name: item.name,
+        sortOrder: item.sortOrder,
+        bytCode: item.bytCode,
+        fullName: item.fullName,
+      },
+      update: { name: item.name, sortOrder: item.sortOrder, bytCode: item.bytCode, fullName: item.fullName },
+    });
+  }
+
+  for (const item of DRUG_ROUTE_ITEMS) {
+    await prisma.referenceCatalog.upsert({
+      where: { category_code: { category: 'DRUG_ROUTE', code: item.code } },
+      create: {
+        category: 'DRUG_ROUTE',
+        code: item.code,
+        name: item.name,
+        sortOrder: item.sortOrder,
+        bytCode: item.bytCode,
+        fullName: item.fullName,
+        description: item.description,
+      },
+      update: {
+        name: item.name,
+        sortOrder: item.sortOrder,
+        bytCode: item.bytCode,
+        fullName: item.fullName,
+        description: item.description,
+      },
+    });
+  }
+
+  for (const item of DOSAGE_FORM_ITEMS) {
+    await prisma.referenceCatalog.upsert({
+      where: { category_code: { category: 'DOSAGE_FORM', code: item.code } },
+      create: {
+        category: 'DOSAGE_FORM',
+        code: item.code,
+        name: item.name,
+        sortOrder: item.sortOrder,
+        bytCode: item.bytCode,
+        fullName: item.fullName,
+        description: item.description,
+      },
+      update: {
+        name: item.name,
+        sortOrder: item.sortOrder,
+        bytCode: item.bytCode,
+        fullName: item.fullName,
+        description: item.description,
+      },
     });
   }
 

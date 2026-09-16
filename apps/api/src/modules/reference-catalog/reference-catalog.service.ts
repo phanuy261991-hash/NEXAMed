@@ -320,6 +320,8 @@ export class ReferenceCatalogService {
       countsAsCash: row.countsAsCash,
       description: row.description,
       direction: row.direction,
+      bytCode: row.bytCode,
+      fullName: row.fullName,
       // Category khác luôn `undefined` (field không áp dụng). EXAM_TYPE luôn là MẢNG thật (kể cả
       // rỗng — ví dụ tenant khác chưa tạo đơn giá cho mục dùng chung này) chứ không phải
       // `undefined`, để frontend không phải phân biệt 2 trạng thái "chưa tải"/"không có dòng nào".

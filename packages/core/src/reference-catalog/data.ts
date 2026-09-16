@@ -11,9 +11,18 @@
  *   dùng — chưa có nhu cầu nghiệp vụ, bỏ có chủ đích (không phải bỏ sót).
  * - OCCUPATION_ITEMS: "docs/data/nghe-nghiep.md" (13 dòng) — code = cột "Mã (Code)", name = cột
  *   "Tên nghề nghiệp".
+ * - DRUG_GROUP_ITEMS/DRUG_ROUTE_ITEMS/DOSAGE_FORM_ITEMS (docs/DECISIONS.md #152) —
+ *   "docs/data/nhom-tac-dung-duoc-ly.md"/"duong-dung-thuoc.md"/"dang-bao-che.md" — nạp ĐẦY ĐỦ mọi
+ *   cột có trong file gốc (chủ dự án yêu cầu trực tiếp, không bỏ bớt cột nào): code = cột "Mã UI"
+ *   (ngắn, dùng làm khoá), name = cột "Tên ngắn UI" (hiện trong Combobox lúc kê đơn/nhập thuốc),
+ *   fullName = cột "Tên đầy đủ chuẩn" (văn bản chuẩn ngành, không dùng làm `name` vì quá dài cho
+ *   dropdown), bytCode = cột "Mã Bộ Y tế" (chuẩn liên thông BHYT, Quyết định 130/QĐ-BYT — CHỈ lưu
+ *   để chuẩn bị, chưa dùng ở đâu vì BHYT ngoài phạm vi v1), description = cột "Mô tả/Ví dụ" hoặc
+ *   "Mô tả/Phân loại" (CHỈ có ở duong-dung-thuoc.md/dang-bao-che.md — nhom-tac-dung-duoc-ly.md
+ *   không có cột này, DRUG_GROUP_ITEMS không set description).
  *
- * sortOrder khớp đúng thứ tự trong file gốc: dân tộc = chính mã số, quốc tịch/nghề nghiệp = thứ
- * tự dòng.
+ * sortOrder khớp đúng thứ tự trong file gốc: dân tộc = chính mã số, quốc tịch/nghề nghiệp/nhóm
+ * thuốc/đường dùng/dạng bào chế = thứ tự dòng.
  */
 
 export interface ReferenceCatalogSeedItem {
@@ -22,6 +31,15 @@ export interface ReferenceCatalogSeedItem {
   sortOrder: number;
   /** Chỉ có ý nghĩa với EMPLOYMENT_STATUS_ITEMS — xem comment cột `deactivatesAccount` ở schema.prisma. */
   deactivatesAccount?: boolean;
+  /** Chỉ có ý nghĩa với DRUG_GROUP_ITEMS/DRUG_ROUTE_ITEMS/DOSAGE_FORM_ITEMS — xem comment cột
+   * `bytCode` ở schema.prisma (docs/DECISIONS.md #152). */
+  bytCode?: string;
+  /** Chỉ có ý nghĩa với DRUG_GROUP_ITEMS/DRUG_ROUTE_ITEMS/DOSAGE_FORM_ITEMS — xem comment cột
+   * `fullName` ở schema.prisma (docs/DECISIONS.md #152). */
+  fullName?: string;
+  /** Tái dùng cột `description` có sẵn (UNIT_SEED_ITEMS đã dùng cột này riêng, xem `unit-seed-
+   * data.ts`) — với DRUG_ROUTE_ITEMS/DOSAGE_FORM_ITEMS đây là cột "Mô tả/Ví dụ" của file gốc. */
+  description?: string;
 }
 
 export const ETHNICITY_ITEMS: readonly ReferenceCatalogSeedItem[] = [
@@ -152,4 +170,90 @@ export const OCCUPATION_ITEMS: readonly ReferenceCatalogSeedItem[] = [
   { code: 'NOI_TRO', name: 'Nội trợ', sortOrder: 11 },
   { code: 'THAT_NGHIEP', name: 'Không có việc làm / Thất nghiệp', sortOrder: 12 },
   { code: 'KHAC', name: 'Khác', sortOrder: 13 },
+];
+
+/**
+ * "Nhóm tác dụng dược lý" (`DRUG_GROUP`, Kho Thuốc GĐ1, docs/DECISIONS.md #152) — chủ dự án cung
+ * cấp `docs/data/nhom-tac-dung-duoc-ly.md`, chuẩn hoá theo danh mục dùng chung của Bộ Y tế. Thứ tự
+ * khớp đúng thứ tự dòng trong file gốc, "Khác" (N99) đứng cuối.
+ */
+export const DRUG_GROUP_ITEMS: readonly ReferenceCatalogSeedItem[] = [
+  { code: 'N01', bytCode: '1', name: 'Kháng sinh - Kháng khuẩn', fullName: 'Thuốc chống nhiễm khuẩn', sortOrder: 1 },
+  { code: 'N02', bytCode: '2', name: 'Giảm đau - Hạ sốt - NSAID', fullName: 'Thuốc giảm đau, hạ sốt, chống viêm phi Steroid (NSAID)', sortOrder: 2 },
+  { code: 'N03', bytCode: '3', name: 'Cơ - Xương - Khớp & Gút', fullName: 'Thuốc điều trị Gút và các bệnh xương khớp', sortOrder: 3 },
+  { code: 'N04', bytCode: '4', name: 'Chống dị ứng', fullName: 'Thuốc chống dị ứng và các trường hợp tăng cảm ứng', sortOrder: 4 },
+  { code: 'N05', bytCode: '5', name: 'Thần kinh trung ương', fullName: 'Thuốc tác dụng trên hệ thần kinh trung ương', sortOrder: 5 },
+  { code: 'N06', bytCode: '6', name: 'Điều trị Parkinson', fullName: 'Thuốc điều trị bệnh Parkinson', sortOrder: 6 },
+  { code: 'N07', bytCode: '7', name: 'Hô hấp', fullName: 'Thuốc tác dụng trên đường hô hấp', sortOrder: 7 },
+  { code: 'N08', bytCode: '8', name: 'Tim mạch', fullName: 'Thuốc tác dụng trên hệ tim mạch', sortOrder: 8 },
+  { code: 'N09', bytCode: '9', name: 'Tiêu hóa', fullName: 'Thuốc tác dụng trên hệ tiêu hóa', sortOrder: 9 },
+  { code: 'N10', bytCode: '10', name: 'Nội tiết - Tiểu đường', fullName: 'Thuốc điều trị bệnh nội tiết, chuyển hóa', sortOrder: 10 },
+  { code: 'N11', bytCode: '11', name: 'Máu & Cơ quan tạo máu', fullName: 'Thuốc điều trị máu và cơ quan tạo máu', sortOrder: 11 },
+  { code: 'N12', bytCode: '12', name: 'Mắt - Tai Mũi Họng', fullName: 'Thuốc dùng cho mắt, tai - mũi - họng', sortOrder: 12 },
+  { code: 'N13', bytCode: '13', name: 'Da liễu - Dùng ngoài', fullName: 'Thuốc dùng ngoài da', sortOrder: 13 },
+  { code: 'N14', bytCode: '14', name: 'Dịch truyền & Điện giải', fullName: 'Dung dịch điều chỉnh nước, điện giải và cân bằng Acid-Base', sortOrder: 14 },
+  { code: 'N15', bytCode: '15', name: 'Vitamin & Khoáng chất', fullName: 'Vitamin và Khoáng chất', sortOrder: 15 },
+  { code: 'N16', bytCode: '16', name: 'Tiết niệu - Sinh dục', fullName: 'Thuốc tác dụng trên hệ tiết niệu và sinh dục', sortOrder: 16 },
+  { code: 'N17', bytCode: '17', name: 'Sát khuẩn - Tẩy uế', fullName: 'Thuốc sát khuẩn, tẩy uế', sortOrder: 17 },
+  { code: 'N18', bytCode: '18', name: 'Cấp cứu & Chống độc', fullName: 'Thuốc cấp cứu và chống độc', sortOrder: 18 },
+  { code: 'N19', bytCode: '19', name: 'Ung thư & Miễn dịch', fullName: 'Thuốc điều trị ung thư và điều hòa miễn dịch', sortOrder: 19 },
+  { code: 'N20', bytCode: '20', name: 'Vaccine & Sinh học', fullName: 'Thuốc tác dụng trên hệ miễn dịch / Bào chế sinh học', sortOrder: 20 },
+  { code: 'N21', bytCode: '21', name: 'Đông y - Dược liệu', fullName: 'Thuốc y học cổ truyền / Dược liệu', sortOrder: 21 },
+  { code: 'N22', bytCode: '22', name: 'Thực phẩm chức năng', fullName: 'Thực phẩm bảo vệ sức khoẻ / Thực phẩm chức năng', sortOrder: 22 },
+  { code: 'N23', bytCode: '23', name: 'Thuốc cản quang - Chẩn đoán', fullName: 'Thuốc chẩn đoán, thuốc cản quang', sortOrder: 23 },
+  { code: 'N24', bytCode: '24', name: 'Máu & Chế phẩm máu', fullName: 'Máu, các sản phẩm từ máu và dung dịch thay thế huyết tương', sortOrder: 24 },
+  { code: 'N25', bytCode: '25', name: 'Hormon - Nội tiết tố', fullName: 'Hormon và các chế phẩm tổng hợp có tác dụng tương tự', sortOrder: 25 },
+  { code: 'N26', bytCode: '26', name: 'Gây mê - Gây tê', fullName: 'Thuốc gây mê, gây tê', sortOrder: 26 },
+  { code: 'N27', bytCode: '27', name: 'Giãn cơ', fullName: 'Thuốc giãn cơ và tăng trương lực cơ', sortOrder: 27 },
+  { code: 'N99', bytCode: '99', name: 'Khác', fullName: 'Nhóm thuốc khác', sortOrder: 28 },
+];
+
+/**
+ * "Đường dùng thuốc" (`DRUG_ROUTE`, Kho Thuốc GĐ1, docs/DECISIONS.md #152) — chủ dự án cung cấp
+ * `docs/data/duong-dung-thuoc.md`, chuẩn hoá theo mã liên thông BHYT (Quyết định 130/QĐ-BYT).
+ */
+export const DRUG_ROUTE_ITEMS: readonly ReferenceCatalogSeedItem[] = [
+  { code: 'U01', bytCode: '1', name: 'Uống', fullName: 'Đường uống', description: 'Viên nén, viên nang, siro, cốm uống', sortOrder: 1 },
+  { code: 'U02', bytCode: '2.01', name: 'Tiêm IV', fullName: 'Tiêm tĩnh mạch', description: 'Tiêm trực tiếp tĩnh mạch', sortOrder: 2 },
+  { code: 'U03', bytCode: '2.02', name: 'Tiêm IM', fullName: 'Tiêm bắp', description: 'Tiêm cơ bắp (mông, đùi, delta)', sortOrder: 3 },
+  { code: 'U04', bytCode: '2.03', name: 'Tiêm SC', fullName: 'Tiêm dưới da', description: 'Tiêm mô mỡ dưới da (Insulin, vắc xin...)', sortOrder: 4 },
+  { code: 'U05', bytCode: '2.04', name: 'Truyền tĩnh mạch', fullName: 'Truyền tĩnh mạch', description: 'Dịch truyền thể tích lớn', sortOrder: 5 },
+  { code: 'U06', bytCode: '2.05', name: 'Tiêm ID', fullName: 'Tiêm trong da', description: 'Tiêm thử phản ứng (test da), BCG', sortOrder: 6 },
+  { code: 'U07', bytCode: '3.01', name: 'Nhỏ mắt', fullName: 'Dùng cho mắt', description: 'Thuốc nhỏ mắt, mỡ tra mắt', sortOrder: 7 },
+  { code: 'U08', bytCode: '3.02', name: 'Nhỏ tai', fullName: 'Dùng cho tai', description: 'Dung dịch nhỏ tai, rửa tai', sortOrder: 8 },
+  { code: 'U09', bytCode: '3.03', name: 'Xịt / Nhỏ mũi', fullName: 'Dùng cho mũi', description: 'Thuốc nhỏ mũi, xịt mũi', sortOrder: 9 },
+  { code: 'U10', bytCode: '4.01', name: 'Đặt hậu môn', fullName: 'Đường hậu môn / Trực tràng', description: 'Viên đạn đặt hậu môn, thuốc thụt', sortOrder: 10 },
+  { code: 'U11', bytCode: '4.02', name: 'Đặt âm đạo', fullName: 'Đường âm đạo', description: 'Viên đặt phụ khoa, gel âm đạo', sortOrder: 11 },
+  { code: 'U12', bytCode: '5.01', name: 'Hít / Khí dung', fullName: 'Đường hô hấp (Hít / Khí dung)', description: 'Bình xịt định liều, khí dung phế quản', sortOrder: 12 },
+  { code: 'U13', bytCode: '6.01', name: 'Dùng ngoài / Bôi', fullName: 'Dùng ngoài da', description: 'Kem, gel, thuốc mỡ bôi ngoài', sortOrder: 13 },
+  { code: 'U14', bytCode: '6.02', name: 'Dán ngoài da', fullName: 'Miếng dán qua da', description: 'Miếng dán thẩm thấu qua da', sortOrder: 14 },
+  { code: 'U15', bytCode: '1.02', name: 'Ngậm / Đặt dưới lưỡi', fullName: 'Ngậm / Đặt dưới lưỡi', description: 'Viên ngậm, viên tan dưới lưỡi', sortOrder: 15 },
+  { code: 'U16', bytCode: '2.06', name: 'Tiêm khớp', fullName: 'Tiêm vào khớp / Ổ khớp', description: 'Tiêm nội khớp, dịch khớp', sortOrder: 16 },
+  { code: 'U17', bytCode: '7.01', name: 'Rửa / Nhỏ niệu đạo', fullName: 'Dùng qua đường tiết niệu', description: 'Bơm rửa bàng quang, niệu đạo', sortOrder: 17 },
+  { code: 'U99', bytCode: '9', name: 'Khác', fullName: 'Đường dùng khác', description: 'Các đường dùng đặc thù khác', sortOrder: 18 },
+];
+
+/**
+ * "Dạng bào chế" (`DOSAGE_FORM`, Kho Thuốc #151, docs/DECISIONS.md #152) — chủ dự án cung cấp
+ * `docs/data/dang-bao-che.md`. Category này ban đầu (#151) không seed cứng (mã tự sinh) vì lúc đó
+ * chưa có nguồn dữ liệu chính thức — nay seed sẵn, vẫn quản lý thêm/sửa/ẩn được qua UI như
+ * DRUG_GROUP/DRUG_ROUTE.
+ */
+export const DOSAGE_FORM_ITEMS: readonly ReferenceCatalogSeedItem[] = [
+  { code: 'F01', bytCode: 'VN', name: 'Viên nén', fullName: 'Viên nén', description: 'Viên nén bao phim, bao đường, nén trần', sortOrder: 1 },
+  { code: 'F02', bytCode: 'NC', name: 'Viên nang', fullName: 'Viên nang (Capsule)', description: 'Viên nang cứng, viên nang mềm', sortOrder: 2 },
+  { code: 'F03', bytCode: 'NG', name: 'Viên ngậm', fullName: 'Viên ngậm / Viên ngậm dưới lưỡi', description: 'Viên ngậm ho, ngậm dưới lưỡi', sortOrder: 3 },
+  { code: 'F04', bytCode: 'SU', name: 'Viên sủi', fullName: 'Viên nén sủi / Cốm sủi', description: 'Dạng sủi hòa tan vào nước', sortOrder: 4 },
+  { code: 'F05', bytCode: 'VD', name: 'Viên đặt', fullName: 'Viên đặt (Hậu môn / Âm đạo)', description: 'Viên đạn trực tràng, viên trứng âm đạo', sortOrder: 5 },
+  { code: 'F06', bytCode: 'CB', name: 'Cốm / Bột', fullName: 'Bột / Cốm pha uống', description: 'Bột pha uống, cốm pha hỗn dịch', sortOrder: 6 },
+  { code: 'F07', bytCode: 'SR', name: 'Siro', fullName: 'Siro', description: 'Siro uống', sortOrder: 7 },
+  { code: 'F08', bytCode: 'DD', name: 'Dung dịch uống', fullName: 'Dung dịch uống / Hỗn dịch uống', description: 'Dung dịch, hỗn dịch, nhũ dịch đường uống', sortOrder: 8 },
+  { code: 'F09', bytCode: 'DT', name: 'Dung dịch tiêm', fullName: 'Dung dịch tiêm / Bột pha tiêm', description: 'Thuốc tiêm ống, lọ, bột đông khô tiêm', sortOrder: 9 },
+  { code: 'F10', bytCode: 'TT', name: 'Dịch truyền', fullName: 'Dung dịch truyền tĩnh mạch', description: 'Chai/túi dịch truyền thể tích lớn', sortOrder: 10 },
+  { code: 'F11', bytCode: 'NM', name: 'Dung dịch nhỏ mắt/mũi', fullName: 'Dung dịch nhỏ mắt / nhỏ mũi / nhỏ tai', description: 'Thuốc nhỏ mắt, tra mắt, nhỏ tai, nhỏ mũi', sortOrder: 11 },
+  { code: 'F12', bytCode: 'KM', name: 'Thuốc kem / Gel', fullName: 'Kem / Gel / Thuốc mỡ bôi ngoài', description: 'Kem, gel, mỡ bôi da hoặc niêm mạc', sortOrder: 12 },
+  { code: 'F13', bytCode: 'KD', name: 'Dung dịch xịt / Khí dung', fullName: 'Dung dịch xịt / Dung dịch khí dung', description: 'Xịt họng, xịt mũi, dung dịch khí dung', sortOrder: 13 },
+  { code: 'F14', bytCode: 'MD', name: 'Miếng dán', fullName: 'Miếng dán qua da', description: 'Miếng dán thấm qua da', sortOrder: 14 },
+  { code: 'F15', bytCode: 'CT', name: 'Cao / Trà dược liệu', fullName: 'Cao thuốc / Trà nhúng dược liệu', description: 'Cao lỏng, cao đặc, trà túi lọc dược liệu', sortOrder: 15 },
+  { code: 'F99', bytCode: 'KH', name: 'Khác', fullName: 'Dạng bào chế khác', description: 'Các dạng bào chế đặc biệt khác', sortOrder: 16 },
 ];

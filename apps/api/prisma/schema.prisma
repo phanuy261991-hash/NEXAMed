@@ -715,6 +715,15 @@ model ReferenceCatalog {
   // "Loại thu chi" (2026-09-05) — CHỈ có ý nghĩa với category INCOME_EXPENSE_TYPE: Chi tiền/Thu
   // tiền. `null` với category khác, cùng bản chất price/unit/description ở trên.
   direction          ReferenceCatalogDirection?
+  // Mã liên thông BHYT (Quyết định 130/QĐ-BYT, docs/DECISIONS.md #152) — CHỈ có ý nghĩa với
+  // category DRUG_GROUP/DRUG_ROUTE/DOSAGE_FORM, NULL với category khác. Chuẩn bị cho tích hợp
+  // liên thông BHYT sau này (BHYT ngoài phạm vi v1 theo CLAUDE.md) — cột này chỉ LƯU, chưa dùng ở
+  // đâu, cùng tinh thần drug.nationalCode (#147).
+  bytCode            String?                    @map("byt_code")
+  // "Tên đầy đủ chuẩn" (docs/DECISIONS.md #152) — CHỈ có ý nghĩa với category DRUG_GROUP/
+  // DRUG_ROUTE/DOSAGE_FORM, cùng bản chất bytCode. `name` (cột chính, hiện ở Combobox/danh sách)
+  // giữ "Tên ngắn UI" gọn cho UI; cột này lưu tên đầy đủ theo chuẩn ngành để không mất dữ liệu.
+  fullName           String?                    @map("full_name")
 
   @@unique([category, code])
   @@map("reference_catalog")

@@ -130,6 +130,14 @@ export const referenceCatalogItemSchema = z.object({
   /** Chỉ có ý nghĩa với category INCOME_EXPENSE_TYPE (Loại thu chi, 2026-09-05) — xem
    * `referenceCatalogDirectionSchema`. `null` với category khác. */
   direction: referenceCatalogDirectionSchema.nullable(),
+  /** Mã liên thông BHYT (Quyết định 130/QĐ-BYT) — CHỈ có ý nghĩa với category DRUG_GROUP/
+   * DRUG_ROUTE/DOSAGE_FORM, `null` với category khác. Chuẩn bị liên thông BHYT sau này (ngoài
+   * phạm vi v1) — chỉ đọc, không có ô nhập ở UI. */
+  bytCode: z.string().nullable(),
+  /** "Tên đầy đủ chuẩn" — CHỈ có ý nghĩa với category DRUG_GROUP/DRUG_ROUTE/DOSAGE_FORM, `null`
+   * với category khác. `name` giữ "Tên ngắn UI" gọn cho Combobox, cột này lưu tên đầy đủ theo
+   * chuẩn ngành để không mất dữ liệu nguồn. */
+  fullName: z.string().nullable(),
 });
 export type ReferenceCatalogItem = z.infer<typeof referenceCatalogItemSchema>;
 

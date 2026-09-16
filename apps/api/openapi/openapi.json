@@ -32949,6 +32949,18 @@
                                   "EXPENSE",
                                   "INCOME"
                                 ]
+                              },
+                              "bytCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "fullName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               }
                             },
                             "required": [
@@ -32963,7 +32975,9 @@
                               "deactivatesAccount",
                               "description",
                               "countsAsCash",
-                              "direction"
+                              "direction",
+                              "bytCode",
+                              "fullName"
                             ]
                           }
                         }
@@ -33350,6 +33364,18 @@
                             "EXPENSE",
                             "INCOME"
                           ]
+                        },
+                        "bytCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "fullName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         }
                       },
                       "required": [
@@ -33364,7 +33390,9 @@
                         "deactivatesAccount",
                         "description",
                         "countsAsCash",
-                        "direction"
+                        "direction",
+                        "bytCode",
+                        "fullName"
                       ]
                     },
                     "meta": {
@@ -33722,6 +33750,18 @@
                             "EXPENSE",
                             "INCOME"
                           ]
+                        },
+                        "bytCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "fullName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         }
                       },
                       "required": [
@@ -33736,7 +33776,9 @@
                         "deactivatesAccount",
                         "description",
                         "countsAsCash",
-                        "direction"
+                        "direction",
+                        "bytCode",
+                        "fullName"
                       ]
                     },
                     "meta": {
@@ -34039,6 +34081,18 @@
                             "EXPENSE",
                             "INCOME"
                           ]
+                        },
+                        "bytCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "fullName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         }
                       },
                       "required": [
@@ -34053,7 +34107,9 @@
                         "deactivatesAccount",
                         "description",
                         "countsAsCash",
-                        "direction"
+                        "direction",
+                        "bytCode",
+                        "fullName"
                       ]
                     },
                     "meta": {
@@ -34327,6 +34383,18 @@
                             "EXPENSE",
                             "INCOME"
                           ]
+                        },
+                        "bytCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "fullName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         }
                       },
                       "required": [
@@ -34341,7 +34409,9 @@
                         "deactivatesAccount",
                         "description",
                         "countsAsCash",
-                        "direction"
+                        "direction",
+                        "bytCode",
+                        "fullName"
                       ]
                     },
                     "meta": {
