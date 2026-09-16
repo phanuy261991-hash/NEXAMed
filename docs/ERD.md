@@ -1,6 +1,6 @@
 # ERD: NEXAMed v1
 
-**Version**: v1.49 — 16/09/2026 (xem mục 9 để biết lịch sử thay đổi)
+**Version**: v1.50 — 16/09/2026 (xem mục 9 để biết lịch sử thay đổi)
 **Phạm vi**: các bảng thuộc v1 (Đặt lịch, Tiếp nhận, Khám bệnh, Kê đơn) cộng các mở rộng phạm vi đã chốt (Thu ngân cơ bản, Sổ quỹ & Thu chi, Ví tạm ứng, Kho Thuốc & Vật tư y tế GĐ1 — xem `CLAUDE.md`). Bảng của v2+ (viện phí đầy đủ, BHYT) và các giai đoạn sau của Kho Thuốc (GĐ2-5, đã lên kế hoạch nhưng chưa code) **không** tạo ở giai đoạn này.
 **Căn cứ**: `docs/product/prd.md` v1.0, `docs/product/plan.md` v1.0, `.claude/docs/data-model.md`
 
@@ -736,6 +736,33 @@ Chunk khởi động web đo được **500.01 kB — vượt trần 500 kB đú
 
 **Giá bán theo từng đơn vị cụ thể (v1.49, chủ dự án yêu cầu trực tiếp, `docs/DECISIONS.md` #150)** — mở rộng tiếp GĐ1. Trước đây giá mỗi bậc quy đổi LUÔN suy ra từ `drug.default_sell_price` (đơn vị nhỏ nhất) theo tỷ lệ `factor_to_unit_below`. Nay thêm công tắc THEO TỪNG MẶT HÀNG: `drug.unit_pricing_enabled` (boolean, mặc định `false` — giữ nguyên hành vi cũ). Bật thì `drug_unit.sell_price` (bigint, nullable — chỉ có ý nghĩa khi công tắc bật) lưu giá RIÊNG của đúng bậc đó, KHÔNG suy ra theo tỷ lệ nữa (vd 1 Viên lẻ có thể đắt hơn/rẻ hơn tỷ lệ quy đổi từ 1 Vỉ). Bắt buộc nhập đủ giá MỌI bậc (kể cả `default_sell_price` của đơn vị nhỏ nhất) khi bật — validate ở `packages/shared/src/drug.ts` (`checkUnitPricingRequired`, `superRefine` dùng chung create/update), không phải CHECK constraint DB. Không bảng mới, không permission mới.
 
+**Rà soát theo tài liệu quy chuẩn kho thuốc/VTYT (v1.50, `docs/DECISIONS.md` #151)** — chủ dự án gửi tài liệu tham khảo, đối chiếu field-by-field trước khi code. VTYT giữ nguyên hoãn; Thuốc bổ sung đầy đủ.
+
+Enum mới `drug_control_type` (`NORMAL`/`TOXIC`/`NARCOTIC`/`PSYCHOTROPIC`/`PRECURSOR`, theo Thông tư 20/2017/TT-BYT) — CỐ ĐỊNH theo pháp luật, KHÔNG dùng `reference_catalog` (khác hồ sơ `DRUG_GROUP`/`DRUG_ROUTE` là danh mục mở). `drug` thêm 10 cột (tất cả CHỈ có ý nghĩa với `item_type='MEDICINE'`, ẩn hoàn toàn cho SUPPLY ở UI, TRỪ `manufacturer_code` áp dụng cả 2 loại):
+
+| Cột | Kiểu | Bắt buộc? | Ghi chú |
+|---|---|---|---|
+| `control_type` | `drug_control_type` | Có default `NORMAL` | Phân loại kiểm soát đặc biệt |
+| `is_prescription_only` | `boolean` | Có default `true` | Rx/OTC |
+| `manufacturer_code` | `text` | **Bắt buộc (cả 2 loại)** | Mã tham chiếu category `MANUFACTURER` mới — thay `manufacturer` (text, S4-03, giữ nguyên làm legacy, backfill 1 lần qua migration) |
+| `registration_number` | `text` | **Bắt buộc (MEDICINE)** | Số đăng ký lưu hành / GPNK |
+| `dosage_form` | `text` | **Bắt buộc (MEDICINE)** | Mã tham chiếu category `DOSAGE_FORM` mới |
+| `country_of_origin` | `text` | **Bắt buộc (MEDICINE)** | Mã tham chiếu category `COUNTRY_OF_ORIGIN` mới |
+| `default_dosage` | `text` | Tùy chọn | Liều dùng mặc định (text tự do) |
+| `usage_instruction` | `text` | Tùy chọn | Cách dùng (text tự do) |
+| `contraindications` | `text` | Tùy chọn | Chống chỉ định/Cảnh báo (text tự do) |
+| `storage_conditions` | `text` | Tùy chọn | Mã tham chiếu category `STORAGE_CONDITION` mới |
+| `storage_location` | `text` | Tùy chọn | Mã tham chiếu category `STORAGE_LOCATION` mới |
+| `barcode` | `text` | Tùy chọn | Text tự do |
+
+5 category `reference_catalog` mới: `DOSAGE_FORM`, `STORAGE_CONDITION`, `MANUFACTURER`, `COUNTRY_OF_ORIGIN`, `STORAGE_LOCATION` — không seed cứng, mã tự sinh, có pill quản lý riêng trong "Danh mục Thuốc và Vật Tư". **"Thêm nhanh" ngay tại ô chọn** (chủ dự án yêu cầu trực tiếp): `Combobox` dùng chung (`apps/web/src/shared/ui/Combobox.tsx`) mở rộng 2 prop tùy chọn `allowCreate`/`onCreateOption` (mặc định tắt, không đổi hành vi ~25+ nơi dùng cũ) — gõ không khớp hiện dòng "+ Thêm mới", chọn tạo ngay + tự chọn.
+
+**Backfill `manufacturer`** (migration riêng khỏi migration thêm enum — Postgres không cho dùng giá trị enum mới trong cùng transaction): với mỗi giá trị `trim(manufacturer)` PHÂN BIỆT của TOÀN HỆ THỐNG (`reference_catalog` không có `tenant_id`, phát hiện lại khi tra model — là bảng chia sẻ toàn hệ thống, không theo tenant), tạo 1 dòng danh mục `MANUFACTURER` rồi trỏ `manufacturer_code`. Khác hoa/thường sinh 2 dòng riêng (chấp nhận, `clinic_admin` tự gộp qua UI).
+
+Rà soát lại "trường nào bắt buộc" theo yêu cầu trực tiếp: `defaultSellPrice`/`manufacturerCode` bắt buộc cho CẢ 2 loại (trước đó `manufacturer`/`defaultSellPrice` cũng đã bắt buộc từ #151 đợt 1); `drugGroupCode`/`routeCode`/`ingredients[]`/`registrationNumber`/`dosageForm`/`countryOfOrigin` bắt buộc CHỈ khi MEDICINE (`checkMedicineRequiredFields`, `superRefine` mở rộng) — CHỈ bắt buộc ở `createDrugRequestSchema`, `updateDrugRequestSchema` giữ `nullable().optional()`.
+
+Migration: `20260916100000_drug_control_type` (enum + 2 cột) → `20260916120000_drug_extra_fields` (8 cột text) → `20260916130000_drug_catalog_categories_enum` (5 giá trị enum `reference_catalog_category` + 2 cột `manufacturer_code`/`storage_location`) → `20260916140000_drug_manufacturer_catalog_backfill` (INSERT+UPDATE dữ liệu).
+
 ---
 
 ## 4. Ràng buộc ở tầng cơ sở dữ liệu
@@ -904,3 +931,4 @@ Khi thêm, các bảng này vẫn phải đủ 8 cột bắt buộc và tuân th
 | v1.47 | 14/09/2026 | Mở rộng "Thông tin phòng khám" (`docs/DECISIONS.md` #140, chủ dự án yêu cầu trực tiếp). Migration `20260914130000_tenant_profile_extended_fields` — `tenant` thêm 7 cột nullable: `facility_code`, `professional_in_charge_name`, `website`, `social_links_json JSONB DEFAULT '[]'` (mảng `{platform, url}`), `bank_account_name`, `bank_account_number`, `bank_name`. Không kiểm định dạng (kể cả website/link mạng xã hội). `license_no` (cột có sẵn từ ADM-01) lần đầu lộ qua endpoint `clinic-profile`. Không bảng mới, không permission mới. |
 | v1.48 | 15/09/2026 | Kho Thuốc & Vật tư y tế — Giai đoạn 1 (`docs/DECISIONS.md` #146/#148, chủ dự án yêu cầu trực tiếp, đảo ngược quyết định "dược/kho ngoài v1" của Sprint 4). Migration `20260915140000_pharmacy_catalog_gd1` (viết tay). Mở rộng `drug` thêm 10 cột (`item_type` enum `drug_item_type` MEDICINE/SUPPLY, `is_batch_managed`, `base_unit_code`, `default_sell_price`, `drug_group_code`/`route_code`, `national_code`, `manufacturer`, `min_stock_alert`/`max_stock_alert` — cột gốc S4-03 giữ nguyên). 4 bảng MỚI: `drug_unit` (chuỗi quy đổi đơn vị N bậc, thêm C27), `drug_ingredient` (hoạt chất & hàm lượng, thêm C28 — sửa lỗ hổng "thuốc phối hợp bị bỏ sót cảnh báo trùng" ở tầng dữ liệu, PRE-02 CHƯA rewire thuật toán), `supplier` (Nhà cung cấp, mã tự sinh `NCC`), `warehouse` (Kho, mã tự sinh `KH`, thêm C26 — đúng 1 kho mặc định/tenant, tự seed "Kho chính"). 3 category `reference_catalog` mới `ACTIVE_INGREDIENT`/`DRUG_GROUP`/`DRUG_ROUTE` (không seed cứng). Không permission mới (dùng lại `drug.read`/`drug.manage`). Xem mục 3.7. Còn treo: GĐ2 (Nhập kho & tồn theo lô) trở đi chưa bắt đầu, xem mục 7. |
 | v1.49 | 16/09/2026 | "Giá bán theo từng đơn vị cụ thể" (`docs/DECISIONS.md` #150, chủ dự án yêu cầu trực tiếp — xem lại phần giá bán GĐ1 trước khi làm tiếp). Migration `20260916090000_drug_unit_pricing` (viết tay): `drug` thêm `unit_pricing_enabled BOOLEAN NOT NULL DEFAULT false` (công tắc THEO TỪNG MẶT HÀNG); `drug_unit` thêm `sell_price BIGINT` (nullable, chỉ có ý nghĩa khi công tắc bật). Mặc định TẮT giữ nguyên hành vi cũ (giá suy ra theo tỷ lệ quy đổi từ `default_sell_price`); bật thì mỗi bậc — kể cả đơn vị nhỏ nhất — có giá riêng, KHÔNG suy ra theo tỷ lệ, bắt buộc nhập đủ mọi bậc (validate ở tầng Zod `packages/shared`, không phải CHECK DB). Không bảng mới, không C mới, không permission mới. Xem mục 3.7. |
+| v1.50 | 16/09/2026 | Rà soát Kho Thuốc theo tài liệu quy chuẩn quản lý VTYT (`docs/DECISIONS.md` #151, chủ dự án gửi tài liệu tham khảo đối chiếu). VTYT giữ nguyên hoãn. Thuốc: enum mới `drug_control_type` (Thông tư 20/2017/TT-BYT) + `drug` thêm 10 cột (`control_type`/`is_prescription_only` có default; `manufacturer_code` bắt buộc cả 2 loại thay `manufacturer` text cũ — S4-03 giữ legacy, backfill 1 lần; `registration_number`/`dosage_form`/`country_of_origin` bắt buộc CHỈ MEDICINE; `default_dosage`/`usage_instruction`/`contraindications`/`storage_conditions`/`storage_location`/`barcode` tùy chọn). 5 category `reference_catalog` mới (`DOSAGE_FORM`/`STORAGE_CONDITION`/`MANUFACTURER`/`COUNTRY_OF_ORIGIN`/`STORAGE_LOCATION`) có "thêm nhanh" ngay tại ô chọn (`Combobox` mở rộng `allowCreate`/`onCreateOption`, ~25+ nơi dùng cũ không đổi hành vi). 4 migration: `20260916100000_drug_control_type` → `20260916120000_drug_extra_fields` → `20260916130000_drug_catalog_categories_enum` → `20260916140000_drug_manufacturer_catalog_backfill`. Không bảng mới, không permission mới. Xem mục 3.7. |

@@ -53,23 +53,48 @@ describe('HTTP e2e — /api/v1/drugs', () => {
       units: unknown[];
       defaultSellPrice: number;
       unitPricingEnabled: boolean;
+      drugGroupCode: string;
+      routeCode: string;
+      manufacturer: string;
+      controlType: string;
+      isPrescriptionOnly: boolean;
+      registrationNumber: string;
+      dosageForm: string;
+      countryOfOrigin: string;
     }> = {},
   ) {
+    const itemType = overrides.itemType ?? 'MEDICINE';
+    // Rà soát #151 đối chiếu tài liệu quy chuẩn kho thuốc/VTYT: Nhóm thuốc/Đường dùng/Hoạt chất bắt
+    // buộc CHỈ khi MEDICINE (Vật tư y tế không có các khái niệm này, và không có hoạt chất — xem
+    // test "Vật tư kèm hoạt chất → 400"). Giá bán/Hãng sản xuất bắt buộc cho CẢ 2 loại.
+    const defaultIngredients = itemType === 'MEDICINE' ? [{ activeIngredientCode: 'TEST_INGREDIENT', strengthValue: 500000, strengthUnitCode: 'MG' }] : [];
     const res = await request(app.getHttpServer())
       .post('/api/v1/drugs')
       .set(authed(token))
       .send({
         code: overrides.code ?? `DRG-${randomUUID().slice(0, 8)}`,
         name: overrides.name ?? 'Paracetamol 500mg',
-        itemType: overrides.itemType ?? 'MEDICINE',
+        itemType,
         baseUnitCode: 'VIEN',
         activeIngredient: 'Paracetamol',
         unit: 'Viên',
         concentration: '500mg',
-        ingredients: overrides.ingredients ?? [],
+        manufacturerCode: overrides.manufacturer ?? 'TEST_MANUFACTURER',
+        defaultSellPrice: overrides.defaultSellPrice ?? 10000,
+        ...(itemType === 'MEDICINE'
+          ? {
+              drugGroupCode: overrides.drugGroupCode ?? 'TEST_GROUP',
+              routeCode: overrides.routeCode ?? 'TEST_ROUTE',
+              registrationNumber: overrides.registrationNumber ?? 'VD-TEST-0001',
+              dosageForm: overrides.dosageForm ?? 'Viên nén',
+              countryOfOrigin: overrides.countryOfOrigin ?? 'Việt Nam',
+            }
+          : {}),
+        ingredients: overrides.ingredients ?? defaultIngredients,
         units: overrides.units ?? [],
-        ...(overrides.defaultSellPrice !== undefined ? { defaultSellPrice: overrides.defaultSellPrice } : {}),
         ...(overrides.unitPricingEnabled !== undefined ? { unitPricingEnabled: overrides.unitPricingEnabled } : {}),
+        ...(overrides.controlType !== undefined ? { controlType: overrides.controlType } : {}),
+        ...(overrides.isPrescriptionOnly !== undefined ? { isPrescriptionOnly: overrides.isPrescriptionOnly } : {}),
       });
     return res;
   }
@@ -216,11 +241,23 @@ describe('HTTP e2e — /api/v1/drugs', () => {
   });
 
   it('Giá theo từng đơn vị — bật nhưng thiếu giá đơn vị nhỏ nhất → 400', async () => {
-    const res = await createDrug(clinicAdminToken, {
-      name: 'Cefixim GĐ1',
-      unitPricingEnabled: true,
-      units: [{ unitCode: 'Vỉ', sortOrder: 0, factorToUnitBelow: 10, sellPrice: 9000 }],
-    });
+    // Gửi thẳng request (không qua helper `createDrug()`) vì cố ý OMIT `defaultSellPrice` — helper
+    // luôn điền mặc định 10000 kể từ khi trường này trở thành bắt buộc (rà soát #151).
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/drugs')
+      .set(authed(clinicAdminToken))
+      .send({
+        code: `DRG-${randomUUID().slice(0, 8)}`,
+        name: 'Cefixim GĐ1',
+        itemType: 'MEDICINE',
+        baseUnitCode: 'VIEN',
+        manufacturer: 'Test Manufacturer',
+        drugGroupCode: 'TEST_GROUP',
+        routeCode: 'TEST_ROUTE',
+        ingredients: [{ activeIngredientCode: 'TEST_INGREDIENT', strengthValue: 500000, strengthUnitCode: 'MG' }],
+        unitPricingEnabled: true,
+        units: [{ unitCode: 'Vỉ', sortOrder: 0, factorToUnitBelow: 10, sellPrice: 9000 }],
+      });
     expect(res.status).toBe(400);
   });
 
@@ -285,5 +322,158 @@ describe('HTTP e2e — /api/v1/drugs', () => {
     expect(res.status).toBe(200);
     expect(res.body.data.items.every((d: { itemType: string }) => d.itemType === 'SUPPLY')).toBe(true);
     expect(res.body.data.items.some((d: { name: string }) => d.name === 'Bơm tiêm GĐ1')).toBe(true);
+  });
+
+  // Rà soát #151 đối chiếu tài liệu quy chuẩn kho thuốc/VTYT — bổ sung bắt buộc Nhóm thuốc/Đường
+  // dùng/Hoạt chất (chỉ Thuốc) và Giá bán/Hãng sản xuất (cả 2 loại), cùng 2 trường mới Rx/OTC +
+  // phân loại kiểm soát đặc biệt (docs/DECISIONS.md #151).
+  it('#151 — Thuốc thiếu Nhóm thuốc → 400', async () => {
+    const res = await createDrug(clinicAdminToken, { name: 'Thiếu nhóm thuốc', drugGroupCode: '' });
+    expect(res.status).toBe(400);
+  });
+
+  it('#151 — Thuốc thiếu Đường dùng → 400', async () => {
+    const res = await createDrug(clinicAdminToken, { name: 'Thiếu đường dùng', routeCode: '' });
+    expect(res.status).toBe(400);
+  });
+
+  it('#151 — Thuốc thiếu Hoạt chất & hàm lượng (rỗng) → 400', async () => {
+    const res = await createDrug(clinicAdminToken, { name: 'Thiếu hoạt chất', ingredients: [] });
+    expect(res.status).toBe(400);
+  });
+
+  it('#151 — Vật tư y tế KHÔNG bắt buộc Nhóm thuốc/Đường dùng/Hoạt chất (chỉ Thuốc mới bắt buộc)', async () => {
+    const res = await createDrug(clinicAdminToken, { name: 'Vật tư OK GĐ1', itemType: 'SUPPLY' });
+    expect(res.status).toBe(200);
+  });
+
+  it('#151 — thiếu Hãng sản xuất → 400 (bắt buộc cho cả Thuốc lẫn Vật tư y tế)', async () => {
+    const res = await createDrug(clinicAdminToken, { name: 'Thiếu hãng SX', manufacturer: '' });
+    expect(res.status).toBe(400);
+  });
+
+  it('#151 — thiếu Giá bán mặc định → 400 (bắt buộc cho cả Thuốc lẫn Vật tư y tế)', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/drugs')
+      .set(authed(clinicAdminToken))
+      .send({
+        code: `DRG-${randomUUID().slice(0, 8)}`,
+        name: 'Thiếu giá bán',
+        itemType: 'SUPPLY',
+        baseUnitCode: 'VIEN',
+        manufacturer: 'Test Manufacturer',
+        ingredients: [],
+        units: [],
+      });
+    expect(res.status).toBe(400);
+  });
+
+  it('#151 — không truyền controlType/isPrescriptionOnly → mặc định NORMAL/true', async () => {
+    const res = await createDrug(clinicAdminToken, { name: 'Mặc định Rx/kiểm soát' });
+    expect(res.status).toBe(200);
+    expect(res.body.data.controlType).toBe('NORMAL');
+    expect(res.body.data.isPrescriptionOnly).toBe(true);
+  });
+
+  it('#151 — tạo thuốc kiểm soát đặc biệt + OTC tường minh → 200, đọc lại đúng; PATCH đổi lại → version tăng', async () => {
+    const created = await createDrug(clinicAdminToken, {
+      name: 'Morphin GĐ1',
+      controlType: 'NARCOTIC',
+      isPrescriptionOnly: false,
+    });
+    expect(created.status).toBe(200);
+    expect(created.body.data.controlType).toBe('NARCOTIC');
+    expect(created.body.data.isPrescriptionOnly).toBe(false);
+
+    const drugId = created.body.data.id as string;
+    const patchRes = await request(app.getHttpServer())
+      .patch(`/api/v1/drugs/${drugId}`)
+      .set(authed(clinicAdminToken))
+      .send({ version: 1, controlType: 'PSYCHOTROPIC', isPrescriptionOnly: true });
+    expect(patchRes.status).toBe(200);
+    expect(patchRes.body.data.version).toBe(2);
+    expect(patchRes.body.data.controlType).toBe('PSYCHOTROPIC');
+    expect(patchRes.body.data.isPrescriptionOnly).toBe(true);
+  });
+
+  // Mở rộng #151 (chủ dự án rà soát chi tiết tài liệu, xác nhận thêm từng trường qua nhiều lượt) —
+  // registrationNumber/dosageForm/countryOfOrigin bắt buộc CHỈ khi MEDICINE; defaultDosage/
+  // usageInstruction/contraindications/storageConditions/barcode tùy chọn. Tất cả CHỈ có ý nghĩa với
+  // MEDICINE — Vật tư y tế (VTYT) giữ nguyên hoãn, không có field nào trong nhóm này.
+  it('#151 — Thuốc thiếu Số đăng ký lưu hành → 400', async () => {
+    const res = await createDrug(clinicAdminToken, { name: 'Thiếu SĐK', registrationNumber: '' });
+    expect(res.status).toBe(400);
+  });
+
+  it('#151 — Thuốc thiếu Dạng bào chế → 400', async () => {
+    const res = await createDrug(clinicAdminToken, { name: 'Thiếu dạng bào chế', dosageForm: '' });
+    expect(res.status).toBe(400);
+  });
+
+  it('#151 — Thuốc thiếu Nước sản xuất → 400', async () => {
+    const res = await createDrug(clinicAdminToken, { name: 'Thiếu nước SX', countryOfOrigin: '' });
+    expect(res.status).toBe(400);
+  });
+
+  it('#151 — Vật tư y tế KHÔNG bắt buộc SĐK/Dạng bào chế/Nước sản xuất', async () => {
+    const res = await createDrug(clinicAdminToken, { name: 'Vật tư OK GĐ1b', itemType: 'SUPPLY' });
+    expect(res.status).toBe(200);
+  });
+
+  it('#151 — tạo đủ SĐK/Dạng bào chế/Nước sản xuất + 4 trường tùy chọn → 200, đọc lại đúng; PATCH sửa lại → version tăng', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/drugs')
+      .set(authed(clinicAdminToken))
+      .send({
+        code: `DRG-${randomUUID().slice(0, 8)}`,
+        name: 'Paracetamol đầy đủ GĐ1',
+        itemType: 'MEDICINE',
+        baseUnitCode: 'VIEN',
+        manufacturerCode: 'MFR_DUOC_HAU_GIANG',
+        defaultSellPrice: 2000,
+        drugGroupCode: 'TEST_GROUP',
+        routeCode: 'TEST_ROUTE',
+        registrationNumber: 'VD-25432-16',
+        dosageForm: 'VIEN_NEN_BAO_PHIM',
+        countryOfOrigin: 'VIET_NAM',
+        defaultDosage: 'Uống 1 viên/lần x 2 lần/ngày',
+        usageInstruction: 'Uống sau khi ăn no',
+        contraindications: 'Không dùng cho người suy gan nặng',
+        storageConditions: 'BAO_QUAN_KHO_RAO',
+        storageLocation: 'KE_A1',
+        barcode: '8938501234567',
+        ingredients: [{ activeIngredientCode: 'TEST_INGREDIENT', strengthValue: 500000, strengthUnitCode: 'MG' }],
+        units: [],
+      });
+    expect(res.status).toBe(200);
+    expect(res.body.data.registrationNumber).toBe('VD-25432-16');
+    expect(res.body.data.dosageForm).toBe('VIEN_NEN_BAO_PHIM');
+    expect(res.body.data.countryOfOrigin).toBe('VIET_NAM');
+    expect(res.body.data.defaultDosage).toBe('Uống 1 viên/lần x 2 lần/ngày');
+    expect(res.body.data.usageInstruction).toBe('Uống sau khi ăn no');
+    expect(res.body.data.contraindications).toBe('Không dùng cho người suy gan nặng');
+    expect(res.body.data.storageConditions).toBe('BAO_QUAN_KHO_RAO');
+    expect(res.body.data.storageLocation).toBe('KE_A1');
+    expect(res.body.data.barcode).toBe('8938501234567');
+
+    const drugId = res.body.data.id as string;
+    const patchRes = await request(app.getHttpServer())
+      .patch(`/api/v1/drugs/${drugId}`)
+      .set(authed(clinicAdminToken))
+      .send({ version: 1, barcode: '8938501234568', storageConditions: null });
+    expect(patchRes.status).toBe(200);
+    expect(patchRes.body.data.version).toBe(2);
+    expect(patchRes.body.data.barcode).toBe('8938501234568');
+    expect(patchRes.body.data.storageConditions).toBeNull();
+  });
+
+  it('#151 — không truyền 5 trường tùy chọn mới → mặc định null, không lỗi', async () => {
+    const res = await createDrug(clinicAdminToken, { name: 'Không có trường tuỳ chọn GĐ1' });
+    expect(res.status).toBe(200);
+    expect(res.body.data.defaultDosage).toBeNull();
+    expect(res.body.data.usageInstruction).toBeNull();
+    expect(res.body.data.contraindications).toBeNull();
+    expect(res.body.data.storageConditions).toBeNull();
+    expect(res.body.data.barcode).toBeNull();
   });
 });

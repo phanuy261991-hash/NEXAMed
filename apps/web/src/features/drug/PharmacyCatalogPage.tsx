@@ -13,6 +13,14 @@ const PILLS: ConfigScreenPill[] = [
   { key: 'active-ingredient', label: 'Hoạt chất' },
   { key: 'drug-group', label: 'Nhóm thuốc' },
   { key: 'drug-route', label: 'Đường dùng' },
+  // Mở rộng #151 — 5 category mới, có "thêm nhanh" ngay tại ô chọn trong form Thêm/Sửa thuốc
+  // (Combobox allowCreate), NHƯNG vẫn cần trang quản lý riêng để đổi tên/gộp/ẩn (đặc biệt
+  // "Hãng sản xuất" backfill từ dữ liệu text cũ có thể trùng gần đúng do khác hoa/thường).
+  { key: 'dosage-form', label: 'Dạng bào chế' },
+  { key: 'storage-condition', label: 'Điều kiện bảo quản' },
+  { key: 'manufacturer', label: 'Hãng sản xuất' },
+  { key: 'country-of-origin', label: 'Nước sản xuất' },
+  { key: 'storage-location', label: 'Vị trí lưu kho' },
 ];
 const FIRST_PILL = PILLS[0]!;
 
@@ -40,6 +48,11 @@ export function PharmacyCatalogPage() {
       {activePillKey === 'active-ingredient' && <ReferenceCatalogPane category="ACTIVE_INGREDIENT" categoryLabel="Hoạt chất" />}
       {activePillKey === 'drug-group' && <ReferenceCatalogPane category="DRUG_GROUP" categoryLabel="Nhóm thuốc" />}
       {activePillKey === 'drug-route' && <ReferenceCatalogPane category="DRUG_ROUTE" categoryLabel="Đường dùng" />}
+      {activePillKey === 'dosage-form' && <ReferenceCatalogPane category="DOSAGE_FORM" categoryLabel="Dạng bào chế" />}
+      {activePillKey === 'storage-condition' && <ReferenceCatalogPane category="STORAGE_CONDITION" categoryLabel="Điều kiện bảo quản" />}
+      {activePillKey === 'manufacturer' && <ReferenceCatalogPane category="MANUFACTURER" categoryLabel="Hãng sản xuất" />}
+      {activePillKey === 'country-of-origin' && <ReferenceCatalogPane category="COUNTRY_OF_ORIGIN" categoryLabel="Nước sản xuất" />}
+      {activePillKey === 'storage-location' && <ReferenceCatalogPane category="STORAGE_LOCATION" categoryLabel="Vị trí lưu kho" />}
     </ConfigScreenShell>
   );
 }

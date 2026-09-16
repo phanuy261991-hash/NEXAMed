@@ -2,6 +2,22 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-16 (3)
+
+### Rà soát Kho Thuốc theo tài liệu quy chuẩn quản lý VTYT — Rx/OTC, phân loại kiểm soát, 8 trường Thuốc, danh mục hoá + "thêm nhanh"
+
+Chủ dự án gửi tài liệu tham khảo quy chuẩn quản lý kho thuốc/VTYT, yêu cầu đối chiếu với schema GĐ1 trước khi làm GĐ2. Đối chiếu field-by-field, báo cáo, rồi chốt qua nhiều vòng hỏi đáp + phản hồi trực tiếp qua chat: **VTYT giữ nguyên hoãn**; **Thuốc** bổ sung đầy đủ.
+
+**Phân loại kiểm soát đặc biệt + Rx/OTC**: enum mới `drug_control_type` (Thông tư 20/2017/TT-BYT) — CỐ ĐỊNH, không dùng `reference_catalog`. `drug.control_type`/`drug.is_prescription_only` (default an toàn, CHỈ có ý nghĩa với Thuốc). Badge màu theo mức nghiêm trọng trong danh sách/chi tiết.
+
+**Rà soát "bắt buộc"**: `defaultSellPrice`/`manufacturerCode` bắt buộc cả 2 loại; `drugGroupCode`/`routeCode`/`ingredients[]`/`registrationNumber`/`dosageForm`/`countryOfOrigin` bắt buộc CHỈ Thuốc. Thêm 8 trường Thuốc mới: SĐK lưu hành/Dạng bào chế/Nước sản xuất (bắt buộc), Liều dùng mặc định/Cách dùng/Chống chỉ định/Điều kiện bảo quản/Vị trí lưu kho/Mã vạch (tùy chọn).
+
+**Danh mục hoá + "thêm nhanh"**: 5 category `reference_catalog` mới (Dạng bào chế/Điều kiện bảo quản/Hãng sản xuất/Nước sản xuất/Vị trí lưu kho) — Hãng sản xuất kế thừa `drug.manufacturer` (text, S4-03), dữ liệu cũ backfill thành danh mục qua migration. `Combobox` dùng chung mở rộng `allowCreate`/`onCreateOption` — gõ không khớp hiện "+ Thêm mới", tạo ngay tại ô chọn không cần rời form.
+
+4 migration mới, `DrugCatalogPane.tsx` thêm KHỐI 4 "Hướng dẫn sử dụng & Bảo quản", `PharmacyCatalogPage.tsx` thêm 5 pill quản lý.
+
+**Đã xác minh thật**: `drug-http.spec.ts` 30/30, `apps/api` 820/820 (53 file), `pnpm -w typecheck/lint/build` sạch, chunk khởi động web không đổi (507.90 kB — đo lại bằng git worktree baseline, phát hiện số liệu cũ trong docs đã lệch thực tế). Playwright qua Chrome thật xác nhận toàn bộ luồng "thêm nhanh" + hiển thị đúng tên (không phải mã) + ẩn/hiện đúng theo loại mặt hàng. Xem chi tiết `docs/DECISIONS.md` #151.
+
 ## 2026-09-16 (2)
 
 ### "Giá bán theo từng đơn vị cụ thể" — mở rộng tiếp GĐ1 Kho Thuốc & Vật tư y tế

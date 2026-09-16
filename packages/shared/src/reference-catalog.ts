@@ -50,6 +50,18 @@ export const referenceCatalogCategorySchema = z.enum([
   'ACTIVE_INGREDIENT',
   'DRUG_GROUP',
   'DRUG_ROUTE',
+  // Mở rộng #151 (rà soát chi tiết theo tài liệu quy chuẩn kho thuốc/VTYT, chủ dự án xác nhận qua
+  // nhiều lượt) — Dạng bào chế/Điều kiện bảo quản/Nước sản xuất/Vị trí lưu kho CHỈ có ý nghĩa với
+  // `drug.itemType==='MEDICINE'` (VTYT giữ nguyên hoãn). Hãng sản xuất (`MANUFACTURER`) áp dụng cho
+  // CẢ 2 loại — kế thừa field `drug.manufacturer` đã có từ S4-03 (nay chuyển sang danh mục, dữ liệu
+  // text cũ được backfill thành các dòng danh mục qua migration). Không seed cứng, mã tự sinh như
+  // UNIT/DRUG_GROUP — có "thêm nhanh" ngay tại ô chọn trong form Thêm/Sửa thuốc (`Combobox`
+  // `allowCreate`).
+  'DOSAGE_FORM',
+  'STORAGE_CONDITION',
+  'MANUFACTURER',
+  'COUNTRY_OF_ORIGIN',
+  'STORAGE_LOCATION',
 ]);
 export type ReferenceCatalogCategory = z.infer<typeof referenceCatalogCategorySchema>;
 

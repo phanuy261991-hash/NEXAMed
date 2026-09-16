@@ -24955,6 +24955,10 @@
                     "type": "string",
                     "minLength": 1
                   },
+                  "manufacturerCode": {
+                    "type": "string",
+                    "minLength": 1
+                  },
                   "minStockAlert": {
                     "type": "integer",
                     "minimum": 0
@@ -24962,6 +24966,57 @@
                   "maxStockAlert": {
                     "type": "integer",
                     "minimum": 0
+                  },
+                  "controlType": {
+                    "type": "string",
+                    "enum": [
+                      "NORMAL",
+                      "TOXIC",
+                      "NARCOTIC",
+                      "PSYCHOTROPIC",
+                      "PRECURSOR"
+                    ],
+                    "default": "NORMAL"
+                  },
+                  "isPrescriptionOnly": {
+                    "type": "boolean",
+                    "default": true
+                  },
+                  "registrationNumber": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "dosageForm": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "countryOfOrigin": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "defaultDosage": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "usageInstruction": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "contraindications": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "storageConditions": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "storageLocation": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "barcode": {
+                    "type": "string",
+                    "minLength": 1
                   },
                   "ingredients": {
                     "type": "array",
@@ -25039,7 +25094,9 @@
                   "code",
                   "name",
                   "itemType",
-                  "baseUnitCode"
+                  "baseUnitCode",
+                  "defaultSellPrice",
+                  "manufacturerCode"
                 ]
               }
             }
@@ -25115,6 +25172,12 @@
                             "null"
                           ]
                         },
+                        "manufacturerCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "minStockAlert": {
                           "type": [
                             "integer",
@@ -25124,6 +25187,73 @@
                         "maxStockAlert": {
                           "type": [
                             "integer",
+                            "null"
+                          ]
+                        },
+                        "controlType": {
+                          "type": "string",
+                          "enum": [
+                            "NORMAL",
+                            "TOXIC",
+                            "NARCOTIC",
+                            "PSYCHOTROPIC",
+                            "PRECURSOR"
+                          ]
+                        },
+                        "isPrescriptionOnly": {
+                          "type": "boolean"
+                        },
+                        "registrationNumber": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "dosageForm": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "countryOfOrigin": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "defaultDosage": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "usageInstruction": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "contraindications": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "storageConditions": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "storageLocation": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "barcode": {
+                          "type": [
+                            "string",
                             "null"
                           ]
                         },
@@ -25254,8 +25384,20 @@
                         "routeCode",
                         "nationalCode",
                         "manufacturer",
+                        "manufacturerCode",
                         "minStockAlert",
                         "maxStockAlert",
+                        "controlType",
+                        "isPrescriptionOnly",
+                        "registrationNumber",
+                        "dosageForm",
+                        "countryOfOrigin",
+                        "defaultDosage",
+                        "usageInstruction",
+                        "contraindications",
+                        "storageConditions",
+                        "storageLocation",
+                        "barcode",
                         "ingredients",
                         "units",
                         "activeIngredient",
@@ -25502,6 +25644,12 @@
                                   "null"
                                 ]
                               },
+                              "manufacturerCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
                               "minStockAlert": {
                                 "type": [
                                   "integer",
@@ -25511,6 +25659,73 @@
                               "maxStockAlert": {
                                 "type": [
                                   "integer",
+                                  "null"
+                                ]
+                              },
+                              "controlType": {
+                                "type": "string",
+                                "enum": [
+                                  "NORMAL",
+                                  "TOXIC",
+                                  "NARCOTIC",
+                                  "PSYCHOTROPIC",
+                                  "PRECURSOR"
+                                ]
+                              },
+                              "isPrescriptionOnly": {
+                                "type": "boolean"
+                              },
+                              "registrationNumber": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "dosageForm": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "countryOfOrigin": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "defaultDosage": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "usageInstruction": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "contraindications": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "storageConditions": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "storageLocation": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "barcode": {
+                                "type": [
+                                  "string",
                                   "null"
                                 ]
                               },
@@ -25641,8 +25856,20 @@
                               "routeCode",
                               "nationalCode",
                               "manufacturer",
+                              "manufacturerCode",
                               "minStockAlert",
                               "maxStockAlert",
+                              "controlType",
+                              "isPrescriptionOnly",
+                              "registrationNumber",
+                              "dosageForm",
+                              "countryOfOrigin",
+                              "defaultDosage",
+                              "usageInstruction",
+                              "contraindications",
+                              "storageConditions",
+                              "storageLocation",
+                              "barcode",
                               "ingredients",
                               "units",
                               "activeIngredient",
@@ -25827,6 +26054,13 @@
                     ],
                     "minLength": 1
                   },
+                  "manufacturerCode": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1
+                  },
                   "minStockAlert": {
                     "type": [
                       "integer",
@@ -25840,6 +26074,82 @@
                       "null"
                     ],
                     "minimum": 0
+                  },
+                  "controlType": {
+                    "type": "string",
+                    "enum": [
+                      "NORMAL",
+                      "TOXIC",
+                      "NARCOTIC",
+                      "PSYCHOTROPIC",
+                      "PRECURSOR"
+                    ]
+                  },
+                  "isPrescriptionOnly": {
+                    "type": "boolean"
+                  },
+                  "registrationNumber": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1
+                  },
+                  "dosageForm": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1
+                  },
+                  "countryOfOrigin": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1
+                  },
+                  "defaultDosage": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1
+                  },
+                  "usageInstruction": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1
+                  },
+                  "contraindications": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1
+                  },
+                  "storageConditions": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1
+                  },
+                  "storageLocation": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1
+                  },
+                  "barcode": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1
                   },
                   "ingredients": {
                     "type": "array",
@@ -26004,6 +26314,12 @@
                             "null"
                           ]
                         },
+                        "manufacturerCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "minStockAlert": {
                           "type": [
                             "integer",
@@ -26013,6 +26329,73 @@
                         "maxStockAlert": {
                           "type": [
                             "integer",
+                            "null"
+                          ]
+                        },
+                        "controlType": {
+                          "type": "string",
+                          "enum": [
+                            "NORMAL",
+                            "TOXIC",
+                            "NARCOTIC",
+                            "PSYCHOTROPIC",
+                            "PRECURSOR"
+                          ]
+                        },
+                        "isPrescriptionOnly": {
+                          "type": "boolean"
+                        },
+                        "registrationNumber": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "dosageForm": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "countryOfOrigin": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "defaultDosage": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "usageInstruction": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "contraindications": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "storageConditions": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "storageLocation": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "barcode": {
+                          "type": [
+                            "string",
                             "null"
                           ]
                         },
@@ -26143,8 +26526,20 @@
                         "routeCode",
                         "nationalCode",
                         "manufacturer",
+                        "manufacturerCode",
                         "minStockAlert",
                         "maxStockAlert",
+                        "controlType",
+                        "isPrescriptionOnly",
+                        "registrationNumber",
+                        "dosageForm",
+                        "countryOfOrigin",
+                        "defaultDosage",
+                        "usageInstruction",
+                        "contraindications",
+                        "storageConditions",
+                        "storageLocation",
+                        "barcode",
                         "ingredients",
                         "units",
                         "activeIngredient",
@@ -32384,7 +32779,12 @@
                 "INCOME_EXPENSE_TYPE",
                 "ACTIVE_INGREDIENT",
                 "DRUG_GROUP",
-                "DRUG_ROUTE"
+                "DRUG_ROUTE",
+                "DOSAGE_FORM",
+                "STORAGE_CONDITION",
+                "MANUFACTURER",
+                "COUNTRY_OF_ORIGIN",
+                "STORAGE_LOCATION"
               ]
             },
             "required": true,
@@ -32445,7 +32845,12 @@
                                   "INCOME_EXPENSE_TYPE",
                                   "ACTIVE_INGREDIENT",
                                   "DRUG_GROUP",
-                                  "DRUG_ROUTE"
+                                  "DRUG_ROUTE",
+                                  "DOSAGE_FORM",
+                                  "STORAGE_CONDITION",
+                                  "MANUFACTURER",
+                                  "COUNTRY_OF_ORIGIN",
+                                  "STORAGE_LOCATION"
                                 ]
                               },
                               "code": {
@@ -32714,7 +33119,12 @@
                       "INCOME_EXPENSE_TYPE",
                       "ACTIVE_INGREDIENT",
                       "DRUG_GROUP",
-                      "DRUG_ROUTE"
+                      "DRUG_ROUTE",
+                      "DOSAGE_FORM",
+                      "STORAGE_CONDITION",
+                      "MANUFACTURER",
+                      "COUNTRY_OF_ORIGIN",
+                      "STORAGE_LOCATION"
                     ]
                   },
                   "code": {
@@ -32836,7 +33246,12 @@
                             "INCOME_EXPENSE_TYPE",
                             "ACTIVE_INGREDIENT",
                             "DRUG_GROUP",
-                            "DRUG_ROUTE"
+                            "DRUG_ROUTE",
+                            "DOSAGE_FORM",
+                            "STORAGE_CONDITION",
+                            "MANUFACTURER",
+                            "COUNTRY_OF_ORIGIN",
+                            "STORAGE_LOCATION"
                           ]
                         },
                         "code": {
@@ -33203,7 +33618,12 @@
                             "INCOME_EXPENSE_TYPE",
                             "ACTIVE_INGREDIENT",
                             "DRUG_GROUP",
-                            "DRUG_ROUTE"
+                            "DRUG_ROUTE",
+                            "DOSAGE_FORM",
+                            "STORAGE_CONDITION",
+                            "MANUFACTURER",
+                            "COUNTRY_OF_ORIGIN",
+                            "STORAGE_LOCATION"
                           ]
                         },
                         "code": {
@@ -33515,7 +33935,12 @@
                             "INCOME_EXPENSE_TYPE",
                             "ACTIVE_INGREDIENT",
                             "DRUG_GROUP",
-                            "DRUG_ROUTE"
+                            "DRUG_ROUTE",
+                            "DOSAGE_FORM",
+                            "STORAGE_CONDITION",
+                            "MANUFACTURER",
+                            "COUNTRY_OF_ORIGIN",
+                            "STORAGE_LOCATION"
                           ]
                         },
                         "code": {
@@ -33798,7 +34223,12 @@
                             "INCOME_EXPENSE_TYPE",
                             "ACTIVE_INGREDIENT",
                             "DRUG_GROUP",
-                            "DRUG_ROUTE"
+                            "DRUG_ROUTE",
+                            "DOSAGE_FORM",
+                            "STORAGE_CONDITION",
+                            "MANUFACTURER",
+                            "COUNTRY_OF_ORIGIN",
+                            "STORAGE_LOCATION"
                           ]
                         },
                         "code": {

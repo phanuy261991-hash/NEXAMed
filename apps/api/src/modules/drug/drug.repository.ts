@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { Drug, DrugItemType, Prisma } from '@prisma/client';
+import type { Drug, DrugControlType, DrugItemType, Prisma } from '@prisma/client';
 
 export interface CreateDrugData {
   code: string;
@@ -15,6 +15,18 @@ export interface CreateDrugData {
   manufacturer: string | null;
   minStockAlert: number | null;
   maxStockAlert: number | null;
+  controlType: DrugControlType;
+  isPrescriptionOnly: boolean;
+  manufacturerCode: string;
+  registrationNumber: string | null;
+  dosageForm: string | null;
+  countryOfOrigin: string | null;
+  defaultDosage: string | null;
+  usageInstruction: string | null;
+  contraindications: string | null;
+  storageConditions: string | null;
+  storageLocation: string | null;
+  barcode: string | null;
   activeIngredient: string | null;
   unit: string | null;
   concentration: string | null;
@@ -34,6 +46,18 @@ export interface UpdateDrugData {
   manufacturer?: string | null;
   minStockAlert?: number | null;
   maxStockAlert?: number | null;
+  controlType?: DrugControlType;
+  isPrescriptionOnly?: boolean;
+  manufacturerCode?: string | null;
+  registrationNumber?: string | null;
+  dosageForm?: string | null;
+  countryOfOrigin?: string | null;
+  defaultDosage?: string | null;
+  usageInstruction?: string | null;
+  contraindications?: string | null;
+  storageConditions?: string | null;
+  storageLocation?: string | null;
+  barcode?: string | null;
   activeIngredient?: string | null;
   unit?: string | null;
   concentration?: string | null;

@@ -42,6 +42,14 @@ const AUTO_CODE_CATEGORIES: ReferenceCatalogCategory[] = [
   'ACTIVE_INGREDIENT',
   'DRUG_GROUP',
   'DRUG_ROUTE',
+  // Mở rộng #151 — Dạng bào chế/Điều kiện bảo quản/Hãng sản xuất/Nước sản xuất/Vị trí lưu kho,
+  // cùng lý do không có nguồn dữ liệu chính thức. Có thêm "thêm nhanh" ngay tại ô chọn trong form
+  // Thêm/Sửa thuốc (`Combobox allowCreate`) — không chỉ quản lý qua trang danh mục riêng.
+  'DOSAGE_FORM',
+  'STORAGE_CONDITION',
+  'MANUFACTURER',
+  'COUNTRY_OF_ORIGIN',
+  'STORAGE_LOCATION',
 ];
 
 /**

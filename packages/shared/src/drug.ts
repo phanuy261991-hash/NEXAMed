@@ -14,6 +14,11 @@ import { z } from 'zod';
 export const drugItemTypeSchema = z.enum(['MEDICINE', 'SUPPLY']);
 export type DrugItemType = z.infer<typeof drugItemTypeSchema>;
 
+/** Phân loại kiểm soát đặc biệt (Thông tư 20/2017/TT-BYT, docs/DECISIONS.md #151) — CỐ ĐỊNH theo
+ * pháp luật, chỉ có ý nghĩa khi `itemType==='MEDICINE'`. */
+export const drugControlTypeSchema = z.enum(['NORMAL', 'TOXIC', 'NARCOTIC', 'PSYCHOTROPIC', 'PRECURSOR']);
+export type DrugControlType = z.infer<typeof drugControlTypeSchema>;
+
 /** 1 dòng "Hoạt chất & hàm lượng" — `activeIngredientCode` tham chiếu `reference_catalog` category
  * `ACTIVE_INGREDIENT` (không FK thật, cùng cách mọi cột khác tham chiếu bảng đa-category này).
  * `strengthValue` là số nguyên ×1000 (đúng tiền lệ `vital_sign` — cấm decimal cho số liệu y tế). */
@@ -63,6 +68,44 @@ function checkUnitPricingRequired(
   });
 }
 
+/** Rà soát đối chiếu tài liệu quy chuẩn quản lý kho thuốc/VTYT (docs/DECISIONS.md #151) — các
+ * trường tài liệu đánh dấu "Bắt buộc" cho thuốc (Nhóm thuốc/Đường dùng/Hoạt chất) CHỈ bắt buộc khi
+ * `itemType==='MEDICINE'` (Vật tư y tế không có các khái niệm này). Chỉ kiểm khi trường tương ứng
+ * THỰC SỰ có mặt trong payload (undefined = không đổi) — cùng cách nới lỏng `checkUnitPricingRequired`
+ * đang làm cho update một phần. */
+function checkMedicineRequiredFields(
+  data: {
+    itemType?: DrugItemType;
+    drugGroupCode?: string | null;
+    routeCode?: string | null;
+    ingredients?: DrugIngredientInput[];
+    registrationNumber?: string | null;
+    dosageForm?: string | null;
+    countryOfOrigin?: string | null;
+  },
+  ctx: z.RefinementCtx,
+): void {
+  if (data.itemType !== 'MEDICINE') return;
+  if (!data.drugGroupCode) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Bắt buộc chọn Nhóm thuốc.', path: ['drugGroupCode'] });
+  }
+  if (!data.routeCode) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Bắt buộc chọn Đường dùng.', path: ['routeCode'] });
+  }
+  if (data.ingredients !== undefined && data.ingredients.length === 0) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Thuốc phải có ít nhất một Hoạt chất & hàm lượng.', path: ['ingredients'] });
+  }
+  if (!data.registrationNumber) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Bắt buộc nhập Số đăng ký lưu hành.', path: ['registrationNumber'] });
+  }
+  if (!data.dosageForm) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Bắt buộc nhập Dạng bào chế.', path: ['dosageForm'] });
+  }
+  if (!data.countryOfOrigin) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Bắt buộc nhập Nước sản xuất.', path: ['countryOfOrigin'] });
+  }
+}
+
 export const createDrugRequestSchema = z
   .object({
     code: z.string().min(1),
@@ -72,15 +115,40 @@ export const createDrugRequestSchema = z
     // Bắt buộc ở tầng Zod cho mặt hàng TẠO MỚI (dù cột DB nullable — dữ liệu trước GĐ1 không có) —
     // cùng cách "bắt buộc ở ứng dụng, nullable ở DB" đã áp dụng cho reception_type_code/exam_form_code.
     baseUnitCode: z.string().min(1),
-    defaultSellPrice: z.number().int().nonnegative().optional(),
+    // Bắt buộc (rà soát #151 đối chiếu tài liệu quy chuẩn — "Giá bán theo ĐVT cơ sở" Bắt buộc cho
+    // cả Thuốc lẫn Vật tư y tế).
+    defaultSellPrice: z.number().int().nonnegative(),
     // Mặc định TẮT — xem `checkUnitPricingRequired`.
     unitPricingEnabled: z.boolean().default(false),
+    // Bắt buộc khi itemType==='MEDICINE' — xem `checkMedicineRequiredFields`.
     drugGroupCode: z.string().min(1).optional(),
     routeCode: z.string().min(1).optional(),
     nationalCode: z.string().min(1).optional(),
+    // Cột cũ (S4-03, text tự do) — vẫn nhận cho tương thích ngược, KHÔNG còn hiện trên form nhập
+    // liệu mới (mở rộng #151 chuyển sang danh mục qua `manufacturerCode`).
     manufacturer: z.string().min(1).optional(),
+    // Bắt buộc cho CẢ Thuốc lẫn Vật tư y tế (đúng phạm vi cũ của `manufacturer`) — mã tham chiếu
+    // reference_catalog category MANUFACTURER, có "thêm nhanh" ngay tại ô chọn.
+    manufacturerCode: z.string().min(1),
     minStockAlert: z.number().int().nonnegative().optional(),
     maxStockAlert: z.number().int().nonnegative().optional(),
+    // Phân loại kiểm soát đặc biệt + Rx/OTC (docs/DECISIONS.md #151) — có default an toàn, không ép
+    // người dùng chọn. CHỈ có ý nghĩa khi itemType==='MEDICINE' (service ép NORMAL/true cho SUPPLY).
+    controlType: drugControlTypeSchema.default('NORMAL'),
+    isPrescriptionOnly: z.boolean().default(true),
+    // Mở rộng #151 (rà soát chi tiết theo tài liệu quy chuẩn) — CHỈ có ý nghĩa với MEDICINE, bắt
+    // buộc qua `checkMedicineRequiredFields` (3 dòng dưới), còn lại tùy chọn. `dosageForm`/
+    // `countryOfOrigin`/`storageConditions` là MÃ tham chiếu reference_catalog (Combobox
+    // `allowCreate`), không phải text tự do.
+    registrationNumber: z.string().min(1).optional(),
+    dosageForm: z.string().min(1).optional(),
+    countryOfOrigin: z.string().min(1).optional(),
+    defaultDosage: z.string().min(1).optional(),
+    usageInstruction: z.string().min(1).optional(),
+    contraindications: z.string().min(1).optional(),
+    storageConditions: z.string().min(1).optional(),
+    storageLocation: z.string().min(1).optional(),
+    barcode: z.string().min(1).optional(),
     // Vật tư y tế KHÔNG có hoạt chất/hàm lượng (yêu cầu chủ dự án) — validate ở service, không ở đây
     // (Zod không biết được itemType đã xác nhận đúng trước khi tới schema này).
     ingredients: z.array(drugIngredientInputSchema).default([]),
@@ -90,7 +158,8 @@ export const createDrugRequestSchema = z
     unit: z.string().min(1).optional(),
     concentration: z.string().min(1).optional(),
   })
-  .superRefine(checkUnitPricingRequired);
+  .superRefine(checkUnitPricingRequired)
+  .superRefine(checkMedicineRequiredFields);
 export type CreateDrugRequest = z.infer<typeof createDrugRequestSchema>;
 
 export const updateDrugRequestSchema = z
@@ -106,8 +175,20 @@ export const updateDrugRequestSchema = z
     routeCode: z.string().min(1).nullable().optional(),
     nationalCode: z.string().min(1).nullable().optional(),
     manufacturer: z.string().min(1).nullable().optional(),
+    manufacturerCode: z.string().min(1).nullable().optional(),
     minStockAlert: z.number().int().nonnegative().nullable().optional(),
     maxStockAlert: z.number().int().nonnegative().nullable().optional(),
+    controlType: drugControlTypeSchema.optional(),
+    isPrescriptionOnly: z.boolean().optional(),
+    registrationNumber: z.string().min(1).nullable().optional(),
+    dosageForm: z.string().min(1).nullable().optional(),
+    countryOfOrigin: z.string().min(1).nullable().optional(),
+    defaultDosage: z.string().min(1).nullable().optional(),
+    usageInstruction: z.string().min(1).nullable().optional(),
+    contraindications: z.string().min(1).nullable().optional(),
+    storageConditions: z.string().min(1).nullable().optional(),
+    storageLocation: z.string().min(1).nullable().optional(),
+    barcode: z.string().min(1).nullable().optional(),
     ingredients: z.array(drugIngredientInputSchema).optional(),
     units: z.array(drugUnitInputSchema).optional(),
     activeIngredient: z.string().min(1).nullable().optional(),
@@ -116,7 +197,8 @@ export const updateDrugRequestSchema = z
     isActive: z.boolean().optional(),
     version: z.number().int().positive(),
   })
-  .superRefine(checkUnitPricingRequired);
+  .superRefine(checkUnitPricingRequired)
+  .superRefine(checkMedicineRequiredFields);
 export type UpdateDrugRequest = z.infer<typeof updateDrugRequestSchema>;
 
 export const drugIngredientItemSchema = drugIngredientInputSchema.and(z.object({ id: z.string().uuid() }));
@@ -138,8 +220,20 @@ export const drugSummarySchema = z.object({
   routeCode: z.string().nullable(),
   nationalCode: z.string().nullable(),
   manufacturer: z.string().nullable(),
+  manufacturerCode: z.string().nullable(),
   minStockAlert: z.number().int().nullable(),
   maxStockAlert: z.number().int().nullable(),
+  controlType: drugControlTypeSchema,
+  isPrescriptionOnly: z.boolean(),
+  registrationNumber: z.string().nullable(),
+  dosageForm: z.string().nullable(),
+  countryOfOrigin: z.string().nullable(),
+  defaultDosage: z.string().nullable(),
+  usageInstruction: z.string().nullable(),
+  contraindications: z.string().nullable(),
+  storageConditions: z.string().nullable(),
+  storageLocation: z.string().nullable(),
+  barcode: z.string().nullable(),
   ingredients: z.array(drugIngredientItemSchema),
   units: z.array(drugUnitItemSchema),
   activeIngredient: z.string().nullable(),

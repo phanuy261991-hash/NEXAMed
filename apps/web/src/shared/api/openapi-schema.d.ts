@@ -10005,8 +10005,21 @@ export interface paths {
                                     routeCode: string | null;
                                     nationalCode: string | null;
                                     manufacturer: string | null;
+                                    manufacturerCode: string | null;
                                     minStockAlert: number | null;
                                     maxStockAlert: number | null;
+                                    /** @enum {string} */
+                                    controlType: "NORMAL" | "TOXIC" | "NARCOTIC" | "PSYCHOTROPIC" | "PRECURSOR";
+                                    isPrescriptionOnly: boolean;
+                                    registrationNumber: string | null;
+                                    dosageForm: string | null;
+                                    countryOfOrigin: string | null;
+                                    defaultDosage: string | null;
+                                    usageInstruction: string | null;
+                                    contraindications: string | null;
+                                    storageConditions: string | null;
+                                    storageLocation: string | null;
+                                    barcode: string | null;
                                     ingredients: ({
                                         activeIngredientCode: string;
                                         strengthValue: number;
@@ -10086,15 +10099,32 @@ export interface paths {
                         /** @default true */
                         isBatchManaged?: boolean;
                         baseUnitCode: string;
-                        defaultSellPrice?: number;
+                        defaultSellPrice: number;
                         /** @default false */
                         unitPricingEnabled?: boolean;
                         drugGroupCode?: string;
                         routeCode?: string;
                         nationalCode?: string;
                         manufacturer?: string;
+                        manufacturerCode: string;
                         minStockAlert?: number;
                         maxStockAlert?: number;
+                        /**
+                         * @default NORMAL
+                         * @enum {string}
+                         */
+                        controlType?: "NORMAL" | "TOXIC" | "NARCOTIC" | "PSYCHOTROPIC" | "PRECURSOR";
+                        /** @default true */
+                        isPrescriptionOnly?: boolean;
+                        registrationNumber?: string;
+                        dosageForm?: string;
+                        countryOfOrigin?: string;
+                        defaultDosage?: string;
+                        usageInstruction?: string;
+                        contraindications?: string;
+                        storageConditions?: string;
+                        storageLocation?: string;
+                        barcode?: string;
                         /** @default [] */
                         ingredients?: {
                             activeIngredientCode: string;
@@ -10137,8 +10167,21 @@ export interface paths {
                                 routeCode: string | null;
                                 nationalCode: string | null;
                                 manufacturer: string | null;
+                                manufacturerCode: string | null;
                                 minStockAlert: number | null;
                                 maxStockAlert: number | null;
+                                /** @enum {string} */
+                                controlType: "NORMAL" | "TOXIC" | "NARCOTIC" | "PSYCHOTROPIC" | "PRECURSOR";
+                                isPrescriptionOnly: boolean;
+                                registrationNumber: string | null;
+                                dosageForm: string | null;
+                                countryOfOrigin: string | null;
+                                defaultDosage: string | null;
+                                usageInstruction: string | null;
+                                contraindications: string | null;
+                                storageConditions: string | null;
+                                storageLocation: string | null;
+                                barcode: string | null;
                                 ingredients: ({
                                     activeIngredientCode: string;
                                     strengthValue: number;
@@ -10257,8 +10300,21 @@ export interface paths {
                         routeCode?: string | null;
                         nationalCode?: string | null;
                         manufacturer?: string | null;
+                        manufacturerCode?: string | null;
                         minStockAlert?: number | null;
                         maxStockAlert?: number | null;
+                        /** @enum {string} */
+                        controlType?: "NORMAL" | "TOXIC" | "NARCOTIC" | "PSYCHOTROPIC" | "PRECURSOR";
+                        isPrescriptionOnly?: boolean;
+                        registrationNumber?: string | null;
+                        dosageForm?: string | null;
+                        countryOfOrigin?: string | null;
+                        defaultDosage?: string | null;
+                        usageInstruction?: string | null;
+                        contraindications?: string | null;
+                        storageConditions?: string | null;
+                        storageLocation?: string | null;
+                        barcode?: string | null;
                         ingredients?: {
                             activeIngredientCode: string;
                             strengthValue: number;
@@ -10301,8 +10357,21 @@ export interface paths {
                                 routeCode: string | null;
                                 nationalCode: string | null;
                                 manufacturer: string | null;
+                                manufacturerCode: string | null;
                                 minStockAlert: number | null;
                                 maxStockAlert: number | null;
+                                /** @enum {string} */
+                                controlType: "NORMAL" | "TOXIC" | "NARCOTIC" | "PSYCHOTROPIC" | "PRECURSOR";
+                                isPrescriptionOnly: boolean;
+                                registrationNumber: string | null;
+                                dosageForm: string | null;
+                                countryOfOrigin: string | null;
+                                defaultDosage: string | null;
+                                usageInstruction: string | null;
+                                contraindications: string | null;
+                                storageConditions: string | null;
+                                storageLocation: string | null;
+                                barcode: string | null;
                                 ingredients: ({
                                     activeIngredientCode: string;
                                     strengthValue: number;
@@ -13139,7 +13208,7 @@ export interface paths {
                 };
                 header?: never;
                 path: {
-                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE";
+                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION";
                 };
                 cookie?: never;
             };
@@ -13157,7 +13226,7 @@ export interface paths {
                                     /** Format: uuid */
                                     id: string;
                                     /** @enum {string} */
-                                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE";
+                                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION";
                                     code: string;
                                     name: string;
                                     sortOrder: number;
@@ -13261,7 +13330,7 @@ export interface paths {
                 content: {
                     "application/json": {
                         /** @enum {string} */
-                        category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE";
+                        category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION";
                         code?: string;
                         name: string;
                         /** @default 0 */
@@ -13296,7 +13365,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
@@ -13409,7 +13478,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
@@ -13531,7 +13600,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
@@ -13654,7 +13723,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION";
                                 code: string;
                                 name: string;
                                 sortOrder: number;

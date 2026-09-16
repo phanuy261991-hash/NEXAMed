@@ -46,6 +46,8 @@ export function Combobox({
   disabled = false,
   placeholder = 'Gõ để tìm...',
   required = false,
+  allowCreate = false,
+  onCreateOption,
 }: {
   id: string;
   value: string;
@@ -54,21 +56,36 @@ export function Combobox({
   disabled?: boolean;
   placeholder?: string;
   required?: boolean;
+  /**
+   * "Thêm nhanh" (mở rộng #151, chủ dự án yêu cầu trực tiếp) — khi gõ không khớp CHÍNH XÁC (không
+   * phân biệt hoa/thường) tên bất kỳ mục nào, hiện thêm dòng "+ Thêm mới: '...'" ở cuối danh sách.
+   * Bấm/Enter vào dòng đó gọi `onCreateOption` (bắt buộc kèm `allowCreate`) rồi tự chọn luôn mục
+   * vừa tạo. Mặc định `false` — không đổi hành vi ~20+ nơi đang dùng `Combobox` hiện có.
+   */
+  allowCreate?: boolean;
+  onCreateOption?: (name: string) => Promise<ComboboxOption>;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [highlighted, setHighlighted] = useState(0);
+  const [creating, setCreating] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLLIElement | null)[]>([]);
 
   const selected = options.find((o) => o.value === value) ?? null;
 
+  const [createError, setCreateError] = useState<string | null>(null);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (q === '') return options;
     return options.filter((o) => o.label.toLowerCase().includes(q) || o.value.toLowerCase().includes(q));
   }, [options, query]);
+
+  const trimmedQuery = query.trim();
+  const showCreateRow = allowCreate && trimmedQuery !== '' && !options.some((o) => o.label.toLowerCase() === trimmedQuery.toLowerCase());
+  const totalRows = filtered.length + (showCreateRow ? 1 : 0);
 
   useEffect(() => {
     setHighlighted(0);
@@ -99,11 +116,27 @@ export function Combobox({
   function closeDropdown() {
     setOpen(false);
     setQuery('');
+    setCreateError(null);
   }
 
   function selectOption(opt: ComboboxOption) {
     onChange(opt.value);
     closeDropdown();
+  }
+
+  async function handleCreate() {
+    if (!onCreateOption || creating || trimmedQuery === '') return;
+    setCreating(true);
+    setCreateError(null);
+    try {
+      const created = await onCreateOption(trimmedQuery);
+      onChange(created.value);
+      closeDropdown();
+    } catch {
+      setCreateError('Không tạo được mục mới, thử lại.');
+    } finally {
+      setCreating(false);
+    }
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
@@ -116,14 +149,18 @@ export function Combobox({
     }
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setHighlighted((h) => Math.min(h + 1, filtered.length - 1));
+      setHighlighted((h) => Math.min(h + 1, totalRows - 1));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setHighlighted((h) => Math.max(h - 1, 0));
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      const opt = filtered[highlighted];
-      if (opt) selectOption(opt);
+      if (highlighted < filtered.length) {
+        const opt = filtered[highlighted];
+        if (opt) selectOption(opt);
+      } else if (showCreateRow) {
+        void handleCreate();
+      }
     } else if (e.key === 'Escape') {
       e.preventDefault();
       closeDropdown();
@@ -183,35 +220,57 @@ export function Combobox({
           style={{ maxHeight: ROW_HEIGHT_PX * VISIBLE_ROWS + 8 }}
           className="absolute left-0 right-0 top-full z-20 mt-1 overflow-y-auto rounded-md border border-slate-300 bg-white py-1 shadow-lg"
         >
-          {filtered.length === 0 ? (
+          {filtered.length === 0 && !showCreateRow ? (
             <li className="px-3 py-2 text-sm text-slate-400">Không tìm thấy</li>
           ) : (
-            filtered.map((opt, i) => (
-              <li
-                key={opt.value}
-                ref={(el) => {
-                  itemRefs.current[i] = el;
-                }}
-                role="option"
-                aria-selected={opt.value === value}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  selectOption(opt);
-                }}
-                onMouseEnter={() => setHighlighted(i)}
-                className={`flex h-9 cursor-pointer items-center px-3 text-sm ${
-                  i === highlighted ? 'bg-blue-50 text-blue-700' : 'text-slate-900'
-                } ${opt.value === value ? 'font-semibold' : ''}`}
-              >
-                {opt.icon && (
-                  <span aria-hidden="true" className="mr-2 flex shrink-0 items-center">
-                    {opt.icon}
-                  </span>
-                )}
-                {opt.label}
-              </li>
-            ))
+            <>
+              {filtered.map((opt, i) => (
+                <li
+                  key={opt.value}
+                  ref={(el) => {
+                    itemRefs.current[i] = el;
+                  }}
+                  role="option"
+                  aria-selected={opt.value === value}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    selectOption(opt);
+                  }}
+                  onMouseEnter={() => setHighlighted(i)}
+                  className={`flex h-9 cursor-pointer items-center px-3 text-sm ${
+                    i === highlighted ? 'bg-blue-50 text-blue-700' : 'text-slate-900'
+                  } ${opt.value === value ? 'font-semibold' : ''}`}
+                >
+                  {opt.icon && (
+                    <span aria-hidden="true" className="mr-2 flex shrink-0 items-center">
+                      {opt.icon}
+                    </span>
+                  )}
+                  {opt.label}
+                </li>
+              ))}
+              {showCreateRow && (
+                <li
+                  ref={(el) => {
+                    itemRefs.current[filtered.length] = el;
+                  }}
+                  role="option"
+                  aria-selected={false}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    void handleCreate();
+                  }}
+                  onMouseEnter={() => setHighlighted(filtered.length)}
+                  className={`flex h-9 cursor-pointer items-center gap-1.5 border-t border-slate-100 px-3 text-sm font-semibold ${
+                    filtered.length === highlighted ? 'bg-blue-50 text-blue-700' : 'text-blue-600'
+                  }`}
+                >
+                  {creating ? 'Đang thêm...' : `+ Thêm mới: "${trimmedQuery}"`}
+                </li>
+              )}
+            </>
           )}
+          {createError && <li className="px-3 py-1.5 text-xs font-medium text-rose-600">{createError}</li>}
         </ul>
       )}
     </div>

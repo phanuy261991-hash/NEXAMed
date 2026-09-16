@@ -657,6 +657,14 @@ enum ReferenceCatalogCategory {
   ACTIVE_INGREDIENT
   DRUG_GROUP
   DRUG_ROUTE
+  // Mở rộng #151 — Dạng bào chế/Điều kiện bảo quản/Nước sản xuất/Vị trí lưu kho CHỈ có ý nghĩa với
+  // itemType=MEDICINE (VTYT giữ nguyên hoãn). Hãng sản xuất áp dụng cho CẢ 2 loại — kế thừa
+  // `drug.manufacturer` (S4-03, text tự do), dữ liệu cũ backfill thành danh mục qua migration.
+  DOSAGE_FORM
+  STORAGE_CONDITION
+  MANUFACTURER
+  COUNTRY_OF_ORIGIN
+  STORAGE_LOCATION
 
   @@map("reference_catalog_category")
 }
@@ -1471,6 +1479,19 @@ enum DrugItemType {
   @@map("drug_item_type")
 }
 
+// Phân loại kiểm soát đặc biệt theo Thông tư 20/2017/TT-BYT (docs/DECISIONS.md #151) — enum CỐ
+// ĐỊNH theo pháp luật, KHÔNG dùng reference_catalog (danh mục mở, tenant tự thêm) vì tenant không
+// được tự thêm/sửa 5 giá trị này, cùng hồ sơ với DrugItemType ở trên.
+enum DrugControlType {
+  NORMAL
+  TOXIC
+  NARCOTIC
+  PSYCHOTROPIC
+  PRECURSOR
+
+  @@map("drug_control_type")
+}
+
 model Drug {
   id               String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
   tenantId         String       @map("tenant_id") @db.Uuid
@@ -1502,9 +1523,36 @@ model Drug {
   routeCode        String?      @map("route_code")
   // Mã thuốc QĐ 130 (Cổng Đơn thuốc quốc gia, #147) — chuẩn bị trước, chưa tích hợp cổng thật.
   nationalCode     String?      @map("national_code")
+  // Cột cũ (S4-03, text tự do) — GIỮ NGUYÊN làm dữ liệu legacy, không còn ghi mới từ form (mở rộng
+  // #151 chuyển sang danh mục). `manufacturerCode` (mới) tham chiếu reference_catalog category
+  // MANUFACTURER — dữ liệu text cũ đã backfill thành danh mục qua migration
+  // `20260916140000_drug_manufacturer_catalog_backfill`.
   manufacturer     String?
+  manufacturerCode String?      @map("manufacturer_code")
   minStockAlert    Int?         @map("min_stock_alert")
   maxStockAlert    Int?         @map("max_stock_alert")
+  // Phân loại kiểm soát đặc biệt (Thông tư 20/2017/TT-BYT) — CHỈ có ý nghĩa với itemType=MEDICINE,
+  // ẩn hoàn toàn cho SUPPLY ở UI (docs/DECISIONS.md #151).
+  controlType        DrugControlType @default(NORMAL) @map("control_type")
+  // Yêu cầu kê đơn (Rx) hay không (OTC) — CHỈ có ý nghĩa với itemType=MEDICINE. Mặc định true: mọi
+  // thuốc hiện tại đều đi qua đơn thuốc bác sĩ ký, chưa có luồng bán OTC tự do tại quầy.
+  isPrescriptionOnly Boolean        @default(true) @map("is_prescription_only")
+  // Mở rộng #151 (chủ dự án rà soát trực tiếp từng trường theo tài liệu quy chuẩn) — CHỈ có ý nghĩa
+  // với itemType=MEDICINE, ẩn hoàn toàn cho SUPPLY ở UI (VTYT giữ nguyên hoãn, chưa mở rộng field).
+  // Bắt buộc ở tầng Zod cho MEDICINE tạo mới (đúng khuôn baseUnitCode/manufacturerCode):
+  registrationNumber String?       @map("registration_number")
+  // Mã tham chiếu reference_catalog category DOSAGE_FORM/STORAGE_CONDITION/COUNTRY_OF_ORIGIN/
+  // STORAGE_LOCATION (không FK cứng, đúng cách drugGroupCode/routeCode) — có "thêm nhanh" ngay tại
+  // ô chọn trong form (Combobox `allowCreate`), không nhập text tự do.
+  dosageForm          String?      @map("dosage_form")
+  countryOfOrigin     String?      @map("country_of_origin")
+  // Tùy chọn:
+  defaultDosage       String?      @map("default_dosage")
+  usageInstruction    String?      @map("usage_instruction")
+  contraindications   String?
+  storageConditions   String?      @map("storage_conditions")
+  storageLocation     String?      @map("storage_location")
+  barcode             String?
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)

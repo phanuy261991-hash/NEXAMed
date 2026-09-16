@@ -1,10 +1,11 @@
 import { useMemo, useRef, useState } from 'react';
 import { CaretDown, MagnifyingGlass, PencilSimple, Pill, Plus, Trash, Eye, FirstAidKit, X } from '@phosphor-icons/react';
-import type { DrugIngredientInput, DrugItemType, DrugSummary, DrugUnitInput } from '@nexamed/shared';
+import type { DrugControlType, DrugIngredientInput, DrugItemType, DrugSummary, DrugUnitInput, ReferenceCatalogCategory } from '@nexamed/shared';
 import { useHasPermission } from '../auth/usePermission';
 import { Button } from '../../shared/ui/Button';
 import { Combobox, type ComboboxOption } from '../../shared/ui/Combobox';
 import { MoneyInput } from '../../shared/ui/MoneyInput';
+import { Textarea } from '../../shared/ui/Textarea';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { EmptyState } from '../../shared/ui/EmptyState';
@@ -16,13 +17,61 @@ import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
 import { useRowSelection } from '../../shared/hooks/useRowSelection';
 import { useSaveFlash } from '../../shared/hooks/useSaveFlash';
-import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
+import { useCreateReferenceCatalogItemMutation, useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { useCreateDrugMutation, useDrugsQuery, useUpdateDrugMutation } from './drug.queries';
 
 const inputClassName =
   'w-full rounded-lg border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 
 const ITEM_TYPE_LABEL: Record<DrugItemType, string> = { MEDICINE: 'Thuốc', SUPPLY: 'Vật tư y tế' };
+
+/** Phân loại kiểm soát đặc biệt (Thông tư 20/2017/TT-BYT, docs/DECISIONS.md #151) — enum CỐ ĐỊNH,
+ * KHÔNG dùng `reference_catalog` (tenant không tự thêm/sửa được). CHỈ có ý nghĩa với `itemType==='MEDICINE'`. */
+const CONTROL_TYPE_OPTIONS: ComboboxOption[] = [
+  { value: 'NORMAL', label: 'Thường' },
+  { value: 'TOXIC', label: 'Độc' },
+  { value: 'NARCOTIC', label: 'Gây nghiện' },
+  { value: 'PSYCHOTROPIC', label: 'Hướng thần' },
+  { value: 'PRECURSOR', label: 'Tiền chất' },
+];
+const CONTROL_TYPE_LABEL: Record<DrugControlType, string> = {
+  NORMAL: 'Thường',
+  TOXIC: 'Độc',
+  NARCOTIC: 'Gây nghiện',
+  PSYCHOTROPIC: 'Hướng thần',
+  PRECURSOR: 'Tiền chất',
+};
+/** Badge tint theo mức độ nghiêm trọng (chốt qua AskUserQuestion): Gây nghiện/Hướng thần bị kiểm
+ * soát chặt hơn Độc/Tiền chất theo Thông tư 20/2017/TT-BYT → rose. `NORMAL` → không hiện badge. */
+const CONTROL_TYPE_BADGE_CLASS: Record<DrugControlType, string | null> = {
+  NORMAL: null,
+  TOXIC: 'bg-amber-100 text-amber-700',
+  PRECURSOR: 'bg-amber-100 text-amber-700',
+  NARCOTIC: 'bg-rose-100 text-rose-700',
+  PSYCHOTROPIC: 'bg-rose-100 text-rose-700',
+};
+
+function ControlTypeBadge({ controlType }: { controlType: DrugControlType }) {
+  const cls = CONTROL_TYPE_BADGE_CLASS[controlType];
+  if (!cls) return null;
+  return <span className={`ml-2 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${cls}`}>{CONTROL_TYPE_LABEL[controlType]}</span>;
+}
+
+/** Gộp query + "thêm nhanh" (mở rộng #151, chủ dự án yêu cầu trực tiếp) cho 1 category
+ * `reference_catalog` dùng trong Combobox `allowCreate` — tránh lặp lại 5 lần cho Dạng bào chế/
+ * Điều kiện bảo quản/Hãng sản xuất/Nước sản xuất/Vị trí lưu kho. */
+function useCatalogCombobox(category: ReferenceCatalogCategory) {
+  const query = useReferenceCatalogQuery(category);
+  const createMutation = useCreateReferenceCatalogItemMutation(category);
+  const options: ComboboxOption[] = (query.data?.items ?? []).map((i) => ({ value: i.code, label: i.name }));
+  const nameByCode = new Map(options.map((o) => [o.value, o.label]));
+  async function onCreateOption(name: string): Promise<ComboboxOption> {
+    const created = await createMutation.mutateAsync({ category, name, sortOrder: 0 });
+    return { value: created.code, label: created.name };
+  }
+  return { options, nameByCode, onCreateOption };
+}
+type CatalogCombobox = ReturnType<typeof useCatalogCombobox>;
 
 /** Định dạng chuỗi quy đổi TUẦN TỰ — mỗi bậc so với ĐÚNG bậc liền kề nhỏ hơn (vd "1 Hộp = 5 Vỉ ·
  * 1 Vỉ = 20 Viên"), KHÔNG quy đổi thẳng về đơn vị nhỏ nhất như bản trước (chủ dự án phản hồi trực
@@ -83,6 +132,13 @@ export function DrugCatalogPane() {
   const drugRouteQuery = useReferenceCatalogQuery('DRUG_ROUTE');
   const activeIngredientQuery = useReferenceCatalogQuery('ACTIVE_INGREDIENT');
   const unitQuery = useReferenceCatalogQuery('UNIT');
+  // Mở rộng #151 — Dạng bào chế/Điều kiện bảo quản/Hãng sản xuất/Nước sản xuất/Vị trí lưu kho, có
+  // "thêm nhanh" ngay tại ô chọn (Combobox `allowCreate`).
+  const dosageFormCatalog = useCatalogCombobox('DOSAGE_FORM');
+  const storageConditionCatalog = useCatalogCombobox('STORAGE_CONDITION');
+  const manufacturerCatalog = useCatalogCombobox('MANUFACTURER');
+  const countryOfOriginCatalog = useCatalogCombobox('COUNTRY_OF_ORIGIN');
+  const storageLocationCatalog = useCatalogCombobox('STORAGE_LOCATION');
 
   const drugGroupOptions: ComboboxOption[] = (drugGroupQuery.data?.items ?? []).map((i) => ({ value: i.code, label: i.name }));
   const drugRouteOptions: ComboboxOption[] = (drugRouteQuery.data?.items ?? []).map((i) => ({ value: i.code, label: i.name }));
@@ -223,7 +279,10 @@ export function DrugCatalogPane() {
                     </td>
                     <td className="px-3 py-2.5 text-center font-bold tabular-nums text-slate-800">{d.code}</td>
                     <td className="px-3 py-2.5 text-left">
-                      <div className="font-medium text-slate-900">{d.name}</div>
+                      <div className="flex items-center font-medium text-slate-900">
+                        {d.name}
+                        {d.itemType === 'MEDICINE' && <ControlTypeBadge controlType={d.controlType} />}
+                      </div>
                       {d.activeIngredient && <div className="truncate text-xs font-medium text-slate-500">{d.activeIngredient}</div>}
                     </td>
                     <td className={`px-3 py-2.5 text-center text-xs font-semibold ${d.itemType === 'MEDICINE' ? 'text-blue-700' : 'text-slate-600'}`}>{ITEM_TYPE_LABEL[d.itemType]}</td>
@@ -304,8 +363,31 @@ export function DrugCatalogPane() {
               {selectedItem.itemType === 'MEDICINE' && (
                 <DetailField label="Đường dùng" value={selectedItem.routeCode ? (drugRouteNameByCode.get(selectedItem.routeCode) ?? selectedItem.routeCode) : null} />
               )}
-              <DetailField label="Hãng sản xuất" value={selectedItem.manufacturer} />
+              {selectedItem.itemType === 'MEDICINE' && (
+                <div className="border-b border-slate-100 py-2.5">
+                  <dt className="text-sm font-medium text-slate-500">Phân loại kiểm soát</dt>
+                  <dd className="mt-1 text-base font-semibold text-slate-900">
+                    {CONTROL_TYPE_LABEL[selectedItem.controlType]}
+                    <ControlTypeBadge controlType={selectedItem.controlType} />
+                  </dd>
+                </div>
+              )}
+              {selectedItem.itemType === 'MEDICINE' && <DetailField label="Yêu cầu kê đơn (Rx)" value={selectedItem.isPrescriptionOnly ? 'Có' : 'Không'} />}
+              <DetailField
+                label="Hãng sản xuất"
+                value={selectedItem.manufacturerCode ? (manufacturerCatalog.nameByCode.get(selectedItem.manufacturerCode) ?? selectedItem.manufacturerCode) : selectedItem.manufacturer}
+              />
               {selectedItem.itemType === 'MEDICINE' && <DetailField label="Mã thuốc QĐ 130" value={selectedItem.nationalCode} />}
+              {selectedItem.itemType === 'MEDICINE' && <DetailField label="Số đăng ký lưu hành" value={selectedItem.registrationNumber} />}
+              {selectedItem.itemType === 'MEDICINE' && (
+                <DetailField label="Dạng bào chế" value={selectedItem.dosageForm ? (dosageFormCatalog.nameByCode.get(selectedItem.dosageForm) ?? selectedItem.dosageForm) : null} />
+              )}
+              {selectedItem.itemType === 'MEDICINE' && (
+                <DetailField
+                  label="Nước sản xuất"
+                  value={selectedItem.countryOfOrigin ? (countryOfOriginCatalog.nameByCode.get(selectedItem.countryOfOrigin) ?? selectedItem.countryOfOrigin) : null}
+                />
+              )}
               {selectedItem.itemType === 'MEDICINE' && (
                 <div className="border-b border-slate-100 py-2.5">
                   <dt className="text-sm font-medium text-slate-500">Hoạt chất &amp; hàm lượng</dt>
@@ -323,6 +405,22 @@ export function DrugCatalogPane() {
                   </dd>
                 </div>
               )}
+              {selectedItem.itemType === 'MEDICINE' && <DetailField label="Liều dùng mặc định" value={selectedItem.defaultDosage} />}
+              {selectedItem.itemType === 'MEDICINE' && <DetailField label="Cách dùng" value={selectedItem.usageInstruction} />}
+              {selectedItem.itemType === 'MEDICINE' && <DetailField label="Chống chỉ định / Cảnh báo" value={selectedItem.contraindications} />}
+              {selectedItem.itemType === 'MEDICINE' && (
+                <DetailField
+                  label="Điều kiện bảo quản"
+                  value={selectedItem.storageConditions ? (storageConditionCatalog.nameByCode.get(selectedItem.storageConditions) ?? selectedItem.storageConditions) : null}
+                />
+              )}
+              {selectedItem.itemType === 'MEDICINE' && (
+                <DetailField
+                  label="Vị trí lưu kho"
+                  value={selectedItem.storageLocation ? (storageLocationCatalog.nameByCode.get(selectedItem.storageLocation) ?? selectedItem.storageLocation) : null}
+                />
+              )}
+              {selectedItem.itemType === 'MEDICINE' && <DetailField label="Mã vạch" value={selectedItem.barcode} />}
               <DetailField label="Quản lý theo lô" value={selectedItem.isBatchManaged ? 'Có' : 'Không'} />
             </div>
           </>
@@ -338,6 +436,11 @@ export function DrugCatalogPane() {
           drugRouteOptions={drugRouteOptions}
           activeIngredientOptions={activeIngredientOptions}
           unitOptions={unitOptions}
+          dosageFormCatalog={dosageFormCatalog}
+          storageConditionCatalog={storageConditionCatalog}
+          manufacturerCatalog={manufacturerCatalog}
+          countryOfOriginCatalog={countryOfOriginCatalog}
+          storageLocationCatalog={storageLocationCatalog}
           submitting={createMutation.isPending || updateMutation.isPending}
           onCancel={() => setModal(null)}
           onSubmit={async (dto) => {
@@ -400,6 +503,11 @@ function DrugFormModal({
   drugRouteOptions,
   activeIngredientOptions,
   unitOptions,
+  dosageFormCatalog,
+  storageConditionCatalog,
+  manufacturerCatalog,
+  countryOfOriginCatalog,
+  storageLocationCatalog,
   submitting,
   onCancel,
   onSubmit,
@@ -411,6 +519,11 @@ function DrugFormModal({
   drugRouteOptions: ComboboxOption[];
   activeIngredientOptions: ComboboxOption[];
   unitOptions: ComboboxOption[];
+  dosageFormCatalog: CatalogCombobox;
+  storageConditionCatalog: CatalogCombobox;
+  manufacturerCatalog: CatalogCombobox;
+  countryOfOriginCatalog: CatalogCombobox;
+  storageLocationCatalog: CatalogCombobox;
   submitting: boolean;
   onCancel: () => void;
   onSubmit: (dto: {
@@ -419,14 +532,25 @@ function DrugFormModal({
     itemType: DrugItemType;
     isBatchManaged: boolean;
     baseUnitCode: string;
-    defaultSellPrice?: number;
+    defaultSellPrice: number;
     unitPricingEnabled: boolean;
     drugGroupCode?: string;
     routeCode?: string;
     nationalCode?: string;
-    manufacturer?: string;
+    manufacturerCode: string;
     minStockAlert?: number;
     maxStockAlert?: number;
+    controlType: DrugControlType;
+    isPrescriptionOnly: boolean;
+    registrationNumber?: string;
+    dosageForm?: string;
+    countryOfOrigin?: string;
+    defaultDosage?: string;
+    usageInstruction?: string;
+    contraindications?: string;
+    storageConditions?: string;
+    storageLocation?: string;
+    barcode?: string;
     ingredients: DrugIngredientInput[];
     units: DrugUnitInput[];
   }) => Promise<void>;
@@ -445,7 +569,19 @@ function DrugFormModal({
   const [drugGroupCode, setDrugGroupCode] = useState(item?.drugGroupCode ?? '');
   const [routeCode, setRouteCode] = useState(item?.routeCode ?? '');
   const [nationalCode, setNationalCode] = useState(item?.nationalCode ?? '');
-  const [manufacturer, setManufacturer] = useState(item?.manufacturer ?? '');
+  const [manufacturerCode, setManufacturerCode] = useState(item?.manufacturerCode ?? '');
+  const [controlType, setControlType] = useState<DrugControlType>(item?.controlType ?? 'NORMAL');
+  const [isPrescriptionOnly, setIsPrescriptionOnly] = useState(item?.isPrescriptionOnly ?? true);
+  // Mở rộng #151 — 3 bắt buộc (Số ĐK/Dạng bào chế/Nước SX) + 5 tùy chọn, CHỈ có ý nghĩa với Thuốc.
+  const [registrationNumber, setRegistrationNumber] = useState(item?.registrationNumber ?? '');
+  const [dosageForm, setDosageForm] = useState(item?.dosageForm ?? '');
+  const [countryOfOrigin, setCountryOfOrigin] = useState(item?.countryOfOrigin ?? '');
+  const [defaultDosage, setDefaultDosage] = useState(item?.defaultDosage ?? '');
+  const [usageInstruction, setUsageInstruction] = useState(item?.usageInstruction ?? '');
+  const [contraindications, setContraindications] = useState(item?.contraindications ?? '');
+  const [storageConditions, setStorageConditions] = useState(item?.storageConditions ?? '');
+  const [storageLocation, setStorageLocation] = useState(item?.storageLocation ?? '');
+  const [barcode, setBarcode] = useState(item?.barcode ?? '');
   const [minStockAlert, setMinStockAlert] = useState(item?.minStockAlert !== null && item?.minStockAlert !== undefined ? String(item.minStockAlert) : '');
   const [maxStockAlert, setMaxStockAlert] = useState(item?.maxStockAlert !== null && item?.maxStockAlert !== undefined ? String(item.maxStockAlert) : '');
   const [ingredients, setIngredients] = useState<FormIngredientRow[]>(
@@ -461,9 +597,27 @@ function DrugFormModal({
 
   const { flashVisible, triggerFlash } = useSaveFlash();
   const validUnitRows = units.filter((r) => r.unitCode && r.factorToUnitBelow.trim() !== '');
+  const validIngredientRows = ingredients.filter((r) => r.activeIngredientCode && r.strengthValueDisplay.trim() !== '');
   const missingUnitPricing =
     unitPricingEnabled && (defaultSellPrice === undefined || validUnitRows.some((r) => r.sellPriceDisplay.trim() === ''));
-  const isInvalid = code.trim() === '' || name.trim() === '' || baseUnitCode.trim() === '' || missingUnitPricing;
+  // Rà soát #151 đối chiếu tài liệu quy chuẩn kho thuốc/VTYT: Giá bán/Hãng sản xuất bắt buộc cho CẢ
+  // 2 loại; Nhóm thuốc/Đường dùng/Hoạt chất/Số ĐK/Dạng bào chế/Nước SX bắt buộc CHỈ khi là Thuốc.
+  const missingCommonRequiredFields = defaultSellPrice === undefined || manufacturerCode.trim() === '';
+  const missingMedicineRequiredFields =
+    isMedicine &&
+    (drugGroupCode.trim() === '' ||
+      routeCode.trim() === '' ||
+      validIngredientRows.length === 0 ||
+      registrationNumber.trim() === '' ||
+      dosageForm.trim() === '' ||
+      countryOfOrigin.trim() === '');
+  const isInvalid =
+    code.trim() === '' ||
+    name.trim() === '' ||
+    baseUnitCode.trim() === '' ||
+    missingUnitPricing ||
+    missingCommonRequiredFields ||
+    missingMedicineRequiredFields;
 
   function buildDto() {
     return {
@@ -472,16 +626,32 @@ function DrugFormModal({
       itemType,
       isBatchManaged,
       baseUnitCode: baseUnitCode.trim(),
-      defaultSellPrice,
+      // `isInvalid` đã chặn submit khi `defaultSellPrice===undefined` (bắt buộc, rà soát #151).
+      defaultSellPrice: defaultSellPrice!,
       unitPricingEnabled,
       drugGroupCode: isMedicine ? drugGroupCode.trim() || undefined : undefined,
       routeCode: isMedicine ? routeCode.trim() || undefined : undefined,
       nationalCode: isMedicine ? nationalCode.trim() || undefined : undefined,
-      manufacturer: manufacturer.trim() || undefined,
+      // Bắt buộc cho CẢ 2 loại (rà soát #151) — `isInvalid` đã chặn submit khi rỗng.
+      manufacturerCode: manufacturerCode.trim(),
       minStockAlert: minStockAlert.trim() === '' ? undefined : Number(minStockAlert),
       maxStockAlert: maxStockAlert.trim() === '' ? undefined : Number(maxStockAlert),
+      // CHỈ có ý nghĩa với Thuốc — Vật tư y tế gửi giá trị trung tính, khớp default DB.
+      controlType: isMedicine ? controlType : 'NORMAL',
+      isPrescriptionOnly: isMedicine ? isPrescriptionOnly : true,
+      // Mở rộng #151 — CHỈ có ý nghĩa với Thuốc, `isInvalid` đã chặn submit khi 3 trường bắt buộc
+      // (registrationNumber/dosageForm/countryOfOrigin) còn trống.
+      registrationNumber: isMedicine ? registrationNumber.trim() || undefined : undefined,
+      dosageForm: isMedicine ? dosageForm.trim() || undefined : undefined,
+      countryOfOrigin: isMedicine ? countryOfOrigin.trim() || undefined : undefined,
+      defaultDosage: isMedicine ? defaultDosage.trim() || undefined : undefined,
+      usageInstruction: isMedicine ? usageInstruction.trim() || undefined : undefined,
+      contraindications: isMedicine ? contraindications.trim() || undefined : undefined,
+      storageConditions: isMedicine ? storageConditions.trim() || undefined : undefined,
+      storageLocation: isMedicine ? storageLocation.trim() || undefined : undefined,
+      barcode: isMedicine ? barcode.trim() || undefined : undefined,
       ingredients: isMedicine
-        ? ingredients.filter((r) => r.activeIngredientCode && r.strengthValueDisplay.trim() !== '').map((r) => ({
+        ? validIngredientRows.map((r) => ({
             activeIngredientCode: r.activeIngredientCode,
             strengthValue: Math.round(Number(r.strengthValueDisplay) * 1000),
             strengthUnitCode: r.strengthUnitCode,
@@ -564,24 +734,32 @@ function DrugFormModal({
               {isMedicine && (
                 <div>
                   <label htmlFor="drug-group" className="mb-1.5 block text-sm font-semibold text-slate-800">
-                    Nhóm thuốc
+                    Nhóm thuốc <span className="text-rose-500">*</span>
                   </label>
-                  <Combobox id="drug-group" value={drugGroupCode} onChange={setDrugGroupCode} options={drugGroupOptions} />
+                  <Combobox id="drug-group" required value={drugGroupCode} onChange={setDrugGroupCode} options={drugGroupOptions} />
                 </div>
               )}
               {isMedicine && (
                 <div>
                   <label htmlFor="drug-route" className="mb-1.5 block text-sm font-semibold text-slate-800">
-                    Đường dùng
+                    Đường dùng <span className="text-rose-500">*</span>
                   </label>
-                  <Combobox id="drug-route" value={routeCode} onChange={setRouteCode} options={drugRouteOptions} />
+                  <Combobox id="drug-route" required value={routeCode} onChange={setRouteCode} options={drugRouteOptions} />
                 </div>
               )}
               <div>
                 <label htmlFor="drug-manufacturer" className="mb-1.5 block text-sm font-semibold text-slate-800">
-                  Hãng sản xuất
+                  Hãng sản xuất <span className="text-rose-500">*</span>
                 </label>
-                <input id="drug-manufacturer" value={manufacturer} onChange={(e) => setManufacturer(e.target.value)} className={inputClassName} />
+                <Combobox
+                  id="drug-manufacturer"
+                  required
+                  value={manufacturerCode}
+                  onChange={setManufacturerCode}
+                  options={manufacturerCatalog.options}
+                  allowCreate
+                  onCreateOption={manufacturerCatalog.onCreateOption}
+                />
               </div>
               {isMedicine && (
                 <div>
@@ -591,6 +769,69 @@ function DrugFormModal({
                   <input id="drug-national" value={nationalCode} onChange={(e) => setNationalCode(e.target.value)} className={inputClassName} />
                 </div>
               )}
+              {isMedicine && (
+                <div>
+                  <label htmlFor="drug-registration-number" className="mb-1.5 block text-sm font-semibold text-slate-800">
+                    Số đăng ký lưu hành <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    id="drug-registration-number"
+                    required
+                    value={registrationNumber}
+                    onChange={(e) => setRegistrationNumber(e.target.value)}
+                    placeholder="Vd: VD-25432-16"
+                    className={inputClassName}
+                  />
+                </div>
+              )}
+              {isMedicine && (
+                <div>
+                  <label htmlFor="drug-dosage-form" className="mb-1.5 block text-sm font-semibold text-slate-800">
+                    Dạng bào chế <span className="text-rose-500">*</span>
+                  </label>
+                  <Combobox
+                    id="drug-dosage-form"
+                    required
+                    value={dosageForm}
+                    onChange={setDosageForm}
+                    options={dosageFormCatalog.options}
+                    allowCreate
+                    onCreateOption={dosageFormCatalog.onCreateOption}
+                  />
+                </div>
+              )}
+              {isMedicine && (
+                <div>
+                  <label htmlFor="drug-country-of-origin" className="mb-1.5 block text-sm font-semibold text-slate-800">
+                    Nước sản xuất <span className="text-rose-500">*</span>
+                  </label>
+                  <Combobox
+                    id="drug-country-of-origin"
+                    required
+                    value={countryOfOrigin}
+                    onChange={setCountryOfOrigin}
+                    options={countryOfOriginCatalog.options}
+                    allowCreate
+                    onCreateOption={countryOfOriginCatalog.onCreateOption}
+                  />
+                </div>
+              )}
+              {isMedicine && (
+                <div>
+                  <label htmlFor="drug-control-type" className="mb-1.5 block text-sm font-semibold text-slate-800">
+                    Phân loại kiểm soát
+                  </label>
+                  <Combobox id="drug-control-type" value={controlType} onChange={(v) => setControlType(v as DrugControlType)} options={CONTROL_TYPE_OPTIONS} />
+                </div>
+              )}
+              {isMedicine && (
+                <div className="flex items-end pb-1.5">
+                  <label className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                    <input type="checkbox" checked={isPrescriptionOnly} onChange={(e) => setIsPrescriptionOnly(e.target.checked)} />
+                    Yêu cầu kê đơn (Rx)
+                  </label>
+                </div>
+              )}
             </div>
           </section>
 
@@ -598,6 +839,7 @@ function DrugFormModal({
           {isMedicine && (
             <section className="relative rounded-lg border border-slate-200 p-6 pt-8">
               <span className="absolute -top-3 left-4 rounded-md bg-blue-600 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white">Hoạt chất &amp; hàm lượng</span>
+              {validIngredientRows.length === 0 && <p className="mb-2 text-xs font-semibold text-rose-500">Bắt buộc ít nhất 1 hoạt chất.</p>}
               <div className="space-y-2">
                 {ingredients.map((row, i) => (
                   <div key={i} className="grid grid-cols-12 items-end gap-2">
@@ -742,10 +984,10 @@ function DrugFormModal({
                   {/* Đổi nhãn theo trạng thái công tắc — "mặc định" gây hiểu lầm khi bật (chủ dự án
                       phản hồi trực tiếp): lúc đó đây KHÔNG còn là giá gốc để suy ra giá khác, mà là
                       giá RIÊNG của đúng 1 đơn vị (đơn vị nhỏ nhất), ngang hàng Vỉ/Hộp. */}
-                  {unitPricingEnabled ? `Giá bán (${baseUnitCode ? unitLabel(baseUnitCode) : 'đơn vị nhỏ nhất'})` : 'Giá bán mặc định'}
+                  {unitPricingEnabled ? `Giá bán (${baseUnitCode ? unitLabel(baseUnitCode) : 'đơn vị nhỏ nhất'})` : 'Giá bán mặc định'} <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
-                  <MoneyInput id="drug-price" value={defaultSellPrice} onChange={setDefaultSellPrice} className={`${inputClassName} pr-9`} />
+                  <MoneyInput id="drug-price" required value={defaultSellPrice} onChange={setDefaultSellPrice} className={`${inputClassName} pr-9`} />
                   <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-500">đ</span>
                 </div>
                 <p className="mt-1 text-xs text-slate-500">
@@ -766,6 +1008,82 @@ function DrugFormModal({
               </div>
             </div>
           </section>
+
+          {/* KHỐI 4 — Hướng dẫn sử dụng & Bảo quản (mở rộng #151, CHỈ Thuốc). */}
+          {isMedicine && (
+            <section className="relative rounded-lg border border-slate-200 p-6 pt-8">
+              <span className="absolute -top-3 left-4 rounded-md bg-blue-600 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white">
+                Hướng dẫn sử dụng &amp; Bảo quản
+              </span>
+              <div className="grid grid-cols-1 gap-x-3 gap-y-3 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="drug-default-dosage" className="mb-1.5 block text-sm font-semibold text-slate-800">
+                    Liều dùng mặc định
+                  </label>
+                  <input
+                    id="drug-default-dosage"
+                    value={defaultDosage}
+                    onChange={(e) => setDefaultDosage(e.target.value)}
+                    placeholder="Vd: Uống 1 viên/lần x 2 lần/ngày"
+                    className={inputClassName}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="drug-usage-instruction" className="mb-1.5 block text-sm font-semibold text-slate-800">
+                    Cách dùng
+                  </label>
+                  <input
+                    id="drug-usage-instruction"
+                    value={usageInstruction}
+                    onChange={(e) => setUsageInstruction(e.target.value)}
+                    placeholder="Vd: Uống sau khi ăn no"
+                    className={inputClassName}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="drug-storage-condition" className="mb-1.5 block text-sm font-semibold text-slate-800">
+                    Điều kiện bảo quản
+                  </label>
+                  <Combobox
+                    id="drug-storage-condition"
+                    value={storageConditions}
+                    onChange={setStorageConditions}
+                    options={storageConditionCatalog.options}
+                    allowCreate
+                    onCreateOption={storageConditionCatalog.onCreateOption}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="drug-storage-location" className="mb-1.5 block text-sm font-semibold text-slate-800">
+                    Vị trí lưu kho
+                  </label>
+                  <Combobox
+                    id="drug-storage-location"
+                    value={storageLocation}
+                    onChange={setStorageLocation}
+                    options={storageLocationCatalog.options}
+                    allowCreate
+                    onCreateOption={storageLocationCatalog.onCreateOption}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="drug-barcode" className="mb-1.5 block text-sm font-semibold text-slate-800">
+                    Mã vạch
+                  </label>
+                  <input id="drug-barcode" value={barcode} onChange={(e) => setBarcode(e.target.value)} className={inputClassName} />
+                </div>
+                <div className="sm:col-span-2">
+                  <Textarea
+                    id="drug-contraindications"
+                    label="Chống chỉ định / Cảnh báo"
+                    value={contraindications}
+                    onChange={(e) => setContraindications(e.target.value)}
+                    rows={2}
+                  />
+                </div>
+              </div>
+            </section>
+          )}
         </div>
 
         <div className="flex flex-shrink-0 items-center justify-end gap-2 border-t border-slate-200 bg-slate-50 px-5 py-3">

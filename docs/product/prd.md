@@ -195,13 +195,13 @@ Phạm vi giới hạn ở **thu ngân mức 1** (một phiếu thu cho một l�
 
 | ID | Yêu cầu | Ưu tiên |
 |---|---|---|
-| INV-01 | Danh mục Thuốc & Vật tư y tế theo tenant — loại mặt hàng (Thuốc/Vật tư y tế), chuỗi quy đổi đơn vị N bậc, hoạt chất & hàm lượng (thuốc), giá bán mặc định, mã thuốc quốc gia (chuẩn bị đối chiếu, chưa tích hợp cổng thật), Nhà cung cấp, Kho | P1 |
+| INV-01 | Danh mục Thuốc & Vật tư y tế theo tenant — loại mặt hàng (Thuốc/Vật tư y tế), chuỗi quy đổi đơn vị N bậc, hoạt chất & hàm lượng (thuốc), giá bán mặc định, mã thuốc quốc gia (chuẩn bị đối chiếu, chưa tích hợp cổng thật), Nhà cung cấp, Kho, phân loại kiểm soát đặc biệt + Rx/OTC (`docs/DECISIONS.md` #151), Số đăng ký lưu hành/Dạng bào chế/Nước sản xuất/Hãng sản xuất (danh mục có "thêm nhanh")/Liều dùng mặc định/Cách dùng/Chống chỉ định/Điều kiện bảo quản/Vị trí lưu kho/Mã vạch (thuốc) | P1 |
 | INV-02 | Nhập kho theo lô (số lô, hạn dùng), tồn kho theo lô/kho, thẻ kho append-only làm nguồn sự thật | P1 (Giai đoạn 2, chưa xây) |
 | INV-03 | Xuất kho theo đơn thuốc — nguyên tắc "đơn thuốc là y lệnh, chỉ Phiếu xuất kho mới sinh tiền/trừ kho" (1 đơn ↔ N phiếu xuất), FEFO (hết hạn trước xuất trước), tiền thuốc gộp/tách khỏi phiếu thu công khám | P1 (Giai đoạn 3, chưa xây — **duy nhất chạm bảng `invoice` đang chạy thật tại pilot**, khuyến nghị thử tại 1 phòng khám trước khi GA rộng) |
 | INV-04 | Kiểm kê định kỳ, điều chuyển giữa kho, báo cáo Nhập-Xuất-Tồn | P2 (Giai đoạn 4, chưa xây) |
 | INV-05 | Trải nghiệm kê đơn có tồn kho: tìm không dấu, macro, điều hướng bàn phím, cảnh báo/chặn kê vượt tồn | P2 (Giai đoạn 5, chưa xây — cố ý xếp cuối vì phải viết lại bộ chọn thuốc khi đã có tồn kho) |
 
-**Đã hoàn tất**: INV-01 phần Danh mục nền (Giai đoạn 1, `docs/DECISIONS.md` #148, 15/09/2026) — mở rộng bảng `drug` sẵn có (không tạo bảng `items` mới). Nhà cung cấp/Kho đã có CRUD; nhập/xuất kho thật (INV-02/03) chưa xây.
+**Đã hoàn tất**: INV-01 phần Danh mục nền (Giai đoạn 1, `docs/DECISIONS.md` #148, 15/09/2026) — mở rộng bảng `drug` sẵn có (không tạo bảng `items` mới). Nhà cung cấp/Kho đã có CRUD; nhập/xuất kho thật (INV-02/03) chưa xây. **Rà soát bổ sung theo tài liệu quy chuẩn quản lý VTYT** (`docs/DECISIONS.md` #151, 16/09/2026) — VTYT giữ nguyên hoãn (chưa mở rộng field riêng), Thuốc bổ sung đầy đủ 10 trường (phân loại kiểm soát/Rx-OTC/SĐK/Dạng bào chế/Nước sản xuất bắt buộc; Liều dùng/Cách dùng/Chống chỉ định/Điều kiện bảo quản/Vị trí lưu kho/Mã vạch tùy chọn), Hãng sản xuất chuyển từ text sang danh mục cả 2 loại. 5 category danh mục mới có "thêm nhanh" ngay tại ô chọn.
 
 **Vẫn ngoài v1**: bảng giá thuốc đa đối tượng, công nợ/trả góp tiền thuốc, tích hợp cổng Đơn thuốc quốc gia thật (chặn bởi chữ ký số CA thật chưa có + đăng ký mã liên thông thủ công với đơn vị vận hành cổng — đã chuẩn bị port rỗng `EPrescriptionGatewayPort`, `docs/DECISIONS.md` #147).
 
@@ -383,3 +383,4 @@ Các câu hỏi cần trả lời, kèm hạn chót vì chúng ảnh hưởng t�
 | v1.1 | 08/08/2026 | Thay mô tả "5 vai trò cố định" bằng RBAC + Data Scope (ADM-01 cập nhật, thêm ADM-06 break-glass, ADM-07 UI cấu hình ma trận), thêm rủi ro R10 |
 | v1.2 | 22/08/2026 | **Mở rộng phạm vi v1**: thêm mục 4.7 "Thu ngân cơ bản" (BIL-01→04, P0, làm ở Sprint 5/6) — trước đây xếp v2, chuyển vào v1 vì là điều kiện bắt buộc để đạt mốc GA "pilot ngừng dùng sổ giấy hoàn toàn". Thêm phase **v1.5 — Gói chuyên khoa** (Nhi khoa → Sản phụ khoa) vào Appendix A cho 2 khách hàng thật đã có. Xem `docs/DECISIONS.md` #069→#072 |
 | v1.3 | 03/09/2026 | Thêm BIL-05 "Chốt ca" (đối soát tiền mặt/két theo ca làm việc, P1, ngoài kế hoạch — chủ dự án yêu cầu sau khi thu ngân cơ bản chạy pilot). Xem `docs/DECISIONS.md` #112 |
+| v1.4 | 16/09/2026 | Thêm mục 4.8 "Kho Thuốc & Vật tư y tế" (INV-01→05, mở rộng phạm vi v1 — đảo ngược quyết định Sprint 4, `docs/DECISIONS.md` #146). Giai đoạn 1 (Danh mục nền, #148) đã xong; rà soát bổ sung theo tài liệu quy chuẩn quản lý VTYT (#151) — phân loại kiểm soát đặc biệt/Rx-OTC, 8 trường Thuốc, danh mục hoá 5 trường có "thêm nhanh". |
