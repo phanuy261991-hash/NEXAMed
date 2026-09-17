@@ -9,6 +9,7 @@ import { formatClockTime } from '../../shared/format/time';
 import { makeDraftId } from '../../shared/make-draft-id';
 import { Button } from '../../shared/ui/Button';
 import { Combobox, withLegacyValueOption } from '../../shared/ui/Combobox';
+import { DateInput } from '../../shared/ui/DateInput';
 import { DoctorBreakDialog } from '../../shared/ui/DoctorBreakDialog';
 import { DoctorEndShiftDialog } from '../../shared/ui/DoctorEndShiftDialog';
 import { TimeInput } from '../../shared/ui/TimeInput';
@@ -606,7 +607,7 @@ export function ReceptionIntakeForm({
             <label htmlFor="intake-date" className={labelClassName}>
               Ngày tiếp nhận
             </label>
-            <input id="intake-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputClassName} />
+            <DateInput id="intake-date" value={date} onChange={setDate} dense />
           </div>
           <div className="w-24 flex-none">
             <label htmlFor="intake-time" className={labelClassName}>
@@ -732,19 +733,13 @@ export function ReceptionIntakeForm({
             {routingMode === 'doctor' && (
               <div>
                 {departmentRoutingAvailable && (
-                  <select
+                  <Combobox
+                    id="doctor-filter-department"
                     value={doctorFilterDepartmentId}
-                    onChange={(e) => setDoctorFilterDepartmentId(e.target.value)}
-                    className={`${inputClassName} mb-2 max-w-xs`}
-                    aria-label="Lọc bác sĩ theo Khoa"
-                  >
-                    <option value="">Tất cả Khoa</option>
-                    {departmentPoolCards.map((dept) => (
-                      <option key={dept.id} value={dept.id}>
-                        {dept.name}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={setDoctorFilterDepartmentId}
+                    className="mb-2 max-w-xs"
+                    options={[{ value: '', label: 'Tất cả Khoa' }, ...departmentPoolCards.map((dept) => ({ value: dept.id, label: dept.name }))]}
+                  />
                 )}
                 {filteredDoctorCards.length === 0 && (
                   <p className="text-sm text-slate-400">

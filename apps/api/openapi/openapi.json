@@ -25018,6 +25018,10 @@
                     "type": "string",
                     "minLength": 1
                   },
+                  "packagingSpec": {
+                    "type": "string",
+                    "minLength": 1
+                  },
                   "ingredients": {
                     "type": "array",
                     "items": {
@@ -25257,6 +25261,24 @@
                             "null"
                           ]
                         },
+                        "packagingSpec": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "lastPurchaseUnitCost": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "lastPurchaseAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "ingredients": {
                           "type": "array",
                           "items": {
@@ -25398,6 +25420,9 @@
                         "storageConditions",
                         "storageLocation",
                         "barcode",
+                        "packagingSpec",
+                        "lastPurchaseUnitCost",
+                        "lastPurchaseAt",
                         "ingredients",
                         "units",
                         "activeIngredient",
@@ -25729,6 +25754,24 @@
                                   "null"
                                 ]
                               },
+                              "packagingSpec": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "lastPurchaseUnitCost": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "lastPurchaseAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
                               "ingredients": {
                                 "type": "array",
                                 "items": {
@@ -25870,6 +25913,9 @@
                               "storageConditions",
                               "storageLocation",
                               "barcode",
+                              "packagingSpec",
+                              "lastPurchaseUnitCost",
+                              "lastPurchaseAt",
                               "ingredients",
                               "units",
                               "activeIngredient",
@@ -26151,6 +26197,13 @@
                     ],
                     "minLength": 1
                   },
+                  "packagingSpec": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1
+                  },
                   "ingredients": {
                     "type": "array",
                     "items": {
@@ -26399,6 +26452,24 @@
                             "null"
                           ]
                         },
+                        "packagingSpec": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "lastPurchaseUnitCost": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "lastPurchaseAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "ingredients": {
                           "type": "array",
                           "items": {
@@ -26540,6 +26611,9 @@
                         "storageConditions",
                         "storageLocation",
                         "barcode",
+                        "packagingSpec",
+                        "lastPurchaseUnitCost",
+                        "lastPurchaseAt",
                         "ingredients",
                         "units",
                         "activeIngredient",
@@ -30858,7 +30932,8 @@
                                   "CASH_PAYMENT",
                                   "CASH_TRANSFER",
                                   "WALLET_TOPUP",
-                                  "WALLET_SETTLEMENT"
+                                  "WALLET_SETTLEMENT",
+                                  "STOCK_RECEIPT"
                                 ]
                               },
                               "label": {
@@ -31008,7 +31083,8 @@
                 "CASH_PAYMENT",
                 "CASH_TRANSFER",
                 "WALLET_TOPUP",
-                "WALLET_SETTLEMENT"
+                "WALLET_SETTLEMENT",
+                "STOCK_RECEIPT"
               ]
             },
             "required": true,
@@ -31069,7 +31145,8 @@
                             "CASH_PAYMENT",
                             "CASH_TRANSFER",
                             "WALLET_TOPUP",
-                            "WALLET_SETTLEMENT"
+                            "WALLET_SETTLEMENT",
+                            "STOCK_RECEIPT"
                           ]
                         },
                         "label": {
@@ -33171,6 +33248,14 @@
                     "type": "boolean"
                   },
                   "description": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "bytCode": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "fullName": {
                     "type": "string",
                     "minLength": 1
                   },
@@ -48042,6 +48127,3427 @@
           },
           "409": {
             "description": "Ví đã khoá từ trước (WALLET_CLOSED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/receipts": {
+      "get": {
+        "tags": [
+          "inventory"
+        ],
+        "summary": "Danh sách Phiếu nhập kho — cursor, lọc theo kho/loại phiếu/trạng thái/khoảng ngày",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "warehouseId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PURCHASE",
+                "OPENING_BALANCE",
+                "TRANSFER_IN",
+                "RETURN_FROM_USE",
+                "COUNT_SURPLUS"
+              ]
+            },
+            "required": false,
+            "name": "receiptType",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "DRAFT",
+                "POSTED",
+                "REJECTED"
+              ]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": false,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": false,
+            "name": "to",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "required": false,
+            "name": "q",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "receiptNo": {
+                                "type": "string"
+                              },
+                              "receiptType": {
+                                "type": "string",
+                                "enum": [
+                                  "PURCHASE",
+                                  "OPENING_BALANCE",
+                                  "TRANSFER_IN",
+                                  "RETURN_FROM_USE",
+                                  "COUNT_SURPLUS"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "DRAFT",
+                                  "POSTED",
+                                  "REJECTED"
+                                ]
+                              },
+                              "warehouseId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "warehouseName": {
+                                "type": "string"
+                              },
+                              "supplierId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "supplierName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "occurredAt": {
+                                "type": "string"
+                              },
+                              "note": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "supplierInvoiceNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "totalAmount": {
+                                "type": "integer"
+                              },
+                              "lineCount": {
+                                "type": "integer"
+                              },
+                              "createdByName": {
+                                "type": "string"
+                              },
+                              "approvedByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "approvedAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "rejectionReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "voided": {
+                                "type": "boolean"
+                              },
+                              "version": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "receiptNo",
+                              "receiptType",
+                              "status",
+                              "warehouseId",
+                              "warehouseName",
+                              "supplierId",
+                              "supplierName",
+                              "occurredAt",
+                              "note",
+                              "supplierInvoiceNo",
+                              "totalAmount",
+                              "lineCount",
+                              "createdByName",
+                              "approvedByName",
+                              "approvedAt",
+                              "rejectionReason",
+                              "voided",
+                              "version"
+                            ]
+                          }
+                        },
+                        "nextCursor": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "nextCursor"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền stock_receipt.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "inventory"
+        ],
+        "summary": "Tạo phiếu nhập kho ở trạng thái Nháp — chưa đụng tồn kho",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "warehouseId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "supplierId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "receiptType": {
+                    "type": "string",
+                    "enum": [
+                      "PURCHASE",
+                      "OPENING_BALANCE",
+                      "TRANSFER_IN",
+                      "RETURN_FROM_USE",
+                      "COUNT_SURPLUS"
+                    ]
+                  },
+                  "occurredAt": {
+                    "type": "string"
+                  },
+                  "note": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "supplierInvoiceNo": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "drugId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "unitCode": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "quantity": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0
+                        },
+                        "unitCost": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "batchNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "minLength": 1
+                        },
+                        "expiryDate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        }
+                      },
+                      "required": [
+                        "drugId",
+                        "unitCode",
+                        "quantity",
+                        "unitCost"
+                      ]
+                    },
+                    "minItems": 1
+                  }
+                },
+                "required": [
+                  "warehouseId",
+                  "receiptType",
+                  "lines"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "receiptNo": {
+                          "type": "string"
+                        },
+                        "receiptType": {
+                          "type": "string",
+                          "enum": [
+                            "PURCHASE",
+                            "OPENING_BALANCE",
+                            "TRANSFER_IN",
+                            "RETURN_FROM_USE",
+                            "COUNT_SURPLUS"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "DRAFT",
+                            "POSTED",
+                            "REJECTED"
+                          ]
+                        },
+                        "warehouseId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "warehouseName": {
+                          "type": "string"
+                        },
+                        "supplierId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "supplierName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "occurredAt": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "supplierInvoiceNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "totalAmount": {
+                          "type": "integer"
+                        },
+                        "lineCount": {
+                          "type": "integer"
+                        },
+                        "createdByName": {
+                          "type": "string"
+                        },
+                        "approvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "voided": {
+                          "type": "boolean"
+                        },
+                        "version": {
+                          "type": "integer"
+                        },
+                        "lines": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "drugId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "drugCode": {
+                                "type": "string"
+                              },
+                              "drugName": {
+                                "type": "string"
+                              },
+                              "unitCode": {
+                                "type": "string"
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "unitCost": {
+                                "type": "integer"
+                              },
+                              "batchNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "expiryDate": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "lineAmount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "drugId",
+                              "drugCode",
+                              "drugName",
+                              "unitCode",
+                              "quantity",
+                              "unitCost",
+                              "batchNo",
+                              "expiryDate",
+                              "lineAmount"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "receiptNo",
+                        "receiptType",
+                        "status",
+                        "warehouseId",
+                        "warehouseName",
+                        "supplierId",
+                        "supplierName",
+                        "occurredAt",
+                        "note",
+                        "supplierInvoiceNo",
+                        "totalAmount",
+                        "lineCount",
+                        "createdByName",
+                        "approvedByName",
+                        "approvedAt",
+                        "rejectionReason",
+                        "voided",
+                        "version",
+                        "lines"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền stock_receipt.create",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Kho/Nhà cung cấp/Thuốc tham chiếu không tồn tại",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Thiếu Số lô cho thuốc quản lý theo lô, hoặc loại phiếu chưa hỗ trợ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/receipts/{id}": {
+      "get": {
+        "tags": [
+          "inventory"
+        ],
+        "summary": "Chi tiết 1 phiếu nhập kho kèm dòng hàng — phiếu Từ chối/Đã huỷ vẫn xem được",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "receiptNo": {
+                          "type": "string"
+                        },
+                        "receiptType": {
+                          "type": "string",
+                          "enum": [
+                            "PURCHASE",
+                            "OPENING_BALANCE",
+                            "TRANSFER_IN",
+                            "RETURN_FROM_USE",
+                            "COUNT_SURPLUS"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "DRAFT",
+                            "POSTED",
+                            "REJECTED"
+                          ]
+                        },
+                        "warehouseId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "warehouseName": {
+                          "type": "string"
+                        },
+                        "supplierId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "supplierName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "occurredAt": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "supplierInvoiceNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "totalAmount": {
+                          "type": "integer"
+                        },
+                        "lineCount": {
+                          "type": "integer"
+                        },
+                        "createdByName": {
+                          "type": "string"
+                        },
+                        "approvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "voided": {
+                          "type": "boolean"
+                        },
+                        "version": {
+                          "type": "integer"
+                        },
+                        "lines": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "drugId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "drugCode": {
+                                "type": "string"
+                              },
+                              "drugName": {
+                                "type": "string"
+                              },
+                              "unitCode": {
+                                "type": "string"
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "unitCost": {
+                                "type": "integer"
+                              },
+                              "batchNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "expiryDate": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "lineAmount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "drugId",
+                              "drugCode",
+                              "drugName",
+                              "unitCode",
+                              "quantity",
+                              "unitCost",
+                              "batchNo",
+                              "expiryDate",
+                              "lineAmount"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "receiptNo",
+                        "receiptType",
+                        "status",
+                        "warehouseId",
+                        "warehouseName",
+                        "supplierId",
+                        "supplierName",
+                        "occurredAt",
+                        "note",
+                        "supplierInvoiceNo",
+                        "totalAmount",
+                        "lineCount",
+                        "createdByName",
+                        "approvedByName",
+                        "approvedAt",
+                        "rejectionReason",
+                        "voided",
+                        "version",
+                        "lines"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền stock_receipt.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy (không tồn tại hoặc thuộc tenant khác)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "inventory"
+        ],
+        "summary": "Sửa phiếu Nháp — thay toàn bộ dòng hàng + header",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "warehouseId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "supplierId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "receiptType": {
+                    "type": "string",
+                    "enum": [
+                      "PURCHASE",
+                      "OPENING_BALANCE",
+                      "TRANSFER_IN",
+                      "RETURN_FROM_USE",
+                      "COUNT_SURPLUS"
+                    ]
+                  },
+                  "occurredAt": {
+                    "type": "string"
+                  },
+                  "note": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "supplierInvoiceNo": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "drugId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "unitCode": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "quantity": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0
+                        },
+                        "unitCost": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "batchNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "minLength": 1
+                        },
+                        "expiryDate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        }
+                      },
+                      "required": [
+                        "drugId",
+                        "unitCode",
+                        "quantity",
+                        "unitCost"
+                      ]
+                    },
+                    "minItems": 1
+                  },
+                  "version": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "warehouseId",
+                  "receiptType",
+                  "lines",
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "receiptNo": {
+                          "type": "string"
+                        },
+                        "receiptType": {
+                          "type": "string",
+                          "enum": [
+                            "PURCHASE",
+                            "OPENING_BALANCE",
+                            "TRANSFER_IN",
+                            "RETURN_FROM_USE",
+                            "COUNT_SURPLUS"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "DRAFT",
+                            "POSTED",
+                            "REJECTED"
+                          ]
+                        },
+                        "warehouseId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "warehouseName": {
+                          "type": "string"
+                        },
+                        "supplierId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "supplierName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "occurredAt": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "supplierInvoiceNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "totalAmount": {
+                          "type": "integer"
+                        },
+                        "lineCount": {
+                          "type": "integer"
+                        },
+                        "createdByName": {
+                          "type": "string"
+                        },
+                        "approvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "voided": {
+                          "type": "boolean"
+                        },
+                        "version": {
+                          "type": "integer"
+                        },
+                        "lines": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "drugId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "drugCode": {
+                                "type": "string"
+                              },
+                              "drugName": {
+                                "type": "string"
+                              },
+                              "unitCode": {
+                                "type": "string"
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "unitCost": {
+                                "type": "integer"
+                              },
+                              "batchNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "expiryDate": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "lineAmount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "drugId",
+                              "drugCode",
+                              "drugName",
+                              "unitCode",
+                              "quantity",
+                              "unitCost",
+                              "batchNo",
+                              "expiryDate",
+                              "lineAmount"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "receiptNo",
+                        "receiptType",
+                        "status",
+                        "warehouseId",
+                        "warehouseName",
+                        "supplierId",
+                        "supplierName",
+                        "occurredAt",
+                        "note",
+                        "supplierInvoiceNo",
+                        "totalAmount",
+                        "lineCount",
+                        "createdByName",
+                        "approvedByName",
+                        "approvedAt",
+                        "rejectionReason",
+                        "voided",
+                        "version",
+                        "lines"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền stock_receipt.create",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy, hoặc Kho/Nhà cung cấp/Thuốc tham chiếu không tồn tại",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp, hoặc phiếu không còn ở trạng thái Nháp (STOCK_RECEIPT_NOT_DRAFT)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/receipts/{id}/approve": {
+      "post": {
+        "tags": [
+          "inventory"
+        ],
+        "summary": "Duyệt phiếu — cộng thật vào Thẻ kho/Tồn kho, cập nhật giá vốn theo lô/bình quân gia quyền",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "receiptNo": {
+                          "type": "string"
+                        },
+                        "receiptType": {
+                          "type": "string",
+                          "enum": [
+                            "PURCHASE",
+                            "OPENING_BALANCE",
+                            "TRANSFER_IN",
+                            "RETURN_FROM_USE",
+                            "COUNT_SURPLUS"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "DRAFT",
+                            "POSTED",
+                            "REJECTED"
+                          ]
+                        },
+                        "warehouseId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "warehouseName": {
+                          "type": "string"
+                        },
+                        "supplierId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "supplierName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "occurredAt": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "supplierInvoiceNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "totalAmount": {
+                          "type": "integer"
+                        },
+                        "lineCount": {
+                          "type": "integer"
+                        },
+                        "createdByName": {
+                          "type": "string"
+                        },
+                        "approvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "voided": {
+                          "type": "boolean"
+                        },
+                        "version": {
+                          "type": "integer"
+                        },
+                        "lines": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "drugId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "drugCode": {
+                                "type": "string"
+                              },
+                              "drugName": {
+                                "type": "string"
+                              },
+                              "unitCode": {
+                                "type": "string"
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "unitCost": {
+                                "type": "integer"
+                              },
+                              "batchNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "expiryDate": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "lineAmount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "drugId",
+                              "drugCode",
+                              "drugName",
+                              "unitCode",
+                              "quantity",
+                              "unitCost",
+                              "batchNo",
+                              "expiryDate",
+                              "lineAmount"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "receiptNo",
+                        "receiptType",
+                        "status",
+                        "warehouseId",
+                        "warehouseName",
+                        "supplierId",
+                        "supplierName",
+                        "occurredAt",
+                        "note",
+                        "supplierInvoiceNo",
+                        "totalAmount",
+                        "lineCount",
+                        "createdByName",
+                        "approvedByName",
+                        "approvedAt",
+                        "rejectionReason",
+                        "voided",
+                        "version",
+                        "lines"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền stock_receipt.approve",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp, hoặc phiếu không còn ở trạng thái Nháp (STOCK_RECEIPT_NOT_DRAFT)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/receipts/{id}/reject": {
+      "post": {
+        "tags": [
+          "inventory"
+        ],
+        "summary": "Từ chối phiếu Nháp — lý do bắt buộc, không đụng tồn kho",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "version": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "reason",
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "receiptNo": {
+                          "type": "string"
+                        },
+                        "receiptType": {
+                          "type": "string",
+                          "enum": [
+                            "PURCHASE",
+                            "OPENING_BALANCE",
+                            "TRANSFER_IN",
+                            "RETURN_FROM_USE",
+                            "COUNT_SURPLUS"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "DRAFT",
+                            "POSTED",
+                            "REJECTED"
+                          ]
+                        },
+                        "warehouseId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "warehouseName": {
+                          "type": "string"
+                        },
+                        "supplierId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "supplierName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "occurredAt": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "supplierInvoiceNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "totalAmount": {
+                          "type": "integer"
+                        },
+                        "lineCount": {
+                          "type": "integer"
+                        },
+                        "createdByName": {
+                          "type": "string"
+                        },
+                        "approvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "voided": {
+                          "type": "boolean"
+                        },
+                        "version": {
+                          "type": "integer"
+                        },
+                        "lines": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "drugId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "drugCode": {
+                                "type": "string"
+                              },
+                              "drugName": {
+                                "type": "string"
+                              },
+                              "unitCode": {
+                                "type": "string"
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "unitCost": {
+                                "type": "integer"
+                              },
+                              "batchNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "expiryDate": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "lineAmount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "drugId",
+                              "drugCode",
+                              "drugName",
+                              "unitCode",
+                              "quantity",
+                              "unitCost",
+                              "batchNo",
+                              "expiryDate",
+                              "lineAmount"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "receiptNo",
+                        "receiptType",
+                        "status",
+                        "warehouseId",
+                        "warehouseName",
+                        "supplierId",
+                        "supplierName",
+                        "occurredAt",
+                        "note",
+                        "supplierInvoiceNo",
+                        "totalAmount",
+                        "lineCount",
+                        "createdByName",
+                        "approvedByName",
+                        "approvedAt",
+                        "rejectionReason",
+                        "voided",
+                        "version",
+                        "lines"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền stock_receipt.approve",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp, hoặc phiếu không còn ở trạng thái Nháp (STOCK_RECEIPT_NOT_DRAFT)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/receipts/{id}/void": {
+      "post": {
+        "tags": [
+          "inventory"
+        ],
+        "summary": "Huỷ phiếu ĐÃ Duyệt — đảo ngược Thẻ kho/Tồn kho, lý do bắt buộc",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "version": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "reason",
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "receiptNo": {
+                          "type": "string"
+                        },
+                        "receiptType": {
+                          "type": "string",
+                          "enum": [
+                            "PURCHASE",
+                            "OPENING_BALANCE",
+                            "TRANSFER_IN",
+                            "RETURN_FROM_USE",
+                            "COUNT_SURPLUS"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "DRAFT",
+                            "POSTED",
+                            "REJECTED"
+                          ]
+                        },
+                        "warehouseId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "warehouseName": {
+                          "type": "string"
+                        },
+                        "supplierId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "supplierName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "occurredAt": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "supplierInvoiceNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "totalAmount": {
+                          "type": "integer"
+                        },
+                        "lineCount": {
+                          "type": "integer"
+                        },
+                        "createdByName": {
+                          "type": "string"
+                        },
+                        "approvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "voided": {
+                          "type": "boolean"
+                        },
+                        "version": {
+                          "type": "integer"
+                        },
+                        "lines": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "drugId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "drugCode": {
+                                "type": "string"
+                              },
+                              "drugName": {
+                                "type": "string"
+                              },
+                              "unitCode": {
+                                "type": "string"
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "unitCost": {
+                                "type": "integer"
+                              },
+                              "batchNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "expiryDate": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "lineAmount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "drugId",
+                              "drugCode",
+                              "drugName",
+                              "unitCode",
+                              "quantity",
+                              "unitCost",
+                              "batchNo",
+                              "expiryDate",
+                              "lineAmount"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "receiptNo",
+                        "receiptType",
+                        "status",
+                        "warehouseId",
+                        "warehouseName",
+                        "supplierId",
+                        "supplierName",
+                        "occurredAt",
+                        "note",
+                        "supplierInvoiceNo",
+                        "totalAmount",
+                        "lineCount",
+                        "createdByName",
+                        "approvedByName",
+                        "approvedAt",
+                        "rejectionReason",
+                        "voided",
+                        "version",
+                        "lines"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền stock_receipt.approve",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp, phiếu chưa Duyệt, hoặc tồn đã bị dùng bớt (STOCK_RECEIPT_VOID_NOT_ALLOWED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/drugs/{drugId}/ledger": {
+      "get": {
+        "tags": [
+          "inventory"
+        ],
+        "summary": "Thẻ kho / Lịch sử giao dịch của 1 thuốc — sắp mới→cũ, kèm \"Tồn sau\" luỹ kế",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "drugId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "warehouseId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "occurredAt": {
+                                "type": "string"
+                              },
+                              "quantityChange": {
+                                "type": "integer"
+                              },
+                              "runningBalance": {
+                                "type": "integer"
+                              },
+                              "reason": {
+                                "type": "string",
+                                "enum": [
+                                  "RECEIPT_PURCHASE",
+                                  "RECEIPT_OPENING_BALANCE",
+                                  "RECEIPT_TRANSFER_IN",
+                                  "RECEIPT_RETURN_FROM_USE",
+                                  "RECEIPT_COUNT_SURPLUS",
+                                  "RECEIPT_VOID",
+                                  "ISSUE_RETAIL_SALE",
+                                  "ISSUE_SERVICE_CONSUMPTION",
+                                  "ISSUE_INTERNAL_ALLOCATION",
+                                  "ISSUE_TRANSFER_OUT",
+                                  "ISSUE_RETURN_TO_SUPPLIER",
+                                  "ISSUE_WRITE_OFF",
+                                  "ISSUE_COUNT_SHORTAGE"
+                                ]
+                              },
+                              "warehouseId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "warehouseName": {
+                                "type": "string"
+                              },
+                              "sourceReceiptId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "sourceReceiptNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdByName": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "occurredAt",
+                              "quantityChange",
+                              "runningBalance",
+                              "reason",
+                              "warehouseId",
+                              "warehouseName",
+                              "sourceReceiptId",
+                              "sourceReceiptNo",
+                              "createdByName"
+                            ]
+                          }
+                        },
+                        "totalCount": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "totalCount"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền stock_receipt.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/balances": {
+      "get": {
+        "tags": [
+          "inventory"
+        ],
+        "summary": "Tồn kho (view \"Theo mặt hàng\") — tổng hợp theo (thuốc, kho), gộp mọi lô",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "warehouseId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "required": false,
+            "name": "q",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "true",
+                    "false"
+                  ]
+                }
+              ],
+              "default": false
+            },
+            "required": false,
+            "name": "belowMinOnly",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "drugId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "drugCode": {
+                                "type": "string"
+                              },
+                              "drugName": {
+                                "type": "string"
+                              },
+                              "itemType": {
+                                "type": "string",
+                                "enum": [
+                                  "MEDICINE",
+                                  "SUPPLY"
+                                ]
+                              },
+                              "warehouseId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "warehouseName": {
+                                "type": "string"
+                              },
+                              "unitCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "quantityOnHand": {
+                                "type": "integer"
+                              },
+                              "minStockAlert": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "maxStockAlert": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "NORMAL",
+                                  "LOW",
+                                  "HIGH",
+                                  "OUT"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "drugId",
+                              "drugCode",
+                              "drugName",
+                              "itemType",
+                              "warehouseId",
+                              "warehouseName",
+                              "unitCode",
+                              "quantityOnHand",
+                              "minStockAlert",
+                              "maxStockAlert",
+                              "status"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền stock_receipt.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/drugs/{drugId}/balances": {
+      "get": {
+        "tags": [
+          "inventory"
+        ],
+        "summary": "Tồn kho theo lô của 1 thuốc (panel chi tiết thuốc)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "drugId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "warehouseId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "batchId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "batchNo": {
+                                "type": "string"
+                              },
+                              "warehouseId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "warehouseName": {
+                                "type": "string"
+                              },
+                              "expiryDate": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "quantityOnHand": {
+                                "type": "integer"
+                              },
+                              "unitCost": {
+                                "type": "integer"
+                              },
+                              "expiryStatus": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "EXPIRING_SOON",
+                                  "EXPIRED"
+                                ]
+                              },
+                              "daysUntilExpiry": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "batchId",
+                              "batchNo",
+                              "warehouseId",
+                              "warehouseName",
+                              "expiryDate",
+                              "quantityOnHand",
+                              "unitCost",
+                              "expiryStatus",
+                              "daysUntilExpiry"
+                            ]
+                          }
+                        },
+                        "totalQuantityOnHand": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "totalQuantityOnHand"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền stock_receipt.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/expiry-warnings": {
+      "get": {
+        "tags": [
+          "inventory"
+        ],
+        "summary": "Cảnh báo hạn dùng — mọi lô sắp/đã hết hạn còn tồn, toàn phòng khám hoặc theo kho",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "warehouseId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "batchId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "batchNo": {
+                                "type": "string"
+                              },
+                              "drugId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "drugName": {
+                                "type": "string"
+                              },
+                              "warehouseId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "warehouseName": {
+                                "type": "string"
+                              },
+                              "expiryDate": {
+                                "type": "string"
+                              },
+                              "daysUntilExpiry": {
+                                "type": "integer"
+                              },
+                              "quantityOnHand": {
+                                "type": "integer"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "EXPIRING_SOON",
+                                  "EXPIRED"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "batchId",
+                              "batchNo",
+                              "drugId",
+                              "drugName",
+                              "warehouseId",
+                              "warehouseName",
+                              "expiryDate",
+                              "daysUntilExpiry",
+                              "quantityOnHand",
+                              "status"
+                            ]
+                          }
+                        },
+                        "expiringSoonCount": {
+                          "type": "integer"
+                        },
+                        "expiredCount": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "expiringSoonCount",
+                        "expiredCount"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền stock_receipt.read",
             "content": {
               "application/json": {
                 "schema": {

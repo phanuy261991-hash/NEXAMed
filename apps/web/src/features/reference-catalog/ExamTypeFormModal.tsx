@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { Plus, Stethoscope, Trash, Warning, X } from '@phosphor-icons/react';
-import type { ComboboxOption } from '../../shared/ui/Combobox';
+import { Combobox, type ComboboxOption } from '../../shared/ui/Combobox';
+import { DateInput } from '../../shared/ui/DateInput';
 import { SearchableCombobox } from '../../shared/ui/SearchableCombobox';
 import { MoneyInput } from '../../shared/ui/MoneyInput';
 import { Textarea } from '../../shared/ui/Textarea';
@@ -218,10 +219,15 @@ export function ExamTypeFormModal({
                 <label htmlFor="et-status" className="text-sm font-semibold text-slate-800">
                   Trạng thái <span className="text-rose-500">*</span>
                 </label>
-                <select id="et-status" value={isActive ? '1' : '0'} onChange={(e) => setIsActive(e.target.value === '1')} className={`${inputClassName} cursor-pointer`}>
-                  <option value="1">Đang sử dụng</option>
-                  <option value="0">Ngưng sử dụng</option>
-                </select>
+                <Combobox
+                  id="et-status"
+                  value={isActive ? '1' : '0'}
+                  onChange={(v) => setIsActive(v === '1')}
+                  options={[
+                    { value: '1', label: 'Đang sử dụng' },
+                    { value: '0', label: 'Ngưng sử dụng' },
+                  ]}
+                />
               </div>
 
               <div className="col-span-2 sm:col-span-4">
@@ -271,13 +277,13 @@ export function ExamTypeFormModal({
                 <label htmlFor="et-from" className="text-sm font-semibold text-slate-800">
                   Ngày hiệu lực <span className="text-rose-500">*</span>
                 </label>
-                <input id="et-from" type="date" value={draftFrom} onChange={(e) => setDraftFrom(e.target.value)} className={inputClassName} />
+                <DateInput id="et-from" value={draftFrom} onChange={setDraftFrom} />
               </div>
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="et-to" className="text-sm font-semibold text-slate-800">
                   Ngày kết thúc
                 </label>
-                <input id="et-to" type="date" value={draftTo} onChange={(e) => setDraftTo(e.target.value)} className={inputClassName} />
+                <DateInput id="et-to" value={draftTo} onChange={setDraftTo} />
               </div>
               <Button type="button" variant="add" onClick={handleAddRow}>
                 <Plus size={14} weight="bold" aria-hidden="true" />

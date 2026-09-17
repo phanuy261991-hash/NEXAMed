@@ -118,6 +118,10 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   // trạng thái hiện có (số dư/trạng thái ví), không phải lỗi input.
   WALLET_INSUFFICIENT_BALANCE: HttpStatus.CONFLICT,
   WALLET_CLOSED: HttpStatus.CONFLICT,
+  // Kho Thuốc GĐ2 — trạng thái hiện tại của phiếu nhập kho (không còn Nháp / tồn đã bị dùng bớt)
+  // không cho phép thao tác này, không phải lỗi input.
+  STOCK_RECEIPT_NOT_DRAFT: HttpStatus.CONFLICT,
+  STOCK_RECEIPT_VOID_NOT_ALLOWED: HttpStatus.CONFLICT,
 };
 
 /**

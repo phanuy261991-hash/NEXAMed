@@ -6,6 +6,7 @@ import { formatDobDisplay } from '../../shared/format/date';
 import { useAuthStore } from '../auth/auth.store';
 import { usePatientByPhoneQuery } from '../patient/patient.queries';
 import { Button } from '../../shared/ui/Button';
+import { DateInput } from '../../shared/ui/DateInput';
 import { TimeInput } from '../../shared/ui/TimeInput';
 import { APPOINTMENT_SPAM_CANCELLED_THRESHOLD } from './appointment-status';
 import { useAppointmentPhoneLookupQuery, useAppointmentsByDateQuery, useCreateAppointmentMutation } from './appointment.queries';
@@ -270,13 +271,7 @@ export function AppointmentQuickCreatePanel({
                     <label htmlFor="quick-create-date" className="mb-1.5 block text-sm font-semibold text-slate-800">
                       Ngày hẹn <span className="text-rose-500">*</span>
                     </label>
-                    <input
-                      id="quick-create-date"
-                      type="date"
-                      value={selectedDate}
-                      onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
-                      className={inputClassName}
-                    />
+                    <DateInput id="quick-create-date" value={selectedDate} onChange={(v) => v && setSelectedDate(v)} required />
                   </div>
                   <div className="flex-1">
                     <label htmlFor="quick-create-time" className="mb-1.5 block text-sm font-semibold text-slate-800">

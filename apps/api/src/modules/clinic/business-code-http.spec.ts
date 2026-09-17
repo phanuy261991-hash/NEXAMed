@@ -83,11 +83,11 @@ describe('HTTP e2e — /api/v1/clinic-settings/code-templates', () => {
     expect(res.status).toBe(403);
   });
 
-  it('tenant chưa cấu hình gì → 12 loại mã đúng khuôn mặc định, KHÔNG locked, số bắt đầu = 1', async () => {
+  it('tenant chưa cấu hình gì → 13 loại mã đúng khuôn mặc định, KHÔNG locked, số bắt đầu = 1', async () => {
     const res = await request(app.getHttpServer()).get('/api/v1/clinic-settings/code-templates').set(authed(clinicAdminToken));
     expect(res.status).toBe(200);
-    // 10 loại mã cũ + 2 loại mới (Ví tạm ứng — WALLET_TOPUP/WALLET_SETTLEMENT).
-    expect(res.body.data.items).toHaveLength(12);
+    // 10 loại mã cũ + 2 (Ví tạm ứng — WALLET_TOPUP/WALLET_SETTLEMENT) + 1 (Kho Thuốc GĐ2 — STOCK_RECEIPT).
+    expect(res.body.data.items).toHaveLength(13);
 
     const patient = res.body.data.items.find((i: { codeType: string }) => i.codeType === 'PATIENT');
     expect(patient).toMatchObject({
@@ -100,7 +100,7 @@ describe('HTTP e2e — /api/v1/clinic-settings/code-templates', () => {
     expect(patient.exampleNextCode).toMatch(/^BN\d{4}\d{6}$/);
 
     // "Sổ quỹ & Thu chi" GĐ2 — CASH_TRANSFER (Chuyển quỹ, prefix PCK); Ví tạm ứng —
-    // WALLET_TOPUP/WALLET_SETTLEMENT (thêm mới nhất).
+    // WALLET_TOPUP/WALLET_SETTLEMENT; Kho Thuốc GĐ2 — STOCK_RECEIPT (thêm mới nhất).
     const employment = res.body.data.items.map((i: { codeType: string }) => i.codeType).sort();
     expect(employment).toEqual(
       [
@@ -114,6 +114,7 @@ describe('HTTP e2e — /api/v1/clinic-settings/code-templates', () => {
         'ENCOUNTER',
         'INVOICE',
         'PATIENT',
+        'STOCK_RECEIPT',
         'WALLET_SETTLEMENT',
         'WALLET_TOPUP',
       ].sort(),

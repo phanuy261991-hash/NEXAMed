@@ -17,6 +17,7 @@ import { EncounterModule } from './modules/encounter/encounter.module';
 import { ReceptionModule } from './modules/reception/reception.module';
 import { AllergenModule } from './modules/allergen/allergen.module';
 import { DrugModule } from './modules/drug/drug.module';
+import { InventoryModule } from './modules/inventory/inventory.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { DoctorAvailabilityModule } from './modules/doctor-availability/doctor-availability.module';
@@ -47,6 +48,7 @@ import { TenantContextMiddleware } from './common/tenant-context.middleware';
     Icd10Module,
     AllergenModule,
     DrugModule,
+    InventoryModule,
     EncounterModule,
     BillingModule,
     ReceptionModule,

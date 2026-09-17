@@ -1,7 +1,9 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { CaretDown, MagnifyingGlass, PencilSimple, Pill, Plus, Trash, Eye, FirstAidKit, X } from '@phosphor-icons/react';
 import type { DrugControlType, DrugIngredientInput, DrugItemType, DrugSummary, DrugUnitInput, ReferenceCatalogCategory } from '@nexamed/shared';
-import { useHasAnyPermission } from '../auth/usePermission';
+import { useHasAnyPermission, useHasPermission } from '../auth/usePermission';
+import { useDrugBatchBalancesQuery, useDrugLedgerQuery } from '../inventory/inventory.queries';
 import { DRUG_MANAGE_PERMISSIONS } from '../auth/admin-permissions';
 import { Button } from '../../shared/ui/Button';
 import { Combobox, type ComboboxOption } from '../../shared/ui/Combobox';
@@ -20,7 +22,9 @@ import { useRowSelection } from '../../shared/hooks/useRowSelection';
 import { useSaveFlash } from '../../shared/hooks/useSaveFlash';
 import { useCreateReferenceCatalogItemMutation, useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { appendSentence } from '../../shared/format/append-sentence';
+import { formatDobDisplay } from '../../shared/format/date';
 import { useCreateDrugMutation, useDrugsQuery, useUpdateDrugMutation } from './drug.queries';
+import { useUnitNameByCode } from './useUnitNameByCode';
 
 const inputClassName =
   'w-full rounded-lg border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
@@ -91,6 +95,26 @@ function formatUnitChainSequential(
     .join(' · ');
 }
 
+/**
+ * Gợi ý "Quy cách đóng gói" ghép TỰ ĐỘNG từ Bảng quy đổi đơn vị (đảo ngược hoãn #151, chốt
+ * 17/09/2026, qua AskUserQuestion): `[Đơn vị lớn nhất] [hệ số] [đơn vị kế] x [hệ số] [đơn vị kế]...`
+ * — ví dụ "Hộp 10 vỉ x 10 viên". `links` cùng thứ tự với `formatUnitChainSequential` (index 0 = bậc
+ * ngay trên đơn vị cơ sở), nên đảo ngược để đi từ LỚN NHẤT xuống. Trả `null` khi chưa đủ dữ liệu để
+ * ghép (chưa chọn đơn vị cơ sở, hoặc chỉ có đúng 1 đơn vị — không có gì để quy đổi).
+ */
+function suggestPackagingSpec(baseUnitCode: string, links: { unitCode: string; factorToUnitBelow: number }[], label: (code: string) => string): string | null {
+  if (!baseUnitCode || links.length === 0) return null;
+  const descending = [...links].reverse();
+  const chainNames = [...descending.map((l) => l.unitCode), baseUnitCode].map(label);
+  const factors = descending.map((l) => l.factorToUnitBelow);
+
+  let result = `${chainNames[0]} ${factors[0]!.toLocaleString('vi-VN')} ${chainNames[1]!.toLowerCase()}`;
+  for (let i = 1; i < factors.length; i += 1) {
+    result += ` x ${factors[i]!.toLocaleString('vi-VN')} ${chainNames[i + 1]!.toLowerCase()}`;
+  }
+  return result;
+}
+
 interface FormIngredientRow {
   activeIngredientCode: string;
   /** Giá trị THẬT người dùng gõ (ví dụ "500") — quy đổi ×1000 lúc gửi (`DrugIngredientInput.strengthValue`), đúng tiền lệ `vital_sign`. */
@@ -125,6 +149,13 @@ export function DrugCatalogPane() {
   const [modal, setModal] = useState<{ mode: 'create' | 'edit'; itemType: DrugItemType; item?: DrugSummary } | null>(null);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Kho Thuốc GĐ2 (docs/DECISIONS.md #146) — panel chi tiết đổi từ 1 khối cuộn dài sang tab thật.
+  const [detailTab, setDetailTab] = useState<'info' | 'batches' | 'ledger' | 'history'>('info');
+  const canSeeInventory = useHasPermission('stock_receipt', 'read');
+  function openDetail(id: string) {
+    setSelectedId(id);
+    setDetailTab('info');
+  }
 
   const query = useDrugsQuery({ q: debouncedSearch.trim() || undefined, itemType: itemTypeFilter === 'ALL' ? undefined : itemTypeFilter, includeInactive });
   const createMutation = useCreateDrugMutation();
@@ -158,7 +189,7 @@ export function DrugCatalogPane() {
   const drugRouteOptions: ComboboxOption[] = (drugRouteQuery.data?.items ?? []).map((i) => ({ value: i.code, label: i.name }));
   const activeIngredientOptions: ComboboxOption[] = (activeIngredientQuery.data?.items ?? []).map((i) => ({ value: i.code, label: i.name }));
   const unitOptions: ComboboxOption[] = (unitQuery.data?.items ?? []).map((i) => ({ value: i.code, label: i.name }));
-  const unitNameByCode = useMemo(() => new Map((unitQuery.data?.items ?? []).map((i) => [i.code, i.name])), [unitQuery.data]);
+  const unitNameByCode = useUnitNameByCode();
   const drugGroupNameByCode = useMemo(() => new Map((drugGroupQuery.data?.items ?? []).map((i) => [i.code, i.name])), [drugGroupQuery.data]);
   const drugRouteNameByCode = useMemo(() => new Map((drugRouteQuery.data?.items ?? []).map((i) => [i.code, i.name])), [drugRouteQuery.data]);
   const activeIngredientNameByCode = useMemo(() => new Map((activeIngredientQuery.data?.items ?? []).map((i) => [i.code, i.name])), [activeIngredientQuery.data]);
@@ -167,6 +198,22 @@ export function DrugCatalogPane() {
   const itemIds = items.map((d) => d.id);
   const rowSelection = useRowSelection(itemIds);
   const selectedItem = items.find((d) => d.id === selectedId) ?? null;
+
+  // Mở thẳng panel chi tiết + đúng tab khi điều hướng từ nơi khác (ví dụ "Tồn kho" bấm tên thuốc
+  // sang thẳng tab "Tồn kho theo lô") — chỉ mở 1 lần khi danh sách vừa tải xong, không lặp lại mỗi
+  // lần `items` đổi (tránh tự mở lại panel nếu người dùng đã bấm đóng).
+  const [searchParams] = useSearchParams();
+  const deepLinkHandledRef = useRef(false);
+  useEffect(() => {
+    if (deepLinkHandledRef.current || items.length === 0) return;
+    const deepLinkDrugId = searchParams.get('drugId');
+    if (!deepLinkDrugId) return;
+    deepLinkHandledRef.current = true;
+    if (!items.some((d) => d.id === deepLinkDrugId)) return;
+    setSelectedId(deepLinkDrugId);
+    const tab = searchParams.get('tab');
+    if (tab === 'batches' || tab === 'ledger' || tab === 'history') setDetailTab(tab);
+  }, [items, searchParams]);
 
   return (
     <div className="flex h-full flex-col">
@@ -276,11 +323,11 @@ export function DrugCatalogPane() {
                   <tr
                     key={d.id}
                     tabIndex={0}
-                    onClick={() => setSelectedId(d.id)}
+                    onClick={() => openDetail(d.id)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
-                        setSelectedId(d.id);
+                        openDetail(d.id);
                       }
                     }}
                     className={`cursor-pointer border-b border-slate-100 ${selectedId === d.id ? 'bg-blue-50/70' : 'hover:bg-slate-50'} ${d.isActive ? '' : 'opacity-50'}`}
@@ -359,9 +406,38 @@ export function DrugCatalogPane() {
                 <X size={18} weight="bold" aria-hidden="true" />
               </button>
             </div>
+
+            {/* Kho Thuốc GĐ2 (docs/DECISIONS.md #146) — tab thật thay cho 1 khối cuộn dài duy nhất
+                trước đây. "Tồn kho theo lô"/"Thẻ kho"/"Lịch sử giao dịch" chỉ hiện khi actor có
+                stock_receipt.read (điều dưỡng/lễ tân không có quyền này thì panel giữ nguyên như
+                cũ, chỉ 1 tab "Thông tin"). */}
+            {canSeeInventory && (
+              <div className="flex flex-shrink-0 gap-1 border-b border-slate-200 px-5 pt-2" role="tablist">
+                {(
+                  [
+                    ['info', 'Thông tin'],
+                    ['batches', 'Tồn kho theo lô'],
+                    ['ledger', 'Thẻ kho'],
+                    ['history', 'Lịch sử giao dịch'],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setDetailTab(value)}
+                    className={`border-b-2 px-2.5 py-2 text-sm font-semibold ${detailTab === value ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {detailTab === 'info' && (
             <div className="scroll-hover min-h-0 flex-1 overflow-y-auto px-5 py-4">
               <DetailField label="Đơn vị cơ bản" value={selectedItem.baseUnitCode ? (unitNameByCode.get(selectedItem.baseUnitCode) ?? selectedItem.baseUnitCode) : selectedItem.unit} />
               <DetailField label="Quy đổi" value={formatUnitChain(selectedItem, unitNameByCode)} />
+              <DetailField label="Quy cách đóng gói" value={selectedItem.packagingSpec} />
               {selectedItem.unitPricingEnabled ? (
                 <DetailField label="Giá bán theo đơn vị" value={formatUnitPrices(selectedItem, unitNameByCode)} />
               ) : (
@@ -437,6 +513,10 @@ export function DrugCatalogPane() {
               {selectedItem.itemType === 'MEDICINE' && <DetailField label="Mã vạch" value={selectedItem.barcode} />}
               <DetailField label="Quản lý theo lô" value={selectedItem.isBatchManaged ? 'Có' : 'Không'} />
             </div>
+            )}
+            {detailTab === 'batches' && <DrugBatchBalanceTab drugId={selectedItem.id} />}
+            {detailTab === 'ledger' && <DrugLedgerTab drugId={selectedItem.id} mode="ledger" />}
+            {detailTab === 'history' && <DrugLedgerTab drugId={selectedItem.id} mode="history" />}
           </>
         )}
       </div>
@@ -469,6 +549,173 @@ export function DrugCatalogPane() {
           }}
         />
       )}
+    </div>
+  );
+}
+
+const LEDGER_REASON_LABEL: Record<string, string> = {
+  RECEIPT_PURCHASE: 'Nhập nhà cung cấp',
+  RECEIPT_OPENING_BALANCE: 'Nhập khởi tạo (Đầu kỳ)',
+  RECEIPT_TRANSFER_IN: 'Nhập chuyển kho',
+  RECEIPT_RETURN_FROM_USE: 'Nhập hoàn trả',
+  RECEIPT_COUNT_SURPLUS: 'Nhập cân bằng kiểm kê',
+  RECEIPT_VOID: 'Đảo phiếu nhập (huỷ)',
+  ISSUE_RETAIL_SALE: 'Xuất bán lẻ',
+  ISSUE_SERVICE_CONSUMPTION: 'Xuất tiêu hao dịch vụ',
+  ISSUE_INTERNAL_ALLOCATION: 'Xuất cấp phát nội bộ',
+  ISSUE_TRANSFER_OUT: 'Xuất chuyển kho',
+  ISSUE_RETURN_TO_SUPPLIER: 'Xuất trả nhà cung cấp',
+  ISSUE_WRITE_OFF: 'Xuất huỷ',
+  ISSUE_COUNT_SHORTAGE: 'Xuất cân bằng kiểm kê',
+};
+
+/** "Tồn kho theo lô" (panel chi tiết thuốc, Kho Thuốc GĐ2) — mọi lô còn tồn của thuốc này, mọi kho. */
+function DrugBatchBalanceTab({ drugId }: { drugId: string }) {
+  const query = useDrugBatchBalancesQuery(drugId);
+  if (query.isPending) {
+    return (
+      <div className="scroll-hover min-h-0 flex-1 space-y-1.5 overflow-y-auto px-5 py-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-8 w-full" />
+        ))}
+      </div>
+    );
+  }
+  if (query.isError) {
+    return (
+      <div className="px-5 py-4">
+        <ErrorBanner message="Không tải được tồn kho theo lô." onRetry={() => void query.refetch()} />
+      </div>
+    );
+  }
+  const items = query.data?.items ?? [];
+  if (items.length === 0) {
+    return (
+      <div className="px-5 py-4">
+        <EmptyState icon={FirstAidKit} title="Chưa có tồn kho" description="Duyệt phiếu nhập kho để bắt đầu ghi nhận tồn cho mặt hàng này." />
+      </div>
+    );
+  }
+  return (
+    <div className="scroll-hover min-h-0 flex-1 overflow-y-auto px-5 py-4">
+      <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-700">Tồn kho theo lô</p>
+      <div className="overflow-hidden rounded-lg border border-slate-200">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="border-b-2 border-blue-600 bg-slate-100 text-[11px] font-bold uppercase text-slate-800">
+              <th className="px-3 py-2 text-left">Số lô</th>
+              <th className="px-3 py-2 text-center">Kho</th>
+              <th className="px-3 py-2 text-center">Hạn dùng</th>
+              <th className="px-3 py-2 text-center">Tồn</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {items.map((b) => (
+              <tr key={b.batchId}>
+                <td className="px-3 py-2 font-semibold text-slate-800">{b.batchNo}</td>
+                <td className="px-3 py-2 text-center font-medium text-slate-600">{b.warehouseName}</td>
+                <td className={`px-3 py-2 text-center font-semibold ${b.expiryStatus === 'EXPIRED' ? 'text-rose-600' : b.expiryStatus === 'EXPIRING_SOON' ? 'text-amber-600' : 'font-medium text-slate-600'}`}>
+                  {b.expiryDate ? formatDobDisplay(b.expiryDate) : '—'}
+                  {b.expiryStatus === 'EXPIRED' && ` · đã quá ${Math.abs(b.daysUntilExpiry!)} ngày`}
+                  {b.expiryStatus === 'EXPIRING_SOON' && ` · còn ${b.daysUntilExpiry} ngày`}
+                </td>
+                <td className="px-3 py-2 text-center font-semibold tabular-nums text-slate-900">{b.quantityOnHand.toLocaleString('vi-VN')}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="border-t border-slate-200 bg-slate-50">
+              <td className="px-3 py-2 font-bold text-slate-800" colSpan={3}>
+                Tổng tồn
+              </td>
+              <td className="px-3 py-2 text-center text-base font-bold text-slate-900">{query.data!.totalQuantityOnHand.toLocaleString('vi-VN')}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/** "Thẻ kho"/"Lịch sử giao dịch" (panel chi tiết thuốc, Kho Thuốc GĐ2) — CÙNG dữ liệu GĐ2 (chỉ có
+ * nguồn phiếu nhập kho), khác cách trình bày cột: `ledger` = Ngày/SL/Tồn sau, `history` = Ngày/Loại
+ * chứng từ+Số phiếu/Người tạo. Sẽ tách API thật khi GĐ3 có thêm phiếu xuất kho (chứng từ khác). */
+function DrugLedgerTab({ drugId, mode }: { drugId: string; mode: 'ledger' | 'history' }) {
+  const query = useDrugLedgerQuery(drugId);
+  if (query.isPending) {
+    return (
+      <div className="scroll-hover min-h-0 flex-1 space-y-1.5 overflow-y-auto px-5 py-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-8 w-full" />
+        ))}
+      </div>
+    );
+  }
+  if (query.isError) {
+    return (
+      <div className="px-5 py-4">
+        <ErrorBanner message="Không tải được thẻ kho." onRetry={() => void query.refetch()} />
+      </div>
+    );
+  }
+  const items = query.data?.items ?? [];
+  if (items.length === 0) {
+    return (
+      <div className="px-5 py-4">
+        <EmptyState icon={FirstAidKit} title="Chưa có giao dịch nào" description="Duyệt phiếu nhập kho để bắt đầu ghi thẻ kho cho mặt hàng này." />
+      </div>
+    );
+  }
+  return (
+    <div className="scroll-hover min-h-0 flex-1 overflow-y-auto px-5 py-4">
+      <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-700">{mode === 'ledger' ? `Thẻ kho · ${items.length} giao dịch` : 'Lịch sử giao dịch (theo chứng từ)'}</p>
+      <div className="overflow-hidden rounded-lg border border-slate-200">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="border-b-2 border-blue-600 bg-slate-100 text-[11px] font-bold uppercase text-slate-800">
+              <th className="px-2.5 py-2 text-center">Ngày</th>
+              {mode === 'ledger' ? (
+                <>
+                  <th className="px-2.5 py-2 text-center">SL</th>
+                  <th className="px-2.5 py-2 text-center">Tồn sau</th>
+                </>
+              ) : (
+                <>
+                  <th className="px-2.5 py-2 text-left">Chứng từ</th>
+                  <th className="px-2.5 py-2 text-left">Người tạo</th>
+                </>
+              )}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {items.map((entry) => (
+              <tr key={entry.id}>
+                <td className="px-2.5 py-2 text-center">
+                  <div className="font-medium text-slate-700">{entry.occurredAt.slice(0, 10)}</div>
+                  {mode === 'ledger' && <div className="text-[11px] font-medium text-slate-400">{entry.sourceReceiptNo ?? LEDGER_REASON_LABEL[entry.reason]}</div>}
+                </td>
+                {mode === 'ledger' ? (
+                  <>
+                    <td className={`whitespace-nowrap px-2.5 py-2 text-center font-semibold tabular-nums ${entry.quantityChange >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                      {entry.quantityChange >= 0 ? '+' : ''}
+                      {entry.quantityChange}
+                    </td>
+                    <td className="px-2.5 py-2 text-center font-semibold tabular-nums text-slate-900">{entry.runningBalance}</td>
+                  </>
+                ) : (
+                  <>
+                    <td className="px-2.5 py-2 text-left">
+                      <div className="font-medium text-slate-700">{LEDGER_REASON_LABEL[entry.reason] ?? entry.reason}</div>
+                      {entry.sourceReceiptNo && <div className="text-[11px] font-medium text-slate-400">{entry.sourceReceiptNo}</div>}
+                    </td>
+                    <td className="px-2.5 py-2 text-left font-medium text-slate-600">{entry.createdByName}</td>
+                  </>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -574,6 +821,7 @@ function DrugFormModal({
     storageConditions?: string;
     storageLocation?: string;
     barcode?: string;
+    packagingSpec?: string;
     ingredients: DrugIngredientInput[];
     units: DrugUnitInput[];
   }) => Promise<void>;
@@ -605,6 +853,7 @@ function DrugFormModal({
   const [storageConditions, setStorageConditions] = useState(item?.storageConditions ?? '');
   const [storageLocation, setStorageLocation] = useState(item?.storageLocation ?? '');
   const [barcode, setBarcode] = useState(item?.barcode ?? '');
+  const [packagingSpec, setPackagingSpec] = useState(item?.packagingSpec ?? '');
   const [minStockAlert, setMinStockAlert] = useState(item?.minStockAlert !== null && item?.minStockAlert !== undefined ? String(item.minStockAlert) : '');
   const [maxStockAlert, setMaxStockAlert] = useState(item?.maxStockAlert !== null && item?.maxStockAlert !== undefined ? String(item.maxStockAlert) : '');
   const [ingredients, setIngredients] = useState<FormIngredientRow[]>(
@@ -673,6 +922,9 @@ function DrugFormModal({
       storageConditions: isMedicine ? storageConditions.trim() || undefined : undefined,
       storageLocation: isMedicine ? storageLocation.trim() || undefined : undefined,
       barcode: isMedicine ? barcode.trim() || undefined : undefined,
+      // "Quy cách đóng gói" — KHÔNG giới hạn Thuốc như nhóm trường #151 phía trên (đảo ngược hoãn,
+      // 17/09/2026), Vật tư y tế cũng đóng gói theo hộp/gói như thuốc.
+      packagingSpec: packagingSpec.trim() || undefined,
       ingredients: isMedicine
         ? validIngredientRows.map((r) => ({
             activeIngredientCode: r.activeIngredientCode,
@@ -703,6 +955,8 @@ function DrugFormModal({
     setName('');
     setIngredients([]);
     setUnits([]);
+    setPackagingSpec('');
+    userEditedPackagingSpecRef.current = false;
     codeInputRef.current?.focus();
     triggerFlash();
   }
@@ -710,14 +964,24 @@ function DrugFormModal({
   // Bug thật phát hiện lúc chủ dự án dùng thử: `unitCode` là MÃ tham chiếu reference_catalog (vd
   // `DV00015`), không phải tên hiển thị — phải tra qua `unitOptions`.
   const unitLabel = (code: string) => unitOptions.find((o) => o.value === code)?.label ?? code;
-  const unitChainSummary =
-    baseUnitCode && units.length > 0
-      ? formatUnitChainSequential(
-          baseUnitCode,
-          units.filter((r) => r.unitCode && r.factorToUnitBelow.trim() !== '').map((r) => ({ unitCode: r.unitCode, factorToUnitBelow: Number(r.factorToUnitBelow) || 0 })),
-          unitLabel,
-        )
-      : null;
+  const validUnitLinks = units.filter((r) => r.unitCode && r.factorToUnitBelow.trim() !== '').map((r) => ({ unitCode: r.unitCode, factorToUnitBelow: Number(r.factorToUnitBelow) || 0 }));
+  const unitChainSummary = baseUnitCode && units.length > 0 ? formatUnitChainSequential(baseUnitCode, validUnitLinks, unitLabel) : null;
+
+  // "Quy cách đóng gói" — tự điền gợi ý ghép từ Bảng quy đổi, tự CẬP NHẬT THEO MỖI BẬC MỚI THÊM
+  // (chốt qua AskUserQuestion, 17/09/2026, sau khi phát hiện thật lúc verify: nếu chỉ điền lần đầu
+  // rồi dừng hẳn thì xây bảng quy đổi DẦN — thêm Vỉ=10 Viên rồi thêm tiếp Hộp=10 Vỉ — sẽ bị kẹt lại
+  // ở "Vỉ 10 viên" thay vì ra đúng "Hộp 10 vỉ x 10 viên"). CHỈ ngừng khi NGƯỜI DÙNG THẬT SỰ gõ tay
+  // vào ô này (đánh dấu qua `userEditedPackagingSpecRef`, set trong `onChange` của input, KHÔNG set
+  // khi chính effect này tự gán giá trị) — phân biệt rõ "hệ thống tự điền" với "người dùng tự sửa",
+  // tránh mất phần chỉnh tay cho đóng gói phức tạp (vd "...viên nén bao phim"). Hồ sơ đã có sẵn
+  // `packagingSpec` từ trước (mở form Sửa) coi như đã "người dùng tự sửa" ngay từ đầu — không đụng.
+  const userEditedPackagingSpecRef = useRef(Boolean(item?.packagingSpec));
+  useEffect(() => {
+    if (userEditedPackagingSpecRef.current) return;
+    const suggestion = suggestPackagingSpec(baseUnitCode, validUnitLinks, unitLabel);
+    if (suggestion) setPackagingSpec(suggestion);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [baseUnitCode, JSON.stringify(validUnitLinks)]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
@@ -753,6 +1017,21 @@ function DrugFormModal({
                   Mã hàng
                 </label>
                 <input id="drug-code" ref={codeInputRef} value={code} onChange={(e) => setCode(e.target.value)} className={inputClassName} />
+              </div>
+              <div className="sm:col-span-2 lg:col-span-4">
+                <label htmlFor="drug-packaging-spec" className="mb-1.5 block text-sm font-semibold text-slate-800">
+                  Quy cách đóng gói
+                </label>
+                <input
+                  id="drug-packaging-spec"
+                  value={packagingSpec}
+                  onChange={(e) => {
+                    userEditedPackagingSpecRef.current = true;
+                    setPackagingSpec(e.target.value);
+                  }}
+                  placeholder="Tự ghép từ Bảng quy đổi bên dưới, sửa tự do nếu cần (vd: Hộp 1 lọ bột pha tiêm + 1 ống nước cất 5ml)"
+                  className={inputClassName}
+                />
               </div>
               {isMedicine && (
                 <div>

@@ -3,6 +3,7 @@ import { ArrowsLeftRight } from '@phosphor-icons/react';
 import { Button } from '../../shared/ui/Button';
 import { BoxedSection } from '../../shared/ui/BoxedSection';
 import { Combobox, type ComboboxOption } from '../../shared/ui/Combobox';
+import { DateInput } from '../../shared/ui/DateInput';
 import { ModalHeader } from '../../shared/ui/ModalHeader';
 import { MoneyInput } from '../../shared/ui/MoneyInput';
 import { SaveFlashBanner } from '../../shared/ui/SaveFlashBanner';
@@ -163,13 +164,7 @@ export function TransferVoucherFormDialog({ onCancel, onDone }: { onCancel: () =
                   <label htmlFor="tv-occurred-at" className="text-sm font-semibold text-slate-800">
                     Ngày phát sinh
                   </label>
-                  <input
-                    id="tv-occurred-at"
-                    type="date"
-                    value={values.occurredAt}
-                    onChange={(e) => set('occurredAt', e.target.value)}
-                    className={`${inputClassName} sm:max-w-[220px]`}
-                  />
+                  <DateInput id="tv-occurred-at" value={values.occurredAt} onChange={(v) => set('occurredAt', v)} className="sm:max-w-[220px]" />
                 </div>
               </div>
             </BoxedSection>

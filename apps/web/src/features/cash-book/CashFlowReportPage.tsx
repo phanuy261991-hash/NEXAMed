@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ArrowCircleDown, ArrowCircleUp, DownloadSimple, Scales } from '@phosphor-icons/react';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
+import { DateInput } from '../../shared/ui/DateInput';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { StatCardRow } from '../../shared/ui/StatCard';
@@ -38,13 +39,13 @@ export function CashFlowReportPage() {
             <label htmlFor="cfr-from" className="text-sm font-semibold text-slate-800">
               Từ ngày
             </label>
-            <input id="cfr-from" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="rounded-md border border-slate-300 px-2.5 py-1.5 text-[13px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+            <DateInput id="cfr-from" value={dateFrom} onChange={setDateFrom} dense />
           </div>
           <div className="flex flex-col gap-1.5">
             <label htmlFor="cfr-to" className="text-sm font-semibold text-slate-800">
               Đến ngày
             </label>
-            <input id="cfr-to" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="rounded-md border border-slate-300 px-2.5 py-1.5 text-[13px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+            <DateInput id="cfr-to" value={dateTo} onChange={setDateTo} dense />
           </div>
         </div>
         <Button type="button" variant="secondary" loading={exportMutation.isPending} onClick={() => exportMutation.mutate({ from: dateFrom, to: dateTo })}>

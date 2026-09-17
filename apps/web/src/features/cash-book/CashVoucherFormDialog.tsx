@@ -5,6 +5,7 @@ import { Button } from '../../shared/ui/Button';
 import { BoxedSection } from '../../shared/ui/BoxedSection';
 import { Combobox, type ComboboxOption } from '../../shared/ui/Combobox';
 import { ModalHeader } from '../../shared/ui/ModalHeader';
+import { DateInput } from '../../shared/ui/DateInput';
 import { MoneyInput } from '../../shared/ui/MoneyInput';
 import { SaveFlashBanner } from '../../shared/ui/SaveFlashBanner';
 import { useSaveFlash } from '../../shared/hooks/useSaveFlash';
@@ -295,7 +296,7 @@ export function CashVoucherFormDialog({
                 <label htmlFor="cv-occurred-at" className="text-sm font-semibold text-slate-800">
                   Ngày phát sinh
                 </label>
-                <input id="cv-occurred-at" type="date" value={values.occurredAt} onChange={(e) => set('occurredAt', e.target.value)} className={inputClassName} />
+                <DateInput id="cv-occurred-at" value={values.occurredAt} onChange={(v) => set('occurredAt', v)} />
               </div>
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="cv-partner" className="text-sm font-semibold text-slate-800">

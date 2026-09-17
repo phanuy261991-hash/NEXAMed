@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Clock, CurrencyCircleDollar, Receipt, Warning } from '@phosphor-icons/react';
 import type { CashierShiftListItem } from '@nexamed/shared';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
+import { Combobox } from '../../shared/ui/Combobox';
+import { DateInput } from '../../shared/ui/DateInput';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
@@ -72,32 +74,16 @@ export function CashierShiftListPage() {
 
       <div className="flex flex-shrink-0 flex-wrap items-center gap-2.5 px-1">
         <div className="flex items-center gap-1.5">
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-            className="rounded-md border border-slate-300 px-2.5 py-1.5 text-[13px] font-semibold text-slate-900"
-          />
+          <DateInput id="cs-date-from" value={dateFrom} onChange={setDateFrom} dense />
           <span className="text-xs text-slate-400">đến</span>
-          <input
-            type="date"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-            className="rounded-md border border-slate-300 px-2.5 py-1.5 text-[13px] font-semibold text-slate-900"
-          />
+          <DateInput id="cs-date-to" value={dateTo} onChange={setDateTo} dense />
         </div>
-        <select
+        <Combobox
+          id="cs-cashier"
           value={cashierId}
-          onChange={(e) => setCashierId(e.target.value)}
-          className="rounded-md border border-slate-300 px-2.5 py-1.5 text-[13px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-        >
-          <option value="">Tất cả thu ngân</option>
-          {cashiers.map((u) => (
-            <option key={u.id} value={u.id}>
-              {u.displayName ?? u.fullName}
-            </option>
-          ))}
-        </select>
+          onChange={setCashierId}
+          options={[{ value: '', label: 'Tất cả thu ngân' }, ...cashiers.map((u) => ({ value: u.id, label: u.displayName ?? u.fullName }))]}
+        />
         <div className="relative min-w-[220px] max-w-sm flex-1">
           <input
             type="text"

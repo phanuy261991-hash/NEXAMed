@@ -2,6 +2,24 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-17 (2)
+
+### Kho Thuốc GĐ2 verify Playwright — loạt bug thật + Combobox/DateInput cho toàn app + Quy cách đóng gói
+
+Verify Playwright cho GĐ2 lộ ra nhiều bug thật: thiếu quyền `stock_receipt.*` (quên `db:seed`, nay có cảnh báo tự động lúc khởi động), đơn vị hiện mã thô, bấm thêm 1 lần ra 2 dòng trùng (kèm redesign bảng dòng hàng theo nhóm sản phẩm + lô), `belowMinOnly=false` bị hiểu nhầm thành `true` khiến "Tồn kho" trống trơn, "Tồn kho theo lô" chưa có cảnh báo hạn dùng, và `calculateAgeYears` sai múi giờ (chỉ đúng tình cờ trên máy Asia/Saigon). Tất cả đã sửa + có test hồi quy.
+
+Theo yêu cầu trực tiếp: đổi TOÀN APP từ `<select>`/`<input type="date">` gốc sang `Combobox`/`DateInput` (mới, mặt nạ dd/mm/yyyy) cho đồng bộ giao diện. Thêm "Quy cách đóng gói" cho `drug` (tự gợi ý từ Bảng quy đổi, sửa tay được, đảo ngược hoãn #151) và mở "Mã BYT"/"Tên đầy đủ chuẩn" ở form TẠO MỚI cho 5 danh mục chuẩn BYT (đảo ngược một phần #152/#153, sửa vẫn giữ nguyên chỉ 2 trường).
+
+**Đã xác minh thật**: 835/835 test `apps/api`, `pnpm -w typecheck/lint/build` sạch toàn workspace, Playwright qua Chrome thật cho từng điểm. Xem chi tiết `docs/DECISIONS.md` #160/#161.
+
+## 2026-09-17
+
+### Kho Thuốc & Vật tư y tế Giai đoạn 2 — Nhập kho & tồn theo lô (mockup đã duyệt, code + test xong)
+
+Module mới `apps/api/src/modules/inventory/` + `apps/web/src/features/inventory/` — "Phiếu nhập kho" (luồng Nháp → Duyệt/Từ chối/Huỷ), "Tồn kho" (Theo mặt hàng/Cảnh báo hạn dùng), "Thẻ kho"/"Lịch sử giao dịch" trong panel chi tiết thuốc. 5 bảng mới (`stock_receipt`/`stock_receipt_line`/`inventory_batch`/`stock_ledger`/`stock_balance`, migration `20260917090000_pharmacy_inventory_gd2`) + `drug.lastPurchaseUnitCost`/`lastPurchaseAt`. Giá vốn đích danh theo lô / bình quân gia quyền liên hoàn tuỳ `drug.isBatchManaged`, quy đổi đơn vị lúc Duyệt bằng `computeUnitConversion()` có sẵn từ GĐ1. Huỷ phiếu đã Duyệt đảo ngược đúng các dòng thẻ kho phiếu đó sinh ra (không tính lại từ dòng hàng). Permission mới `stock_receipt.create/read/approve`.
+
+**Đã xác minh thật**: `packages/core` +5 test, `apps/api` `inventory-http.spec.ts` 15/15, toàn bộ suite không hồi quy, `pnpm -w typecheck/lint/build` sạch. Chưa verify Playwright. Xem chi tiết `docs/DECISIONS.md` #159.
+
 ## 2026-09-16 (9)
 
 ### Sửa 3 lỗi giao diện nhỏ: nhãn/khung "Chi tiết phiếu thu/chi", nhãn "Ví tạm ứng" thiếu

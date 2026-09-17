@@ -99,12 +99,30 @@ const patientRequestFieldsSchema = z.object({
 /** Ngưỡng tuổi trưởng thành — dùng cho ràng buộc CCCD bắt buộc bên dưới (docs/DECISIONS.md #035). */
 const ADULT_AGE_THRESHOLD = 18;
 
-/** Tuổi tròn năm tính từ `dob` (chuỗi `YYYY-MM-DD`) tới `now`. Tham số `now` chỉ để test tái lập được. */
+const VIETNAM_UTC_OFFSET_MINUTES = 7 * 60;
+
+/** Quy đổi 1 mốc UTC bất kỳ về "ngày lịch Việt Nam" — cùng kỹ thuật `getVietnamDateString()` ở
+ * `packages/core/src/date/vietnam-day-range.ts` (không import được từ đây vì `packages/core` phụ
+ * thuộc NGƯỢC LẠI `packages/shared`, xem package.json — đành lặp lại đúng 4 dòng tính toán). */
+function toVietnamCalendarDay(d: Date): { year: number; month: number; date: number } {
+  const shifted = new Date(d.getTime() + VIETNAM_UTC_OFFSET_MINUTES * 60_000);
+  return { year: shifted.getUTCFullYear(), month: shifted.getUTCMonth(), date: shifted.getUTCDate() };
+}
+
+/**
+ * Tuổi tròn năm tính từ `dob` (chuỗi `YYYY-MM-DD`) tới `now` — so sánh theo NGÀY LỊCH VIỆT NAM,
+ * KHÔNG theo giờ hệ thống của máy chạy server (CLAUDE.md: "không dùng `new Date()` phía server để
+ * cắt mốc ngày"). Bug thật phát hiện 17/09/2026: bản cũ dùng thẳng `now.getMonth()/getDate()` theo
+ * giờ LOCAL của tiến trình Node — chỉ tình cờ đúng trên máy dev đặt múi giờ Asia/Saigon, sai đúng
+ * vào khung 00:00-07:00 giờ VN mỗi ngày (lúc `new Date()` dựng từ UTC vẫn còn là "hôm qua" nếu múi
+ * giờ server khác Asia/Saigon, ví dụ server cloud mặc định UTC) — khiến người vừa đủ 18 tuổi bị
+ * tính nhầm thành chưa đủ hoặc ngược lại. Tham số `now` chỉ để test tái lập được.
+ */
 export function calculateAgeYears(dob: string, now: Date = new Date()): number {
-  const birth = new Date(dob);
-  let age = now.getFullYear() - birth.getFullYear();
-  const hasHadBirthdayThisYear =
-    now.getMonth() > birth.getMonth() || (now.getMonth() === birth.getMonth() && now.getDate() >= birth.getDate());
+  const birth = toVietnamCalendarDay(new Date(dob));
+  const today = toVietnamCalendarDay(now);
+  let age = today.year - birth.year;
+  const hasHadBirthdayThisYear = today.month > birth.month || (today.month === birth.month && today.date >= birth.date);
   if (!hasHadBirthdayThisYear) age -= 1;
   return age;
 }

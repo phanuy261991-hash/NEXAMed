@@ -453,20 +453,16 @@ export function ClinicInfoPane() {
                   return (
                     <div key={index} className="flex items-center gap-2">
                       <Icon size={18} weight="fill" className="shrink-0 text-slate-400" aria-hidden="true" />
-                      <select
+                      <Combobox
+                        id={`social-platform-${index}`}
                         value={link.platform}
-                        onChange={(e) => {
-                          const platform = e.target.value as SocialPlatform;
+                        onChange={(v) => {
+                          const platform = v as SocialPlatform;
                           setSocialLinks((prev) => prev.map((l, i) => (i === index ? { ...l, platform } : l)));
                         }}
-                        className="w-40 shrink-0 rounded-md border border-slate-300 px-2 py-2 text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                      >
-                        {SOCIAL_PLATFORM_LIST.map((p) => (
-                          <option key={p} value={p}>
-                            {SOCIAL_PLATFORM_META[p].label}
-                          </option>
-                        ))}
-                      </select>
+                        className="w-40 shrink-0"
+                        options={SOCIAL_PLATFORM_LIST.map((p) => ({ value: p, label: SOCIAL_PLATFORM_META[p].label }))}
+                      />
                       <input
                         type="text"
                         value={link.url}

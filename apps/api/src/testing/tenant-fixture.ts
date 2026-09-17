@@ -107,6 +107,14 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       // dù test S2-01 hiện chưa seed dữ liệu gộp hồ sơ (PAT-04 chưa hiện thực).
       await prisma.patient.updateMany({ where: { tenantId: { in: tenantIds } }, data: { mergedIntoId: null } });
       await prisma.patient.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // Kho Thuốc GĐ2 (#146) — stock_balance/stock_ledger tham chiếu inventory_batch/drug/warehouse
+      // (+ stock_ledger tham chiếu thêm stock_receipt) — xoá TRƯỚC CẢ inventory_batch lẫn
+      // stock_receipt. stock_receipt_line tham chiếu stock_receipt+drug — xoá trước stock_receipt.
+      await prisma.stockBalance.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await prisma.stockLedger.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await prisma.inventoryBatch.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await prisma.stockReceiptLine.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await prisma.stockReceipt.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // drug_unit/drug_ingredient (Kho Thuốc & Vật tư y tế GĐ1, #146) tham chiếu drug (FK RESTRICT)
       // — xoá trước drug.
       await prisma.drugUnit.deleteMany({ where: { tenantId: { in: tenantIds } } });

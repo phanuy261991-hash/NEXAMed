@@ -279,6 +279,35 @@ describe('HTTP e2e — /api/v1/reference-catalog', () => {
     expect(ethnicity.body.data.description).toBeNull();
   });
 
+  it('"Mã BYT"/"Tên đầy đủ chuẩn" (đảo ngược một phần #152/#153, 17/09/2026) — CHỈ nhập được lúc TẠO MỚI cho 5 category chuẩn BYT, sửa (PATCH) không đổi được', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/api/v1/reference-catalog')
+      .set(authed(clinicAdminToken))
+      .send({ category: 'DRUG_GROUP', name: 'Nhóm tự thêm', bytCode: 'X99', fullName: 'Nhóm dược lý tự thêm ngoài BYT', description: 'Ghi chú riêng' });
+    expect(created.status).toBe(200);
+    expect(created.body.data).toMatchObject({ category: 'DRUG_GROUP', name: 'Nhóm tự thêm', bytCode: 'X99', fullName: 'Nhóm dược lý tự thêm ngoài BYT', description: 'Ghi chú riêng' });
+
+    const id = created.body.data.id as string;
+    // updateReferenceCatalogRequestSchema KHÔNG có bytCode/fullName — gửi lên bị Zod bỏ qua (không lỗi 400), giữ nguyên giá trị cũ.
+    const patched = await request(app.getHttpServer())
+      .patch(`/api/v1/reference-catalog/${id}`)
+      .set(authed(clinicAdminToken))
+      .send({ name: 'Nhóm tự thêm (đã sửa tên)' });
+    expect(patched.status).toBe(200);
+    expect(patched.body.data.name).toBe('Nhóm tự thêm (đã sửa tên)');
+    expect(patched.body.data.bytCode).toBe('X99');
+    expect(patched.body.data.fullName).toBe('Nhóm dược lý tự thêm ngoài BYT');
+
+    // Category KHÔNG thuộc 5 category chuẩn BYT — gửi bytCode/fullName lên vẫn bị bỏ qua ở backend
+    // (Zod schema chấp nhận nhưng đây chỉ kiểm tra hành vi thật, không phải hợp đồng cấm theo category).
+    const ethnicity = await request(app.getHttpServer())
+      .post('/api/v1/reference-catalog')
+      .set(authed(clinicAdminToken))
+      .send({ category: 'ETHNICITY', code: `TEST-${randomUUID().slice(0, 8)}`, name: 'Không liên quan BYT', bytCode: 'Y01' });
+    expect(ethnicity.status).toBe(200);
+    expect(ethnicity.body.data.bytCode).toBe('Y01');
+  });
+
   it('EXAM_TYPE — "Đơn giá dịch vụ" (docs/DECISIONS.md #079): tạo kèm examTypePrices → trả đúng danh sách; PATCH bulk-replace; bỏ trống mảng lúc PATCH → xoá hết', async () => {
     const created = await request(app.getHttpServer())
       .post('/api/v1/reference-catalog')

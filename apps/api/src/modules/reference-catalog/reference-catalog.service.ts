@@ -109,6 +109,8 @@ export class ReferenceCatalogService {
           deactivatesAccount: dto.deactivatesAccount ?? false,
           countsAsCash: dto.countsAsCash ?? false,
           description: dto.description ?? null,
+          bytCode: dto.bytCode ?? null,
+          fullName: dto.fullName ?? null,
           direction: dto.direction ?? null,
           isActive: dto.isActive ?? true,
         });

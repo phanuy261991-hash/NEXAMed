@@ -149,6 +149,10 @@ export const createDrugRequestSchema = z
     storageConditions: z.string().min(1).optional(),
     storageLocation: z.string().min(1).optional(),
     barcode: z.string().min(1).optional(),
+    // "Quy cách đóng gói" (đảo ngược hoãn #151, chốt 17/09/2026) — web tự ghép gợi ý từ Bảng quy
+    // đổi lúc field còn trống, sau đó là text tự do hoàn toàn (đóng gói phức tạp không diễn tả hết
+    // bằng bảng quy đổi thuần số, vd "Hộp 1 lọ bột pha tiêm + 1 ống nước cất 5ml").
+    packagingSpec: z.string().min(1).optional(),
     // Vật tư y tế KHÔNG có hoạt chất/hàm lượng (yêu cầu chủ dự án) — validate ở service, không ở đây
     // (Zod không biết được itemType đã xác nhận đúng trước khi tới schema này).
     ingredients: z.array(drugIngredientInputSchema).default([]),
@@ -189,6 +193,7 @@ export const updateDrugRequestSchema = z
     storageConditions: z.string().min(1).nullable().optional(),
     storageLocation: z.string().min(1).nullable().optional(),
     barcode: z.string().min(1).nullable().optional(),
+    packagingSpec: z.string().min(1).nullable().optional(),
     ingredients: z.array(drugIngredientInputSchema).optional(),
     units: z.array(drugUnitInputSchema).optional(),
     activeIngredient: z.string().min(1).nullable().optional(),
@@ -234,6 +239,11 @@ export const drugSummarySchema = z.object({
   storageConditions: z.string().nullable(),
   storageLocation: z.string().nullable(),
   barcode: z.string().nullable(),
+  packagingSpec: z.string().nullable(),
+  // Kho Thuốc GĐ2 — cache "giá nhập gần nhất" theo đơn vị CƠ SỞ, chỉ cập nhật khi Duyệt phiếu nhập
+  // receiptType=PURCHASE (packages/shared/src/inventory.ts).
+  lastPurchaseUnitCost: z.number().int().nullable(),
+  lastPurchaseAt: z.string().nullable(),
   ingredients: z.array(drugIngredientItemSchema),
   units: z.array(drugUnitItemSchema),
   activeIngredient: z.string().nullable(),

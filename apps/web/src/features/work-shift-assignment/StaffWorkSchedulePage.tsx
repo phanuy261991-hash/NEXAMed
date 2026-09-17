@@ -3,6 +3,7 @@ import { CaretLeft, CaretRight, CheckSquare, DownloadSimple, Lock, MagnifyingGla
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
+import { Combobox } from '../../shared/ui/Combobox';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
@@ -203,18 +204,12 @@ export function StaffWorkSchedulePage() {
       <h1 className="sr-only">Lịch làm việc nhân viên</h1>
 
       <div className="flex flex-shrink-0 flex-wrap items-center gap-2.5 px-1">
-        <select
+        <Combobox
+          id="staff-schedule-department"
           value={departmentFilter}
-          onChange={(e) => setDepartmentFilter(e.target.value)}
-          className="rounded-md border border-slate-300 px-2.5 py-1.5 text-[13px] font-semibold text-slate-700"
-        >
-          <option value="">Tất cả Khoa</option>
-          {departments.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.name}
-            </option>
-          ))}
-        </select>
+          onChange={setDepartmentFilter}
+          options={[{ value: '', label: 'Tất cả Khoa' }, ...departments.map((d) => ({ value: d.id, label: d.name }))]}
+        />
         <div className="relative">
           <MagnifyingGlass size={14} weight="bold" className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
           <input

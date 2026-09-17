@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { UserCircle } from '@phosphor-icons/react';
 import type { UserAccountGender, UserAccountSummary } from '@nexamed/shared';
 import { Combobox, withLegacyValueOption, type ComboboxOption } from '../../shared/ui/Combobox';
+import { DateInput } from '../../shared/ui/DateInput';
 import { MultiSelectCombobox } from '../../shared/ui/MultiSelectCombobox';
 import { PasswordInput } from '../../shared/ui/PasswordInput';
 import { Button } from '../../shared/ui/Button';
@@ -337,7 +338,7 @@ export function UserAccountFormDialog({
                   />
                 </Field>
                 <Field id="ua-dob" label="Ngày sinh">
-                  <input id="ua-dob" type="date" value={values.dob} onChange={(e) => set('dob', e.target.value)} className={inputClassName} />
+                  <DateInput id="ua-dob" value={values.dob} onChange={(v) => set('dob', v)} />
                 </Field>
                 <Field id="ua-gender" label="Giới tính">
                   <div className="flex h-[42px] items-center gap-5">
@@ -556,13 +557,7 @@ export function UserAccountFormDialog({
                   />
                 </Field>
                 <Field id="ua-license-issued-at" label="Ngày cấp CCHN">
-                  <input
-                    id="ua-license-issued-at"
-                    type="date"
-                    value={values.licenseIssuedAt}
-                    onChange={(e) => set('licenseIssuedAt', e.target.value)}
-                    className={inputClassName}
-                  />
+                  <DateInput id="ua-license-issued-at" value={values.licenseIssuedAt} onChange={(v) => set('licenseIssuedAt', v)} />
                 </Field>
                 <Field id="ua-license-issued-place" label="Nơi cấp CCHN">
                   <input

@@ -4,6 +4,7 @@ import { changePassword } from '../auth/auth.api';
 import { useAuthStore } from '../auth/auth.store';
 import { ApiError } from '../../shared/api/client';
 import { Button } from '../../shared/ui/Button';
+import { DateInput } from '../../shared/ui/DateInput';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { PasswordInput } from '../../shared/ui/PasswordInput';
 import { Skeleton } from '../../shared/ui/Skeleton';
@@ -265,12 +266,7 @@ export function MyAccountDialog({ onClose }: { onClose: () => void }) {
                   </Field>
                   <Field label="Ngày sinh">
                     {editing ? (
-                      <input
-                        type="date"
-                        value={form.dob}
-                        onChange={(e) => setForm((f) => ({ ...f, dob: e.target.value }))}
-                        className={EDIT_INPUT_CLASS}
-                      />
+                      <DateInput id="my-account-dob" value={form.dob} onChange={(v) => setForm((f) => ({ ...f, dob: v }))} />
                     ) : (
                       <p className={EDITABLE_VIEW_CLASS}>{query.data.dob ? formatDobDisplay(query.data.dob) : '—'}</p>
                     )}

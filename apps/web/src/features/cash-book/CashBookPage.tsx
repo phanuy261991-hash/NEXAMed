@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { ArrowCircleDown, ArrowCircleUp, ArrowsLeftRight, BookOpen, DownloadSimple, Wallet } from '@phosphor-icons/react';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
+import { Combobox } from '../../shared/ui/Combobox';
+import { DateInput } from '../../shared/ui/DateInput';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { Skeleton } from '../../shared/ui/Skeleton';
@@ -72,31 +74,28 @@ export function CashBookPage() {
             <label htmlFor="cb-account" className="text-sm font-semibold text-slate-800">
               Quỹ
             </label>
-            <select
+            <Combobox
               id="cb-account"
               value={cashAccountId}
-              onChange={(e) => setCashAccountId(e.target.value)}
-              className="min-w-[220px] rounded-md border border-slate-300 px-2.5 py-1.5 text-[13px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-            >
-              {accounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                  {a.type === 'DRAWER' && a.ownerUserName ? ` — Két riêng của ${a.ownerUserName}` : ''}
-                </option>
-              ))}
-            </select>
+              onChange={setCashAccountId}
+              className="min-w-[220px]"
+              options={accounts.map((a) => ({
+                value: a.id,
+                label: `${a.name}${a.type === 'DRAWER' && a.ownerUserName ? ` — Két riêng của ${a.ownerUserName}` : ''}`,
+              }))}
+            />
           </div>
           <div className="flex flex-col gap-1.5">
             <label htmlFor="cb-from" className="text-sm font-semibold text-slate-800">
               Từ ngày
             </label>
-            <input id="cb-from" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="rounded-md border border-slate-300 px-2.5 py-1.5 text-[13px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+            <DateInput id="cb-from" value={dateFrom} onChange={setDateFrom} dense />
           </div>
           <div className="flex flex-col gap-1.5">
             <label htmlFor="cb-to" className="text-sm font-semibold text-slate-800">
               Đến ngày
             </label>
-            <input id="cb-to" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="rounded-md border border-slate-300 px-2.5 py-1.5 text-[13px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+            <DateInput id="cb-to" value={dateTo} onChange={setDateTo} dense />
           </div>
         </div>
         <Button

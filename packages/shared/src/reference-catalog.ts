@@ -166,6 +166,16 @@ export const createReferenceCatalogRequestSchema = z.object({
   deactivatesAccount: z.boolean().optional(),
   countsAsCash: z.boolean().optional(),
   description: z.string().min(1).optional(),
+  /** CHỈ nhập được lúc TẠO MỚI, cho 5 category "chuẩn BYT" (DRUG_GROUP/DRUG_ROUTE/DOSAGE_FORM/
+   * STORAGE_CONDITION/DRUG_USAGE_TIMING, xem `BYT_TAXONOMY_CATEGORIES` ở web) — mục do
+   * `clinic_admin` TỰ THÊM (không có trong file nguồn BYT) mới cần 2 trường này; mục seed sẵn từ
+   * nguồn chính thức không đi qua đường này nên không đụng tới cơ chế reseed đồng bộ lại theo mã đã
+   * có (đảo ngược một phần #152/#153, chốt 17/09/2026). KHÔNG có trong `updateReferenceCatalogRequestSchema`
+   * — sửa 2 trường này sau khi tạo vẫn phải qua thao tác khác (chủ dự án xác nhận không cần, chỉ
+   * cần nhập được lúc tạo mới).
+   */
+  bytCode: z.string().min(1).optional(),
+  fullName: z.string().min(1).optional(),
   /** Chỉ category INCOME_EXPENSE_TYPE gửi field này (Loại thu chi, 2026-09-05). */
   direction: referenceCatalogDirectionSchema.optional(),
   /** Chỉ ItemFormModal của category UNIT/ACADEMIC_TITLE/STAFF_POSITION gửi field này (select "Đang

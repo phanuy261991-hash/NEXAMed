@@ -227,6 +227,22 @@ import {
   listCashierShiftsResponseSchema,
   openCashierShiftRequestSchema,
   resolveCashierShiftDiscrepancyRequestSchema,
+  createStockReceiptRequestSchema,
+  updateStockReceiptRequestSchema,
+  approveStockReceiptRequestSchema,
+  rejectStockReceiptRequestSchema,
+  voidStockReceiptRequestSchema,
+  listStockReceiptsQuerySchema,
+  listStockReceiptsResponseSchema,
+  stockReceiptDetailSchema,
+  getDrugLedgerQuerySchema,
+  getDrugLedgerResponseSchema,
+  listStockBalancesQuerySchema,
+  listStockBalancesResponseSchema,
+  getDrugBatchBalancesQuerySchema,
+  getDrugBatchBalancesResponseSchema,
+  listStockExpiryWarningsQuerySchema,
+  listStockExpiryWarningsResponseSchema,
 } from '@nexamed/shared';
 
 /**
@@ -3115,6 +3131,175 @@ registry.registerPath({
     403: errorResponse('Không có quyền patient_wallet.settle'),
     404: errorResponse('Không tìm thấy ví của bệnh nhân này'),
     409: errorResponse('Ví đã khoá từ trước (WALLET_CLOSED)'),
+  },
+});
+
+// ============ Kho Thuốc GĐ2 — "Phiếu nhập kho" / Tồn kho / Thẻ kho (docs/DECISIONS.md #146) ============
+const stockReceiptIdParams = z.object({ id: z.string().uuid() });
+const inventoryDrugIdParams = z.object({ drugId: z.string().uuid() });
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/inventory/receipts',
+  tags: ['inventory'],
+  summary: 'Danh sách Phiếu nhập kho — cursor, lọc theo kho/loại phiếu/trạng thái/khoảng ngày',
+  security: [{ bearerAuth: [] }],
+  request: { query: listStockReceiptsQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listStockReceiptsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_receipt.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/inventory/receipts/{id}',
+  tags: ['inventory'],
+  summary: 'Chi tiết 1 phiếu nhập kho kèm dòng hàng — phiếu Từ chối/Đã huỷ vẫn xem được',
+  security: [{ bearerAuth: [] }],
+  request: { params: stockReceiptIdParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(stockReceiptDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_receipt.read'),
+    404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/inventory/receipts',
+  tags: ['inventory'],
+  summary: 'Tạo phiếu nhập kho ở trạng thái Nháp — chưa đụng tồn kho',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createStockReceiptRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(stockReceiptDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_receipt.create'),
+    404: errorResponse('Kho/Nhà cung cấp/Thuốc tham chiếu không tồn tại'),
+    422: errorResponse('Thiếu Số lô cho thuốc quản lý theo lô, hoặc loại phiếu chưa hỗ trợ'),
+  },
+});
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/inventory/receipts/{id}',
+  tags: ['inventory'],
+  summary: 'Sửa phiếu Nháp — thay toàn bộ dòng hàng + header',
+  security: [{ bearerAuth: [] }],
+  request: { params: stockReceiptIdParams, body: { content: { 'application/json': { schema: updateStockReceiptRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(stockReceiptDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_receipt.create'),
+    404: errorResponse('Không tìm thấy, hoặc Kho/Nhà cung cấp/Thuốc tham chiếu không tồn tại'),
+    409: errorResponse('version không khớp, hoặc phiếu không còn ở trạng thái Nháp (STOCK_RECEIPT_NOT_DRAFT)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/inventory/receipts/{id}/approve',
+  tags: ['inventory'],
+  summary: 'Duyệt phiếu — cộng thật vào Thẻ kho/Tồn kho, cập nhật giá vốn theo lô/bình quân gia quyền',
+  security: [{ bearerAuth: [] }],
+  request: { params: stockReceiptIdParams, body: { content: { 'application/json': { schema: approveStockReceiptRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(stockReceiptDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_receipt.approve'),
+    404: errorResponse('Không tìm thấy'),
+    409: errorResponse('version không khớp, hoặc phiếu không còn ở trạng thái Nháp (STOCK_RECEIPT_NOT_DRAFT)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/inventory/receipts/{id}/reject',
+  tags: ['inventory'],
+  summary: 'Từ chối phiếu Nháp — lý do bắt buộc, không đụng tồn kho',
+  security: [{ bearerAuth: [] }],
+  request: { params: stockReceiptIdParams, body: { content: { 'application/json': { schema: rejectStockReceiptRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(stockReceiptDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_receipt.approve'),
+    404: errorResponse('Không tìm thấy'),
+    409: errorResponse('version không khớp, hoặc phiếu không còn ở trạng thái Nháp (STOCK_RECEIPT_NOT_DRAFT)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/inventory/receipts/{id}/void',
+  tags: ['inventory'],
+  summary: 'Huỷ phiếu ĐÃ Duyệt — đảo ngược Thẻ kho/Tồn kho, lý do bắt buộc',
+  security: [{ bearerAuth: [] }],
+  request: { params: stockReceiptIdParams, body: { content: { 'application/json': { schema: voidStockReceiptRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(stockReceiptDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_receipt.approve'),
+    404: errorResponse('Không tìm thấy'),
+    409: errorResponse('version không khớp, phiếu chưa Duyệt, hoặc tồn đã bị dùng bớt (STOCK_RECEIPT_VOID_NOT_ALLOWED)'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/inventory/drugs/{drugId}/ledger',
+  tags: ['inventory'],
+  summary: 'Thẻ kho / Lịch sử giao dịch của 1 thuốc — sắp mới→cũ, kèm "Tồn sau" luỹ kế',
+  security: [{ bearerAuth: [] }],
+  request: { params: inventoryDrugIdParams, query: getDrugLedgerQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(getDrugLedgerResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_receipt.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/inventory/balances',
+  tags: ['inventory'],
+  summary: 'Tồn kho (view "Theo mặt hàng") — tổng hợp theo (thuốc, kho), gộp mọi lô',
+  security: [{ bearerAuth: [] }],
+  request: { query: listStockBalancesQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listStockBalancesResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_receipt.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/inventory/drugs/{drugId}/balances',
+  tags: ['inventory'],
+  summary: 'Tồn kho theo lô của 1 thuốc (panel chi tiết thuốc)',
+  security: [{ bearerAuth: [] }],
+  request: { params: inventoryDrugIdParams, query: getDrugBatchBalancesQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(getDrugBatchBalancesResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_receipt.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/inventory/expiry-warnings',
+  tags: ['inventory'],
+  summary: 'Cảnh báo hạn dùng — mọi lô sắp/đã hết hạn còn tồn, toàn phòng khám hoặc theo kho',
+  security: [{ bearerAuth: [] }],
+  request: { query: listStockExpiryWarningsQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listStockExpiryWarningsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_receipt.read'),
   },
 });
 

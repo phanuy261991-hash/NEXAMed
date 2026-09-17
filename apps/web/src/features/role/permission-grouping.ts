@@ -35,6 +35,9 @@ const MODULE_LABELS: Record<string, string> = {
   // "Ví tạm ứng" (docs/DECISIONS.md #136, 2026-09-09) — cùng lỗ hổng lặp lại: module mới thêm
   // permission nhưng quên thêm nhãn ở đây, chủ dự án phát hiện lúc xem trang Vai trò & Phân quyền.
   patient_wallet: 'Ví tạm ứng',
+  // Kho Thuốc GĐ2 (docs/DECISIONS.md #146) — thêm nhãn NGAY từ đầu, tránh lặp lại đúng lỗ hổng đã
+  // ghi chú nhiều lần ở trên (#105/#122/#136/#158).
+  stock_receipt: 'Phiếu nhập kho',
 };
 
 export function moduleLabel(module: string): string {

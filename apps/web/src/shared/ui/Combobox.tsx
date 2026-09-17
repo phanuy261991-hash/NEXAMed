@@ -48,6 +48,7 @@ export function Combobox({
   required = false,
   allowCreate = false,
   onCreateOption,
+  className = '',
 }: {
   id: string;
   value: string;
@@ -64,6 +65,9 @@ export function Combobox({
    */
   allowCreate?: boolean;
   onCreateOption?: (name: string) => Promise<ComboboxOption>;
+  /** Tuỳ chỉnh bề rộng/khoảng cách container (ví dụ `min-w-[220px]`) — component tự chiếm `w-full`
+   * bên trong, dùng khi nơi gọi không đủ ép rộng qua wrapper cha (thay `<select>` cần `min-width`). */
+  className?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -174,7 +178,7 @@ export function Combobox({
   const showLeadingIcon = !open && Boolean(selected?.icon);
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} className={`relative ${className}`}>
       {showLeadingIcon && (
         <span aria-hidden="true" className="pointer-events-none absolute left-2.5 top-1/2 flex -translate-y-1/2 items-center">
           {selected!.icon}

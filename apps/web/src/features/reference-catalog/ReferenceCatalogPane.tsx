@@ -3,6 +3,7 @@ import { ArrowCounterClockwise, ListBullets, MagnifyingGlass, PencilSimple, Plus
 import type { ReferenceCatalogCategory, ReferenceCatalogDirection, ReferenceCatalogItem } from '@nexamed/shared';
 import { useHasPermission } from '../auth/usePermission';
 import { Button } from '../../shared/ui/Button';
+import { Combobox } from '../../shared/ui/Combobox';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { EmptyState } from '../../shared/ui/EmptyState';
@@ -410,6 +411,8 @@ function ItemFormModal({
     deactivatesAccount?: boolean;
     countsAsCash?: boolean;
     description?: string;
+    bytCode?: string;
+    fullName?: string;
     direction?: ReferenceCatalogDirection;
     isActive?: boolean;
   }) => Promise<void>;
@@ -421,6 +424,8 @@ function ItemFormModal({
   const [deactivatesAccount, setDeactivatesAccount] = useState(item?.deactivatesAccount ?? false);
   const [countsAsCash, setCountsAsCash] = useState(item?.countsAsCash ?? false);
   const [description, setDescription] = useState(item?.description ?? '');
+  const [bytCode, setBytCode] = useState('');
+  const [fullName, setFullName] = useState('');
   const [direction, setDirection] = useState<ReferenceCatalogDirection>(item?.direction ?? 'EXPENSE');
   const [isActive, setIsActive] = useState(item?.isActive ?? true);
   const { flashVisible, triggerFlash } = useSaveFlash();
@@ -434,6 +439,10 @@ function ItemFormModal({
   const isIncomeExpenseType = category === 'INCOME_EXPENSE_TYPE';
   // Mô tả + Trạng thái ngay trong form — UNIT (#078) + "Chức danh"/"Học hàm học vị" (2026-08-27).
   const hasDescriptionAndStatus = DESCRIPTION_STATUS_CATEGORIES.includes(category);
+  // "Mã BYT"/"Tên đầy đủ chuẩn"/"Mô tả" CHỈ nhập được lúc TẠO MỚI mục do clinic_admin tự thêm
+  // ngoài file nguồn BYT (đảo ngược một phần #152/#153, chốt 17/09/2026) — sửa (mode==='edit') vẫn
+  // giữ nguyên chỉ 2 trường Tên/Thứ tự như trước, không đổi.
+  const isBytTaxonomyCreate = mode === 'create' && BYT_TAXONOMY_CATEGORIES.includes(category);
   const isInvalid = (!hideCode && code.trim() === '') || name.trim() === '';
 
   function buildDto() {
@@ -443,7 +452,9 @@ function ItemFormModal({
       sortOrder,
       deactivatesAccount: isEmploymentStatus ? deactivatesAccount : undefined,
       countsAsCash: isPaymentMethod ? countsAsCash : undefined,
-      description: hasDescriptionAndStatus && description.trim() !== '' ? description.trim() : undefined,
+      description: (hasDescriptionAndStatus || isBytTaxonomyCreate) && description.trim() !== '' ? description.trim() : undefined,
+      bytCode: isBytTaxonomyCreate && bytCode.trim() !== '' ? bytCode.trim() : undefined,
+      fullName: isBytTaxonomyCreate && fullName.trim() !== '' ? fullName.trim() : undefined,
       direction: isIncomeExpenseType ? direction : undefined,
       isActive: hasDescriptionAndStatus ? isActive : undefined,
     };
@@ -458,6 +469,8 @@ function ItemFormModal({
     setDeactivatesAccount(false);
     setCountsAsCash(false);
     setDescription('');
+    setBytCode('');
+    setFullName('');
     setDirection('EXPENSE');
     setIsActive(true);
     nameInputRef.current?.focus();
@@ -519,15 +532,15 @@ function ItemFormModal({
               <label htmlFor="rc-direction" className="text-sm font-semibold text-slate-800">
                 Loại <span className="text-rose-500">*</span>
               </label>
-              <select
+              <Combobox
                 id="rc-direction"
                 value={direction}
-                onChange={(e) => setDirection(e.target.value as ReferenceCatalogDirection)}
-                className={inputClassName}
-              >
-                <option value="EXPENSE">Chi tiền</option>
-                <option value="INCOME">Thu tiền</option>
-              </select>
+                onChange={(v) => setDirection(v as ReferenceCatalogDirection)}
+                options={[
+                  { value: 'EXPENSE', label: 'Chi tiền' },
+                  { value: 'INCOME', label: 'Thu tiền' },
+                ]}
+              />
             </div>
           )}
 
@@ -549,19 +562,36 @@ function ItemFormModal({
               <label htmlFor="rc-is-active" className="text-sm font-semibold text-slate-800">
                 Trạng thái
               </label>
-              <select
+              <Combobox
                 id="rc-is-active"
                 value={isActive ? '1' : '0'}
-                onChange={(e) => setIsActive(e.target.value === '1')}
-                className={inputClassName}
-              >
-                <option value="1">Đang sử dụng</option>
-                <option value="0">Ngưng sử dụng</option>
-              </select>
+                onChange={(v) => setIsActive(v === '1')}
+                options={[
+                  { value: '1', label: 'Đang sử dụng' },
+                  { value: '0', label: 'Ngưng sử dụng' },
+                ]}
+              />
             </div>
           )}
 
-          {hasDescriptionAndStatus && (
+          {isBytTaxonomyCreate && (
+            <>
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="rc-byt-code" className="text-sm font-semibold text-slate-800">
+                  Mã BYT
+                </label>
+                <input id="rc-byt-code" value={bytCode} onChange={(e) => setBytCode(e.target.value)} className={inputClassName} />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="rc-full-name" className="text-sm font-semibold text-slate-800">
+                  Tên đầy đủ chuẩn
+                </label>
+                <input id="rc-full-name" value={fullName} onChange={(e) => setFullName(e.target.value)} className={inputClassName} />
+              </div>
+            </>
+          )}
+
+          {(hasDescriptionAndStatus || isBytTaxonomyCreate) && (
             <div className="flex flex-col gap-1.5 sm:col-span-2">
               <label htmlFor="rc-description" className="text-sm font-semibold text-slate-800">
                 Mô tả

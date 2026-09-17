@@ -1,7 +1,7 @@
 # ERD: NEXAMed v1
 
-**Version**: v1.50 — 16/09/2026 (xem mục 9 để biết lịch sử thay đổi)
-**Phạm vi**: các bảng thuộc v1 (Đặt lịch, Tiếp nhận, Khám bệnh, Kê đơn) cộng các mở rộng phạm vi đã chốt (Thu ngân cơ bản, Sổ quỹ & Thu chi, Ví tạm ứng, Kho Thuốc & Vật tư y tế GĐ1 — xem `CLAUDE.md`). Bảng của v2+ (viện phí đầy đủ, BHYT) và các giai đoạn sau của Kho Thuốc (GĐ2-5, đã lên kế hoạch nhưng chưa code) **không** tạo ở giai đoạn này.
+**Version**: v1.52 — 17/09/2026 (xem mục 9 để biết lịch sử thay đổi)
+**Phạm vi**: các bảng thuộc v1 (Đặt lịch, Tiếp nhận, Khám bệnh, Kê đơn) cộng các mở rộng phạm vi đã chốt (Thu ngân cơ bản, Sổ quỹ & Thu chi, Ví tạm ứng, Kho Thuốc & Vật tư y tế GĐ1+GĐ2 — xem `CLAUDE.md`). Bảng của v2+ (viện phí đầy đủ, BHYT) và các giai đoạn sau của Kho Thuốc (GĐ3-5, đã lên kế hoạch nhưng chưa code) **không** tạo ở giai đoạn này.
 **Căn cứ**: `docs/product/prd.md` v1.0, `docs/product/plan.md` v1.0, `.claude/docs/data-model.md`
 
 ---
@@ -717,7 +717,7 @@ Permission mới `cash_voucher.report` (Sổ quỹ tổng hợp + Báo cáo dòn
 
 ### 3.7 Kho Thuốc & Vật tư y tế — Giai đoạn 1 (`docs/DECISIONS.md` #146/#148)
 
-**Đã hiện thực (v1.48, 15/09/2026)** — đảo ngược quyết định "dược/kho ngoài v1" của Sprint 4 (2026-08-25). Lộ trình 5 giai đoạn đã chốt qua `EnterPlanMode`: **GĐ1 Danh mục nền (xong)** → GĐ2 Nhập kho & tồn theo lô (`inventory_batch`/`stock_balance`/`stock_ledger`/`stock_receipt`, chưa xây) → GĐ3 Xuất kho theo đơn + FEFO + tiền thuốc (**duy nhất chạm bảng `invoice` đang chạy thật**, khuyến nghị thử tại 1 phòng khám pilot trước khi GA rộng) → GĐ4 Kiểm kê/điều chuyển/báo cáo → GĐ5 Trải nghiệm kê đơn (tìm không dấu, macro, điều hướng bàn phím). Nguyên tắc xuyên suốt: mở rộng `drug` sẵn có (không tạo bảng `items` mới); chuỗi quy đổi đơn vị N bậc; thẻ kho append-only (`stock_ledger`, GĐ2) là nguồn sự thật; "đơn thuốc là y lệnh — chỉ Phiếu xuất kho mới sinh tiền/trừ kho" (1 đơn ↔ N phiếu xuất, GĐ3).
+**Đã hiện thực (v1.48, 15/09/2026)** — đảo ngược quyết định "dược/kho ngoài v1" của Sprint 4 (2026-08-25). Lộ trình 5 giai đoạn đã chốt qua `EnterPlanMode`: **GĐ1 Danh mục nền (xong)** → **GĐ2 Nhập kho & tồn theo lô (`inventory_batch`/`stock_balance`/`stock_ledger`/`stock_receipt` — xong, v1.52, xem mục 3.8)** → GĐ3 Xuất kho theo đơn + FEFO + tiền thuốc (**duy nhất chạm bảng `invoice` đang chạy thật**, khuyến nghị thử tại 1 phòng khám pilot trước khi GA rộng) → GĐ4 Kiểm kê/điều chuyển/báo cáo → GĐ5 Trải nghiệm kê đơn (tìm không dấu, macro, điều hướng bàn phím). Nguyên tắc xuyên suốt: mở rộng `drug` sẵn có (không tạo bảng `items` mới); chuỗi quy đổi đơn vị N bậc; thẻ kho append-only (`stock_ledger`, GĐ2) là nguồn sự thật; "đơn thuốc là y lệnh — chỉ Phiếu xuất kho mới sinh tiền/trừ kho" (1 đơn ↔ N phiếu xuất, GĐ3).
 
 | Bảng | Vai trò | Đặc thù |
 |---|---|---|
@@ -765,6 +765,26 @@ Migration: `20260916100000_drug_control_type` (enum + 2 cột) → `202609161200
 
 **Seed master data `DRUG_GROUP`/`DRUG_ROUTE`/`DOSAGE_FORM` (v1.51, `docs/DECISIONS.md` #152)** — chủ dự án cung cấp 3 file chuẩn hoá theo Bộ Y tế/BHYT, yêu cầu nạp ĐẦY ĐỦ mọi cột thay vì chỉ `code`/`name`. `reference_catalog` thêm 2 cột `byt_code` (mã liên thông BHYT, Quyết định 130/QĐ-BYT — chuẩn bị tích hợp sau này, chưa dùng ở đâu) và `full_name` (tên đầy đủ chuẩn ngành) — CHỈ có ý nghĩa với 3 category này, `name` vẫn giữ "tên ngắn UI" gọn cho Combobox. Cột `description` có sẵn (trước chỉ UNIT/ACADEMIC_TITLE/STAFF_POSITION/PAYMENT_METHOD/INCOME_EXPENSE_TYPE dùng) mở rộng ý nghĩa sang DRUG_ROUTE/DOSAGE_FORM (cột "Mô tả/Ví dụ" của file gốc — riêng DRUG_GROUP không có cột này trong nguồn, để `null`). Migration `20260916150000_reference_catalog_byt_code` → `20260916160000_reference_catalog_full_name`. Seed idempotent theo `(category, code)` — 28 Nhóm tác dụng dược lý (N01-N27, N99) + 18 Đường dùng (U01-U17, U99) + 16 Dạng bào chế (F01-F15, F99), nguồn `docs/data/nhom-tac-dung-duoc-ly.md`/`duong-dung-thuoc.md`/`dang-bao-che.md`. Không permission mới, không đổi UI quản lý (chưa có ô hiển thị riêng cho `bytCode`/`fullName`).
 
+### 3.8 Kho Thuốc & Vật tư y tế — Giai đoạn 2 (Nhập kho & tồn theo lô, `docs/DECISIONS.md` #159)
+
+**Đã hiện thực (v1.52, 17/09/2026)** — mockup Artifact + kế hoạch kỹ thuật (`EnterPlanMode`, `precious-humming-goblet.md`) duyệt ở phiên trước, code + test ngay đầu phiên này sau khi chủ dự án xác nhận "Duyệt, làm đi". Tiếp nối GĐ1 (mục 3.7) — GĐ2 CHỈ xây chức năng thật cho `receiptType` PURCHASE/OPENING_BALANCE, 3 giá trị còn lại (TRANSFER_IN/RETURN_FROM_USE/COUNT_SURPLUS) khai sẵn cho GĐ3/4.
+
+| Bảng | Vai trò | Đặc thù |
+|---|---|---|
+| `stock_receipt` | Header "Phiếu nhập kho" | `receipt_no` (tự sinh qua `BusinessCodeService`, `codeType='STOCK_RECEIPT'`, prefix `PNK`). `status` (`DRAFT` → `POSTED`/`REJECTED`, huỷ = soft-delete từ `POSTED`). `supplier_id` nullable — CHECK bắt buộc có khi `receiptType='PURCHASE'`, bắt buộc NULL các loại khác. `rejection_reason` CHECK khớp `status='REJECTED'`. Sửa được khi còn `DRAFT` (bulk-replace dòng hàng); huỷ phiếu `POSTED` không xoá/sửa `stock_ledger` gốc, chỉ ghi dòng đảo chiều mới |
+| `stock_receipt_line` | Dòng hàng trong phiếu | Lưu ĐÚNG đơn vị/giá trên hoá đơn NCC (không ép quy đổi tay) — chỉ có ý nghĩa lúc `DRAFT`/vừa `POSTED`, KHÔNG phải nguồn sự thật tồn kho. Bắt buộc `batch_no` nếu `drug.isBatchManaged` (kiểm ở Service, không CHECK DB vì cần tra `drug`) |
+| `inventory_batch` | Định danh lô | Chỉ tạo dòng cho `drug.isBatchManaged=true`. Nhập lại đúng `batch_no`+`drug_id`+`warehouse_id` → reuse (partial unique). `unit_cost` = giá vốn ĐÍCH DANH của lô, tự cập nhật bình quân gia quyền NẾU nhập bổ sung cùng lô (KHÔNG trộn với lô khác) |
+| `stock_ledger` | Thẻ kho, append-only — NGUỒN SỰ THẬT | Đủ 8 cột bắt buộc (cùng khuôn `payment`, khác khuôn tối giản `audit_log`). `quantity_change` có dấu, đơn vị CƠ SỞ — GĐ2 luôn dương (chỉ nhập), để sẵn ghi âm cho GĐ3 (xuất). `batch_id` nullable (NULL khi hàng không quản lý theo lô). `source_receipt_id` trỏ `stock_receipt` sinh ra dòng này |
+| `stock_balance` | Cache số dư luỹ kế, cập nhật ĐỒNG BỘ | UPSERT trong CÙNG transaction ghi `stock_ledger` (không tính lại mỗi lần đọc như Sổ quỹ — tồn kho cần đọc liên tục cho FEFO/cảnh báo GĐ3/4). `average_unit_cost` CHỈ có ý nghĩa khi `batch_id IS NULL` (bình quân gia quyền toàn kho); có `batch_id` thì giá vốn lấy từ `inventory_batch.unit_cost` |
+
+`drug` thêm 2 cột: `last_purchase_unit_cost`/`last_purchase_at` (cache giá nhập gần nhất theo đơn vị CƠ SỞ, chỉ cập nhật khi Duyệt phiếu `PURCHASE` — không tính `OPENING_BALANCE`).
+
+**Phương pháp giá vốn** (đúng chuẩn VAS 02): `isBatchManaged=true` → giá đích danh theo lô (`inventory_batch.unit_cost`, khớp FEFO khi GĐ3 xây); `isBatchManaged=false` → bình quân gia quyền liên hoàn (`stock_balance.average_unit_cost`, tính lại ngay sau mỗi lần Duyệt, round-half-up). Cả hai hàm thuần đặt ở `packages/core/src/inventory/` (`computeUnitConversion()` có sẵn từ GĐ1, `computeWeightedAverageCost()` mới).
+
+**Huỷ phiếu đã Duyệt** đảo NGƯỢC đúng các dòng `stock_ledger` mà chính phiếu đó sinh ra (`sourceReceiptId=id`), KHÔNG tính lại từ `stock_receipt_line`/chuỗi quy đổi hiện tại (tránh lệch nếu đơn vị quy đổi của thuốc đã đổi sau khi phiếu được duyệt) — chặn nếu tồn hiện có không đủ trừ ngược (đã bị dùng bớt, chỉ xảy ra thật từ GĐ3 trở đi).
+
+Permission mới `stock_receipt.create/read/approve` — `clinic_admin` đủ cả 3 (phòng khám nhỏ tự vừa lập vừa duyệt); `doctor`/`nurse` chỉ `read` (chuẩn bị GĐ5 kê đơn thấy tồn); `receptionist` không có. Không đổi permission `drug.*` (vận hành kho khác sửa danh mục thuốc).
+
 ---
 
 ## 4. Ràng buộc ở tầng cơ sở dữ liệu
@@ -801,6 +821,9 @@ Những ràng buộc này đặt ở DB, không chỉ ở tầng ứng dụng.
 | C26 | `UNIQUE (tenant_id) WHERE is_default AND deleted_at IS NULL` | `warehouse` | Kho Thuốc & Vật tư y tế GĐ1 (v1.48, `docs/DECISIONS.md` #148) — đúng 1 kho mặc định/tenant, cùng khuôn C16 (`department.is_default`) |
 | C27 | `UNIQUE (tenant_id, drug_id, sort_order) WHERE deleted_at IS NULL` | `drug_unit` | GĐ1 — mỗi bậc trong chuỗi quy đổi đơn vị chỉ có đúng 1 dòng hiệu lực, cùng khuôn C3/C14 |
 | C28 | `UNIQUE (tenant_id, drug_id, active_ingredient_code) WHERE deleted_at IS NULL` | `drug_ingredient` | GĐ1 — gỡ rồi gán lại đúng hoạt chất đã từng gỡ không vi phạm unique, cùng khuôn C18/C19 |
+| C29 | `CHECK ((receipt_type='PURCHASE' AND supplier_id IS NOT NULL) OR (receipt_type<>'PURCHASE' AND supplier_id IS NULL))` | `stock_receipt` | Kho Thuốc GĐ2 (v1.52, `docs/DECISIONS.md` #159) — phiếu nhập nhà cung cấp bắt buộc có NCC, loại phiếu khác (Đầu kỳ...) không có |
+| C30 | `UNIQUE (tenant_id, drug_id, warehouse_id, batch_no) WHERE deleted_at IS NULL` | `inventory_batch` | GĐ2 — nhập lại đúng số lô cho cùng thuốc+kho → reuse dòng cũ, không tạo trùng, cùng khuôn C27/C28 |
+| C31 | `UNIQUE (tenant_id, drug_id, warehouse_id, batch_id) WHERE batch_id IS NOT NULL` + `UNIQUE (tenant_id, drug_id, warehouse_id) WHERE batch_id IS NULL` | `stock_balance` | GĐ2 — đúng 1 dòng số dư/thuốc+kho+lô (hoặc /thuốc+kho khi không quản lý theo lô), 2 index riêng vì `batch_id NULL` không tự loại trùng qua UNIQUE thường, cùng vấn đề C3/C14 |
 
 ---
 
@@ -859,7 +882,7 @@ Ghi ra đây để không ai vô tình tạo sớm, và để thiết kế v1 kh
 | Bảng dự kiến | Phase | Điểm neo vào v1 |
 |---|---|---|
 | `service`, `service_order` | v2 | `encounter_id` |
-| `inventory_batch`, `stock_balance`, `stock_ledger`, `stock_receipt` | Kho Thuốc GĐ2 (trong v1, đã lên kế hoạch #146, chưa code) | `drug_id`, `warehouse_id` |
+| ~~`inventory_batch`, `stock_balance`, `stock_ledger`, `stock_receipt`, `stock_receipt_line`~~ | ~~Kho Thuốc GĐ2~~ **ĐÃ CODE XONG (v1.52, #159, xem mục 3.8)** | `drug_id`, `warehouse_id` |
 | `stock_issue` (Phiếu xuất kho) | Kho Thuốc GĐ3 (trong v1, đã lên kế hoạch #146, chưa code — duy nhất chạm `invoice` đang chạy thật) | `drug_id`, `prescription_item_id`, `invoice_id` |
 | `insurance_claim` | v3 | `encounter_id`, `insurance_card_id` |
 | `lab_order`, `lab_result` | v3+ | `encounter_id` |
@@ -935,3 +958,4 @@ Khi thêm, các bảng này vẫn phải đủ 8 cột bắt buộc và tuân th
 | v1.49 | 16/09/2026 | "Giá bán theo từng đơn vị cụ thể" (`docs/DECISIONS.md` #150, chủ dự án yêu cầu trực tiếp — xem lại phần giá bán GĐ1 trước khi làm tiếp). Migration `20260916090000_drug_unit_pricing` (viết tay): `drug` thêm `unit_pricing_enabled BOOLEAN NOT NULL DEFAULT false` (công tắc THEO TỪNG MẶT HÀNG); `drug_unit` thêm `sell_price BIGINT` (nullable, chỉ có ý nghĩa khi công tắc bật). Mặc định TẮT giữ nguyên hành vi cũ (giá suy ra theo tỷ lệ quy đổi từ `default_sell_price`); bật thì mỗi bậc — kể cả đơn vị nhỏ nhất — có giá riêng, KHÔNG suy ra theo tỷ lệ, bắt buộc nhập đủ mọi bậc (validate ở tầng Zod `packages/shared`, không phải CHECK DB). Không bảng mới, không C mới, không permission mới. Xem mục 3.7. |
 | v1.50 | 16/09/2026 | Rà soát Kho Thuốc theo tài liệu quy chuẩn quản lý VTYT (`docs/DECISIONS.md` #151, chủ dự án gửi tài liệu tham khảo đối chiếu). VTYT giữ nguyên hoãn. Thuốc: enum mới `drug_control_type` (Thông tư 20/2017/TT-BYT) + `drug` thêm 10 cột (`control_type`/`is_prescription_only` có default; `manufacturer_code` bắt buộc cả 2 loại thay `manufacturer` text cũ — S4-03 giữ legacy, backfill 1 lần; `registration_number`/`dosage_form`/`country_of_origin` bắt buộc CHỈ MEDICINE; `default_dosage`/`usage_instruction`/`contraindications`/`storage_conditions`/`storage_location`/`barcode` tùy chọn). 5 category `reference_catalog` mới (`DOSAGE_FORM`/`STORAGE_CONDITION`/`MANUFACTURER`/`COUNTRY_OF_ORIGIN`/`STORAGE_LOCATION`) có "thêm nhanh" ngay tại ô chọn (`Combobox` mở rộng `allowCreate`/`onCreateOption`, ~25+ nơi dùng cũ không đổi hành vi). 4 migration: `20260916100000_drug_control_type` → `20260916120000_drug_extra_fields` → `20260916130000_drug_catalog_categories_enum` → `20260916140000_drug_manufacturer_catalog_backfill`. Không bảng mới, không permission mới. Xem mục 3.7. |
 | v1.51 | 16/09/2026 | Seed master data cho `DRUG_GROUP`/`DRUG_ROUTE`/`DOSAGE_FORM` (`docs/DECISIONS.md` #152, chủ dự án cung cấp 3 file chuẩn hoá theo Bộ Y tế/BHYT). `reference_catalog` thêm 2 cột nullable: `byt_code` (mã liên thông BHYT, Quyết định 130/QĐ-BYT — chuẩn bị tích hợp sau này, chưa dùng ở đâu) và `full_name` (tên đầy đủ chuẩn ngành, khác `name` giữ "tên ngắn UI" cho Combobox) — CHỈ có ý nghĩa với 3 category này. `description` (cột có sẵn, trước chỉ UNIT/ACADEMIC_TITLE/STAFF_POSITION/PAYMENT_METHOD/INCOME_EXPENSE_TYPE dùng) mở rộng sang DRUG_ROUTE/DOSAGE_FORM (cột "Mô tả/Ví dụ" của file gốc — DRUG_GROUP không có cột này trong nguồn nên để `null`). 2 migration `20260916150000_reference_catalog_byt_code`/`20260916160000_reference_catalog_full_name`. Seed 28 Nhóm tác dụng dược lý + 18 Đường dùng + 16 Dạng bào chế (`packages/core/src/reference-catalog/data.ts`, nguồn `docs/data/nhom-tac-dung-duoc-ly.md`/`duong-dung-thuoc.md`/`dang-bao-che.md`) — idempotent theo `(category, code)`, `bytCode`/`fullName`/`description` luôn đồng bộ lại theo nguồn (không phải field admin sửa qua UI). Không permission mới, không đổi UI (dữ liệu chỉ nạp qua seed, chưa có ô hiển thị `bytCode`/`fullName` riêng — `clinic_admin` vẫn quản lý `name`/ẩn-hiện qua "Danh mục Thuốc và Vật Tư" như cũ). Xem mục 3.7. |
+| v1.52 | 17/09/2026 | Kho Thuốc & Vật tư y tế Giai đoạn 2 — Nhập kho & tồn theo lô (`docs/DECISIONS.md` #159, mockup + kế hoạch kỹ thuật duyệt phiên trước, code đầu phiên này). 5 bảng MỚI: `stock_receipt`/`stock_receipt_line`/`inventory_batch`/`stock_ledger`/`stock_balance` (migration `20260917090000_pharmacy_inventory_gd2`, thêm C29/C30/C31). `drug` thêm 2 cột `last_purchase_unit_cost`/`last_purchase_at` (cache giá nhập gần nhất). Permission mới `stock_receipt.create/read/approve`. Xem mục 3.8. |

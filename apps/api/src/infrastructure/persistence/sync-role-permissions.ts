@@ -77,6 +77,25 @@ export async function syncRolePermissionsForTenant(
 }
 
 /**
+ * Kiểm tra danh mục `permission` có đủ mọi quyền khai báo trong `DEFAULT_ROLE_PERMISSIONS`
+ * (packages/core/src/rbac/permissions.ts) hay chưa — CHỈ ĐỌC, không tự ghi (bảng `permission` đã
+ * revoke INSERT/UPDATE khỏi role app `nexamed_app` — chỉ `pnpm db:seed` chạy bằng role đặc quyền
+ * mới ghi được, xem seed-permissions.ts). Gọi lúc khởi động (`main.ts`) để log CẢNH BÁO RÕ RÀNG
+ * thay vì âm thầm bỏ qua như dòng comment ở `syncRolePermissionsForTenant` phía trên vẫn làm —
+ * sự cố thật đã lặp lại nhiều lần (permission mới thêm vào code nhưng quên chạy lại `db:seed`
+ * trên DB dev lâu năm → role_permission không có gì để đồng bộ → menu biến mất, không có dấu hiệu
+ * lỗi nào trong log cho tới khi debug thủ công, xem docs/DECISIONS.md #159).
+ */
+export async function findMissingPermissionKeys(prisma: PrismaClient): Promise<string[]> {
+  const expectedKeys = new Set<string>();
+  for (const matrix of Object.values(DEFAULT_ROLE_PERMISSIONS)) {
+    for (const key of Object.keys(matrix)) expectedKeys.add(key);
+  }
+  const existingKeys = new Set((await prisma.permission.findMany()).map((p) => permissionKey(p)));
+  return [...expectedKeys].filter((key) => !existingKeys.has(key)).sort();
+}
+
+/**
  * Chạy `syncRolePermissionsForTenant` cho MỌI tenant — gọi một lần lúc API khởi động
  * (`main.ts`), idempotent (an toàn gọi lại mỗi lần start). Không dùng cho tenant bị soft-delete.
  */

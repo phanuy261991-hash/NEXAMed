@@ -27,6 +27,7 @@ export interface CreateDrugData {
   storageConditions: string | null;
   storageLocation: string | null;
   barcode: string | null;
+  packagingSpec: string | null;
   activeIngredient: string | null;
   unit: string | null;
   concentration: string | null;
@@ -58,6 +59,7 @@ export interface UpdateDrugData {
   storageConditions?: string | null;
   storageLocation?: string | null;
   barcode?: string | null;
+  packagingSpec?: string | null;
   activeIngredient?: string | null;
   unit?: string | null;
   concentration?: string | null;
@@ -133,5 +135,13 @@ export class DrugRepository {
       data: { ...data, updatedBy: actorId, version: { increment: 1 } },
     });
     return result.count;
+  }
+
+  /** Kho Thuốc GĐ2 — cache "giá nhập gần nhất", cập nhật lúc `approve()` một phiếu nhập
+   * `receiptType=PURCHASE` (`InventoryService`). KHÔNG kiểm/tăng `version` — cùng khuôn
+   * `CashVoucherRepository.markPrintedIfNotYet()` (cập nhật hệ thống phụ, không phải sửa nội dung
+   * người dùng chỉnh qua form "Sửa thuốc"). */
+  async updateLastPurchase(tx: Prisma.TransactionClient, tenantId: string, id: string, actorId: string, unitCost: bigint, at: Date): Promise<void> {
+    await tx.drug.updateMany({ where: { tenantId, id, deletedAt: null }, data: { lastPurchaseUnitCost: unitCost, lastPurchaseAt: at, updatedBy: actorId } });
   }
 }

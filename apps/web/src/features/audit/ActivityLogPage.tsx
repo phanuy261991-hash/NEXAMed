@@ -5,6 +5,8 @@ import { formatAuditFieldValue, isHiddenAuditField, labelForAuditField } from '.
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
+import { Combobox } from '../../shared/ui/Combobox';
+import { DateInput } from '../../shared/ui/DateInput';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
@@ -214,31 +216,15 @@ export function ActivityLogPage() {
 
       <div className="flex flex-shrink-0 flex-wrap items-center gap-2 px-1">
         <PatientFilterPicker value={patient} onChange={setPatient} />
-        <select
+        <Combobox
+          id="activity-log-actor"
           value={actorId}
-          onChange={(e) => setActorId(e.target.value)}
-          className="rounded-md border border-slate-300 px-2.5 py-1.5 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-        >
-          <option value="">Tất cả người dùng</option>
-          {usersQuery.data?.items.map((u) => (
-            <option key={u.id} value={u.id}>
-              {u.displayName ?? u.fullName}
-            </option>
-          ))}
-        </select>
-        <input
-          type="date"
-          value={from}
-          onChange={(e) => setFrom(e.target.value)}
-          className="rounded-md border border-slate-300 px-2.5 py-1.5 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+          onChange={setActorId}
+          options={[{ value: '', label: 'Tất cả người dùng' }, ...(usersQuery.data?.items.map((u) => ({ value: u.id, label: u.displayName ?? u.fullName })) ?? [])]}
         />
+        <DateInput id="activity-log-from" value={from} onChange={setFrom} dense />
         <span className="text-xs text-slate-400">đến</span>
-        <input
-          type="date"
-          value={to}
-          onChange={(e) => setTo(e.target.value)}
-          className="rounded-md border border-slate-300 px-2.5 py-1.5 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-        />
+        <DateInput id="activity-log-to" value={to} onChange={setTo} dense />
         {hasFilters && (
           <Button type="button" variant="secondary" className="px-2.5 py-1.5 text-xs" onClick={clearFilters}>
             Xoá lọc

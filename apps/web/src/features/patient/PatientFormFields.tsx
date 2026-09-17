@@ -8,6 +8,7 @@ import { PatientHistoryDialog } from './PatientHistoryDialog';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { useProvincesQuery, useWardsQuery } from '../geo/geo.queries';
 import { Combobox, withLegacyValueOption, type ComboboxOption } from '../../shared/ui/Combobox';
+import { DateInput } from '../../shared/ui/DateInput';
 
 /** Khớp `ADULT_AGE_THRESHOLD` trong `packages/shared/src/patient.ts` (docs/DECISIONS.md #035). */
 const ADULT_AGE_THRESHOLD = 18;
@@ -299,15 +300,7 @@ export function PatientFormFields({
           </Field>
 
           <Field id="dob" label="Ngày sinh" required>
-            <input
-              id="dob"
-              type="date"
-              required
-              disabled={disabled || identityLocked}
-              value={values.dob}
-              onChange={(e) => set('dob', e.target.value)}
-              className={identityLocked ? readOnlyInputClassName : inputClassName}
-            />
+            <DateInput id="dob" required disabled={disabled || identityLocked} value={values.dob} onChange={(v) => set('dob', v)} />
           </Field>
 
           <Field id="birthYear" label="Năm sinh">
@@ -344,14 +337,7 @@ export function PatientFormFields({
           </Field>
 
           <Field id="nationalIdIssuedAt" label="Ngày cấp">
-            <input
-              id="nationalIdIssuedAt"
-              type="date"
-              disabled={disabled}
-              value={values.nationalIdIssuedAt}
-              onChange={(e) => set('nationalIdIssuedAt', e.target.value)}
-              className={inputClassName}
-            />
+            <DateInput id="nationalIdIssuedAt" disabled={disabled} value={values.nationalIdIssuedAt} onChange={(v) => set('nationalIdIssuedAt', v)} />
           </Field>
 
           <Field id="nationalIdIssuedPlace" label="Nơi cấp">

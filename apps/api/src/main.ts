@@ -8,7 +8,7 @@ import { DomainExceptionFilter } from './common/domain-exception.filter';
 import { SYSTEM_ACTOR_ID } from '@nexamed/core';
 import { PrismaService } from './infrastructure/persistence/prisma.service';
 import { UnitOfWorkService } from './infrastructure/persistence/unit-of-work.service';
-import { syncRolePermissionsForAllTenants } from './infrastructure/persistence/sync-role-permissions';
+import { findMissingPermissionKeys, syncRolePermissionsForAllTenants } from './infrastructure/persistence/sync-role-permissions';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -23,6 +23,17 @@ async function bootstrap() {
   app.use(cookieParser());
   app.useGlobalInterceptors(new ResponseInterceptor());
   app.useGlobalFilters(new DomainExceptionFilter());
+
+  // Cảnh báo TO, RÕ nếu quên chạy lại `db:seed` sau khi thêm permission mới vào code — trước đây
+  // âm thầm bỏ qua (xem comment trong sync-role-permissions.ts), gây menu biến mất không dấu vết
+  // trong log, mất nhiều vòng debug thủ công mới tìm ra (docs/DECISIONS.md #159).
+  const missingPermissions = await findMissingPermissionKeys(app.get(PrismaService));
+  if (missingPermissions.length > 0) {
+    console.error(
+      `\n[startup] !!! DANH MỤC "permission" THIẾU ${missingPermissions.length} QUYỀN: ${missingPermissions.join(', ')}.\n` +
+        `    Menu/chức năng liên quan sẽ KHÔNG hiện cho tới khi chạy: pnpm --filter @nexamed/api run db:seed\n`,
+    );
+  }
 
   // Đồng bộ role_permission còn thiếu cho tenant đã tồn tại (permission mới thêm sau khi tenant
   // đã tạo) — xem docs/CURRENT.md mục "Đang chờ" (phát hiện lúc #037) và sync-role-permissions.ts.

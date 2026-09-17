@@ -37,6 +37,7 @@ export const businessCodeTypeSchema = z.enum([
   'CASH_TRANSFER',
   'WALLET_TOPUP',
   'WALLET_SETTLEMENT',
+  'STOCK_RECEIPT',
 ]);
 export type BusinessCodeType = z.infer<typeof businessCodeTypeSchema>;
 
@@ -65,6 +66,8 @@ export const BUSINESS_CODE_TYPE_REGISTRY: Record<BusinessCodeType, { label: stri
   // bệnh nhân gửi tạm" với phiếu thu/chi quỹ thông thường, không trùng PTQ/PCQ/PCK đã có.
   WALLET_TOPUP: { label: 'Mã phiếu thu tạm ứng', internalPrefix: 'PTU' },
   WALLET_SETTLEMENT: { label: 'Mã phiếu hoàn ứng', internalPrefix: 'PCU' },
+  // Kho Thuốc GĐ2 — "Phiếu nhập kho", không trùng tiền tố nào đã dùng ở trên.
+  STOCK_RECEIPT: { label: 'Mã phiếu nhập kho', internalPrefix: 'PNK' },
 };
 
 export const DEFAULT_BUSINESS_CODE_COUNTER_DIGITS = 6;

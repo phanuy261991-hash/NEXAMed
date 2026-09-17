@@ -347,6 +347,25 @@ describe('HTTP e2e — /api/v1/drugs', () => {
     expect(res.status).toBe(200);
   });
 
+  it('"Quy cách đóng gói" (đảo ngược hoãn #151) — Vật tư y tế cũng lưu được, không giới hạn Thuốc', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/drugs')
+      .set(authed(clinicAdminToken))
+      .send({
+        code: `DRG-${randomUUID().slice(0, 8)}`,
+        name: 'Gạc y tế đóng gói',
+        itemType: 'SUPPLY',
+        baseUnitCode: 'VIEN',
+        manufacturerCode: 'MFR_DUOC_HAU_GIANG',
+        defaultSellPrice: 5000,
+        packagingSpec: 'Hộp 5 gói x 10 miếng',
+        ingredients: [],
+        units: [],
+      });
+    expect(res.status).toBe(200);
+    expect(res.body.data.packagingSpec).toBe('Hộp 5 gói x 10 miếng');
+  });
+
   it('#151 — thiếu Hãng sản xuất → 400 (bắt buộc cho cả Thuốc lẫn Vật tư y tế)', async () => {
     const res = await createDrug(clinicAdminToken, { name: 'Thiếu hãng SX', manufacturer: '' });
     expect(res.status).toBe(400);
@@ -442,6 +461,7 @@ describe('HTTP e2e — /api/v1/drugs', () => {
         storageConditions: 'BAO_QUAN_KHO_RAO',
         storageLocation: 'KE_A1',
         barcode: '8938501234567',
+        packagingSpec: 'Hộp 10 vỉ x 10 viên',
         ingredients: [{ activeIngredientCode: 'TEST_INGREDIENT', strengthValue: 500000, strengthUnitCode: 'MG' }],
         units: [],
       });
@@ -455,16 +475,18 @@ describe('HTTP e2e — /api/v1/drugs', () => {
     expect(res.body.data.storageConditions).toBe('BAO_QUAN_KHO_RAO');
     expect(res.body.data.storageLocation).toBe('KE_A1');
     expect(res.body.data.barcode).toBe('8938501234567');
+    expect(res.body.data.packagingSpec).toBe('Hộp 10 vỉ x 10 viên');
 
     const drugId = res.body.data.id as string;
     const patchRes = await request(app.getHttpServer())
       .patch(`/api/v1/drugs/${drugId}`)
       .set(authed(clinicAdminToken))
-      .send({ version: 1, barcode: '8938501234568', storageConditions: null });
+      .send({ version: 1, barcode: '8938501234568', storageConditions: null, packagingSpec: 'Hộp 10 vỉ x 10 viên nén bao phim' });
     expect(patchRes.status).toBe(200);
     expect(patchRes.body.data.version).toBe(2);
     expect(patchRes.body.data.barcode).toBe('8938501234568');
     expect(patchRes.body.data.storageConditions).toBeNull();
+    expect(patchRes.body.data.packagingSpec).toBe('Hộp 10 vỉ x 10 viên nén bao phim');
   });
 
   it('#151 — không truyền 5 trường tùy chọn mới → mặc định null, không lỗi', async () => {

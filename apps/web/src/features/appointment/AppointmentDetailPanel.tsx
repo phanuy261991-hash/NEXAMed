@@ -5,6 +5,7 @@ import type { AppointmentSummary, DoctorOption } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { Button } from '../../shared/ui/Button';
 import { Combobox } from '../../shared/ui/Combobox';
+import { DateInput } from '../../shared/ui/DateInput';
 import { TimeInput } from '../../shared/ui/TimeInput';
 import { useHasPermission } from '../auth/usePermission';
 import type { ReceptionIntakeCheckinContext } from '../reception/ReceptionIntakeForm';
@@ -303,13 +304,7 @@ export function AppointmentDetailPanel({
                   <label htmlFor="reschedule-date" className="mb-1.5 block text-sm font-semibold text-slate-800">
                     Dời đến ngày
                   </label>
-                  <input
-                    id="reschedule-date"
-                    type="date"
-                    value={rescheduleDate}
-                    onChange={(e) => e.target.value && setRescheduleDate(e.target.value)}
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  />
+                  <DateInput id="reschedule-date" value={rescheduleDate} onChange={(v) => v && setRescheduleDate(v)} />
                 </div>
                 <div className="flex-1">
                   <label htmlFor="reschedule-time" className="mb-1.5 block text-sm font-semibold text-slate-800">

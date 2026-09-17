@@ -68,6 +68,10 @@ export class DrugService {
           storageConditions: dto.itemType === 'MEDICINE' ? (dto.storageConditions ?? null) : null,
           storageLocation: dto.itemType === 'MEDICINE' ? (dto.storageLocation ?? null) : null,
           barcode: dto.itemType === 'MEDICINE' ? (dto.barcode ?? null) : null,
+          // "Quy cách đóng gói" — KHÔNG giới hạn MEDICINE như nhóm trường trên (đảo ngược hoãn #151):
+          // vật tư y tế cũng đóng gói theo hộp/gói/thùng như thuốc, cùng phạm vi với Bảng quy đổi
+          // đơn vị (`units`) vốn cũng không giới hạn itemType.
+          packagingSpec: dto.packagingSpec ?? null,
           activeIngredient: dto.activeIngredient ?? null,
           unit: dto.unit ?? null,
           concentration: dto.concentration ?? null,
@@ -146,6 +150,7 @@ export class DrugService {
           storageConditions: dto.storageConditions,
           storageLocation: dto.storageLocation,
           barcode: dto.barcode,
+          packagingSpec: dto.packagingSpec,
           activeIngredient: dto.activeIngredient,
           unit: dto.unit,
           concentration: dto.concentration,
@@ -213,6 +218,9 @@ export class DrugService {
       storageConditions: drug.storageConditions,
       storageLocation: drug.storageLocation,
       barcode: drug.barcode,
+      packagingSpec: drug.packagingSpec,
+      lastPurchaseUnitCost: drug.lastPurchaseUnitCost === null ? null : Number(drug.lastPurchaseUnitCost),
+      lastPurchaseAt: drug.lastPurchaseAt?.toISOString() ?? null,
       ingredients: drug.ingredients,
       units: drug.units.map((u) => ({ ...u, sellPrice: u.sellPrice === null ? null : Number(u.sellPrice) })),
       activeIngredient: drug.activeIngredient,

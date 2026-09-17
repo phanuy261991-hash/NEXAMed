@@ -4,6 +4,8 @@ import type { CashVoucherStatus, ReferenceCatalogDirection } from '@nexamed/shar
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
+import { Combobox } from '../../shared/ui/Combobox';
+import { DateInput } from '../../shared/ui/DateInput';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
@@ -113,19 +115,9 @@ export function CashVoucherListPage() {
       <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-2.5 px-1">
         <div className="flex flex-wrap items-center gap-2.5">
           <div className="flex items-center gap-1.5">
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              className="rounded-md border border-slate-300 px-2.5 py-1.5 text-[13px] font-semibold text-slate-900"
-            />
+            <DateInput id="cv-date-from" value={dateFrom} onChange={setDateFrom} dense />
             <span className="text-xs text-slate-400">đến</span>
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              className="rounded-md border border-slate-300 px-2.5 py-1.5 text-[13px] font-semibold text-slate-900"
-            />
+            <DateInput id="cv-date-to" value={dateTo} onChange={setDateTo} dense />
           </div>
           <div className="flex items-center gap-1 rounded-md border border-slate-300 p-1">
             {(
@@ -145,16 +137,17 @@ export function CashVoucherListPage() {
               </button>
             ))}
           </div>
-          <select
+          <Combobox
+            id="cv-status"
             value={status}
-            onChange={(e) => setStatus(e.target.value as CashVoucherStatus | '')}
-            className="rounded-md border border-slate-300 px-2.5 py-1.5 text-[13px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-          >
-            <option value="">Mọi trạng thái</option>
-            <option value="POSTED">Đã ghi sổ</option>
-            <option value="PENDING_APPROVAL">Chờ duyệt</option>
-            <option value="REJECTED">Đã từ chối</option>
-          </select>
+            onChange={(v) => setStatus(v as CashVoucherStatus | '')}
+            options={[
+              { value: '', label: 'Mọi trạng thái' },
+              { value: 'POSTED', label: 'Đã ghi sổ' },
+              { value: 'PENDING_APPROVAL', label: 'Chờ duyệt' },
+              { value: 'REJECTED', label: 'Đã từ chối' },
+            ]}
+          />
         </div>
         <div className="flex flex-shrink-0 items-center gap-2">
           <Button type="button" variant="secondary" loading={exportMutation.isPending} onClick={() => exportMutation.mutate(listFilter)}>

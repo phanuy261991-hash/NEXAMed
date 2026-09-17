@@ -154,6 +154,15 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   // `patient.read` có sẵn (không thêm permission đọc riêng — chốt qua AskUserQuestion).
   { module: 'patient_wallet', action: 'topup', description: 'Nạp tiền vào ví tạm ứng của bệnh nhân' },
   { module: 'patient_wallet', action: 'settle', description: 'Hoàn tiền & khoá ví tạm ứng (Tất toán)' },
+  // Kho Thuốc & Vật tư y tế — Giai đoạn 2 (Nhập kho & tồn theo lô, docs/DECISIONS.md #146, kế hoạch
+  // kỹ thuật precious-humming-goblet.md). TÁCH khỏi `drug.create`/`drug.update` (vận hành kho hằng
+  // ngày khác sửa danh mục thuốc — đúng tinh thần tách `stock_receipt`/`drug` của tài liệu tham
+  // khảo "người lập khác người duyệt"). `read` dùng chung cho cả 3 màn (Phiếu nhập kho/Tồn kho/Thẻ
+  // kho), `approve` gác Duyệt/Từ chối/Huỷ phiếu đã duyệt — quyền "Trưởng kho", mặc định CHỈ
+  // clinic_admin (đúng tinh thần `invoice.refund`/`cashier_shift.manage`).
+  { module: 'stock_receipt', action: 'create', description: 'Tạo/sửa Nháp phiếu nhập kho' },
+  { module: 'stock_receipt', action: 'read', description: 'Xem phiếu nhập kho, Tồn kho, Thẻ kho' },
+  { module: 'stock_receipt', action: 'approve', description: 'Duyệt/Từ chối/Huỷ phiếu nhập kho' },
 ] as const;
 
 export function permissionKey(p: Pick<PermissionDefinition, 'module' | 'action'>): string {
@@ -227,6 +236,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'allergen_catalog.read': 'global',
     'allergen_catalog.create': 'global',
     'drug.read': 'global',
+    // Kho Thuốc GĐ2 — điều dưỡng xem tồn kho (chuẩn bị cho GĐ5 kê đơn thấy tồn), không tạo/duyệt phiếu.
+    'stock_receipt.read': 'global',
     'work_shift_assignment.create': 'personal',
     'work_shift_assignment.read': 'personal',
     'work_shift_assignment.delete': 'personal',
@@ -264,6 +275,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'allergen_catalog.read': 'global',
     'allergen_catalog.create': 'global',
     'drug.read': 'global',
+    // Kho Thuốc GĐ2 — bác sĩ xem tồn kho (chuẩn bị cho GĐ5 kê đơn thấy tồn), không tạo/duyệt phiếu.
+    'stock_receipt.read': 'global',
     // Tự thao tác "Tạm nghỉ / Đóng ca" cho chính mình — luôn cho phép (personal), không phụ thuộc
     // 2 công tắc cấu hình (2 công tắc đó chỉ gate nhánh "hộ" của receptionist/clinic_admin).
     'doctor_availability.update': 'personal',
@@ -302,6 +315,11 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'drug.read': 'global',
     'drug.create': 'global',
     'drug.update': 'global',
+    // Kho Thuốc GĐ2 — clinic_admin (phòng khám nhỏ 1-3 bác sĩ thường tự làm cả 2 vai "lập"+"duyệt")
+    // có đủ cả 3: tạo Nháp, xem, Duyệt/Từ chối/Huỷ phiếu.
+    'stock_receipt.create': 'global',
+    'stock_receipt.read': 'global',
+    'stock_receipt.approve': 'global',
     // Thu ngân cơ bản — clinic_admin giám sát/xử lý được như lễ tân, cùng mức encounter.*.
     'invoice.read': 'global',
     'invoice.update': 'global',

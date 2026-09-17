@@ -109,6 +109,11 @@ model Tenant {
   cashVouchers           CashVoucher[]
   patientWallets         PatientWallet[]
   walletTransactions     WalletTransaction[]
+  stockReceipts          StockReceipt[]
+  stockReceiptLines      StockReceiptLine[]
+  inventoryBatches       InventoryBatch[]
+  stockLedgers           StockLedger[]
+  stockBalances          StockBalance[]
 
   @@map("tenant")
 }
@@ -1507,66 +1512,76 @@ enum DrugControlType {
 }
 
 model Drug {
-  id               String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId         String       @map("tenant_id") @db.Uuid
-  code             String
-  name             String
-  activeIngredient String?      @map("active_ingredient")
-  unit             String?
-  concentration    String?
-  isActive         Boolean      @default(true) @map("is_active")
+  id                 String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId           String          @map("tenant_id") @db.Uuid
+  code               String
+  name               String
+  activeIngredient   String?         @map("active_ingredient")
+  unit               String?
+  concentration      String?
+  isActive           Boolean         @default(true) @map("is_active")
   // GĐ1 — Thuốc hay Vật tư y tế. Mặc định MEDICINE cho dữ liệu cũ (migration backfill).
-  itemType         DrugItemType @default(MEDICINE) @map("item_type")
+  itemType           DrugItemType    @default(MEDICINE) @map("item_type")
   // Có quản lý theo lô + hạn dùng không — quyết định giá vốn đích danh theo lô (true) hay bình
   // quân gia quyền (false, GĐ2). Mặc định true, khớp hành vi ngầm định trước GĐ1.
-  isBatchManaged   Boolean      @default(true) @map("is_batch_managed")
+  isBatchManaged     Boolean         @default(true) @map("is_batch_managed")
   // Đơn vị NHỎ NHẤT — đơn vị mà tồn kho được tính (GĐ2), xuất kho lẻ tới đơn vị này. Nullable vì
   // dữ liệu cũ (trước GĐ1) không có; bắt buộc ở tầng Zod cho mặt hàng tạo mới.
-  baseUnitCode     String?      @map("base_unit_code")
+  baseUnitCode       String?         @map("base_unit_code")
   // Giá bán mặc định, đồng, THEO ĐƠN VỊ NHỎ NHẤT — bigint (CLAUDE.md cấm decimal cho tiền). Khi
   // unitPricingEnabled=true, đây vẫn là giá của ĐÚNG đơn vị nhỏ nhất (không suy ra từ đâu khác).
-  defaultSellPrice BigInt?      @map("default_sell_price")
+  defaultSellPrice   BigInt?         @map("default_sell_price")
   // Công tắc THEO TỪNG MẶT HÀNG (mở rộng GĐ1, chủ dự án yêu cầu trực tiếp) — mặc định false: giá
   // mỗi bậc quy đổi SUY RA từ defaultSellPrice theo tỷ lệ (hành vi gốc). true: mỗi bậc trong
   // DrugUnit có giá bán RIÊNG (DrugUnit.sellPrice), không suy ra theo tỷ lệ — vd giá lẻ 1 Viên khác
   // hẳn giá quy ra từ 1 Vỉ/1 Hộp. Bật thì bắt buộc nhập đủ giá mọi bậc (validate ở packages/shared).
-  unitPricingEnabled Boolean     @default(false) @map("unit_pricing_enabled")
+  unitPricingEnabled Boolean         @default(false) @map("unit_pricing_enabled")
   // Mã tham chiếu reference_catalog category DRUG_GROUP/DRUG_ROUTE (không FK cứng, đúng cách
   // patient.ethnicity/encounter.exam_type_code tham chiếu bảng đa-category này).
-  drugGroupCode    String?      @map("drug_group_code")
-  routeCode        String?      @map("route_code")
+  drugGroupCode      String?         @map("drug_group_code")
+  routeCode          String?         @map("route_code")
   // Mã thuốc QĐ 130 (Cổng Đơn thuốc quốc gia, #147) — chuẩn bị trước, chưa tích hợp cổng thật.
-  nationalCode     String?      @map("national_code")
+  nationalCode       String?         @map("national_code")
   // Cột cũ (S4-03, text tự do) — GIỮ NGUYÊN làm dữ liệu legacy, không còn ghi mới từ form (mở rộng
   // #151 chuyển sang danh mục). `manufacturerCode` (mới) tham chiếu reference_catalog category
   // MANUFACTURER — dữ liệu text cũ đã backfill thành danh mục qua migration
   // `20260916140000_drug_manufacturer_catalog_backfill`.
-  manufacturer     String?
-  manufacturerCode String?      @map("manufacturer_code")
-  minStockAlert    Int?         @map("min_stock_alert")
-  maxStockAlert    Int?         @map("max_stock_alert")
+  manufacturer       String?
+  manufacturerCode   String?         @map("manufacturer_code")
+  minStockAlert      Int?            @map("min_stock_alert")
+  maxStockAlert      Int?            @map("max_stock_alert")
   // Phân loại kiểm soát đặc biệt (Thông tư 20/2017/TT-BYT) — CHỈ có ý nghĩa với itemType=MEDICINE,
   // ẩn hoàn toàn cho SUPPLY ở UI (docs/DECISIONS.md #151).
   controlType        DrugControlType @default(NORMAL) @map("control_type")
   // Yêu cầu kê đơn (Rx) hay không (OTC) — CHỈ có ý nghĩa với itemType=MEDICINE. Mặc định true: mọi
   // thuốc hiện tại đều đi qua đơn thuốc bác sĩ ký, chưa có luồng bán OTC tự do tại quầy.
-  isPrescriptionOnly Boolean        @default(true) @map("is_prescription_only")
+  isPrescriptionOnly Boolean         @default(true) @map("is_prescription_only")
   // Mở rộng #151 (chủ dự án rà soát trực tiếp từng trường theo tài liệu quy chuẩn) — CHỈ có ý nghĩa
   // với itemType=MEDICINE, ẩn hoàn toàn cho SUPPLY ở UI (VTYT giữ nguyên hoãn, chưa mở rộng field).
   // Bắt buộc ở tầng Zod cho MEDICINE tạo mới (đúng khuôn baseUnitCode/manufacturerCode):
-  registrationNumber String?       @map("registration_number")
+  registrationNumber String?         @map("registration_number")
   // Mã tham chiếu reference_catalog category DOSAGE_FORM/STORAGE_CONDITION/COUNTRY_OF_ORIGIN/
   // STORAGE_LOCATION (không FK cứng, đúng cách drugGroupCode/routeCode) — có "thêm nhanh" ngay tại
   // ô chọn trong form (Combobox `allowCreate`), không nhập text tự do.
-  dosageForm          String?      @map("dosage_form")
-  countryOfOrigin     String?      @map("country_of_origin")
+  dosageForm         String?         @map("dosage_form")
+  countryOfOrigin    String?         @map("country_of_origin")
   // Tùy chọn:
-  defaultDosage       String?      @map("default_dosage")
-  usageInstruction    String?      @map("usage_instruction")
-  contraindications   String?
-  storageConditions   String?      @map("storage_conditions")
-  storageLocation     String?      @map("storage_location")
-  barcode             String?
+  defaultDosage      String?         @map("default_dosage")
+  usageInstruction   String?         @map("usage_instruction")
+  contraindications  String?
+  storageConditions  String?         @map("storage_conditions")
+  storageLocation    String?         @map("storage_location")
+  barcode            String?
+  // "Quy cách đóng gói" (đảo ngược hoãn ở #151, chốt lại 17/09/2026) — CÓ GỢI Ý tự động ghép từ
+  // Bảng quy đổi đơn vị lúc lưu ở tầng ứng dụng (không lưu công thức, chỉ lưu chuỗi kết quả), người
+  // dùng sửa tự do (đóng gói phức tạp không diễn tả hết bằng bảng quy đổi thuần số).
+  packagingSpec      String?         @map("packaging_spec")
+  // Kho Thuốc GĐ2 — cache "giá nhập gần nhất" LUÔN theo đơn vị CƠ SỞ (so sánh nhất quán bất kể lần
+  // sau nhập theo đơn vị nào). CHỈ cập nhật khi Duyệt phiếu receiptType=PURCHASE (không tính
+  // OPENING_BALANCE — giá đầu kỳ không phải giá đàm phán NCC thật). Web dùng để tự điền + cảnh báo
+  // mềm nếu giá nhập mới cao hơn, không chặn lưu.
+  lastPurchaseUnitCost BigInt?       @map("last_purchase_unit_cost")
+  lastPurchaseAt       DateTime?     @map("last_purchase_at") @db.Timestamptz(6)
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -1581,6 +1596,11 @@ model Drug {
   prescriptionItems PrescriptionItem[]
   units             DrugUnit[]
   ingredients       DrugIngredient[]
+  // Kho Thuốc GĐ2 — xem model StockReceiptLine/InventoryBatch/StockLedger/StockBalance.
+  stockReceiptLines StockReceiptLine[]
+  inventoryBatches  InventoryBatch[]
+  stockLedgers      StockLedger[]
+  stockBalances     StockBalance[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, code])
@@ -1626,13 +1646,13 @@ model DrugUnit {
 // `findDuplicateActiveIngredients` (packages/core) so theo MÃ hoạt chất (activeIngredientCode, tham
 // chiếu reference_catalog category ACTIVE_INGREDIENT), không so chuỗi text nữa.
 model DrugIngredient {
-  id                   String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId             String  @map("tenant_id") @db.Uuid
-  drugId               String  @map("drug_id") @db.Uuid
-  activeIngredientCode String  @map("active_ingredient_code")
+  id                   String @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId             String @map("tenant_id") @db.Uuid
+  drugId               String @map("drug_id") @db.Uuid
+  activeIngredientCode String @map("active_ingredient_code")
   // Hàm lượng ×1000 (số nguyên — đúng tiền lệ vital_sign, cấm decimal cho số liệu y tế).
-  strengthValue        Int     @map("strength_value")
-  strengthUnitCode     String  @map("strength_unit_code")
+  strengthValue        Int    @map("strength_value")
+  strengthUnitCode     String @map("strength_unit_code")
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -1673,7 +1693,9 @@ model Supplier {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant Tenant @relation(fields: [tenantId], references: [id])
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  // Kho Thuốc GĐ2 — phiếu nhập từ nhà cung cấp này (receiptType=PURCHASE).
+  stockReceipts StockReceipt[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, code])
@@ -1702,13 +1724,252 @@ model Warehouse {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant     Tenant      @relation(fields: [tenantId], references: [id])
+  tenant           Tenant           @relation(fields: [tenantId], references: [id])
   // department_id nullable — FK chỉ áp khi có giá trị (Postgres MATCH SIMPLE, cùng mẫu room.floor).
-  department Department? @relation(fields: [tenantId, departmentId], references: [tenantId, id])
+  department       Department?      @relation(fields: [tenantId, departmentId], references: [tenantId, id])
+  // Kho Thuốc GĐ2 — xem model StockReceipt/InventoryBatch/StockLedger/StockBalance.
+  stockReceipts    StockReceipt[]
+  inventoryBatches InventoryBatch[]
+  stockLedgers     StockLedger[]
+  stockBalances    StockBalance[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, code])
   @@map("warehouse")
+}
+
+// Kho Thuốc & Vật tư y tế — Giai đoạn 2 (Nhập kho & tồn theo lô, docs/DECISIONS.md #146, kế hoạch
+// kỹ thuật C:\Users\Administrator\.claude\plans\precious-humming-goblet.md). "Phiếu nhập kho" —
+// header, luồng Nháp (DRAFT, sửa tự do) → Duyệt (POSTED, cộng thật stock_ledger/stock_balance) /
+// Từ chối (REJECTED, bắt buộc lý do, không đụng tồn). Huỷ phiếu ĐÃ POSTED = soft-delete header +
+// ghi dòng stock_ledger đảo chiều (reason RECEIPT_VOID), KHÔNG sửa/xoá dòng ledger gốc.
+model StockReceipt {
+  id                String             @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId          String             @map("tenant_id") @db.Uuid
+  receiptNo         String             @map("receipt_no")
+  warehouseId       String             @map("warehouse_id") @db.Uuid
+  // NULL khi receiptType != PURCHASE (vd OPENING_BALANCE không có nhà cung cấp).
+  supplierId        String?            @map("supplier_id") @db.Uuid
+  receiptType       StockReceiptType   @map("receipt_type")
+  status            StockReceiptStatus @default(DRAFT)
+  // Ngày nhập do người dùng khai (có thể lùi ngày cho tồn đầu kỳ) — khác createdAt (mốc tạo bản ghi).
+  occurredAt        DateTime           @map("occurred_at") @db.Timestamptz(6)
+  note              String?
+  // Mã hoá đơn NCC — đối chiếu, không dùng để tính toán gì (nullable, mọi receiptType).
+  supplierInvoiceNo String?            @map("supplier_invoice_no")
+  // Snapshot tổng tiền nhập, tính từ tổng lineAmount các dòng — cập nhật lại nếu sửa lúc còn DRAFT.
+  totalAmount       BigInt             @default(0) @map("total_amount")
+  approvedBy        String?            @map("approved_by") @db.Uuid
+  approvedAt        DateTime?          @map("approved_at") @db.Timestamptz(6)
+  // Bắt buộc khi status=REJECTED, NULL các trạng thái khác.
+  rejectionReason   String?            @map("rejection_reason")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant        Tenant             @relation(fields: [tenantId], references: [id])
+  warehouse     Warehouse          @relation(fields: [tenantId, warehouseId], references: [tenantId, id])
+  // Composite FK (tenant_id, supplier_id) -> supplier(tenant_id, id), NULLABLE.
+  supplier      Supplier?          @relation(fields: [tenantId, supplierId], references: [tenantId, id])
+  lines         StockReceiptLine[]
+  ledgerEntries StockLedger[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, receiptNo])
+  @@map("stock_receipt")
+}
+
+enum StockReceiptType {
+  PURCHASE // Nhập nhà cung cấp — xây GĐ2
+  OPENING_BALANCE // Nhập khởi tạo / Đầu kỳ — xây GĐ2
+  TRANSFER_IN // Nhập chuyển kho — để sẵn cho GĐ4
+  RETURN_FROM_USE // Nhập hoàn trả từ bệnh nhân/khoa phòng — để sẵn cho GĐ3/4
+  COUNT_SURPLUS // Nhập cân bằng, dôi dư kiểm kê — để sẵn cho GĐ4
+
+  @@map("stock_receipt_type")
+}
+
+enum StockReceiptStatus {
+  DRAFT
+  POSTED
+  REJECTED
+
+  @@map("stock_receipt_status")
+}
+
+// Dòng hàng trong phiếu nhập — chỉ có ý nghĩa khi phiếu còn DRAFT/vừa POSTED (KHÔNG phải nguồn sự
+// thật về tồn kho, đó là stock_ledger/stock_balance). Lưu ĐÚNG đơn vị + giá trên hoá đơn NCC (đối
+// chiếu/audit) — lúc approve() mới quy đổi sang đơn vị cơ sở bằng computeUnitConversion() để ghi
+// stock_ledger.
+model StockReceiptLine {
+  id         String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId   String    @map("tenant_id") @db.Uuid
+  receiptId  String    @map("receipt_id") @db.Uuid
+  drugId     String    @map("drug_id") @db.Uuid
+  // Đơn vị đã chọn lúc nhập (drug_unit.unitCode hoặc drug.baseUnitCode) — KHÔNG phải đơn vị cơ sở.
+  unitCode   String    @map("unit_code")
+  // Số lượng theo ĐÚNG unitCode ở trên, KHÔNG phải đơn vị cơ sở.
+  quantity   Int
+  // Giá theo ĐÚNG unitCode ở trên — khớp thẳng số trên hoá đơn giấy.
+  unitCost   BigInt    @map("unit_cost")
+  // Bắt buộc nếu drug.isBatchManaged=true (kiểm ở tầng Zod/Service, không CHECK DB).
+  batchNo    String?   @map("batch_no")
+  expiryDate DateTime? @map("expiry_date") @db.Date
+  // Snapshot quantity × unitCost, theo đơn vị đã chọn — khớp đúng thành tiền dòng trên hoá đơn giấy.
+  lineAmount BigInt    @map("line_amount")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant  Tenant       @relation(fields: [tenantId], references: [id])
+  receipt StockReceipt @relation(fields: [tenantId, receiptId], references: [tenantId, id])
+  drug    Drug         @relation(fields: [tenantId, drugId], references: [tenantId, id])
+
+  @@map("stock_receipt_line")
+}
+
+// Định danh lô — chỉ tạo dòng cho thuốc có drug.isBatchManaged=true. Nhập lại đúng batchNo (+ cùng
+// expiryDate) cho cùng drugId+warehouseId → reuse dòng cũ (không tạo trùng), unitCost tự cập nhật
+// bình quân gia quyền NHƯNG chỉ trong phạm vi lô đó (không trộn với lô khác) — giá vốn ĐÍCH DANH
+// theo lô dùng cho xuất kho FEFO ở GĐ3.
+model InventoryBatch {
+  id          String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  drugId      String    @map("drug_id") @db.Uuid
+  warehouseId String    @map("warehouse_id") @db.Uuid
+  batchNo     String    @map("batch_no")
+  // Nullable — vật tư y tế có thể không có hạn dùng.
+  expiryDate  DateTime? @map("expiry_date") @db.Date
+  unitCost    BigInt    @map("unit_cost")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  drug          Drug           @relation(fields: [tenantId, drugId], references: [tenantId, id])
+  warehouse     Warehouse      @relation(fields: [tenantId, warehouseId], references: [tenantId, id])
+  stockLedgers  StockLedger[]
+  stockBalances StockBalance[]
+
+  // Unique thật (tenant_id, drug_id, warehouse_id, batch_no) WHERE deleted_at IS NULL là PARTIAL —
+  // khai raw SQL trong migration (cùng lý do drug_unit/drug_ingredient), không khai @@unique ở đây.
+  @@unique([tenantId, id])
+  @@map("inventory_batch")
+}
+
+// Thẻ kho — append-only, NGUỒN SỰ THẬT duy nhất về mọi biến động tồn kho (cùng khuôn `payment`:
+// đủ 8 cột bắt buộc dù bản chất không UPDATE, KHÔNG phải khuôn append-only tối giản của audit_log).
+// quantityChange luôn tính theo đơn vị CƠ SỞ (drug.baseUnitCode), có dấu — GĐ2 chỉ nhập nên luôn
+// dương, để sẵn cho GĐ3 ghi âm khi xuất kho.
+model StockLedger {
+  id              String            @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId        String            @map("tenant_id") @db.Uuid
+  drugId          String            @map("drug_id") @db.Uuid
+  warehouseId     String            @map("warehouse_id") @db.Uuid
+  // NULL khi drug.isBatchManaged=false.
+  batchId         String?           @map("batch_id") @db.Uuid
+  quantityChange  Int               @map("quantity_change")
+  // Giá vốn TẠI THỜI ĐIỂM của chính dòng này — phục vụ tính giá vốn/COGS sau này (ngoài phạm vi v1).
+  unitCost        BigInt            @map("unit_cost")
+  reason          StockLedgerReason
+  // NULL cho các nguồn không phải phiếu nhập ở giai đoạn sau (GĐ3/4).
+  sourceReceiptId String?           @map("source_receipt_id") @db.Uuid
+  occurredAt      DateTime          @map("occurred_at") @db.Timestamptz(6)
+  note            String?
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant        Tenant          @relation(fields: [tenantId], references: [id])
+  drug          Drug            @relation(fields: [tenantId, drugId], references: [tenantId, id])
+  warehouse     Warehouse       @relation(fields: [tenantId, warehouseId], references: [tenantId, id])
+  // Composite FK (tenant_id, batch_id) -> inventory_batch(tenant_id, id), NULLABLE.
+  batch         InventoryBatch? @relation(fields: [tenantId, batchId], references: [tenantId, id])
+  // Composite FK (tenant_id, source_receipt_id) -> stock_receipt(tenant_id, id), NULLABLE.
+  sourceReceipt StockReceipt?   @relation(fields: [tenantId, sourceReceiptId], references: [tenantId, id])
+
+  @@map("stock_ledger")
+}
+
+enum StockLedgerReason {
+  RECEIPT_PURCHASE
+  RECEIPT_OPENING_BALANCE
+  RECEIPT_TRANSFER_IN // để sẵn GĐ4
+  RECEIPT_RETURN_FROM_USE // để sẵn GĐ3/4
+  RECEIPT_COUNT_SURPLUS // để sẵn GĐ4
+  RECEIPT_VOID // đảo phiếu nhập bị huỷ — xây GĐ2
+  ISSUE_RETAIL_SALE // để sẵn GĐ3
+  ISSUE_SERVICE_CONSUMPTION // để sẵn GĐ3
+  ISSUE_INTERNAL_ALLOCATION // để sẵn GĐ3/4
+  ISSUE_TRANSFER_OUT // để sẵn GĐ4
+  ISSUE_RETURN_TO_SUPPLIER // để sẵn GĐ4
+  ISSUE_WRITE_OFF // để sẵn GĐ3/4
+  ISSUE_COUNT_SHORTAGE // để sẵn GĐ4
+
+  @@map("stock_ledger_reason")
+}
+
+// Cache số dư luỹ kế — cập nhật ĐỒNG BỘ (UPSERT nguyên tử trong CÙNG transaction ghi stock_ledger,
+// không tính lại từ ledger mỗi lần đọc như Sổ quỹ) vì tồn kho cần đọc liên tục (kiểm tra trước khi
+// bán GĐ3, cảnh báo tồn thấp, FEFO lọc theo lô còn hàng). stock_ledger vẫn là nguồn sự thật, có thể
+// dựng lại stock_balance từ đó nếu nghi lệch.
+model StockBalance {
+  id              String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId        String  @map("tenant_id") @db.Uuid
+  drugId          String  @map("drug_id") @db.Uuid
+  warehouseId     String  @map("warehouse_id") @db.Uuid
+  // NULL khi drug.isBatchManaged=false.
+  batchId         String? @map("batch_id") @db.Uuid
+  // Đơn vị CƠ SỞ.
+  quantityOnHand  Int     @default(0) @map("quantity_on_hand")
+  // Chỉ có ý nghĩa khi batchId IS NULL (bình quân gia quyền toàn kho, hàng KHÔNG quản lý theo lô).
+  // Khi có batchId, giá vốn lấy từ inventoryBatch.unitCost, không lặp lại ở đây.
+  averageUnitCost BigInt? @map("average_unit_cost")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant    Tenant          @relation(fields: [tenantId], references: [id])
+  drug      Drug            @relation(fields: [tenantId, drugId], references: [tenantId, id])
+  warehouse Warehouse       @relation(fields: [tenantId, warehouseId], references: [tenantId, id])
+  // Composite FK (tenant_id, batch_id) -> inventory_batch(tenant_id, id), NULLABLE.
+  batch     InventoryBatch? @relation(fields: [tenantId, batchId], references: [tenantId, id])
+
+  // 2 unique riêng (batchId nullable không tự loại trùng qua UNIQUE thường, đúng vấn đề C3/C14):
+  // UNIQUE (tenant_id, drug_id, warehouse_id, batch_id) WHERE batch_id IS NOT NULL
+  // UNIQUE (tenant_id, drug_id, warehouse_id) WHERE batch_id IS NULL
+  // Cả 2 khai raw SQL trong migration, không khai @@unique ở đây.
+  @@map("stock_balance")
 }
 
 // Đơn thuốc (Sprint 4, S4-01/02/04) — .claude/docs/clinical-workflow.md mục "Kê đơn (v1: chỉ in

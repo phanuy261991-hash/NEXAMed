@@ -16,6 +16,10 @@ export interface CreateReferenceCatalogData {
   countsAsCash?: boolean;
   /** Chỉ có ý nghĩa với category UNIT (Đơn vị tính) — xem schema.prisma. */
   description?: string | null;
+  /** CHỈ nhập được lúc tạo mới, cho 5 category chuẩn BYT (đảo ngược một phần #152/#153, chốt
+   * 17/09/2026) — mục `clinic_admin` tự thêm ngoài file nguồn BYT. */
+  bytCode?: string | null;
+  fullName?: string | null;
   /** Chỉ có ý nghĩa với category INCOME_EXPENSE_TYPE ("Loại thu chi", 2026-09-05) — xem schema.prisma. */
   direction?: ReferenceCatalogDirection | null;
   /** Chỉ ItemFormModal category UNIT gửi — category khác luôn tạo mới ở trạng thái hoạt động

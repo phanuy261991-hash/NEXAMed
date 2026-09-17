@@ -10020,6 +10020,9 @@ export interface paths {
                                     storageConditions: string | null;
                                     storageLocation: string | null;
                                     barcode: string | null;
+                                    packagingSpec: string | null;
+                                    lastPurchaseUnitCost: number | null;
+                                    lastPurchaseAt: string | null;
                                     ingredients: ({
                                         activeIngredientCode: string;
                                         strengthValue: number;
@@ -10125,6 +10128,7 @@ export interface paths {
                         storageConditions?: string;
                         storageLocation?: string;
                         barcode?: string;
+                        packagingSpec?: string;
                         /** @default [] */
                         ingredients?: {
                             activeIngredientCode: string;
@@ -10182,6 +10186,9 @@ export interface paths {
                                 storageConditions: string | null;
                                 storageLocation: string | null;
                                 barcode: string | null;
+                                packagingSpec: string | null;
+                                lastPurchaseUnitCost: number | null;
+                                lastPurchaseAt: string | null;
                                 ingredients: ({
                                     activeIngredientCode: string;
                                     strengthValue: number;
@@ -10315,6 +10322,7 @@ export interface paths {
                         storageConditions?: string | null;
                         storageLocation?: string | null;
                         barcode?: string | null;
+                        packagingSpec?: string | null;
                         ingredients?: {
                             activeIngredientCode: string;
                             strengthValue: number;
@@ -10372,6 +10380,9 @@ export interface paths {
                                 storageConditions: string | null;
                                 storageLocation: string | null;
                                 barcode: string | null;
+                                packagingSpec: string | null;
+                                lastPurchaseUnitCost: number | null;
+                                lastPurchaseAt: string | null;
                                 ingredients: ({
                                     activeIngredientCode: string;
                                     strengthValue: number;
@@ -12476,7 +12487,7 @@ export interface paths {
                             data: {
                                 items: {
                                     /** @enum {string} */
-                                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT";
+                                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT";
                                     label: string;
                                     prefix: string;
                                     template: string;
@@ -12549,7 +12560,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT";
+                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT";
                 };
                 cookie?: never;
             };
@@ -12572,7 +12583,7 @@ export interface paths {
                         "application/json": {
                             data: {
                                 /** @enum {string} */
-                                codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT";
+                                codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT";
                                 label: string;
                                 prefix: string;
                                 template: string;
@@ -13342,6 +13353,8 @@ export interface paths {
                         deactivatesAccount?: boolean;
                         countsAsCash?: boolean;
                         description?: string;
+                        bytCode?: string;
+                        fullName?: string;
                         /** @enum {string} */
                         direction?: "EXPENSE" | "INCOME";
                         isActive?: boolean;
@@ -19802,6 +19815,1332 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/receipts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Danh sách Phiếu nhập kho — cursor, lọc theo kho/loại phiếu/trạng thái/khoảng ngày */
+        get: {
+            parameters: {
+                query?: {
+                    cursor?: string;
+                    limit?: number;
+                    warehouseId?: string;
+                    receiptType?: "PURCHASE" | "OPENING_BALANCE" | "TRANSFER_IN" | "RETURN_FROM_USE" | "COUNT_SURPLUS";
+                    status?: "DRAFT" | "POSTED" | "REJECTED";
+                    from?: string;
+                    to?: string;
+                    q?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    receiptNo: string;
+                                    /** @enum {string} */
+                                    receiptType: "PURCHASE" | "OPENING_BALANCE" | "TRANSFER_IN" | "RETURN_FROM_USE" | "COUNT_SURPLUS";
+                                    /** @enum {string} */
+                                    status: "DRAFT" | "POSTED" | "REJECTED";
+                                    /** Format: uuid */
+                                    warehouseId: string;
+                                    warehouseName: string;
+                                    /** Format: uuid */
+                                    supplierId: string | null;
+                                    supplierName: string | null;
+                                    occurredAt: string;
+                                    note: string | null;
+                                    supplierInvoiceNo: string | null;
+                                    totalAmount: number;
+                                    lineCount: number;
+                                    createdByName: string;
+                                    approvedByName: string | null;
+                                    approvedAt: string | null;
+                                    rejectionReason: string | null;
+                                    voided: boolean;
+                                    version: number;
+                                }[];
+                                nextCursor: string | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_receipt.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Tạo phiếu nhập kho ở trạng thái Nháp — chưa đụng tồn kho */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        warehouseId: string;
+                        /** Format: uuid */
+                        supplierId?: string;
+                        /** @enum {string} */
+                        receiptType: "PURCHASE" | "OPENING_BALANCE" | "TRANSFER_IN" | "RETURN_FROM_USE" | "COUNT_SURPLUS";
+                        occurredAt?: string;
+                        note?: string | null;
+                        supplierInvoiceNo?: string | null;
+                        lines: {
+                            /** Format: uuid */
+                            drugId: string;
+                            unitCode: string;
+                            quantity: number;
+                            unitCost: number;
+                            batchNo?: string | null;
+                            expiryDate?: string | null;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                receiptNo: string;
+                                /** @enum {string} */
+                                receiptType: "PURCHASE" | "OPENING_BALANCE" | "TRANSFER_IN" | "RETURN_FROM_USE" | "COUNT_SURPLUS";
+                                /** @enum {string} */
+                                status: "DRAFT" | "POSTED" | "REJECTED";
+                                /** Format: uuid */
+                                warehouseId: string;
+                                warehouseName: string;
+                                /** Format: uuid */
+                                supplierId: string | null;
+                                supplierName: string | null;
+                                occurredAt: string;
+                                note: string | null;
+                                supplierInvoiceNo: string | null;
+                                totalAmount: number;
+                                lineCount: number;
+                                createdByName: string;
+                                approvedByName: string | null;
+                                approvedAt: string | null;
+                                rejectionReason: string | null;
+                                voided: boolean;
+                                version: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    unitCode: string;
+                                    quantity: number;
+                                    unitCost: number;
+                                    batchNo: string | null;
+                                    expiryDate: string | null;
+                                    lineAmount: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_receipt.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Kho/Nhà cung cấp/Thuốc tham chiếu không tồn tại */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu Số lô cho thuốc quản lý theo lô, hoặc loại phiếu chưa hỗ trợ */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/receipts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Chi tiết 1 phiếu nhập kho kèm dòng hàng — phiếu Từ chối/Đã huỷ vẫn xem được */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                receiptNo: string;
+                                /** @enum {string} */
+                                receiptType: "PURCHASE" | "OPENING_BALANCE" | "TRANSFER_IN" | "RETURN_FROM_USE" | "COUNT_SURPLUS";
+                                /** @enum {string} */
+                                status: "DRAFT" | "POSTED" | "REJECTED";
+                                /** Format: uuid */
+                                warehouseId: string;
+                                warehouseName: string;
+                                /** Format: uuid */
+                                supplierId: string | null;
+                                supplierName: string | null;
+                                occurredAt: string;
+                                note: string | null;
+                                supplierInvoiceNo: string | null;
+                                totalAmount: number;
+                                lineCount: number;
+                                createdByName: string;
+                                approvedByName: string | null;
+                                approvedAt: string | null;
+                                rejectionReason: string | null;
+                                voided: boolean;
+                                version: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    unitCode: string;
+                                    quantity: number;
+                                    unitCost: number;
+                                    batchNo: string | null;
+                                    expiryDate: string | null;
+                                    lineAmount: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_receipt.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại hoặc thuộc tenant khác) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Sửa phiếu Nháp — thay toàn bộ dòng hàng + header */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        warehouseId: string;
+                        /** Format: uuid */
+                        supplierId?: string;
+                        /** @enum {string} */
+                        receiptType: "PURCHASE" | "OPENING_BALANCE" | "TRANSFER_IN" | "RETURN_FROM_USE" | "COUNT_SURPLUS";
+                        occurredAt?: string;
+                        note?: string | null;
+                        supplierInvoiceNo?: string | null;
+                        lines: {
+                            /** Format: uuid */
+                            drugId: string;
+                            unitCode: string;
+                            quantity: number;
+                            unitCost: number;
+                            batchNo?: string | null;
+                            expiryDate?: string | null;
+                        }[];
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                receiptNo: string;
+                                /** @enum {string} */
+                                receiptType: "PURCHASE" | "OPENING_BALANCE" | "TRANSFER_IN" | "RETURN_FROM_USE" | "COUNT_SURPLUS";
+                                /** @enum {string} */
+                                status: "DRAFT" | "POSTED" | "REJECTED";
+                                /** Format: uuid */
+                                warehouseId: string;
+                                warehouseName: string;
+                                /** Format: uuid */
+                                supplierId: string | null;
+                                supplierName: string | null;
+                                occurredAt: string;
+                                note: string | null;
+                                supplierInvoiceNo: string | null;
+                                totalAmount: number;
+                                lineCount: number;
+                                createdByName: string;
+                                approvedByName: string | null;
+                                approvedAt: string | null;
+                                rejectionReason: string | null;
+                                voided: boolean;
+                                version: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    unitCode: string;
+                                    quantity: number;
+                                    unitCost: number;
+                                    batchNo: string | null;
+                                    expiryDate: string | null;
+                                    lineAmount: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_receipt.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy, hoặc Kho/Nhà cung cấp/Thuốc tham chiếu không tồn tại */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp, hoặc phiếu không còn ở trạng thái Nháp (STOCK_RECEIPT_NOT_DRAFT) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/inventory/receipts/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Duyệt phiếu — cộng thật vào Thẻ kho/Tồn kho, cập nhật giá vốn theo lô/bình quân gia quyền */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                receiptNo: string;
+                                /** @enum {string} */
+                                receiptType: "PURCHASE" | "OPENING_BALANCE" | "TRANSFER_IN" | "RETURN_FROM_USE" | "COUNT_SURPLUS";
+                                /** @enum {string} */
+                                status: "DRAFT" | "POSTED" | "REJECTED";
+                                /** Format: uuid */
+                                warehouseId: string;
+                                warehouseName: string;
+                                /** Format: uuid */
+                                supplierId: string | null;
+                                supplierName: string | null;
+                                occurredAt: string;
+                                note: string | null;
+                                supplierInvoiceNo: string | null;
+                                totalAmount: number;
+                                lineCount: number;
+                                createdByName: string;
+                                approvedByName: string | null;
+                                approvedAt: string | null;
+                                rejectionReason: string | null;
+                                voided: boolean;
+                                version: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    unitCode: string;
+                                    quantity: number;
+                                    unitCost: number;
+                                    batchNo: string | null;
+                                    expiryDate: string | null;
+                                    lineAmount: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_receipt.approve */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp, hoặc phiếu không còn ở trạng thái Nháp (STOCK_RECEIPT_NOT_DRAFT) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/receipts/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Từ chối phiếu Nháp — lý do bắt buộc, không đụng tồn kho */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        reason: string;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                receiptNo: string;
+                                /** @enum {string} */
+                                receiptType: "PURCHASE" | "OPENING_BALANCE" | "TRANSFER_IN" | "RETURN_FROM_USE" | "COUNT_SURPLUS";
+                                /** @enum {string} */
+                                status: "DRAFT" | "POSTED" | "REJECTED";
+                                /** Format: uuid */
+                                warehouseId: string;
+                                warehouseName: string;
+                                /** Format: uuid */
+                                supplierId: string | null;
+                                supplierName: string | null;
+                                occurredAt: string;
+                                note: string | null;
+                                supplierInvoiceNo: string | null;
+                                totalAmount: number;
+                                lineCount: number;
+                                createdByName: string;
+                                approvedByName: string | null;
+                                approvedAt: string | null;
+                                rejectionReason: string | null;
+                                voided: boolean;
+                                version: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    unitCode: string;
+                                    quantity: number;
+                                    unitCost: number;
+                                    batchNo: string | null;
+                                    expiryDate: string | null;
+                                    lineAmount: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_receipt.approve */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp, hoặc phiếu không còn ở trạng thái Nháp (STOCK_RECEIPT_NOT_DRAFT) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/receipts/{id}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Huỷ phiếu ĐÃ Duyệt — đảo ngược Thẻ kho/Tồn kho, lý do bắt buộc */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        reason: string;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                receiptNo: string;
+                                /** @enum {string} */
+                                receiptType: "PURCHASE" | "OPENING_BALANCE" | "TRANSFER_IN" | "RETURN_FROM_USE" | "COUNT_SURPLUS";
+                                /** @enum {string} */
+                                status: "DRAFT" | "POSTED" | "REJECTED";
+                                /** Format: uuid */
+                                warehouseId: string;
+                                warehouseName: string;
+                                /** Format: uuid */
+                                supplierId: string | null;
+                                supplierName: string | null;
+                                occurredAt: string;
+                                note: string | null;
+                                supplierInvoiceNo: string | null;
+                                totalAmount: number;
+                                lineCount: number;
+                                createdByName: string;
+                                approvedByName: string | null;
+                                approvedAt: string | null;
+                                rejectionReason: string | null;
+                                voided: boolean;
+                                version: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    unitCode: string;
+                                    quantity: number;
+                                    unitCost: number;
+                                    batchNo: string | null;
+                                    expiryDate: string | null;
+                                    lineAmount: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_receipt.approve */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp, phiếu chưa Duyệt, hoặc tồn đã bị dùng bớt (STOCK_RECEIPT_VOID_NOT_ALLOWED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/drugs/{drugId}/ledger": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Thẻ kho / Lịch sử giao dịch của 1 thuốc — sắp mới→cũ, kèm "Tồn sau" luỹ kế */
+        get: {
+            parameters: {
+                query?: {
+                    warehouseId?: string;
+                    limit?: number;
+                };
+                header?: never;
+                path: {
+                    drugId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    occurredAt: string;
+                                    quantityChange: number;
+                                    runningBalance: number;
+                                    /** @enum {string} */
+                                    reason: "RECEIPT_PURCHASE" | "RECEIPT_OPENING_BALANCE" | "RECEIPT_TRANSFER_IN" | "RECEIPT_RETURN_FROM_USE" | "RECEIPT_COUNT_SURPLUS" | "RECEIPT_VOID" | "ISSUE_RETAIL_SALE" | "ISSUE_SERVICE_CONSUMPTION" | "ISSUE_INTERNAL_ALLOCATION" | "ISSUE_TRANSFER_OUT" | "ISSUE_RETURN_TO_SUPPLIER" | "ISSUE_WRITE_OFF" | "ISSUE_COUNT_SHORTAGE";
+                                    /** Format: uuid */
+                                    warehouseId: string;
+                                    warehouseName: string;
+                                    /** Format: uuid */
+                                    sourceReceiptId: string | null;
+                                    sourceReceiptNo: string | null;
+                                    createdByName: string;
+                                }[];
+                                totalCount: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_receipt.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/balances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tồn kho (view "Theo mặt hàng") — tổng hợp theo (thuốc, kho), gộp mọi lô */
+        get: {
+            parameters: {
+                query?: {
+                    warehouseId?: string;
+                    q?: string;
+                    belowMinOnly?: boolean | ("true" | "false");
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    /** @enum {string} */
+                                    itemType: "MEDICINE" | "SUPPLY";
+                                    /** Format: uuid */
+                                    warehouseId: string;
+                                    warehouseName: string;
+                                    unitCode: string | null;
+                                    quantityOnHand: number;
+                                    minStockAlert: number | null;
+                                    maxStockAlert: number | null;
+                                    /** @enum {string} */
+                                    status: "NORMAL" | "LOW" | "HIGH" | "OUT";
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_receipt.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/drugs/{drugId}/balances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tồn kho theo lô của 1 thuốc (panel chi tiết thuốc) */
+        get: {
+            parameters: {
+                query?: {
+                    warehouseId?: string;
+                };
+                header?: never;
+                path: {
+                    drugId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    batchId: string;
+                                    batchNo: string;
+                                    /** Format: uuid */
+                                    warehouseId: string;
+                                    warehouseName: string;
+                                    expiryDate: string | null;
+                                    quantityOnHand: number;
+                                    unitCost: number;
+                                    /** @enum {string|null} */
+                                    expiryStatus: "EXPIRING_SOON" | "EXPIRED" | null;
+                                    daysUntilExpiry: number | null;
+                                }[];
+                                totalQuantityOnHand: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_receipt.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/expiry-warnings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cảnh báo hạn dùng — mọi lô sắp/đã hết hạn còn tồn, toàn phòng khám hoặc theo kho */
+        get: {
+            parameters: {
+                query?: {
+                    warehouseId?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    batchId: string;
+                                    batchNo: string;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugName: string;
+                                    /** Format: uuid */
+                                    warehouseId: string;
+                                    warehouseName: string;
+                                    expiryDate: string;
+                                    daysUntilExpiry: number;
+                                    quantityOnHand: number;
+                                    /** @enum {string} */
+                                    status: "EXPIRING_SOON" | "EXPIRED";
+                                }[];
+                                expiringSoonCount: number;
+                                expiredCount: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_receipt.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;

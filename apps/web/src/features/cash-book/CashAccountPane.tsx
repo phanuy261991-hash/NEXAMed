@@ -5,6 +5,7 @@ import { useHasPermission } from '../auth/usePermission';
 import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { ModalHeader } from '../../shared/ui/ModalHeader';
+import { DateInput } from '../../shared/ui/DateInput';
 import { MoneyInput } from '../../shared/ui/MoneyInput';
 import { SaveFlashBanner } from '../../shared/ui/SaveFlashBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
@@ -179,13 +180,7 @@ function CashAccountFormModal({
             <label htmlFor="ca-opening-at" className="text-sm font-semibold text-slate-800">
               Mốc tính số dư
             </label>
-            <input
-              id="ca-opening-at"
-              type="date"
-              value={values.openingBalanceAt}
-              onChange={(e) => set('openingBalanceAt', e.target.value)}
-              className={inputClassName}
-            />
+            <DateInput id="ca-opening-at" value={values.openingBalanceAt} onChange={(v) => set('openingBalanceAt', v)} />
           </div>
 
           <label className="flex items-center gap-2 text-sm font-semibold text-slate-800 sm:col-span-2">
