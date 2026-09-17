@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
-import { PencilSimple, Plus, Truck } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, PencilSimple, Plus, Prohibit, Truck } from '@phosphor-icons/react';
 import type { SupplierSummary } from '@nexamed/shared';
+import { ApiError } from '../../shared/api/client';
 import { useHasAnyPermission } from '../auth/usePermission';
 import { DRUG_MANAGE_PERMISSIONS } from '../auth/admin-permissions';
 import { Button } from '../../shared/ui/Button';
@@ -31,6 +32,8 @@ export function SupplierPane() {
   const canManage = useHasAnyPermission(DRUG_MANAGE_PERMISSIONS);
   const [includeInactive, setIncludeInactive] = useState(false);
   const [modal, setModal] = useState<ModalState | null>(null);
+  const [deactivateTarget, setDeactivateTarget] = useState<SupplierSummary | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const query = useSuppliersQuery(includeInactive);
   const createMutation = useCreateSupplierMutation();
@@ -39,6 +42,25 @@ export function SupplierPane() {
   const items = query.data?.items ?? [];
   const itemIds = items.map((s) => s.id);
   const rowSelection = useRowSelection(itemIds);
+
+  function errorMessage(err: unknown): string {
+    return err instanceof ApiError ? err.message : 'Có lỗi xảy ra, vui lòng thử lại.';
+  }
+
+  /** Nút "Ngưng sử dụng" nhanh ở danh sách — bắt xác nhận vì NCC sẽ hết chọn được khi lập Phiếu nhập kho mới. */
+  function handleDeactivate(item: SupplierSummary) {
+    setActionError(null);
+    updateMutation.mutate(
+      { id: item.id, body: { isActive: false, version: item.version } },
+      { onSuccess: () => setDeactivateTarget(null), onError: (err) => setActionError(errorMessage(err)) },
+    );
+  }
+
+  /** "Kích hoạt lại" — trực tiếp không cần xác nhận (cùng cách `ReferenceCatalogPane`/`UserAccountPane` xử lý). */
+  function handleReactivate(item: SupplierSummary) {
+    setActionError(null);
+    updateMutation.mutate({ id: item.id, body: { isActive: true, version: item.version } }, { onError: (err) => setActionError(errorMessage(err)) });
+  }
 
   return (
     <div className="flex h-full flex-col">
@@ -55,6 +77,7 @@ export function SupplierPane() {
         )}
       </div>
 
+      {actionError && <ErrorBanner message={actionError} />}
       {query.isError && <ErrorBanner message="Không tải được danh sách nhà cung cấp." onRetry={() => query.refetch()} />}
 
       {query.isLoading && (
@@ -89,7 +112,7 @@ export function SupplierPane() {
                   <th className="w-36 px-4 py-2.5 text-center">Điện thoại</th>
                   <th className="w-40 px-4 py-2.5 text-left">Người liên hệ</th>
                   <th className="w-32 px-4 py-2.5 text-center">Trạng thái</th>
-                  {canManage && <th className="w-20 px-4 py-2.5 text-center">Sửa</th>}
+                  {canManage && <th className="w-20 px-4 py-2.5 text-center">Thao tác</th>}
                 </tr>
               </thead>
               <tbody>
@@ -108,14 +131,35 @@ export function SupplierPane() {
                     </td>
                     {canManage && (
                       <td className="px-4 py-2 text-center">
-                        <button
-                          type="button"
-                          title="Sửa"
-                          onClick={() => setModal({ mode: 'edit', item: supplier })}
-                          className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                        >
-                          <PencilSimple size={15} weight="regular" aria-hidden="true" />
-                        </button>
+                        <div className="flex flex-nowrap items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            title="Sửa"
+                            onClick={() => setModal({ mode: 'edit', item: supplier })}
+                            className="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                          >
+                            <PencilSimple size={15} weight="regular" aria-hidden="true" />
+                          </button>
+                          {supplier.isActive ? (
+                            <button
+                              type="button"
+                              title="Ngưng sử dụng"
+                              onClick={() => setDeactivateTarget(supplier)}
+                              className="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                            >
+                              <Prohibit size={15} weight="regular" aria-hidden="true" />
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              title="Kích hoạt lại"
+                              onClick={() => handleReactivate(supplier)}
+                              className="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-blue-50 hover:text-blue-600"
+                            >
+                              <ArrowCounterClockwise size={15} weight="regular" aria-hidden="true" />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     )}
                   </tr>
@@ -142,6 +186,23 @@ export function SupplierPane() {
             }
           }}
         />
+      )}
+
+      {deactivateTarget && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/45 p-4">
+          <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
+            <p className="text-sm font-semibold text-slate-900">Ngưng sử dụng nhà cung cấp &quot;{deactivateTarget.name}&quot;?</p>
+            <p className="mt-1.5 text-xs text-slate-500">Sẽ không chọn được nhà cung cấp này khi lập Phiếu nhập kho mới. Có thể kích hoạt lại sau.</p>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button type="button" variant="secondary" onClick={() => setDeactivateTarget(null)}>
+                Huỷ
+              </Button>
+              <Button type="button" variant="danger" loading={updateMutation.isPending} onClick={() => handleDeactivate(deactivateTarget)}>
+                Ngưng sử dụng
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

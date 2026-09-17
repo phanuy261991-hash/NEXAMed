@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
-import { PencilSimple, Plus, Warehouse as WarehouseIcon } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, PencilSimple, Plus, Prohibit, Warehouse as WarehouseIcon } from '@phosphor-icons/react';
 import type { WarehouseSummary } from '@nexamed/shared';
+import { ApiError } from '../../shared/api/client';
 import { useHasAnyPermission } from '../auth/usePermission';
 import { DRUG_MANAGE_PERMISSIONS } from '../auth/admin-permissions';
 import { Button } from '../../shared/ui/Button';
@@ -34,6 +35,8 @@ interface ModalState {
 export function WarehousePane() {
   const canManage = useHasAnyPermission(DRUG_MANAGE_PERMISSIONS);
   const [modal, setModal] = useState<ModalState | null>(null);
+  const [deactivateTarget, setDeactivateTarget] = useState<WarehouseSummary | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const query = useWarehousesQuery();
   const departmentOptionsQuery = useDepartmentOptionsQuery();
@@ -44,6 +47,25 @@ export function WarehousePane() {
   const departments = departmentOptionsQuery.data?.items ?? [];
   const itemIds = items.map((w) => w.id);
   const rowSelection = useRowSelection(itemIds);
+
+  function errorMessage(err: unknown): string {
+    return err instanceof ApiError ? err.message : 'Có lỗi xảy ra, vui lòng thử lại.';
+  }
+
+  /** Nút "Ngưng sử dụng" nhanh ở danh sách — bắt xác nhận vì kho sẽ hết chọn được khi lập phiếu nhập/xuất mới. */
+  function handleDeactivate(item: WarehouseSummary) {
+    setActionError(null);
+    updateMutation.mutate(
+      { id: item.id, body: { isActive: false, version: item.version } },
+      { onSuccess: () => setDeactivateTarget(null), onError: (err) => setActionError(errorMessage(err)) },
+    );
+  }
+
+  /** "Kích hoạt lại" — trực tiếp không cần xác nhận (cùng cách `ReferenceCatalogPane`/`UserAccountPane` xử lý). */
+  function handleReactivate(item: WarehouseSummary) {
+    setActionError(null);
+    updateMutation.mutate({ id: item.id, body: { isActive: true, version: item.version } }, { onError: (err) => setActionError(errorMessage(err)) });
+  }
 
   return (
     <div className="flex h-full flex-col">
@@ -56,6 +78,7 @@ export function WarehousePane() {
         )}
       </div>
 
+      {actionError && <ErrorBanner message={actionError} />}
       {query.isError && <ErrorBanner message="Không tải được danh sách kho." onRetry={() => query.refetch()} />}
 
       {query.isLoading && (
@@ -87,7 +110,7 @@ export function WarehousePane() {
                   <th className="px-4 py-2.5 text-left">Khoa/Phòng quản lý</th>
                   <th className="w-32 px-4 py-2.5 text-center">Kho mặc định</th>
                   <th className="w-32 px-4 py-2.5 text-center">Trạng thái</th>
-                  {canManage && <th className="w-20 px-4 py-2.5 text-center">Sửa</th>}
+                  {canManage && <th className="w-20 px-4 py-2.5 text-center">Thao tác</th>}
                 </tr>
               </thead>
               <tbody>
@@ -107,14 +130,35 @@ export function WarehousePane() {
                     </td>
                     {canManage && (
                       <td className="px-4 py-2 text-center">
-                        <button
-                          type="button"
-                          title="Sửa"
-                          onClick={() => setModal({ mode: 'edit', item: warehouse })}
-                          className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                        >
-                          <PencilSimple size={15} weight="regular" aria-hidden="true" />
-                        </button>
+                        <div className="flex flex-nowrap items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            title="Sửa"
+                            onClick={() => setModal({ mode: 'edit', item: warehouse })}
+                            className="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                          >
+                            <PencilSimple size={15} weight="regular" aria-hidden="true" />
+                          </button>
+                          {warehouse.isActive ? (
+                            <button
+                              type="button"
+                              title="Ngưng sử dụng"
+                              onClick={() => setDeactivateTarget(warehouse)}
+                              className="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                            >
+                              <Prohibit size={15} weight="regular" aria-hidden="true" />
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              title="Kích hoạt lại"
+                              onClick={() => handleReactivate(warehouse)}
+                              className="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-blue-50 hover:text-blue-600"
+                            >
+                              <ArrowCounterClockwise size={15} weight="regular" aria-hidden="true" />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     )}
                   </tr>
@@ -142,6 +186,23 @@ export function WarehousePane() {
             }
           }}
         />
+      )}
+
+      {deactivateTarget && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/45 p-4">
+          <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
+            <p className="text-sm font-semibold text-slate-900">Ngưng sử dụng kho &quot;{deactivateTarget.name}&quot;?</p>
+            <p className="mt-1.5 text-xs text-slate-500">Sẽ không chọn được kho này khi lập phiếu nhập/xuất kho mới. Có thể kích hoạt lại sau.</p>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button type="button" variant="secondary" onClick={() => setDeactivateTarget(null)}>
+                Huỷ
+              </Button>
+              <Button type="button" variant="danger" loading={updateMutation.isPending} onClick={() => handleDeactivate(deactivateTarget)}>
+                Ngưng sử dụng
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

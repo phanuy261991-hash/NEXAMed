@@ -2,6 +2,16 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-17 (6)
+
+### Thêm nút Ẩn/Kích hoạt lại (isActive) cho danh sách Thuốc & Vật tư, Nhà cung cấp, Kho
+
+Chủ dự án phát hiện danh sách "Thuốc & Vật tư" không có chức năng vô hiệu hoá mặt hàng. Rà soát cho thấy backend đã hỗ trợ đầy đủ `isActive` qua `PATCH` từ Giai đoạn 1 (#148, có test xác nhận) nhưng `DrugCatalogPane.tsx` chưa từng nối UI để dùng — nút "Sửa" chỉ mở modal, không có cách nào đổi Trạng thái. Rà soát rộng hơn phát hiện lỗ hổng y hệt ở `SupplierPane.tsx`/`WarehousePane.tsx` (cùng khuôn code).
+
+Thêm nút "Ẩn"/"Ngưng sử dụng" (icon `Prohibit`, có popup xác nhận nêu rõ hậu quả — đúng khuôn `UserAccountPane.tsx`/`ReferenceCatalogPane.tsx`) và "Kích hoạt lại" (icon `ArrowCounterClockwise`, trực tiếp không cần xác nhận) vào cột "Thao tác" ở cả 3 danh sách. Không đổi backend/schema — dùng thẳng `useUpdateDrugMutation`/`useUpdateSupplierMutation`/`useUpdateWarehouseMutation` sẵn có.
+
+**Đã xác minh thật**: `pnpm --filter @nexamed/web run typecheck/build` sạch, `apps/api` 858/858 test không regress (thuần đổi frontend). Playwright qua Chrome thật (dữ liệu test tạo/dọn qua HTTP API bằng `dev.admin`, dùng lại dev server đang chạy sẵn) xác nhận cả 3 nơi: Ẩn → mặt hàng/NCC biến mất khỏi danh sách mặc định (bật "Hiện cả..." thấy lại), Kho hiện badge "Ngưng" ngay (không có filter ẩn/hiện) — Kích hoạt lại → về đúng "Đang dùng" cả 3 nơi, không lỗi console.
+
 ## 2026-09-17 (5) — HOÀN TẤT, đã verify Playwright đủ
 
 ### Gỡ auto-dispense mù, sửa 3 lỗ hổng mockup GĐ3, nhóm hiển thị hoá đơn, tách nhiều lô

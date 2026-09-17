@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { CaretDown, MagnifyingGlass, PencilSimple, Pill, Plus, Trash, Eye, FirstAidKit, X } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, CaretDown, MagnifyingGlass, PencilSimple, Pill, Plus, Prohibit, Trash, Eye, FirstAidKit, X } from '@phosphor-icons/react';
 import type { DrugControlType, DrugIngredientInput, DrugItemType, DrugSummary, DrugUnitInput, ReferenceCatalogCategory } from '@nexamed/shared';
+import { ApiError } from '../../shared/api/client';
 import { useHasAnyPermission, useHasPermission } from '../auth/usePermission';
 import { useDrugBatchBalancesQuery, useDrugLedgerQuery } from '../inventory/inventory.queries';
 import { DRUG_MANAGE_PERMISSIONS } from '../auth/admin-permissions';
@@ -149,6 +150,8 @@ export function DrugCatalogPane() {
   const [modal, setModal] = useState<{ mode: 'create' | 'edit'; itemType: DrugItemType; item?: DrugSummary } | null>(null);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [deactivateTarget, setDeactivateTarget] = useState<DrugSummary | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   // Kho Thuốc GĐ2 (docs/DECISIONS.md #146) — panel chi tiết đổi từ 1 khối cuộn dài sang tab thật.
   const [detailTab, setDetailTab] = useState<'info' | 'batches' | 'ledger' | 'history'>('info');
   const canSeeInventory = useHasPermission('stock_receipt', 'read');
@@ -214,6 +217,26 @@ export function DrugCatalogPane() {
     const tab = searchParams.get('tab');
     if (tab === 'batches' || tab === 'ledger' || tab === 'history') setDetailTab(tab);
   }, [items, searchParams]);
+
+  function errorMessage(err: unknown): string {
+    return err instanceof ApiError ? err.message : 'Có lỗi xảy ra, vui lòng thử lại.';
+  }
+
+  /** Nút "Ẩn" nhanh ở danh sách (không cần mở form Sửa) — bắt xác nhận vì mặt hàng sẽ hết chọn
+   * được ở phiếu nhập/xuất kho và kê đơn ngay lập tức. */
+  function handleDeactivate(item: DrugSummary) {
+    setActionError(null);
+    updateMutation.mutate(
+      { id: item.id, body: { isActive: false, version: item.version } },
+      { onSuccess: () => setDeactivateTarget(null), onError: (err) => setActionError(errorMessage(err)) },
+    );
+  }
+
+  /** "Kích hoạt lại" — trực tiếp không cần xác nhận (cùng cách `ReferenceCatalogPane`/`UserAccountPane` xử lý). */
+  function handleReactivate(item: DrugSummary) {
+    setActionError(null);
+    updateMutation.mutate({ id: item.id, body: { isActive: true, version: item.version } }, { onError: (err) => setActionError(errorMessage(err)) });
+  }
 
   return (
     <div className="flex h-full flex-col">
@@ -282,6 +305,7 @@ export function DrugCatalogPane() {
         )}
       </div>
 
+      {actionError && <ErrorBanner message={actionError} />}
       {query.isError && <ErrorBanner message="Không tải được danh mục." onRetry={() => query.refetch()} />}
 
       {query.isLoading && (
@@ -315,7 +339,7 @@ export function DrugCatalogPane() {
                   <th className="w-32 px-3 py-3 text-center">Giá bán</th>
                   <th className="w-24 px-3 py-3 text-center">Quản lý lô</th>
                   <th className="w-28 px-3 py-3 text-center">Trạng thái</th>
-                  {canManage && <th className="w-20 px-3 py-3 text-center">Sửa</th>}
+                  {canManage && <th className="w-20 px-3 py-3 text-center">Thao tác</th>}
                 </tr>
               </thead>
               <tbody>
@@ -363,14 +387,35 @@ export function DrugCatalogPane() {
                     </td>
                     {canManage && (
                       <td className="px-3 py-2.5 text-center" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          type="button"
-                          title="Sửa"
-                          onClick={() => setModal({ mode: 'edit', itemType: d.itemType, item: d })}
-                          className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                        >
-                          <PencilSimple size={15} weight="regular" aria-hidden="true" />
-                        </button>
+                        <div className="flex flex-nowrap items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            title="Sửa"
+                            onClick={() => setModal({ mode: 'edit', itemType: d.itemType, item: d })}
+                            className="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                          >
+                            <PencilSimple size={15} weight="regular" aria-hidden="true" />
+                          </button>
+                          {d.isActive ? (
+                            <button
+                              type="button"
+                              title="Ẩn"
+                              onClick={() => setDeactivateTarget(d)}
+                              className="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                            >
+                              <Prohibit size={15} weight="regular" aria-hidden="true" />
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              title="Kích hoạt lại"
+                              onClick={() => handleReactivate(d)}
+                              className="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-blue-50 hover:text-blue-600"
+                            >
+                              <ArrowCounterClockwise size={15} weight="regular" aria-hidden="true" />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     )}
                   </tr>
@@ -548,6 +593,25 @@ export function DrugCatalogPane() {
             }
           }}
         />
+      )}
+
+      {deactivateTarget && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/45 p-4">
+          <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
+            <p className="text-sm font-semibold text-slate-900">Ẩn &quot;{deactivateTarget.name}&quot; khỏi danh mục đang dùng?</p>
+            <p className="mt-1.5 text-xs text-slate-500">
+              Mặt hàng sẽ không còn chọn được khi lập Phiếu nhập/Xuất kho hoặc kê đơn mới. Dữ liệu tồn kho/thẻ kho cũ vẫn giữ nguyên. Có thể kích hoạt lại sau.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button type="button" variant="secondary" onClick={() => setDeactivateTarget(null)}>
+                Huỷ
+              </Button>
+              <Button type="button" variant="danger" loading={updateMutation.isPending} onClick={() => handleDeactivate(deactivateTarget)}>
+                Ẩn
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
