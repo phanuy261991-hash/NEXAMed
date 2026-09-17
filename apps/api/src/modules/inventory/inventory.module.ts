@@ -20,8 +20,9 @@ import { InventoryBatchRepository } from './inventory-batch.repository';
  * trong CÙNG transaction, đúng tiền lệ "chia sẻ Repository giữa module", #042).
  *
  * `imports: [IamModule]` cho `DOCTOR_DIRECTORY_PORT` (resolve tên người tạo/duyệt phiếu);
- * `imports: [ClinicModule]` cho `BusinessCodeService` (sinh `receiptNo`); `imports: [DrugModule]`
- * cho `DrugRepository`/`WarehouseRepository`/`SupplierRepository`.
+ * `imports: [ClinicModule]` cho `BusinessCodeService` (sinh `receiptNo`) và `CLINIC_CONFIG_READER_PORT`
+ * (`StockBalanceService` đọc `expiryWarningDays`, 2026-09-17); `imports: [DrugModule]` cho
+ * `DrugRepository`/`WarehouseRepository`/`SupplierRepository`.
  */
 @Module({
   imports: [IamModule, ClinicModule, DrugModule],

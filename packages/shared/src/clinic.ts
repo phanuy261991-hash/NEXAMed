@@ -267,6 +267,12 @@ export const clinicSettingsSchema = z.object({
    * ở `ClinicSettingsService.updateSettings()`, lỗi `SOLO_CLINIC_WORKFLOW_CONFLICTS_WITH_MULTI_CASHIER`.
    */
   soloClinicWorkflowEnabled: z.boolean(),
+  /**
+   * "Cảnh báo hạn dùng" (Kho Thuốc GĐ2) — số ngày trước hạn dùng để tab "Tồn kho theo lô"/"Cảnh báo
+   * hạn dùng" bắt đầu hiện badge cảnh báo. Mặc định `30` (khớp hằng số hardcode cũ ở
+   * `StockBalanceService` trước khi cấu hình được theo tenant, 2026-09-17). Pill "Cấu hình chung".
+   */
+  expiryWarningDays: z.number().int().min(1).max(365),
 });
 export type ClinicSettings = z.infer<typeof clinicSettingsSchema>;
 
@@ -296,6 +302,7 @@ export const updateClinicSettingsRequestSchema = z.object({
   sidebarAutoCollapseEnabled: z.boolean().optional(),
   walletMixedPaymentEnabled: z.boolean().optional(),
   soloClinicWorkflowEnabled: z.boolean().optional(),
+  expiryWarningDays: z.number().int().min(1).max(365).optional(),
 });
 export type UpdateClinicSettingsRequest = z.infer<typeof updateClinicSettingsRequestSchema>;
 
@@ -332,6 +339,9 @@ export const DEFAULT_WALLET_MIXED_PAYMENT_ENABLED = false;
 export const DEFAULT_SIDEBAR_AUTO_COLLAPSE_ENABLED = false;
 /** Tắt theo mặc định (an toàn — giữ nguyên 3 thao tác tách biệt hiện tại tới khi chủ động bật). */
 export const DEFAULT_SOLO_CLINIC_WORKFLOW_ENABLED = false;
+/** Giữ đúng ngưỡng hardcode cũ (`DEFAULT_EXPIRY_WARNING_DAYS` ở `StockBalanceService`) làm mặc định
+ * khi tenant chưa cấu hình. */
+export const DEFAULT_EXPIRY_WARNING_DAYS = 30;
 
 /**
  * `GET /clinic-settings/cashier-shift-blind-close-enabled` — chiếu tối thiểu tự-phục vụ, cùng lý

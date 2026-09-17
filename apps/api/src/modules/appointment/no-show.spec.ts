@@ -106,6 +106,7 @@ describe('markNoShowForAllTenants — S5-07, APP-05', () => {
       getCashVoucherApprovalEnabled: () => Promise.reject(new Error('không dùng trong test này')),
       getCashierDrawerSeparateEnabled: () => Promise.reject(new Error('không dùng trong test này')),
       getWalletMixedPaymentEnabled: () => Promise.reject(new Error('không dùng trong test này')),
+      getExpiryWarningDays: () => Promise.reject(new Error('không dùng trong test này')),
     };
   }
 

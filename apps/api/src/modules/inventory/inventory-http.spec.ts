@@ -332,6 +332,33 @@ describe('HTTP e2e — /api/v1/inventory (Phiếu nhập kho GĐ2)', () => {
     expect(res.body.data.expiredCount).toBeGreaterThanOrEqual(1);
   });
 
+  it('Cảnh báo hạn dùng — tôn trọng ngưỡng expiryWarningDays đã cấu hình (2026-09-17)', async () => {
+    // Lô hạn dùng còn 60 ngày — ngoài ngưỡng mặc định 30 ngày nên KHÔNG cảnh báo tới khi tenant tự
+    // cấu hình ngưỡng lớn hơn (nối tenant_setting.expiry_warning_days, docs/CURRENT.md mục treo).
+    const in60Days = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const drugId = await createDrug(clinicAdminToken, { name: 'Thuốc test ngưỡng cảnh báo' });
+    const created = await createReceipt(clinicAdminToken, { lines: [{ drugId, unitCode: 'VIEN', quantity: 10, unitCost: 100, batchNo: `WARN-${randomUUID().slice(0, 6)}`, expiryDate: in60Days }] });
+    await request(app.getHttpServer()).post(`/api/v1/inventory/receipts/${created.body.data.id}/approve`).set(authed(clinicAdminToken)).send({ version: created.body.data.version });
+
+    const beforeRes = await request(app.getHttpServer()).get('/api/v1/inventory/expiry-warnings').set(authed(clinicAdminToken)).query({ warehouseId });
+    expect(beforeRes.body.data.items.some((i: { drugId: string }) => i.drugId === drugId)).toBe(false);
+
+    const batchesBefore = await request(app.getHttpServer()).get(`/api/v1/inventory/drugs/${drugId}/balances`).set(authed(clinicAdminToken));
+    expect(batchesBefore.body.data.items[0].expiryStatus).toBeNull();
+
+    const patch = await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(clinicAdminToken)).send({ expiryWarningDays: 90 });
+    expect(patch.status).toBe(200);
+
+    const afterRes = await request(app.getHttpServer()).get('/api/v1/inventory/expiry-warnings').set(authed(clinicAdminToken)).query({ warehouseId });
+    const item = afterRes.body.data.items.find((i: { drugId: string }) => i.drugId === drugId);
+    expect(item.status).toBe('EXPIRING_SOON');
+
+    const batchesAfter = await request(app.getHttpServer()).get(`/api/v1/inventory/drugs/${drugId}/balances`).set(authed(clinicAdminToken));
+    expect(batchesAfter.body.data.items[0].expiryStatus).toBe('EXPIRING_SOON');
+
+    await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(clinicAdminToken)).send({ expiryWarningDays: 30 });
+  });
+
   it('quyền chỉ có stock_receipt.create không Duyệt/Từ chối/Huỷ được (403)', async () => {
     // Vai trò tuỳ biến: sao chép clinic_admin nhưng gỡ stock_receipt.approve — tạo qua API roles.
     const rolesRes = await request(app.getHttpServer()).get('/api/v1/roles').set(authed(clinicAdminToken));

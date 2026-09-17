@@ -2,6 +2,14 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-17 (3)
+
+### Nối "Ngưỡng cảnh báo hạn dùng" vào `tenant_setting` thật + fix bố cục bảng Thuốc & Vật tư
+
+Chủ dự án phát hiện lúc test tab "Tồn kho theo lô" (GĐ2): ngưỡng cảnh báo hết hạn chỉ hardcode 30 ngày dù comment code nói đã cấu hình được theo tenant. Thêm `expiryWarningDays` vào `ClinicSettings`/`ClinicConfigReaderPort`/`ClinicSettingsRepository` (không migration mới, `tenant_setting` là bảng key-value có sẵn) + Boxed Section "Kho" mới ở pill "Cấu hình chung" (`/admin/system-config`). `StockBalanceService` đọc ngưỡng qua port thay hằng số cứng. Tiện sửa 1 bug bố cục thật ở `DrugCatalogPane.tsx` (cột "Mã hàng" xuống dòng, "Tên hàng" quá rộng).
+
+**Đã xác minh thật**: `apps/api` +5 test (830/831 pass, 1 flake `icd10-http.spec.ts` đã biết), `pnpm -w typecheck/lint/build` sạch, Playwright qua Chrome thật. Xem chi tiết `docs/DECISIONS.md` #162.
+
 ## 2026-09-17 (2)
 
 ### Kho Thuốc GĐ2 verify Playwright — loạt bug thật + Combobox/DateInput cho toàn app + Quy cách đóng gói

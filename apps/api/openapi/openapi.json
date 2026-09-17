@@ -4831,6 +4831,11 @@
                         },
                         "soloClinicWorkflowEnabled": {
                           "type": "boolean"
+                        },
+                        "expiryWarningDays": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 365
                         }
                       },
                       "required": [
@@ -4852,7 +4857,8 @@
                         "cashierDrawerSeparateEnabled",
                         "sidebarAutoCollapseEnabled",
                         "walletMixedPaymentEnabled",
-                        "soloClinicWorkflowEnabled"
+                        "soloClinicWorkflowEnabled",
+                        "expiryWarningDays"
                       ]
                     },
                     "meta": {
@@ -29603,6 +29609,11 @@
                         },
                         "soloClinicWorkflowEnabled": {
                           "type": "boolean"
+                        },
+                        "expiryWarningDays": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 365
                         }
                       },
                       "required": [
@@ -29624,7 +29635,8 @@
                         "cashierDrawerSeparateEnabled",
                         "sidebarAutoCollapseEnabled",
                         "walletMixedPaymentEnabled",
-                        "soloClinicWorkflowEnabled"
+                        "soloClinicWorkflowEnabled",
+                        "expiryWarningDays"
                       ]
                     },
                     "meta": {
@@ -29935,6 +29947,11 @@
                   },
                   "soloClinicWorkflowEnabled": {
                     "type": "boolean"
+                  },
+                  "expiryWarningDays": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 365
                   }
                 }
               }
@@ -30170,6 +30187,11 @@
                         },
                         "soloClinicWorkflowEnabled": {
                           "type": "boolean"
+                        },
+                        "expiryWarningDays": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 365
                         }
                       },
                       "required": [
@@ -30191,7 +30213,8 @@
                         "cashierDrawerSeparateEnabled",
                         "sidebarAutoCollapseEnabled",
                         "walletMixedPaymentEnabled",
-                        "soloClinicWorkflowEnabled"
+                        "soloClinicWorkflowEnabled",
+                        "expiryWarningDays"
                       ]
                     },
                     "meta": {

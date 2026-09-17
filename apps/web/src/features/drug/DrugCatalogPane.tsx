@@ -308,8 +308,8 @@ export function DrugCatalogPane() {
                   <th className="w-8 px-1 py-3">
                     <span className="sr-only">Xem chi tiết</span>
                   </th>
-                  <th className="w-28 px-3 py-3 text-center">Mã hàng</th>
-                  <th className="px-3 py-3 text-left">Tên hàng</th>
+                  <th className="w-36 whitespace-nowrap px-3 py-3 text-center">Mã hàng</th>
+                  <th className="w-72 px-3 py-3 text-left">Tên hàng</th>
                   <th className="w-24 px-3 py-3 text-center">Loại</th>
                   <th className="w-20 px-3 py-3 text-center">ĐVT</th>
                   <th className="w-32 px-3 py-3 text-center">Giá bán</th>
@@ -338,7 +338,7 @@ export function DrugCatalogPane() {
                     <td className="px-1 py-2.5 text-center">
                       <Eye size={15} weight="regular" className={selectedId === d.id ? 'text-blue-600' : 'text-slate-400'} aria-hidden="true" />
                     </td>
-                    <td className="px-3 py-2.5 text-center font-bold tabular-nums text-slate-800">{d.code}</td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-center font-bold tabular-nums text-slate-800">{d.code}</td>
                     <td className="px-3 py-2.5 text-left">
                       <div className="flex items-center font-medium text-slate-900">
                         {d.name}

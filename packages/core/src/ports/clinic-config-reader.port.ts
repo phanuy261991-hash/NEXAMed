@@ -118,6 +118,13 @@ export interface ClinicConfigReaderPort {
    * do các cấu hình khác ở trên.
    */
   getWalletMixedPaymentEnabled(tenantId: string): Promise<boolean>;
+
+  /**
+   * "Cảnh báo hạn dùng" (Kho Thuốc GĐ2) — số ngày trước hạn dùng để bắt đầu cảnh báo
+   * (`tenant_setting` key `expiry_warning_days`, mặc định `30`). Module `inventory` đọc qua port
+   * này (module `clinic` sở hữu `tenant_setting`), cùng lý do các cấu hình khác ở trên.
+   */
+  getExpiryWarningDays(tenantId: string): Promise<number>;
 }
 
 export const CLINIC_CONFIG_READER_PORT = Symbol('CLINIC_CONFIG_READER_PORT');

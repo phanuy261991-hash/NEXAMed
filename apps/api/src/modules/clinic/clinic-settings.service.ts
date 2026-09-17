@@ -48,6 +48,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         sidebarAutoCollapseEnabled,
         walletMixedPaymentEnabled,
         soloClinicWorkflowEnabled,
+        expiryWarningDays,
       ] = await Promise.all([
         this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
         this.clinicSettingsRepository.getSlotDurationMinutes(tx, tenantId),
@@ -68,6 +69,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getSidebarAutoCollapseEnabled(tx, tenantId),
         this.clinicSettingsRepository.getWalletMixedPaymentEnabled(tx, tenantId),
         this.clinicSettingsRepository.getSoloClinicWorkflowEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getExpiryWarningDays(tx, tenantId),
       ]);
       return {
         businessHours,
@@ -89,6 +91,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         sidebarAutoCollapseEnabled,
         walletMixedPaymentEnabled,
         soloClinicWorkflowEnabled,
+        expiryWarningDays,
       };
     });
   }
@@ -269,6 +272,9 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
       if (dto.soloClinicWorkflowEnabled !== undefined) {
         await this.clinicSettingsRepository.upsertSoloClinicWorkflowEnabled(tx, tenantId, actorId, dto.soloClinicWorkflowEnabled);
       }
+      if (dto.expiryWarningDays !== undefined) {
+        await this.clinicSettingsRepository.upsertExpiryWarningDays(tx, tenantId, actorId, dto.expiryWarningDays);
+      }
 
       const hasChanges =
         dto.businessHours !== undefined ||
@@ -289,7 +295,8 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         dto.cashierDrawerSeparateEnabled !== undefined ||
         dto.sidebarAutoCollapseEnabled !== undefined ||
         dto.walletMixedPaymentEnabled !== undefined ||
-        dto.soloClinicWorkflowEnabled !== undefined;
+        dto.soloClinicWorkflowEnabled !== undefined ||
+        dto.expiryWarningDays !== undefined;
       if (hasChanges) {
         await writeAuditLog(tx, tenantId, {
           actorId,
@@ -322,6 +329,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         sidebarAutoCollapseEnabled,
         walletMixedPaymentEnabled,
         soloClinicWorkflowEnabled,
+        expiryWarningDays,
       ] = await Promise.all([
         this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
         this.clinicSettingsRepository.getSlotDurationMinutes(tx, tenantId),
@@ -342,6 +350,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getSidebarAutoCollapseEnabled(tx, tenantId),
         this.clinicSettingsRepository.getWalletMixedPaymentEnabled(tx, tenantId),
         this.clinicSettingsRepository.getSoloClinicWorkflowEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getExpiryWarningDays(tx, tenantId),
       ]);
       return {
         businessHours,
@@ -363,7 +372,13 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         sidebarAutoCollapseEnabled,
         walletMixedPaymentEnabled,
         soloClinicWorkflowEnabled,
+        expiryWarningDays,
       };
     });
+  }
+
+  /** `ClinicConfigReaderPort` ("Cảnh báo hạn dùng", Kho Thuốc GĐ2) — module `inventory` đọc qua port này (không có endpoint tự-phục vụ, chỉ backend rẽ nhánh lúc tính cảnh báo hạn dùng). */
+  getExpiryWarningDays(tenantId: string): ReturnType<ClinicConfigReaderPort['getExpiryWarningDays']> {
+    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getExpiryWarningDays(tx, tenantId));
   }
 }

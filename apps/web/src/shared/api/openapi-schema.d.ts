@@ -1954,6 +1954,7 @@ export interface paths {
                                 sidebarAutoCollapseEnabled: boolean;
                                 walletMixedPaymentEnabled: boolean;
                                 soloClinicWorkflowEnabled: boolean;
+                                expiryWarningDays: number;
                             };
                             meta: Record<string, never>;
                         };
@@ -11845,6 +11846,7 @@ export interface paths {
                                 sidebarAutoCollapseEnabled: boolean;
                                 walletMixedPaymentEnabled: boolean;
                                 soloClinicWorkflowEnabled: boolean;
+                                expiryWarningDays: number;
                             };
                             meta: Record<string, never>;
                         };
@@ -11946,6 +11948,7 @@ export interface paths {
                         sidebarAutoCollapseEnabled?: boolean;
                         walletMixedPaymentEnabled?: boolean;
                         soloClinicWorkflowEnabled?: boolean;
+                        expiryWarningDays?: number;
                     };
                 };
             };
@@ -12006,6 +12009,7 @@ export interface paths {
                                 sidebarAutoCollapseEnabled: boolean;
                                 walletMixedPaymentEnabled: boolean;
                                 soloClinicWorkflowEnabled: boolean;
+                                expiryWarningDays: number;
                             };
                             meta: Record<string, never>;
                         };

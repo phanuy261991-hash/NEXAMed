@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import { computeExpiryStatus, toVietnamDateParts } from '@nexamed/core';
+import { Inject, Injectable } from '@nestjs/common';
+import { CLINIC_CONFIG_READER_PORT, computeExpiryStatus, toVietnamDateParts, type ClinicConfigReaderPort } from '@nexamed/core';
 import type {
   GetDrugBatchBalancesResponse,
   ListStockBalancesQuery,
@@ -14,10 +14,6 @@ import { DrugRepository } from '../drug/drug.repository';
 import { WarehouseRepository } from '../drug/warehouse.repository';
 import { InventoryBatchRepository } from './inventory-batch.repository';
 import { StockBalanceRepository } from './stock-balance.repository';
-
-/** Ngưỡng "sắp hết hạn" — cấu hình theo tenant (`tenant_setting.expiry_warning_days`, mặc định 30),
- * đọc/ghi qua `GET/PATCH /clinic-settings` có sẵn (Kho Thuốc GĐ2, kế hoạch kỹ thuật mục 8). */
-const DEFAULT_EXPIRY_WARNING_DAYS = 30;
 
 function resolveStatus(quantityOnHand: number, min: number | null, max: number | null): StockBalanceStatus {
   if (quantityOnHand <= 0) return 'OUT';
@@ -34,6 +30,7 @@ export class StockBalanceService {
     private readonly inventoryBatchRepository: InventoryBatchRepository,
     private readonly drugRepository: DrugRepository,
     private readonly warehouseRepository: WarehouseRepository,
+    @Inject(CLINIC_CONFIG_READER_PORT) private readonly clinicConfigReader: ClinicConfigReaderPort,
   ) {}
 
   /** "Tồn kho" (view "Theo mặt hàng") — tổng hợp theo (drug, warehouse), gộp mọi lô. */
@@ -84,11 +81,14 @@ export class StockBalanceService {
 
   /** "Tồn kho theo lô" (panel chi tiết thuốc) — 1 thuốc, mọi lô còn tồn. */
   async getForDrug(tenantId: string, drugId: string, warehouseId?: string): Promise<GetDrugBatchBalancesResponse> {
-    const rows = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.inventoryBatchRepository.listWithBalanceForDrug(tx, tenantId, drugId, warehouseId));
+    const [rows, expiryWarningDays] = await Promise.all([
+      this.unitOfWork.runInTenantScope(tenantId, (tx) => this.inventoryBatchRepository.listWithBalanceForDrug(tx, tenantId, drugId, warehouseId)),
+      this.clinicConfigReader.getExpiryWarningDays(tenantId),
+    ]);
     const today = toVietnamDateParts(new Date());
     const todayUtcMs = Date.UTC(today.year, today.month - 1, today.day);
     const items = rows.map((r) => {
-      const expiry = r.expiryDate ? computeExpiryStatus(r.expiryDate, todayUtcMs, DEFAULT_EXPIRY_WARNING_DAYS) : null;
+      const expiry = r.expiryDate ? computeExpiryStatus(r.expiryDate, todayUtcMs, expiryWarningDays) : null;
       return {
         batchId: r.batchId,
         batchNo: r.batchNo,
@@ -104,12 +104,13 @@ export class StockBalanceService {
     return { items, totalQuantityOnHand: items.reduce((sum, i) => sum + i.quantityOnHand, 0) };
   }
 
-  /** "Cảnh báo hạn dùng" — mọi lô còn tồn, hạn dùng trong `DEFAULT_EXPIRY_WARNING_DAYS` ngày tới
-   * hoặc đã hết hạn. Ngưỡng cố định GĐ2 (chưa nối `tenant_setting.expiry_warning_days` — xem "Còn
-   * treo" khi cập nhật docs). */
+  /** "Cảnh báo hạn dùng" — mọi lô còn tồn, hạn dùng trong ngưỡng `expiryWarningDays` tới hoặc đã
+   * hết hạn. Ngưỡng đọc theo tenant qua `ClinicConfigReaderPort` (`tenant_setting.expiry_warning_days`,
+   * mặc định 30 — đọc/ghi qua `GET/PATCH /clinic-settings`). */
   async listExpiryWarnings(tenantId: string, query: ListStockExpiryWarningsQuery): Promise<ListStockExpiryWarningsResponse> {
+    const expiryWarningDays = await this.clinicConfigReader.getExpiryWarningDays(tenantId);
     const today = toVietnamDateParts(new Date());
-    const thresholdMs = Date.UTC(today.year, today.month - 1, today.day) + DEFAULT_EXPIRY_WARNING_DAYS * 24 * 60 * 60 * 1000;
+    const thresholdMs = Date.UTC(today.year, today.month - 1, today.day) + expiryWarningDays * 24 * 60 * 60 * 1000;
     const threshold = new Date(thresholdMs);
 
     const rows = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.inventoryBatchRepository.listExpiryWarnings(tx, tenantId, threshold, query.warehouseId));
@@ -119,7 +120,7 @@ export class StockBalanceService {
     let expiredCount = 0;
     const items = rows.map((r) => {
       // Repository đã lọc sẵn theo `threshold` nên `computeExpiryStatus` luôn trả kết quả (không null).
-      const expiry = computeExpiryStatus(r.expiryDate, todayMs, DEFAULT_EXPIRY_WARNING_DAYS)!;
+      const expiry = computeExpiryStatus(r.expiryDate, todayMs, expiryWarningDays)!;
       if (expiry.status === 'EXPIRED') expiredCount += 1;
       else expiringSoonCount += 1;
       return {

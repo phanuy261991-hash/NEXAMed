@@ -43,6 +43,9 @@ const sectionBadgeClassName =
  * `@nexamed/shared`, khai riêng ở đây thay vì import thẳng (hằng số giá trị thuần từ
  * `packages/shared` không export được qua `vite build` — cùng lỗi bundler #032/`ExamConfigPane.tsx`). */
 const DEFAULT_WORK_SHIFT_ASSIGNMENT_LOCK_GRACE_DAYS = 0;
+/** Fallback trước khi query tải xong — khớp `DEFAULT_EXPIRY_WARNING_DAYS` ở `@nexamed/shared`,
+ * cùng lý do khai riêng ở trên (2026-09-17, nối cấu hình "Cảnh báo hạn dùng" Kho Thuốc GĐ2). */
+const DEFAULT_EXPIRY_WARNING_DAYS = 30;
 
 /**
  * "Cấu hình chung" — mục con trong pill "Cấu hình phòng khám", dưới "Ca làm việc" (chủ dự án yêu
@@ -74,9 +77,13 @@ export function GeneralConfigPane() {
   const [editingGraceDays, setEditingGraceDays] = useState(false);
   const [graceDays, setGraceDays] = useState(String(DEFAULT_WORK_SHIFT_ASSIGNMENT_LOCK_GRACE_DAYS));
 
+  const [editingExpiryWarningDays, setEditingExpiryWarningDays] = useState(false);
+  const [expiryWarningDays, setExpiryWarningDays] = useState(String(DEFAULT_EXPIRY_WARNING_DAYS));
+
   useEffect(() => {
     if (!settingsQuery.data) return;
     setGraceDays(String(settingsQuery.data.workShiftAssignmentLockGraceDays));
+    setExpiryWarningDays(String(settingsQuery.data.expiryWarningDays));
   }, [settingsQuery.data]);
 
   const enabled = settingsQuery.data?.allowStaffSelfScheduleEnabled ?? true;
@@ -108,6 +115,20 @@ export function GeneralConfigPane() {
   }
 
   const graceDaysInvalid = editingGraceDays && (!Number.isInteger(Number(graceDays)) || Number(graceDays) < 0 || Number(graceDays) > 27);
+
+  function handleCancelExpiryWarningDays() {
+    setExpiryWarningDays(String(settingsQuery.data?.expiryWarningDays ?? DEFAULT_EXPIRY_WARNING_DAYS));
+    setEditingExpiryWarningDays(false);
+  }
+
+  function handleSaveExpiryWarningDays() {
+    const parsed = Number(expiryWarningDays);
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 365) return;
+    updateMutation.mutate({ expiryWarningDays: parsed }, { onSuccess: () => setEditingExpiryWarningDays(false) });
+  }
+
+  const expiryWarningDaysInvalid =
+    editingExpiryWarningDays && (!Number.isInteger(Number(expiryWarningDays)) || Number(expiryWarningDays) < 1 || Number(expiryWarningDays) > 365);
 
   return (
     <div className="flex flex-col gap-4">
@@ -196,6 +217,61 @@ export function GeneralConfigPane() {
           onChange={(checked) => updateMutation.mutate({ sidebarAutoCollapseEnabled: checked })}
           ariaLabel="Tự động thu gọn menu khi chuyển trang"
         />
+      </div>
+    </div>
+
+    <div className={sectionBoxClassName}>
+      <span className={sectionBadgeClassName}>Kho</span>
+
+      <div className="flex items-start justify-between gap-5">
+        <div>
+          <p className="text-[14.5px] font-bold text-slate-900">Ngưỡng cảnh báo hạn dùng sắp hết</p>
+          <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
+            Số ngày trước hạn dùng để bắt đầu hiển thị cảnh báo lô sắp hết hạn trong &quot;Tồn kho theo lô&quot; và
+            &quot;Cảnh báo hạn dùng&quot;.
+          </p>
+        </div>
+        <div className="flex flex-shrink-0 items-center gap-2">
+          {editingExpiryWarningDays ? (
+            <>
+              <input
+                id="expiry-warning-days"
+                type="number"
+                min={1}
+                max={365}
+                value={expiryWarningDays}
+                onChange={(e) => setExpiryWarningDays(e.target.value)}
+                className="w-20 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              />
+              <span className="text-sm text-slate-500">ngày</span>
+              <Button
+                type="button"
+                variant="secondary"
+                className="px-3 py-1.5 text-xs"
+                onClick={handleCancelExpiryWarningDays}
+                disabled={updateMutation.isPending}
+              >
+                Huỷ
+              </Button>
+              <Button
+                type="button"
+                className="px-3 py-1.5 text-xs"
+                loading={updateMutation.isPending}
+                disabled={expiryWarningDaysInvalid}
+                onClick={handleSaveExpiryWarningDays}
+              >
+                Lưu
+              </Button>
+            </>
+          ) : (
+            <>
+              <span className="rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-base font-bold text-blue-700">
+                {settingsQuery.data.expiryWarningDays} ngày
+              </span>
+              <EditIconButton onClick={() => setEditingExpiryWarningDays(true)} />
+            </>
+          )}
+        </div>
       </div>
     </div>
     </div>

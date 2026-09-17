@@ -14,6 +14,7 @@ import {
   DEFAULT_CASH_VOUCHER_APPROVAL_ENABLED,
   DEFAULT_CASHIER_SHIFT_MULTI_CASHIER_ENABLED,
   DEFAULT_CASHIER_SHIFT_REQUIRED_ENABLED,
+  DEFAULT_EXPIRY_WARNING_DAYS,
   DEFAULT_NO_SHOW_AUTO_ENABLED,
   DEFAULT_NO_SHOW_THRESHOLD_MINUTES,
   DEFAULT_OVERDUE_WAIT_WARNING_MINUTES,
@@ -92,6 +93,10 @@ const walletMixedPaymentEnabledSchema = z.boolean();
 // tách biệt hiện tại) cho tenant chưa từng cấu hình.
 const SOLO_CLINIC_WORKFLOW_ENABLED_KEY = 'solo_clinic_workflow_enabled';
 const soloClinicWorkflowEnabledSchema = z.boolean();
+// "Cảnh báo hạn dùng" (Kho Thuốc GĐ2) — số ngày trước hạn dùng để bắt đầu cảnh báo, mặc định giữ
+// đúng ngưỡng hardcode cũ (30 ngày) cho tenant chưa từng cấu hình (2026-09-17).
+const EXPIRY_WARNING_DAYS_KEY = 'expiry_warning_days';
+const expiryWarningDaysSchema = z.number().int().min(1).max(365);
 // "Cấu hình mẫu mã phát sinh" (docs/DECISIONS.md #114, 2026-09-03) — 1 object JSON duy nhất,
 // khoá theo loại mã (7 loại), chỉ chứa entry của loại mã ĐÃ được tenant chủ động sửa (loại chưa
 // đụng tới thì KHÔNG có key — service tự áp mặc định khớp hành vi cũ, xem `BusinessCodeService`).
@@ -330,6 +335,19 @@ export class ClinicSettingsRepository {
 
   upsertSoloClinicWorkflowEnabled(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
     return this.upsert(tx, tenantId, actorId, SOLO_CLINIC_WORKFLOW_ENABLED_KEY, value);
+  }
+
+  async getExpiryWarningDays(tx: Prisma.TransactionClient, tenantId: string): Promise<number> {
+    const setting = await tx.tenantSetting.findFirst({ where: { tenantId, key: EXPIRY_WARNING_DAYS_KEY } });
+    if (!setting) {
+      return DEFAULT_EXPIRY_WARNING_DAYS;
+    }
+    const parsed = expiryWarningDaysSchema.safeParse(setting.valueJson);
+    return parsed.success ? parsed.data : DEFAULT_EXPIRY_WARNING_DAYS;
+  }
+
+  upsertExpiryWarningDays(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: number) {
+    return this.upsert(tx, tenantId, actorId, EXPIRY_WARNING_DAYS_KEY, value);
   }
 
   /** Chỉ trả entry của loại mã tenant ĐÃ chủ động cấu hình — loại mã vắng mặt nghĩa là "dùng mặc
