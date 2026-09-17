@@ -21,6 +21,14 @@ export const invoiceStatusSchema = z.enum(['UNPAID', 'PAID', 'CANCELLED', 'REFUN
 export type InvoiceStatus = z.infer<typeof invoiceStatusSchema>;
 
 /**
+ * Kho Thuốc GĐ3 (#163/#165) — `SERVICE` (hoá đơn dịch vụ khám, mặc định, tối đa 1/lượt khám) hay
+ * `DRUG` (hoá đơn tiền thuốc, sinh khi hoá đơn SERVICE đã đóng hoặc tenant bật tách riêng — có thể
+ * nhiều hoá đơn `DRUG`/lượt khám). Trước #165 field này chưa từng lộ ra ngoài DB.
+ */
+export const invoiceTypeSchema = z.enum(['SERVICE', 'DRUG']);
+export type InvoiceType = z.infer<typeof invoiceTypeSchema>;
+
+/**
  * Mã tham chiếu `reference_catalog` category `PAYMENT_METHOD` (text, KHÔNG enum cố định — chủ dự
  * án yêu cầu trực tiếp 2026-08-27, đảo ngược thiết kế ban đầu chỉ có CASH/BANK_TRANSFER). Cùng
  * khuôn `examTypeCode`/`priceTypeCode`/`unitCode` — snapshot mã lúc thu tiền, không FK cứng.
@@ -53,6 +61,14 @@ export const invoiceLineSchema = z.object({
   discountValue: z.number().int().nullable(),
   /** Số tiền chiết khấu đã tính của RIÊNG dòng này — 0 khi `discountType` null. */
   discountAmount: z.number().int(),
+  /**
+   * Kho Thuốc GĐ3 (#163/#165) — nguồn gốc dòng: `SERVICE` (dịch vụ khám) hay `DRUG` (tiền thuốc,
+   * từ Phiếu xuất kho). Web nhóm 2 phần "Dịch vụ khám"/"Tiền thuốc" theo field này khi hiển thị.
+   */
+  lineSource: invoiceTypeSchema,
+  /** Mã Phiếu xuất kho nguồn — chỉ có giá trị khi `lineSource==='DRUG'`, dùng làm nhãn nhóm "Tiền
+   * thuốc — Phiếu xuất {stockIssueNo}" (không có mã đơn thuốc hiển thị — `prescription` chỉ có `id`). */
+  stockIssueNo: z.string().nullable(),
 });
 export type InvoiceLine = z.infer<typeof invoiceLineSchema>;
 
@@ -61,10 +77,22 @@ export type InvoiceLine = z.infer<typeof invoiceLineSchema>;
  * phiếu thu (không có dòng dịch vụ nào có giá lúc tiếp nhận — không có gì để thu, xem
  * `InvoiceService.createFromServiceItems`).
  */
+/** Kho Thuốc GĐ3 (#165) — tóm tắt 1 hoá đơn KHÁC của CÙNG lượt khám, cho khối tham chiếu chéo khi
+ * 1 lượt khám có >1 hoá đơn (hoá đơn khám đã đóng + hoá đơn thuốc riêng). */
+export const invoiceSiblingSchema = z.object({
+  invoiceId: z.string().uuid(),
+  invoiceNo: z.string(),
+  invoiceType: invoiceTypeSchema,
+  status: invoiceStatusSchema,
+  dueAmount: z.number().int(),
+});
+export type InvoiceSibling = z.infer<typeof invoiceSiblingSchema>;
+
 export const invoiceSchema = z.object({
   id: z.string().uuid(),
   encounterId: z.string().uuid(),
   invoiceNo: z.string(),
+  invoiceType: invoiceTypeSchema,
   status: invoiceStatusSchema,
   /** Tổng tiền dịch vụ TRƯỚC chiết khấu (gross) — giữ nguyên ý nghĩa cũ, KHÔNG phải số tiền phải thu. */
   totalAmount: z.number().int(),
@@ -109,6 +137,9 @@ export const invoiceSchema = z.object({
   /** #085 — có mặt khi `status='REFUNDED'`: thời điểm + lý do hoàn tiền, in lên phiếu chi. */
   refundedAt: z.string().nullable(),
   refundReason: z.string().nullable(),
+  /** Kho Thuốc GĐ3 (#165) — mọi hoá đơn KHÁC của cùng lượt khám (rỗng ở đa số trường hợp — chỉ có
+   * khi tenant bật tách hoá đơn thuốc hoặc hoá đơn khám đã đóng lúc phát thuốc, xem #163 điểm 5). */
+  otherInvoices: z.array(invoiceSiblingSchema),
   version: z.number().int(),
 });
 export type Invoice = z.infer<typeof invoiceSchema>;
@@ -243,6 +274,14 @@ export type ApplyInvoiceDiscountRequest = z.infer<typeof applyInvoiceDiscountReq
  * ước `receptionListQuerySchema`. Lọc theo `encounter.checkedInAt` (đúng ngày tiếp nhận, không
  * phải ngày thu tiền — v1 không tách 2 khái niệm này, đa số phiếu thu ngay trong ngày).
  */
+/** `GET /billing/invoices/:encounterId?invoiceId=` (Kho Thuốc GĐ3, #165) — `invoiceId` tuỳ chọn để
+ * mở ĐÚNG 1 hoá đơn cụ thể của lượt khám (khác hoá đơn SERVICE mặc định), ví dụ hoá đơn thuốc riêng
+ * bấm từ "Danh sách Thu ngân" hoặc nút "Xem hoá đơn" sau khi phát thuốc. */
+export const getBillingInvoiceQuerySchema = z.object({
+  invoiceId: z.string().uuid().optional(),
+});
+export type GetBillingInvoiceQuery = z.infer<typeof getBillingInvoiceQuerySchema>;
+
 export const listBillingInvoicesQuerySchema = z.object({
   date: z
     .string()
@@ -254,6 +293,9 @@ export type ListBillingInvoicesQuery = z.infer<typeof listBillingInvoicesQuerySc
 export const billingListItemSchema = z.object({
   invoiceId: z.string().uuid(),
   invoiceNo: z.string(),
+  /** Kho Thuốc GĐ3 (#165) — phân biệt hoá đơn khám/hoá đơn thuốc riêng ngay ở danh sách, để bấm
+   * đúng dòng mở đúng hoá đơn (`InvoiceListPage.tsx` truyền kèm `invoiceId` lúc điều hướng). */
+  invoiceType: invoiceTypeSchema,
   encounterId: z.string().uuid(),
   encounterNo: z.string(),
   checkedInAt: z.string(),

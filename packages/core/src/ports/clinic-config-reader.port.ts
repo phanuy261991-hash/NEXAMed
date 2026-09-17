@@ -133,13 +133,6 @@ export interface ClinicConfigReaderPort {
    * hữu `tenant_setting`), cùng lý do các cấu hình khác ở trên.
    */
   getPharmacySeparateInvoiceEnabled(tenantId: string): Promise<boolean>;
-
-  /**
-   * Kho Thuốc GĐ3 (#163) — TẮT (mặc định) không tự phát thuốc lúc ký đơn; BẬT thì `EncounterService.
-   * signPrescription()` tự tạo Phiếu xuất kho ngay sau khi ký thành công (`tenant_setting` key
-   * `auto_dispense_on_sign_enabled`). Module `encounter` đọc qua port này, cùng lý do ở trên.
-   */
-  getAutoDispenseOnSignEnabled(tenantId: string): Promise<boolean>;
 }
 
 export const CLINIC_CONFIG_READER_PORT = Symbol('CLINIC_CONFIG_READER_PORT');

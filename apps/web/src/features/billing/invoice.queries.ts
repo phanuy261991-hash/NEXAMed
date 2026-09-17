@@ -33,11 +33,12 @@ export function useBillingInvoiceListQuery(date?: string) {
   });
 }
 
-export function useBillingInvoiceQuery(encounterId: string, enabled = true) {
+/** `invoiceId` tuỳ chọn (Kho Thuốc GĐ3, #165) — mở đúng hoá đơn đó thay vì mặc định hoá đơn SERVICE. */
+export function useBillingInvoiceQuery(encounterId: string, invoiceId?: string, enabled = true) {
   const { tenantId } = useAppConfig();
   return useQuery({
-    queryKey: queryKey(tenantId, 'invoice', 'detail', encounterId),
-    queryFn: () => getBillingInvoice(encounterId),
+    queryKey: queryKey(tenantId, 'invoice', 'detail', encounterId, invoiceId ?? ''),
+    queryFn: () => getBillingInvoice(encounterId, invoiceId),
     enabled: enabled && encounterId !== '',
   });
 }

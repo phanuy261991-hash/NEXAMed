@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { invoiceTypeSchema } from './billing';
 
 /**
  * Kho Thuốc & Vật tư y tế — Giai đoạn 2 (Nhập kho & tồn theo lô, docs/DECISIONS.md #146, kế hoạch
@@ -392,8 +393,19 @@ export const stockIssueSummarySchema = z.object({
 });
 export type StockIssueSummary = z.infer<typeof stockIssueSummarySchema>;
 
+/** Kho Thuốc GĐ3 (#165) — hoá đơn ĐÃ cộng tiền của phiếu xuất này (`InvoiceRepository.
+ * findByStockIssueLineIds()`) — `null` chỉ khi phiếu chưa có dòng nào (không xảy ra thực tế, mọi
+ * phiếu xuất luôn có ≥1 dòng). Dùng cho nút "Xem hoá đơn" ở màn thành công `DispensePrescriptionDialog.tsx`. */
+export const stockIssueAttachedInvoiceSchema = z.object({
+  invoiceId: z.string().uuid(),
+  invoiceNo: z.string(),
+  invoiceType: invoiceTypeSchema,
+});
+export type StockIssueAttachedInvoice = z.infer<typeof stockIssueAttachedInvoiceSchema>;
+
 export const stockIssueDetailSchema = stockIssueSummarySchema.extend({
   lines: z.array(stockIssueLineSchema),
+  attachedInvoice: stockIssueAttachedInvoiceSchema.nullable(),
 });
 export type StockIssueDetail = z.infer<typeof stockIssueDetailSchema>;
 

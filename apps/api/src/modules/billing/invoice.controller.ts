@@ -2,6 +2,7 @@ import { Body, Controller, Get, HttpCode, Param, Post, Query, Req, UseGuards } f
 import type { Request } from 'express';
 import {
   applyInvoiceDiscountRequestSchema,
+  getBillingInvoiceQuerySchema,
   listBillingInvoicesQuerySchema,
   markInvoicePaidRequestSchema,
   payInvoiceWithWalletRequestSchema,
@@ -31,11 +32,14 @@ export class InvoiceController {
     return this.invoiceService.listForDay(tenantId, dto.date);
   }
 
+  /** `?invoiceId=` tuỳ chọn (Kho Thuốc GĐ3, #165) — mở đúng 1 hoá đơn cụ thể của lượt khám (hoá đơn
+   * thuốc riêng), khác hoá đơn SERVICE mặc định. Không đổi path/RBAC — vẫn scope theo `encounterId`. */
   @Get(':encounterId')
   @RequirePermission('invoice', 'read', { entityIdParam: 'encounterId' })
-  async get(@Param('encounterId') encounterId: string, @Req() req: Request) {
+  async get(@Param('encounterId') encounterId: string, @Query() query: unknown, @Req() req: Request) {
+    const { invoiceId } = getBillingInvoiceQuerySchema.parse(query);
     const { tenantId } = req.user!;
-    return this.invoiceService.getByEncounterId(tenantId, encounterId);
+    return this.invoiceService.getByEncounterId(tenantId, encounterId, invoiceId);
   }
 
   @Post(':encounterId/pay')

@@ -16,9 +16,9 @@ export async function getBillingInvoiceList(date?: string): Promise<ListBillingI
   return unwrap(await getApiClient().GET('/api/v1/billing/invoices', { params: { query: { date } } })) as ListBillingInvoicesResponse;
 }
 
-export async function getBillingInvoice(encounterId: string): Promise<InvoiceResponse> {
+export async function getBillingInvoice(encounterId: string, invoiceId?: string): Promise<InvoiceResponse> {
   return unwrap(
-    await getApiClient().GET('/api/v1/billing/invoices/{encounterId}', { params: { path: { encounterId } } }),
+    await getApiClient().GET('/api/v1/billing/invoices/{encounterId}', { params: { path: { encounterId }, query: { invoiceId } } }),
   ) as InvoiceResponse;
 }
 

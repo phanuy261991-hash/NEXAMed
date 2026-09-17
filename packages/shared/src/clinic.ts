@@ -280,14 +280,6 @@ export const clinicSettingsSchema = z.object({
    * dịch vụ khám) — dành cho phòng khám có quầy thuốc/dược sĩ thu tiền riêng, tách bạch sổ sách.
    */
   pharmacySeparateInvoiceEnabled: z.boolean(),
-  /**
-   * Kho Thuốc GĐ3 (#163) — TẮT (mặc định, giữ đúng hành vi hiện tại): "Hoàn tất khám"/"Ký đơn"
-   * không tự động phát thuốc, dược sĩ/điều dưỡng chủ động vào "Phát thuốc" chọn lô rồi xác nhận.
-   * BẬT: ngay khi ký đơn thành công, hệ thống tự tạo Phiếu xuất kho phát ĐỦ số lượng mọi dòng, tự
-   * chọn lô theo FEFO — dòng nào thiếu tồn thì BỎ QUA (không rollback chữ ký, đơn đã ký vẫn là y
-   * lệnh hợp lệ), FE hiện cảnh báo còn thuốc chưa tự phát được, vào "Phát thuốc" xử lý tay.
-   */
-  autoDispenseOnSignEnabled: z.boolean(),
 });
 export type ClinicSettings = z.infer<typeof clinicSettingsSchema>;
 
@@ -319,7 +311,6 @@ export const updateClinicSettingsRequestSchema = z.object({
   soloClinicWorkflowEnabled: z.boolean().optional(),
   expiryWarningDays: z.number().int().min(1).max(365).optional(),
   pharmacySeparateInvoiceEnabled: z.boolean().optional(),
-  autoDispenseOnSignEnabled: z.boolean().optional(),
 });
 export type UpdateClinicSettingsRequest = z.infer<typeof updateClinicSettingsRequestSchema>;
 
@@ -361,8 +352,6 @@ export const DEFAULT_SOLO_CLINIC_WORKFLOW_ENABLED = false;
 export const DEFAULT_EXPIRY_WARNING_DAYS = 30;
 /** Tắt theo mặc định (Kho Thuốc GĐ3, #163) — Phiếu xuất kho cộng thẳng vào hoá đơn SERVICE đang mở. */
 export const DEFAULT_PHARMACY_SEPARATE_INVOICE_ENABLED = false;
-/** Tắt theo mặc định (Kho Thuốc GĐ3, #163) — không tự động phát thuốc lúc ký đơn. */
-export const DEFAULT_AUTO_DISPENSE_ON_SIGN_ENABLED = false;
 
 /**
  * `GET /clinic-settings/cashier-shift-blind-close-enabled` — chiếu tối thiểu tự-phục vụ, cùng lý

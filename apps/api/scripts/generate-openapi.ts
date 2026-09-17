@@ -23,6 +23,7 @@ import {
   clinicPrintHeaderSchema,
   deferredPaymentStatusSchema,
   applyInvoiceDiscountRequestSchema,
+  getBillingInvoiceQuerySchema,
   invoiceResponseSchema,
   listBillingInvoicesQuerySchema,
   listBillingInvoicesResponseSchema,
@@ -1067,7 +1068,7 @@ registry.registerPath({
   tags: ['billing'],
   summary: 'Chi tiết phiếu thu của 1 lượt khám — null nếu không có dòng dịch vụ nào có giá (không có gì để thu)',
   security: [{ bearerAuth: [] }],
-  request: { params: billingEncounterIdParams },
+  request: { params: billingEncounterIdParams, query: getBillingInvoiceQuerySchema },
   responses: {
     200: jsonResponse('Thành công', envelope(invoiceResponseSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),

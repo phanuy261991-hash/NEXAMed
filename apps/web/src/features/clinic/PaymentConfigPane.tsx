@@ -41,7 +41,6 @@ export function PaymentConfigPane() {
   const walletMixedPaymentEnabled = settingsQuery.data?.walletMixedPaymentEnabled ?? false;
   const soloClinicWorkflowEnabled = settingsQuery.data?.soloClinicWorkflowEnabled ?? false;
   const pharmacySeparateInvoiceEnabled = settingsQuery.data?.pharmacySeparateInvoiceEnabled ?? false;
-  const autoDispenseOnSignEnabled = settingsQuery.data?.autoDispenseOnSignEnabled ?? false;
 
   return (
     <div className="space-y-8">
@@ -297,30 +296,6 @@ export function PaymentConfigPane() {
               disabled={updateMutation.isPending}
               onChange={(e) => updateMutation.mutate({ pharmacySeparateInvoiceEnabled: e.target.checked })}
               aria-label="Tách hoá đơn tiền thuốc riêng"
-            />
-            <span className="absolute inset-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-brand-teal peer-disabled:opacity-60" />
-            <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
-          </label>
-        </div>
-
-        <div className="mt-4 flex items-start justify-between gap-5 border-t border-dashed border-slate-200 pt-4">
-          <div>
-            <p className="text-[14.5px] font-bold text-slate-900">Tự động phát thuốc lúc ký đơn</p>
-            <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
-              Tắt (mặc định): Dược sĩ/điều dưỡng chủ động vào &quot;Phát thuốc&quot; chọn lô rồi xác nhận.
-              <br />
-              Bật: Ký đơn xong hệ thống tự trừ kho theo lô gần hết hạn trước (FEFO) — dòng nào thiếu tồn sẽ bị bỏ
-              qua (không chặn ký), vào &quot;Phát thuốc&quot; xử lý tay phần còn thiếu.
-            </p>
-          </div>
-          <label className="relative mt-0.5 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center">
-            <input
-              type="checkbox"
-              className="peer sr-only"
-              checked={autoDispenseOnSignEnabled}
-              disabled={updateMutation.isPending}
-              onChange={(e) => updateMutation.mutate({ autoDispenseOnSignEnabled: e.target.checked })}
-              aria-label="Tự động phát thuốc lúc ký đơn"
             />
             <span className="absolute inset-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-brand-teal peer-disabled:opacity-60" />
             <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />

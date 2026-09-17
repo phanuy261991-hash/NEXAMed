@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { CheckCircle, PencilSimple, Pill, Plus, Printer, Warning, X } from '@phosphor-icons/react';
 import type { PrescriptionItem, PrescriptionResponse } from '@nexamed/shared';
 import { useAuthStore } from '../auth/auth.store';
-import { useClinicPrintHeaderQuery } from '../clinic/clinic.queries';
+import { useClinicPrintHeaderQuery, useSoloClinicWorkflowEnabledQuery } from '../clinic/clinic.queries';
 import { useHasPermission } from '../auth/usePermission';
 import { Button } from '../../shared/ui/Button';
 import { Combobox } from '../../shared/ui/Combobox';
@@ -94,9 +94,13 @@ export function PrescriptionPanel({
 
   const isSigned = prescription !== null && prescription.signedAt !== null;
   const canEdit = isEditableEncounter && !isSigned;
-  // Kho Thuốc GĐ3 (#163) — nút "Phát thuốc" chỉ hiện khi đơn đã ký VÀ actor có quyền phát
-  // (`stock_issue.create` — lễ tân chỉ `.read`, không tự phát được).
-  const canDispense = useHasPermission('stock_issue', 'create');
+  // Kho Thuốc GĐ3 (#163, đảo hướng #165) — nút "Phát thuốc" chỉ hiện khi đơn đã ký, actor có quyền
+  // phát (`stock_issue.create` — lễ tân chỉ `.read`, không tự phát được), VÀ tenant bật "Chế độ
+  // phòng khám 1 người" (`soloClinicWorkflowEnabled`, tái dùng nguyên công tắc có sẵn của
+  // TopBar.tsx "Đóng ca hôm nay" — cùng một khái niệm "bác sĩ tự làm hết"). Tắt (mặc định, phòng
+  // khám có quầy thuốc/dược sĩ riêng) → ẩn hẳn nút, phát thuốc chỉ qua trang "Phát thuốc" riêng.
+  const soloClinicWorkflowQuery = useSoloClinicWorkflowEnabledQuery();
+  const canDispense = useHasPermission('stock_issue', 'create') && (soloClinicWorkflowQuery.data?.enabled ?? false);
   const [dispenseOpen, setDispenseOpen] = useState(false);
 
   const [draftLines, setDraftLines] = useState<DraftLine[]>(() => (prescription?.items ?? []).map(itemToDraft));

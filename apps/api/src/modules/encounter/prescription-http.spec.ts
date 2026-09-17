@@ -30,8 +30,6 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
   let doctorAUserId: string;
   let doctorBToken: string;
   let tenantBDoctorToken: string;
-  let clinicAdminToken: string;
-  let warehouseId: string;
 
   async function createUserWithRole(tenantId: string, roleName: string) {
     const username = `e2e-rx-${roleName}-${randomUUID()}`;
@@ -152,10 +150,6 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
     doctorAUserId = doctorA.userId;
     doctorBToken = (await createUserWithRole(fixture.tenantA.id, 'doctor')).token;
     tenantBDoctorToken = (await createUserWithRole(fixture.tenantB.id, 'doctor')).token;
-    clinicAdminToken = (await createUserWithRole(fixture.tenantA.id, 'clinic_admin')).token;
-
-    const warehousesRes = await request(app.getHttpServer()).get('/api/v1/warehouses').set(authed(clinicAdminToken));
-    warehouseId = warehousesRes.body.data.items[0].id;
   });
 
   afterAll(async () => {
@@ -366,120 +360,4 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
     ).rejects.toThrow();
   });
 
-  // ============ Kho Thuốc GĐ3 (#163) — "Tự động phát thuốc lúc ký đơn" ============
-
-  async function createDrugViaApi(overrides: Partial<{ name: string; isBatchManaged: boolean; defaultSellPrice: number }> = {}) {
-    const res = await request(app.getHttpServer())
-      .post('/api/v1/drugs')
-      .set(authed(clinicAdminToken))
-      .send({
-        code: `DRG-AUTO-${randomUUID().slice(0, 8)}`,
-        name: overrides.name ?? 'Thuốc tự động phát',
-        itemType: 'MEDICINE',
-        baseUnitCode: 'VIEN',
-        activeIngredient: 'Hoạt chất test',
-        unit: 'Viên',
-        concentration: '500mg',
-        manufacturerCode: 'TEST_MANUFACTURER',
-        defaultSellPrice: overrides.defaultSellPrice ?? 2000,
-        drugGroupCode: 'TEST_GROUP',
-        routeCode: 'TEST_ROUTE',
-        registrationNumber: 'VD-TEST-0002',
-        dosageForm: 'Viên nén',
-        countryOfOrigin: 'Việt Nam',
-        ingredients: [{ activeIngredientCode: 'TEST_INGREDIENT', strengthValue: 500000, strengthUnitCode: 'MG' }],
-        units: [],
-        isBatchManaged: overrides.isBatchManaged ?? true,
-      });
-    expect(res.status).toBe(200);
-    return res.body.data.id as string;
-  }
-
-  async function receiveStockViaApi(drugId: string, quantity: number, unitCost: number) {
-    const supplierRes = await request(app.getHttpServer()).post('/api/v1/suppliers').set(authed(clinicAdminToken)).send({ name: `NCC auto-dispense ${randomUUID().slice(0, 6)}` });
-    const created = await request(app.getHttpServer())
-      .post('/api/v1/inventory/receipts')
-      .set(authed(clinicAdminToken))
-      .send({ warehouseId, supplierId: supplierRes.body.data.id, receiptType: 'PURCHASE', lines: [{ drugId, unitCode: 'VIEN', quantity, unitCost, batchNo: `LOT-${randomUUID().slice(0, 6)}`, expiryDate: '2027-01-01' }] });
-    expect(created.status).toBe(200);
-    const approved = await request(app.getHttpServer())
-      .post(`/api/v1/inventory/receipts/${created.body.data.id}/approve`)
-      .set(authed(clinicAdminToken))
-      .send({ version: created.body.data.version });
-    expect(approved.status).toBe(200);
-  }
-
-  it('autoDispenseOnSignEnabled BẬT + đủ tồn — ký đơn tự động phát hết, trừ đúng tồn kho + cộng đúng tiền vào hoá đơn', async () => {
-    const toggleOn = await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(clinicAdminToken)).send({ autoDispenseOnSignEnabled: true });
-    expect(toggleOn.status).toBe(200);
-    try {
-      const drugId = await createDrugViaApi({ name: 'Auto Dispense Đủ Tồn', defaultSellPrice: 2500 });
-      await receiveStockViaApi(drugId, 50, 1000);
-      const { encounterId } = await prepareEncounterInConsultation(13);
-
-      const saveRes = await request(app.getHttpServer())
-        .put(`/api/v1/encounters/${encounterId}/prescription-items`)
-        .set(authed(doctorAToken))
-        .send({ items: [{ drugId, dose: '1 viên', frequency: '2 lần/ngày', durationDays: 5, quantity: 10 }] });
-      const signRes = await request(app.getHttpServer())
-        .post(`/api/v1/encounters/${encounterId}/prescription/sign`)
-        .set(authed(doctorAToken))
-        .send({ version: saveRes.body.data.version });
-      expect(signRes.status).toBe(200);
-
-      const statusRes = await request(app.getHttpServer())
-        .get(`/api/v1/inventory/prescriptions/${signRes.body.data.id}/dispense-status`)
-        .set(authed(doctorAToken))
-        .query({ warehouseId });
-      expect(statusRes.body.data.lines[0]).toMatchObject({ prescribedQuantity: 10, dispensedQuantity: 10, remainingQuantity: 0 });
-
-      const balanceRes = await request(app.getHttpServer()).get('/api/v1/inventory/balances').set(authed(clinicAdminToken)).query({ warehouseId });
-      const row = balanceRes.body.data.items.find((i: { drugId: string }) => i.drugId === drugId);
-      expect(row.quantityOnHand).toBe(40);
-
-      // `prepareEncounterInConsultation()` (đầu file) thu tiền khám NGAY sau check-in — hoá đơn
-      // SERVICE đã PAID trước khi ký đơn, nên tự-phát-thuốc tự tạo hoá đơn DRUG RIÊNG (đúng #146
-      // "ngược lại → tìm/tạo hoá đơn DRUG"), KHÔNG cộng vào hoá đơn SERVICE — tra thẳng qua Prisma
-      // (chưa có UI/route xem hoá đơn DRUG riêng ở lượt code này, xem `docs/CURRENT.md`).
-      const drugInvoice = await privileged.invoice.findFirst({ where: { tenantId: fixture.tenantA.id, encounterId, invoiceType: 'DRUG' } });
-      expect(drugInvoice).not.toBeNull();
-      expect(Number(drugInvoice!.totalAmount)).toBe(25_000);
-    } finally {
-      await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(clinicAdminToken)).send({ autoDispenseOnSignEnabled: false });
-    }
-  });
-
-  it('autoDispenseOnSignEnabled BẬT + thiếu tồn — ký đơn vẫn THÀNH CÔNG (không rollback chữ ký), dòng thiếu tồn KHÔNG được tự phát', async () => {
-    const toggleOn = await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(clinicAdminToken)).send({ autoDispenseOnSignEnabled: true });
-    expect(toggleOn.status).toBe(200);
-    try {
-      const drugId = await createDrugViaApi({ name: 'Auto Dispense Thiếu Tồn' });
-      await receiveStockViaApi(drugId, 3, 1000);
-      const { encounterId } = await prepareEncounterInConsultation(14);
-
-      const saveRes = await request(app.getHttpServer())
-        .put(`/api/v1/encounters/${encounterId}/prescription-items`)
-        .set(authed(doctorAToken))
-        .send({ items: [{ drugId, dose: '1 viên', frequency: '2 lần/ngày', durationDays: 5, quantity: 10 }] });
-      const signRes = await request(app.getHttpServer())
-        .post(`/api/v1/encounters/${encounterId}/prescription/sign`)
-        .set(authed(doctorAToken))
-        .send({ version: saveRes.body.data.version });
-      // Ký vẫn 200 — đơn đã ký là y lệnh hợp lệ ĐỘC LẬP với việc phát được hay không (#146).
-      expect(signRes.status).toBe(200);
-      expect(signRes.body.data.signedAt).not.toBeNull();
-
-      const statusRes = await request(app.getHttpServer())
-        .get(`/api/v1/inventory/prescriptions/${signRes.body.data.id}/dispense-status`)
-        .set(authed(doctorAToken))
-        .query({ warehouseId });
-      expect(statusRes.body.data.lines[0]).toMatchObject({ prescribedQuantity: 10, dispensedQuantity: 0, remainingQuantity: 10 });
-
-      const balanceRes = await request(app.getHttpServer()).get('/api/v1/inventory/balances').set(authed(clinicAdminToken)).query({ warehouseId });
-      const row = balanceRes.body.data.items.find((i: { drugId: string }) => i.drugId === drugId);
-      expect(row.quantityOnHand).toBe(3); // không đổi — không tự phát được
-    } finally {
-      await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(clinicAdminToken)).send({ autoDispenseOnSignEnabled: false });
-    }
-  });
 });

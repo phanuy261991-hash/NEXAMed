@@ -29,9 +29,30 @@ interface PaymentSides {
   refundPayment: { paidAt: Date; reason: string | null } | null;
 }
 
+/** Kho Thuốc GĐ3 (#163) — mỗi dòng hoá đơn kèm theo `issueNo` của Phiếu xuất kho nguồn (chỉ có ý
+ * nghĩa khi `sourceStockIssueLineId != null`), phục vụ nhóm hiển thị "Tiền thuốc — Phiếu xuất
+ * PXK-...". `prescription` KHÔNG có mã hiển thị riêng (chỉ có `id`) nên không nhóm theo đơn thuốc
+ * được — chỉ nhóm theo phiếu xuất, khác nhãn mockup ban đầu ("Đơn ... · Phiếu xuất ..."). */
+interface InvoiceLineWithIssue extends InvoiceLine {
+  sourceStockIssueLine: { issue: { issueNo: string } } | null;
+}
+
 export interface InvoiceWithLines extends Invoice, PaymentSides {
-  lines: InvoiceLine[];
+  lines: InvoiceLineWithIssue[];
   encounter: EncounterContext;
+}
+
+/** Tóm tắt hoá đơn KHÁC của CÙNG lượt khám — cho khối tham chiếu chéo khi 1 lượt khám có >1 hoá
+ * đơn (hoá đơn khám đã đóng + hoá đơn thuốc riêng, Kho Thuốc GĐ3 #163). */
+export interface OtherInvoiceRow {
+  id: string;
+  invoiceNo: string;
+  invoiceType: Invoice['invoiceType'];
+  status: Invoice['status'];
+  totalAmount: bigint;
+  discountType: Invoice['discountType'];
+  discountValue: bigint | null;
+  lines: LineDiscountFields[];
 }
 
 /** Field tối thiểu để tính `dueAmount` (chiết khấu "Từng dịch vụ") — không cần đủ `InvoiceLine`. */
@@ -44,6 +65,7 @@ interface LineDiscountFields {
 export interface BillingListRow extends PaymentSides {
   id: string;
   invoiceNo: string;
+  invoiceType: Invoice['invoiceType'];
   status: Invoice['status'];
   totalAmount: bigint;
   discountType: Invoice['discountType'];
@@ -68,6 +90,18 @@ const ACTIVE_PAYMENT_INCLUDE = {
  * cần đủ `InvoiceLine` như `findByEncounterId()` (tránh tải dư dữ liệu cho N phiếu/ngày). */
 const LINE_DISCOUNT_INCLUDE = {
   lines: { where: { deletedAt: null }, select: { lineTotal: true, discountType: true, discountValue: true } },
+} satisfies Prisma.InvoiceInclude;
+
+/** Kho Thuốc GĐ3 (#163) — dòng hoá đơn đầy đủ + `issueNo` của Phiếu xuất kho nguồn (chỉ có dữ liệu
+ * khi dòng đó xuất phát từ Phiếu xuất, `sourceStockIssueLineId != null`). Dùng chung cho
+ * `findByEncounterId()`/`findByIdWithLines()` — cả 2 nơi web cần nhóm 2 phần "Dịch vụ khám"/"Tiền
+ * thuốc" trên CÙNG 1 hoá đơn (điểm 10, #163). */
+const LINE_WITH_ISSUE_INCLUDE = {
+  lines: {
+    where: { deletedAt: null },
+    orderBy: { createdAt: 'asc' as const },
+    include: { sourceStockIssueLine: { select: { issue: { select: { issueNo: true } } } } },
+  },
 } satisfies Prisma.InvoiceInclude;
 
 /** Bối cảnh lượt khám/bệnh nhân — dùng chung cho cả chi tiết 1 phiếu thu lẫn danh sách trong ngày. */
@@ -169,19 +203,46 @@ export class InvoiceRepository {
 
   /** Hoá đơn DỊCH VỤ KHÁM của lượt khám — lọc tường minh `invoiceType='SERVICE'` (Kho Thuốc GĐ3,
    * #163: nay `encounterId` có thể ứng nhiều hoá đơn khi có thêm hoá đơn `DRUG` riêng). Đây vẫn là
-   * "phiếu thu" chính mà màn Thu ngân/`GET /billing/invoices/:encounterId` thao tác — hoá đơn tiền
-   * thuốc riêng (khi `pharmacySeparateInvoiceEnabled=true`) chưa có màn xem riêng ở lượt này. */
+   * hoá đơn MẶC ĐỊNH mà `GET /billing/invoices/:encounterId` trả về khi không truyền `invoiceId` —
+   * đúng hành vi cũ, không phá vỡ mọi nơi gọi hiện có. */
   findByEncounterId(tx: Prisma.TransactionClient, tenantId: string, encounterId: string): Promise<InvoiceWithLines | null> {
     return tx.invoice
       .findFirst({
         where: { tenantId, encounterId, invoiceType: 'SERVICE', deletedAt: null },
-        include: {
-          lines: { where: { deletedAt: null }, orderBy: { createdAt: 'asc' } },
-          ...ENCOUNTER_CONTEXT_INCLUDE,
-          ...ACTIVE_PAYMENT_INCLUDE,
-        },
+        include: { ...LINE_WITH_ISSUE_INCLUDE, ...ENCOUNTER_CONTEXT_INCLUDE, ...ACTIVE_PAYMENT_INCLUDE },
       })
       .then((row) => (row ? { ...row, ...toPaymentSides(row.payments) } : null));
+  }
+
+  /** Kho Thuốc GĐ3 (#163, mở rộng #165) — hoá đơn CỤ THỂ theo `id`, bất kể loại (SERVICE/DRUG) —
+   * dùng khi web truyền `?invoiceId=` (xem hoá đơn thuốc riêng, hoặc đúng ý bấm từ "Danh sách Thu
+   * ngân"). Không lọc `invoiceType` — service tự kiểm `encounterId` khớp trước khi trả về. */
+  findByIdWithLines(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<InvoiceWithLines | null> {
+    return tx.invoice
+      .findFirst({
+        where: { tenantId, id, deletedAt: null },
+        include: { ...LINE_WITH_ISSUE_INCLUDE, ...ENCOUNTER_CONTEXT_INCLUDE, ...ACTIVE_PAYMENT_INCLUDE },
+      })
+      .then((row) => (row ? { ...row, ...toPaymentSides(row.payments) } : null));
+  }
+
+  /** Kho Thuốc GĐ3 (#165) — tóm tắt mọi hoá đơn KHÁC của CÙNG lượt khám (không phải `excludeId`) —
+   * khối tham chiếu chéo khi 1 lượt khám có >1 hoá đơn (hoá đơn khám đã đóng + hoá đơn thuốc riêng). */
+  findOtherInvoicesSummary(tx: Prisma.TransactionClient, tenantId: string, encounterId: string, excludeId: string): Promise<OtherInvoiceRow[]> {
+    return tx.invoice.findMany({
+      where: { tenantId, encounterId, id: { not: excludeId }, deletedAt: null },
+      select: {
+        id: true,
+        invoiceNo: true,
+        invoiceType: true,
+        status: true,
+        totalAmount: true,
+        discountType: true,
+        discountValue: true,
+        lines: { where: { deletedAt: null }, select: { lineTotal: true, discountType: true, discountValue: true } },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
   }
 
   /** Kho Thuốc GĐ3 (#163) — hoá đơn `DRUG` `UNPAID` GẦN NHẤT của lượt khám (khách quay lại lấy nốt

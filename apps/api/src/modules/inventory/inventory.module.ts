@@ -1,4 +1,4 @@
-import { forwardRef, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { IamModule } from '../iam/iam.module';
 import { ClinicModule } from '../clinic/clinic.module';
 import { DrugModule } from '../drug/drug.module';
@@ -32,15 +32,13 @@ import { StockIssueRepository } from './stock-issue.repository';
  *
  * Giai đoạn 3 (Xuất kho theo đơn, #163) thêm: `imports: [BillingModule]` — `StockIssueService`
  * dùng chung `InvoiceRepository` để gắn tiền vào hoá đơn trong CÙNG transaction (đúng "chia sẻ
- * Repository giữa module", #042; `BillingModule` không import ngược `InventoryModule` nên KHÔNG
- * cần `forwardRef`). `imports: [forwardRef(() => EncounterModule)]` — `StockIssueService` dùng
- * chung `PrescriptionRepository` để đọc/validate đơn thuốc; vòng phụ thuộc 2 CHIỀU CÓ THẬT với
- * `EncounterModule` (`EncounterService.signPrescription()` gọi ngược lại `StockIssueService` để tự
- * phát thuốc khi `autoDispenseOnSignEnabled`) — `forwardRef` bắt buộc cả hai phía, cùng mẫu
- * `CashierShiftModule` ↔ `BillingModule`. `exports: [StockIssueService]` cho `EncounterModule`.
+ * Repository giữa module", #042). `imports: [EncounterModule]` — `StockIssueService` dùng chung
+ * `PrescriptionRepository` để đọc/validate đơn thuốc lúc "Phát thuốc" (import THƯỜNG, không
+ * `forwardRef` — chiều phụ thuộc chỉ MỘT phía kể từ khi gỡ "Tự động phát thuốc lúc ký đơn", #165;
+ * trước đó có vòng 2 chiều thật vì `EncounterService` gọi ngược `StockIssueService`).
  */
 @Module({
-  imports: [IamModule, ClinicModule, DrugModule, BillingModule, forwardRef(() => EncounterModule)],
+  imports: [IamModule, ClinicModule, DrugModule, BillingModule, EncounterModule],
   controllers: [StockReceiptController, StockLedgerController, StockBalanceController, StockIssueController],
   providers: [
     StockReceiptService,
@@ -53,6 +51,5 @@ import { StockIssueRepository } from './stock-issue.repository';
     StockIssueService,
     StockIssueRepository,
   ],
-  exports: [StockIssueService],
 })
 export class InventoryModule {}

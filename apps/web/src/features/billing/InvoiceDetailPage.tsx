@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Fragment, useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowCounterClockwise, ArrowLeft, Bank, CheckCircle, CreditCard, Money, Printer, Receipt, Wallet, Warning, XCircle } from '@phosphor-icons/react';
 import type { DiscountType, PaymentMethod } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
@@ -79,11 +79,15 @@ const DISCOUNT_MODE_OPTIONS = [
 export function InvoiceDetailPage() {
   const { encounterId = '' } = useParams<{ encounterId: string }>();
   const navigate = useNavigate();
+  // Kho Thuốc GĐ3 (#165) — `?invoiceId=` tuỳ chọn mở đúng hoá đơn cụ thể (hoá đơn thuốc riêng),
+  // khác hoá đơn SERVICE mặc định khi bấm từ "Danh sách Thu ngân"/nút "Xem hoá đơn" sau khi phát thuốc.
+  const [searchParams] = useSearchParams();
+  const invoiceIdParam = searchParams.get('invoiceId') ?? undefined;
   const currentUser = useAuthStore((s) => s.user);
   const collectedByName = currentUser?.displayName ?? currentUser?.fullName ?? '';
   const canRefund = useHasPermission('invoice', 'refund');
 
-  const invoiceQuery = useBillingInvoiceQuery(encounterId);
+  const invoiceQuery = useBillingInvoiceQuery(encounterId, invoiceIdParam);
   const clinicQuery = useClinicPrintHeaderQuery();
   const paymentMethodQuery = useReferenceCatalogQuery('PAYMENT_METHOD');
   // "Thu tiền" đòi có ca thu ngân đang mở (đối soát tiền mặt, #chốt-ca) — không chặn cả trang, chỉ
@@ -331,6 +335,29 @@ export function InvoiceDetailPage() {
     }
   }
 
+  // Kho Thuốc GĐ3 (#163 điểm 10, sửa lại đủ ở #165) — nhóm dòng theo nguồn: 1 nhóm "Dịch vụ khám"
+  // (mọi dòng `lineSource==='SERVICE'`) + 1 nhóm/`stockIssueNo` cho dòng `lineSource==='DRUG'`.
+  const lineGroups = useMemo(() => {
+    const groups: { key: string; label: string; dotClassName: string; subtotal: number; lines: NonNullable<typeof invoice>['lines'] }[] = [];
+    for (const line of invoice?.lines ?? []) {
+      const key = line.lineSource === 'SERVICE' ? 'SERVICE' : `DRUG:${line.stockIssueNo ?? ''}`;
+      let group = groups.find((g) => g.key === key);
+      if (!group) {
+        group = {
+          key,
+          label: line.lineSource === 'SERVICE' ? 'Dịch vụ khám' : `Tiền thuốc — Phiếu xuất ${line.stockIssueNo}`,
+          dotClassName: line.lineSource === 'SERVICE' ? 'bg-slate-400' : 'bg-violet-500',
+          subtotal: 0,
+          lines: [],
+        };
+        groups.push(group);
+      }
+      group.subtotal += line.lineTotal;
+      group.lines.push(line);
+    }
+    return groups;
+  }, [invoice]);
+
   return (
     <div className="flex h-full flex-col gap-4 overflow-y-auto p-4">
       <h1 className="sr-only">Chi tiết thanh toán</h1>
@@ -364,10 +391,37 @@ export function InvoiceDetailPage() {
 
       {invoice && (
         <>
+          {/* Kho Thuốc GĐ3 (#165) — khối tham chiếu chéo: chỉ có khi 1 lượt khám phát sinh >1 hoá
+              đơn (hoá đơn khám đã đóng + hoá đơn thuốc riêng) — trường hợp hiếm, mặc định rỗng. */}
+          {invoice.otherInvoices.length > 0 && (
+            <div className="flex flex-col gap-2">
+              {invoice.otherInvoices.map((sibling) => (
+                <button
+                  key={sibling.invoiceId}
+                  type="button"
+                  onClick={() => navigate(`/billing/${encounterId}?invoiceId=${sibling.invoiceId}`)}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-left opacity-70 transition-opacity hover:opacity-100"
+                >
+                  <span className="text-sm font-semibold text-slate-700">
+                    {sibling.invoiceType === 'DRUG' ? 'Hoá đơn thuốc' : 'Hoá đơn khám'} <span className="text-blue-600">{sibling.invoiceNo}</span>
+                  </span>
+                  <span className="flex items-center gap-2">
+                    {sibling.status === 'PAID' && <StatusBadge tone="success">Đã thu</StatusBadge>}
+                    {sibling.status === 'UNPAID' && <StatusBadge tone="warning">Chờ thu</StatusBadge>}
+                    {sibling.status === 'CANCELLED' && <StatusBadge tone="neutral">Đã huỷ</StatusBadge>}
+                    {sibling.status === 'REFUNDED' && <StatusBadge tone="accent">Đã hoàn tiền</StatusBadge>}
+                    <span className="text-sm font-bold text-slate-900">{formatVnd(sibling.dueAmount)}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="flex flex-wrap items-center gap-2.5">
             <h2 className="text-base font-bold text-slate-900">
-              Phiếu thu <span className="text-blue-600">{invoice.invoiceNo}</span>
+              {invoice.invoiceType === 'DRUG' ? 'Phiếu thu tiền thuốc' : 'Phiếu thu'} <span className="text-blue-600">{invoice.invoiceNo}</span>
             </h2>
+            {invoice.invoiceType === 'DRUG' && <StatusBadge tone="accent">Hoá đơn thuốc riêng</StatusBadge>}
             {invoice.status === 'PAID' && (
               <StatusBadge tone="success">
                 <CheckCircle size={12} weight="bold" aria-hidden="true" /> Đã thu
@@ -440,7 +494,7 @@ export function InvoiceDetailPage() {
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_340px]">
             <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
               <div className="border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-slate-700">
-                Dịch vụ đã chỉ định (Tiếp nhận)
+                {lineGroups.length > 1 ? 'Chi tiết hoá đơn' : 'Dịch vụ đã chỉ định (Tiếp nhận)'}
               </div>
               <table className="w-full border-collapse text-sm">
                 <thead>
@@ -454,47 +508,67 @@ export function InvoiceDetailPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {invoice.lines.map((line) => {
-                    const draft = lineDiscounts[line.id];
-                    return (
-                      <tr key={line.id} className="border-b border-slate-100 last:border-0">
-                        <td className="px-3 py-3 text-left">
-                          <div className="font-semibold text-slate-900">{line.examTypeName}</div>
-                          <div className="text-xs text-slate-500">{line.examTypeCode}</div>
-                        </td>
-                        <td className="px-3 py-3 text-center font-medium text-slate-700">{line.quantity}</td>
-                        <td className="px-3 py-3 text-right font-medium tabular-nums text-slate-700">{formatVnd(line.unitPrice)}</td>
-                        <td className="px-3 py-3 text-right font-bold tabular-nums text-slate-900">{formatVnd(line.lineTotal)}</td>
-                        {discountEditMode === 'PER_LINE' && (
-                          <td className="px-3 py-3">
-                            <div className="flex items-center justify-end gap-1.5">
-                              <input
-                                type="number"
-                                min={1}
-                                max={draft?.type === 'PERCENT' ? 100 : undefined}
-                                disabled={discountMutation.isPending}
-                                value={draft?.value ?? ''}
-                                onChange={(e) => updateLineDiscount(line.id, { value: e.target.value === '' ? undefined : Number(e.target.value) })}
-                                onBlur={() => void saveLineDiscounts()}
-                                placeholder="0"
-                                className="w-20 rounded-md border-2 border-slate-300 px-2 py-1.5 text-right text-sm font-bold text-slate-900 focus:border-blue-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-300"
-                              />
-                              {/* Mặc định %, giống khung tổng — "không chiết khấu dòng này" chỉ cần
-                                  để trống ô số, không cần bỏ chọn kiểu (chốt theo yêu cầu trực tiếp). */}
-                              <TwoOptionToggle
-                                options={DISCOUNT_TYPE_OPTIONS}
-                                value={draft?.type ?? 'PERCENT'}
-                                disabled={discountMutation.isPending}
-                                onChange={(next) => {
-                                  if (next !== null) updateLineDiscount(line.id, { type: next });
-                                }}
-                              />
+                  {/* Kho Thuốc GĐ3 (#163 điểm 10, sửa lại đủ ở #165) — nhóm "Dịch vụ khám"/"Tiền
+                      thuốc — Phiếu xuất ..." kèm subtotal riêng CHỈ KHI hoá đơn thật sự có >1 nhóm
+                      (mixed) — hoá đơn thuần dịch vụ khám (đa số) giữ nguyên bảng phẳng như cũ. */}
+                  {lineGroups.map((group) => (
+                    <Fragment key={group.key}>
+                      {lineGroups.length > 1 && (
+                        <tr key={`group-${group.key}`} className="bg-slate-100">
+                          <td colSpan={discountEditMode === 'PER_LINE' ? 5 : 4} className="px-3 py-2">
+                            <div className="flex items-center justify-between">
+                              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                                <span className={`h-2 w-2 rounded-full ${group.dotClassName}`} aria-hidden="true" />
+                                {group.label}
+                              </span>
+                              <span className="text-[13px] font-semibold tabular-nums text-slate-500">{formatVnd(group.subtotal)}</span>
                             </div>
                           </td>
-                        )}
-                      </tr>
-                    );
-                  })}
+                        </tr>
+                      )}
+                      {group.lines.map((line) => {
+                        const draft = lineDiscounts[line.id];
+                        return (
+                          <tr key={line.id} className="border-b border-slate-100 last:border-0">
+                            <td className="px-3 py-3 text-left">
+                              <div className="font-semibold text-slate-900">{line.examTypeName}</div>
+                              <div className="text-xs text-slate-500">{line.examTypeCode}</div>
+                            </td>
+                            <td className="px-3 py-3 text-center font-medium text-slate-700">{line.quantity}</td>
+                            <td className="px-3 py-3 text-right font-medium tabular-nums text-slate-700">{formatVnd(line.unitPrice)}</td>
+                            <td className="px-3 py-3 text-right font-bold tabular-nums text-slate-900">{formatVnd(line.lineTotal)}</td>
+                            {discountEditMode === 'PER_LINE' && (
+                              <td className="px-3 py-3">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <input
+                                    type="number"
+                                    min={1}
+                                    max={draft?.type === 'PERCENT' ? 100 : undefined}
+                                    disabled={discountMutation.isPending}
+                                    value={draft?.value ?? ''}
+                                    onChange={(e) => updateLineDiscount(line.id, { value: e.target.value === '' ? undefined : Number(e.target.value) })}
+                                    onBlur={() => void saveLineDiscounts()}
+                                    placeholder="0"
+                                    className="w-20 rounded-md border-2 border-slate-300 px-2 py-1.5 text-right text-sm font-bold text-slate-900 focus:border-blue-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-300"
+                                  />
+                                  {/* Mặc định %, giống khung tổng — "không chiết khấu dòng này" chỉ cần
+                                      để trống ô số, không cần bỏ chọn kiểu (chốt theo yêu cầu trực tiếp). */}
+                                  <TwoOptionToggle
+                                    options={DISCOUNT_TYPE_OPTIONS}
+                                    value={draft?.type ?? 'PERCENT'}
+                                    disabled={discountMutation.isPending}
+                                    onChange={(next) => {
+                                      if (next !== null) updateLineDiscount(line.id, { type: next });
+                                    }}
+                                  />
+                                </div>
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })}
+                    </Fragment>
+                  ))}
                 </tbody>
               </table>
             </div>

@@ -37,7 +37,7 @@ import type {
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
 import type { RequestMeta } from '../../common/request-meta';
-import { InvoiceRepository, type BillingListRow, type InvoiceWithLines } from './invoice.repository';
+import { InvoiceRepository, type BillingListRow, type InvoiceWithLines, type OtherInvoiceRow } from './invoice.repository';
 import { PaymentRepository } from './payment.repository';
 import { CashAccountRepository } from '../cash-book/cash-account.repository';
 import { PatientWalletService } from '../patient-wallet/patient-wallet.service';
@@ -60,13 +60,25 @@ function computeDue(row: { totalAmount: bigint; discountType: 'PERCENT' | 'AMOUN
   });
 }
 
-function toInvoiceResponse(row: InvoiceWithLines): InvoiceDto {
+/** Kho Thuốc GĐ3 (#165) — tóm tắt hoá đơn KHÁC của cùng lượt khám cho khối tham chiếu chéo. */
+function toInvoiceSibling(row: OtherInvoiceRow): InvoiceDto['otherInvoices'][number] {
+  return {
+    invoiceId: row.id,
+    invoiceNo: row.invoiceNo,
+    invoiceType: row.invoiceType,
+    status: row.status,
+    dueAmount: computeDue(row).dueAmount,
+  };
+}
+
+function toInvoiceResponse(row: InvoiceWithLines, otherInvoices: OtherInvoiceRow[] = []): InvoiceDto {
   const encounterCancelled = row.encounter.status === 'CANCELLED';
   const discount = computeDue(row);
   return {
     id: row.id,
     encounterId: row.encounterId,
     invoiceNo: row.invoiceNo,
+    invoiceType: row.invoiceType,
     status: row.status,
     totalAmount: Number(row.totalAmount),
     discountMode: discount.mode,
@@ -94,6 +106,9 @@ function toInvoiceResponse(row: InvoiceWithLines): InvoiceDto {
       discountType: line.discountType,
       discountValue: line.discountValue !== null ? Number(line.discountValue) : null,
       discountAmount: computeDiscountAmount(Number(line.lineTotal), line.discountType, line.discountValue !== null ? Number(line.discountValue) : null),
+      // Kho Thuốc GĐ3 (#165) — nhóm hiển thị "Dịch vụ khám"/"Tiền thuốc" ở InvoiceDetailPage.tsx.
+      lineSource: line.sourceServiceItemId !== null ? 'SERVICE' : 'DRUG',
+      stockIssueNo: line.sourceStockIssueLine?.issue.issueNo ?? null,
     })),
     printedAt: row.printedAt?.toISOString() ?? null,
     pendingPaymentMethod: row.pendingPaymentMethod,
@@ -106,6 +121,7 @@ function toInvoiceResponse(row: InvoiceWithLines): InvoiceDto {
     needsRefund: computeNeedsRefund({ invoiceStatus: row.status, encounterCancelled }),
     refundedAt: row.refundPayment?.paidAt.toISOString() ?? null,
     refundReason: row.refundPayment?.reason ?? null,
+    otherInvoices: otherInvoices.map(toInvoiceSibling),
     version: row.version,
   };
 }
@@ -155,9 +171,22 @@ export class InvoiceService {
     return account?.id ?? null;
   }
 
-  async getByEncounterId(tenantId: string, encounterId: string): Promise<InvoiceDto | null> {
-    const row = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId));
-    return row ? toInvoiceResponse(row) : null;
+  /** `invoiceId` tuỳ chọn (Kho Thuốc GĐ3, #165) — có thì mở ĐÚNG hoá đơn đó (phải khớp `encounterId`
+   * trên URL, không thì coi như không có — tránh lộ hoá đơn của lượt khám khác); không có thì giữ
+   * đúng hành vi cũ (luôn hoá đơn SERVICE). */
+  async getByEncounterId(tenantId: string, encounterId: string, invoiceId?: string): Promise<InvoiceDto | null> {
+    const row = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      if (invoiceId) {
+        const specific = await this.invoiceRepository.findByIdWithLines(tx, tenantId, invoiceId);
+        return specific && specific.encounterId === encounterId ? specific : null;
+      }
+      return this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
+    });
+    if (!row) return null;
+    const otherInvoices = await this.unitOfWork.runInTenantScope(tenantId, (tx) =>
+      this.invoiceRepository.findOtherInvoicesSummary(tx, tenantId, encounterId, row.id),
+    );
+    return toInvoiceResponse(row, otherInvoices);
   }
 
   async listForDay(tenantId: string, date?: string): Promise<ListBillingInvoicesResponse> {
@@ -183,6 +212,7 @@ export class InvoiceService {
     return {
       invoiceId: row.id,
       invoiceNo: row.invoiceNo,
+      invoiceType: row.invoiceType,
       encounterId: row.encounter.id,
       encounterNo: row.encounter.encounterNo,
       checkedInAt: row.encounter.checkedInAt.toISOString(),

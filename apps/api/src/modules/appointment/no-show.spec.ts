@@ -108,7 +108,6 @@ describe('markNoShowForAllTenants — S5-07, APP-05', () => {
       getWalletMixedPaymentEnabled: () => Promise.reject(new Error('không dùng trong test này')),
       getExpiryWarningDays: () => Promise.reject(new Error('không dùng trong test này')),
       getPharmacySeparateInvoiceEnabled: () => Promise.reject(new Error('không dùng trong test này')),
-      getAutoDispenseOnSignEnabled: () => Promise.reject(new Error('không dùng trong test này')),
     };
   }
 

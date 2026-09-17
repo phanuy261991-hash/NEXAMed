@@ -2,6 +2,16 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-17 (5) — HOÀN TẤT, đã verify Playwright đủ
+
+### Gỡ auto-dispense mù, sửa 3 lỗ hổng mockup GĐ3, nhóm hiển thị hoá đơn, tách nhiều lô
+
+Gỡ hẳn `autoDispenseOnSignEnabled` (tự động xuất kho mù lúc ký đơn — sai thiết kế khi khách chỉ lấy một phần đơn kê), thay bằng gate nút "Phát thuốc" ở màn khám theo `soloClinicWorkflowEnabled` có sẵn. Sửa 3 lỗ hổng so với mockup GĐ3 đã duyệt: checkbox bỏ chọn từng dòng thuốc kê (thiếu hoàn toàn), dòng "Đã phát đủ" bị ẩn thay vì hiện read-only, thiếu nút "Xem hoá đơn" ở màn thành công. Thêm nhóm hiển thị hoá đơn "Dịch vụ khám"/"Tiền thuốc — Phiếu xuất ..." + xem đúng hoá đơn DRUG riêng qua `?invoiceId=` (điểm 5/10 #163, trước đó chưa làm). Thêm "1 loại thuốc phát từ nhiều lô cùng lúc" (đúng mockup) — phát hiện và sửa 1 lỗ hổng backend thật (kiểm tồn/số lượng đã kê độc lập từng dòng, không cộng dồn trong cùng request), thêm 3 test hồi quy xác nhận đúng.
+
+Phiên trước dừng giữa chừng do lỗi biên dịch TS ở phần tách nhiều lô (`docs/handoffs/HANDOFF-KhoThuoc-GD3-SuaLoi-2026-09-17.md`) — phiên này sửa xong 2 lỗi, viết 2 test hồi quy backend, verify Playwright đầy đủ cho toàn bộ 5 việc (kể cả nhánh chưa từng test trước: hoá đơn khám đã thu tiền → tự tách đúng hoá đơn thuốc riêng, khối tham chiếu chéo hiện đúng).
+
+**Đã xác minh**: `pnpm -w typecheck/lint/build` sạch toàn workspace; `apps/api` 842 pass + 16 skip (2 flake `role_permission` đã biết, pass 100% khi chạy riêng), `stock-issue-http.spec.ts` riêng 17/17. Playwright qua Chrome thật xác nhận đúng toàn bộ. Xem chi tiết `docs/DECISIONS.md` #165.
+
 ## 2026-09-17 (4)
 
 ### Kho Thuốc & Vật tư y tế Giai đoạn 3 — Xuất kho theo đơn + FEFO + tiền thuốc (code + test xong)

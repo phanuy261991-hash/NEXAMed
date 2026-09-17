@@ -4839,9 +4839,6 @@
                         },
                         "pharmacySeparateInvoiceEnabled": {
                           "type": "boolean"
-                        },
-                        "autoDispenseOnSignEnabled": {
-                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -4865,8 +4862,7 @@
                         "walletMixedPaymentEnabled",
                         "soloClinicWorkflowEnabled",
                         "expiryWarningDays",
-                        "pharmacySeparateInvoiceEnabled",
-                        "autoDispenseOnSignEnabled"
+                        "pharmacySeparateInvoiceEnabled"
                       ]
                     },
                     "meta": {
@@ -14153,6 +14149,13 @@
                               "invoiceNo": {
                                 "type": "string"
                               },
+                              "invoiceType": {
+                                "type": "string",
+                                "enum": [
+                                  "SERVICE",
+                                  "DRUG"
+                                ]
+                              },
                               "encounterId": {
                                 "type": "string",
                                 "format": "uuid"
@@ -14218,6 +14221,7 @@
                             "required": [
                               "invoiceId",
                               "invoiceNo",
+                              "invoiceType",
                               "encounterId",
                               "encounterNo",
                               "checkedInAt",
@@ -14367,6 +14371,15 @@
             "required": true,
             "name": "encounterId",
             "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "invoiceId",
+            "in": "query"
           }
         ],
         "responses": {
@@ -14393,6 +14406,13 @@
                         },
                         "invoiceNo": {
                           "type": "string"
+                        },
+                        "invoiceType": {
+                          "type": "string",
+                          "enum": [
+                            "SERVICE",
+                            "DRUG"
+                          ]
                         },
                         "status": {
                           "type": "string",
@@ -14460,6 +14480,19 @@
                               },
                               "discountAmount": {
                                 "type": "integer"
+                              },
+                              "lineSource": {
+                                "type": "string",
+                                "enum": [
+                                  "SERVICE",
+                                  "DRUG"
+                                ]
+                              },
+                              "stockIssueNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               }
                             },
                             "required": [
@@ -14473,7 +14506,9 @@
                               "lineTotal",
                               "discountType",
                               "discountValue",
-                              "discountAmount"
+                              "discountAmount",
+                              "lineSource",
+                              "stockIssueNo"
                             ]
                           }
                         },
@@ -14604,6 +14639,47 @@
                             "null"
                           ]
                         },
+                        "otherInvoices": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "invoiceId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "invoiceNo": {
+                                "type": "string"
+                              },
+                              "invoiceType": {
+                                "type": "string",
+                                "enum": [
+                                  "SERVICE",
+                                  "DRUG"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "UNPAID",
+                                  "PAID",
+                                  "CANCELLED",
+                                  "REFUNDED"
+                                ]
+                              },
+                              "dueAmount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "invoiceId",
+                              "invoiceNo",
+                              "invoiceType",
+                              "status",
+                              "dueAmount"
+                            ]
+                          }
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -14612,6 +14688,7 @@
                         "id",
                         "encounterId",
                         "invoiceNo",
+                        "invoiceType",
                         "status",
                         "totalAmount",
                         "lines",
@@ -14638,6 +14715,7 @@
                         "needsRefund",
                         "refundedAt",
                         "refundReason",
+                        "otherInvoices",
                         "version"
                       ]
                     },
@@ -14788,6 +14866,13 @@
                         "invoiceNo": {
                           "type": "string"
                         },
+                        "invoiceType": {
+                          "type": "string",
+                          "enum": [
+                            "SERVICE",
+                            "DRUG"
+                          ]
+                        },
                         "status": {
                           "type": "string",
                           "enum": [
@@ -14854,6 +14939,19 @@
                               },
                               "discountAmount": {
                                 "type": "integer"
+                              },
+                              "lineSource": {
+                                "type": "string",
+                                "enum": [
+                                  "SERVICE",
+                                  "DRUG"
+                                ]
+                              },
+                              "stockIssueNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               }
                             },
                             "required": [
@@ -14867,7 +14965,9 @@
                               "lineTotal",
                               "discountType",
                               "discountValue",
-                              "discountAmount"
+                              "discountAmount",
+                              "lineSource",
+                              "stockIssueNo"
                             ]
                           }
                         },
@@ -14998,6 +15098,47 @@
                             "null"
                           ]
                         },
+                        "otherInvoices": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "invoiceId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "invoiceNo": {
+                                "type": "string"
+                              },
+                              "invoiceType": {
+                                "type": "string",
+                                "enum": [
+                                  "SERVICE",
+                                  "DRUG"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "UNPAID",
+                                  "PAID",
+                                  "CANCELLED",
+                                  "REFUNDED"
+                                ]
+                              },
+                              "dueAmount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "invoiceId",
+                              "invoiceNo",
+                              "invoiceType",
+                              "status",
+                              "dueAmount"
+                            ]
+                          }
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -15006,6 +15147,7 @@
                         "id",
                         "encounterId",
                         "invoiceNo",
+                        "invoiceType",
                         "status",
                         "totalAmount",
                         "lines",
@@ -15032,6 +15174,7 @@
                         "needsRefund",
                         "refundedAt",
                         "refundReason",
+                        "otherInvoices",
                         "version"
                       ]
                     },
@@ -15244,6 +15387,13 @@
                         "invoiceNo": {
                           "type": "string"
                         },
+                        "invoiceType": {
+                          "type": "string",
+                          "enum": [
+                            "SERVICE",
+                            "DRUG"
+                          ]
+                        },
                         "status": {
                           "type": "string",
                           "enum": [
@@ -15310,6 +15460,19 @@
                               },
                               "discountAmount": {
                                 "type": "integer"
+                              },
+                              "lineSource": {
+                                "type": "string",
+                                "enum": [
+                                  "SERVICE",
+                                  "DRUG"
+                                ]
+                              },
+                              "stockIssueNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               }
                             },
                             "required": [
@@ -15323,7 +15486,9 @@
                               "lineTotal",
                               "discountType",
                               "discountValue",
-                              "discountAmount"
+                              "discountAmount",
+                              "lineSource",
+                              "stockIssueNo"
                             ]
                           }
                         },
@@ -15454,6 +15619,47 @@
                             "null"
                           ]
                         },
+                        "otherInvoices": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "invoiceId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "invoiceNo": {
+                                "type": "string"
+                              },
+                              "invoiceType": {
+                                "type": "string",
+                                "enum": [
+                                  "SERVICE",
+                                  "DRUG"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "UNPAID",
+                                  "PAID",
+                                  "CANCELLED",
+                                  "REFUNDED"
+                                ]
+                              },
+                              "dueAmount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "invoiceId",
+                              "invoiceNo",
+                              "invoiceType",
+                              "status",
+                              "dueAmount"
+                            ]
+                          }
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -15462,6 +15668,7 @@
                         "id",
                         "encounterId",
                         "invoiceNo",
+                        "invoiceType",
                         "status",
                         "totalAmount",
                         "lines",
@@ -15488,6 +15695,7 @@
                         "needsRefund",
                         "refundedAt",
                         "refundReason",
+                        "otherInvoices",
                         "version"
                       ]
                     },
@@ -15731,6 +15939,13 @@
                         "invoiceNo": {
                           "type": "string"
                         },
+                        "invoiceType": {
+                          "type": "string",
+                          "enum": [
+                            "SERVICE",
+                            "DRUG"
+                          ]
+                        },
                         "status": {
                           "type": "string",
                           "enum": [
@@ -15797,6 +16012,19 @@
                               },
                               "discountAmount": {
                                 "type": "integer"
+                              },
+                              "lineSource": {
+                                "type": "string",
+                                "enum": [
+                                  "SERVICE",
+                                  "DRUG"
+                                ]
+                              },
+                              "stockIssueNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               }
                             },
                             "required": [
@@ -15810,7 +16038,9 @@
                               "lineTotal",
                               "discountType",
                               "discountValue",
-                              "discountAmount"
+                              "discountAmount",
+                              "lineSource",
+                              "stockIssueNo"
                             ]
                           }
                         },
@@ -15941,6 +16171,47 @@
                             "null"
                           ]
                         },
+                        "otherInvoices": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "invoiceId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "invoiceNo": {
+                                "type": "string"
+                              },
+                              "invoiceType": {
+                                "type": "string",
+                                "enum": [
+                                  "SERVICE",
+                                  "DRUG"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "UNPAID",
+                                  "PAID",
+                                  "CANCELLED",
+                                  "REFUNDED"
+                                ]
+                              },
+                              "dueAmount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "invoiceId",
+                              "invoiceNo",
+                              "invoiceType",
+                              "status",
+                              "dueAmount"
+                            ]
+                          }
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -15949,6 +16220,7 @@
                         "id",
                         "encounterId",
                         "invoiceNo",
+                        "invoiceType",
                         "status",
                         "totalAmount",
                         "lines",
@@ -15975,6 +16247,7 @@
                         "needsRefund",
                         "refundedAt",
                         "refundReason",
+                        "otherInvoices",
                         "version"
                       ]
                     },
@@ -16229,6 +16502,13 @@
                         "invoiceNo": {
                           "type": "string"
                         },
+                        "invoiceType": {
+                          "type": "string",
+                          "enum": [
+                            "SERVICE",
+                            "DRUG"
+                          ]
+                        },
                         "status": {
                           "type": "string",
                           "enum": [
@@ -16295,6 +16575,19 @@
                               },
                               "discountAmount": {
                                 "type": "integer"
+                              },
+                              "lineSource": {
+                                "type": "string",
+                                "enum": [
+                                  "SERVICE",
+                                  "DRUG"
+                                ]
+                              },
+                              "stockIssueNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               }
                             },
                             "required": [
@@ -16308,7 +16601,9 @@
                               "lineTotal",
                               "discountType",
                               "discountValue",
-                              "discountAmount"
+                              "discountAmount",
+                              "lineSource",
+                              "stockIssueNo"
                             ]
                           }
                         },
@@ -16439,6 +16734,47 @@
                             "null"
                           ]
                         },
+                        "otherInvoices": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "invoiceId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "invoiceNo": {
+                                "type": "string"
+                              },
+                              "invoiceType": {
+                                "type": "string",
+                                "enum": [
+                                  "SERVICE",
+                                  "DRUG"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "UNPAID",
+                                  "PAID",
+                                  "CANCELLED",
+                                  "REFUNDED"
+                                ]
+                              },
+                              "dueAmount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "invoiceId",
+                              "invoiceNo",
+                              "invoiceType",
+                              "status",
+                              "dueAmount"
+                            ]
+                          }
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -16447,6 +16783,7 @@
                         "id",
                         "encounterId",
                         "invoiceNo",
+                        "invoiceType",
                         "status",
                         "totalAmount",
                         "lines",
@@ -16473,6 +16810,7 @@
                         "needsRefund",
                         "refundedAt",
                         "refundReason",
+                        "otherInvoices",
                         "version"
                       ]
                     },
@@ -16663,6 +17001,13 @@
                         "invoiceNo": {
                           "type": "string"
                         },
+                        "invoiceType": {
+                          "type": "string",
+                          "enum": [
+                            "SERVICE",
+                            "DRUG"
+                          ]
+                        },
                         "status": {
                           "type": "string",
                           "enum": [
@@ -16729,6 +17074,19 @@
                               },
                               "discountAmount": {
                                 "type": "integer"
+                              },
+                              "lineSource": {
+                                "type": "string",
+                                "enum": [
+                                  "SERVICE",
+                                  "DRUG"
+                                ]
+                              },
+                              "stockIssueNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               }
                             },
                             "required": [
@@ -16742,7 +17100,9 @@
                               "lineTotal",
                               "discountType",
                               "discountValue",
-                              "discountAmount"
+                              "discountAmount",
+                              "lineSource",
+                              "stockIssueNo"
                             ]
                           }
                         },
@@ -16873,6 +17233,47 @@
                             "null"
                           ]
                         },
+                        "otherInvoices": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "invoiceId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "invoiceNo": {
+                                "type": "string"
+                              },
+                              "invoiceType": {
+                                "type": "string",
+                                "enum": [
+                                  "SERVICE",
+                                  "DRUG"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "UNPAID",
+                                  "PAID",
+                                  "CANCELLED",
+                                  "REFUNDED"
+                                ]
+                              },
+                              "dueAmount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "invoiceId",
+                              "invoiceNo",
+                              "invoiceType",
+                              "status",
+                              "dueAmount"
+                            ]
+                          }
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -16881,6 +17282,7 @@
                         "id",
                         "encounterId",
                         "invoiceNo",
+                        "invoiceType",
                         "status",
                         "totalAmount",
                         "lines",
@@ -16907,6 +17309,7 @@
                         "needsRefund",
                         "refundedAt",
                         "refundReason",
+                        "otherInvoices",
                         "version"
                       ]
                     },
@@ -17087,6 +17490,13 @@
                         "invoiceNo": {
                           "type": "string"
                         },
+                        "invoiceType": {
+                          "type": "string",
+                          "enum": [
+                            "SERVICE",
+                            "DRUG"
+                          ]
+                        },
                         "status": {
                           "type": "string",
                           "enum": [
@@ -17153,6 +17563,19 @@
                               },
                               "discountAmount": {
                                 "type": "integer"
+                              },
+                              "lineSource": {
+                                "type": "string",
+                                "enum": [
+                                  "SERVICE",
+                                  "DRUG"
+                                ]
+                              },
+                              "stockIssueNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               }
                             },
                             "required": [
@@ -17166,7 +17589,9 @@
                               "lineTotal",
                               "discountType",
                               "discountValue",
-                              "discountAmount"
+                              "discountAmount",
+                              "lineSource",
+                              "stockIssueNo"
                             ]
                           }
                         },
@@ -17297,6 +17722,47 @@
                             "null"
                           ]
                         },
+                        "otherInvoices": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "invoiceId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "invoiceNo": {
+                                "type": "string"
+                              },
+                              "invoiceType": {
+                                "type": "string",
+                                "enum": [
+                                  "SERVICE",
+                                  "DRUG"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "UNPAID",
+                                  "PAID",
+                                  "CANCELLED",
+                                  "REFUNDED"
+                                ]
+                              },
+                              "dueAmount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "invoiceId",
+                              "invoiceNo",
+                              "invoiceType",
+                              "status",
+                              "dueAmount"
+                            ]
+                          }
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -17305,6 +17771,7 @@
                         "id",
                         "encounterId",
                         "invoiceNo",
+                        "invoiceType",
                         "status",
                         "totalAmount",
                         "lines",
@@ -17331,6 +17798,7 @@
                         "needsRefund",
                         "refundedAt",
                         "refundReason",
+                        "otherInvoices",
                         "version"
                       ]
                     },
@@ -17587,6 +18055,13 @@
                         "invoiceNo": {
                           "type": "string"
                         },
+                        "invoiceType": {
+                          "type": "string",
+                          "enum": [
+                            "SERVICE",
+                            "DRUG"
+                          ]
+                        },
                         "status": {
                           "type": "string",
                           "enum": [
@@ -17653,6 +18128,19 @@
                               },
                               "discountAmount": {
                                 "type": "integer"
+                              },
+                              "lineSource": {
+                                "type": "string",
+                                "enum": [
+                                  "SERVICE",
+                                  "DRUG"
+                                ]
+                              },
+                              "stockIssueNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               }
                             },
                             "required": [
@@ -17666,7 +18154,9 @@
                               "lineTotal",
                               "discountType",
                               "discountValue",
-                              "discountAmount"
+                              "discountAmount",
+                              "lineSource",
+                              "stockIssueNo"
                             ]
                           }
                         },
@@ -17797,6 +18287,47 @@
                             "null"
                           ]
                         },
+                        "otherInvoices": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "invoiceId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "invoiceNo": {
+                                "type": "string"
+                              },
+                              "invoiceType": {
+                                "type": "string",
+                                "enum": [
+                                  "SERVICE",
+                                  "DRUG"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "UNPAID",
+                                  "PAID",
+                                  "CANCELLED",
+                                  "REFUNDED"
+                                ]
+                              },
+                              "dueAmount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "invoiceId",
+                              "invoiceNo",
+                              "invoiceType",
+                              "status",
+                              "dueAmount"
+                            ]
+                          }
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -17805,6 +18336,7 @@
                         "id",
                         "encounterId",
                         "invoiceNo",
+                        "invoiceType",
                         "status",
                         "totalAmount",
                         "lines",
@@ -17831,6 +18363,7 @@
                         "needsRefund",
                         "refundedAt",
                         "refundReason",
+                        "otherInvoices",
                         "version"
                       ]
                     },
@@ -18180,6 +18713,13 @@
                         "invoiceNo": {
                           "type": "string"
                         },
+                        "invoiceType": {
+                          "type": "string",
+                          "enum": [
+                            "SERVICE",
+                            "DRUG"
+                          ]
+                        },
                         "status": {
                           "type": "string",
                           "enum": [
@@ -18246,6 +18786,19 @@
                               },
                               "discountAmount": {
                                 "type": "integer"
+                              },
+                              "lineSource": {
+                                "type": "string",
+                                "enum": [
+                                  "SERVICE",
+                                  "DRUG"
+                                ]
+                              },
+                              "stockIssueNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               }
                             },
                             "required": [
@@ -18259,7 +18812,9 @@
                               "lineTotal",
                               "discountType",
                               "discountValue",
-                              "discountAmount"
+                              "discountAmount",
+                              "lineSource",
+                              "stockIssueNo"
                             ]
                           }
                         },
@@ -18390,6 +18945,47 @@
                             "null"
                           ]
                         },
+                        "otherInvoices": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "invoiceId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "invoiceNo": {
+                                "type": "string"
+                              },
+                              "invoiceType": {
+                                "type": "string",
+                                "enum": [
+                                  "SERVICE",
+                                  "DRUG"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "UNPAID",
+                                  "PAID",
+                                  "CANCELLED",
+                                  "REFUNDED"
+                                ]
+                              },
+                              "dueAmount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "invoiceId",
+                              "invoiceNo",
+                              "invoiceType",
+                              "status",
+                              "dueAmount"
+                            ]
+                          }
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -18398,6 +18994,7 @@
                         "id",
                         "encounterId",
                         "invoiceNo",
+                        "invoiceType",
                         "status",
                         "totalAmount",
                         "lines",
@@ -18424,6 +19021,7 @@
                         "needsRefund",
                         "refundedAt",
                         "refundReason",
+                        "otherInvoices",
                         "version"
                       ]
                     },
@@ -29644,9 +30242,6 @@
                         },
                         "pharmacySeparateInvoiceEnabled": {
                           "type": "boolean"
-                        },
-                        "autoDispenseOnSignEnabled": {
-                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -29670,8 +30265,7 @@
                         "walletMixedPaymentEnabled",
                         "soloClinicWorkflowEnabled",
                         "expiryWarningDays",
-                        "pharmacySeparateInvoiceEnabled",
-                        "autoDispenseOnSignEnabled"
+                        "pharmacySeparateInvoiceEnabled"
                       ]
                     },
                     "meta": {
@@ -29990,9 +30584,6 @@
                   },
                   "pharmacySeparateInvoiceEnabled": {
                     "type": "boolean"
-                  },
-                  "autoDispenseOnSignEnabled": {
-                    "type": "boolean"
                   }
                 }
               }
@@ -30236,9 +30827,6 @@
                         },
                         "pharmacySeparateInvoiceEnabled": {
                           "type": "boolean"
-                        },
-                        "autoDispenseOnSignEnabled": {
-                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -30262,8 +30850,7 @@
                         "walletMixedPaymentEnabled",
                         "soloClinicWorkflowEnabled",
                         "expiryWarningDays",
-                        "pharmacySeparateInvoiceEnabled",
-                        "autoDispenseOnSignEnabled"
+                        "pharmacySeparateInvoiceEnabled"
                       ]
                     },
                     "meta": {
@@ -52233,6 +52820,33 @@
                               "lineAmount"
                             ]
                           }
+                        },
+                        "attachedInvoice": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "invoiceId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "invoiceNo": {
+                              "type": "string"
+                            },
+                            "invoiceType": {
+                              "type": "string",
+                              "enum": [
+                                "SERVICE",
+                                "DRUG"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "invoiceId",
+                            "invoiceNo",
+                            "invoiceType"
+                          ]
                         }
                       },
                       "required": [
@@ -52255,7 +52869,8 @@
                         "voidedAt",
                         "voidReason",
                         "version",
-                        "lines"
+                        "lines",
+                        "attachedInvoice"
                       ]
                     },
                     "meta": {
@@ -52595,6 +53210,33 @@
                               "lineAmount"
                             ]
                           }
+                        },
+                        "attachedInvoice": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "invoiceId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "invoiceNo": {
+                              "type": "string"
+                            },
+                            "invoiceType": {
+                              "type": "string",
+                              "enum": [
+                                "SERVICE",
+                                "DRUG"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "invoiceId",
+                            "invoiceNo",
+                            "invoiceType"
+                          ]
                         }
                       },
                       "required": [
@@ -52617,7 +53259,8 @@
                         "voidedAt",
                         "voidReason",
                         "version",
-                        "lines"
+                        "lines",
+                        "attachedInvoice"
                       ]
                     },
                     "meta": {
@@ -52948,6 +53591,33 @@
                               "lineAmount"
                             ]
                           }
+                        },
+                        "attachedInvoice": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "invoiceId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "invoiceNo": {
+                              "type": "string"
+                            },
+                            "invoiceType": {
+                              "type": "string",
+                              "enum": [
+                                "SERVICE",
+                                "DRUG"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "invoiceId",
+                            "invoiceNo",
+                            "invoiceType"
+                          ]
                         }
                       },
                       "required": [
@@ -52970,7 +53640,8 @@
                         "voidedAt",
                         "voidReason",
                         "version",
-                        "lines"
+                        "lines",
+                        "attachedInvoice"
                       ]
                     },
                     "meta": {

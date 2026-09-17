@@ -1956,7 +1956,6 @@ export interface paths {
                                 soloClinicWorkflowEnabled: boolean;
                                 expiryWarningDays: number;
                                 pharmacySeparateInvoiceEnabled: boolean;
-                                autoDispenseOnSignEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -5706,6 +5705,8 @@ export interface paths {
                                     /** Format: uuid */
                                     invoiceId: string;
                                     invoiceNo: string;
+                                    /** @enum {string} */
+                                    invoiceType: "SERVICE" | "DRUG";
                                     /** Format: uuid */
                                     encounterId: string;
                                     encounterNo: string;
@@ -5788,7 +5789,9 @@ export interface paths {
         /** Chi tiết phiếu thu của 1 lượt khám — null nếu không có dòng dịch vụ nào có giá (không có gì để thu) */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    invoiceId?: string;
+                };
                 header?: never;
                 path: {
                     encounterId: string;
@@ -5811,6 +5814,8 @@ export interface paths {
                                 encounterId: string;
                                 invoiceNo: string;
                                 /** @enum {string} */
+                                invoiceType: "SERVICE" | "DRUG";
+                                /** @enum {string} */
                                 status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                 totalAmount: number;
                                 lines: {
@@ -5827,6 +5832,9 @@ export interface paths {
                                     discountType: "PERCENT" | "AMOUNT" | null;
                                     discountValue: number | null;
                                     discountAmount: number;
+                                    /** @enum {string} */
+                                    lineSource: "SERVICE" | "DRUG";
+                                    stockIssueNo: string | null;
                                 }[];
                                 /** @enum {string} */
                                 discountMode: "NONE" | "TOTAL" | "PER_LINE";
@@ -5857,6 +5865,16 @@ export interface paths {
                                 needsRefund: boolean;
                                 refundedAt: string | null;
                                 refundReason: string | null;
+                                otherInvoices: {
+                                    /** Format: uuid */
+                                    invoiceId: string;
+                                    invoiceNo: string;
+                                    /** @enum {string} */
+                                    invoiceType: "SERVICE" | "DRUG";
+                                    /** @enum {string} */
+                                    status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
+                                    dueAmount: number;
+                                }[];
                                 version: number;
                             } | null;
                             meta: Record<string, never>;
@@ -5945,6 +5963,8 @@ export interface paths {
                                 encounterId: string;
                                 invoiceNo: string;
                                 /** @enum {string} */
+                                invoiceType: "SERVICE" | "DRUG";
+                                /** @enum {string} */
                                 status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                 totalAmount: number;
                                 lines: {
@@ -5961,6 +5981,9 @@ export interface paths {
                                     discountType: "PERCENT" | "AMOUNT" | null;
                                     discountValue: number | null;
                                     discountAmount: number;
+                                    /** @enum {string} */
+                                    lineSource: "SERVICE" | "DRUG";
+                                    stockIssueNo: string | null;
                                 }[];
                                 /** @enum {string} */
                                 discountMode: "NONE" | "TOTAL" | "PER_LINE";
@@ -5991,6 +6014,16 @@ export interface paths {
                                 needsRefund: boolean;
                                 refundedAt: string | null;
                                 refundReason: string | null;
+                                otherInvoices: {
+                                    /** Format: uuid */
+                                    invoiceId: string;
+                                    invoiceNo: string;
+                                    /** @enum {string} */
+                                    invoiceType: "SERVICE" | "DRUG";
+                                    /** @enum {string} */
+                                    status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
+                                    dueAmount: number;
+                                }[];
                                 version: number;
                             } | null;
                             meta: Record<string, never>;
@@ -6107,6 +6140,8 @@ export interface paths {
                                 encounterId: string;
                                 invoiceNo: string;
                                 /** @enum {string} */
+                                invoiceType: "SERVICE" | "DRUG";
+                                /** @enum {string} */
                                 status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                 totalAmount: number;
                                 lines: {
@@ -6123,6 +6158,9 @@ export interface paths {
                                     discountType: "PERCENT" | "AMOUNT" | null;
                                     discountValue: number | null;
                                     discountAmount: number;
+                                    /** @enum {string} */
+                                    lineSource: "SERVICE" | "DRUG";
+                                    stockIssueNo: string | null;
                                 }[];
                                 /** @enum {string} */
                                 discountMode: "NONE" | "TOTAL" | "PER_LINE";
@@ -6153,6 +6191,16 @@ export interface paths {
                                 needsRefund: boolean;
                                 refundedAt: string | null;
                                 refundReason: string | null;
+                                otherInvoices: {
+                                    /** Format: uuid */
+                                    invoiceId: string;
+                                    invoiceNo: string;
+                                    /** @enum {string} */
+                                    invoiceType: "SERVICE" | "DRUG";
+                                    /** @enum {string} */
+                                    status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
+                                    dueAmount: number;
+                                }[];
                                 version: number;
                             } | null;
                             meta: Record<string, never>;
@@ -6284,6 +6332,8 @@ export interface paths {
                                 encounterId: string;
                                 invoiceNo: string;
                                 /** @enum {string} */
+                                invoiceType: "SERVICE" | "DRUG";
+                                /** @enum {string} */
                                 status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                 totalAmount: number;
                                 lines: {
@@ -6300,6 +6350,9 @@ export interface paths {
                                     discountType: "PERCENT" | "AMOUNT" | null;
                                     discountValue: number | null;
                                     discountAmount: number;
+                                    /** @enum {string} */
+                                    lineSource: "SERVICE" | "DRUG";
+                                    stockIssueNo: string | null;
                                 }[];
                                 /** @enum {string} */
                                 discountMode: "NONE" | "TOTAL" | "PER_LINE";
@@ -6330,6 +6383,16 @@ export interface paths {
                                 needsRefund: boolean;
                                 refundedAt: string | null;
                                 refundReason: string | null;
+                                otherInvoices: {
+                                    /** Format: uuid */
+                                    invoiceId: string;
+                                    invoiceNo: string;
+                                    /** @enum {string} */
+                                    invoiceType: "SERVICE" | "DRUG";
+                                    /** @enum {string} */
+                                    status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
+                                    dueAmount: number;
+                                }[];
                                 version: number;
                             } | null;
                             meta: Record<string, never>;
@@ -6462,6 +6525,8 @@ export interface paths {
                                 encounterId: string;
                                 invoiceNo: string;
                                 /** @enum {string} */
+                                invoiceType: "SERVICE" | "DRUG";
+                                /** @enum {string} */
                                 status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                 totalAmount: number;
                                 lines: {
@@ -6478,6 +6543,9 @@ export interface paths {
                                     discountType: "PERCENT" | "AMOUNT" | null;
                                     discountValue: number | null;
                                     discountAmount: number;
+                                    /** @enum {string} */
+                                    lineSource: "SERVICE" | "DRUG";
+                                    stockIssueNo: string | null;
                                 }[];
                                 /** @enum {string} */
                                 discountMode: "NONE" | "TOTAL" | "PER_LINE";
@@ -6508,6 +6576,16 @@ export interface paths {
                                 needsRefund: boolean;
                                 refundedAt: string | null;
                                 refundReason: string | null;
+                                otherInvoices: {
+                                    /** Format: uuid */
+                                    invoiceId: string;
+                                    invoiceNo: string;
+                                    /** @enum {string} */
+                                    invoiceType: "SERVICE" | "DRUG";
+                                    /** @enum {string} */
+                                    status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
+                                    dueAmount: number;
+                                }[];
                                 version: number;
                             } | null;
                             meta: Record<string, never>;
@@ -6617,6 +6695,8 @@ export interface paths {
                                 encounterId: string;
                                 invoiceNo: string;
                                 /** @enum {string} */
+                                invoiceType: "SERVICE" | "DRUG";
+                                /** @enum {string} */
                                 status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                 totalAmount: number;
                                 lines: {
@@ -6633,6 +6713,9 @@ export interface paths {
                                     discountType: "PERCENT" | "AMOUNT" | null;
                                     discountValue: number | null;
                                     discountAmount: number;
+                                    /** @enum {string} */
+                                    lineSource: "SERVICE" | "DRUG";
+                                    stockIssueNo: string | null;
                                 }[];
                                 /** @enum {string} */
                                 discountMode: "NONE" | "TOTAL" | "PER_LINE";
@@ -6663,6 +6746,16 @@ export interface paths {
                                 needsRefund: boolean;
                                 refundedAt: string | null;
                                 refundReason: string | null;
+                                otherInvoices: {
+                                    /** Format: uuid */
+                                    invoiceId: string;
+                                    invoiceNo: string;
+                                    /** @enum {string} */
+                                    invoiceType: "SERVICE" | "DRUG";
+                                    /** @enum {string} */
+                                    status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
+                                    dueAmount: number;
+                                }[];
                                 version: number;
                             } | null;
                             meta: Record<string, never>;
@@ -6764,6 +6857,8 @@ export interface paths {
                                 encounterId: string;
                                 invoiceNo: string;
                                 /** @enum {string} */
+                                invoiceType: "SERVICE" | "DRUG";
+                                /** @enum {string} */
                                 status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                 totalAmount: number;
                                 lines: {
@@ -6780,6 +6875,9 @@ export interface paths {
                                     discountType: "PERCENT" | "AMOUNT" | null;
                                     discountValue: number | null;
                                     discountAmount: number;
+                                    /** @enum {string} */
+                                    lineSource: "SERVICE" | "DRUG";
+                                    stockIssueNo: string | null;
                                 }[];
                                 /** @enum {string} */
                                 discountMode: "NONE" | "TOTAL" | "PER_LINE";
@@ -6810,6 +6908,16 @@ export interface paths {
                                 needsRefund: boolean;
                                 refundedAt: string | null;
                                 refundReason: string | null;
+                                otherInvoices: {
+                                    /** Format: uuid */
+                                    invoiceId: string;
+                                    invoiceNo: string;
+                                    /** @enum {string} */
+                                    invoiceType: "SERVICE" | "DRUG";
+                                    /** @enum {string} */
+                                    status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
+                                    dueAmount: number;
+                                }[];
                                 version: number;
                             } | null;
                             meta: Record<string, never>;
@@ -6945,6 +7053,8 @@ export interface paths {
                                 encounterId: string;
                                 invoiceNo: string;
                                 /** @enum {string} */
+                                invoiceType: "SERVICE" | "DRUG";
+                                /** @enum {string} */
                                 status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                 totalAmount: number;
                                 lines: {
@@ -6961,6 +7071,9 @@ export interface paths {
                                     discountType: "PERCENT" | "AMOUNT" | null;
                                     discountValue: number | null;
                                     discountAmount: number;
+                                    /** @enum {string} */
+                                    lineSource: "SERVICE" | "DRUG";
+                                    stockIssueNo: string | null;
                                 }[];
                                 /** @enum {string} */
                                 discountMode: "NONE" | "TOTAL" | "PER_LINE";
@@ -6991,6 +7104,16 @@ export interface paths {
                                 needsRefund: boolean;
                                 refundedAt: string | null;
                                 refundReason: string | null;
+                                otherInvoices: {
+                                    /** Format: uuid */
+                                    invoiceId: string;
+                                    invoiceNo: string;
+                                    /** @enum {string} */
+                                    invoiceType: "SERVICE" | "DRUG";
+                                    /** @enum {string} */
+                                    status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
+                                    dueAmount: number;
+                                }[];
                                 version: number;
                             } | null;
                             meta: Record<string, never>;
@@ -7144,6 +7267,8 @@ export interface paths {
                                 encounterId: string;
                                 invoiceNo: string;
                                 /** @enum {string} */
+                                invoiceType: "SERVICE" | "DRUG";
+                                /** @enum {string} */
                                 status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                 totalAmount: number;
                                 lines: {
@@ -7160,6 +7285,9 @@ export interface paths {
                                     discountType: "PERCENT" | "AMOUNT" | null;
                                     discountValue: number | null;
                                     discountAmount: number;
+                                    /** @enum {string} */
+                                    lineSource: "SERVICE" | "DRUG";
+                                    stockIssueNo: string | null;
                                 }[];
                                 /** @enum {string} */
                                 discountMode: "NONE" | "TOTAL" | "PER_LINE";
@@ -7190,6 +7318,16 @@ export interface paths {
                                 needsRefund: boolean;
                                 refundedAt: string | null;
                                 refundReason: string | null;
+                                otherInvoices: {
+                                    /** Format: uuid */
+                                    invoiceId: string;
+                                    invoiceNo: string;
+                                    /** @enum {string} */
+                                    invoiceType: "SERVICE" | "DRUG";
+                                    /** @enum {string} */
+                                    status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
+                                    dueAmount: number;
+                                }[];
                                 version: number;
                             } | null;
                             meta: Record<string, never>;
@@ -11851,7 +11989,6 @@ export interface paths {
                                 soloClinicWorkflowEnabled: boolean;
                                 expiryWarningDays: number;
                                 pharmacySeparateInvoiceEnabled: boolean;
-                                autoDispenseOnSignEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -11955,7 +12092,6 @@ export interface paths {
                         soloClinicWorkflowEnabled?: boolean;
                         expiryWarningDays?: number;
                         pharmacySeparateInvoiceEnabled?: boolean;
-                        autoDispenseOnSignEnabled?: boolean;
                     };
                 };
             };
@@ -12018,7 +12154,6 @@ export interface paths {
                                 soloClinicWorkflowEnabled: boolean;
                                 expiryWarningDays: number;
                                 pharmacySeparateInvoiceEnabled: boolean;
-                                autoDispenseOnSignEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -21342,6 +21477,13 @@ export interface paths {
                                     sellPrice: number;
                                     lineAmount: number;
                                 }[];
+                                attachedInvoice: {
+                                    /** Format: uuid */
+                                    invoiceId: string;
+                                    invoiceNo: string;
+                                    /** @enum {string} */
+                                    invoiceType: "SERVICE" | "DRUG";
+                                } | null;
                             };
                             meta: Record<string, never>;
                         };
@@ -21484,6 +21626,13 @@ export interface paths {
                                     sellPrice: number;
                                     lineAmount: number;
                                 }[];
+                                attachedInvoice: {
+                                    /** Format: uuid */
+                                    invoiceId: string;
+                                    invoiceNo: string;
+                                    /** @enum {string} */
+                                    invoiceType: "SERVICE" | "DRUG";
+                                } | null;
                             };
                             meta: Record<string, never>;
                         };
@@ -21622,6 +21771,13 @@ export interface paths {
                                     sellPrice: number;
                                     lineAmount: number;
                                 }[];
+                                attachedInvoice: {
+                                    /** Format: uuid */
+                                    invoiceId: string;
+                                    invoiceNo: string;
+                                    /** @enum {string} */
+                                    invoiceType: "SERVICE" | "DRUG";
+                                } | null;
                             };
                             meta: Record<string, never>;
                         };

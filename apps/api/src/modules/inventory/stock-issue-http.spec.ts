@@ -320,6 +320,84 @@ describe('HTTP e2e — /api/v1/inventory (Phiếu xuất kho GĐ3)', () => {
     expect(line.suggestedBatches[1].expiryDate).toBe('2028-01-01');
   });
 
+  it('1 request gửi NHIỀU dòng cùng 1 thuốc kê (tách nhiều lô, #165) — cộng dồn đúng, thành công khi tổng không vượt số đã kê lẫn tồn từng lô', async () => {
+    const drugId = await createDrug(clinicAdminToken, { name: 'Cefixim 200mg (tách lô)' });
+    const batchA = await receiveStock(clinicAdminToken, drugId, 10, 1000, { batchNo: `SPLIT-A-${randomUUID().slice(0, 6)}`, expiryDate: '2027-01-01' });
+    const batchB = await receiveStock(clinicAdminToken, drugId, 10, 1000, { batchNo: `SPLIT-B-${randomUUID().slice(0, 6)}`, expiryDate: '2027-06-01' });
+    const { encounterId } = await prepareEncounterInConsultation(11);
+    const { prescriptionId, items } = await signPrescription(encounterId, [{ drugId, quantity: 15 }]);
+
+    // Kê 15, lô A chỉ có 10 — tách 10 (lô A) + 5 (lô B) trong CÙNG 1 request, đúng cách
+    // `DispensePrescriptionDialog.tsx` tự gợi ý (`autoSplitFefo`).
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/inventory/issues')
+      .set(authed(doctorToken))
+      .send({
+        prescriptionId,
+        warehouseId,
+        lines: [
+          { prescriptionItemId: items[0]!.id, drugId, batchId: batchA, quantity: 10 },
+          { prescriptionItemId: items[0]!.id, drugId, batchId: batchB, quantity: 5 },
+        ],
+      });
+    expect(res.status).toBe(200);
+    expect(res.body.data.lines).toHaveLength(2);
+    expect(res.body.data.totalAmount).toBe(15 * 2000);
+
+    const statusRes = await request(app.getHttpServer()).get(`/api/v1/inventory/prescriptions/${prescriptionId}/dispense-status`).set(authed(doctorToken)).query({ warehouseId });
+    expect(statusRes.body.data.lines[0].dispensedQuantity).toBe(15);
+    expect(statusRes.body.data.lines[0].remainingQuantity).toBe(0);
+  });
+
+  it('1 request gửi NHIỀU dòng cùng 1 thuốc kê nhưng TỔNG vượt số đã kê (dù từng dòng riêng lẻ đều hợp lệ, đủ tồn) → 422 STOCK_ISSUE_EXCEEDS_PRESCRIBED_QUANTITY (#165, chặn cộng dồn trong CÙNG request)', async () => {
+    const drugId = await createDrug(clinicAdminToken, { name: 'Cefixim 200mg (vượt kê cộng dồn)' });
+    const batchA = await receiveStock(clinicAdminToken, drugId, 20, 1000, { batchNo: `OVER-A-${randomUUID().slice(0, 6)}`, expiryDate: '2027-01-01' });
+    const batchB = await receiveStock(clinicAdminToken, drugId, 20, 1000, { batchNo: `OVER-B-${randomUUID().slice(0, 6)}`, expiryDate: '2027-06-01' });
+    const { encounterId } = await prepareEncounterInConsultation(11, 30);
+    const { prescriptionId, items } = await signPrescription(encounterId, [{ drugId, quantity: 15 }]);
+
+    // Kê 15 — mỗi dòng 10 (từng dòng riêng lẻ đều ≤ 15, đủ tồn ở CẢ 2 lô) nhưng TỔNG 20 > 15 đã kê.
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/inventory/issues')
+      .set(authed(doctorToken))
+      .send({
+        prescriptionId,
+        warehouseId,
+        lines: [
+          { prescriptionItemId: items[0]!.id, drugId, batchId: batchA, quantity: 10 },
+          { prescriptionItemId: items[0]!.id, drugId, batchId: batchB, quantity: 10 },
+        ],
+      });
+    expect(res.status).toBe(422);
+    expect(res.body.error.code).toBe('STOCK_ISSUE_EXCEEDS_PRESCRIBED_QUANTITY');
+
+    // Không tạo phiếu/không trừ kho gì cả — toàn bộ request bị từ chối trong CÙNG 1 transaction.
+    const statusRes = await request(app.getHttpServer()).get(`/api/v1/inventory/prescriptions/${prescriptionId}/dispense-status`).set(authed(doctorToken)).query({ warehouseId });
+    expect(statusRes.body.data.lines[0].dispensedQuantity).toBe(0);
+  });
+
+  it('1 request gửi NHIỀU dòng CÙNG 1 lô (không chỉ cùng thuốc) với tổng vượt tồn thật của lô đó → 422 STOCK_ISSUE_INSUFFICIENT_STOCK (#165, chặn cộng dồn theo lô)', async () => {
+    const drugId = await createDrug(clinicAdminToken, { name: 'Cefixim 200mg (trùng lô vượt tồn)' });
+    const batchId = await receiveStock(clinicAdminToken, drugId, 15, 1000, { batchNo: `DUP-${randomUUID().slice(0, 6)}`, expiryDate: '2027-01-01' });
+    const { encounterId } = await prepareEncounterInConsultation(12);
+    const { prescriptionId, items } = await signPrescription(encounterId, [{ drugId, quantity: 20 }]);
+
+    // Lô chỉ có 15 — gửi 2 dòng CÙNG lô đó, mỗi dòng 10 (từng dòng riêng lẻ ≤ 15) nhưng tổng 20 > 15.
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/inventory/issues')
+      .set(authed(doctorToken))
+      .send({
+        prescriptionId,
+        warehouseId,
+        lines: [
+          { prescriptionItemId: items[0]!.id, drugId, batchId, quantity: 10 },
+          { prescriptionItemId: items[0]!.id, drugId, batchId, quantity: 10 },
+        ],
+      });
+    expect(res.status).toBe(422);
+    expect(res.body.error.code).toBe('STOCK_ISSUE_INSUFFICIENT_STOCK');
+  });
+
   it('hàng OTC (không theo đơn) — chỉ cho phép khi drug.isPrescriptionOnly=false, chặn ngược lại', async () => {
     const rxDrugId = await createDrug(clinicAdminToken, { name: 'Amoxicillin OTC test', isPrescriptionOnly: true });
     await receiveStock(clinicAdminToken, rxDrugId, 20, 1000);
