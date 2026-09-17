@@ -1,13 +1,15 @@
 import { useState } from 'react';
-import { CheckCircle, PencilSimple, Plus, Printer, Warning, X } from '@phosphor-icons/react';
+import { CheckCircle, PencilSimple, Pill, Plus, Printer, Warning, X } from '@phosphor-icons/react';
 import type { PrescriptionItem, PrescriptionResponse } from '@nexamed/shared';
 import { useAuthStore } from '../auth/auth.store';
 import { useClinicPrintHeaderQuery } from '../clinic/clinic.queries';
+import { useHasPermission } from '../auth/usePermission';
 import { Button } from '../../shared/ui/Button';
 import { Combobox } from '../../shared/ui/Combobox';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { appendSentence } from '../../shared/format/append-sentence';
 import { useCreateReferenceCatalogItemMutation, useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
+import { DispensePrescriptionDialog } from '../inventory/DispensePrescriptionDialog';
 import { DrugPicker } from './DrugPicker';
 import { PrescriptionPrintView } from './PrescriptionPrintView';
 import {
@@ -92,6 +94,10 @@ export function PrescriptionPanel({
 
   const isSigned = prescription !== null && prescription.signedAt !== null;
   const canEdit = isEditableEncounter && !isSigned;
+  // Kho Thuốc GĐ3 (#163) — nút "Phát thuốc" chỉ hiện khi đơn đã ký VÀ actor có quyền phát
+  // (`stock_issue.create` — lễ tân chỉ `.read`, không tự phát được).
+  const canDispense = useHasPermission('stock_issue', 'create');
+  const [dispenseOpen, setDispenseOpen] = useState(false);
 
   const [draftLines, setDraftLines] = useState<DraftLine[]>(() => (prescription?.items ?? []).map(itemToDraft));
   const [draftKey, setDraftKey] = useState(prescription?.id ?? 'new');
@@ -206,6 +212,12 @@ export function PrescriptionPanel({
                 <PencilSimple size={15} weight="bold" aria-hidden="true" />
                 Sửa đơn
               </Button>
+              {canDispense && (
+                <Button type="button" variant="secondary" onClick={() => setDispenseOpen(true)}>
+                  <Pill size={15} weight="bold" aria-hidden="true" />
+                  Phát thuốc
+                </Button>
+              )}
               <Button type="button" onClick={() => void handlePrint()} loading={printMutation.isPending}>
                 <Printer size={15} weight="bold" aria-hidden="true" />
                 In đơn
@@ -304,6 +316,10 @@ export function PrescriptionPanel({
           items={prescription.items}
           signedAt={prescription.signedAt!}
         />
+      )}
+
+      {dispenseOpen && prescription && (
+        <DispensePrescriptionDialog prescriptionId={prescription.id} onClose={() => setDispenseOpen(false)} />
       )}
 
       {amendOpen && (

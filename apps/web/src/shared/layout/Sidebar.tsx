@@ -73,7 +73,7 @@ const WORK_SCHEDULE_GROUP_PATHS = ['/work-schedule'];
  * "Danh mục Thuốc và Vật Tư" khỏi "Quản trị" theo yêu cầu chủ dự án, đặt ngay dưới "Sổ quỹ & Thu
  * chi". Route GIỮ NGUYÊN `/admin/catalog-pharmacy` (không đổi permission/route, chỉ đổi vị trí
  * hiển thị trong sidebar — cùng cách đã làm với "Hồ sơ Bệnh nhân"/`PATIENT_RECORDS_GROUP_PATHS`). */
-const WAREHOUSE_GROUP_PATHS = ['/admin/catalog-pharmacy', '/inventory/receipts', '/inventory/balances'];
+const WAREHOUSE_GROUP_PATHS = ['/admin/catalog-pharmacy', '/inventory/receipts', '/inventory/balances', '/inventory/dispense'];
 /** Đường dẫn thuộc nhóm "Quản lý nhà cung cấp" — tách "Nhà cung cấp" khỏi pill con của "Danh mục
  * Thuốc và Vật Tư" thành trang/nhóm menu riêng (route mới `/suppliers`, cùng quyền `drug.create`/
  * `drug.update`, tách từ `drug.manage` gộp cũ #156). */
@@ -191,6 +191,9 @@ export function Sidebar() {
   // `canSeeCatalogPharmacy` (danh mục thuốc) — điều dưỡng/bác sĩ có `stock_receipt.read` (xem tồn)
   // nhưng KHÔNG có `drug.create`/`drug.update`.
   const canSeeInventory = useHasPermission('stock_receipt', 'read');
+  // Kho Thuốc GĐ3 — "Phát thuốc" (docs/DECISIONS.md #163), gate riêng theo `stock_issue.read`
+  // (lễ tân có quyền này để biết đã phát gì, dù không tự phát thuốc được — `.create` riêng).
+  const canSeeDispenseQueue = useHasPermission('stock_issue', 'read');
   const canSeeSystemConfig = useHasPermission('clinic_config', 'update');
   const canSeeActivityLog = useHasPermission('audit_log', 'read');
   const canSeePatients = useHasPermission('patient', 'read');
@@ -455,7 +458,7 @@ export function Sidebar() {
               "Quản trị" theo yêu cầu chủ dự án, route giữ nguyên /admin/catalog-pharmacy. GĐ2
               (#146) thêm "Phiếu nhập kho"/"Tồn kho" — nhóm hiện cả khi chỉ có stock_receipt.read
               (điều dưỡng/bác sĩ xem tồn, không quản lý danh mục thuốc). */}
-          {(canSeeCatalogPharmacy || canSeeInventory) && (
+          {(canSeeCatalogPharmacy || canSeeInventory || canSeeDispenseQueue) && (
             <li>
               <button
                 type="button"
@@ -492,6 +495,8 @@ export function Sidebar() {
                   {/* Kho Thuốc GĐ2 (docs/DECISIONS.md #146, kế hoạch precious-humming-goblet.md) — "Tồn kho"/"Phiếu nhập kho". */}
                   {canSeeInventory && <NavItem to="/inventory/balances" label="Tồn kho" icon={ChartBar} collapsed={false} indent />}
                   {canSeeInventory && <NavItem to="/inventory/receipts" label="Phiếu nhập kho" icon={Archive} collapsed={false} indent />}
+                  {/* Kho Thuốc GĐ3 (docs/DECISIONS.md #163) — "Phát thuốc". */}
+                  {canSeeDispenseQueue && <NavItem to="/inventory/dispense" label="Phát thuốc" icon={Pill} collapsed={false} indent />}
                 </ul>
               )}
             </li>

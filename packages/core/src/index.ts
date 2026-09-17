@@ -40,5 +40,6 @@ export * from './cashier-shift/compute-shift-totals';
 export * from './inventory/compute-expiry-status';
 export * from './inventory/compute-unit-conversion';
 export * from './inventory/compute-weighted-average-cost';
+export * from './inventory/select-fefo-batches';
 export * from './backup/backup-status';
 export * from './medical-record/render-patient-medical-record-html';

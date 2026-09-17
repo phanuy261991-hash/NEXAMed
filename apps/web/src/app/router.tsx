@@ -64,6 +64,8 @@ const WalletListPage = lazy(() => import('../features/patient-wallet/WalletListP
 const StockReceiptListPage = lazy(() => import('../features/inventory/StockReceiptListPage').then((m) => ({ default: m.StockReceiptListPage })));
 const StockReceiptFormPage = lazy(() => import('../features/inventory/StockReceiptFormPage').then((m) => ({ default: m.StockReceiptFormPage })));
 const StockBalancePage = lazy(() => import('../features/inventory/StockBalancePage').then((m) => ({ default: m.StockBalancePage })));
+// Kho Thuốc GĐ3 — "Phát thuốc" (docs/DECISIONS.md #163, kế hoạch fluttering-scribbling-liskov.md).
+const DispenseQueuePage = lazy(() => import('../features/inventory/DispenseQueuePage').then((m) => ({ default: m.DispenseQueuePage })));
 // Nhóm Quản trị — chỉ `clinic_admin` dùng tới; lễ tân/điều dưỡng/bác sĩ không bao giờ tải các
 // chunk này (gồm cả trang tra cứu ICD-10 và toàn bộ màn hình danh mục).
 const CatalogAdminPage = lazy(() => import('../features/catalog/CatalogAdminPage').then((m) => ({ default: m.CatalogAdminPage })));
@@ -134,6 +136,7 @@ export const router = createBrowserRouter([
       { path: 'inventory/receipts/new', element: <RequirePermissionRoute module="stock_receipt" action="create"><StockReceiptFormPage /></RequirePermissionRoute> },
       { path: 'inventory/receipts/:id', element: <RequirePermissionRoute module="stock_receipt" action="read"><StockReceiptFormPage /></RequirePermissionRoute> },
       { path: 'inventory/balances', element: <RequirePermissionRoute module="stock_receipt" action="read"><StockBalancePage /></RequirePermissionRoute> },
+      { path: 'inventory/dispense', element: <RequirePermissionRoute module="stock_issue" action="read"><DispenseQueuePage /></RequirePermissionRoute> },
       // "Đăng ký ca làm việc" (Giai đoạn 2 #101).
       { path: 'work-schedule/mine', element: <RequirePermissionRoute module="work_shift_assignment" action="read"><MyWorkSchedulePage /></RequirePermissionRoute> },
       { path: 'work-schedule/staff', element: <RequirePermissionRoute module="work_shift_assignment" action="read"><StaffWorkSchedulePage /></RequirePermissionRoute> },

@@ -49,6 +49,8 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         walletMixedPaymentEnabled,
         soloClinicWorkflowEnabled,
         expiryWarningDays,
+        pharmacySeparateInvoiceEnabled,
+        autoDispenseOnSignEnabled,
       ] = await Promise.all([
         this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
         this.clinicSettingsRepository.getSlotDurationMinutes(tx, tenantId),
@@ -70,6 +72,8 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getWalletMixedPaymentEnabled(tx, tenantId),
         this.clinicSettingsRepository.getSoloClinicWorkflowEnabled(tx, tenantId),
         this.clinicSettingsRepository.getExpiryWarningDays(tx, tenantId),
+        this.clinicSettingsRepository.getPharmacySeparateInvoiceEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getAutoDispenseOnSignEnabled(tx, tenantId),
       ]);
       return {
         businessHours,
@@ -92,8 +96,20 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         walletMixedPaymentEnabled,
         soloClinicWorkflowEnabled,
         expiryWarningDays,
+        pharmacySeparateInvoiceEnabled,
+        autoDispenseOnSignEnabled,
       };
     });
+  }
+
+  /** `ClinicConfigReaderPort` (Kho Thuốc GĐ3, #163) — module `inventory` đọc qua port này (không có endpoint tự-phục vụ, chỉ backend rẽ nhánh lúc tạo Phiếu xuất kho). */
+  getPharmacySeparateInvoiceEnabled(tenantId: string): ReturnType<ClinicConfigReaderPort['getPharmacySeparateInvoiceEnabled']> {
+    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getPharmacySeparateInvoiceEnabled(tx, tenantId));
+  }
+
+  /** `ClinicConfigReaderPort` (Kho Thuốc GĐ3, #163) — module `encounter` đọc qua port này lúc ký đơn. */
+  getAutoDispenseOnSignEnabled(tenantId: string): ReturnType<ClinicConfigReaderPort['getAutoDispenseOnSignEnabled']> {
+    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getAutoDispenseOnSignEnabled(tx, tenantId));
   }
 
   /** `GET /clinic-settings/solo-clinic-workflow-enabled` — chiếu tối thiểu tự-phục vụ, xem comment ở `packages/shared/src/clinic.ts`. */
@@ -275,6 +291,12 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
       if (dto.expiryWarningDays !== undefined) {
         await this.clinicSettingsRepository.upsertExpiryWarningDays(tx, tenantId, actorId, dto.expiryWarningDays);
       }
+      if (dto.pharmacySeparateInvoiceEnabled !== undefined) {
+        await this.clinicSettingsRepository.upsertPharmacySeparateInvoiceEnabled(tx, tenantId, actorId, dto.pharmacySeparateInvoiceEnabled);
+      }
+      if (dto.autoDispenseOnSignEnabled !== undefined) {
+        await this.clinicSettingsRepository.upsertAutoDispenseOnSignEnabled(tx, tenantId, actorId, dto.autoDispenseOnSignEnabled);
+      }
 
       const hasChanges =
         dto.businessHours !== undefined ||
@@ -296,7 +318,9 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         dto.sidebarAutoCollapseEnabled !== undefined ||
         dto.walletMixedPaymentEnabled !== undefined ||
         dto.soloClinicWorkflowEnabled !== undefined ||
-        dto.expiryWarningDays !== undefined;
+        dto.expiryWarningDays !== undefined ||
+        dto.pharmacySeparateInvoiceEnabled !== undefined ||
+        dto.autoDispenseOnSignEnabled !== undefined;
       if (hasChanges) {
         await writeAuditLog(tx, tenantId, {
           actorId,
@@ -330,6 +354,8 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         walletMixedPaymentEnabled,
         soloClinicWorkflowEnabled,
         expiryWarningDays,
+        pharmacySeparateInvoiceEnabled,
+        autoDispenseOnSignEnabled,
       ] = await Promise.all([
         this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
         this.clinicSettingsRepository.getSlotDurationMinutes(tx, tenantId),
@@ -351,6 +377,8 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getWalletMixedPaymentEnabled(tx, tenantId),
         this.clinicSettingsRepository.getSoloClinicWorkflowEnabled(tx, tenantId),
         this.clinicSettingsRepository.getExpiryWarningDays(tx, tenantId),
+        this.clinicSettingsRepository.getPharmacySeparateInvoiceEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getAutoDispenseOnSignEnabled(tx, tenantId),
       ]);
       return {
         businessHours,
@@ -373,6 +401,8 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         walletMixedPaymentEnabled,
         soloClinicWorkflowEnabled,
         expiryWarningDays,
+        pharmacySeparateInvoiceEnabled,
+        autoDispenseOnSignEnabled,
       };
     });
   }

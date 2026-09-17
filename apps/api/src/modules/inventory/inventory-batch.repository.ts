@@ -38,6 +38,12 @@ export class InventoryBatchRepository {
     return tx.inventoryBatch.findFirst({ where: { tenantId, drugId, warehouseId, batchNo, deletedAt: null } });
   }
 
+  /** Kho Thuốc GĐ3 (#163) — tra lô đã chọn theo `id` (Combobox chọn lô gửi `batchId` thẳng, khác
+   * GĐ2 gõ `batchNo` tự do lúc nhập). */
+  findById(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<InventoryBatch | null> {
+    return tx.inventoryBatch.findFirst({ where: { tenantId, id, deletedAt: null } });
+  }
+
   create(tx: Prisma.TransactionClient, tenantId: string, actorId: string, data: CreateInventoryBatchData): Promise<InventoryBatch> {
     return tx.inventoryBatch.create({
       data: {

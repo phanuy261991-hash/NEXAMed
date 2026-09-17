@@ -102,7 +102,12 @@ export class DrugService {
 
   async list(tenantId: string, query: ListDrugsQuery): Promise<ListDrugsResponse> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const rows = await this.drugRepository.list(tx, tenantId, { q: query.q, itemType: query.itemType, includeInactive: query.includeInactive });
+      const rows = await this.drugRepository.list(tx, tenantId, {
+        q: query.q,
+        itemType: query.itemType,
+        includeInactive: query.includeInactive,
+        prescriptionOnly: query.prescriptionOnly,
+      });
       return { items: rows.map((r) => this.toSummary(r)) };
     });
   }

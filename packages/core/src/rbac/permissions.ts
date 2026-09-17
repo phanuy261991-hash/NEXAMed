@@ -163,6 +163,11 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   { module: 'stock_receipt', action: 'create', description: 'Tạo/sửa Nháp phiếu nhập kho' },
   { module: 'stock_receipt', action: 'read', description: 'Xem phiếu nhập kho, Tồn kho, Thẻ kho' },
   { module: 'stock_receipt', action: 'approve', description: 'Duyệt/Từ chối/Huỷ phiếu nhập kho' },
+  // Kho Thuốc & Vật tư y tế — Giai đoạn 3 (Xuất kho theo đơn + FEFO + tiền thuốc, docs/DECISIONS.md
+  // #163). KHÔNG có `.approve` (luồng 1 bước, khác `stock_receipt`) — "Huỷ phiếu xuất" dùng chung
+  // `create`, đúng tinh thần "ai lập được thì tự sửa lỗi được" của `stock_receipt` phòng khám nhỏ.
+  { module: 'stock_issue', action: 'create', description: 'Phát thuốc theo đơn / Huỷ phiếu xuất kho' },
+  { module: 'stock_issue', action: 'read', description: 'Xem phiếu xuất kho, trạng thái đã phát/còn lại của đơn thuốc' },
 ] as const;
 
 export function permissionKey(p: Pick<PermissionDefinition, 'module' | 'action'>): string {
@@ -223,6 +228,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'cash_voucher.update': 'personal',
     // "Ví tạm ứng" — lễ tân là người nạp tiền chính, cùng tinh thần `cash_voucher.create`.
     'patient_wallet.topup': 'global',
+    // Kho Thuốc GĐ3 — lễ tân CHỈ xem (biết đã phát gì để giải thích hoá đơn), không tự phát thuốc.
+    'stock_issue.read': 'global',
   },
   nurse: {
     'patient.read': 'global',
@@ -238,6 +245,9 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'drug.read': 'global',
     // Kho Thuốc GĐ2 — điều dưỡng xem tồn kho (chuẩn bị cho GĐ5 kê đơn thấy tồn), không tạo/duyệt phiếu.
     'stock_receipt.read': 'global',
+    // Kho Thuốc GĐ3 — điều dưỡng tự phát thuốc tại chỗ được (mô hình "không quầy riêng").
+    'stock_issue.create': 'global',
+    'stock_issue.read': 'global',
     'work_shift_assignment.create': 'personal',
     'work_shift_assignment.read': 'personal',
     'work_shift_assignment.delete': 'personal',
@@ -277,6 +287,9 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'drug.read': 'global',
     // Kho Thuốc GĐ2 — bác sĩ xem tồn kho (chuẩn bị cho GĐ5 kê đơn thấy tồn), không tạo/duyệt phiếu.
     'stock_receipt.read': 'global',
+    // Kho Thuốc GĐ3 — bác sĩ tự phát thuốc tại chỗ được (mô hình "không quầy riêng").
+    'stock_issue.create': 'global',
+    'stock_issue.read': 'global',
     // Tự thao tác "Tạm nghỉ / Đóng ca" cho chính mình — luôn cho phép (personal), không phụ thuộc
     // 2 công tắc cấu hình (2 công tắc đó chỉ gate nhánh "hộ" của receptionist/clinic_admin).
     'doctor_availability.update': 'personal',
@@ -320,6 +333,9 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'stock_receipt.create': 'global',
     'stock_receipt.read': 'global',
     'stock_receipt.approve': 'global',
+    // Kho Thuốc GĐ3 — clinic_admin phát thuốc/huỷ phiếu xuất được như bác sĩ/điều dưỡng.
+    'stock_issue.create': 'global',
+    'stock_issue.read': 'global',
     // Thu ngân cơ bản — clinic_admin giám sát/xử lý được như lễ tân, cùng mức encounter.*.
     'invoice.read': 'global',
     'invoice.update': 'global',

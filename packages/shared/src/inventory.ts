@@ -232,6 +232,7 @@ export const stockLedgerReasonSchema = z.enum([
   'ISSUE_RETURN_TO_SUPPLIER',
   'ISSUE_WRITE_OFF',
   'ISSUE_COUNT_SHORTAGE',
+  'ISSUE_VOID',
 ]);
 export type StockLedgerReason = z.infer<typeof stockLedgerReasonSchema>;
 
@@ -251,6 +252,11 @@ export const stockLedgerEntrySchema = z.object({
   warehouseName: z.string(),
   sourceReceiptId: z.string().uuid().nullable(),
   sourceReceiptNo: z.string().nullable(),
+  // Kho Thuốc GĐ3 (#163) — nguồn phiếu XUẤT (song song sourceReceiptId/No ở trên), đúng ghi chú
+  // treo sẵn từ GĐ2 "sẽ tách API thật khi GĐ3 có thêm phiếu xuất kho". Luôn đúng 1 trong 2 nguồn
+  // có giá trị (dòng nhập hoặc dòng xuất), không bao giờ cả hai cùng có/cùng null.
+  sourceIssueId: z.string().uuid().nullable(),
+  sourceIssueNo: z.string().nullable(),
   createdByName: z.string(),
 });
 export type StockLedgerEntry = z.infer<typeof stockLedgerEntrySchema>;
@@ -294,3 +300,187 @@ export const listStockExpiryWarningsResponseSchema = z.object({
   expiredCount: z.number().int(),
 });
 export type ListStockExpiryWarningsResponse = z.infer<typeof listStockExpiryWarningsResponseSchema>;
+
+// ============ Kho Thuốc & Vật tư y tế — Giai đoạn 3 (Xuất kho theo đơn + FEFO + tiền thuốc,
+// docs/DECISIONS.md #163, kế hoạch kỹ thuật fluttering-scribbling-liskov.md, mockup đã duyệt) ============
+// Nguyên tắc cốt lõi (#146, không đổi): đơn thuốc là Y LỆNH — chỉ Phiếu xuất kho (`stock_issue`)
+// mới sinh tiền/trừ kho. Một đơn có thể ứng nhiều phiếu xuất — "đã phát" luôn tính từ
+// SUM(stock_issue_line.quantity), không lưu cột luỹ kế trên `prescription_item`.
+
+export const stockIssueTypeSchema = z.enum([
+  'RETAIL_SALE', // Phát thuốc theo đơn tại quầy — xây GĐ3
+  'INTERNAL_ALLOCATION', // Xuất cấp phát nội bộ — để sẵn GĐ4
+  'SERVICE_CONSUMPTION', // Xuất tiêu hao theo dịch vụ (vật tư) — để sẵn GĐ4
+  'TRANSFER_OUT', // Xuất chuyển kho — để sẵn GĐ4
+  'RETURN_TO_SUPPLIER', // Xuất trả nhà cung cấp — để sẵn GĐ4
+  'WRITE_OFF', // Xuất huỷ (hỏng/hết hạn) — để sẵn GĐ3/4
+  'COUNT_SHORTAGE', // Xuất cân bằng, thiếu hụt kiểm kê — để sẵn GĐ4
+]);
+export type StockIssueType = z.infer<typeof stockIssueTypeSchema>;
+
+/** KHÔNG có `DRAFT`/`REJECTED` như `stock_receipt` — luồng 1 bước, chọn lô là trừ kho + sinh tiền ngay. */
+export const stockIssueStatusSchema = z.enum(['POSTED', 'VOIDED']);
+export type StockIssueStatus = z.infer<typeof stockIssueStatusSchema>;
+
+/**
+ * 1 dòng hàng lúc tạo phiếu xuất. `prescriptionItemId=null` = dòng OTC bán thêm (không theo đơn),
+ * CHỈ hợp lệ khi `drug.isPrescriptionOnly=false` (validate ở Service — cần tra `drug`, Zod không
+ * biết được). `batchId=null` khi `drug.isBatchManaged=false`, hoặc khi có mà dược sĩ chọn khác gợi
+ * ý FEFO mặc định (không ép cứng FEFO, chỉ gợi ý).
+ */
+export const stockIssueLineInputSchema = z.object({
+  prescriptionItemId: z.string().uuid().nullable().optional(),
+  drugId: z.string().uuid(),
+  batchId: z.string().uuid().nullable().optional(),
+  quantity: z.number().int().positive('Số lượng phải lớn hơn 0.'),
+});
+export type StockIssueLineInput = z.infer<typeof stockIssueLineInputSchema>;
+
+/** `POST /inventory/issues` — tạo + hoàn tất 1 bước (trừ kho + sinh tiền ngay). */
+export const createStockIssueRequestSchema = z.object({
+  prescriptionId: z.string().uuid(),
+  warehouseId: z.string().uuid(),
+  /** Bỏ trống mặc định "bây giờ". */
+  occurredAt: z.string().optional(),
+  note: z.string().nullable().optional(),
+  lines: z.array(stockIssueLineInputSchema).min(1, 'Phải có ít nhất 1 dòng hàng.'),
+});
+export type CreateStockIssueRequest = z.infer<typeof createStockIssueRequestSchema>;
+
+/** `POST /inventory/issues/:id/void` — huỷ phiếu (phát nhầm), lý do bắt buộc (CLAUDE.md: không xoá cứng). */
+export const voidStockIssueRequestSchema = z.object({
+  reason: z.string().min(1, 'Phải nhập lý do huỷ phiếu.'),
+  version: z.number().int(),
+});
+export type VoidStockIssueRequest = z.infer<typeof voidStockIssueRequestSchema>;
+
+export const stockIssueLineSchema = z.object({
+  id: z.string().uuid(),
+  prescriptionItemId: z.string().uuid().nullable(),
+  drugId: z.string().uuid(),
+  drugCode: z.string(),
+  drugName: z.string(),
+  batchId: z.string().uuid().nullable(),
+  batchNo: z.string().nullable(),
+  quantity: z.number().int(),
+  unitCost: z.number().int(),
+  sellPrice: z.number().int(),
+  lineAmount: z.number().int(),
+});
+export type StockIssueLine = z.infer<typeof stockIssueLineSchema>;
+
+export const stockIssueSummarySchema = z.object({
+  id: z.string().uuid(),
+  issueNo: z.string(),
+  issueType: stockIssueTypeSchema,
+  status: stockIssueStatusSchema,
+  warehouseId: z.string().uuid(),
+  warehouseName: z.string(),
+  prescriptionId: z.string().uuid().nullable(),
+  encounterId: z.string().uuid().nullable(),
+  patientCode: z.string().nullable(),
+  patientFullName: z.string().nullable(),
+  occurredAt: z.string(),
+  note: z.string().nullable(),
+  totalAmount: z.number().int(),
+  lineCount: z.number().int(),
+  createdByName: z.string(),
+  voidedByName: z.string().nullable(),
+  voidedAt: z.string().nullable(),
+  voidReason: z.string().nullable(),
+  version: z.number().int(),
+});
+export type StockIssueSummary = z.infer<typeof stockIssueSummarySchema>;
+
+export const stockIssueDetailSchema = stockIssueSummarySchema.extend({
+  lines: z.array(stockIssueLineSchema),
+});
+export type StockIssueDetail = z.infer<typeof stockIssueDetailSchema>;
+
+export const listStockIssuesQuerySchema = z.object({
+  cursor: z.string().uuid().optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  warehouseId: z.string().uuid().optional(),
+  status: stockIssueStatusSchema.optional(),
+  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  q: z.string().min(1).max(100).optional(),
+});
+export type ListStockIssuesQuery = z.infer<typeof listStockIssuesQuerySchema>;
+
+export const listStockIssuesResponseSchema = z.object({
+  items: z.array(stockIssueSummarySchema),
+  nextCursor: z.string().nullable(),
+});
+export type ListStockIssuesResponse = z.infer<typeof listStockIssuesResponseSchema>;
+
+// ============ "Phát thuốc" — trạng thái phát theo đơn + gợi ý lô FEFO ============
+
+/** 1 lô còn tồn, gợi ý theo FEFO (đã sắp `expiryDate` tăng dần, lô không hạn dùng xếp cuối — xem
+ * `selectFefoBatches()` ở `@nexamed/core`). Web CHỈ hiển thị đúng thứ tự này, không tính lại. */
+export const dispenseBatchOptionSchema = z.object({
+  batchId: z.string().uuid(),
+  batchNo: z.string(),
+  expiryDate: z.string().nullable(),
+  quantityOnHand: z.number().int(),
+  unitCost: z.number().int(),
+});
+export type DispenseBatchOption = z.infer<typeof dispenseBatchOptionSchema>;
+
+export const prescriptionDispenseLineSchema = z.object({
+  prescriptionItemId: z.string().uuid(),
+  drugId: z.string().uuid(),
+  drugName: z.string(),
+  isBatchManaged: z.boolean(),
+  isPrescriptionOnly: z.boolean(),
+  prescribedQuantity: z.number().int(),
+  dispensedQuantity: z.number().int(),
+  remainingQuantity: z.number().int(),
+  sellPrice: z.number().int(),
+  /** Chỉ có ý nghĩa khi `isBatchManaged=true` — rỗng nếu hết tồn mọi lô. */
+  suggestedBatches: z.array(dispenseBatchOptionSchema),
+});
+export type PrescriptionDispenseLine = z.infer<typeof prescriptionDispenseLineSchema>;
+
+export const getPrescriptionDispenseStatusQuerySchema = z.object({ warehouseId: z.string().uuid().optional() });
+export type GetPrescriptionDispenseStatusQuery = z.infer<typeof getPrescriptionDispenseStatusQuerySchema>;
+
+export const getPrescriptionDispenseStatusResponseSchema = z.object({
+  prescriptionId: z.string().uuid(),
+  encounterId: z.string().uuid(),
+  signedAt: z.string().nullable(),
+  lines: z.array(prescriptionDispenseLineSchema),
+});
+export type GetPrescriptionDispenseStatusResponse = z.infer<typeof getPrescriptionDispenseStatusResponseSchema>;
+
+// ============ "Phát thuốc" — hàng đợi đơn đã ký còn thuốc chưa phát hết ============
+
+export const dispenseQueueItemSchema = z.object({
+  prescriptionId: z.string().uuid(),
+  encounterId: z.string().uuid(),
+  encounterNo: z.string(),
+  patientId: z.string().uuid(),
+  patientCode: z.string(),
+  patientFullName: z.string(),
+  phone: z.string(),
+  signedAt: z.string(),
+  totalPrescribedQuantity: z.number().int(),
+  totalDispensedQuantity: z.number().int(),
+  fullyDispensed: z.boolean(),
+});
+export type DispenseQueueItem = z.infer<typeof dispenseQueueItemSchema>;
+
+export const listDispenseQueueQuerySchema = z.object({
+  q: z.string().min(1).max(100).optional(),
+  /** Mặc định chỉ đơn ký trong 30 ngày gần nhất (tránh hàng đợi phình to gây rối mắt) — bật để hiện
+   * cả đơn cũ hơn (đơn thuốc là y lệnh, không tự "hết hạn"/biến mất). */
+  includeOlder: z
+    .union([z.boolean(), z.enum(['true', 'false'])])
+    .optional()
+    .default(false)
+    .transform((v) => (typeof v === 'string' ? v === 'true' : v)),
+});
+export type ListDispenseQueueQuery = z.infer<typeof listDispenseQueueQuerySchema>;
+
+export const listDispenseQueueResponseSchema = z.object({ items: z.array(dispenseQueueItemSchema) });
+export type ListDispenseQueueResponse = z.infer<typeof listDispenseQueueResponseSchema>;

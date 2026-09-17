@@ -5,8 +5,9 @@ import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work
 import { StockLedgerRepository, type StockLedgerRow } from './stock-ledger.repository';
 
 /**
- * "Thẻ kho" / "Lịch sử giao dịch" (panel chi tiết thuốc) — GĐ2 chỉ có 1 nguồn (phiếu nhập kho) nên
- * dùng CHUNG 1 endpoint cho cả 2 tab của mockup (xem comment `stockLedgerEntrySchema`).
+ * "Thẻ kho" / "Lịch sử giao dịch" (panel chi tiết thuốc) — dùng CHUNG 1 endpoint cho cả 2 tab của
+ * mockup (xem comment `stockLedgerEntrySchema`). Từ GĐ3 (#163) có 2 nguồn chứng từ (phiếu nhập/
+ * phiếu xuất) — `sourceReceiptId`/`sourceIssueId` luôn đúng 1 trong 2 có giá trị.
  */
 @Injectable()
 export class StockLedgerService {
@@ -45,6 +46,8 @@ export class StockLedgerService {
       warehouseName: row.warehouseName,
       sourceReceiptId: row.sourceReceiptId,
       sourceReceiptNo: row.sourceReceiptNo,
+      sourceIssueId: row.sourceIssueId,
+      sourceIssueNo: row.sourceIssueNo,
       createdByName: names.get(row.createdBy) ?? 'Không rõ',
     };
   }

@@ -167,10 +167,14 @@ export class InvoiceRepository {
     return invoice;
   }
 
+  /** Hoá đơn DỊCH VỤ KHÁM của lượt khám — lọc tường minh `invoiceType='SERVICE'` (Kho Thuốc GĐ3,
+   * #163: nay `encounterId` có thể ứng nhiều hoá đơn khi có thêm hoá đơn `DRUG` riêng). Đây vẫn là
+   * "phiếu thu" chính mà màn Thu ngân/`GET /billing/invoices/:encounterId` thao tác — hoá đơn tiền
+   * thuốc riêng (khi `pharmacySeparateInvoiceEnabled=true`) chưa có màn xem riêng ở lượt này. */
   findByEncounterId(tx: Prisma.TransactionClient, tenantId: string, encounterId: string): Promise<InvoiceWithLines | null> {
     return tx.invoice
       .findFirst({
-        where: { tenantId, encounterId, deletedAt: null },
+        where: { tenantId, encounterId, invoiceType: 'SERVICE', deletedAt: null },
         include: {
           lines: { where: { deletedAt: null }, orderBy: { createdAt: 'asc' } },
           ...ENCOUNTER_CONTEXT_INCLUDE,
@@ -178,6 +182,127 @@ export class InvoiceRepository {
         },
       })
       .then((row) => (row ? { ...row, ...toPaymentSides(row.payments) } : null));
+  }
+
+  /** Kho Thuốc GĐ3 (#163) — hoá đơn `DRUG` `UNPAID` GẦN NHẤT của lượt khám (khách quay lại lấy nốt
+   * thuốc trong đơn, hoá đơn thuốc trước đó chưa thu thì cộng tiếp vào đó thay vì tạo mới). */
+  findOpenDrugInvoiceForEncounter(tx: Prisma.TransactionClient, tenantId: string, encounterId: string): Promise<Invoice | null> {
+    return tx.invoice.findFirst({
+      where: { tenantId, encounterId, invoiceType: 'DRUG', status: 'UNPAID', deletedAt: null },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  /** Kho Thuốc GĐ3 (#163) — hoá đơn `id` bất kỳ (SERVICE hoặc DRUG), dùng cho `StockIssueService`
+   * đọc lại `totalAmount`/`version` hiện tại trước khi cộng dòng hoặc huỷ phiếu xuất. */
+  findById(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<Invoice | null> {
+    return tx.invoice.findFirst({ where: { tenantId, id, deletedAt: null } });
+  }
+
+  /** Kho Thuốc GĐ3 (#163) — hoá đơn ĐANG CHỨA (ít nhất 1 trong) các dòng của một phiếu xuất, dùng
+   * lúc huỷ phiếu xuất để biết hoá đơn liên quan còn `UNPAID` hay đã thu (chặn huỷ nếu đã thu). Mọi
+   * dòng của CÙNG 1 phiếu xuất luôn nằm trên ĐÚNG 1 hoá đơn (append cùng lúc trong `create()`), nên
+   * `findFirst` là đủ, không cần gộp nhiều hoá đơn. */
+  async findByStockIssueLineIds(tx: Prisma.TransactionClient, tenantId: string, stockIssueLineIds: string[]): Promise<Invoice | null> {
+    if (stockIssueLineIds.length === 0) return null;
+    const line = await tx.invoiceLine.findFirst({
+      where: { tenantId, sourceStockIssueLineId: { in: stockIssueLineIds }, deletedAt: null },
+      include: { invoice: true },
+    });
+    return line?.invoice ?? null;
+  }
+
+  /** Kho Thuốc GĐ3 (#163) — tạo hoá đơn `DRUG` mới (mirror `createFromServiceItems`, nhưng KHÔNG
+   * cần `computeInvoiceFromServiceItems` — dòng đã tính sẵn ở `StockIssueService`). */
+  async createDrugInvoice(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    actorId: string,
+    encounterId: string,
+    lines: { sourceStockIssueLineId: string; examTypeCode: string; examTypeName: string; unitPrice: bigint; quantity: number; lineTotal: bigint }[],
+  ): Promise<Invoice> {
+    const totalAmount = lines.reduce((sum, l) => sum + l.lineTotal, 0n);
+    const invoiceNo = await this.businessCodeService.generate(tx, tenantId, actorId, 'INVOICE', new Date());
+    const invoice = await tx.invoice.create({
+      data: {
+        tenantId,
+        encounterId,
+        invoiceNo,
+        invoiceType: 'DRUG',
+        totalAmount,
+        createdBy: actorId,
+        updatedBy: actorId,
+      },
+    });
+    await tx.invoiceLine.createMany({
+      data: lines.map((line) => ({
+        tenantId,
+        invoiceId: invoice.id,
+        sourceStockIssueLineId: line.sourceStockIssueLineId,
+        examTypeCode: line.examTypeCode,
+        examTypeName: line.examTypeName,
+        unitPrice: line.unitPrice,
+        quantity: line.quantity,
+        lineTotal: line.lineTotal,
+        createdBy: actorId,
+        updatedBy: actorId,
+      })),
+    });
+    return invoice;
+  }
+
+  /**
+   * Kho Thuốc GĐ3 (#163) — cộng THÊM dòng vào hoá đơn ĐANG UNPAID (SERVICE đang mở hoặc DRUG đang
+   * mở), cập nhật lại `totalAmount`. `WHERE version=? AND status='UNPAID'` chống race 2 phiếu xuất
+   * cộng vào cùng 1 hoá đơn gần như đồng thời — trả `0` thì Service tự đọc lại/thử lại (hiếm, cùng
+   * mức chấp nhận rủi ro với `StockReceiptService` GĐ2).
+   */
+  async appendLines(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    invoiceId: string,
+    expectedVersion: number,
+    actorId: string,
+    lines: { sourceStockIssueLineId: string; examTypeCode: string; examTypeName: string; unitPrice: bigint; quantity: number; lineTotal: bigint }[],
+  ): Promise<number> {
+    const additionalAmount = lines.reduce((sum, l) => sum + l.lineTotal, 0n);
+    const result = await tx.invoice.updateMany({
+      where: { tenantId, id: invoiceId, version: expectedVersion, status: 'UNPAID', deletedAt: null },
+      data: { totalAmount: { increment: additionalAmount }, updatedBy: actorId, version: { increment: 1 } },
+    });
+    if (result.count === 0) {
+      return 0;
+    }
+    await tx.invoiceLine.createMany({
+      data: lines.map((line) => ({
+        tenantId,
+        invoiceId,
+        sourceStockIssueLineId: line.sourceStockIssueLineId,
+        examTypeCode: line.examTypeCode,
+        examTypeName: line.examTypeName,
+        unitPrice: line.unitPrice,
+        quantity: line.quantity,
+        lineTotal: line.lineTotal,
+        createdBy: actorId,
+        updatedBy: actorId,
+      })),
+    });
+    return result.count;
+  }
+
+  /** Kho Thuốc GĐ3 (#163) — huỷ phiếu xuất: xoá (soft) ĐÚNG các dòng invoice_line do CHÍNH phiếu đó
+   * sinh ra (`stockIssueLineIds` — không xoá lan sang dòng của phiếu xuất KHÁC cộng chung 1 hoá đơn
+   * SERVICE, ví dụ 2 lượt phát thuốc khác nhau trong cùng ngày) + trừ lại `totalAmount`. Gọi khi đã
+   * biết chắc hoá đơn còn `UNPAID` (Service đã kiểm). */
+  async removeStockIssueLines(tx: Prisma.TransactionClient, tenantId: string, invoiceId: string, stockIssueLineIds: string[], actorId: string, removedAmount: bigint): Promise<void> {
+    await tx.invoiceLine.updateMany({
+      where: { tenantId, invoiceId, sourceStockIssueLineId: { in: stockIssueLineIds }, deletedAt: null },
+      data: { deletedAt: new Date(), deletedReason: 'stock_issue_voided', updatedBy: actorId },
+    });
+    await tx.invoice.updateMany({
+      where: { tenantId, id: invoiceId, deletedAt: null },
+      data: { totalAmount: { decrement: removedAmount }, updatedBy: actorId, version: { increment: 1 } },
+    });
   }
 
   /** BIL-04 — theo `encounter.checkedInAt` trong biên ngày (giờ Việt Nam, `vietnamDayRange()` ở service). */

@@ -4836,6 +4836,12 @@
                           "type": "integer",
                           "minimum": 1,
                           "maximum": 365
+                        },
+                        "pharmacySeparateInvoiceEnabled": {
+                          "type": "boolean"
+                        },
+                        "autoDispenseOnSignEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -4858,7 +4864,9 @@
                         "sidebarAutoCollapseEnabled",
                         "walletMixedPaymentEnabled",
                         "soloClinicWorkflowEnabled",
-                        "expiryWarningDays"
+                        "expiryWarningDays",
+                        "pharmacySeparateInvoiceEnabled",
+                        "autoDispenseOnSignEnabled"
                       ]
                     },
                     "meta": {
@@ -25598,6 +25606,25 @@
             "required": false,
             "name": "includeInactive",
             "in": "query"
+          },
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "true",
+                    "false"
+                  ]
+                }
+              ]
+            },
+            "required": false,
+            "name": "prescriptionOnly",
+            "in": "query"
           }
         ],
         "responses": {
@@ -29614,6 +29641,12 @@
                           "type": "integer",
                           "minimum": 1,
                           "maximum": 365
+                        },
+                        "pharmacySeparateInvoiceEnabled": {
+                          "type": "boolean"
+                        },
+                        "autoDispenseOnSignEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -29636,7 +29669,9 @@
                         "sidebarAutoCollapseEnabled",
                         "walletMixedPaymentEnabled",
                         "soloClinicWorkflowEnabled",
-                        "expiryWarningDays"
+                        "expiryWarningDays",
+                        "pharmacySeparateInvoiceEnabled",
+                        "autoDispenseOnSignEnabled"
                       ]
                     },
                     "meta": {
@@ -29952,6 +29987,12 @@
                     "type": "integer",
                     "minimum": 1,
                     "maximum": 365
+                  },
+                  "pharmacySeparateInvoiceEnabled": {
+                    "type": "boolean"
+                  },
+                  "autoDispenseOnSignEnabled": {
+                    "type": "boolean"
                   }
                 }
               }
@@ -30192,6 +30233,12 @@
                           "type": "integer",
                           "minimum": 1,
                           "maximum": 365
+                        },
+                        "pharmacySeparateInvoiceEnabled": {
+                          "type": "boolean"
+                        },
+                        "autoDispenseOnSignEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -30214,7 +30261,9 @@
                         "sidebarAutoCollapseEnabled",
                         "walletMixedPaymentEnabled",
                         "soloClinicWorkflowEnabled",
-                        "expiryWarningDays"
+                        "expiryWarningDays",
+                        "pharmacySeparateInvoiceEnabled",
+                        "autoDispenseOnSignEnabled"
                       ]
                     },
                     "meta": {
@@ -30956,7 +31005,8 @@
                                   "CASH_TRANSFER",
                                   "WALLET_TOPUP",
                                   "WALLET_SETTLEMENT",
-                                  "STOCK_RECEIPT"
+                                  "STOCK_RECEIPT",
+                                  "STOCK_ISSUE"
                                 ]
                               },
                               "label": {
@@ -31107,7 +31157,8 @@
                 "CASH_TRANSFER",
                 "WALLET_TOPUP",
                 "WALLET_SETTLEMENT",
-                "STOCK_RECEIPT"
+                "STOCK_RECEIPT",
+                "STOCK_ISSUE"
               ]
             },
             "required": true,
@@ -31169,7 +31220,8 @@
                             "CASH_TRANSFER",
                             "WALLET_TOPUP",
                             "WALLET_SETTLEMENT",
-                            "STOCK_RECEIPT"
+                            "STOCK_RECEIPT",
+                            "STOCK_ISSUE"
                           ]
                         },
                         "label": {
@@ -50883,7 +50935,8 @@
                                   "ISSUE_TRANSFER_OUT",
                                   "ISSUE_RETURN_TO_SUPPLIER",
                                   "ISSUE_WRITE_OFF",
-                                  "ISSUE_COUNT_SHORTAGE"
+                                  "ISSUE_COUNT_SHORTAGE",
+                                  "ISSUE_VOID"
                                 ]
                               },
                               "warehouseId": {
@@ -50906,6 +50959,19 @@
                                   "null"
                                 ]
                               },
+                              "sourceIssueId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "sourceIssueNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
                               "createdByName": {
                                 "type": "string"
                               }
@@ -50920,6 +50986,8 @@
                               "warehouseName",
                               "sourceReceiptId",
                               "sourceReceiptNo",
+                              "sourceIssueId",
+                              "sourceIssueNo",
                               "createdByName"
                             ]
                           }
@@ -51571,6 +51639,1898 @@
           },
           "403": {
             "description": "Không có quyền stock_receipt.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/issues": {
+      "get": {
+        "tags": [
+          "inventory"
+        ],
+        "summary": "Danh sách Phiếu xuất kho — cursor, lọc theo kho/trạng thái/khoảng ngày",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "warehouseId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "POSTED",
+                "VOIDED"
+              ]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": false,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": false,
+            "name": "to",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "required": false,
+            "name": "q",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "issueNo": {
+                                "type": "string"
+                              },
+                              "issueType": {
+                                "type": "string",
+                                "enum": [
+                                  "RETAIL_SALE",
+                                  "INTERNAL_ALLOCATION",
+                                  "SERVICE_CONSUMPTION",
+                                  "TRANSFER_OUT",
+                                  "RETURN_TO_SUPPLIER",
+                                  "WRITE_OFF",
+                                  "COUNT_SHORTAGE"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "POSTED",
+                                  "VOIDED"
+                                ]
+                              },
+                              "warehouseId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "warehouseName": {
+                                "type": "string"
+                              },
+                              "prescriptionId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "encounterId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "patientCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "patientFullName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "occurredAt": {
+                                "type": "string"
+                              },
+                              "note": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "totalAmount": {
+                                "type": "integer"
+                              },
+                              "lineCount": {
+                                "type": "integer"
+                              },
+                              "createdByName": {
+                                "type": "string"
+                              },
+                              "voidedByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "voidedAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "voidReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "version": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "issueNo",
+                              "issueType",
+                              "status",
+                              "warehouseId",
+                              "warehouseName",
+                              "prescriptionId",
+                              "encounterId",
+                              "patientCode",
+                              "patientFullName",
+                              "occurredAt",
+                              "note",
+                              "totalAmount",
+                              "lineCount",
+                              "createdByName",
+                              "voidedByName",
+                              "voidedAt",
+                              "voidReason",
+                              "version"
+                            ]
+                          }
+                        },
+                        "nextCursor": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "nextCursor"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền stock_issue.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "inventory"
+        ],
+        "summary": "Tạo phiếu xuất kho — 1 bước, trừ kho + sinh tiền vào hoá đơn NGAY",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "prescriptionId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "warehouseId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "occurredAt": {
+                    "type": "string"
+                  },
+                  "note": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "prescriptionItemId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "drugId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "batchId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "quantity": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0
+                        }
+                      },
+                      "required": [
+                        "drugId",
+                        "quantity"
+                      ]
+                    },
+                    "minItems": 1
+                  }
+                },
+                "required": [
+                  "prescriptionId",
+                  "warehouseId",
+                  "lines"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "issueNo": {
+                          "type": "string"
+                        },
+                        "issueType": {
+                          "type": "string",
+                          "enum": [
+                            "RETAIL_SALE",
+                            "INTERNAL_ALLOCATION",
+                            "SERVICE_CONSUMPTION",
+                            "TRANSFER_OUT",
+                            "RETURN_TO_SUPPLIER",
+                            "WRITE_OFF",
+                            "COUNT_SHORTAGE"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "POSTED",
+                            "VOIDED"
+                          ]
+                        },
+                        "warehouseId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "warehouseName": {
+                          "type": "string"
+                        },
+                        "prescriptionId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "encounterId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "patientCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "patientFullName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "occurredAt": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "totalAmount": {
+                          "type": "integer"
+                        },
+                        "lineCount": {
+                          "type": "integer"
+                        },
+                        "createdByName": {
+                          "type": "string"
+                        },
+                        "voidedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "voidedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "voidReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        },
+                        "lines": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "prescriptionItemId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "drugId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "drugCode": {
+                                "type": "string"
+                              },
+                              "drugName": {
+                                "type": "string"
+                              },
+                              "batchId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "batchNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "unitCost": {
+                                "type": "integer"
+                              },
+                              "sellPrice": {
+                                "type": "integer"
+                              },
+                              "lineAmount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "prescriptionItemId",
+                              "drugId",
+                              "drugCode",
+                              "drugName",
+                              "batchId",
+                              "batchNo",
+                              "quantity",
+                              "unitCost",
+                              "sellPrice",
+                              "lineAmount"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "issueNo",
+                        "issueType",
+                        "status",
+                        "warehouseId",
+                        "warehouseName",
+                        "prescriptionId",
+                        "encounterId",
+                        "patientCode",
+                        "patientFullName",
+                        "occurredAt",
+                        "note",
+                        "totalAmount",
+                        "lineCount",
+                        "createdByName",
+                        "voidedByName",
+                        "voidedAt",
+                        "voidReason",
+                        "version",
+                        "lines"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền stock_issue.create",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Kho/Đơn thuốc/Dòng kê đơn/Lô tham chiếu không tồn tại",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Phát vượt số lượng kê đơn, thiếu tồn kho, hoặc hàng OTC sai loại thuốc",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/issues/{id}": {
+      "get": {
+        "tags": [
+          "inventory"
+        ],
+        "summary": "Chi tiết 1 phiếu xuất kho kèm dòng hàng — phiếu Đã huỷ vẫn xem được",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "issueNo": {
+                          "type": "string"
+                        },
+                        "issueType": {
+                          "type": "string",
+                          "enum": [
+                            "RETAIL_SALE",
+                            "INTERNAL_ALLOCATION",
+                            "SERVICE_CONSUMPTION",
+                            "TRANSFER_OUT",
+                            "RETURN_TO_SUPPLIER",
+                            "WRITE_OFF",
+                            "COUNT_SHORTAGE"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "POSTED",
+                            "VOIDED"
+                          ]
+                        },
+                        "warehouseId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "warehouseName": {
+                          "type": "string"
+                        },
+                        "prescriptionId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "encounterId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "patientCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "patientFullName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "occurredAt": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "totalAmount": {
+                          "type": "integer"
+                        },
+                        "lineCount": {
+                          "type": "integer"
+                        },
+                        "createdByName": {
+                          "type": "string"
+                        },
+                        "voidedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "voidedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "voidReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        },
+                        "lines": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "prescriptionItemId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "drugId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "drugCode": {
+                                "type": "string"
+                              },
+                              "drugName": {
+                                "type": "string"
+                              },
+                              "batchId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "batchNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "unitCost": {
+                                "type": "integer"
+                              },
+                              "sellPrice": {
+                                "type": "integer"
+                              },
+                              "lineAmount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "prescriptionItemId",
+                              "drugId",
+                              "drugCode",
+                              "drugName",
+                              "batchId",
+                              "batchNo",
+                              "quantity",
+                              "unitCost",
+                              "sellPrice",
+                              "lineAmount"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "issueNo",
+                        "issueType",
+                        "status",
+                        "warehouseId",
+                        "warehouseName",
+                        "prescriptionId",
+                        "encounterId",
+                        "patientCode",
+                        "patientFullName",
+                        "occurredAt",
+                        "note",
+                        "totalAmount",
+                        "lineCount",
+                        "createdByName",
+                        "voidedByName",
+                        "voidedAt",
+                        "voidReason",
+                        "version",
+                        "lines"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền stock_issue.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy (không tồn tại hoặc thuộc tenant khác)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/issues/{id}/void": {
+      "post": {
+        "tags": [
+          "inventory"
+        ],
+        "summary": "Huỷ phiếu xuất (phát nhầm) — đảo ngược Thẻ kho/Tồn kho + xoá dòng hoá đơn liên quan, lý do bắt buộc",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "version": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "reason",
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "issueNo": {
+                          "type": "string"
+                        },
+                        "issueType": {
+                          "type": "string",
+                          "enum": [
+                            "RETAIL_SALE",
+                            "INTERNAL_ALLOCATION",
+                            "SERVICE_CONSUMPTION",
+                            "TRANSFER_OUT",
+                            "RETURN_TO_SUPPLIER",
+                            "WRITE_OFF",
+                            "COUNT_SHORTAGE"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "POSTED",
+                            "VOIDED"
+                          ]
+                        },
+                        "warehouseId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "warehouseName": {
+                          "type": "string"
+                        },
+                        "prescriptionId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "encounterId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "patientCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "patientFullName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "occurredAt": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "totalAmount": {
+                          "type": "integer"
+                        },
+                        "lineCount": {
+                          "type": "integer"
+                        },
+                        "createdByName": {
+                          "type": "string"
+                        },
+                        "voidedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "voidedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "voidReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        },
+                        "lines": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "prescriptionItemId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "drugId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "drugCode": {
+                                "type": "string"
+                              },
+                              "drugName": {
+                                "type": "string"
+                              },
+                              "batchId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "batchNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "unitCost": {
+                                "type": "integer"
+                              },
+                              "sellPrice": {
+                                "type": "integer"
+                              },
+                              "lineAmount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "prescriptionItemId",
+                              "drugId",
+                              "drugCode",
+                              "drugName",
+                              "batchId",
+                              "batchNo",
+                              "quantity",
+                              "unitCost",
+                              "sellPrice",
+                              "lineAmount"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "issueNo",
+                        "issueType",
+                        "status",
+                        "warehouseId",
+                        "warehouseName",
+                        "prescriptionId",
+                        "encounterId",
+                        "patientCode",
+                        "patientFullName",
+                        "occurredAt",
+                        "note",
+                        "totalAmount",
+                        "lineCount",
+                        "createdByName",
+                        "voidedByName",
+                        "voidedAt",
+                        "voidReason",
+                        "version",
+                        "lines"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền stock_issue.create",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp, phiếu không còn hiệu lực, hoặc hoá đơn liên quan đã thu tiền (STOCK_ISSUE_VOID_NOT_ALLOWED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/prescriptions/{prescriptionId}/dispense-status": {
+      "get": {
+        "tags": [
+          "inventory"
+        ],
+        "summary": "Trạng thái phát thuốc của 1 đơn — kê/đã phát/còn lại từng dòng + gợi ý lô FEFO",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "prescriptionId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "warehouseId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "prescriptionId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "encounterId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "signedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "lines": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "prescriptionItemId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "drugId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "drugName": {
+                                "type": "string"
+                              },
+                              "isBatchManaged": {
+                                "type": "boolean"
+                              },
+                              "isPrescriptionOnly": {
+                                "type": "boolean"
+                              },
+                              "prescribedQuantity": {
+                                "type": "integer"
+                              },
+                              "dispensedQuantity": {
+                                "type": "integer"
+                              },
+                              "remainingQuantity": {
+                                "type": "integer"
+                              },
+                              "sellPrice": {
+                                "type": "integer"
+                              },
+                              "suggestedBatches": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "batchId": {
+                                      "type": "string",
+                                      "format": "uuid"
+                                    },
+                                    "batchNo": {
+                                      "type": "string"
+                                    },
+                                    "expiryDate": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "quantityOnHand": {
+                                      "type": "integer"
+                                    },
+                                    "unitCost": {
+                                      "type": "integer"
+                                    }
+                                  },
+                                  "required": [
+                                    "batchId",
+                                    "batchNo",
+                                    "expiryDate",
+                                    "quantityOnHand",
+                                    "unitCost"
+                                  ]
+                                }
+                              }
+                            },
+                            "required": [
+                              "prescriptionItemId",
+                              "drugId",
+                              "drugName",
+                              "isBatchManaged",
+                              "isPrescriptionOnly",
+                              "prescribedQuantity",
+                              "dispensedQuantity",
+                              "remainingQuantity",
+                              "sellPrice",
+                              "suggestedBatches"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "prescriptionId",
+                        "encounterId",
+                        "signedAt",
+                        "lines"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền stock_issue.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy đơn thuốc, hoặc đơn chưa ký",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/dispense-queue": {
+      "get": {
+        "tags": [
+          "inventory"
+        ],
+        "summary": "Hàng đợi \"Phát thuốc\" — đơn đã ký còn thuốc chưa phát hết",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "required": false,
+            "name": "q",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "true",
+                    "false"
+                  ]
+                }
+              ],
+              "default": false
+            },
+            "required": false,
+            "name": "includeOlder",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "prescriptionId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "encounterId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "encounterNo": {
+                                "type": "string"
+                              },
+                              "patientId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "patientCode": {
+                                "type": "string"
+                              },
+                              "patientFullName": {
+                                "type": "string"
+                              },
+                              "phone": {
+                                "type": "string"
+                              },
+                              "signedAt": {
+                                "type": "string"
+                              },
+                              "totalPrescribedQuantity": {
+                                "type": "integer"
+                              },
+                              "totalDispensedQuantity": {
+                                "type": "integer"
+                              },
+                              "fullyDispensed": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "prescriptionId",
+                              "encounterId",
+                              "encounterNo",
+                              "patientId",
+                              "patientCode",
+                              "patientFullName",
+                              "phone",
+                              "signedAt",
+                              "totalPrescribedQuantity",
+                              "totalDispensedQuantity",
+                              "fullyDispensed"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền stock_issue.read",
             "content": {
               "application/json": {
                 "schema": {

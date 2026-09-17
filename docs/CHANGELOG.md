@@ -2,6 +2,14 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-17 (4)
+
+### Kho Thuốc & Vật tư y tế Giai đoạn 3 — Xuất kho theo đơn + FEFO + tiền thuốc (code + test xong)
+
+Module `StockIssueController/Service/Repository` mới trong `apps/api/src/modules/inventory/` — "Phiếu xuất kho" (luồng 1 bước, khác Nháp→Duyệt của GĐ2), gợi ý lô theo FEFO (`packages/core/src/inventory/select-fefo-batches.ts`), gắn tiền vào hoá đơn dịch vụ khám đang mở hoặc tự tách hoá đơn tiền thuốc riêng, "Tự động phát thuốc lúc ký đơn" (`autoDispenseOnSignEnabled`, không rollback chữ ký khi thiếu tồn). 2 migration mới (`20260917110000_pharmacy_dispense_gd3`, `20260917120000_stock_ledger_issue_void_reason`) — bảng `stock_issue`/`stock_issue_line`, `invoice.invoice_type` (SERVICE/DRUG), cho phép N hoá đơn DRUG/lượt khám. Web: trang "Phát thuốc" (`/inventory/dispense`) + dialog dùng chung mở từ cả trang riêng lẫn màn khám, 2 công tắc mới ở "Cấu hình thanh toán".
+
+**Đã xác minh thật**: `packages/core` +7 test FEFO, `apps/api` `stock-issue-http.spec.ts` mới 14/14 + `prescription-http.spec.ts` +2 test auto-dispense, tổng 846/847 test `apps/api` (1 flake `icd10-http.spec.ts` đã biết, pass riêng), `pnpm -w typecheck/lint/build` sạch toàn workspace. **Chưa verify Playwright.** Xem chi tiết `docs/DECISIONS.md` #164.
+
 ## 2026-09-17 (3)
 
 ### Nối "Ngưỡng cảnh báo hạn dùng" vào `tenant_setting` thật + fix bố cục bảng Thuốc & Vật tư

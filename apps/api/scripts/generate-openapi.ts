@@ -243,6 +243,15 @@ import {
   getDrugBatchBalancesResponseSchema,
   listStockExpiryWarningsQuerySchema,
   listStockExpiryWarningsResponseSchema,
+  createStockIssueRequestSchema,
+  voidStockIssueRequestSchema,
+  listStockIssuesQuerySchema,
+  listStockIssuesResponseSchema,
+  stockIssueDetailSchema,
+  getPrescriptionDispenseStatusQuerySchema,
+  getPrescriptionDispenseStatusResponseSchema,
+  listDispenseQueueQuerySchema,
+  listDispenseQueueResponseSchema,
 } from '@nexamed/shared';
 
 /**
@@ -3300,6 +3309,100 @@ registry.registerPath({
     200: jsonResponse('Thành công', envelope(listStockExpiryWarningsResponseSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền stock_receipt.read'),
+  },
+});
+
+// ============ Kho Thuốc GĐ3 — "Phiếu xuất kho" / "Phát thuốc" (docs/DECISIONS.md #163) ============
+const stockIssueIdParams = z.object({ id: z.string().uuid() });
+const dispensePrescriptionIdParams = z.object({ prescriptionId: z.string().uuid() });
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/inventory/issues',
+  tags: ['inventory'],
+  summary: 'Danh sách Phiếu xuất kho — cursor, lọc theo kho/trạng thái/khoảng ngày',
+  security: [{ bearerAuth: [] }],
+  request: { query: listStockIssuesQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listStockIssuesResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_issue.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/inventory/issues/{id}',
+  tags: ['inventory'],
+  summary: 'Chi tiết 1 phiếu xuất kho kèm dòng hàng — phiếu Đã huỷ vẫn xem được',
+  security: [{ bearerAuth: [] }],
+  request: { params: stockIssueIdParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(stockIssueDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_issue.read'),
+    404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/inventory/issues',
+  tags: ['inventory'],
+  summary: 'Tạo phiếu xuất kho — 1 bước, trừ kho + sinh tiền vào hoá đơn NGAY',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createStockIssueRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(stockIssueDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_issue.create'),
+    404: errorResponse('Kho/Đơn thuốc/Dòng kê đơn/Lô tham chiếu không tồn tại'),
+    422: errorResponse('Phát vượt số lượng kê đơn, thiếu tồn kho, hoặc hàng OTC sai loại thuốc'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/inventory/issues/{id}/void',
+  tags: ['inventory'],
+  summary: 'Huỷ phiếu xuất (phát nhầm) — đảo ngược Thẻ kho/Tồn kho + xoá dòng hoá đơn liên quan, lý do bắt buộc',
+  security: [{ bearerAuth: [] }],
+  request: { params: stockIssueIdParams, body: { content: { 'application/json': { schema: voidStockIssueRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(stockIssueDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_issue.create'),
+    404: errorResponse('Không tìm thấy'),
+    409: errorResponse('version không khớp, phiếu không còn hiệu lực, hoặc hoá đơn liên quan đã thu tiền (STOCK_ISSUE_VOID_NOT_ALLOWED)'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/inventory/prescriptions/{prescriptionId}/dispense-status',
+  tags: ['inventory'],
+  summary: 'Trạng thái phát thuốc của 1 đơn — kê/đã phát/còn lại từng dòng + gợi ý lô FEFO',
+  security: [{ bearerAuth: [] }],
+  request: { params: dispensePrescriptionIdParams, query: getPrescriptionDispenseStatusQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(getPrescriptionDispenseStatusResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_issue.read'),
+    404: errorResponse('Không tìm thấy đơn thuốc, hoặc đơn chưa ký'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/inventory/dispense-queue',
+  tags: ['inventory'],
+  summary: 'Hàng đợi "Phát thuốc" — đơn đã ký còn thuốc chưa phát hết',
+  security: [{ bearerAuth: [] }],
+  request: { query: listDispenseQueueQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listDispenseQueueResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_issue.read'),
   },
 });
 

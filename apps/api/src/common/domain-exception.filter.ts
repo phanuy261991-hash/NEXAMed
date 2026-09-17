@@ -122,6 +122,10 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   // không cho phép thao tác này, không phải lỗi input.
   STOCK_RECEIPT_NOT_DRAFT: HttpStatus.CONFLICT,
   STOCK_RECEIPT_VOID_NOT_ALLOWED: HttpStatus.CONFLICT,
+  // Kho Thuốc GĐ3 — trạng thái hiện tại của phiếu xuất/hoá đơn liên quan không cho phép huỷ, không
+  // phải lỗi input. 3 lỗi còn lại (vượt kê đơn/OTC sai loại/thiếu tồn) dùng mặc định 422 — đúng
+  // #146 điểm 4 (chặn cứng, không chỉ cảnh báo mềm như PRE-02/03).
+  STOCK_ISSUE_VOID_NOT_ALLOWED: HttpStatus.CONFLICT,
 };
 
 /**

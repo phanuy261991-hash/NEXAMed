@@ -104,13 +104,20 @@ export class DrugRepository {
     return tx.drug.findMany({ where: { tenantId, id: { in: ids }, deletedAt: null } });
   }
 
-  /** `q` — tìm theo tên/mã/hoạt chất (contains, không phân biệt hoa thường) — dùng lúc kê đơn. */
-  list(tx: Prisma.TransactionClient, tenantId: string, params: { q?: string; itemType?: DrugItemType; includeInactive: boolean }): Promise<DrugWithDetails[]> {
+  /** `q` — tìm theo tên/mã/hoạt chất (contains, không phân biệt hoa thường) — dùng lúc kê đơn.
+   * `prescriptionOnly` (Kho Thuốc GĐ3, #163) — lọc CHỈ hàng OTC (`false`) cho khu vực "+ Thêm hàng
+   * không theo đơn" ở `DispensePrescriptionDialog.tsx`; `undefined` = không lọc theo cột này. */
+  list(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    params: { q?: string; itemType?: DrugItemType; includeInactive: boolean; prescriptionOnly?: boolean },
+  ): Promise<DrugWithDetails[]> {
     const where: Prisma.DrugWhereInput = {
       tenantId,
       deletedAt: null,
       ...(params.itemType ? { itemType: params.itemType } : {}),
       ...(params.includeInactive ? {} : { isActive: true }),
+      ...(params.prescriptionOnly !== undefined ? { isPrescriptionOnly: params.prescriptionOnly } : {}),
     };
     if (params.q) {
       where.OR = [

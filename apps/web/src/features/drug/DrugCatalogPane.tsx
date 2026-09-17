@@ -567,6 +567,7 @@ const LEDGER_REASON_LABEL: Record<string, string> = {
   ISSUE_RETURN_TO_SUPPLIER: 'Xuất trả nhà cung cấp',
   ISSUE_WRITE_OFF: 'Xuất huỷ',
   ISSUE_COUNT_SHORTAGE: 'Xuất cân bằng kiểm kê',
+  ISSUE_VOID: 'Đảo phiếu xuất (huỷ)',
 };
 
 /** "Tồn kho theo lô" (panel chi tiết thuốc, Kho Thuốc GĐ2) — mọi lô còn tồn của thuốc này, mọi kho. */
@@ -692,7 +693,7 @@ function DrugLedgerTab({ drugId, mode }: { drugId: string; mode: 'ledger' | 'his
               <tr key={entry.id}>
                 <td className="px-2.5 py-2 text-center">
                   <div className="font-medium text-slate-700">{entry.occurredAt.slice(0, 10)}</div>
-                  {mode === 'ledger' && <div className="text-[11px] font-medium text-slate-400">{entry.sourceReceiptNo ?? LEDGER_REASON_LABEL[entry.reason]}</div>}
+                  {mode === 'ledger' && <div className="text-[11px] font-medium text-slate-400">{entry.sourceReceiptNo ?? entry.sourceIssueNo ?? LEDGER_REASON_LABEL[entry.reason]}</div>}
                 </td>
                 {mode === 'ledger' ? (
                   <>
@@ -706,7 +707,9 @@ function DrugLedgerTab({ drugId, mode }: { drugId: string; mode: 'ledger' | 'his
                   <>
                     <td className="px-2.5 py-2 text-left">
                       <div className="font-medium text-slate-700">{LEDGER_REASON_LABEL[entry.reason] ?? entry.reason}</div>
-                      {entry.sourceReceiptNo && <div className="text-[11px] font-medium text-slate-400">{entry.sourceReceiptNo}</div>}
+                      {(entry.sourceReceiptNo ?? entry.sourceIssueNo) && (
+                        <div className="text-[11px] font-medium text-slate-400">{entry.sourceReceiptNo ?? entry.sourceIssueNo}</div>
+                      )}
                     </td>
                     <td className="px-2.5 py-2 text-left font-medium text-slate-600">{entry.createdByName}</td>
                   </>

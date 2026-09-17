@@ -73,6 +73,7 @@ import { PatientService } from '../patient/patient.service';
 import { InvoiceRepository } from '../billing/invoice.repository';
 import { ClinicProfileService } from '../clinic/clinic-profile.service';
 import { GeoRepository } from '../geo/geo.repository';
+import { StockIssueService } from '../inventory/stock-issue.service';
 
 const TEMPERATURE_DECI_PER_CELSIUS = 10;
 /** Số lần khám cũ tối đa hiện trong panel tiền sử (ENC-01) — danh sách tóm tắt, không phân trang ở v1. */
@@ -114,6 +115,7 @@ export class EncounterService {
     private readonly invoiceRepository: InvoiceRepository,
     private readonly clinicProfileService: ClinicProfileService,
     private readonly geoRepository: GeoRepository,
+    private readonly stockIssueService: StockIssueService,
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
     @Inject(SIGNATURE_PORT) private readonly signaturePort: SignaturePort,
     @Inject(CLINIC_CONFIG_READER_PORT) private readonly clinicConfigReader: ClinicConfigReaderPort,
@@ -950,6 +952,9 @@ export class EncounterService {
     dto: SignPrescriptionRequest,
     meta: RequestMeta,
   ): Promise<PrescriptionResponse> {
+    // Kho Thuốc GĐ3 (#163) — đọc TRƯỚC transaction chính, cùng nguyên tắc mọi cấu hình khác trong
+    // file này (`deferredPaymentEnabled` ở `startConsultation()`).
+    const autoDispenseEnabled = await this.clinicConfigReader.getAutoDispenseOnSignEnabled(tenantId);
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.encounterRepository.findById(tx, tenantId, id);
       if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId)) {
@@ -987,6 +992,24 @@ export class EncounterService {
         ip: meta.ip,
         userAgent: meta.userAgent,
       });
+
+      // Kho Thuốc GĐ3 (#163) — "Tự động phát thuốc lúc ký đơn". KHÔNG throw: dòng nào thiếu tồn thì
+      // bỏ qua (đơn đã ký vẫn là y lệnh hợp lệ độc lập với việc phát), chỉ ghi audit riêng để dược
+      // sĩ/điều dưỡng biết còn thuốc chưa tự phát được — vào "Phát thuốc" xử lý tay.
+      if (autoDispenseEnabled) {
+        const autoDispenseResult = await this.stockIssueService.autoDispenseForPrescription(tx, tenantId, actorId, active, meta);
+        if (autoDispenseResult.undispensedDrugNames.length > 0) {
+          await writeAuditLog(tx, tenantId, {
+            actorId,
+            action: 'stock_issue.auto_dispense_incomplete',
+            entityType: 'encounter',
+            entityId: id,
+            afterJson: { undispensedDrugNames: autoDispenseResult.undispensedDrugNames },
+            ip: meta.ip,
+            userAgent: meta.userAgent,
+          });
+        }
+      }
 
       const updated = await this.prescriptionRepository.findById(tx, tenantId, active.id);
       if (!updated) {

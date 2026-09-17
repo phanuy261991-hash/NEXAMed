@@ -263,6 +263,15 @@ export const listDrugsQuerySchema = z.object({
     .optional()
     .default(false)
     .transform((v) => (typeof v === 'string' ? v === 'true' : v)),
+  /**
+   * Kho Thuốc GĐ3 (#163) — lọc CHỈ hàng OTC (`isPrescriptionOnly=false`) cho khu vực "+ Thêm hàng
+   * không theo đơn" ở `DispensePrescriptionDialog.tsx`. `undefined` = không lọc theo cột này (mọi
+   * nơi dùng khác giữ nguyên hành vi cũ).
+   */
+  prescriptionOnly: z
+    .union([z.boolean(), z.enum(['true', 'false'])])
+    .optional()
+    .transform((v) => (typeof v === 'string' ? v === 'true' : v)),
 });
 export type ListDrugsQuery = z.infer<typeof listDrugsQuerySchema>;
 

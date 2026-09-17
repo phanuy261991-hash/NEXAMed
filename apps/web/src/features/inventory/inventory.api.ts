@@ -1,16 +1,24 @@
 import type {
   ApproveStockReceiptRequest,
+  CreateStockIssueRequest,
   CreateStockReceiptRequest,
   GetDrugBatchBalancesResponse,
   GetDrugLedgerResponse,
+  GetPrescriptionDispenseStatusResponse,
+  ListDispenseQueueQuery,
+  ListDispenseQueueResponse,
   ListStockBalancesQuery,
   ListStockBalancesResponse,
   ListStockExpiryWarningsResponse,
+  ListStockIssuesQuery,
+  ListStockIssuesResponse,
   ListStockReceiptsQuery,
   ListStockReceiptsResponse,
   RejectStockReceiptRequest,
+  StockIssueDetail,
   StockReceiptDetail,
   UpdateStockReceiptRequest,
+  VoidStockIssueRequest,
   VoidStockReceiptRequest,
 } from '@nexamed/shared';
 import { getApiClient, unwrap } from '../../shared/api/client';
@@ -59,4 +67,32 @@ export async function getDrugLedger(drugId: string, params: { warehouseId?: stri
 
 export async function getStockExpiryWarnings(warehouseId?: string): Promise<ListStockExpiryWarningsResponse> {
   return unwrap(await getApiClient().GET('/api/v1/inventory/expiry-warnings', { params: { query: { warehouseId } } })) as ListStockExpiryWarningsResponse;
+}
+
+// ============ Kho Thuốc GĐ3 — "Phiếu xuất kho" / "Phát thuốc" (docs/DECISIONS.md #163) ============
+
+export async function getStockIssues(query: ListStockIssuesQuery): Promise<ListStockIssuesResponse> {
+  return unwrap(await getApiClient().GET('/api/v1/inventory/issues', { params: { query } })) as ListStockIssuesResponse;
+}
+
+export async function getStockIssue(id: string): Promise<StockIssueDetail> {
+  return unwrap(await getApiClient().GET('/api/v1/inventory/issues/{id}', { params: { path: { id } } })) as StockIssueDetail;
+}
+
+export async function createStockIssue(body: CreateStockIssueRequest): Promise<StockIssueDetail> {
+  return unwrap(await getApiClient().POST('/api/v1/inventory/issues', { body })) as StockIssueDetail;
+}
+
+export async function voidStockIssue(id: string, body: VoidStockIssueRequest): Promise<StockIssueDetail> {
+  return unwrap(await getApiClient().POST('/api/v1/inventory/issues/{id}/void', { params: { path: { id } }, body })) as StockIssueDetail;
+}
+
+export async function getPrescriptionDispenseStatus(prescriptionId: string, warehouseId?: string): Promise<GetPrescriptionDispenseStatusResponse> {
+  return unwrap(
+    await getApiClient().GET('/api/v1/inventory/prescriptions/{prescriptionId}/dispense-status', { params: { path: { prescriptionId }, query: { warehouseId } } }),
+  ) as GetPrescriptionDispenseStatusResponse;
+}
+
+export async function getDispenseQueue(query: ListDispenseQueueQuery): Promise<ListDispenseQueueResponse> {
+  return unwrap(await getApiClient().GET('/api/v1/inventory/dispense-queue', { params: { query } })) as ListDispenseQueueResponse;
 }

@@ -1955,6 +1955,8 @@ export interface paths {
                                 walletMixedPaymentEnabled: boolean;
                                 soloClinicWorkflowEnabled: boolean;
                                 expiryWarningDays: number;
+                                pharmacySeparateInvoiceEnabled: boolean;
+                                autoDispenseOnSignEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -9976,6 +9978,7 @@ export interface paths {
                     q?: string;
                     itemType?: "MEDICINE" | "SUPPLY";
                     includeInactive?: boolean | ("true" | "false");
+                    prescriptionOnly?: boolean | ("true" | "false");
                 };
                 header?: never;
                 path?: never;
@@ -11847,6 +11850,8 @@ export interface paths {
                                 walletMixedPaymentEnabled: boolean;
                                 soloClinicWorkflowEnabled: boolean;
                                 expiryWarningDays: number;
+                                pharmacySeparateInvoiceEnabled: boolean;
+                                autoDispenseOnSignEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -11949,6 +11954,8 @@ export interface paths {
                         walletMixedPaymentEnabled?: boolean;
                         soloClinicWorkflowEnabled?: boolean;
                         expiryWarningDays?: number;
+                        pharmacySeparateInvoiceEnabled?: boolean;
+                        autoDispenseOnSignEnabled?: boolean;
                     };
                 };
             };
@@ -12010,6 +12017,8 @@ export interface paths {
                                 walletMixedPaymentEnabled: boolean;
                                 soloClinicWorkflowEnabled: boolean;
                                 expiryWarningDays: number;
+                                pharmacySeparateInvoiceEnabled: boolean;
+                                autoDispenseOnSignEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -12491,7 +12500,7 @@ export interface paths {
                             data: {
                                 items: {
                                     /** @enum {string} */
-                                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT";
+                                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE";
                                     label: string;
                                     prefix: string;
                                     template: string;
@@ -12564,7 +12573,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT";
+                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE";
                 };
                 cookie?: never;
             };
@@ -12587,7 +12596,7 @@ export interface paths {
                         "application/json": {
                             data: {
                                 /** @enum {string} */
-                                codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT";
+                                codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE";
                                 label: string;
                                 prefix: string;
                                 template: string;
@@ -20826,13 +20835,16 @@ export interface paths {
                                     quantityChange: number;
                                     runningBalance: number;
                                     /** @enum {string} */
-                                    reason: "RECEIPT_PURCHASE" | "RECEIPT_OPENING_BALANCE" | "RECEIPT_TRANSFER_IN" | "RECEIPT_RETURN_FROM_USE" | "RECEIPT_COUNT_SURPLUS" | "RECEIPT_VOID" | "ISSUE_RETAIL_SALE" | "ISSUE_SERVICE_CONSUMPTION" | "ISSUE_INTERNAL_ALLOCATION" | "ISSUE_TRANSFER_OUT" | "ISSUE_RETURN_TO_SUPPLIER" | "ISSUE_WRITE_OFF" | "ISSUE_COUNT_SHORTAGE";
+                                    reason: "RECEIPT_PURCHASE" | "RECEIPT_OPENING_BALANCE" | "RECEIPT_TRANSFER_IN" | "RECEIPT_RETURN_FROM_USE" | "RECEIPT_COUNT_SURPLUS" | "RECEIPT_VOID" | "ISSUE_RETAIL_SALE" | "ISSUE_SERVICE_CONSUMPTION" | "ISSUE_INTERNAL_ALLOCATION" | "ISSUE_TRANSFER_OUT" | "ISSUE_RETURN_TO_SUPPLIER" | "ISSUE_WRITE_OFF" | "ISSUE_COUNT_SHORTAGE" | "ISSUE_VOID";
                                     /** Format: uuid */
                                     warehouseId: string;
                                     warehouseName: string;
                                     /** Format: uuid */
                                     sourceReceiptId: string | null;
                                     sourceReceiptNo: string | null;
+                                    /** Format: uuid */
+                                    sourceIssueId: string | null;
+                                    sourceIssueNo: string | null;
                                     createdByName: string;
                                 }[];
                                 totalCount: number;
@@ -21127,6 +21139,742 @@ export interface paths {
                     };
                 };
                 /** @description Không có quyền stock_receipt.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/issues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Danh sách Phiếu xuất kho — cursor, lọc theo kho/trạng thái/khoảng ngày */
+        get: {
+            parameters: {
+                query?: {
+                    cursor?: string;
+                    limit?: number;
+                    warehouseId?: string;
+                    status?: "POSTED" | "VOIDED";
+                    from?: string;
+                    to?: string;
+                    q?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    issueNo: string;
+                                    /** @enum {string} */
+                                    issueType: "RETAIL_SALE" | "INTERNAL_ALLOCATION" | "SERVICE_CONSUMPTION" | "TRANSFER_OUT" | "RETURN_TO_SUPPLIER" | "WRITE_OFF" | "COUNT_SHORTAGE";
+                                    /** @enum {string} */
+                                    status: "POSTED" | "VOIDED";
+                                    /** Format: uuid */
+                                    warehouseId: string;
+                                    warehouseName: string;
+                                    /** Format: uuid */
+                                    prescriptionId: string | null;
+                                    /** Format: uuid */
+                                    encounterId: string | null;
+                                    patientCode: string | null;
+                                    patientFullName: string | null;
+                                    occurredAt: string;
+                                    note: string | null;
+                                    totalAmount: number;
+                                    lineCount: number;
+                                    createdByName: string;
+                                    voidedByName: string | null;
+                                    voidedAt: string | null;
+                                    voidReason: string | null;
+                                    version: number;
+                                }[];
+                                nextCursor: string | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_issue.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Tạo phiếu xuất kho — 1 bước, trừ kho + sinh tiền vào hoá đơn NGAY */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        prescriptionId: string;
+                        /** Format: uuid */
+                        warehouseId: string;
+                        occurredAt?: string;
+                        note?: string | null;
+                        lines: {
+                            /** Format: uuid */
+                            prescriptionItemId?: string | null;
+                            /** Format: uuid */
+                            drugId: string;
+                            /** Format: uuid */
+                            batchId?: string | null;
+                            quantity: number;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                issueNo: string;
+                                /** @enum {string} */
+                                issueType: "RETAIL_SALE" | "INTERNAL_ALLOCATION" | "SERVICE_CONSUMPTION" | "TRANSFER_OUT" | "RETURN_TO_SUPPLIER" | "WRITE_OFF" | "COUNT_SHORTAGE";
+                                /** @enum {string} */
+                                status: "POSTED" | "VOIDED";
+                                /** Format: uuid */
+                                warehouseId: string;
+                                warehouseName: string;
+                                /** Format: uuid */
+                                prescriptionId: string | null;
+                                /** Format: uuid */
+                                encounterId: string | null;
+                                patientCode: string | null;
+                                patientFullName: string | null;
+                                occurredAt: string;
+                                note: string | null;
+                                totalAmount: number;
+                                lineCount: number;
+                                createdByName: string;
+                                voidedByName: string | null;
+                                voidedAt: string | null;
+                                voidReason: string | null;
+                                version: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    prescriptionItemId: string | null;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    /** Format: uuid */
+                                    batchId: string | null;
+                                    batchNo: string | null;
+                                    quantity: number;
+                                    unitCost: number;
+                                    sellPrice: number;
+                                    lineAmount: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_issue.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Kho/Đơn thuốc/Dòng kê đơn/Lô tham chiếu không tồn tại */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Phát vượt số lượng kê đơn, thiếu tồn kho, hoặc hàng OTC sai loại thuốc */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/issues/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Chi tiết 1 phiếu xuất kho kèm dòng hàng — phiếu Đã huỷ vẫn xem được */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                issueNo: string;
+                                /** @enum {string} */
+                                issueType: "RETAIL_SALE" | "INTERNAL_ALLOCATION" | "SERVICE_CONSUMPTION" | "TRANSFER_OUT" | "RETURN_TO_SUPPLIER" | "WRITE_OFF" | "COUNT_SHORTAGE";
+                                /** @enum {string} */
+                                status: "POSTED" | "VOIDED";
+                                /** Format: uuid */
+                                warehouseId: string;
+                                warehouseName: string;
+                                /** Format: uuid */
+                                prescriptionId: string | null;
+                                /** Format: uuid */
+                                encounterId: string | null;
+                                patientCode: string | null;
+                                patientFullName: string | null;
+                                occurredAt: string;
+                                note: string | null;
+                                totalAmount: number;
+                                lineCount: number;
+                                createdByName: string;
+                                voidedByName: string | null;
+                                voidedAt: string | null;
+                                voidReason: string | null;
+                                version: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    prescriptionItemId: string | null;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    /** Format: uuid */
+                                    batchId: string | null;
+                                    batchNo: string | null;
+                                    quantity: number;
+                                    unitCost: number;
+                                    sellPrice: number;
+                                    lineAmount: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_issue.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại hoặc thuộc tenant khác) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/issues/{id}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Huỷ phiếu xuất (phát nhầm) — đảo ngược Thẻ kho/Tồn kho + xoá dòng hoá đơn liên quan, lý do bắt buộc */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        reason: string;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                issueNo: string;
+                                /** @enum {string} */
+                                issueType: "RETAIL_SALE" | "INTERNAL_ALLOCATION" | "SERVICE_CONSUMPTION" | "TRANSFER_OUT" | "RETURN_TO_SUPPLIER" | "WRITE_OFF" | "COUNT_SHORTAGE";
+                                /** @enum {string} */
+                                status: "POSTED" | "VOIDED";
+                                /** Format: uuid */
+                                warehouseId: string;
+                                warehouseName: string;
+                                /** Format: uuid */
+                                prescriptionId: string | null;
+                                /** Format: uuid */
+                                encounterId: string | null;
+                                patientCode: string | null;
+                                patientFullName: string | null;
+                                occurredAt: string;
+                                note: string | null;
+                                totalAmount: number;
+                                lineCount: number;
+                                createdByName: string;
+                                voidedByName: string | null;
+                                voidedAt: string | null;
+                                voidReason: string | null;
+                                version: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    prescriptionItemId: string | null;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    /** Format: uuid */
+                                    batchId: string | null;
+                                    batchNo: string | null;
+                                    quantity: number;
+                                    unitCost: number;
+                                    sellPrice: number;
+                                    lineAmount: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_issue.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp, phiếu không còn hiệu lực, hoặc hoá đơn liên quan đã thu tiền (STOCK_ISSUE_VOID_NOT_ALLOWED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/prescriptions/{prescriptionId}/dispense-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Trạng thái phát thuốc của 1 đơn — kê/đã phát/còn lại từng dòng + gợi ý lô FEFO */
+        get: {
+            parameters: {
+                query?: {
+                    warehouseId?: string;
+                };
+                header?: never;
+                path: {
+                    prescriptionId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                prescriptionId: string;
+                                /** Format: uuid */
+                                encounterId: string;
+                                signedAt: string | null;
+                                lines: {
+                                    /** Format: uuid */
+                                    prescriptionItemId: string;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugName: string;
+                                    isBatchManaged: boolean;
+                                    isPrescriptionOnly: boolean;
+                                    prescribedQuantity: number;
+                                    dispensedQuantity: number;
+                                    remainingQuantity: number;
+                                    sellPrice: number;
+                                    suggestedBatches: {
+                                        /** Format: uuid */
+                                        batchId: string;
+                                        batchNo: string;
+                                        expiryDate: string | null;
+                                        quantityOnHand: number;
+                                        unitCost: number;
+                                    }[];
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_issue.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy đơn thuốc, hoặc đơn chưa ký */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/dispense-queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Hàng đợi "Phát thuốc" — đơn đã ký còn thuốc chưa phát hết */
+        get: {
+            parameters: {
+                query?: {
+                    q?: string;
+                    includeOlder?: boolean | ("true" | "false");
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    prescriptionId: string;
+                                    /** Format: uuid */
+                                    encounterId: string;
+                                    encounterNo: string;
+                                    /** Format: uuid */
+                                    patientId: string;
+                                    patientCode: string;
+                                    patientFullName: string;
+                                    phone: string;
+                                    signedAt: string;
+                                    totalPrescribedQuantity: number;
+                                    totalDispensedQuantity: number;
+                                    fullyDispensed: boolean;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_issue.read */
                 403: {
                     headers: {
                         [name: string]: unknown;

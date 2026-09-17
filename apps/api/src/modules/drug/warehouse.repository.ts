@@ -38,6 +38,16 @@ export class WarehouseRepository {
     });
   }
 
+  /** Kho Thuốc GĐ3 (#163) — "Tự động phát thuốc lúc ký đơn" không có màn hình chọn tay, cần TỰ
+   * resolve kho mặc định. Fallback kho ACTIVE tạo sớm nhất (`id` UUIDv7 time-ordered, `asc`) nếu
+   * tenant chưa từng đánh dấu kho nào `isDefault` (dữ liệu cũ trước #146 seed đúng 1 kho, KHÔNG
+   * đảm bảo `isDefault=true` — xem `ensureDefaultWarehouse`). */
+  async findDefault(tx: Prisma.TransactionClient, tenantId: string): Promise<Warehouse | null> {
+    const marked = await tx.warehouse.findFirst({ where: { tenantId, isDefault: true, isActive: true, deletedAt: null } });
+    if (marked) return marked;
+    return tx.warehouse.findFirst({ where: { tenantId, isActive: true, deletedAt: null }, orderBy: { id: 'asc' } });
+  }
+
   /** Bỏ cờ "Kho mặc định" khỏi mọi kho KHÁC `excludeId` — gọi TRƯỚC khi set kho mới thành mặc
    * định, tránh vỡ partial unique `(tenant_id) WHERE is_default AND deleted_at IS NULL`. */
   async clearDefaultExcept(tx: Prisma.TransactionClient, tenantId: string, excludeId: string | null, actorId: string): Promise<void> {

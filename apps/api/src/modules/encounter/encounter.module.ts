@@ -1,9 +1,10 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { ENCOUNTER_READER_PORT } from '@nexamed/core';
 import { PatientModule } from '../patient/patient.module';
 import { ClinicModule } from '../clinic/clinic.module';
 import { BillingModule } from '../billing/billing.module';
 import { GeoModule } from '../geo/geo.module';
+import { InventoryModule } from '../inventory/inventory.module';
 import { EncounterController } from './encounter.controller';
 import { EncounterService } from './encounter.service';
 import { EncounterRepository } from './encounter.repository';
@@ -29,9 +30,14 @@ import { EncounterReaderAdapter } from '../../infrastructure/encounter/encounter
  * chung `EncounterRepository`) nên dùng chung luôn `PrescriptionRepository`, đúng tiền lệ #042.
  * `imports: [..., GeoModule]` (S6-06, ADM-05) — "Xuất bệnh án PDF" tra tên Tỉnh/Phường-Xã theo mã
  * để in địa chỉ đầy đủ (`patient.address` chỉ lưu mã, xem `GeoRepository.findProvincesByCodes()`).
+ * `imports: [..., forwardRef(() => InventoryModule)]` (Kho Thuốc GĐ3, #163) — `EncounterService.
+ * signPrescription()` gọi `StockIssueService.autoDispenseForPrescription()` TRONG CÙNG transaction
+ * khi tenant bật `autoDispenseOnSignEnabled`. Vòng phụ thuộc 2 CHIỀU CÓ THẬT với `InventoryModule`
+ * (module đó cũng cần `PrescriptionRepository` export từ đây) — `forwardRef` bắt buộc cả hai phía,
+ * xem comment đầy đủ ở `inventory.module.ts`.
  */
 @Module({
-  imports: [PatientModule, ClinicModule, BillingModule, GeoModule],
+  imports: [PatientModule, ClinicModule, BillingModule, GeoModule, forwardRef(() => InventoryModule)],
   controllers: [EncounterController],
   providers: [
     EncounterService,

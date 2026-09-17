@@ -126,11 +126,20 @@ export class EncounterRepository {
    * Dùng riêng cho gate `startConsultation()` — không đổi shape trả về của `findById()` gốc (nhiều
    * caller khác không cần trường này).
    */
-  findByIdWithInvoiceStatus(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<EncounterWithInvoiceStatus | null> {
-    return tx.encounter.findFirst({
+  /**
+   * Kho Thuốc GĐ3 (#163) — `Encounter.invoices` nay là quan hệ 1-N (cho phép thêm hoá đơn
+   * `invoiceType=DRUG`), lọc tường minh CHỈ `invoiceType='SERVICE'` (partial unique đảm bảo tối đa
+   * 1 dòng) rồi map lại thành field `invoice` đơn — giữ nguyên shape trả về cho mọi call site cũ
+   * (`existing.invoice?.status`), không phải sửa gì ở tầng Service.
+   */
+  async findByIdWithInvoiceStatus(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<EncounterWithInvoiceStatus | null> {
+    const row = await tx.encounter.findFirst({
       where: { tenantId, id, deletedAt: null },
-      include: { invoice: { select: { status: true } } },
-    }) as Promise<EncounterWithInvoiceStatus | null>;
+      include: { invoices: { where: { invoiceType: 'SERVICE' }, select: { status: true }, take: 1 } },
+    });
+    if (!row) return null;
+    const { invoices, ...rest } = row;
+    return { ...rest, invoice: invoices[0] ?? null } as EncounterWithInvoiceStatus;
   }
 
   /** Kèm `dob` bệnh nhân — phục vụ `evaluateVitalSignWarnings()` (ReceptionService.recordVitalSigns()). */
@@ -157,7 +166,7 @@ export class EncounterRepository {
    * nợ (`allowsDeferredPayment=false`). "Danh sách tiếp nhận" (lễ tân) KHÔNG set cờ này — vẫn thấy
    * đủ mọi lượt khám kể cả chưa thu tiền để xử lý ở Thu ngân.
    */
-  listForDay(
+  async listForDay(
     tx: Prisma.TransactionClient,
     tenantId: string,
     params: { dayStart: Date; dayEnd: Date; doctorId?: string; poolDepartmentId?: string; requirePaymentCleared?: boolean },
@@ -174,18 +183,32 @@ export class EncounterRepository {
       where.doctorId = params.doctorId;
     }
     if (params.requirePaymentCleared) {
-      where.AND = [{ OR: [{ allowsDeferredPayment: true }, { invoice: null }, { invoice: { status: 'PAID' } }] }];
+      // Kho Thuốc GĐ3 (#163) — lọc tường minh invoiceType='SERVICE' (đúng lý do
+      // findByIdWithInvoiceStatus() ở trên), `invoices` nay là quan hệ 1-N.
+      where.AND = [
+        {
+          OR: [
+            { allowsDeferredPayment: true },
+            { invoices: { none: { invoiceType: 'SERVICE' } } },
+            { invoices: { some: { invoiceType: 'SERVICE', status: 'PAID' } } },
+          ],
+        },
+      ];
     }
-    return tx.encounter.findMany({
+    const rows = await tx.encounter.findMany({
       where,
       include: {
         patient: { select: { patientCode: true, fullName: true, phone: true, dob: true } },
         // "Trung tâm Điều phối Tiếp nhận" — trạng thái phiếu thu qua quan hệ sẵn có của Encounter
         // (không gọi thẳng tx.invoice..., đúng nguyên tắc đã áp dụng ở findByIdWithInvoiceStatus()).
-        invoice: { select: { status: true } },
+        invoices: { where: { invoiceType: 'SERVICE' }, select: { status: true }, take: 1 },
       },
       orderBy: [{ checkedInAt: 'asc' }, { id: 'asc' }],
-    }) as Promise<EncounterWithPatientContact[]>;
+    });
+    return rows.map((row) => {
+      const { invoices, ...rest } = row;
+      return { ...rest, invoice: invoices[0] ?? null } as EncounterWithPatientContact;
+    });
   }
 
   /** Encounter kèm đủ trường bệnh nhân màn khám cần (S3-05) — join `patient`, cùng khuôn `findByIdWithPatientDob`. */

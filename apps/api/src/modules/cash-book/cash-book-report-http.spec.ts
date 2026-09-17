@@ -411,7 +411,11 @@ describe('HTTP e2e — Sổ quỹ & Thu chi Giai đoạn 2', () => {
       const encounterAmount = 180_000;
       const encounterId = await registerDirectAndPay(drawerCashierToken, doctorUserId, encounterAmount);
 
-      const invoice = await privileged.invoice.findUniqueOrThrow({ where: { tenantId_encounterId: { tenantId: fixture.tenantA.id, encounterId } } });
+      // Kho Thuốc GĐ3 (#163) — `tenantId_encounterId` không còn là unique index toàn cục (nay
+      // partial, chỉ ép đúng 1 dòng invoiceType=SERVICE), Prisma không sinh input `findUnique` này
+      // nữa — đổi sang `findFirstOrThrow` (đúng vẫn tìm được vì mỗi encounter tối đa 1 hoá đơn
+      // SERVICE, encounterAmount test này không đụng Kho Thuốc nên không có hoá đơn DRUG nào khác).
+      const invoice = await privileged.invoice.findFirstOrThrow({ where: { tenantId: fixture.tenantA.id, encounterId, invoiceType: 'SERVICE' } });
       const paymentRow = await privileged.payment.findFirstOrThrow({ where: { invoiceId: invoice.id, type: 'PAYMENT' } });
       expect(paymentRow.cashAccountId).toBe(drawerAccountId);
       expect(paymentRow.cashAccountId).not.toBe(cashAccountId);

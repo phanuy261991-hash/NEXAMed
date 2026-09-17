@@ -5,11 +5,18 @@ import { queryKey } from '../../shared/api/query-keys';
 import { createDrug, listDrugs, updateDrug } from './drug.api';
 
 /** Dữ liệu do `clinic_admin` sửa qua UI quản lý — không `staleTime: Infinity`, invalidate sau mỗi mutation. */
-export function useDrugsQuery(params: { q?: string; itemType?: DrugItemType; includeInactive?: boolean } = {}) {
+export function useDrugsQuery(params: { q?: string; itemType?: DrugItemType; includeInactive?: boolean; prescriptionOnly?: boolean } = {}) {
   const { tenantId } = useAppConfig();
   return useQuery({
-    queryKey: queryKey(tenantId, 'drug', params.q ?? '', params.itemType ?? 'ANY', params.includeInactive ? 'all' : 'active'),
-    queryFn: () => listDrugs({ q: params.q, itemType: params.itemType, includeInactive: params.includeInactive ?? false }),
+    queryKey: queryKey(
+      tenantId,
+      'drug',
+      params.q ?? '',
+      params.itemType ?? 'ANY',
+      params.includeInactive ? 'all' : 'active',
+      params.prescriptionOnly === undefined ? 'any' : String(params.prescriptionOnly),
+    ),
+    queryFn: () => listDrugs({ q: params.q, itemType: params.itemType, includeInactive: params.includeInactive ?? false, prescriptionOnly: params.prescriptionOnly }),
   });
 }
 

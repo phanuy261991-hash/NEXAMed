@@ -1,26 +1,36 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   ApproveStockReceiptRequest,
+  CreateStockIssueRequest,
   CreateStockReceiptRequest,
+  ListDispenseQueueQuery,
   ListStockBalancesQuery,
+  ListStockIssuesQuery,
   ListStockReceiptsQuery,
   RejectStockReceiptRequest,
   UpdateStockReceiptRequest,
+  VoidStockIssueRequest,
   VoidStockReceiptRequest,
 } from '@nexamed/shared';
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
 import {
   approveStockReceipt,
+  createStockIssue,
   createStockReceipt,
+  getDispenseQueue,
   getDrugBatchBalances,
   getDrugLedger,
+  getPrescriptionDispenseStatus,
   getStockBalances,
   getStockExpiryWarnings,
+  getStockIssue,
+  getStockIssues,
   getStockReceipt,
   getStockReceipts,
   rejectStockReceipt,
   updateStockReceipt,
+  voidStockIssue,
   voidStockReceipt,
 } from './inventory.api';
 
@@ -125,5 +135,72 @@ export function useStockExpiryWarningsQuery(warehouseId?: string) {
   return useQuery({
     queryKey: queryKey(tenantId, 'stock-expiry', warehouseId ?? ''),
     queryFn: () => getStockExpiryWarnings(warehouseId),
+  });
+}
+
+// ============ Kho Thuốc GĐ3 — "Phiếu xuất kho" / "Phát thuốc" (docs/DECISIONS.md #163) ============
+
+export function useStockIssuesQuery(query: ListStockIssuesQuery) {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'stock-issue', 'list', JSON.stringify(query)),
+    queryFn: () => getStockIssues(query),
+  });
+}
+
+export function useStockIssueQuery(id: string, enabled = true) {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'stock-issue', 'detail', id),
+    queryFn: () => getStockIssue(id),
+    enabled: enabled && id !== '',
+  });
+}
+
+export function usePrescriptionDispenseStatusQuery(prescriptionId: string, warehouseId?: string, enabled = true) {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'dispense-status', prescriptionId, warehouseId ?? ''),
+    queryFn: () => getPrescriptionDispenseStatus(prescriptionId, warehouseId),
+    enabled: enabled && prescriptionId !== '',
+  });
+}
+
+export function useDispenseQueueQuery(query: ListDispenseQueueQuery) {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'dispense-queue', JSON.stringify(query)),
+    queryFn: () => getDispenseQueue(query),
+  });
+}
+
+/** Đúng khuôn `useInvalidateInventory()` ở trên — thêm invalidate `invoice`/`dispense-status`/
+ * `dispense-queue` (Phiếu xuất kho gắn tiền vào hoá đơn + đổi trạng thái phát của đơn thuốc). */
+function useInvalidateAfterDispense() {
+  const { tenantId } = useAppConfig();
+  const queryClient = useQueryClient();
+  return () => {
+    void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'stock-issue') });
+    void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'stock-balance') });
+    void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'stock-ledger') });
+    void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'dispense-status') });
+    void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'dispense-queue') });
+    void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'invoice') });
+  };
+}
+
+export function useCreateStockIssueMutation() {
+  const invalidate = useInvalidateAfterDispense();
+  return useMutation({
+    mutationFn: (body: CreateStockIssueRequest) => createStockIssue(body),
+    onSuccess: invalidate,
+  });
+}
+
+export function useVoidStockIssueMutation() {
+  const invalidate = useInvalidateAfterDispense();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: VoidStockIssueRequest }) => voidStockIssue(id, body),
+    onSuccess: invalidate,
   });
 }

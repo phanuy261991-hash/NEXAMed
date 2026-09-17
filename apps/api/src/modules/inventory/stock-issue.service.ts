@@ -1,0 +1,609 @@
+import { Inject, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import {
+  CLINIC_CONFIG_READER_PORT,
+  ConcurrentModificationError,
+  DOCTOR_DIRECTORY_PORT,
+  selectFefoBatches,
+  sortBatchesByFefo,
+  StockIssueExceedsPrescribedQuantityError,
+  StockIssueInsufficientStockError,
+  StockIssueOtcRequiresNonPrescriptionDrugError,
+  StockIssueVoidNotAllowedError,
+  stripVietnameseDiacritics,
+  type ClinicConfigReaderPort,
+  type DoctorDirectoryPort,
+} from '@nexamed/core';
+import type {
+  CreateStockIssueRequest,
+  DispenseBatchOption,
+  DispenseQueueItem,
+  GetPrescriptionDispenseStatusResponse,
+  ListDispenseQueueQuery,
+  ListDispenseQueueResponse,
+  ListStockIssuesQuery,
+  ListStockIssuesResponse,
+  PrescriptionDispenseLine,
+  StockIssueDetail,
+  StockIssueSummary,
+  VoidStockIssueRequest,
+} from '@nexamed/shared';
+import type { Prisma, StockIssue } from '@prisma/client';
+import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
+import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
+import type { RequestMeta } from '../../common/request-meta';
+import { BusinessCodeService } from '../clinic/business-code.service';
+import { DrugRepository, type DrugWithDetails } from '../drug/drug.repository';
+import { WarehouseRepository } from '../drug/warehouse.repository';
+import { PrescriptionRepository, type PrescriptionWithItems } from '../encounter/prescription.repository';
+import { InvoiceRepository } from '../billing/invoice.repository';
+import { StockIssueRepository, type StockIssueLineData, type StockIssueWithContext } from './stock-issue.repository';
+import { InventoryBatchRepository } from './inventory-batch.repository';
+import { StockLedgerRepository } from './stock-ledger.repository';
+import { StockBalanceRepository } from './stock-balance.repository';
+
+interface InvoiceLineToAppend {
+  sourceStockIssueLineId: string;
+  examTypeCode: string;
+  examTypeName: string;
+  unitPrice: bigint;
+  quantity: number;
+  lineTotal: bigint;
+}
+
+export interface AutoDispenseResult {
+  dispensedDrugNames: string[];
+  undispensedDrugNames: string[];
+}
+
+/**
+ * Kho Thuốc & Vật tư y tế — Giai đoạn 3 (Xuất kho theo đơn + FEFO + tiền thuốc, docs/DECISIONS.md
+ * #163, kế hoạch kỹ thuật fluttering-scribbling-liskov.md, mockup đã duyệt). Nguyên tắc cốt lõi
+ * (#146, không đổi): đơn thuốc là Y LỆNH — CHỈ Phiếu xuất kho mới sinh tiền/trừ kho. Luồng 1 BƯỚC
+ * (khác `StockReceiptService` Nháp→Duyệt) — chọn lô, xác nhận là trừ kho + sinh tiền NGAY.
+ */
+@Injectable()
+export class StockIssueService {
+  constructor(
+    private readonly unitOfWork: UnitOfWorkService,
+    private readonly stockIssueRepository: StockIssueRepository,
+    private readonly drugRepository: DrugRepository,
+    private readonly warehouseRepository: WarehouseRepository,
+    private readonly prescriptionRepository: PrescriptionRepository,
+    private readonly invoiceRepository: InvoiceRepository,
+    private readonly inventoryBatchRepository: InventoryBatchRepository,
+    private readonly stockLedgerRepository: StockLedgerRepository,
+    private readonly stockBalanceRepository: StockBalanceRepository,
+    private readonly businessCodeService: BusinessCodeService,
+    @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
+    @Inject(CLINIC_CONFIG_READER_PORT) private readonly clinicConfigReader: ClinicConfigReaderPort,
+  ) {}
+
+  async create(tenantId: string, actorId: string, dto: CreateStockIssueRequest, meta: RequestMeta): Promise<StockIssueDetail> {
+    const pharmacySeparateInvoiceEnabled = await this.clinicConfigReader.getPharmacySeparateInvoiceEnabled(tenantId);
+
+    const createdId = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const warehouse = await this.warehouseRepository.findById(tx, tenantId, dto.warehouseId);
+      if (!warehouse) throw new NotFoundException();
+
+      const prescription = await this.prescriptionRepository.findById(tx, tenantId, dto.prescriptionId);
+      if (!prescription || prescription.signedAt === null) throw new NotFoundException();
+
+      // Khoá tay theo TỪNG mặt hàng trong phiếu — tần suất phát thuốc cao, đồng thời tại 1 quầy
+      // hoặc auto-dispense là race THẬT (khác GĐ2 chấp nhận rủi ro hiếm giữa 2 phiếu NHẬP).
+      const distinctDrugIds = [...new Set(dto.lines.map((l) => l.drugId))];
+      for (const drugId of distinctDrugIds) {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`${tenantId}:${dto.warehouseId}:${drugId}`}, 0))`;
+      }
+
+      const lineData = await this.buildAndValidateLines(tx, tenantId, dto.warehouseId, prescription, dto.lines);
+      const totalAmount = lineData.reduce((sum, l) => sum + l.lineAmount, 0n);
+      const occurredAt = dto.occurredAt ? new Date(dto.occurredAt) : new Date();
+      const issueNo = await this.businessCodeService.generate(tx, tenantId, actorId, 'STOCK_ISSUE', occurredAt);
+
+      const created = await this.stockIssueRepository.create(tx, tenantId, actorId, {
+        issueNo,
+        warehouseId: dto.warehouseId,
+        prescriptionId: dto.prescriptionId,
+        occurredAt,
+        note: dto.note ?? null,
+        totalAmount,
+        lines: lineData,
+      });
+
+      for (const line of created.lines) {
+        await this.stockLedgerRepository.create(tx, tenantId, actorId, {
+          drugId: line.drugId,
+          warehouseId: dto.warehouseId,
+          batchId: line.batchId,
+          quantityChange: -line.quantity,
+          unitCost: line.unitCost,
+          reason: 'ISSUE_RETAIL_SALE',
+          sourceReceiptId: null,
+          sourceIssueId: created.id,
+          occurredAt,
+          note: null,
+        });
+        await this.stockBalanceRepository.upsertQuantity(tx, tenantId, actorId, {
+          drugId: line.drugId,
+          warehouseId: dto.warehouseId,
+          batchId: line.batchId,
+          quantityDelta: -line.quantity,
+        });
+      }
+
+      const invoiceLines: InvoiceLineToAppend[] = created.lines.map((line) => ({
+        sourceStockIssueLineId: line.id,
+        examTypeCode: line.drug.code,
+        examTypeName: line.drug.name,
+        unitPrice: line.sellPrice,
+        quantity: line.quantity,
+        lineTotal: line.lineAmount,
+      }));
+      await this.attachInvoiceLines(tx, tenantId, actorId, prescription.encounterId, pharmacySeparateInvoiceEnabled, invoiceLines);
+
+      await writeAuditLog(tx, tenantId, {
+        actorId,
+        action: 'stock_issue.created',
+        entityType: 'stock_issue',
+        entityId: created.id,
+        afterJson: { issueNo, prescriptionId: dto.prescriptionId, warehouseId: dto.warehouseId, lineCount: created.lines.length, totalAmount: totalAmount.toString() },
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
+
+      return created.id;
+    });
+
+    return this.getById(tenantId, createdId);
+  }
+
+  /** Đọc/validate mọi dòng hàng — dùng chung cho `create()` (thủ công) và `autoDispenseForPrescription()`. */
+  private async buildAndValidateLines(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    warehouseId: string,
+    prescription: PrescriptionWithItems,
+    lines: { prescriptionItemId?: string | null; drugId: string; batchId?: string | null; quantity: number }[],
+  ): Promise<StockIssueLineData[]> {
+    const itemIds = [...new Set(lines.map((l) => l.prescriptionItemId).filter((v): v is string => !!v))];
+    const dispensedMap = await this.stockIssueRepository.sumDispensedForItems(tx, tenantId, itemIds);
+    const drugCache = new Map<string, DrugWithDetails>();
+
+    const result: StockIssueLineData[] = [];
+    for (const line of lines) {
+      let drug = drugCache.get(line.drugId);
+      if (!drug) {
+        const found = await this.drugRepository.findByIdWithDetails(tx, tenantId, line.drugId);
+        if (!found) throw new NotFoundException();
+        drug = found;
+        drugCache.set(line.drugId, drug);
+      }
+
+      if (line.prescriptionItemId) {
+        const item = prescription.items.find((i) => i.id === line.prescriptionItemId);
+        if (!item) throw new NotFoundException();
+        const dispensedSoFar = dispensedMap.get(line.prescriptionItemId) ?? 0;
+        const remaining = item.quantity - dispensedSoFar;
+        if (line.quantity > remaining) {
+          throw new StockIssueExceedsPrescribedQuantityError(drug.name, remaining);
+        }
+      } else if (drug.isPrescriptionOnly) {
+        throw new StockIssueOtcRequiresNonPrescriptionDrugError(drug.name);
+      }
+
+      let unitCost: bigint;
+      let batchId: string | null = null;
+      if (drug.isBatchManaged) {
+        if (!line.batchId) {
+          throw new UnprocessableEntityException(`Thuốc/vật tư "${drug.name}" quản lý theo lô — phải chọn lô.`);
+        }
+        const batch = await this.inventoryBatchRepository.findById(tx, tenantId, line.batchId);
+        if (!batch || batch.drugId !== line.drugId || batch.warehouseId !== warehouseId) {
+          throw new NotFoundException();
+        }
+        const balance = await this.stockBalanceRepository.findByKey(tx, tenantId, line.drugId, warehouseId, line.batchId);
+        if ((balance?.quantityOnHand ?? 0) < line.quantity) {
+          throw new StockIssueInsufficientStockError(drug.name);
+        }
+        unitCost = batch.unitCost;
+        batchId = line.batchId;
+      } else {
+        const balance = await this.stockBalanceRepository.findByKey(tx, tenantId, line.drugId, warehouseId, null);
+        if ((balance?.quantityOnHand ?? 0) < line.quantity) {
+          throw new StockIssueInsufficientStockError(drug.name);
+        }
+        unitCost = balance?.averageUnitCost ?? 0n;
+      }
+
+      // Giá bán LUÔN theo đơn vị NHỎ NHẤT (`drug.defaultSellPrice`) — quantity ở đây vốn đã là đơn
+      // vị cơ sở (đúng khuôn `prescription_item.quantity`), KHÔNG cần tra `unitPricingEnabled`/
+      // `DrugUnit.sellPrice` như lúc nhập kho (chỉ có ý nghĩa khi bán theo vỉ/hộp).
+      const sellPrice = drug.defaultSellPrice ?? 0n;
+      const lineAmount = sellPrice * BigInt(line.quantity);
+      result.push({ prescriptionItemId: line.prescriptionItemId ?? null, drugId: line.drugId, batchId, quantity: line.quantity, unitCost, sellPrice, lineAmount });
+    }
+    return result;
+  }
+
+  /**
+   * Gắn tiền vào hoá đơn (#146, không đổi nguyên tắc): hoá đơn SERVICE đang mở (UNPAID) VÀ tenant
+   * KHÔNG bật tách hoá đơn thuốc → cộng vào đó; ngược lại → cộng vào hoá đơn DRUG UNPAID gần nhất
+   * của cùng lượt khám, hoặc tạo mới nếu chưa có. Retry 1 lần khi version lệch (hiếm — dispensing 2
+   * phiếu gần như đồng thời cho CÙNG 1 lượt khám), rơi hẳn sang tạo hoá đơn DRUG riêng nếu vẫn kẹt.
+   */
+  private async attachInvoiceLines(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    actorId: string,
+    encounterId: string,
+    pharmacySeparateInvoiceEnabled: boolean,
+    invoiceLines: InvoiceLineToAppend[],
+  ): Promise<void> {
+    const serviceInvoice = pharmacySeparateInvoiceEnabled ? null : await this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
+    if (serviceInvoice && serviceInvoice.status === 'UNPAID') {
+      const count = await this.invoiceRepository.appendLines(tx, tenantId, serviceInvoice.id, serviceInvoice.version, actorId, invoiceLines);
+      if (count > 0) return;
+    }
+
+    const openDrugInvoice = await this.invoiceRepository.findOpenDrugInvoiceForEncounter(tx, tenantId, encounterId);
+    if (openDrugInvoice) {
+      const count = await this.invoiceRepository.appendLines(tx, tenantId, openDrugInvoice.id, openDrugInvoice.version, actorId, invoiceLines);
+      if (count > 0) return;
+    }
+
+    await this.invoiceRepository.createDrugInvoice(tx, tenantId, actorId, encounterId, invoiceLines);
+  }
+
+  async voidIssue(tenantId: string, actorId: string, id: string, dto: VoidStockIssueRequest, meta: RequestMeta): Promise<StockIssueDetail> {
+    await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const existing = await this.stockIssueRepository.findByIdAnyWithContext(tx, tenantId, id);
+      if (!existing) throw new NotFoundException();
+      if (existing.status !== 'POSTED') throw new StockIssueVoidNotAllowedError();
+
+      const lineIds = existing.lines.map((l) => l.id);
+      const invoice = await this.invoiceRepository.findByStockIssueLineIds(tx, tenantId, lineIds);
+      if (invoice && invoice.status !== 'UNPAID') {
+        throw new StockIssueVoidNotAllowedError();
+      }
+
+      const count = await this.stockIssueRepository.voidPosted(tx, tenantId, id, dto.version, actorId, dto.reason);
+      if (count === 0) throw new ConcurrentModificationError();
+
+      const originalEntries = await this.stockLedgerRepository.listForSourceIssue(tx, tenantId, id);
+      for (const entry of originalEntries) {
+        await this.stockLedgerRepository.create(tx, tenantId, actorId, {
+          drugId: entry.drugId,
+          warehouseId: entry.warehouseId,
+          batchId: entry.batchId,
+          quantityChange: -entry.quantityChange,
+          unitCost: entry.unitCost,
+          reason: 'ISSUE_VOID',
+          sourceReceiptId: null,
+          sourceIssueId: id,
+          occurredAt: new Date(),
+          note: 'Đảo dòng thẻ kho do huỷ phiếu xuất kho',
+        });
+        await this.stockBalanceRepository.upsertQuantity(tx, tenantId, actorId, {
+          drugId: entry.drugId,
+          warehouseId: entry.warehouseId,
+          batchId: entry.batchId,
+          quantityDelta: -entry.quantityChange,
+        });
+      }
+
+      if (invoice) {
+        await this.invoiceRepository.removeStockIssueLines(tx, tenantId, invoice.id, lineIds, actorId, existing.totalAmount);
+      }
+
+      await writeAuditLog(tx, tenantId, {
+        actorId,
+        action: 'stock_issue.voided',
+        entityType: 'stock_issue',
+        entityId: id,
+        afterJson: { reason: dto.reason },
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
+    });
+
+    return this.getById(tenantId, id);
+  }
+
+  async getById(tenantId: string, id: string): Promise<StockIssueDetail> {
+    const row = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.stockIssueRepository.findByIdAnyWithContext(tx, tenantId, id));
+    if (!row) throw new NotFoundException();
+    const names = await this.doctorDirectory.getUserFullNames(tenantId, row.voidedBy ? [row.createdBy, row.voidedBy] : [row.createdBy]);
+    return this.toDetailDto(row, names);
+  }
+
+  async list(tenantId: string, query: ListStockIssuesQuery): Promise<ListStockIssuesResponse> {
+    const rows = await this.unitOfWork.runInTenantScope(tenantId, (tx) =>
+      this.stockIssueRepository.list(tx, tenantId, {
+        warehouseId: query.warehouseId,
+        status: query.status,
+        from: query.from ? new Date(`${query.from}T00:00:00+07:00`) : undefined,
+        to: query.to ? new Date(`${query.to}T23:59:59.999+07:00`) : undefined,
+        q: query.q,
+        cursor: query.cursor,
+        take: query.limit + 1,
+      }),
+    );
+    const hasMore = rows.length > query.limit;
+    const page = hasMore ? rows.slice(0, query.limit) : rows;
+    const nextCursor = hasMore ? (page[page.length - 1]?.id ?? null) : null;
+
+    const ids = new Set<string>();
+    for (const row of page) {
+      ids.add(row.createdBy);
+      if (row.voidedBy) ids.add(row.voidedBy);
+    }
+    const names = ids.size > 0 ? await this.doctorDirectory.getUserFullNames(tenantId, [...ids]) : new Map<string, string>();
+
+    return {
+      items: page.map((row) => this.toSummaryDto(row, row.warehouse.name, row.prescription.encounter, row._count.lines, names)),
+      nextCursor,
+    };
+  }
+
+  /** `GET /inventory/prescriptions/:id/dispense-status` — kê/đã phát/còn lại từng dòng + gợi ý FEFO. */
+  async getDispenseStatus(tenantId: string, prescriptionId: string, warehouseId: string | undefined): Promise<GetPrescriptionDispenseStatusResponse> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const prescription = await this.prescriptionRepository.findById(tx, tenantId, prescriptionId);
+      if (!prescription || prescription.signedAt === null) throw new NotFoundException();
+
+      const resolvedWarehouseId = warehouseId ?? (await this.warehouseRepository.findDefault(tx, tenantId))?.id ?? null;
+      const itemIds = prescription.items.map((i) => i.id);
+      const dispensedMap = await this.stockIssueRepository.sumDispensedForItems(tx, tenantId, itemIds);
+
+      const drugCache = new Map<string, DrugWithDetails>();
+      const lines: PrescriptionDispenseLine[] = [];
+      for (const item of prescription.items) {
+        let drug = drugCache.get(item.drugId);
+        if (!drug) {
+          const found = await this.drugRepository.findByIdWithDetails(tx, tenantId, item.drugId);
+          if (!found) continue;
+          drug = found;
+          drugCache.set(item.drugId, drug);
+        }
+        const dispensedQuantity = dispensedMap.get(item.id) ?? 0;
+        let suggestedBatches: DispenseBatchOption[] = [];
+        if (drug.isBatchManaged && resolvedWarehouseId) {
+          const batches = await this.inventoryBatchRepository.listWithBalanceForDrug(tx, tenantId, item.drugId, resolvedWarehouseId);
+          const withStringExpiry = batches.map((b) => ({ ...b, expiryDate: b.expiryDate ? b.expiryDate.toISOString().slice(0, 10) : null }));
+          suggestedBatches = sortBatchesByFefo(withStringExpiry).map((b) => ({
+            batchId: b.batchId,
+            batchNo: b.batchNo,
+            expiryDate: b.expiryDate,
+            quantityOnHand: b.quantityOnHand,
+            unitCost: Number(b.unitCost),
+          }));
+        }
+        lines.push({
+          prescriptionItemId: item.id,
+          drugId: item.drugId,
+          drugName: item.drugName,
+          isBatchManaged: drug.isBatchManaged,
+          isPrescriptionOnly: drug.isPrescriptionOnly,
+          prescribedQuantity: item.quantity,
+          dispensedQuantity,
+          remainingQuantity: Math.max(0, item.quantity - dispensedQuantity),
+          sellPrice: drug.defaultSellPrice === null ? 0 : Number(drug.defaultSellPrice),
+          suggestedBatches,
+        });
+      }
+
+      return { prescriptionId: prescription.id, encounterId: prescription.encounterId, signedAt: prescription.signedAt?.toISOString() ?? null, lines };
+    });
+  }
+
+  /** `GET /inventory/dispense-queue` — đơn ĐÃ KÝ còn thuốc chưa phát hết. */
+  async listDispenseQueue(tenantId: string, query: ListDispenseQueueQuery): Promise<ListDispenseQueueResponse> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const qRaw = query.q?.trim() || undefined;
+      const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const prescriptions = await this.stockIssueRepository.listSignedPrescriptionsForDispenseQueue(tx, tenantId, {
+        qRaw,
+        qNormalized: qRaw ? stripVietnameseDiacritics(qRaw) : undefined,
+        includeOlder: query.includeOlder,
+        cutoff,
+      });
+
+      const allItemIds = prescriptions.flatMap((p) => p.items.map((i) => i.id));
+      const dispensedMap = await this.stockIssueRepository.sumDispensedForItems(tx, tenantId, allItemIds);
+
+      const items: DispenseQueueItem[] = [];
+      for (const p of prescriptions) {
+        const totalPrescribedQuantity = p.items.reduce((sum, i) => sum + i.quantity, 0);
+        const totalDispensedQuantity = p.items.reduce((sum, i) => sum + (dispensedMap.get(i.id) ?? 0), 0);
+        const fullyDispensed = totalDispensedQuantity >= totalPrescribedQuantity;
+        if (fullyDispensed) continue;
+        items.push({
+          prescriptionId: p.id,
+          encounterId: p.encounter.id,
+          encounterNo: p.encounter.encounterNo,
+          patientId: p.encounter.patient.id,
+          patientCode: p.encounter.patient.patientCode,
+          patientFullName: p.encounter.patient.fullName,
+          phone: p.encounter.patient.phone,
+          signedAt: p.signedAt!.toISOString(),
+          totalPrescribedQuantity,
+          totalDispensedQuantity,
+          fullyDispensed,
+        });
+      }
+      return { items };
+    });
+  }
+
+  /**
+   * "Tự động phát thuốc lúc ký đơn" (`autoDispenseOnSignEnabled`) — gọi TRONG CÙNG transaction của
+   * `EncounterService.signPrescription()` (tham số `tx` truyền vào, KHÔNG tự mở transaction riêng —
+   * khác mọi port khác trong dự án — vì đây là gọi Service thật của module khác chia sẻ đúng 1
+   * transaction, cùng tinh thần "chia sẻ Repository giữa module" nhưng ở mức Service). KHÔNG BAO
+   * GIỜ throw — dòng nào thiếu tồn/không tự chọn được lô đủ thì BỎ QUA (đơn đã ký vẫn là y lệnh hợp
+   * lệ độc lập với việc phát, #146), trả về danh sách tên thuốc đã/chưa phát được cho caller ghi log.
+   */
+  async autoDispenseForPrescription(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    actorId: string,
+    prescription: PrescriptionWithItems,
+    meta: RequestMeta,
+  ): Promise<AutoDispenseResult> {
+    const warehouse = await this.warehouseRepository.findDefault(tx, tenantId);
+    if (!warehouse) {
+      return { dispensedDrugNames: [], undispensedDrugNames: prescription.items.map((i) => i.drugName) };
+    }
+
+    const distinctDrugIds = [...new Set(prescription.items.map((i) => i.drugId))];
+    for (const drugId of distinctDrugIds) {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`${tenantId}:${warehouse.id}:${drugId}`}, 0))`;
+    }
+
+    const dispensedDrugNames: string[] = [];
+    const undispensedDrugNames: string[] = [];
+    const requestedLines: { prescriptionItemId: string; drugId: string; batchId: string | null; quantity: number }[] = [];
+
+    for (const item of prescription.items) {
+      const drug = await this.drugRepository.findByIdWithDetails(tx, tenantId, item.drugId);
+      if (!drug) {
+        undispensedDrugNames.push(item.drugName);
+        continue;
+      }
+      if (drug.isBatchManaged) {
+        const batches = await this.inventoryBatchRepository.listWithBalanceForDrug(tx, tenantId, item.drugId, warehouse.id);
+        const allocation = selectFefoBatches(
+          batches.map((b) => ({ batchId: b.batchId, quantityOnHand: b.quantityOnHand, expiryDate: b.expiryDate ? b.expiryDate.toISOString().slice(0, 10) : null })),
+          item.quantity,
+        );
+        if (!allocation) {
+          undispensedDrugNames.push(item.drugName);
+          continue;
+        }
+        for (const a of allocation) {
+          requestedLines.push({ prescriptionItemId: item.id, drugId: item.drugId, batchId: a.batchId, quantity: a.quantity });
+        }
+      } else {
+        const balance = await this.stockBalanceRepository.findByKey(tx, tenantId, item.drugId, warehouse.id, null);
+        if ((balance?.quantityOnHand ?? 0) < item.quantity) {
+          undispensedDrugNames.push(item.drugName);
+          continue;
+        }
+        requestedLines.push({ prescriptionItemId: item.id, drugId: item.drugId, batchId: null, quantity: item.quantity });
+      }
+      dispensedDrugNames.push(item.drugName);
+    }
+
+    if (requestedLines.length === 0) {
+      return { dispensedDrugNames, undispensedDrugNames };
+    }
+
+    const lineData = await this.buildAndValidateLines(tx, tenantId, warehouse.id, prescription, requestedLines);
+    const totalAmount = lineData.reduce((sum, l) => sum + l.lineAmount, 0n);
+    const occurredAt = new Date();
+    const issueNo = await this.businessCodeService.generate(tx, tenantId, actorId, 'STOCK_ISSUE', occurredAt);
+
+    const created = await this.stockIssueRepository.create(tx, tenantId, actorId, {
+      issueNo,
+      warehouseId: warehouse.id,
+      prescriptionId: prescription.id,
+      occurredAt,
+      note: 'Tự động phát thuốc lúc ký đơn',
+      totalAmount,
+      lines: lineData,
+    });
+
+    for (const line of created.lines) {
+      await this.stockLedgerRepository.create(tx, tenantId, actorId, {
+        drugId: line.drugId,
+        warehouseId: warehouse.id,
+        batchId: line.batchId,
+        quantityChange: -line.quantity,
+        unitCost: line.unitCost,
+        reason: 'ISSUE_RETAIL_SALE',
+        sourceReceiptId: null,
+        sourceIssueId: created.id,
+        occurredAt,
+        note: null,
+      });
+      await this.stockBalanceRepository.upsertQuantity(tx, tenantId, actorId, {
+        drugId: line.drugId,
+        warehouseId: warehouse.id,
+        batchId: line.batchId,
+        quantityDelta: -line.quantity,
+      });
+    }
+
+    const pharmacySeparateInvoiceEnabled = await this.clinicConfigReader.getPharmacySeparateInvoiceEnabled(tenantId);
+    const invoiceLines: InvoiceLineToAppend[] = created.lines.map((line) => ({
+      sourceStockIssueLineId: line.id,
+      examTypeCode: line.drug.code,
+      examTypeName: line.drug.name,
+      unitPrice: line.sellPrice,
+      quantity: line.quantity,
+      lineTotal: line.lineAmount,
+    }));
+    await this.attachInvoiceLines(tx, tenantId, actorId, prescription.encounterId, pharmacySeparateInvoiceEnabled, invoiceLines);
+
+    await writeAuditLog(tx, tenantId, {
+      actorId,
+      action: 'stock_issue.created',
+      entityType: 'stock_issue',
+      entityId: created.id,
+      afterJson: { issueNo, prescriptionId: prescription.id, warehouseId: warehouse.id, lineCount: created.lines.length, totalAmount: totalAmount.toString(), auto: true },
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+
+    return { dispensedDrugNames, undispensedDrugNames };
+  }
+
+  private toSummaryDto(
+    row: StockIssue,
+    warehouseName: string,
+    encounter: { id: string; encounterNo: string; patient: { patientCode: string; fullName: string } },
+    lineCount: number,
+    names: Map<string, string>,
+  ): StockIssueSummary {
+    return {
+      id: row.id,
+      issueNo: row.issueNo,
+      issueType: row.issueType,
+      status: row.status,
+      warehouseId: row.warehouseId,
+      warehouseName,
+      prescriptionId: row.prescriptionId,
+      encounterId: encounter.id,
+      patientCode: encounter.patient.patientCode,
+      patientFullName: encounter.patient.fullName,
+      occurredAt: row.occurredAt.toISOString(),
+      note: row.note,
+      totalAmount: Number(row.totalAmount),
+      lineCount,
+      createdByName: names.get(row.createdBy) ?? 'Không rõ',
+      voidedByName: row.voidedBy ? (names.get(row.voidedBy) ?? 'Không rõ') : null,
+      voidedAt: row.voidedAt?.toISOString() ?? null,
+      voidReason: row.voidReason,
+      version: row.version,
+    };
+  }
+
+  private toDetailDto(row: StockIssueWithContext, names: Map<string, string>): StockIssueDetail {
+    return {
+      ...this.toSummaryDto(row, row.warehouse.name, row.prescription.encounter, row.lines.length, names),
+      lines: row.lines.map((line) => ({
+        id: line.id,
+        prescriptionItemId: line.prescriptionItemId,
+        drugId: line.drugId,
+        drugCode: line.drug.code,
+        drugName: line.drug.name,
+        batchId: line.batchId,
+        batchNo: line.batch?.batchNo ?? null,
+        quantity: line.quantity,
+        unitCost: Number(line.unitCost),
+        sellPrice: Number(line.sellPrice),
+        lineAmount: Number(line.lineAmount),
+      })),
+    };
+  }
+}
