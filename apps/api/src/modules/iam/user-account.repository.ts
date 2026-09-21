@@ -47,6 +47,10 @@ export interface UpdateUserAccountData {
   passwordHash?: string;
   /** Chỉ `UserAccountService.uploadSignature()` gán field này — không đi qua `updateUserAccountRequestSchema` (đúng khuôn `patient.photoKey`). */
   signatureKey?: string | null;
+  /** Chỉ `UserAccountService.resetPassword()` gán 3 field này — xoá khoá tạm khi admin đặt lại mật khẩu, xem `resetLoginAttempts()` (`@nexamed/core`). */
+  failedLoginCount?: number;
+  lastFailedLoginAt?: Date | null;
+  lockedUntil?: Date | null;
 }
 
 /**

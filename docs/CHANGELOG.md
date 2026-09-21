@@ -4,6 +4,12 @@
 
 ## 2026-09-21
 
+### Sửa "Đổi mật khẩu" không mở khoá tài khoản + Redesign giao diện "Phát thuốc" + hiển thị Tồn kho thật + sửa luồng mua thêm OTC + guard chặn đổi "Quản lý theo lô" khi còn tồn
+
+Chuỗi phát hiện liên tiếp qua chủ dự án dùng thử trực tiếp trên trình duyệt trong 1 phiên. Sửa bug đặt lại mật khẩu không xoá khoá tạm (`resetLoginAttempts()`); redesign toàn bộ giao diện "Phát thuốc" sang danh sách 1 cột theo đúng phong cách hiện đại hơn (bỏ card 2 cột, dùng `ModalHeader`/`SelectionCheckbox` dùng chung, sửa canh lề checkbox, đồng bộ cỡ chữ, rút gọn chú thích dài); thêm hiển thị "Tồn kho thật" tách biệt với "Còn lại theo đơn" sau khi điều tra ra nguyên nhân báo "không đủ tồn" sai (dữ liệu `stock_balance` cũ bị kẹt dưới lô do đổi cờ `isBatchManaged` sau khi đã nhập kho) — dọn dữ liệu rác + thêm guard `DrugBatchManagementChangeBlockedError` chặn tái diễn; sửa luồng thêm "mua thêm ngoài đơn" cho đúng CHÍNH thuốc đã kê (trước đây bị chặn cả 2 hướng).
+
+**Đã xác minh thật**: `pnpm -w typecheck/lint/build` sạch toàn workspace, OpenAPI + web codegen đã sinh lại (`warehouseStockOnHand` mới). `apps/api` 845/847 pass trực tiếp (2 flake `role_permission` đã biết, pass 100% khi chạy riêng). Test mới: đặt lại mật khẩu mở khoá ngay, guard đổi `isBatchManaged`, `warehouseStockOnHand` cả 2 trường hợp theo lô/phi-lô. **Chưa verify Playwright chính thức** cho phần redesign/tồn kho/OTC — xem chi tiết đầy đủ `docs/DECISIONS.md` #168. Việc kế tiếp ("Mã đơn thuốc thật") đã ghi handoff riêng `docs/handoffs/HANDOFF-PhatThuoc-MaDonThuoc-2026-09-21.md`.
+
 ### Sửa `config.json` trỏ nhầm tenant dev (không phải lỗi RLS) + Hoạt chất: đủ trường Mã BYT/Tên đầy đủ chuẩn/Mô tả (sửa tự do) + mã tự sinh ngắn cho 9 category Kho Thuốc
 
 Chủ dự án báo nghi rò rỉ dữ liệu xuyên tenant — điều tra ở tầng DB xác nhận RLS cách ly đúng, nguyên nhân thật là `apps/web/public/config.json` đang trỏ sang một tenant dev rác (tạo lúc verify Kho Thuốc GĐ3, quên trả lại) thay vì tenant chủ dự án dùng thật hằng ngày. Đã khôi phục đúng tenant, để nguyên tenant rác (chủ dự án xác nhận không cần dọn — xoá đúng cách sẽ phải cascade qua ~15 bảng, rủi ro cao trong khi lợi ích gần bằng 0). Xem chi tiết + bài học cho phiên sau `docs/DECISIONS.md` #166.

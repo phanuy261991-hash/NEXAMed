@@ -451,6 +451,10 @@ export const prescriptionDispenseLineSchema = z.object({
   sellPrice: z.number().int(),
   /** Chỉ có ý nghĩa khi `isBatchManaged=true` — rỗng nếu hết tồn mọi lô. */
   suggestedBatches: z.array(dispenseBatchOptionSchema),
+  /** Tổng tồn kho THẬT của mặt hàng này tại kho đang chọn (SUM mọi lô nếu quản lý theo lô, hoặc
+   * dòng `stock_balance` phi-lô) — tách biệt hoàn toàn với `remainingQuantity` (còn lại THEO ĐƠN,
+   * không liên quan tồn kho). Thêm để tránh nhầm lẫn "còn lại theo đơn" với "tồn kho thực tế". */
+  warehouseStockOnHand: z.number().int(),
 });
 export type PrescriptionDispenseLine = z.infer<typeof prescriptionDispenseLineSchema>;
 

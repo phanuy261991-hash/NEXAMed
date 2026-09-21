@@ -348,5 +348,36 @@ describe('HTTP e2e — /api/v1/users', () => {
         .send({ tenantId: fixture.tenantA.id, username, password: newPassword });
       expect(loginNewPassword.status).toBe(200);
     });
+
+    it('tài khoản đang bị khoá tạm (giả lập trực tiếp ở DB, tránh tốn quota rate-limit `login`) → đặt lại mật khẩu → đăng nhập ngay bằng mật khẩu mới thành công, không còn bị khoá', async () => {
+      // Giả lập trạng thái khoá qua DB thay vì gọi thật 5 lần đăng nhập sai — file test này đã
+      // gọi /auth/login nhiều lần ở các `it` khác, dùng thật sẽ dễ đụng throttle `login` (10/60s,
+      // `iam.module.ts`) và làm test giòn theo thứ tự chạy, không phải mục tiêu của test này (mục
+      // tiêu là hành vi `resetPassword`, hành vi khoá-sau-5-lần-sai đã có `lockout.spec.ts` riêng).
+      await privileged.userAccount.update({
+        where: { id: userId },
+        data: { failedLoginCount: 5, lastFailedLoginAt: new Date(), lockedUntil: new Date(Date.now() + 10 * 60 * 1000) },
+      });
+
+      const anotherNewPassword = 'AfterLockReset@98765';
+      const reset = await request(app.getHttpServer())
+        .post(`/api/v1/users/${userId}/reset-password`)
+        .set(authed(clinicAdminToken))
+        .send({ newPassword: anotherNewPassword, version: await currentVersion(clinicAdminToken, userId) });
+      expect(reset.status).toBe(200);
+
+      // Không gọi thêm /auth/login ở đây (dù đó là bằng chứng "sống" hơn) — cả file test này dùng
+      // chung 1 app instance nên chung luôn bộ đếm throttle `login` (10/60s), tới đây quota đã gần
+      // cạn bởi 9 lần gọi login ở các `it` phía trên, thêm 1 lần nữa dễ ăn `429` chứ không phải do
+      // logic sai (đã tự xác nhận bằng cách chạy thử). Assert thẳng ở DB — đúng bằng chứng cho hành
+      // vi `resetPassword` cần sửa (xoá khoá tạm), tách khỏi rủi ro throttle của tầng HTTP login.
+      const row = await privileged.userAccount.findUniqueOrThrow({ where: { id: userId } });
+      expect(row.lockedUntil).toBeNull();
+      expect(row.failedLoginCount).toBe(0);
+      expect(row.lastFailedLoginAt).toBeNull();
+
+      const passwordOk = await argon2.verify(row.passwordHash, anotherNewPassword);
+      expect(passwordOk).toBe(true);
+    });
   });
 });

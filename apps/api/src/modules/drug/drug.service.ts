@@ -1,10 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { ConcurrentModificationError, DrugDuplicateCodeError } from '@nexamed/core';
+import { ConcurrentModificationError, DrugBatchManagementChangeBlockedError, DrugDuplicateCodeError } from '@nexamed/core';
 import type { CreateDrugRequest, DrugSummary, ListDrugsQuery, ListDrugsResponse, UpdateDrugRequest } from '@nexamed/shared';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
 import type { RequestMeta } from '../../common/request-meta';
+import { StockBalanceRepository } from '../inventory/stock-balance.repository';
 import { DrugRepository, type DrugWithDetails } from './drug.repository';
 import { DrugIngredientRepository } from './drug-ingredient.repository';
 import { DrugUnitRepository } from './drug-unit.repository';
@@ -25,6 +26,7 @@ export class DrugService {
     private readonly drugRepository: DrugRepository,
     private readonly drugIngredientRepository: DrugIngredientRepository,
     private readonly drugUnitRepository: DrugUnitRepository,
+    private readonly stockBalanceRepository: StockBalanceRepository,
   ) {}
 
   async create(tenantId: string, actorId: string, dto: CreateDrugRequest, meta: RequestMeta): Promise<DrugSummary> {
@@ -123,6 +125,16 @@ export class DrugService {
       const nextIngredients = dto.ingredients ?? null;
       if (nextItemType === 'SUPPLY' && nextIngredients && nextIngredients.length > 0) {
         throw new BadRequestException('Vật tư y tế không có hoạt chất/hàm lượng.');
+      }
+
+      // Guard chặn đổi "Quản lý theo lô" khi mặt hàng còn tồn — đổi cờ để tồn cũ "kẹt" dưới khoá
+      // lô/phi-lô cũ, không còn nhìn thấy được ở phát thuốc/nhập kho sau này (sự cố thật đã gặp với
+      // dữ liệu test Playwright, 21/09/2026, xem `DrugBatchManagementChangeBlockedError`).
+      if (dto.isBatchManaged !== undefined && dto.isBatchManaged !== existing.isBatchManaged) {
+        const hasStock = await this.stockBalanceRepository.hasAnyStock(tx, tenantId, id);
+        if (hasStock) {
+          throw new DrugBatchManagementChangeBlockedError();
+        }
       }
 
       let count: number;

@@ -21,6 +21,14 @@ export class StockBalanceRepository {
     return tx.stockBalance.findFirst({ where: { tenantId, drugId, warehouseId, batchId, deletedAt: null } });
   }
 
+  /** Có bất kỳ tồn kho nào (mọi kho, mọi lô) khác 0 không — dùng để chặn đổi `drug.isBatchManaged`
+   * khi thuốc đã có tồn (đổi cờ sau khi có tồn làm tồn cũ "kẹt" dưới khoá lô/phi-lô cũ, xem sự cố
+   * thật đã gặp với dữ liệu test Playwright, 21/09/2026). */
+  async hasAnyStock(tx: Prisma.TransactionClient, tenantId: string, drugId: string): Promise<boolean> {
+    const row = await tx.stockBalance.findFirst({ where: { tenantId, drugId, deletedAt: null, quantityOnHand: { not: 0 } }, select: { id: true } });
+    return row !== null;
+  }
+
   /** Cộng thêm `quantityDelta` vào dòng đã có (tạo mới nếu chưa có). `averageUnitCost` — chỉ truyền
    * khi `batchId=null` (bình quân gia quyền toàn kho, Service đã tính sẵn); bỏ qua khi có `batchId`
    * (giá vốn đích danh nằm ở `inventory_batch.unitCost`, không lặp lại ở đây). */

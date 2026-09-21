@@ -382,16 +382,26 @@ export class StockIssueService {
         }
         const dispensedQuantity = dispensedMap.get(item.id) ?? 0;
         let suggestedBatches: DispenseBatchOption[] = [];
-        if (drug.isBatchManaged && resolvedWarehouseId) {
-          const batches = await this.inventoryBatchRepository.listWithBalanceForDrug(tx, tenantId, item.drugId, resolvedWarehouseId);
-          const withStringExpiry = batches.map((b) => ({ ...b, expiryDate: b.expiryDate ? b.expiryDate.toISOString().slice(0, 10) : null }));
-          suggestedBatches = sortBatchesByFefo(withStringExpiry).map((b) => ({
-            batchId: b.batchId,
-            batchNo: b.batchNo,
-            expiryDate: b.expiryDate,
-            quantityOnHand: b.quantityOnHand,
-            unitCost: Number(b.unitCost),
-          }));
+        let warehouseStockOnHand = 0;
+        if (resolvedWarehouseId) {
+          if (drug.isBatchManaged) {
+            const batches = await this.inventoryBatchRepository.listWithBalanceForDrug(tx, tenantId, item.drugId, resolvedWarehouseId);
+            const withStringExpiry = batches.map((b) => ({ ...b, expiryDate: b.expiryDate ? b.expiryDate.toISOString().slice(0, 10) : null }));
+            suggestedBatches = sortBatchesByFefo(withStringExpiry).map((b) => ({
+              batchId: b.batchId,
+              batchNo: b.batchNo,
+              expiryDate: b.expiryDate,
+              quantityOnHand: b.quantityOnHand,
+              unitCost: Number(b.unitCost),
+            }));
+            // Tồn kho hiển thị cho dược sĩ là TỔNG mọi lô — tách biệt hoàn toàn với
+            // `remainingQuantity` (còn lại theo đơn), tránh nhầm lẫn đã gặp thật (báo "không đủ" dù
+            // đơn "còn lại" 1 trong khi kho có 3300, chỉ là chưa nhìn thấy vì kẹt dưới lô khác cờ).
+            warehouseStockOnHand = suggestedBatches.reduce((sum, b) => sum + b.quantityOnHand, 0);
+          } else {
+            const balance = await this.stockBalanceRepository.findByKey(tx, tenantId, item.drugId, resolvedWarehouseId, null);
+            warehouseStockOnHand = balance?.quantityOnHand ?? 0;
+          }
         }
         lines.push({
           prescriptionItemId: item.id,
@@ -404,6 +414,7 @@ export class StockIssueService {
           remainingQuantity: Math.max(0, item.quantity - dispensedQuantity),
           sellPrice: drug.defaultSellPrice === null ? 0 : Number(drug.defaultSellPrice),
           suggestedBatches,
+          warehouseStockOnHand,
         });
       }
 

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { IamModule } from '../iam/iam.module';
 import { ClinicModule } from '../clinic/clinic.module';
 import { DrugModule } from '../drug/drug.module';
@@ -36,9 +36,13 @@ import { StockIssueRepository } from './stock-issue.repository';
  * `PrescriptionRepository` để đọc/validate đơn thuốc lúc "Phát thuốc" (import THƯỜNG, không
  * `forwardRef` — chiều phụ thuộc chỉ MỘT phía kể từ khi gỡ "Tự động phát thuốc lúc ký đơn", #165;
  * trước đó có vòng 2 chiều thật vì `EncounterService` gọi ngược `StockIssueService`).
+ *
+ * `DrugModule` đổi sang `forwardRef()` (21/09/2026) — `DrugModule` giờ CŨNG import ngược lại
+ * `InventoryModule` (đọc `StockBalanceRepository` cho guard chặn đổi `isBatchManaged` khi còn tồn),
+ * vòng phụ thuộc 2 chiều CÓ THẬT. `exports: [StockBalanceRepository]` phục vụ đúng chiều đọc đó.
  */
 @Module({
-  imports: [IamModule, ClinicModule, DrugModule, BillingModule, EncounterModule],
+  imports: [IamModule, ClinicModule, forwardRef(() => DrugModule), BillingModule, EncounterModule],
   controllers: [StockReceiptController, StockLedgerController, StockBalanceController, StockIssueController],
   providers: [
     StockReceiptService,
@@ -51,5 +55,6 @@ import { StockIssueRepository } from './stock-issue.repository';
     StockIssueService,
     StockIssueRepository,
   ],
+  exports: [StockBalanceRepository],
 })
 export class InventoryModule {}

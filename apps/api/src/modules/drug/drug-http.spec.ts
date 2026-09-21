@@ -194,6 +194,51 @@ describe('HTTP e2e — /api/v1/drugs', () => {
     expect(res.body.error.code).toBe('CONCURRENT_MODIFICATION');
   });
 
+  it('đổi "Quản lý theo lô" khi còn tồn kho → 409 DRUG_BATCH_MANAGEMENT_CHANGE_BLOCKED; hết tồn thì đổi được (21/09/2026)', async () => {
+    const created = await createDrug(clinicAdminToken, { name: 'Guard đổi Quản lý theo lô' });
+    const drugId = created.body.data.id as string;
+    expect(created.body.data.isBatchManaged).toBe(true); // mặc định tạo mới
+
+    const warehouse = await privileged.warehouse.create({
+      data: { tenantId: fixture.tenantA.id, code: `WH-${randomUUID().slice(0, 6)}`, name: 'Kho test guard', createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR },
+    });
+    const balance = await privileged.stockBalance.create({
+      data: {
+        tenantId: fixture.tenantA.id,
+        drugId,
+        warehouseId: warehouse.id,
+        batchId: null,
+        quantityOnHand: 10,
+        createdBy: SYSTEM_TEST_ACTOR,
+        updatedBy: SYSTEM_TEST_ACTOR,
+      },
+    });
+
+    // Còn tồn (10) → đổi cờ bị chặn, dù đổi sang giá trị nào.
+    const blocked = await request(app.getHttpServer())
+      .patch(`/api/v1/drugs/${drugId}`)
+      .set(authed(clinicAdminToken))
+      .send({ isBatchManaged: false, version: 1 });
+    expect(blocked.status).toBe(409);
+    expect(blocked.body.error.code).toBe('DRUG_BATCH_MANAGEMENT_CHANGE_BLOCKED');
+
+    // Sửa trường KHÁC, giữ nguyên isBatchManaged=true (không đổi giá trị) — vẫn qua được dù còn tồn.
+    const unchanged = await request(app.getHttpServer())
+      .patch(`/api/v1/drugs/${drugId}`)
+      .set(authed(clinicAdminToken))
+      .send({ isBatchManaged: true, name: 'Guard đổi Quản lý theo lô (sửa tên)', version: 1 });
+    expect(unchanged.status).toBe(200);
+
+    // Hết tồn (0) → đổi cờ được bình thường.
+    await privileged.stockBalance.update({ where: { id: balance.id }, data: { quantityOnHand: 0 } });
+    const allowed = await request(app.getHttpServer())
+      .patch(`/api/v1/drugs/${drugId}`)
+      .set(authed(clinicAdminToken))
+      .send({ isBatchManaged: false, version: 2 });
+    expect(allowed.status).toBe(200);
+    expect(allowed.body.data.isBatchManaged).toBe(false);
+  });
+
   it('cách ly tenant — tenant B không thấy/sửa được thuốc tenant A (404)', async () => {
     const created = await createDrug(clinicAdminToken);
     const drugId = created.body.data.id as string;

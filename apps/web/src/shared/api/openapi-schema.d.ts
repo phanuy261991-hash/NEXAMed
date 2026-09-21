@@ -13742,6 +13742,8 @@ export interface paths {
                         deactivatesAccount?: boolean;
                         countsAsCash?: boolean;
                         description?: string;
+                        bytCode?: string;
+                        fullName?: string;
                         /** @enum {string} */
                         direction?: "EXPENSE" | "INCOME";
                         isActive?: boolean;
@@ -21905,6 +21907,7 @@ export interface paths {
                                         quantityOnHand: number;
                                         unitCost: number;
                                     }[];
+                                    warehouseStockOnHand: number;
                                 }[];
                             };
                             meta: Record<string, never>;

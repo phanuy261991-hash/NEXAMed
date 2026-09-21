@@ -54,3 +54,17 @@ export class DrugDuplicateCodeError extends DomainError {
     super('Mã thuốc này đã tồn tại trong danh mục.');
   }
 }
+
+/**
+ * Đổi `drug.isBatchManaged` khi mặt hàng đang còn tồn kho (bất kỳ kho nào) — chặn để tránh tồn cũ
+ * bị "kẹt" dưới khoá lô/phi-lô cũ, không còn nhìn thấy được sau khi đổi cờ (sự cố thật đã gặp với
+ * dữ liệu test Playwright, 21/09/2026: 2 dòng tồn theo lô còn nguyên trong khi cờ đã đổi sang
+ * phi-lô, phát thuốc báo "không đủ tồn" dù kho có hàng). 409 — xung đột với trạng thái hiện có.
+ */
+export class DrugBatchManagementChangeBlockedError extends DomainError {
+  readonly code = 'DRUG_BATCH_MANAGEMENT_CHANGE_BLOCKED';
+
+  constructor() {
+    super('Không thể đổi "Quản lý theo lô" khi mặt hàng đang còn tồn kho — cần xuất/kiểm kê hết tồn trước.');
+  }
+}

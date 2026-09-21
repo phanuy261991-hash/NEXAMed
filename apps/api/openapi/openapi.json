@@ -34312,6 +34312,14 @@
                     "type": "string",
                     "minLength": 1
                   },
+                  "bytCode": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "fullName": {
+                    "type": "string",
+                    "minLength": 1
+                  },
                   "direction": {
                     "type": "string",
                     "enum": [
@@ -53907,6 +53915,9 @@
                                     "unitCost"
                                   ]
                                 }
+                              },
+                              "warehouseStockOnHand": {
+                                "type": "integer"
                               }
                             },
                             "required": [
@@ -53919,7 +53930,8 @@
                               "dispensedQuantity",
                               "remainingQuantity",
                               "sellPrice",
-                              "suggestedBatches"
+                              "suggestedBatches",
+                              "warehouseStockOnHand"
                             ]
                           }
                         }

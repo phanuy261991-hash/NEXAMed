@@ -7,6 +7,7 @@ import {
   ConcurrentModificationError,
   InvalidSignatureError,
   REFERENCE_CATALOG_READER_PORT,
+  resetLoginAttempts,
   resolveAccountActiveState,
   RoleInvalidReferenceError,
   sniffImageExtension,
@@ -364,8 +365,12 @@ export class UserAccountService {
         throw new NotFoundException();
       }
 
+      // Xoá luôn khoá tạm (5 lần sai/15 phút, `.claude/docs/security-audit.md`) — nếu không, tài
+      // khoản đang bị khoá vẫn khoá nguyên sau khi admin đặt lại mật khẩu, nhìn như tính năng
+      // "không có tác dụng" tới khi `lockedUntil` tự hết hạn (tới 15 phút).
       const count = await this.userAccountRepository.updateIfVersionMatches(tx, tenantId, id, dto.version, actorId, {
         passwordHash,
+        ...resetLoginAttempts(),
         ...(dto.mustChangePassword !== undefined ? { mustChangePassword: dto.mustChangePassword } : {}),
       });
       if (count === 0) {

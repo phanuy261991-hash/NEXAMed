@@ -294,6 +294,12 @@ describe('HTTP e2e — /api/v1/inventory (Phiếu xuất kho GĐ3)', () => {
     const { encounterId } = await prepareEncounterInConsultation(9);
     const { prescriptionId, items } = await signPrescription(encounterId, [{ drugId, quantity: 5 }]);
 
+    // `warehouseStockOnHand` — tồn kho THẬT, tách biệt hoàn toàn với `remainingQuantity` (còn lại
+    // theo đơn) — tránh nhầm lẫn thật đã gặp (báo "không đủ tồn" dù đơn "còn lại" khớp).
+    const beforeStatus = await request(app.getHttpServer()).get(`/api/v1/inventory/prescriptions/${prescriptionId}/dispense-status`).set(authed(doctorToken)).query({ warehouseId });
+    expect(beforeStatus.body.data.lines[0].warehouseStockOnHand).toBe(50);
+    expect(beforeStatus.body.data.lines[0].remainingQuantity).toBe(5);
+
     const res = await request(app.getHttpServer())
       .post('/api/v1/inventory/issues')
       .set(authed(doctorToken))
@@ -301,6 +307,10 @@ describe('HTTP e2e — /api/v1/inventory (Phiếu xuất kho GĐ3)', () => {
     expect(res.status).toBe(200);
     expect(res.body.data.lines[0].batchId).toBeNull();
     expect(res.body.data.totalAmount).toBe(2500);
+
+    const afterStatus = await request(app.getHttpServer()).get(`/api/v1/inventory/prescriptions/${prescriptionId}/dispense-status`).set(authed(doctorToken)).query({ warehouseId });
+    expect(afterStatus.body.data.lines[0].warehouseStockOnHand).toBe(45);
+    expect(afterStatus.body.data.lines[0].remainingQuantity).toBe(0);
   });
 
   it('nhiều lô — gợi ý FEFO sắp đúng theo hạn dùng (lô sắp hết hạn trước)', async () => {
@@ -318,6 +328,8 @@ describe('HTTP e2e — /api/v1/inventory (Phiếu xuất kho GĐ3)', () => {
     expect(line.suggestedBatches).toHaveLength(2);
     expect(line.suggestedBatches[0].expiryDate).toBe('2026-12-01');
     expect(line.suggestedBatches[1].expiryDate).toBe('2028-01-01');
+    // `warehouseStockOnHand` cho hàng quản lý theo lô = TỔNG mọi lô (10+10), không phải riêng 1 lô.
+    expect(line.warehouseStockOnHand).toBe(20);
   });
 
   it('1 request gửi NHIỀU dòng cùng 1 thuốc kê (tách nhiều lô, #165) — cộng dồn đúng, thành công khi tổng không vượt số đã kê lẫn tồn từng lô', async () => {

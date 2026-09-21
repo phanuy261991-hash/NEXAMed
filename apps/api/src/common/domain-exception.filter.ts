@@ -62,6 +62,9 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   // nghiệp vụ, không phải xung đột trạng thái đồng thời).
   PRESCRIPTION_ALREADY_SIGNED: HttpStatus.CONFLICT,
   DRUG_DUPLICATE_CODE: HttpStatus.CONFLICT,
+  // Guard chặn đổi `isBatchManaged` khi còn tồn (21/09/2026) — xung đột với trạng thái tồn kho
+  // hiện có, không phải lỗi input.
+  DRUG_BATCH_MANAGEMENT_CHANGE_BLOCKED: HttpStatus.CONFLICT,
   // Ký hồ sơ khám (Sprint 5, S5-02/03) — sửa diagnosis/clinical_note đã ký phải qua đính chính,
   // cùng nhóm PRESCRIPTION_ALREADY_SIGNED ở trên.
   CLINICAL_RECORD_ALREADY_SIGNED: HttpStatus.CONFLICT,
