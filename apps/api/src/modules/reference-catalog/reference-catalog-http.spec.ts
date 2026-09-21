@@ -288,7 +288,9 @@ describe('HTTP e2e — /api/v1/reference-catalog', () => {
     expect(created.body.data).toMatchObject({ category: 'DRUG_GROUP', name: 'Nhóm tự thêm', bytCode: 'X99', fullName: 'Nhóm dược lý tự thêm ngoài BYT', description: 'Ghi chú riêng' });
 
     const id = created.body.data.id as string;
-    // updateReferenceCatalogRequestSchema KHÔNG có bytCode/fullName — gửi lên bị Zod bỏ qua (không lỗi 400), giữ nguyên giá trị cũ.
+    // Web KHÔNG gửi bytCode/fullName lúc PATCH cho 5 category chuẩn BYT (chỉ gate ở tầng frontend,
+    // xem `BYT_TAXONOMY_CATEGORIES` ở ReferenceCatalogPane.tsx từ 18/09/2026) — PATCH chỉ sửa `name`
+    // thì 2 trường kia giữ nguyên giá trị cũ, đúng hành vi mong đợi.
     const patched = await request(app.getHttpServer())
       .patch(`/api/v1/reference-catalog/${id}`)
       .set(authed(clinicAdminToken))
@@ -306,6 +308,25 @@ describe('HTTP e2e — /api/v1/reference-catalog', () => {
       .send({ category: 'ETHNICITY', code: `TEST-${randomUUID().slice(0, 8)}`, name: 'Không liên quan BYT', bytCode: 'Y01' });
     expect(ethnicity.status).toBe(200);
     expect(ethnicity.body.data.bytCode).toBe('Y01');
+  });
+
+  it('ACTIVE_INGREDIENT (không có nguồn seed BYT cần bảo vệ, chốt 18/09/2026) — "Mã BYT"/"Tên đầy đủ chuẩn" sửa (PATCH) tự do được, khác 5 category chuẩn BYT', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/api/v1/reference-catalog')
+      .set(authed(clinicAdminToken))
+      .send({ category: 'ACTIVE_INGREDIENT', name: 'Hoạt chất test', bytCode: 'HC-TEST-01', fullName: 'Tên đầy đủ ban đầu', description: 'Mô tả ban đầu' });
+    expect(created.status).toBe(200);
+    // Mã tự sinh (không truyền `code`) — định dạng ngắn tuần tự mới, tiền tố "HC" (docs/DECISIONS.md #113 mở rộng 18/09/2026).
+    expect(created.body.data.code).toMatch(/^HC\d{5}$/);
+    expect(created.body.data).toMatchObject({ bytCode: 'HC-TEST-01', fullName: 'Tên đầy đủ ban đầu', description: 'Mô tả ban đầu' });
+
+    const id = created.body.data.id as string;
+    const patched = await request(app.getHttpServer())
+      .patch(`/api/v1/reference-catalog/${id}`)
+      .set(authed(clinicAdminToken))
+      .send({ bytCode: 'HC-TEST-02', fullName: 'Tên đầy đủ đã sửa', description: 'Mô tả đã sửa' });
+    expect(patched.status).toBe(200);
+    expect(patched.body.data).toMatchObject({ bytCode: 'HC-TEST-02', fullName: 'Tên đầy đủ đã sửa', description: 'Mô tả đã sửa' });
   });
 
   it('EXAM_TYPE — "Đơn giá dịch vụ" (docs/DECISIONS.md #079): tạo kèm examTypePrices → trả đúng danh sách; PATCH bulk-replace; bỏ trống mảng lúc PATCH → xoá hết', async () => {

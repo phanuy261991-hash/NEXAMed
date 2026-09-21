@@ -215,6 +215,8 @@ export class ReferenceCatalogService {
         dto.deactivatesAccount !== undefined ||
         dto.countsAsCash !== undefined ||
         dto.description !== undefined ||
+        dto.bytCode !== undefined ||
+        dto.fullName !== undefined ||
         dto.direction !== undefined ||
         dto.isActive !== undefined;
 
@@ -230,6 +232,8 @@ export class ReferenceCatalogService {
             deactivatesAccount: dto.deactivatesAccount,
             countsAsCash: dto.countsAsCash,
             description: dto.description,
+            bytCode: dto.bytCode,
+            fullName: dto.fullName,
             direction: dto.direction,
             isActive: dto.isActive,
           });

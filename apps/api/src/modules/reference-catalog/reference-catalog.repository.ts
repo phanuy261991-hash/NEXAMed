@@ -36,6 +36,10 @@ export interface UpdateReferenceCatalogData {
   deactivatesAccount?: boolean;
   countsAsCash?: boolean;
   description?: string | null;
+  /** Sửa được sau khi tạo CHỈ cho category không có nguồn seed cần bảo vệ (ACTIVE_INGREDIENT) —
+   * xem chú thích ở `updateReferenceCatalogRequestSchema` (packages/shared). */
+  bytCode?: string | null;
+  fullName?: string | null;
   direction?: ReferenceCatalogDirection | null;
   isActive?: boolean;
 }

@@ -166,13 +166,14 @@ export const createReferenceCatalogRequestSchema = z.object({
   deactivatesAccount: z.boolean().optional(),
   countsAsCash: z.boolean().optional(),
   description: z.string().min(1).optional(),
-  /** CHỈ nhập được lúc TẠO MỚI, cho 5 category "chuẩn BYT" (DRUG_GROUP/DRUG_ROUTE/DOSAGE_FORM/
-   * STORAGE_CONDITION/DRUG_USAGE_TIMING, xem `BYT_TAXONOMY_CATEGORIES` ở web) — mục do
-   * `clinic_admin` TỰ THÊM (không có trong file nguồn BYT) mới cần 2 trường này; mục seed sẵn từ
-   * nguồn chính thức không đi qua đường này nên không đụng tới cơ chế reseed đồng bộ lại theo mã đã
-   * có (đảo ngược một phần #152/#153, chốt 17/09/2026). KHÔNG có trong `updateReferenceCatalogRequestSchema`
-   * — sửa 2 trường này sau khi tạo vẫn phải qua thao tác khác (chủ dự án xác nhận không cần, chỉ
-   * cần nhập được lúc tạo mới).
+  /** Cho 5 category "chuẩn BYT" (DRUG_GROUP/DRUG_ROUTE/DOSAGE_FORM/STORAGE_CONDITION/
+   * DRUG_USAGE_TIMING, xem `BYT_TAXONOMY_CATEGORIES` ở web) — mục do `clinic_admin` TỰ THÊM
+   * (không có trong file nguồn BYT) mới cần 2 trường này; mục seed sẵn từ nguồn chính thức không
+   * đi qua đường này nên không đụng tới cơ chế reseed đồng bộ lại theo mã đã có (đảo ngược một
+   * phần #152/#153, chốt 17/09/2026) — web CHỈ cho nhập ở TẠO MỚI cho 5 category này, sửa lại vẫn
+   * phải qua thao tác khác. Với category KHÔNG có nguồn seed cần bảo vệ (ACTIVE_INGREDIENT, chốt
+   * 18/09/2026) thì `updateReferenceCatalogRequestSchema` cũng nhận 2 trường này — sửa tự do sau
+   * khi tạo, xem `MANUAL_TAXONOMY_CATEGORIES` ở web.
    */
   bytCode: z.string().min(1).optional(),
   fullName: z.string().min(1).optional(),
@@ -201,6 +202,15 @@ export const updateReferenceCatalogRequestSchema = z.object({
   deactivatesAccount: z.boolean().optional(),
   countsAsCash: z.boolean().optional(),
   description: z.string().min(1).optional(),
+  /** Sửa được SAU KHI tạo — CHỈ có ý nghĩa với category KHÔNG có nguồn seed chính thức bảo vệ
+   * (hiện tại: ACTIVE_INGREDIENT, xem `MANUAL_TAXONOMY_CATEGORIES` ở web, chốt 18/09/2026). Khác
+   * 5 category "chuẩn BYT" (DRUG_GROUP/DRUG_ROUTE/DOSAGE_FORM/STORAGE_CONDITION/
+   * DRUG_USAGE_TIMING) — web chỉ gửi field này lúc PATCH cho category không có nguồn cần bảo vệ,
+   * backend không hardcode danh sách category (đúng nguyên tắc "backend không cần biết field nào
+   * ứng với category nào", giống `description`/`countsAsCash`).
+   */
+  bytCode: z.string().min(1).optional(),
+  fullName: z.string().min(1).optional(),
   direction: referenceCatalogDirectionSchema.optional(),
   isActive: z.boolean().optional(),
   /** Bulk-replace đơn giá, đúng ngữ nghĩa như `createReferenceCatalogRequestSchema` — `undefined`

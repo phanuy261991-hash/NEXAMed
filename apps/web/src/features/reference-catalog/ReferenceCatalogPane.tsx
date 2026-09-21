@@ -97,6 +97,15 @@ const BYT_TAXONOMY_DESCRIPTION_CATEGORIES: ReferenceCatalogCategory[] = [
   'DRUG_USAGE_TIMING',
 ];
 
+/**
+ * Category có "Mã BYT"/"Tên đầy đủ chuẩn"/"Mô tả" giống `BYT_TAXONOMY_CATEGORIES` NHƯNG không có
+ * nguồn seed chính thức nào cần bảo vệ (không có file `docs/data/*.md` đồng bộ lại) — nên sửa
+ * (Edit) TỰ DO được cả 3 trường này, khác `BYT_TAXONOMY_CATEGORIES` chỉ cho nhập lúc Tạo mới
+ * (chốt 18/09/2026, chủ dự án yêu cầu trực tiếp qua AskUserQuestion, bắt đầu từ ACTIVE_INGREDIENT
+ * — nếu sau này có category khác cùng cảnh thì thêm vào đây).
+ */
+const MANUAL_TAXONOMY_CATEGORIES: ReferenceCatalogCategory[] = ['ACTIVE_INGREDIENT'];
+
 const inputClassName =
   'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 
@@ -120,6 +129,13 @@ export function ReferenceCatalogPane({
 }) {
   const canManage = useHasPermission('reference_catalog', 'manage');
   const hideCode = AUTO_CODE_CATEGORIES.includes(category);
+  // Cột "Mã BYT"/"Tên đầy đủ chuẩn" hiện cho cả 2 nhóm — chỉ khác nhau ở việc sửa được sau khi
+  // tạo hay không (xem `MANUAL_TAXONOMY_CATEGORIES`), không khác gì ở việc HIỂN THỊ cột.
+  const showBytColumns = BYT_TAXONOMY_CATEGORIES.includes(category) || MANUAL_TAXONOMY_CATEGORIES.includes(category);
+  const showDescriptionColumn =
+    DESCRIPTION_STATUS_CATEGORIES.includes(category) ||
+    BYT_TAXONOMY_DESCRIPTION_CATEGORIES.includes(category) ||
+    MANUAL_TAXONOMY_CATEGORIES.includes(category);
 
   const [search, setSearch] = useState('');
   const [includeInactive, setIncludeInactive] = useState(false);
@@ -210,14 +226,12 @@ export function ReferenceCatalogPane({
                     />
                   </th>
                   <th className="w-24 px-4 py-2.5 text-center">Mã</th>
-                  {BYT_TAXONOMY_CATEGORIES.includes(category) && <th className="w-24 px-4 py-2.5 text-center">Mã BYT</th>}
+                  {showBytColumns && <th className="w-24 px-4 py-2.5 text-center">Mã BYT</th>}
                   <th className="px-4 py-2.5 text-left">Tên hiển thị</th>
-                  {BYT_TAXONOMY_CATEGORIES.includes(category) && <th className="px-4 py-2.5 text-left">Tên đầy đủ chuẩn</th>}
+                  {showBytColumns && <th className="px-4 py-2.5 text-left">Tên đầy đủ chuẩn</th>}
                   {category === 'EXAM_TYPE' && <th className="w-32 px-4 py-2.5 text-center">Đơn giá</th>}
                   {category === 'INCOME_EXPENSE_TYPE' && <th className="w-28 px-4 py-2.5 text-center">Loại</th>}
-                  {(DESCRIPTION_STATUS_CATEGORIES.includes(category) || BYT_TAXONOMY_DESCRIPTION_CATEGORIES.includes(category)) && (
-                    <th className="px-4 py-2.5 text-left">Mô tả</th>
-                  )}
+                  {showDescriptionColumn && <th className="px-4 py-2.5 text-left">Mô tả</th>}
                   {DESCRIPTION_STATUS_CATEGORIES.includes(category) && <th className="w-32 px-4 py-2.5 text-center">Trạng thái</th>}
                   <th className="w-24 px-4 py-2.5 text-center">Thứ tự</th>
                   {canManage && <th className="w-32 px-4 py-2.5 text-center">Thao tác</th>}
@@ -230,9 +244,7 @@ export function ReferenceCatalogPane({
                       <SelectionCheckbox checked={rowSelection.isSelected(item.id)} onChange={() => rowSelection.toggle(item.id)} ariaLabel={`Chọn ${item.name}`} />
                     </td>
                     <td className="px-4 py-2 text-center text-sm font-bold text-slate-800">{item.code}</td>
-                    {BYT_TAXONOMY_CATEGORIES.includes(category) && (
-                      <td className="px-4 py-2 text-center font-medium text-slate-600">{item.bytCode ?? '—'}</td>
-                    )}
+                    {showBytColumns && <td className="px-4 py-2 text-center font-medium text-slate-600">{item.bytCode ?? '—'}</td>}
                     <td className="px-4 py-2 text-left font-medium text-slate-900">
                       {item.name}
                       {/* Category có cột "Trạng thái" riêng (Đang sử dụng/Ngưng sử dụng) — badge "Đã ẩn" ở đây sẽ trùng lặp thông tin. */}
@@ -242,7 +254,7 @@ export function ReferenceCatalogPane({
                         </span>
                       )}
                     </td>
-                    {BYT_TAXONOMY_CATEGORIES.includes(category) && (
+                    {showBytColumns && (
                       <td className="max-w-xs truncate px-4 py-2 text-left text-slate-600" title={item.fullName ?? undefined}>
                         {item.fullName ?? '—'}
                       </td>
@@ -263,7 +275,7 @@ export function ReferenceCatalogPane({
                         </StatusBadge>
                       </td>
                     )}
-                    {(DESCRIPTION_STATUS_CATEGORIES.includes(category) || BYT_TAXONOMY_DESCRIPTION_CATEGORIES.includes(category)) && (
+                    {showDescriptionColumn && (
                       <td className="max-w-xs truncate px-4 py-2 text-left font-medium text-slate-600" title={item.description ?? undefined}>
                         {item.description ?? '—'}
                       </td>
@@ -424,8 +436,8 @@ function ItemFormModal({
   const [deactivatesAccount, setDeactivatesAccount] = useState(item?.deactivatesAccount ?? false);
   const [countsAsCash, setCountsAsCash] = useState(item?.countsAsCash ?? false);
   const [description, setDescription] = useState(item?.description ?? '');
-  const [bytCode, setBytCode] = useState('');
-  const [fullName, setFullName] = useState('');
+  const [bytCode, setBytCode] = useState(item?.bytCode ?? '');
+  const [fullName, setFullName] = useState(item?.fullName ?? '');
   const [direction, setDirection] = useState<ReferenceCatalogDirection>(item?.direction ?? 'EXPENSE');
   const [isActive, setIsActive] = useState(item?.isActive ?? true);
   const { flashVisible, triggerFlash } = useSaveFlash();
@@ -439,10 +451,14 @@ function ItemFormModal({
   const isIncomeExpenseType = category === 'INCOME_EXPENSE_TYPE';
   // Mô tả + Trạng thái ngay trong form — UNIT (#078) + "Chức danh"/"Học hàm học vị" (2026-08-27).
   const hasDescriptionAndStatus = DESCRIPTION_STATUS_CATEGORIES.includes(category);
-  // "Mã BYT"/"Tên đầy đủ chuẩn"/"Mô tả" CHỈ nhập được lúc TẠO MỚI mục do clinic_admin tự thêm
-  // ngoài file nguồn BYT (đảo ngược một phần #152/#153, chốt 17/09/2026) — sửa (mode==='edit') vẫn
-  // giữ nguyên chỉ 2 trường Tên/Thứ tự như trước, không đổi.
+  // "Mã BYT"/"Tên đầy đủ chuẩn"/"Mô tả" CHỈ nhập được lúc TẠO MỚI cho 5 category "chuẩn BYT" (mục
+  // do clinic_admin tự thêm ngoài file nguồn BYT, đảo ngược một phần #152/#153, chốt 17/09/2026) —
+  // sửa (mode==='edit') vẫn giữ nguyên chỉ 2 trường Tên/Thứ tự như trước, không đổi.
   const isBytTaxonomyCreate = mode === 'create' && BYT_TAXONOMY_CATEGORIES.includes(category);
+  // Category không có nguồn seed cần bảo vệ (MANUAL_TAXONOMY_CATEGORIES, chốt 18/09/2026) — cho
+  // nhập/sửa 3 trường này TỰ DO cả lúc Tạo mới lẫn Sửa, không giới hạn theo `mode` như trên.
+  const isManualTaxonomy = MANUAL_TAXONOMY_CATEGORIES.includes(category);
+  const showBytFields = isBytTaxonomyCreate || isManualTaxonomy;
   const isInvalid = (!hideCode && code.trim() === '') || name.trim() === '';
 
   function buildDto() {
@@ -452,9 +468,9 @@ function ItemFormModal({
       sortOrder,
       deactivatesAccount: isEmploymentStatus ? deactivatesAccount : undefined,
       countsAsCash: isPaymentMethod ? countsAsCash : undefined,
-      description: (hasDescriptionAndStatus || isBytTaxonomyCreate) && description.trim() !== '' ? description.trim() : undefined,
-      bytCode: isBytTaxonomyCreate && bytCode.trim() !== '' ? bytCode.trim() : undefined,
-      fullName: isBytTaxonomyCreate && fullName.trim() !== '' ? fullName.trim() : undefined,
+      description: (hasDescriptionAndStatus || showBytFields) && description.trim() !== '' ? description.trim() : undefined,
+      bytCode: showBytFields && bytCode.trim() !== '' ? bytCode.trim() : undefined,
+      fullName: showBytFields && fullName.trim() !== '' ? fullName.trim() : undefined,
       direction: isIncomeExpenseType ? direction : undefined,
       isActive: hasDescriptionAndStatus ? isActive : undefined,
     };
@@ -574,7 +590,7 @@ function ItemFormModal({
             </div>
           )}
 
-          {isBytTaxonomyCreate && (
+          {showBytFields && (
             <>
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="rc-byt-code" className="text-sm font-semibold text-slate-800">
@@ -591,7 +607,7 @@ function ItemFormModal({
             </>
           )}
 
-          {(hasDescriptionAndStatus || isBytTaxonomyCreate) && (
+          {(hasDescriptionAndStatus || showBytFields) && (
             <div className="flex flex-col gap-1.5 sm:col-span-2">
               <label htmlFor="rc-description" className="text-sm font-semibold text-slate-800">
                 Mô tả

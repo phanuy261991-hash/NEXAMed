@@ -2,6 +2,16 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-21
+
+### Sửa `config.json` trỏ nhầm tenant dev (không phải lỗi RLS) + Hoạt chất: đủ trường Mã BYT/Tên đầy đủ chuẩn/Mô tả (sửa tự do) + mã tự sinh ngắn cho 9 category Kho Thuốc
+
+Chủ dự án báo nghi rò rỉ dữ liệu xuyên tenant — điều tra ở tầng DB xác nhận RLS cách ly đúng, nguyên nhân thật là `apps/web/public/config.json` đang trỏ sang một tenant dev rác (tạo lúc verify Kho Thuốc GĐ3, quên trả lại) thay vì tenant chủ dự án dùng thật hằng ngày. Đã khôi phục đúng tenant, để nguyên tenant rác (chủ dự án xác nhận không cần dọn — xoá đúng cách sẽ phải cascade qua ~15 bảng, rủi ro cao trong khi lợi ích gần bằng 0). Xem chi tiết + bài học cho phiên sau `docs/DECISIONS.md` #166.
+
+Riêng, chủ dự án phát hiện form "Thêm mới Hoạt chất" thiếu Mã BYT/Tên đầy đủ chuẩn/Mô tả so với "Đường dùng" — đúng, và phát hiện thêm mã tự sinh của cả 9 category Kho Thuốc GĐ1 (không riêng Hoạt chất) vẫn dùng định dạng cũ dài có gạch nối (bỏ sót vì GĐ1 ra đời sau cơ chế mã ngắn #113 12 ngày). Đã sửa đồng bộ cả 9 category (chỉ mục tạo MỚI, không đánh số lại mã cũ), và cho Hoạt chất sửa (Edit) tự do 3 trường trên (khác 5 category "chuẩn BYT" khác chỉ cho nhập lúc Tạo mới vì có nguồn seed cần bảo vệ). Xem chi tiết `docs/DECISIONS.md` #167.
+
+**Đã xác minh thật**: `packages/core` 207/207, `packages/shared` 25/25, `apps/api` 858/859 (1 flake timing đã biết ở `clinic-profile-http.spec.ts`, không liên quan), `reference-catalog-http.spec.ts` riêng 17/17 (+1 test mới). `pnpm -w typecheck/lint/build` sạch toàn workspace. Playwright qua Chrome thật trên tenant test riêng (không đụng tenant chủ dự án) xác nhận đúng cả 2 việc.
+
 ## 2026-09-17 (6)
 
 ### Thêm nút Ẩn/Kích hoạt lại (isActive) cho danh sách Thuốc & Vật tư, Nhà cung cấp, Kho
