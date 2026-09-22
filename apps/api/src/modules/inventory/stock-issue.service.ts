@@ -35,6 +35,7 @@ import { DrugRepository, type DrugWithDetails } from '../drug/drug.repository';
 import { WarehouseRepository } from '../drug/warehouse.repository';
 import { PrescriptionRepository, type PrescriptionWithItems } from '../encounter/prescription.repository';
 import { DiagnosisRepository } from '../encounter/diagnosis.repository';
+import { EncounterRepository } from '../encounter/encounter.repository';
 import { InvoiceRepository } from '../billing/invoice.repository';
 import { StockIssueRepository, type StockIssueLineData, type StockIssueWithContext } from './stock-issue.repository';
 import { InventoryBatchRepository } from './inventory-batch.repository';
@@ -65,6 +66,7 @@ export class StockIssueService {
     private readonly warehouseRepository: WarehouseRepository,
     private readonly prescriptionRepository: PrescriptionRepository,
     private readonly diagnosisRepository: DiagnosisRepository,
+    private readonly encounterRepository: EncounterRepository,
     private readonly invoiceRepository: InvoiceRepository,
     private readonly inventoryBatchRepository: InventoryBatchRepository,
     private readonly stockLedgerRepository: StockLedgerRepository,
@@ -100,6 +102,8 @@ export class StockIssueService {
         issueNo,
         warehouseId: dto.warehouseId,
         prescriptionId: dto.prescriptionId,
+        issueType: 'RETAIL_SALE',
+        countId: null,
         occurredAt,
         note: dto.note ?? null,
         totalAmount,
@@ -319,6 +323,67 @@ export class StockIssueService {
     return this.getById(tenantId, id);
   }
 
+  /**
+   * Kho Thuốc GĐ4 (docs/DECISIONS.md #170) — Kiểm kê phát hiện THIẾU: `StockCountService.approve()`
+   * gọi hàm này TRONG CÙNG transaction để tự sinh 1 `StockIssue` (`issueType='COUNT_SHORTAGE'`),
+   * không gắn đơn thuốc/hoá đơn nào — CHỈ trừ tồn + ghi thẻ kho, khác `create()` (luồng phát thuốc
+   * theo đơn, có gắn tiền vào invoice).
+   */
+  async createCountShortageIssue(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    actorId: string,
+    params: { warehouseId: string; countId: string; occurredAt: Date; countNo: string; lines: { drugId: string; batchId: string | null; quantity: number; unitCost: bigint }[] },
+  ): Promise<StockIssueWithContext> {
+    const lineData: StockIssueLineData[] = params.lines.map((l) => ({
+      prescriptionItemId: null,
+      drugId: l.drugId,
+      batchId: l.batchId,
+      quantity: l.quantity,
+      unitCost: l.unitCost,
+      // Không có "giá bán" — đây là điều chỉnh tồn kho thuần, không gắn hoá đơn nào.
+      sellPrice: 0n,
+      lineAmount: 0n,
+    }));
+    const totalAmount = lineData.reduce((sum, l) => sum + l.lineAmount, 0n);
+    const issueNo = await this.businessCodeService.generate(tx, tenantId, actorId, 'STOCK_ISSUE', params.occurredAt);
+
+    const created = await this.stockIssueRepository.create(tx, tenantId, actorId, {
+      issueNo,
+      warehouseId: params.warehouseId,
+      prescriptionId: null,
+      issueType: 'COUNT_SHORTAGE',
+      countId: params.countId,
+      occurredAt: params.occurredAt,
+      note: `Tự sinh từ phiếu kiểm kê ${params.countNo}`,
+      totalAmount,
+      lines: lineData,
+    });
+
+    for (const line of created.lines) {
+      await this.stockLedgerRepository.create(tx, tenantId, actorId, {
+        drugId: line.drugId,
+        warehouseId: params.warehouseId,
+        batchId: line.batchId,
+        quantityChange: -line.quantity,
+        unitCost: line.unitCost,
+        reason: 'ISSUE_COUNT_SHORTAGE',
+        sourceReceiptId: null,
+        sourceIssueId: created.id,
+        occurredAt: params.occurredAt,
+        note: null,
+      });
+      await this.stockBalanceRepository.upsertQuantity(tx, tenantId, actorId, {
+        drugId: line.drugId,
+        warehouseId: params.warehouseId,
+        batchId: line.batchId,
+        quantityDelta: -line.quantity,
+      });
+    }
+
+    return created;
+  }
+
   async getById(tenantId: string, id: string): Promise<StockIssueDetail> {
     const row = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.stockIssueRepository.findByIdAnyWithContext(tx, tenantId, id));
     if (!row) throw new NotFoundException();
@@ -338,6 +403,7 @@ export class StockIssueService {
       this.stockIssueRepository.list(tx, tenantId, {
         warehouseId: query.warehouseId,
         status: query.status,
+        issueType: query.issueType,
         from: query.from ? new Date(`${query.from}T00:00:00+07:00`) : undefined,
         to: query.to ? new Date(`${query.to}T23:59:59.999+07:00`) : undefined,
         q: query.q,
@@ -357,7 +423,7 @@ export class StockIssueService {
     const names = ids.size > 0 ? await this.doctorDirectory.getUserFullNames(tenantId, [...ids]) : new Map<string, string>();
 
     return {
-      items: page.map((row) => this.toSummaryDto(row, row.warehouse.name, row.prescription.encounter, row._count.lines, names)),
+      items: page.map((row) => this.toSummaryDto(row, row.warehouse.name, row.prescription?.encounter ?? null, row._count.lines, names)),
       nextCursor,
     };
   }
@@ -424,10 +490,15 @@ export class StockIssueService {
       const signedByNames = prescription.signedBy ? await this.doctorDirectory.getUserFullNames(tenantId, [prescription.signedBy]) : new Map<string, string>();
       const diagnoses = await this.diagnosisRepository.listForEncounter(tx, tenantId, prescription.encounterId);
       const diagnosisLabel = diagnoses.length > 0 ? diagnoses.map((d) => `${d.icd10.nameVi} (${d.icd10Code})`).join(' / ') : null;
+      // Rà soát 22/09/2026 (chủ dự án phát hiện): dialog "Phát thuốc" trước đây không hiện đang phát
+      // cho bệnh nhân nào — chỉ trang danh sách hàng đợi mới có tên/mã, API dialog gọi lại thiếu.
+      const patient = await this.encounterRepository.findPatientIdentityById(tx, tenantId, prescription.encounterId);
 
       return {
         prescriptionId: prescription.id,
         encounterId: prescription.encounterId,
+        patientFullName: patient?.fullName ?? '—',
+        patientCode: patient?.patientCode ?? '—',
         signedAt: prescription.signedAt?.toISOString() ?? null,
         prescriptionNo: prescription.prescriptionNo,
         signedByName: prescription.signedBy ? (signedByNames.get(prescription.signedBy) ?? null) : null,
@@ -479,7 +550,8 @@ export class StockIssueService {
   private toSummaryDto(
     row: StockIssue,
     warehouseName: string,
-    encounter: { id: string; encounterNo: string; patient: { patientCode: string; fullName: string } },
+    // Nullable từ Kho Thuốc GĐ4 (#170) — `COUNT_SHORTAGE` tự sinh không gắn đơn thuốc/lượt khám nào.
+    encounter: { id: string; encounterNo: string; patient: { patientCode: string; fullName: string } } | null,
     lineCount: number,
     names: Map<string, string>,
   ): StockIssueSummary {
@@ -491,9 +563,9 @@ export class StockIssueService {
       warehouseId: row.warehouseId,
       warehouseName,
       prescriptionId: row.prescriptionId,
-      encounterId: encounter.id,
-      patientCode: encounter.patient.patientCode,
-      patientFullName: encounter.patient.fullName,
+      encounterId: encounter?.id ?? null,
+      patientCode: encounter?.patient.patientCode ?? null,
+      patientFullName: encounter?.patient.fullName ?? null,
       occurredAt: row.occurredAt.toISOString(),
       note: row.note,
       totalAmount: Number(row.totalAmount),
@@ -508,7 +580,7 @@ export class StockIssueService {
 
   private toDetailDto(row: StockIssueWithContext, names: Map<string, string>, attachedInvoice: StockIssueDetail['attachedInvoice'] = null): StockIssueDetail {
     return {
-      ...this.toSummaryDto(row, row.warehouse.name, row.prescription.encounter, row.lines.length, names),
+      ...this.toSummaryDto(row, row.warehouse.name, row.prescription?.encounter ?? null, row.lines.length, names),
       attachedInvoice,
       lines: row.lines.map((line) => ({
         id: line.id,

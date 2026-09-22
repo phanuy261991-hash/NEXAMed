@@ -4,6 +4,7 @@ import type { UserAccountSummary } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
+import { RowActionButton } from '../../shared/ui/RowActionButton';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
@@ -277,33 +278,12 @@ export function UserAccountPane() {
                     {/* ≤3 nút thao tác → xếp ngang 1 hàng (không cho wrap xuống dòng, tránh chồng
                         lên nhau khi cột hẹp); >3 nút thì gộp vào 1 nút "..." mở menu thay vì thêm
                         icon rời — chưa tới ngưỡng đó ở đây (2 nút). */}
-                    <div className="flex flex-nowrap items-center justify-center gap-1">
-                      <button
-                        type="button"
-                        title="Sửa"
-                        onClick={() => setModal({ mode: 'edit', item })}
-                        className="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                      >
-                        <PencilSimple size={15} weight="regular" aria-hidden="true" />
-                      </button>
+                    <div className="flex flex-nowrap items-center justify-center gap-1.5">
+                      <RowActionButton icon={PencilSimple} label="Sửa" tone="primary" onClick={() => setModal({ mode: 'edit', item })} />
                       {item.isActive ? (
-                        <button
-                          type="button"
-                          title="Vô hiệu hoá"
-                          onClick={() => setDeactivateTarget(item)}
-                          className="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-rose-50 hover:text-rose-600"
-                        >
-                          <Prohibit size={15} weight="regular" aria-hidden="true" />
-                        </button>
+                        <RowActionButton icon={Prohibit} label="Vô hiệu hoá" tone="danger" onClick={() => setDeactivateTarget(item)} />
                       ) : (
-                        <button
-                          type="button"
-                          title="Kích hoạt lại"
-                          onClick={() => handleReactivate(item)}
-                          className="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-blue-50 hover:text-blue-600"
-                        >
-                          <ArrowCounterClockwise size={15} weight="regular" aria-hidden="true" />
-                        </button>
+                        <RowActionButton icon={ArrowCounterClockwise} label="Kích hoạt lại" tone="primary" onClick={() => handleReactivate(item)} />
                       )}
                     </div>
                   </td>

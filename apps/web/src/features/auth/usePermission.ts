@@ -25,3 +25,10 @@ export function useHasAnyPermission(pairs: ReadonlyArray<readonly [string, strin
   if (!permissions) return false;
   return pairs.some(([module, action]) => permissions[`${module}.${action}`] !== undefined);
 }
+
+/** Khoa/Phòng của actor đang đăng nhập (`user_account.department_id`, #063) — `null` nếu chưa gán.
+ * Kho Thuốc GĐ4 (docs/DECISIONS.md #170) thêm — dùng để tự lọc dropdown kho theo Khoa khi
+ * `useDataScope(module, action) === 'department'` (ví dụ form tạo phiếu kiểm kê). */
+export function useActorDepartmentId(): string | null {
+  return useAuthStore((s) => s.user?.departmentId ?? null);
+}

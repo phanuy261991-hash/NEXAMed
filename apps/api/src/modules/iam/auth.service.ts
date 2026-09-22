@@ -28,6 +28,10 @@ export interface CurrentUserResult {
   username: string;
   fullName: string;
   displayName: string | null;
+  /** Kho Thuốc GĐ4 (docs/DECISIONS.md #170) — cần trực tiếp để web tự lọc dropdown kho theo Khoa
+   * khi scope `department` (ví dụ `stock_count.create`), đúng khuôn `user_account.department_id`
+   * đã có sẵn từ #063. `null` cho tài khoản chưa gán Khoa/Phòng. */
+  departmentId: string | null;
   roles: string[];
   permissions: Record<string, DataScope>;
   mustChangePassword: boolean;
@@ -141,6 +145,7 @@ export class AuthService {
             username: user.username,
             fullName: user.fullName,
             displayName: user.displayName,
+            departmentId: user.departmentId,
             roles,
             permissions,
             mustChangePassword: user.mustChangePassword,
@@ -301,6 +306,7 @@ export class AuthService {
         username: user.username,
         fullName: user.fullName,
         displayName: user.displayName,
+        departmentId: user.departmentId,
         roles,
         permissions,
         mustChangePassword: user.mustChangePassword,

@@ -303,6 +303,9 @@ describe('HTTP e2e — /api/v1/inventory (Phiếu xuất kho GĐ3)', () => {
     expect(beforeStatus.body.data.prescriptionNo).toMatch(/^DT\d{10}$/);
     expect(beforeStatus.body.data.signedByName).toBeTruthy();
     expect(beforeStatus.body.data.diagnosisLabel).toBeTruthy();
+    // Rà soát 22/09/2026 — dialog trước đây không hiện đang phát cho bệnh nhân nào.
+    expect(beforeStatus.body.data.patientFullName).toBeTruthy();
+    expect(beforeStatus.body.data.patientCode).toMatch(/^BN\d{10}$/);
 
     const res = await request(app.getHttpServer())
       .post('/api/v1/inventory/issues')

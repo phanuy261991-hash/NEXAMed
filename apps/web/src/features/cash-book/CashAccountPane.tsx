@@ -3,6 +3,7 @@ import { Bank, PencilSimple, Plus, Vault } from '@phosphor-icons/react';
 import type { CashAccount, CashAccountType } from '@nexamed/shared';
 import { useHasPermission } from '../auth/usePermission';
 import { Button } from '../../shared/ui/Button';
+import { RowActionButton } from '../../shared/ui/RowActionButton';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { ModalHeader } from '../../shared/ui/ModalHeader';
 import { DateInput } from '../../shared/ui/DateInput';
@@ -341,14 +342,7 @@ export function CashAccountPane() {
                     </td>
                     {canManage && (
                       <td className="px-4 py-2 text-center">
-                        <button
-                          type="button"
-                          title="Sửa"
-                          onClick={() => setModal({ mode: 'edit', item })}
-                          className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                        >
-                          <PencilSimple size={15} weight="regular" aria-hidden="true" />
-                        </button>
+                        <RowActionButton icon={PencilSimple} label="Sửa" tone="primary" onClick={() => setModal({ mode: 'edit', item })} />
                       </td>
                     )}
                   </tr>

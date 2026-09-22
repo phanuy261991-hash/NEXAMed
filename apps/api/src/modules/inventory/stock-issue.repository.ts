@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { Prisma, StockIssue } from '@prisma/client';
+import type { Prisma, StockIssue, StockIssueType } from '@prisma/client';
 
 export interface StockIssueLineData {
   prescriptionItemId: string | null;
@@ -14,7 +14,11 @@ export interface StockIssueLineData {
 export interface CreateStockIssueData {
   issueNo: string;
   warehouseId: string;
-  prescriptionId: string;
+  /** `null` CHỈ hợp lệ cho `issueType != 'RETAIL_SALE'` (Kho Thuốc GĐ4 #170 — ví dụ `COUNT_SHORTAGE`
+   * tự sinh từ Kiểm kê, không gắn đơn thuốc nào). */
+  prescriptionId: string | null;
+  issueType: StockIssueType;
+  countId: string | null;
   occurredAt: Date;
   note: string | null;
   totalAmount: bigint;
@@ -37,13 +41,15 @@ export type StockIssueWithContext = Prisma.StockIssueGetPayload<{ include: typeo
 
 export interface StockIssueListRow extends StockIssue {
   warehouse: { name: string };
-  prescription: { encounter: { id: string; encounterNo: string; patient: { patientCode: string; fullName: string } } };
+  // Nullable từ Kho Thuốc GĐ4 (#170) — `COUNT_SHORTAGE` tự sinh không có `prescriptionId`.
+  prescription: { encounter: { id: string; encounterNo: string; patient: { patientCode: string; fullName: string } } } | null;
   _count: { lines: number };
 }
 
 export interface ListStockIssuesFilter {
   warehouseId?: string;
   status?: StockIssue['status'];
+  issueType?: StockIssueType;
   from?: Date;
   to?: Date;
   q?: string;
@@ -63,6 +69,8 @@ export class StockIssueRepository {
         issueNo: data.issueNo,
         warehouseId: data.warehouseId,
         prescriptionId: data.prescriptionId,
+        issueType: data.issueType,
+        countId: data.countId,
         occurredAt: data.occurredAt,
         note: data.note,
         totalAmount: data.totalAmount,
@@ -105,6 +113,7 @@ export class StockIssueRepository {
       tenantId,
       warehouseId: filter.warehouseId,
       status: filter.status,
+      issueType: filter.issueType,
       occurredAt: filter.from || filter.to ? { gte: filter.from, lte: filter.to } : undefined,
     };
     if (filter.q) {

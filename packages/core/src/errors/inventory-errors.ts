@@ -60,3 +60,25 @@ export class StockIssueVoidNotAllowedError extends DomainError {
     super(message);
   }
 }
+
+// ============ Kho Thuốc GĐ4 (Kiểm kê/Điều chuyển/Mở rộng Nhập-Xuất kho/Báo cáo N-X-T, docs/DECISIONS.md #170) ============
+
+/** Sửa/Duyệt/Từ chối một phiếu kiểm kê không (còn) ở trạng thái Nháp. */
+export class StockCountNotDraftError extends DomainError {
+  readonly code = 'STOCK_COUNT_NOT_DRAFT';
+
+  constructor() {
+    super('Phiếu kiểm kê này không còn ở trạng thái Nháp.');
+  }
+}
+
+/** Duyệt phiếu kiểm kê có dòng dư/thiếu (đọc tồn kho SỐNG lúc Duyệt) mà không kèm lý do — rà soát
+ * lỗ hổng quy trình 22/09/2026 (chủ dự án phát hiện: trước đây Duyệt tự động sửa tồn kho không cần
+ * giải trình gì). Phiếu khớp hoàn toàn (không dòng nào dư/thiếu) thì không bắt buộc. */
+export class StockCountApprovalReasonRequiredError extends DomainError {
+  readonly code = 'STOCK_COUNT_APPROVAL_REASON_REQUIRED';
+
+  constructor() {
+    super('Phiếu có dòng dư/thiếu — phải nhập lý do trước khi Duyệt.');
+  }
+}

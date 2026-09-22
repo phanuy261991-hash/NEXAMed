@@ -253,6 +253,13 @@ import {
   getPrescriptionDispenseStatusResponseSchema,
   listDispenseQueueQuerySchema,
   listDispenseQueueResponseSchema,
+  createStockCountRequestSchema,
+  updateStockCountRequestSchema,
+  approveStockCountRequestSchema,
+  rejectStockCountRequestSchema,
+  listStockCountsQuerySchema,
+  listStockCountsResponseSchema,
+  stockCountDetailSchema,
 } from '@nexamed/shared';
 
 /**
@@ -3404,6 +3411,102 @@ registry.registerPath({
     200: jsonResponse('Thành công', envelope(listDispenseQueueResponseSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền stock_issue.read'),
+  },
+});
+
+// ============ Kho Thuốc GĐ4, phần "Kiểm kê" (docs/DECISIONS.md #170) ============
+const stockCountIdParams = z.object({ id: z.string().uuid() });
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/inventory/counts',
+  tags: ['inventory'],
+  summary: 'Danh sách Phiếu kiểm kê — cursor, lọc theo kho/trạng thái',
+  security: [{ bearerAuth: [] }],
+  request: { query: listStockCountsQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listStockCountsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_count.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/inventory/counts/{id}',
+  tags: ['inventory'],
+  summary: 'Chi tiết 1 phiếu kiểm kê kèm dòng đếm — phiếu Từ chối vẫn xem được',
+  security: [{ bearerAuth: [] }],
+  request: { params: stockCountIdParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(stockCountDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_count.read'),
+    404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài Khoa/Phòng quản lý)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/inventory/counts',
+  tags: ['inventory'],
+  summary: 'Tạo phiếu kiểm kê ở trạng thái Nháp — chưa đụng tồn kho',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createStockCountRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(stockCountDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_count.create'),
+    404: errorResponse('Kho/Thuốc tham chiếu không tồn tại, hoặc kho ngoài Khoa/Phòng quản lý'),
+    422: errorResponse('Thiếu Số lô cho thuốc quản lý theo lô chưa có lô nào'),
+  },
+});
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/inventory/counts/{id}',
+  tags: ['inventory'],
+  summary: 'Sửa phiếu Nháp — thay toàn bộ dòng đếm + header',
+  security: [{ bearerAuth: [] }],
+  request: { params: stockCountIdParams, body: { content: { 'application/json': { schema: updateStockCountRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(stockCountDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_count.create'),
+    404: errorResponse('Không tìm thấy, hoặc Kho/Thuốc tham chiếu không tồn tại'),
+    409: errorResponse('version không khớp, hoặc phiếu không còn ở trạng thái Nháp (STOCK_COUNT_NOT_DRAFT)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/inventory/counts/{id}/approve',
+  tags: ['inventory'],
+  summary: 'Duyệt phiếu — đọc lại tồn kho sống để tính dư/thiếu, tự sinh Phiếu nhập (dư)/Phiếu xuất (thiếu)',
+  security: [{ bearerAuth: [] }],
+  request: { params: stockCountIdParams, body: { content: { 'application/json': { schema: approveStockCountRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(stockCountDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_count.approve'),
+    404: errorResponse('Không tìm thấy'),
+    409: errorResponse('version không khớp, hoặc phiếu không còn ở trạng thái Nháp (STOCK_COUNT_NOT_DRAFT)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/inventory/counts/{id}/reject',
+  tags: ['inventory'],
+  summary: 'Từ chối phiếu Nháp — lý do bắt buộc, không đụng tồn kho',
+  security: [{ bearerAuth: [] }],
+  request: { params: stockCountIdParams, body: { content: { 'application/json': { schema: rejectStockCountRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(stockCountDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_count.approve'),
+    404: errorResponse('Không tìm thấy'),
+    409: errorResponse('version không khớp, hoặc phiếu không còn ở trạng thái Nháp (STOCK_COUNT_NOT_DRAFT)'),
   },
 });
 

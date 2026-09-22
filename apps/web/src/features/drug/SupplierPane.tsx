@@ -6,6 +6,7 @@ import { useHasAnyPermission } from '../auth/usePermission';
 import { DRUG_MANAGE_PERMISSIONS } from '../auth/admin-permissions';
 import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
+import { RowActionButton } from '../../shared/ui/RowActionButton';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
@@ -131,33 +132,12 @@ export function SupplierPane() {
                     </td>
                     {canManage && (
                       <td className="px-4 py-2 text-center">
-                        <div className="flex flex-nowrap items-center justify-center gap-1">
-                          <button
-                            type="button"
-                            title="Sửa"
-                            onClick={() => setModal({ mode: 'edit', item: supplier })}
-                            className="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                          >
-                            <PencilSimple size={15} weight="regular" aria-hidden="true" />
-                          </button>
+                        <div className="flex flex-nowrap items-center justify-center gap-1.5">
+                          <RowActionButton icon={PencilSimple} label="Sửa" tone="primary" onClick={() => setModal({ mode: 'edit', item: supplier })} />
                           {supplier.isActive ? (
-                            <button
-                              type="button"
-                              title="Ngưng sử dụng"
-                              onClick={() => setDeactivateTarget(supplier)}
-                              className="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-rose-50 hover:text-rose-600"
-                            >
-                              <Prohibit size={15} weight="regular" aria-hidden="true" />
-                            </button>
+                            <RowActionButton icon={Prohibit} label="Ngưng sử dụng" tone="danger" onClick={() => setDeactivateTarget(supplier)} />
                           ) : (
-                            <button
-                              type="button"
-                              title="Kích hoạt lại"
-                              onClick={() => handleReactivate(supplier)}
-                              className="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-blue-50 hover:text-blue-600"
-                            >
-                              <ArrowCounterClockwise size={15} weight="regular" aria-hidden="true" />
-                            </button>
+                            <RowActionButton icon={ArrowCounterClockwise} label="Kích hoạt lại" tone="primary" onClick={() => handleReactivate(supplier)} />
                           )}
                         </div>
                       </td>

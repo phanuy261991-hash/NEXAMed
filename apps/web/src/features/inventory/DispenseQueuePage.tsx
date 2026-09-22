@@ -39,7 +39,9 @@ function DispensedTodayPane() {
   const [viewingIssueId, setViewingIssueId] = useState<string | null>(null);
   const today = getVietnamTodayDateString();
 
-  const listQuery = useStockIssuesQuery({ from: today, to: today, q: debouncedQ.trim() || undefined, limit: 50 });
+  // issueType='RETAIL_SALE' bắt buộc — tránh lẫn phiếu COUNT_SHORTAGE tự sinh từ Kiểm kê (GĐ4,
+  // docs/DECISIONS.md #170) vào tab này (thiếu bệnh nhân/lượt khám, gây nhầm lẫn cho dược sĩ).
+  const listQuery = useStockIssuesQuery({ from: today, to: today, issueType: 'RETAIL_SALE', q: debouncedQ.trim() || undefined, limit: 50 });
   const items = listQuery.data?.items ?? [];
 
   return (

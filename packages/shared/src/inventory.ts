@@ -414,6 +414,10 @@ export const listStockIssuesQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
   warehouseId: z.string().uuid().optional(),
   status: stockIssueStatusSchema.optional(),
+  /** Kho Thuốc GĐ4 (#170) — lọc theo loại phiếu xuất. Cần thiết ngay từ phần "Kiểm kê": phiếu
+   * `COUNT_SHORTAGE` tự sinh không gắn bệnh nhân/lượt khám nào, "Đã phát hôm nay"
+   * (`DispenseQueuePage.tsx`) phải lọc CHỈ `RETAIL_SALE` để không hiện dòng thiếu thông tin bệnh nhân. */
+  issueType: stockIssueTypeSchema.optional(),
   from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   q: z.string().min(1).max(100).optional(),
@@ -464,6 +468,11 @@ export type GetPrescriptionDispenseStatusQuery = z.infer<typeof getPrescriptionD
 export const getPrescriptionDispenseStatusResponseSchema = z.object({
   prescriptionId: z.string().uuid(),
   encounterId: z.string().uuid(),
+  /** Tên/mã bệnh nhân — rà soát 22/09/2026 (chủ dự án phát hiện dialog "Phát thuốc" không hiện đang
+   * phát cho ai). `dispenseQueueItemSchema` (hàng đợi) đã có sẵn 2 field này từ đầu, giờ mới thêm
+   * vào API dialog thật sự dùng. */
+  patientFullName: z.string(),
+  patientCode: z.string(),
   signedAt: z.string().nullable(),
   /** "Mã đơn thuốc thật" (docs/DECISIONS.md #169) — 3 field cấp ĐƠN (không phải cấp dòng thuốc),
    * hiện ở khối thông tin đầu `DispensePrescriptionDialog.tsx`. `null` chỉ khi đơn chưa ký (không
@@ -509,3 +518,118 @@ export type ListDispenseQueueQuery = z.infer<typeof listDispenseQueueQuerySchema
 
 export const listDispenseQueueResponseSchema = z.object({ items: z.array(dispenseQueueItemSchema) });
 export type ListDispenseQueueResponse = z.infer<typeof listDispenseQueueResponseSchema>;
+
+// ============ Kho Thuốc & Vật tư y tế — Giai đoạn 4 (Kiểm kê / Điều chuyển / Mở rộng Nhập-Xuất
+// kho / Báo cáo N-X-T, docs/DECISIONS.md #170, kế hoạch kỹ thuật bright-bubbling-axolotl.md, mockup
+// đã duyệt). Phần "Kiểm kê" trước — Điều chuyển/mở rộng Nhập-Xuất/Báo cáo N-X-T là các phần sau,
+// từng phần dựng mockup + duyệt riêng trước khi code, theo đúng quy ước dự án. ============
+
+export const stockCountStatusSchema = z.enum(['DRAFT', 'POSTED', 'REJECTED']);
+export type StockCountStatus = z.infer<typeof stockCountStatusSchema>;
+
+/**
+ * 1 dòng đếm — đúng 1 dòng/(drug, lô cụ thể). `batchId` có giá trị = lô ĐÃ tồn tại trong hệ thống
+ * lúc thêm dòng (Combobox chọn lô thật, gửi `id` thẳng — khác `stock_receipt_line` gõ `batchNo` tự
+ * do). `newBatchNo`/`newBatchExpiryDate` chỉ dùng khi `batchId` bỏ trống VÀ thuốc quản lý theo lô —
+ * lô MỚI phát hiện lúc đếm, chưa từng có trong hệ thống (nút "+ Thêm lô mới" ở mockup).
+ * `systemQuantitySnapshot` CHỈ hiển thị tham khảo lúc thêm dòng — Duyệt đọc lại tồn kho SỐNG, không
+ * dùng số này để tính (đúng thiết kế đã chốt).
+ */
+export const stockCountLineInputSchema = z.object({
+  drugId: z.string().uuid(),
+  batchId: z.string().uuid().nullable().optional(),
+  newBatchNo: z.string().min(1).nullable().optional(),
+  /** `yyyy-mm-dd`, chỉ ngày — chỉ có ý nghĩa cùng `newBatchNo`. */
+  newBatchExpiryDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .nullable()
+    .optional(),
+  systemQuantitySnapshot: z.number().int().nonnegative(),
+  countedQuantity: z.number().int().nonnegative(),
+});
+export type StockCountLineInput = z.infer<typeof stockCountLineInputSchema>;
+
+const stockCountHeaderFieldsSchema = z.object({
+  warehouseId: z.string().uuid(),
+  /** Bỏ trống mặc định "bây giờ". */
+  occurredAt: z.string().optional(),
+  note: z.string().nullable().optional(),
+  lines: z.array(stockCountLineInputSchema).min(1, 'Phải có ít nhất 1 dòng đếm.'),
+});
+
+/** `POST /inventory/counts` — tạo phiếu Nháp. `PATCH /inventory/counts/:id` dùng chung hình dạng
+ * này (bulk-replace toàn bộ dòng đếm + header, đúng khuôn `stock_receipt`), cộng `version`. */
+export const createStockCountRequestSchema = stockCountHeaderFieldsSchema;
+export type CreateStockCountRequest = z.infer<typeof createStockCountRequestSchema>;
+
+export const updateStockCountRequestSchema = stockCountHeaderFieldsSchema.extend({ version: z.number().int() });
+export type UpdateStockCountRequest = z.infer<typeof updateStockCountRequestSchema>;
+
+export const rejectStockCountRequestSchema = z.object({
+  reason: z.string().min(1, 'Phải nhập lý do từ chối.'),
+  version: z.number().int(),
+});
+export type RejectStockCountRequest = z.infer<typeof rejectStockCountRequestSchema>;
+
+/** `reason` chỉ bắt buộc THẬT khi phiếu có dòng dư/thiếu (Service kiểm tra sau khi đọc tồn kho
+ * SỐNG — Zod không biết trước được, chỉ khai `optional()` ở đây). Rà soát lỗ hổng quy trình
+ * 22/09/2026: trước đây Duyệt tự động sửa tồn kho không cần giải trình gì. */
+export const approveStockCountRequestSchema = z.object({ version: z.number().int(), reason: z.string().trim().min(1).optional() });
+export type ApproveStockCountRequest = z.infer<typeof approveStockCountRequestSchema>;
+
+export const stockCountLineSchema = z.object({
+  id: z.string().uuid(),
+  drugId: z.string().uuid(),
+  drugCode: z.string(),
+  drugName: z.string(),
+  isBatchManaged: z.boolean(),
+  batchId: z.string().uuid().nullable(),
+  /** Số lô hiển thị — của lô ĐÃ có (`batchId`) hoặc `newBatchNo` (lô mới), tuỳ trường hợp nào áp dụng. */
+  batchNo: z.string().nullable(),
+  expiryDate: z.string().nullable(),
+  isNewBatch: z.boolean(),
+  systemQuantitySnapshot: z.number().int(),
+  countedQuantity: z.number().int(),
+  /** `null` khi phiếu còn `DRAFT` (chưa Duyệt) — có giá trị SAU khi Duyệt, đúng số đã dùng để sinh dư/thiếu. */
+  difference: z.number().int().nullable(),
+});
+export type StockCountLine = z.infer<typeof stockCountLineSchema>;
+
+export const stockCountSummarySchema = z.object({
+  id: z.string().uuid(),
+  countNo: z.string(),
+  status: stockCountStatusSchema,
+  warehouseId: z.string().uuid(),
+  warehouseName: z.string(),
+  occurredAt: z.string(),
+  note: z.string().nullable(),
+  lineCount: z.number().int(),
+  createdByName: z.string(),
+  approvedByName: z.string().nullable(),
+  approvedAt: z.string().nullable(),
+  /** Lý do giải trình chênh lệch nhập lúc Duyệt — chỉ có giá trị khi phiếu có dòng dư/thiếu (Service
+   * bắt buộc, xem `approveStockCountRequestSchema`). `null` với phiếu khớp hoàn toàn hoặc chưa Duyệt. */
+  approvalReason: z.string().nullable(),
+  rejectionReason: z.string().nullable(),
+  version: z.number().int(),
+});
+export type StockCountSummary = z.infer<typeof stockCountSummarySchema>;
+
+export const stockCountDetailSchema = stockCountSummarySchema.extend({ lines: z.array(stockCountLineSchema) });
+export type StockCountDetail = z.infer<typeof stockCountDetailSchema>;
+
+export const listStockCountsQuerySchema = z.object({
+  cursor: z.string().uuid().optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  warehouseId: z.string().uuid().optional(),
+  status: stockCountStatusSchema.optional(),
+  q: z.string().min(1).max(100).optional(),
+});
+export type ListStockCountsQuery = z.infer<typeof listStockCountsQuerySchema>;
+
+export const listStockCountsResponseSchema = z.object({
+  items: z.array(stockCountSummarySchema),
+  nextCursor: z.string().nullable(),
+});
+export type ListStockCountsResponse = z.infer<typeof listStockCountsResponseSchema>;

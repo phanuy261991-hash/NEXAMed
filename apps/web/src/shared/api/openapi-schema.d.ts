@@ -48,6 +48,8 @@ export interface paths {
                                     username: string;
                                     fullName: string;
                                     displayName: string | null;
+                                    /** Format: uuid */
+                                    departmentId: string | null;
                                     roles: string[];
                                     permissions: {
                                         [key: string]: "none" | "personal" | "department" | "global";
@@ -240,6 +242,8 @@ export interface paths {
                                 username: string;
                                 fullName: string;
                                 displayName: string | null;
+                                /** Format: uuid */
+                                departmentId: string | null;
                                 roles: string[];
                                 permissions: {
                                     [key: string]: "none" | "personal" | "department" | "global";
@@ -12640,7 +12644,7 @@ export interface paths {
                             data: {
                                 items: {
                                     /** @enum {string} */
-                                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION";
+                                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT";
                                     label: string;
                                     prefix: string;
                                     template: string;
@@ -12713,7 +12717,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION";
+                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT";
                 };
                 cookie?: never;
             };
@@ -12736,7 +12740,7 @@ export interface paths {
                         "application/json": {
                             data: {
                                 /** @enum {string} */
-                                codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION";
+                                codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT";
                                 label: string;
                                 prefix: string;
                                 template: string;
@@ -21320,6 +21324,7 @@ export interface paths {
                     limit?: number;
                     warehouseId?: string;
                     status?: "POSTED" | "VOIDED";
+                    issueType?: "RETAIL_SALE" | "INTERNAL_ALLOCATION" | "SERVICE_CONSUMPTION" | "TRANSFER_OUT" | "RETURN_TO_SUPPLIER" | "WRITE_OFF" | "COUNT_SHORTAGE";
                     from?: string;
                     to?: string;
                     q?: string;
@@ -21891,6 +21896,8 @@ export interface paths {
                                 prescriptionId: string;
                                 /** Format: uuid */
                                 encounterId: string;
+                                patientFullName: string;
+                                patientCode: string;
                                 signedAt: string | null;
                                 prescriptionNo: string | null;
                                 signedByName: string | null;
@@ -22060,6 +22067,786 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Danh sách Phiếu kiểm kê — cursor, lọc theo kho/trạng thái */
+        get: {
+            parameters: {
+                query?: {
+                    cursor?: string;
+                    limit?: number;
+                    warehouseId?: string;
+                    status?: "DRAFT" | "POSTED" | "REJECTED";
+                    q?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    countNo: string;
+                                    /** @enum {string} */
+                                    status: "DRAFT" | "POSTED" | "REJECTED";
+                                    /** Format: uuid */
+                                    warehouseId: string;
+                                    warehouseName: string;
+                                    occurredAt: string;
+                                    note: string | null;
+                                    lineCount: number;
+                                    createdByName: string;
+                                    approvedByName: string | null;
+                                    approvedAt: string | null;
+                                    approvalReason: string | null;
+                                    rejectionReason: string | null;
+                                    version: number;
+                                }[];
+                                nextCursor: string | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_count.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Tạo phiếu kiểm kê ở trạng thái Nháp — chưa đụng tồn kho */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        warehouseId: string;
+                        occurredAt?: string;
+                        note?: string | null;
+                        lines: {
+                            /** Format: uuid */
+                            drugId: string;
+                            /** Format: uuid */
+                            batchId?: string | null;
+                            newBatchNo?: string | null;
+                            newBatchExpiryDate?: string | null;
+                            systemQuantitySnapshot: number;
+                            countedQuantity: number;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                countNo: string;
+                                /** @enum {string} */
+                                status: "DRAFT" | "POSTED" | "REJECTED";
+                                /** Format: uuid */
+                                warehouseId: string;
+                                warehouseName: string;
+                                occurredAt: string;
+                                note: string | null;
+                                lineCount: number;
+                                createdByName: string;
+                                approvedByName: string | null;
+                                approvedAt: string | null;
+                                approvalReason: string | null;
+                                rejectionReason: string | null;
+                                version: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    isBatchManaged: boolean;
+                                    /** Format: uuid */
+                                    batchId: string | null;
+                                    batchNo: string | null;
+                                    expiryDate: string | null;
+                                    isNewBatch: boolean;
+                                    systemQuantitySnapshot: number;
+                                    countedQuantity: number;
+                                    difference: number | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_count.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Kho/Thuốc tham chiếu không tồn tại, hoặc kho ngoài Khoa/Phòng quản lý */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu Số lô cho thuốc quản lý theo lô chưa có lô nào */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/counts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Chi tiết 1 phiếu kiểm kê kèm dòng đếm — phiếu Từ chối vẫn xem được */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                countNo: string;
+                                /** @enum {string} */
+                                status: "DRAFT" | "POSTED" | "REJECTED";
+                                /** Format: uuid */
+                                warehouseId: string;
+                                warehouseName: string;
+                                occurredAt: string;
+                                note: string | null;
+                                lineCount: number;
+                                createdByName: string;
+                                approvedByName: string | null;
+                                approvedAt: string | null;
+                                approvalReason: string | null;
+                                rejectionReason: string | null;
+                                version: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    isBatchManaged: boolean;
+                                    /** Format: uuid */
+                                    batchId: string | null;
+                                    batchNo: string | null;
+                                    expiryDate: string | null;
+                                    isNewBatch: boolean;
+                                    systemQuantitySnapshot: number;
+                                    countedQuantity: number;
+                                    difference: number | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_count.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài Khoa/Phòng quản lý) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Sửa phiếu Nháp — thay toàn bộ dòng đếm + header */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        warehouseId: string;
+                        occurredAt?: string;
+                        note?: string | null;
+                        lines: {
+                            /** Format: uuid */
+                            drugId: string;
+                            /** Format: uuid */
+                            batchId?: string | null;
+                            newBatchNo?: string | null;
+                            newBatchExpiryDate?: string | null;
+                            systemQuantitySnapshot: number;
+                            countedQuantity: number;
+                        }[];
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                countNo: string;
+                                /** @enum {string} */
+                                status: "DRAFT" | "POSTED" | "REJECTED";
+                                /** Format: uuid */
+                                warehouseId: string;
+                                warehouseName: string;
+                                occurredAt: string;
+                                note: string | null;
+                                lineCount: number;
+                                createdByName: string;
+                                approvedByName: string | null;
+                                approvedAt: string | null;
+                                approvalReason: string | null;
+                                rejectionReason: string | null;
+                                version: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    isBatchManaged: boolean;
+                                    /** Format: uuid */
+                                    batchId: string | null;
+                                    batchNo: string | null;
+                                    expiryDate: string | null;
+                                    isNewBatch: boolean;
+                                    systemQuantitySnapshot: number;
+                                    countedQuantity: number;
+                                    difference: number | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_count.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy, hoặc Kho/Thuốc tham chiếu không tồn tại */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp, hoặc phiếu không còn ở trạng thái Nháp (STOCK_COUNT_NOT_DRAFT) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/inventory/counts/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Duyệt phiếu — đọc lại tồn kho sống để tính dư/thiếu, tự sinh Phiếu nhập (dư)/Phiếu xuất (thiếu) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                        reason?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                countNo: string;
+                                /** @enum {string} */
+                                status: "DRAFT" | "POSTED" | "REJECTED";
+                                /** Format: uuid */
+                                warehouseId: string;
+                                warehouseName: string;
+                                occurredAt: string;
+                                note: string | null;
+                                lineCount: number;
+                                createdByName: string;
+                                approvedByName: string | null;
+                                approvedAt: string | null;
+                                approvalReason: string | null;
+                                rejectionReason: string | null;
+                                version: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    isBatchManaged: boolean;
+                                    /** Format: uuid */
+                                    batchId: string | null;
+                                    batchNo: string | null;
+                                    expiryDate: string | null;
+                                    isNewBatch: boolean;
+                                    systemQuantitySnapshot: number;
+                                    countedQuantity: number;
+                                    difference: number | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_count.approve */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp, hoặc phiếu không còn ở trạng thái Nháp (STOCK_COUNT_NOT_DRAFT) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/counts/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Từ chối phiếu Nháp — lý do bắt buộc, không đụng tồn kho */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        reason: string;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                countNo: string;
+                                /** @enum {string} */
+                                status: "DRAFT" | "POSTED" | "REJECTED";
+                                /** Format: uuid */
+                                warehouseId: string;
+                                warehouseName: string;
+                                occurredAt: string;
+                                note: string | null;
+                                lineCount: number;
+                                createdByName: string;
+                                approvedByName: string | null;
+                                approvedAt: string | null;
+                                approvalReason: string | null;
+                                rejectionReason: string | null;
+                                version: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    isBatchManaged: boolean;
+                                    /** Format: uuid */
+                                    batchId: string | null;
+                                    batchNo: string | null;
+                                    expiryDate: string | null;
+                                    isNewBatch: boolean;
+                                    systemQuantitySnapshot: number;
+                                    countedQuantity: number;
+                                    difference: number | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_count.approve */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp, hoặc phiếu không còn ở trạng thái Nháp (STOCK_COUNT_NOT_DRAFT) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;

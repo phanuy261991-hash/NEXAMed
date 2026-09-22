@@ -1,5 +1,7 @@
 import type {
+  ApproveStockCountRequest,
   ApproveStockReceiptRequest,
+  CreateStockCountRequest,
   CreateStockIssueRequest,
   CreateStockReceiptRequest,
   GetDrugBatchBalancesResponse,
@@ -9,14 +11,19 @@ import type {
   ListDispenseQueueResponse,
   ListStockBalancesQuery,
   ListStockBalancesResponse,
+  ListStockCountsQuery,
+  ListStockCountsResponse,
   ListStockExpiryWarningsResponse,
   ListStockIssuesQuery,
   ListStockIssuesResponse,
   ListStockReceiptsQuery,
   ListStockReceiptsResponse,
+  RejectStockCountRequest,
   RejectStockReceiptRequest,
+  StockCountDetail,
   StockIssueDetail,
   StockReceiptDetail,
+  UpdateStockCountRequest,
   UpdateStockReceiptRequest,
   VoidStockIssueRequest,
   VoidStockReceiptRequest,
@@ -95,4 +102,30 @@ export async function getPrescriptionDispenseStatus(prescriptionId: string, ware
 
 export async function getDispenseQueue(query: ListDispenseQueueQuery): Promise<ListDispenseQueueResponse> {
   return unwrap(await getApiClient().GET('/api/v1/inventory/dispense-queue', { params: { query } })) as ListDispenseQueueResponse;
+}
+
+// ============ Kho Thuốc GĐ4 — "Kiểm kê" (docs/DECISIONS.md #170) ============
+
+export async function getStockCounts(query: ListStockCountsQuery): Promise<ListStockCountsResponse> {
+  return unwrap(await getApiClient().GET('/api/v1/inventory/counts', { params: { query } })) as ListStockCountsResponse;
+}
+
+export async function getStockCount(id: string): Promise<StockCountDetail> {
+  return unwrap(await getApiClient().GET('/api/v1/inventory/counts/{id}', { params: { path: { id } } })) as StockCountDetail;
+}
+
+export async function createStockCount(body: CreateStockCountRequest): Promise<StockCountDetail> {
+  return unwrap(await getApiClient().POST('/api/v1/inventory/counts', { body })) as StockCountDetail;
+}
+
+export async function updateStockCount(id: string, body: UpdateStockCountRequest): Promise<StockCountDetail> {
+  return unwrap(await getApiClient().PATCH('/api/v1/inventory/counts/{id}', { params: { path: { id } }, body })) as StockCountDetail;
+}
+
+export async function approveStockCount(id: string, body: ApproveStockCountRequest): Promise<StockCountDetail> {
+  return unwrap(await getApiClient().POST('/api/v1/inventory/counts/{id}/approve', { params: { path: { id } }, body })) as StockCountDetail;
+}
+
+export async function rejectStockCount(id: string, body: RejectStockCountRequest): Promise<StockCountDetail> {
+  return unwrap(await getApiClient().POST('/api/v1/inventory/counts/{id}/reject', { params: { path: { id } }, body })) as StockCountDetail;
 }

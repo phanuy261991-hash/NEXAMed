@@ -116,6 +116,9 @@ model Tenant {
   stockBalances          StockBalance[]
   stockIssues            StockIssue[]
   stockIssueLines        StockIssueLine[]
+  // Kho Thuốc GĐ4 (docs/DECISIONS.md #170) — Kiểm kê.
+  stockCounts            StockCount[]
+  stockCountLines        StockCountLine[]
 
   @@map("tenant")
 }
@@ -1610,6 +1613,8 @@ model Drug {
   stockBalances     StockBalance[]
   // Kho Thuốc GĐ3 (#163).
   stockIssueLines   StockIssueLine[]
+  // Kho Thuốc GĐ4 (docs/DECISIONS.md #170).
+  stockCountLines   StockCountLine[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, code])
@@ -1743,6 +1748,8 @@ model Warehouse {
   stockBalances    StockBalance[]
   // Kho Thuốc GĐ3 (#163).
   stockIssues      StockIssue[]
+  // Kho Thuốc GĐ4 (docs/DECISIONS.md #170).
+  stockCounts      StockCount[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, code])
@@ -1774,6 +1781,10 @@ model StockReceipt {
   approvedAt        DateTime?          @map("approved_at") @db.Timestamptz(6)
   // Bắt buộc khi status=REJECTED, NULL các trạng thái khác.
   rejectionReason   String?            @map("rejection_reason")
+  // Kho Thuốc GĐ4 (docs/DECISIONS.md #170) — trỏ về `stock_count` khi phiếu này ĐƯỢC TỰ SINH lúc
+  // Duyệt phiếu kiểm kê phát hiện dư (receiptType=COUNT_SURPLUS). NULL cho mọi phiếu nhập thường.
+  // Chỉ để hiển thị "xem chứng từ gốc" sau này — KHÔNG dùng để tính lại gì.
+  countId           String?            @map("count_id") @db.Uuid
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -1788,6 +1799,8 @@ model StockReceipt {
   warehouse     Warehouse          @relation(fields: [tenantId, warehouseId], references: [tenantId, id])
   // Composite FK (tenant_id, supplier_id) -> supplier(tenant_id, id), NULLABLE.
   supplier      Supplier?          @relation(fields: [tenantId, supplierId], references: [tenantId, id])
+  // Composite FK (tenant_id, count_id) -> stock_count(tenant_id, id), NULLABLE (GĐ4).
+  count         StockCount?        @relation(fields: [tenantId, countId], references: [tenantId, id])
   lines         StockReceiptLine[]
   ledgerEntries StockLedger[]
 
@@ -1881,6 +1894,8 @@ model InventoryBatch {
   stockBalances   StockBalance[]
   // Kho Thuốc GĐ3 (#163).
   stockIssueLines StockIssueLine[]
+  // Kho Thuốc GĐ4 (docs/DECISIONS.md #170).
+  stockCountLines StockCountLine[]
 
   // Unique thật (tenant_id, drug_id, warehouse_id, batch_no) WHERE deleted_at IS NULL là PARTIAL —
   // khai raw SQL trong migration (cùng lý do drug_unit/drug_ingredient), không khai @@unique ở đây.
@@ -2024,9 +2039,10 @@ model StockIssue {
   tenantId       String           @map("tenant_id") @db.Uuid
   issueNo        String           @map("issue_no")
   warehouseId    String           @map("warehouse_id") @db.Uuid
-  // Bắt buộc ở GĐ3 (issueType chỉ có RETAIL_SALE thật) — GĐ4 các issueType khác (INTERNAL_
-  // ALLOCATION...) sẽ NULL được, nới lỏng lúc đó, không nới trước.
-  prescriptionId String           @map("prescription_id") @db.Uuid
+  // Bắt buộc CHỈ khi issueType='RETAIL_SALE' — NULL cho các issueType khác (CHECK ở migration, Kho
+  // Thuốc GĐ4 #170: COUNT_SHORTAGE tự sinh lúc Duyệt Kiểm kê không gắn với đơn thuốc nào). Nới
+  // nullable từ GĐ3 (comment cũ "bắt buộc, chưa nới" — nay đã tới lúc).
+  prescriptionId String?          @map("prescription_id") @db.Uuid
   issueType      StockIssueType   @default(RETAIL_SALE) @map("issue_type")
   status         StockIssueStatus @default(POSTED)
   occurredAt     DateTime         @map("occurred_at") @db.Timestamptz(6)
@@ -2037,6 +2053,9 @@ model StockIssue {
   voidedAt       DateTime?        @map("voided_at") @db.Timestamptz(6)
   // Bắt buộc khi status=VOIDED, NULL trạng thái khác — CHECK ở migration, cùng mẫu rejection_reason.
   voidReason     String?          @map("void_reason")
+  // Kho Thuốc GĐ4 (docs/DECISIONS.md #170) — trỏ về `stock_count` khi phiếu này ĐƯỢC TỰ SINH lúc
+  // Duyệt phiếu kiểm kê phát hiện thiếu (issueType=COUNT_SHORTAGE). NULL cho mọi phiếu xuất thường.
+  countId        String?          @map("count_id") @db.Uuid
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -2049,8 +2068,10 @@ model StockIssue {
 
   tenant        Tenant           @relation(fields: [tenantId], references: [id])
   warehouse     Warehouse        @relation(fields: [tenantId, warehouseId], references: [tenantId, id])
-  // Composite FK (tenant_id, prescription_id) -> prescription(tenant_id, id): chống trỏ chéo tenant.
-  prescription  Prescription     @relation(fields: [tenantId, prescriptionId], references: [tenantId, id])
+  // Composite FK (tenant_id, prescription_id) -> prescription(tenant_id, id), NULLABLE (GĐ4).
+  prescription  Prescription?    @relation(fields: [tenantId, prescriptionId], references: [tenantId, id])
+  // Composite FK (tenant_id, count_id) -> stock_count(tenant_id, id), NULLABLE (GĐ4).
+  count         StockCount?      @relation(fields: [tenantId, countId], references: [tenantId, id])
   lines         StockIssueLine[]
   ledgerEntries StockLedger[]
 
@@ -2101,6 +2122,97 @@ model StockIssueLine {
 
   @@unique([tenantId, id])
   @@map("stock_issue_line")
+}
+
+// Kho Thuốc & Vật tư y tế — Giai đoạn 4 (Kiểm kê/Điều chuyển/Mở rộng Nhập-Xuất kho/Báo cáo N-X-T,
+// docs/DECISIONS.md #170, kế hoạch kỹ thuật C:\Users\Administrator\.claude\plans\bright-bubbling-
+// axolotl.md, mockup đã duyệt). "Phiếu kiểm kê" — header, luồng Nháp (DRAFT, sửa tự do) → Duyệt
+// (POSTED, đọc lại stock_balance SỐNG tại thời điểm Duyệt để tính dư/thiếu — KHÔNG dùng
+// systemQuantitySnapshot cũ trên từng dòng) / Từ chối (REJECTED, bắt buộc lý do, không đụng tồn).
+// Duyệt tự sinh 1 StockReceipt (COUNT_SURPLUS, dư) và/hoặc 1 StockIssue (COUNT_SHORTAGE, thiếu) —
+// countId trên cả 2 bảng đó trỏ ngược về đây, chỉ để tra cứu "xem chứng từ gốc" sau này, KHÔNG dùng
+// để tính lại gì.
+model StockCount {
+  id              String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId        String           @map("tenant_id") @db.Uuid
+  countNo         String           @map("count_no")
+  warehouseId     String           @map("warehouse_id") @db.Uuid
+  status          StockCountStatus @default(DRAFT)
+  // Ngày kiểm kê do người dùng khai — khác createdAt (mốc tạo bản ghi).
+  occurredAt      DateTime         @map("occurred_at") @db.Timestamptz(6)
+  note            String?
+  approvedBy      String?          @map("approved_by") @db.Uuid
+  approvedAt      DateTime?        @map("approved_at") @db.Timestamptz(6)
+  // Lý do giải trình chênh lệch — Service bắt buộc khi Duyệt có dòng dư/thiếu, NULL hợp lệ khi
+  // phiếu khớp hoàn toàn hoặc chưa Duyệt (rà soát lỗ hổng quy trình 22/09/2026).
+  approvalReason  String?          @map("approval_reason")
+  // Bắt buộc khi status=REJECTED, NULL các trạng thái khác.
+  rejectionReason String?          @map("rejection_reason")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant            Tenant           @relation(fields: [tenantId], references: [id])
+  warehouse         Warehouse        @relation(fields: [tenantId, warehouseId], references: [tenantId, id])
+  lines             StockCountLine[]
+  generatedReceipts StockReceipt[]
+  generatedIssues   StockIssue[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, countNo])
+  @@map("stock_count")
+}
+
+// Dòng đếm — đúng 1 dòng/(drug, lô cụ thể). `batchId` có giá trị = lô ĐÃ tồn tại trong hệ thống lúc
+// thêm dòng; `batchId=null` + `newBatchNo` có giá trị = lô MỚI vật lý phát hiện lúc đếm, chưa từng
+// có trong `inventory_batch` (find-or-create lúc Duyệt, đúng cơ chế `StockReceiptService.approve()`
+// đã dùng cho phiếu nhập thường); `batchId=null` + `newBatchNo=null` = hàng KHÔNG quản lý theo lô.
+// `systemQuantitySnapshot` CHỈ hiển thị tham khảo lúc thêm dòng — Duyệt đọc lại `stock_balance`
+// SỐNG, không dùng số này để tính. `difference` CHỈ có giá trị SAU khi Duyệt (lưu lại đúng số đã
+// dùng để sinh dư/thiếu, để xem lại phiếu đã Duyệt không bị lệch so với tồn kho đã đổi sau đó).
+model StockCountLine {
+  id                     String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId               String    @map("tenant_id") @db.Uuid
+  countId                String    @map("count_id") @db.Uuid
+  drugId                 String    @map("drug_id") @db.Uuid
+  batchId                String?   @map("batch_id") @db.Uuid
+  newBatchNo             String?   @map("new_batch_no")
+  newBatchExpiryDate     DateTime? @map("new_batch_expiry_date") @db.Date
+  systemQuantitySnapshot Int       @map("system_quantity_snapshot")
+  countedQuantity        Int       @map("counted_quantity")
+  difference             Int?      @map("difference")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant Tenant          @relation(fields: [tenantId], references: [id])
+  count  StockCount      @relation(fields: [tenantId, countId], references: [tenantId, id])
+  drug   Drug            @relation(fields: [tenantId, drugId], references: [tenantId, id])
+  // Composite FK (tenant_id, batch_id) -> inventory_batch(tenant_id, id), NULLABLE.
+  batch  InventoryBatch? @relation(fields: [tenantId, batchId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@map("stock_count_line")
+}
+
+enum StockCountStatus {
+  DRAFT
+  POSTED
+  REJECTED
+
+  @@map("stock_count_status")
 }
 
 // Đơn thuốc (Sprint 4, S4-01/02/04) — .claude/docs/clinical-workflow.md mục "Kê đơn (v1: chỉ in

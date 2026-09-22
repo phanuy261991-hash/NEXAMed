@@ -234,6 +234,9 @@ describe('AuthService — login/refresh/logout', () => {
       username: usernameA,
       fullName: 'Bác sĩ A',
       displayName: null,
+      // Kho Thuốc GĐ4 (docs/DECISIONS.md #170) — Khoa/Phòng của actor, null cho tài khoản test
+      // chưa gán Khoa/Phòng nào.
+      departmentId: null,
       roles: ['doctor'],
       // Đúng khớp ma trận mặc định của vai trò 'doctor' — permissions không phải suy diễn ở web.
       permissions: DEFAULT_ROLE_PERMISSIONS.doctor,

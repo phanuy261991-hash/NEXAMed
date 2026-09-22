@@ -111,6 +111,11 @@ export function DispensePrescriptionDialog({ prescriptionId, onClose, onDispense
   const createMutation = useCreateStockIssueMutation();
 
   const [lines, setLines] = useState<DraftLine[] | null>(null);
+  // Kho đã dùng để nạp `lines` lần gần nhất — đổi kho phải nạp LẠI (tồn/lô theo từng kho khác nhau
+  // hoàn toàn), khác `lines===null` thuần chỉ nạp lần đầu (bug thật: đổi kho xong vẫn hiện tồn kho/
+  // lô của kho CŨ vì guard cũ không bao giờ chạy lại — chủ dự án phát hiện 22/09/2026). Cùng mẫu
+  // `loadedForId` đã dùng ở `EncounterConsultationPage.tsx` khi đổi ca khám không nạp lại dữ liệu.
+  const [loadedForWarehouseId, setLoadedForWarehouseId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<SuccessInfo | null>(null);
   const [otcQuery, setOtcQuery] = useState('');
@@ -120,10 +125,15 @@ export function DispensePrescriptionDialog({ prescriptionId, onClose, onDispense
   // Dòng đã phát ĐỦ — chỉ đọc, tính thẳng từ query, không đưa vào draft (không bao giờ sửa được).
   const fullyDispensedLines = statusQuery.data?.lines.filter((l) => l.remainingQuantity === 0) ?? [];
 
-  // Nạp draft từ response ĐÚNG 1 LẦN khi query load xong (không dùng useEffect — so `lines===null`
-  // ngay trong render, đúng mẫu `PrescriptionPanel.tsx` reset draft theo key). Mặc định TICK sẵn
-  // mọi dòng còn thuốc để phát (đúng hành vi cũ), khách chưa lấy hôm nay thì bác sĩ tự bỏ chọn.
-  if (lines === null && statusQuery.isSuccess) {
+  // Nạp draft từ response khi query load xong, và NẠP LẠI mỗi khi đổi kho (tồn/lô khác hẳn theo
+  // từng kho — bug thật đã sửa 22/09/2026: trước đây chỉ nạp 1 lần bằng guard `lines===null`, đổi
+  // kho xong statusQuery refetch đúng dữ liệu mới nhưng `lines` không cập nhật theo, vẫn hiện tồn
+  // kho/lô của kho ĐẦU TIÊN mãi mãi). So sánh `loadedForWarehouseId` ngay trong render (không dùng
+  // `useEffect`), cùng mẫu `loadedForId` đã dùng ở `EncounterConsultationPage.tsx` khi đổi ca khám.
+  // Mặc định TICK sẵn mọi dòng còn thuốc để phát (đúng hành vi cũ), khách chưa lấy hôm nay thì bác
+  // sĩ tự bỏ chọn.
+  if (loadedForWarehouseId !== effectiveWarehouseId && statusQuery.isSuccess) {
+    setLoadedForWarehouseId(effectiveWarehouseId);
     setLines(
       statusQuery.data.lines
         .filter((l) => l.remainingQuantity > 0)
@@ -310,37 +320,50 @@ export function DispensePrescriptionDialog({ prescriptionId, onClose, onDispense
               <ModalHeader
                 icon={Pill}
                 title="Phát thuốc"
-                subtitle={signedAtLabel ? `Đã ký ${signedAtLabel}` : undefined}
                 onClose={onClose}
                 right={
-                  warehouses.length > 1 ? (
-                    <div className="w-56">
-                      <Combobox id="dispense-warehouse" value={effectiveWarehouseId} onChange={setWarehouseId} options={warehouses.map((w) => ({ value: w.id, label: w.name }))} />
-                    </div>
-                  ) : undefined
+                  <div className="flex items-center gap-2.5">
+                    {signedAtLabel && <StatusBadge tone="success">Đã ký {signedAtLabel}</StatusBadge>}
+                    {warehouses.length > 1 && (
+                      <div className="w-56">
+                        <Combobox id="dispense-warehouse" value={effectiveWarehouseId} onChange={setWarehouseId} options={warehouses.map((w) => ({ value: w.id, label: w.name }))} />
+                      </div>
+                    )}
+                  </div>
                 }
               />
             </div>
 
             {statusQuery.data && (
-              <div className="grid grid-cols-1 gap-3 px-5 pb-4 sm:grid-cols-2">
-                <div className="rounded-lg border border-slate-200 bg-white px-3.5 py-2.5">
-                  <div className="flex items-center justify-between gap-2 text-xs">
-                    <span className="text-slate-500">Mã đơn thuốc:</span>
-                    <span className="font-bold text-teal-600">{statusQuery.data.prescriptionNo ?? '—'}</span>
-                  </div>
-                  <div className="mt-1.5 flex items-center justify-between gap-2 text-xs">
-                    <span className="text-slate-500">BS Kê đơn:</span>
-                    <span className="truncate font-bold text-slate-900">{statusQuery.data.signedByName ?? '—'}</span>
-                  </div>
-                  <div className="mt-1.5 flex items-center justify-between gap-2 text-xs">
-                    <span className="text-slate-500">Ngày kê:</span>
-                    <span className="font-bold text-slate-900">{signedAtLabel ?? '—'}</span>
-                  </div>
+              <div className="px-5 pb-4">
+                {/* Bệnh nhân — trước đây KHÔNG hiện ở đâu trong dialog này, chỉ có ở trang hàng đợi
+                    bên ngoài (rà soát 22/09/2026, chủ dự án phát hiện). Đặt riêng 1 dòng, nổi bật
+                    nhất trong khối — đây là thứ dược sĩ cần xác nhận ĐẦU TIÊN trước khi phát. */}
+                <div className="mb-3 flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3.5 py-2.5">
+                  <span className="text-sm font-semibold text-blue-900">Bệnh nhân:</span>
+                  <span className="text-[15px] font-bold text-blue-950">{statusQuery.data.patientFullName}</span>
+                  <span className="text-sm font-semibold text-blue-700">({statusQuery.data.patientCode})</span>
                 </div>
-                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2.5">
-                  <p className="text-xs font-bold text-amber-900">Chẩn đoán lâm sàng:</p>
-                  <p className="mt-1 text-xs font-semibold text-amber-700">{statusQuery.data.diagnosisLabel ?? '—'}</p>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="rounded-lg border border-slate-200 bg-white px-3.5 py-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-semibold text-slate-800">Mã đơn thuốc</span>
+                      <span className="font-bold text-teal-600">{statusQuery.data.prescriptionNo ?? '—'}</span>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between gap-2">
+                      <span className="text-sm font-semibold text-slate-800">BS Kê đơn</span>
+                      <span className="truncate font-bold text-slate-900">{statusQuery.data.signedByName ?? '—'}</span>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between gap-2">
+                      <span className="text-sm font-semibold text-slate-800">Ngày kê</span>
+                      <span className="font-bold text-slate-900">{signedAtLabel ?? '—'}</span>
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2.5">
+                    <p className="text-sm font-semibold text-amber-900">Chẩn đoán lâm sàng</p>
+                    <p className="mt-1.5 text-[15px] font-bold text-amber-950">{statusQuery.data.diagnosisLabel ?? '—'}</p>
+                  </div>
                 </div>
               </div>
             )}

@@ -142,6 +142,18 @@ export class EncounterRepository {
     return { ...rest, invoice: invoices[0] ?? null } as EncounterWithInvoiceStatus;
   }
 
+  /** Tên/mã bệnh nhân của 1 lượt khám — chỉ 2 field, phục vụ `StockIssueService.getDispenseStatus()`
+   * hiện khối thông tin đầu dialog "Phát thuốc" (rà soát 22/09/2026, chủ dự án phát hiện dialog
+   * không hiện đang phát cho bệnh nhân nào). Đúng tiền lệ chia sẻ `EncounterRepository` đã export
+   * sẵn từ `EncounterModule` cho `InventoryModule` (#163/#169), không cần port riêng. */
+  async findPatientIdentityById(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<{ fullName: string; patientCode: string } | null> {
+    const row = await tx.encounter.findFirst({
+      where: { tenantId, id, deletedAt: null },
+      select: { patient: { select: { fullName: true, patientCode: true } } },
+    });
+    return row?.patient ?? null;
+  }
+
   /** Kèm `dob` bệnh nhân — phục vụ `evaluateVitalSignWarnings()` (ReceptionService.recordVitalSigns()). */
   findByIdWithPatientDob(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<EncounterWithPatientDob | null> {
     return tx.encounter.findFirst({

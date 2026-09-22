@@ -4,6 +4,44 @@
 
 ## 2026-09-22
 
+### Đồng bộ nút thao tác toàn app (icon nền màu) + sửa đơn vị tính sai ở phiếu in + 2 bug thật ở "Phát thuốc" (đổi kho không cập nhật tồn, thiếu tên bệnh nhân) + redesign khối thông tin dialog
+
+Phát hiện liên tiếp trong lúc verify Playwright cho #171 — chủ dự án dùng thử trực tiếp qua `pnpm dev` song song.
+
+**Đồng bộ nút thao tác** — 14 bảng danh sách (3 trang Kho mới + 11 trang cũ như Danh mục dùng chung/Tài khoản/Thuốc & Vật tư/Nhà cung cấp...) đổi từ chữ mờ/icon chỉ hiện màu lúc hover sang icon tròn nền màu LUÔN hiện (`shared/ui/RowActionButton.tsx` mới).
+
+**2 bug thật ở "Phát thuốc"**: (1) đổi kho ở dropdown không cập nhật lại tồn kho/ô nhập số lượng — do `lines` chỉ nạp từ API đúng 1 lần lúc mở dialog, đổi kho query refetch đúng nhưng state hiển thị không đổi theo (sửa bằng theo dõi `loadedForWarehouseId`); (2) dialog không hiện đang phát cho bệnh nhân nào — mở rộng API `dispense-status` trả thêm `patientFullName`/`patientCode`.
+
+**Redesign khối thông tin dialog** (tra cứu `/ui-ux-pro-max`) — tách badge "Đã ký" khỏi tiêu đề bằng `StatusBadge` xanh lá, nhãn đậm dễ đọc hơn, chẩn đoán tương phản tốt hơn trên nền vàng, thêm dòng "Bệnh nhân" nổi bật đầu tiên.
+
+**Đã xác minh thật**: `apps/api` 871/882 pass (1 flake đã biết), `pnpm -w typecheck/lint/build` sạch, OpenAPI + web codegen đã sinh lại. Playwright qua Chrome thật xác nhận toàn bộ, không lỗi console. Chi tiết đầy đủ `docs/DECISIONS.md` #172.
+
+### Rà soát lỗ hổng quy trình "Kiểm kê" (lý do bắt buộc khi Duyệt lệch, trang "Phiếu xuất kho") + nhãn nút chờ duyệt + in phiếu Kiểm kê/Nhập kho/Xuất kho
+
+Chủ dự án tự kiểm tra phần "Kiểm kê" vừa code xong, phát hiện đúng 2 lỗ hổng: Duyệt phiếu có chênh lệch tự động sửa tồn kho mà không cần lý do gì, và phiếu xuất tự sinh từ kiểm kê (thiếu hàng) không có nơi nào tra cứu quá 1 ngày. Đã sửa cả hai + thêm nhãn nút rõ ràng hơn cho nhân viên không có quyền duyệt + bổ sung in phiếu cho cả 3 loại chứng từ kho.
+
+**Lý do bắt buộc khi Duyệt có chênh lệch**: `approveStockCountRequestSchema` thêm `reason` — Service bắt buộc THẬT khi có dòng dư/thiếu (tính từ tồn kho SỐNG lúc Duyệt), không bắt buộc nếu khớp hoàn toàn. Cột mới `stock_count.approval_reason`. UI mở popup hỏi lý do khi Duyệt "trơn" bị từ chối (`StockCountApproveReasonDialog.tsx`), cả ở danh sách lẫn trang chi tiết.
+
+**Trang mới "Phiếu xuất kho"** (`/inventory/issues`) — liệt kê MỌI phiếu xuất (thủ công lẫn tự sinh từ Kiểm kê), mọi thời điểm, filter Loại/Kho/Trạng thái, có "Huỷ phiếu" ngay trong hàng (backend có sẵn từ GĐ3 nhưng chưa web nào gọi tới). Vá kèm 1 bug thật: tab "Đã phát hôm nay" quên truyền `issueType='RETAIL_SALE'` dù ý định đã ghi rõ ở lần trước.
+
+**Nhãn nút cho nhân viên không có quyền duyệt**: "Lưu nháp" → "Lưu & chuyển duyệt" khi actor không có quyền `*.approve` (hành vi không đổi, chỉ đổi tên cho rõ nghĩa) — áp dụng cả "Kiểm kê" lẫn "Phiếu nhập kho".
+
+**In phiếu Kiểm kê/Nhập kho/Xuất kho** (chủ dự án yêu cầu bổ sung giữa phiên) — 3 component in mới, dùng hạ tầng in chung có sẵn (`.print-area`), chỉ hiện nút khi phiếu đã hoàn tất (`POSTED`, chưa huỷ).
+
+**Đã xác minh thật**: `apps/api` `stock-count-http.spec.ts` 20/20 (thêm test lý do bắt buộc + sửa 7 test cũ), `packages/core` 212/212, `packages/shared` 25/25, `apps/web` 5/5, `pnpm -w typecheck/lint/build` sạch toàn workspace. Migration `20260922120000_stock_count_approval_reason` đã áp thật lên Postgres dev. OpenAPI + web codegen đã sinh lại. **Chưa verify Playwright** (gộp chung việc còn treo với phần "Kiểm kê" gốc). Chi tiết đầy đủ `docs/DECISIONS.md` #171.
+
+### Kho Thuốc GĐ4, phần "Kiểm kê" — code + test xong, kèm phân quyền theo Khoa/Phòng làm THẬT lần đầu
+
+Theo đúng `docs/handoffs/HANDOFF-KhoThuoc-GD4-KiemKe-2026-09-22.md`, mockup `KiemKeList.dc.html`/`KiemKeForm.dc.html` đã duyệt từ phiên trước. Bảng mới `stock_count`/`stock_count_line` (migration `20260922100000_stock_count_ge4`), luồng Nháp→Duyệt/Từ chối đúng khuôn `stock_receipt`. Duyệt đọc LẠI tồn kho SỐNG (không dùng snapshot cũ) để tính dư/thiếu, tự sinh 1 `StockReceipt`(`COUNT_SURPLUS`)/`StockIssue`(`COUNT_SHORTAGE`) gộp mọi dòng — dùng lại logic cộng/trừ tồn có sẵn qua 2 method mới `createCountSurplusReceipt()`/`createCountShortageIssue()`, không lặp code.
+
+Ripple bắt buộc: `stock_receipt`/`stock_issue` thêm `count_id`; `stock_issue.prescription_id` nới NULLABLE + CHECK theo `issue_type` (COUNT_SHORTAGE không gắn đơn thuốc); `stock_issue` list thêm filter `issueType` (để "Đã phát hôm nay" không lẫn phiếu tự sinh từ kiểm kê).
+
+**Phân quyền theo Khoa/Phòng — hiện thực THẬT lần đầu tiên** (trước đây `department` chỉ là lựa chọn UI chưa ai enforce): `req.dataScope` truyền Controller→Service đúng khuôn `encounter.service.ts` "Nhận ca", 404 (không phải 403) nếu kho ngoài Khoa quản lý. `currentUserSchema` thêm `departmentId` để web tự lọc dropdown kho. Mặc định 5 vai trò hệ thống không đổi (vẫn global) — chỉ có tác dụng khi `clinic_admin` chọn scope `department` cho vai trò tuỳ biến.
+
+Ngoài kế hoạch, cùng phiên theo phản hồi trực tiếp trên `pnpm dev`: sửa icon tìm kiếm lệch khỏi khung (đổi `type="search"`→`type="text"`, tránh xung đột với UA decoration của Chrome), bỏ 3 dòng ghi chú hướng dẫn màu xám (bàn phím/nhóm lô/lưu ý Duyệt) theo yêu cầu — chỉ giữ thông báo trạng thái chức năng thật.
+
+**Đã xác minh thật**: `packages/core` +5 test (212/212), `apps/api` `stock-count-http.spec.ts` 20/20 (đủ kịch bản phân quyền Khoa/Phòng), toàn bộ suite `apps/api` 878-881/881 ổn định qua nhiều lần chạy (3 lỗi còn lại là flake race `seedDefaultRolesForTenant` đã biết, xác nhận qua cô lập). `pnpm -w typecheck/lint/build` sạch toàn workspace, OpenAPI + web codegen đã sinh lại. API dev thật khởi động sạch, `GET /health` OK. **Chưa verify Playwright/trình duyệt thật** (không có công cụ browser automation trong phiên này) — xem `docs/DECISIONS.md` #170.
+
 ### "Mã đơn thuốc thật" + tab "Đã phát hôm nay" + 2 lỗi giao diện "Đã phát thuốc thành công"
 
 Hoàn tất việc treo từ phiên trước (`docs/handoffs/HANDOFF-PhatThuoc-MaDonThuoc-2026-09-21.md`): `prescription.prescription_no` sinh thật lúc ký đơn (khuôn `DT[yy][mm][6 số]`, qua `BusinessCodeService` — tự hiện trong "Cấu hình mẫu mã phát sinh"), đính chính giữ nguyên mã gốc, backfill đủ đơn cũ đã ký trên dev DB thật. Khối thông tin mới ở đầu dialog "Phát thuốc" (mã đơn/BS kê đơn/ngày kê + TẤT CẢ chẩn đoán, không chỉ chẩn đoán chính — theo ảnh tham khảo chủ dự án gửi giữa chừng, khác gợi ý ban đầu của handoff).

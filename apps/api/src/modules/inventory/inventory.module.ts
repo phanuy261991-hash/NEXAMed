@@ -17,6 +17,9 @@ import { InventoryBatchRepository } from './inventory-batch.repository';
 import { StockIssueController } from './stock-issue.controller';
 import { StockIssueService } from './stock-issue.service';
 import { StockIssueRepository } from './stock-issue.repository';
+import { StockCountController } from './stock-count.controller';
+import { StockCountService } from './stock-count.service';
+import { StockCountRepository } from './stock-count.repository';
 
 /**
  * Kho Thuốc & Vật tư y tế — Giai đoạn 2 (Nhập kho & tồn theo lô, docs/DECISIONS.md #146). Module
@@ -40,10 +43,16 @@ import { StockIssueRepository } from './stock-issue.repository';
  * `DrugModule` đổi sang `forwardRef()` (21/09/2026) — `DrugModule` giờ CŨNG import ngược lại
  * `InventoryModule` (đọc `StockBalanceRepository` cho guard chặn đổi `isBatchManaged` khi còn tồn),
  * vòng phụ thuộc 2 chiều CÓ THẬT. `exports: [StockBalanceRepository]` phục vụ đúng chiều đọc đó.
+ *
+ * Giai đoạn 4, phần "Kiểm kê" (docs/DECISIONS.md #170) thêm `StockCountController/Service/
+ * Repository` — CÙNG module (không tách riêng, đúng tinh thần "vận hành kho" chung với
+ * `stock_receipt`/`stock_issue`). `StockCountService` gọi trực tiếp `StockReceiptService`/
+ * `StockIssueService` (method mới `createCountSurplusReceipt()`/`createCountShortageIssue()`) —
+ * chiều phụ thuộc MỘT phía trong nội bộ module, không cần khai thêm gì ở `imports`.
  */
 @Module({
   imports: [IamModule, ClinicModule, forwardRef(() => DrugModule), BillingModule, EncounterModule],
-  controllers: [StockReceiptController, StockLedgerController, StockBalanceController, StockIssueController],
+  controllers: [StockReceiptController, StockLedgerController, StockBalanceController, StockIssueController, StockCountController],
   providers: [
     StockReceiptService,
     StockReceiptRepository,
@@ -54,6 +63,8 @@ import { StockIssueRepository } from './stock-issue.repository';
     InventoryBatchRepository,
     StockIssueService,
     StockIssueRepository,
+    StockCountService,
+    StockCountRepository,
   ],
   exports: [StockBalanceRepository],
 })

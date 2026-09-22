@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Archive, Plus, Warning } from '@phosphor-icons/react';
+import { Archive, Check, PencilSimple, Plus, Prohibit, Warning, X } from '@phosphor-icons/react';
 import type { StockReceiptStatus, StockReceiptSummary, StockReceiptType } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
@@ -8,6 +8,7 @@ import { Button } from '../../shared/ui/Button';
 import { Combobox } from '../../shared/ui/Combobox';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
+import { RowActionButton } from '../../shared/ui/RowActionButton';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { StatusBadge, type StatusBadgeTone } from '../../shared/ui/StatusBadge';
 import { formatVnd } from '../../shared/format/currency';
@@ -247,27 +248,14 @@ export function StockReceiptListPage() {
                     <div role="cell" className="text-center font-medium tabular-nums text-slate-900">{item.lineCount}</div>
                     <div role="cell" className="text-center font-semibold tabular-nums text-slate-900">{formatVnd(item.totalAmount)}</div>
                     <div role="cell" className="min-w-0 truncate text-left font-medium text-slate-600">{item.createdByName}</div>
-                    <div role="cell" className="flex items-center justify-center gap-1">
+                    <div role="cell" className="flex items-center justify-center gap-1.5">
                       {!item.voided && item.status === 'DRAFT' && (
                         <>
-                          {canCreate && (
-                            <button type="button" onClick={() => navigate(`/inventory/receipts/${item.id}`)} className="rounded-md px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100">
-                              Sửa
-                            </button>
-                          )}
+                          {canCreate && <RowActionButton icon={PencilSimple} label="Sửa" tone="primary" onClick={() => navigate(`/inventory/receipts/${item.id}`)} />}
                           {canApprove ? (
                             <>
-                              <button type="button" onClick={() => setRejectTarget(item)} className="rounded-md px-2 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50">
-                                Từ chối
-                              </button>
-                              <button
-                                type="button"
-                                disabled={approveMutation.isPending}
-                                onClick={() => void handleApprove(item)}
-                                className="rounded-md bg-emerald-500 px-2.5 py-1 text-xs font-semibold text-white hover:bg-emerald-600 disabled:opacity-60"
-                              >
-                                Duyệt
-                              </button>
+                              <RowActionButton icon={X} label="Từ chối" tone="danger" onClick={() => setRejectTarget(item)} />
+                              <RowActionButton icon={Check} label="Duyệt" tone="success" disabled={approveMutation.isPending} onClick={() => void handleApprove(item)} />
                             </>
                           ) : (
                             <span className="text-xs font-medium text-slate-400">Chờ Trưởng kho duyệt</span>
@@ -275,9 +263,7 @@ export function StockReceiptListPage() {
                         </>
                       )}
                       {!item.voided && item.status === 'POSTED' && canApprove && (
-                        <button type="button" onClick={() => setVoidTarget(item)} className="rounded-md px-2 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50">
-                          Huỷ phiếu
-                        </button>
+                        <RowActionButton icon={Prohibit} label="Huỷ phiếu" tone="danger" onClick={() => setVoidTarget(item)} />
                       )}
                       {(item.status === 'REJECTED' || item.voided) && <span className="text-xs font-medium text-slate-400">—</span>}
                     </div>

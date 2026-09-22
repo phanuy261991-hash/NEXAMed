@@ -83,12 +83,13 @@ describe('HTTP e2e — /api/v1/clinic-settings/code-templates', () => {
     expect(res.status).toBe(403);
   });
 
-  it('tenant chưa cấu hình gì → 15 loại mã đúng khuôn mặc định, KHÔNG locked, số bắt đầu = 1', async () => {
+  it('tenant chưa cấu hình gì → 16 loại mã đúng khuôn mặc định, KHÔNG locked, số bắt đầu = 1', async () => {
     const res = await request(app.getHttpServer()).get('/api/v1/clinic-settings/code-templates').set(authed(clinicAdminToken));
     expect(res.status).toBe(200);
     // 10 loại mã cũ + 2 (Ví tạm ứng — WALLET_TOPUP/WALLET_SETTLEMENT) + 1 (Kho Thuốc GĐ2 — STOCK_RECEIPT)
-    // + 1 (Kho Thuốc GĐ3 — STOCK_ISSUE) + 1 ("Mã đơn thuốc thật" #169 — PRESCRIPTION).
-    expect(res.body.data.items).toHaveLength(15);
+    // + 1 (Kho Thuốc GĐ3 — STOCK_ISSUE) + 1 ("Mã đơn thuốc thật" #169 — PRESCRIPTION)
+    // + 1 (Kho Thuốc GĐ4, "Kiểm kê" #170 — STOCK_COUNT).
+    expect(res.body.data.items).toHaveLength(16);
 
     const patient = res.body.data.items.find((i: { codeType: string }) => i.codeType === 'PATIENT');
     expect(patient).toMatchObject({
@@ -102,7 +103,7 @@ describe('HTTP e2e — /api/v1/clinic-settings/code-templates', () => {
 
     // "Sổ quỹ & Thu chi" GĐ2 — CASH_TRANSFER (Chuyển quỹ, prefix PCK); Ví tạm ứng —
     // WALLET_TOPUP/WALLET_SETTLEMENT; Kho Thuốc GĐ2 — STOCK_RECEIPT; Kho Thuốc GĐ3 — STOCK_ISSUE;
-    // "Mã đơn thuốc thật" #169 — PRESCRIPTION (thêm mới nhất).
+    // "Mã đơn thuốc thật" #169 — PRESCRIPTION; Kho Thuốc GĐ4, "Kiểm kê" #170 — STOCK_COUNT (thêm mới nhất).
     const employment = res.body.data.items.map((i: { codeType: string }) => i.codeType).sort();
     expect(employment).toEqual(
       [
@@ -117,6 +118,7 @@ describe('HTTP e2e — /api/v1/clinic-settings/code-templates', () => {
         'INVOICE',
         'PATIENT',
         'PRESCRIPTION',
+        'STOCK_COUNT',
         'STOCK_ISSUE',
         'STOCK_RECEIPT',
         'WALLET_SETTLEMENT',

@@ -3,6 +3,7 @@ import { PencilSimple } from '@phosphor-icons/react';
 import type { BusinessCodeTemplateItem } from '@nexamed/shared';
 import { useHasPermission } from '../auth/usePermission';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
+import { RowActionButton } from '../../shared/ui/RowActionButton';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { ApiError } from '../../shared/api/client';
@@ -71,14 +72,7 @@ export function BusinessCodeTemplatePane() {
                     </td>
                     {canManage && (
                       <td className="px-4 py-2 text-center">
-                        <button
-                          type="button"
-                          title="Sửa"
-                          onClick={() => setEditing(item)}
-                          className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                        >
-                          <PencilSimple size={15} weight="regular" aria-hidden="true" />
-                        </button>
+                        <RowActionButton icon={PencilSimple} label="Sửa" tone="primary" onClick={() => setEditing(item)} />
                       </td>
                     )}
                   </tr>

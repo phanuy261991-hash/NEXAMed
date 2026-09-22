@@ -129,6 +129,8 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   // phải lỗi input. 3 lỗi còn lại (vượt kê đơn/OTC sai loại/thiếu tồn) dùng mặc định 422 — đúng
   // #146 điểm 4 (chặn cứng, không chỉ cảnh báo mềm như PRE-02/03).
   STOCK_ISSUE_VOID_NOT_ALLOWED: HttpStatus.CONFLICT,
+  // Kho Thuốc GĐ4 — trạng thái hiện tại của phiếu kiểm kê không cho phép thao tác này.
+  STOCK_COUNT_NOT_DRAFT: HttpStatus.CONFLICT,
 };
 
 /**

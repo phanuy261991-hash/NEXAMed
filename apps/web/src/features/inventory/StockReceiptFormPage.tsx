@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { MagnifyingGlass, Plus, Trash, Warning } from '@phosphor-icons/react';
+import { MagnifyingGlass, Plus, Printer, Trash, Warning } from '@phosphor-icons/react';
 import type { CreateStockReceiptRequest, DrugSummary, StockReceiptLine, StockReceiptType } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
@@ -16,6 +16,7 @@ import { formatVnd } from '../../shared/format/currency';
 import { formatDobDisplay } from '../../shared/format/date';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
 import { useHasPermission } from '../auth/usePermission';
+import { useClinicPrintHeaderQuery } from '../clinic/clinic.queries';
 import { useDrugsQuery } from '../drug/drug.queries';
 import { useSuppliersQuery } from '../drug/supplier.queries';
 import { useUnitNameByCode, unitLabel } from '../drug/useUnitNameByCode';
@@ -26,6 +27,7 @@ import {
   useStockReceiptQuery,
   useUpdateStockReceiptMutation,
 } from './inventory.queries';
+import { StockReceiptPrintView } from './StockReceiptPrintView';
 
 interface DraftLine {
   key: string;
@@ -85,11 +87,21 @@ export function StockReceiptFormPage() {
   const warehousesQuery = useWarehousesQuery();
   const suppliersQuery = useSuppliersQuery();
   const unitNameByCode = useUnitNameByCode();
+  const clinicQuery = useClinicPrintHeaderQuery();
   const createMutation = useCreateStockReceiptMutation();
   const updateMutation = useUpdateStockReceiptMutation();
   const approveMutation = useApproveStockReceiptMutation();
 
   const readOnly = isEdit && receiptQuery.data !== undefined && receiptQuery.data.status !== 'DRAFT';
+
+  const [printing, setPrinting] = useState(false);
+  function handlePrint() {
+    setPrinting(true);
+    setTimeout(() => {
+      window.print();
+      setPrinting(false);
+    }, 100);
+  }
 
   const [warehouseId, setWarehouseId] = useState('');
   const [supplierId, setSupplierId] = useState('');
@@ -568,8 +580,12 @@ export function StockReceiptFormPage() {
         {formError && <p className="text-sm font-medium text-rose-600">{formError}</p>}
         {!readOnly && (
           <div className="flex gap-2">
-            <Button type="button" variant="secondary" loading={saving} onClick={() => void handleSave(false)}>
-              Lưu nháp
+            {/* Nhân viên nhập kho không có quyền `stock_receipt.approve` (Trưởng kho mới duyệt) —
+                CHỈ nút này, đổi nhãn cho rõ đây là bước nộp phiếu chờ duyệt (nút KHÔNG đụng tồn
+                kho, cùng hành vi "Lưu nháp" cũ, chỉ khác cách gọi tên — cùng đợt sửa `stock_count`
+                22/09/2026, chủ dự án phát hiện). */}
+            <Button type="button" variant={canApprove ? 'secondary' : 'primary'} loading={saving} onClick={() => void handleSave(false)}>
+              {canApprove ? 'Lưu nháp' : 'Lưu & chuyển duyệt'}
             </Button>
             {canApprove && (
               <Button type="button" loading={saving} onClick={() => void handleSave(true)}>
@@ -578,7 +594,19 @@ export function StockReceiptFormPage() {
             )}
           </div>
         )}
+        {/* In phiếu — CHỈ phiếu ĐÃ DUYỆT chưa huỷ, bổ sung 22/09/2026 theo yêu cầu chủ dự án
+            (`docs/DECISIONS.md` #171). */}
+        {readOnly && receiptQuery.data?.status === 'POSTED' && !receiptQuery.data.voided && (
+          <Button type="button" variant="secondary" onClick={handlePrint}>
+            <Printer size={15} weight="bold" aria-hidden="true" />
+            In phiếu
+          </Button>
+        )}
       </div>
+
+      {printing && receiptQuery.data && clinicQuery.data && (
+        <StockReceiptPrintView receipt={receiptQuery.data} clinicHeader={clinicQuery.data} unitNameByCode={unitNameByCode} />
+      )}
     </div>
   );
 }

@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Archive } from '@phosphor-icons/react';
+import { Archive, Printer } from '@phosphor-icons/react';
 import { ApiError } from '../../shared/api/client';
 import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
@@ -8,7 +9,9 @@ import { Skeleton } from '../../shared/ui/Skeleton';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { formatVnd } from '../../shared/format/currency';
 import { useHasPermission } from '../auth/usePermission';
+import { useClinicPrintHeaderQuery } from '../clinic/clinic.queries';
 import { useStockIssueQuery } from './inventory.queries';
+import { StockIssuePrintView } from './StockIssuePrintView';
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
@@ -25,7 +28,17 @@ export function StockIssueDetailDialog({ issueId, onClose }: { issueId: string; 
   const navigate = useNavigate();
   const canViewInvoice = useHasPermission('invoice', 'read');
   const query = useStockIssueQuery(issueId);
+  const clinicQuery = useClinicPrintHeaderQuery();
   const issue = query.data;
+
+  const [printing, setPrinting] = useState(false);
+  function handlePrint() {
+    setPrinting(true);
+    setTimeout(() => {
+      window.print();
+      setPrinting(false);
+    }, 100);
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4" role="dialog" aria-modal="true" aria-label="Chi tiết phiếu xuất kho">
@@ -92,6 +105,14 @@ export function StockIssueDetailDialog({ issueId, onClose }: { issueId: string; 
         )}
 
         <div className="flex shrink-0 justify-end gap-2 border-t border-slate-100 px-5 py-4">
+          {/* In phiếu — CHỈ phiếu ĐÃ XUẤT chưa huỷ, bổ sung 22/09/2026 theo yêu cầu chủ dự án
+              (`docs/DECISIONS.md` #171). */}
+          {issue && issue.status === 'POSTED' && (
+            <Button type="button" variant="secondary" onClick={handlePrint}>
+              <Printer size={15} weight="bold" aria-hidden="true" />
+              In phiếu
+            </Button>
+          )}
           {canViewInvoice && issue?.attachedInvoice && issue.encounterId && (
             <Button type="button" variant="secondary" onClick={() => navigate(`/billing/${issue.encounterId}?invoiceId=${issue.attachedInvoice!.invoiceId}`)}>
               Xem hoá đơn →
@@ -102,6 +123,8 @@ export function StockIssueDetailDialog({ issueId, onClose }: { issueId: string; 
           </Button>
         </div>
       </div>
+
+      {printing && issue && clinicQuery.data && <StockIssuePrintView issue={issue} clinicHeader={clinicQuery.data} />}
     </div>
   );
 }

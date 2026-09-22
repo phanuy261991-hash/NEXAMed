@@ -38,6 +38,10 @@ export const currentUserSchema = z.object({
   fullName: z.string(),
   /** Tên hiển thị (ADM-01 mở rộng #082) — null cho tài khoản cũ chưa từng cập nhật. */
   displayName: z.string().nullable(),
+  /** Kho Thuốc GĐ4 (docs/DECISIONS.md #170) — Khoa/Phòng của actor (`user_account.department_id`,
+   * có sẵn từ #063). Web dùng để tự lọc dropdown kho theo Khoa khi scope `department` (ví dụ
+   * `stock_count.create`) — `null` cho tài khoản chưa gán Khoa/Phòng. */
+  departmentId: z.string().uuid().nullable(),
   roles: z.array(z.string()),
   /**
    * Quyền THẬT của actor, gộp qua mọi vai trò đang giữ: khoá `"<module>.<action>"` → `data_scope`

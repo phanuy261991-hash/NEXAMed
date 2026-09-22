@@ -21,6 +21,9 @@ export interface CreateStockReceiptData {
   supplierInvoiceNo: string | null;
   totalAmount: bigint;
   lines: StockReceiptLineData[];
+  /** Kho Thuốc GĐ4 (#170) — trỏ về `stock_count` khi phiếu này TỰ SINH từ Duyệt phiếu kiểm kê
+   * (`receiptType='COUNT_SURPLUS'`). `null` cho mọi phiếu nhập lập tay bình thường. */
+  countId: string | null;
 }
 
 export interface UpdateStockReceiptData {
@@ -81,6 +84,7 @@ export class StockReceiptRepository {
         note: data.note,
         supplierInvoiceNo: data.supplierInvoiceNo,
         totalAmount: data.totalAmount,
+        countId: data.countId,
         createdBy: actorId,
         updatedBy: actorId,
       },

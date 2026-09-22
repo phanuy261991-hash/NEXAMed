@@ -1,13 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
+  ApproveStockCountRequest,
   ApproveStockReceiptRequest,
+  CreateStockCountRequest,
   CreateStockIssueRequest,
   CreateStockReceiptRequest,
   ListDispenseQueueQuery,
   ListStockBalancesQuery,
+  ListStockCountsQuery,
   ListStockIssuesQuery,
   ListStockReceiptsQuery,
+  RejectStockCountRequest,
   RejectStockReceiptRequest,
+  UpdateStockCountRequest,
   UpdateStockReceiptRequest,
   VoidStockIssueRequest,
   VoidStockReceiptRequest,
@@ -15,7 +20,9 @@ import type {
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
 import {
+  approveStockCount,
   approveStockReceipt,
+  createStockCount,
   createStockIssue,
   createStockReceipt,
   getDispenseQueue,
@@ -23,12 +30,16 @@ import {
   getDrugLedger,
   getPrescriptionDispenseStatus,
   getStockBalances,
+  getStockCount,
+  getStockCounts,
   getStockExpiryWarnings,
   getStockIssue,
   getStockIssues,
   getStockReceipt,
   getStockReceipts,
+  rejectStockCount,
   rejectStockReceipt,
+  updateStockCount,
   updateStockReceipt,
   voidStockIssue,
   voidStockReceipt,
@@ -201,6 +212,72 @@ export function useVoidStockIssueMutation() {
   const invalidate = useInvalidateAfterDispense();
   return useMutation({
     mutationFn: ({ id, body }: { id: string; body: VoidStockIssueRequest }) => voidStockIssue(id, body),
+    onSuccess: invalidate,
+  });
+}
+
+// ============ Kho Thuốc GĐ4 — "Kiểm kê" (docs/DECISIONS.md #170) ============
+
+export function useStockCountsQuery(query: ListStockCountsQuery) {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'stock-count', 'list', JSON.stringify(query)),
+    queryFn: () => getStockCounts(query),
+  });
+}
+
+export function useStockCountQuery(id: string, enabled = true) {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'stock-count', 'detail', id),
+    queryFn: () => getStockCount(id),
+    enabled: enabled && id !== '',
+  });
+}
+
+/** Duyệt Kiểm kê có thể tự sinh phiếu nhập/xuất kho + đụng tồn kho/thẻ kho — invalidate đủ cả 4
+ * khoá cache liên quan, đúng khuôn `useInvalidateInventory()`. */
+function useInvalidateAfterCount() {
+  const { tenantId } = useAppConfig();
+  const queryClient = useQueryClient();
+  return () => {
+    void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'stock-count') });
+    void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'stock-receipt') });
+    void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'stock-issue') });
+    void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'stock-balance') });
+    void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'stock-ledger') });
+    void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'stock-expiry') });
+  };
+}
+
+export function useCreateStockCountMutation() {
+  const invalidate = useInvalidateAfterCount();
+  return useMutation({
+    mutationFn: (body: CreateStockCountRequest) => createStockCount(body),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateStockCountMutation() {
+  const invalidate = useInvalidateAfterCount();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: UpdateStockCountRequest }) => updateStockCount(id, body),
+    onSuccess: invalidate,
+  });
+}
+
+export function useApproveStockCountMutation() {
+  const invalidate = useInvalidateAfterCount();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: ApproveStockCountRequest }) => approveStockCount(id, body),
+    onSuccess: invalidate,
+  });
+}
+
+export function useRejectStockCountMutation() {
+  const invalidate = useInvalidateAfterCount();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: RejectStockCountRequest }) => rejectStockCount(id, body),
     onSuccess: invalidate,
   });
 }

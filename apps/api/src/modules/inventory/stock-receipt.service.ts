@@ -79,6 +79,7 @@ export class StockReceiptService {
         supplierInvoiceNo: dto.supplierInvoiceNo ?? null,
         totalAmount,
         lines,
+        countId: null,
       });
 
       await writeAuditLog(tx, tenantId, {
@@ -194,67 +195,7 @@ export class StockReceiptService {
       const count = await this.stockReceiptRepository.approve(tx, tenantId, id, dto.version, actorId);
       if (count === 0) throw new ConcurrentModificationError();
 
-      const drugCache = new Map<string, DrugWithDetails>();
-      for (const line of existing.lines) {
-        let drug = drugCache.get(line.drugId);
-        if (!drug) {
-          const found = await this.drugRepository.findByIdWithDetails(tx, tenantId, line.drugId);
-          if (!found) throw new NotFoundException();
-          drug = found;
-          drugCache.set(line.drugId, drug);
-        }
-
-        const { baseQuantity, baseUnitCost } = this.convertLineToBaseUnit(drug, line.unitCode, line.quantity, line.unitCost);
-        const reason = existing.receiptType === 'PURCHASE' ? 'RECEIPT_PURCHASE' : 'RECEIPT_OPENING_BALANCE';
-
-        let batchId: string | null = null;
-        if (drug.isBatchManaged) {
-          if (!line.batchNo) throw new UnprocessableEntityException(`Thuốc/vật tư "${drug.name}" quản lý theo lô — phải nhập Số lô.`);
-          const batch = await this.inventoryBatchRepository.findByKey(tx, tenantId, drug.id, existing.warehouseId, line.batchNo);
-          if (batch) {
-            const existingBalance = await this.stockBalanceRepository.findByKey(tx, tenantId, drug.id, existing.warehouseId, batch.id);
-            const newCost = computeWeightedAverageCost(existingBalance?.quantityOnHand ?? 0, batch.unitCost, baseQuantity, baseUnitCost);
-            await this.inventoryBatchRepository.updateCost(tx, tenantId, batch.id, actorId, newCost);
-            batchId = batch.id;
-          } else {
-            const created = await this.inventoryBatchRepository.create(tx, tenantId, actorId, {
-              drugId: drug.id,
-              warehouseId: existing.warehouseId,
-              batchNo: line.batchNo,
-              expiryDate: line.expiryDate,
-              unitCost: baseUnitCost,
-            });
-            batchId = created.id;
-          }
-          await this.stockBalanceRepository.upsertQuantity(tx, tenantId, actorId, { drugId: drug.id, warehouseId: existing.warehouseId, batchId, quantityDelta: baseQuantity });
-        } else {
-          const existingBalance = await this.stockBalanceRepository.findByKey(tx, tenantId, drug.id, existing.warehouseId, null);
-          const newAverage = computeWeightedAverageCost(existingBalance?.quantityOnHand ?? 0, existingBalance?.averageUnitCost ?? 0n, baseQuantity, baseUnitCost);
-          await this.stockBalanceRepository.upsertQuantity(tx, tenantId, actorId, {
-            drugId: drug.id,
-            warehouseId: existing.warehouseId,
-            batchId: null,
-            quantityDelta: baseQuantity,
-            averageUnitCost: newAverage,
-          });
-        }
-
-        await this.stockLedgerRepository.create(tx, tenantId, actorId, {
-          drugId: drug.id,
-          warehouseId: existing.warehouseId,
-          batchId,
-          quantityChange: baseQuantity,
-          unitCost: baseUnitCost,
-          reason,
-          sourceReceiptId: existing.id,
-          occurredAt: existing.occurredAt,
-          note: null,
-        });
-
-        if (existing.receiptType === 'PURCHASE') {
-          await this.drugRepository.updateLastPurchase(tx, tenantId, drug.id, actorId, baseUnitCost, existing.occurredAt);
-        }
-      }
+      await this.applyPostedLines(tx, tenantId, actorId, existing);
 
       await writeAuditLog(tx, tenantId, {
         actorId,
@@ -269,6 +210,109 @@ export class StockReceiptService {
     });
 
     return this.getById(tenantId, id);
+  }
+
+  /**
+   * Kho Thuốc GĐ4 (docs/DECISIONS.md #170) — Kiểm kê phát hiện DƯ: `StockCountService.approve()`
+   * gọi hàm này TRONG CÙNG transaction để tự sinh 1 `StockReceipt` (`receiptType='COUNT_SURPLUS'`)
+   * đã ở trạng thái `POSTED` NGAY (khác `create()` thường luôn tạo `DRAFT` rồi chờ Duyệt riêng) —
+   * dùng lại đúng `applyPostedLines()` cho phần cộng tồn/ghi thẻ kho, không lặp lại logic.
+   */
+  async createCountSurplusReceipt(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    actorId: string,
+    params: { warehouseId: string; countId: string; occurredAt: Date; countNo: string; lines: StockReceiptLineData[] },
+  ): Promise<StockReceiptWithLines> {
+    const totalAmount = params.lines.reduce((sum, l) => sum + l.lineAmount, 0n);
+    const receiptNo = await this.businessCodeService.generate(tx, tenantId, actorId, 'STOCK_RECEIPT', params.occurredAt);
+
+    const created = await this.stockReceiptRepository.create(tx, tenantId, actorId, {
+      receiptNo,
+      warehouseId: params.warehouseId,
+      supplierId: null,
+      receiptType: 'COUNT_SURPLUS',
+      occurredAt: params.occurredAt,
+      note: `Tự sinh từ phiếu kiểm kê ${params.countNo}`,
+      supplierInvoiceNo: null,
+      totalAmount,
+      lines: params.lines,
+      countId: params.countId,
+    });
+
+    // Chuyển thẳng DRAFT→POSTED (vừa tạo, version chắc chắn = 1, không tranh chấp ai khác trong
+    // cùng transaction) — dùng lại nguyên `approve()` repository, không viết lệnh SQL riêng.
+    const postedCount = await this.stockReceiptRepository.approve(tx, tenantId, created.id, created.version, actorId);
+    if (postedCount === 0) throw new ConcurrentModificationError();
+
+    await this.applyPostedLines(tx, tenantId, actorId, created);
+    return created;
+  }
+
+  /** Cộng tồn kho + ghi thẻ kho cho từng dòng của 1 phiếu VỪA chuyển POSTED — dùng chung cho
+   * `approve()` (phiếu lập tay) và `createCountSurplusReceipt()` (phiếu tự sinh từ Kiểm kê, GĐ4). */
+  private async applyPostedLines(tx: Prisma.TransactionClient, tenantId: string, actorId: string, receipt: StockReceiptWithLines): Promise<void> {
+    const drugCache = new Map<string, DrugWithDetails>();
+    for (const line of receipt.lines) {
+      let drug = drugCache.get(line.drugId);
+      if (!drug) {
+        const found = await this.drugRepository.findByIdWithDetails(tx, tenantId, line.drugId);
+        if (!found) throw new NotFoundException();
+        drug = found;
+        drugCache.set(line.drugId, drug);
+      }
+
+      const { baseQuantity, baseUnitCost } = this.convertLineToBaseUnit(drug, line.unitCode, line.quantity, line.unitCost);
+      const reason = receipt.receiptType === 'PURCHASE' ? 'RECEIPT_PURCHASE' : receipt.receiptType === 'COUNT_SURPLUS' ? 'RECEIPT_COUNT_SURPLUS' : 'RECEIPT_OPENING_BALANCE';
+
+      let batchId: string | null = null;
+      if (drug.isBatchManaged) {
+        if (!line.batchNo) throw new UnprocessableEntityException(`Thuốc/vật tư "${drug.name}" quản lý theo lô — phải nhập Số lô.`);
+        const batch = await this.inventoryBatchRepository.findByKey(tx, tenantId, drug.id, receipt.warehouseId, line.batchNo);
+        if (batch) {
+          const existingBalance = await this.stockBalanceRepository.findByKey(tx, tenantId, drug.id, receipt.warehouseId, batch.id);
+          const newCost = computeWeightedAverageCost(existingBalance?.quantityOnHand ?? 0, batch.unitCost, baseQuantity, baseUnitCost);
+          await this.inventoryBatchRepository.updateCost(tx, tenantId, batch.id, actorId, newCost);
+          batchId = batch.id;
+        } else {
+          const created = await this.inventoryBatchRepository.create(tx, tenantId, actorId, {
+            drugId: drug.id,
+            warehouseId: receipt.warehouseId,
+            batchNo: line.batchNo,
+            expiryDate: line.expiryDate,
+            unitCost: baseUnitCost,
+          });
+          batchId = created.id;
+        }
+        await this.stockBalanceRepository.upsertQuantity(tx, tenantId, actorId, { drugId: drug.id, warehouseId: receipt.warehouseId, batchId, quantityDelta: baseQuantity });
+      } else {
+        const existingBalance = await this.stockBalanceRepository.findByKey(tx, tenantId, drug.id, receipt.warehouseId, null);
+        const newAverage = computeWeightedAverageCost(existingBalance?.quantityOnHand ?? 0, existingBalance?.averageUnitCost ?? 0n, baseQuantity, baseUnitCost);
+        await this.stockBalanceRepository.upsertQuantity(tx, tenantId, actorId, {
+          drugId: drug.id,
+          warehouseId: receipt.warehouseId,
+          batchId: null,
+          quantityDelta: baseQuantity,
+          averageUnitCost: newAverage,
+        });
+      }
+
+      await this.stockLedgerRepository.create(tx, tenantId, actorId, {
+        drugId: drug.id,
+        warehouseId: receipt.warehouseId,
+        batchId,
+        quantityChange: baseQuantity,
+        unitCost: baseUnitCost,
+        reason,
+        sourceReceiptId: receipt.id,
+        occurredAt: receipt.occurredAt,
+        note: null,
+      });
+
+      if (receipt.receiptType === 'PURCHASE') {
+        await this.drugRepository.updateLastPurchase(tx, tenantId, drug.id, actorId, baseUnitCost, receipt.occurredAt);
+      }
+    }
   }
 
   async reject(tenantId: string, actorId: string, id: string, dto: RejectStockReceiptRequest, meta: RequestMeta): Promise<StockReceiptDetail> {
