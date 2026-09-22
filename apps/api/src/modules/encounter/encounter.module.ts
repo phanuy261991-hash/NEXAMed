@@ -33,6 +33,9 @@ import { EncounterReaderAdapter } from '../../infrastructure/encounter/encounter
  * `StockIssueService` dùng chung để đọc/validate đơn thuốc lúc "Phát thuốc". Chiều phụ thuộc CHỈ
  * MỘT phía (`InventoryModule → EncounterModule`, import thường không cần `forwardRef`) — module này
  * KHÔNG import `InventoryModule` (đã bỏ cùng lúc gỡ "Tự động phát thuốc lúc ký đơn", #165).
+ * `exports: [..., DiagnosisRepository]` — "Mã đơn thuốc thật" (#169) — `StockIssueService` đọc
+ * chẩn đoán chính để hiện ở khối thông tin màn "Phát thuốc", cùng tiền lệ chia sẻ Repository đã có
+ * với `PrescriptionRepository` ở trên (không cần port riêng cho một lệnh đọc đơn giản).
  */
 @Module({
   imports: [PatientModule, ClinicModule, BillingModule, GeoModule],
@@ -45,6 +48,6 @@ import { EncounterReaderAdapter } from '../../infrastructure/encounter/encounter
     PrescriptionRepository,
     { provide: ENCOUNTER_READER_PORT, useClass: EncounterReaderAdapter },
   ],
-  exports: [EncounterRepository, PrescriptionRepository, ENCOUNTER_READER_PORT],
+  exports: [EncounterRepository, PrescriptionRepository, DiagnosisRepository, ENCOUNTER_READER_PORT],
 })
 export class EncounterModule {}

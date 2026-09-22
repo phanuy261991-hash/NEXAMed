@@ -465,6 +465,15 @@ export const getPrescriptionDispenseStatusResponseSchema = z.object({
   prescriptionId: z.string().uuid(),
   encounterId: z.string().uuid(),
   signedAt: z.string().nullable(),
+  /** "Mã đơn thuốc thật" (docs/DECISIONS.md #169) — 3 field cấp ĐƠN (không phải cấp dòng thuốc),
+   * hiện ở khối thông tin đầu `DispensePrescriptionDialog.tsx`. `null` chỉ khi đơn chưa ký (không
+   * xảy ra thực tế — hàng đợi/dialog phát thuốc chỉ mở cho đơn ĐÃ KÝ) hoặc backfill lỗi. */
+  prescriptionNo: z.string().nullable(),
+  signedByName: z.string().nullable(),
+  /** TẤT CẢ chẩn đoán (chính + phụ nếu có) của lượt khám, định dạng "{tên bệnh} ({mã ICD-10})" nối
+   * bằng " / " — đúng ảnh tham khảo chủ dự án gửi, không chỉ riêng chẩn đoán chính. `null` nếu lượt
+   * khám chưa có chẩn đoán nào (không xảy ra thực tế — bắt buộc ≥1 chẩn đoán chính trước khi ký đơn). */
+  diagnosisLabel: z.string().nullable(),
   lines: z.array(prescriptionDispenseLineSchema),
 });
 export type GetPrescriptionDispenseStatusResponse = z.infer<typeof getPrescriptionDispenseStatusResponseSchema>;

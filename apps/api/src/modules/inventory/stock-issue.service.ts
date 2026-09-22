@@ -34,6 +34,7 @@ import { BusinessCodeService } from '../clinic/business-code.service';
 import { DrugRepository, type DrugWithDetails } from '../drug/drug.repository';
 import { WarehouseRepository } from '../drug/warehouse.repository';
 import { PrescriptionRepository, type PrescriptionWithItems } from '../encounter/prescription.repository';
+import { DiagnosisRepository } from '../encounter/diagnosis.repository';
 import { InvoiceRepository } from '../billing/invoice.repository';
 import { StockIssueRepository, type StockIssueLineData, type StockIssueWithContext } from './stock-issue.repository';
 import { InventoryBatchRepository } from './inventory-batch.repository';
@@ -63,6 +64,7 @@ export class StockIssueService {
     private readonly drugRepository: DrugRepository,
     private readonly warehouseRepository: WarehouseRepository,
     private readonly prescriptionRepository: PrescriptionRepository,
+    private readonly diagnosisRepository: DiagnosisRepository,
     private readonly invoiceRepository: InvoiceRepository,
     private readonly inventoryBatchRepository: InventoryBatchRepository,
     private readonly stockLedgerRepository: StockLedgerRepository,
@@ -418,7 +420,20 @@ export class StockIssueService {
         });
       }
 
-      return { prescriptionId: prescription.id, encounterId: prescription.encounterId, signedAt: prescription.signedAt?.toISOString() ?? null, lines };
+      // "Mã đơn thuốc thật" (docs/DECISIONS.md #169) — khối thông tin đầu dialog "Phát thuốc".
+      const signedByNames = prescription.signedBy ? await this.doctorDirectory.getUserFullNames(tenantId, [prescription.signedBy]) : new Map<string, string>();
+      const diagnoses = await this.diagnosisRepository.listForEncounter(tx, tenantId, prescription.encounterId);
+      const diagnosisLabel = diagnoses.length > 0 ? diagnoses.map((d) => `${d.icd10.nameVi} (${d.icd10Code})`).join(' / ') : null;
+
+      return {
+        prescriptionId: prescription.id,
+        encounterId: prescription.encounterId,
+        signedAt: prescription.signedAt?.toISOString() ?? null,
+        prescriptionNo: prescription.prescriptionNo,
+        signedByName: prescription.signedBy ? (signedByNames.get(prescription.signedBy) ?? null) : null,
+        diagnosisLabel,
+        lines,
+      };
     });
   }
 

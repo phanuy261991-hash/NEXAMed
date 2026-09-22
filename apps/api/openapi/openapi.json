@@ -10383,6 +10383,12 @@
                                 ]
                               }
                             },
+                            "prescriptionNo": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
                             "signedAt": {
                               "type": [
                                 "string",
@@ -10424,6 +10430,7 @@
                             "encounterId",
                             "items",
                             "warnings",
+                            "prescriptionNo",
                             "signedAt",
                             "signedBy",
                             "printedAt",
@@ -12827,6 +12834,12 @@
                             ]
                           }
                         },
+                        "prescriptionNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "signedAt": {
                           "type": [
                             "string",
@@ -12868,6 +12881,7 @@
                         "encounterId",
                         "items",
                         "warnings",
+                        "prescriptionNo",
                         "signedAt",
                         "signedBy",
                         "printedAt",
@@ -13191,6 +13205,12 @@
                             ]
                           }
                         },
+                        "prescriptionNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "signedAt": {
                           "type": [
                             "string",
@@ -13232,6 +13252,7 @@
                         "encounterId",
                         "items",
                         "warnings",
+                        "prescriptionNo",
                         "signedAt",
                         "signedBy",
                         "printedAt",
@@ -13538,6 +13559,12 @@
                             ]
                           }
                         },
+                        "prescriptionNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "signedAt": {
                           "type": [
                             "string",
@@ -13579,6 +13606,7 @@
                         "encounterId",
                         "items",
                         "warnings",
+                        "prescriptionNo",
                         "signedAt",
                         "signedBy",
                         "printedAt",
@@ -13884,6 +13912,12 @@
                             ]
                           }
                         },
+                        "prescriptionNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "signedAt": {
                           "type": [
                             "string",
@@ -13925,6 +13959,7 @@
                         "encounterId",
                         "items",
                         "warnings",
+                        "prescriptionNo",
                         "signedAt",
                         "signedBy",
                         "printedAt",
@@ -31593,7 +31628,8 @@
                                   "WALLET_TOPUP",
                                   "WALLET_SETTLEMENT",
                                   "STOCK_RECEIPT",
-                                  "STOCK_ISSUE"
+                                  "STOCK_ISSUE",
+                                  "PRESCRIPTION"
                                 ]
                               },
                               "label": {
@@ -31745,7 +31781,8 @@
                 "WALLET_TOPUP",
                 "WALLET_SETTLEMENT",
                 "STOCK_RECEIPT",
-                "STOCK_ISSUE"
+                "STOCK_ISSUE",
+                "PRESCRIPTION"
               ]
             },
             "required": true,
@@ -31808,7 +31845,8 @@
                             "WALLET_TOPUP",
                             "WALLET_SETTLEMENT",
                             "STOCK_RECEIPT",
-                            "STOCK_ISSUE"
+                            "STOCK_ISSUE",
+                            "PRESCRIPTION"
                           ]
                         },
                         "label": {
@@ -53848,6 +53886,24 @@
                             "null"
                           ]
                         },
+                        "prescriptionNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "signedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "diagnosisLabel": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "lines": {
                           "type": "array",
                           "items": {
@@ -53940,6 +53996,9 @@
                         "prescriptionId",
                         "encounterId",
                         "signedAt",
+                        "prescriptionNo",
+                        "signedByName",
+                        "diagnosisLabel",
                         "lines"
                       ]
                     },

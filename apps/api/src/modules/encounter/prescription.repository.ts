@@ -119,11 +119,13 @@ export class PrescriptionRepository {
     });
   }
 
-  /** Ký đơn nháp — `WHERE signed_at IS NULL` chống ký trùng khi 2 request gần như đồng thời (cùng tinh thần các `updateMany` có điều kiện khác trong dự án). */
-  async sign(tx: Prisma.TransactionClient, tenantId: string, id: string, expectedVersion: number, actorId: string, signedAt: Date, signedBy: string): Promise<number> {
+  /** Ký đơn nháp — `WHERE signed_at IS NULL` chống ký trùng khi 2 request gần như đồng thời (cùng
+   * tinh thần các `updateMany` có điều kiện khác trong dự án). `prescriptionNo` sinh lúc ký (#169),
+   * không lúc tạo nháp — nháp có thể sửa/xoá nhiều lần, không cần mã. */
+  async sign(tx: Prisma.TransactionClient, tenantId: string, id: string, expectedVersion: number, actorId: string, signedAt: Date, signedBy: string, prescriptionNo: string): Promise<number> {
     const result = await tx.prescription.updateMany({
       where: { tenantId, id, version: expectedVersion, deletedAt: null, signedAt: null },
-      data: { signedAt, signedBy, updatedBy: actorId, version: { increment: 1 } },
+      data: { signedAt, signedBy, prescriptionNo, updatedBy: actorId, version: { increment: 1 } },
     });
     return result.count;
   }
@@ -146,13 +148,15 @@ export class PrescriptionRepository {
     return result.count;
   }
 
-  /** Tạo đơn đính chính — ĐÃ KÝ NGAY lúc tạo (đính chính là một hành động xác nhận trọn vẹn, không qua lại bước nháp). */
+  /** Tạo đơn đính chính — ĐÃ KÝ NGAY lúc tạo (đính chính là một hành động xác nhận trọn vẹn, không
+   * qua lại bước nháp). `prescriptionNo` GIỮ NGUYÊN mã của bản gốc bị đính chính (#169, chốt qua
+   * AskUserQuestion) — đính chính là bản sửa của cùng 1 y lệnh, không phải đơn mới, không sinh mã mới. */
   createAmendment(
     tx: Prisma.TransactionClient,
     tenantId: string,
     encounterId: string,
     actorId: string,
-    data: { supersedesId: string; amendmentReason: string; signedAt: Date; signedBy: string },
+    data: { supersedesId: string; amendmentReason: string; signedAt: Date; signedBy: string; prescriptionNo: string | null },
   ): Promise<Prescription> {
     return tx.prescription.create({
       data: { tenantId, encounterId, createdBy: actorId, updatedBy: actorId, ...data },

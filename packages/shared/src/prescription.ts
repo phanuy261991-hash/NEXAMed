@@ -53,6 +53,9 @@ export const prescriptionSchema = z.object({
   items: z.array(prescriptionItemSchema),
   /** Tính lại server-side mỗi lần đọc — không lưu DB, chỉ cảnh báo, không chặn ký. */
   warnings: z.array(prescriptionWarningSchema),
+  /** "Mã đơn thuốc thật" (docs/DECISIONS.md #169) — sinh lúc KÝ (`null` khi còn nháp). Đính chính
+   * (`amend`) GIỮ NGUYÊN mã của bản gốc, không sinh mã mới. */
+  prescriptionNo: z.string().nullable(),
   signedAt: z.string().nullable(),
   signedBy: z.string().uuid().nullable(),
   printedAt: z.string().nullable(),

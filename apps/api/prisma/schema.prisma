@@ -2113,6 +2113,11 @@ model Prescription {
   id               String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
   tenantId         String    @map("tenant_id") @db.Uuid
   encounterId      String    @map("encounter_id") @db.Uuid
+  // "Mã đơn thuốc thật" (docs/DECISIONS.md #169) — NULL khi còn nháp, sinh lúc KÝ. Đính chính giữ
+  // nguyên mã gốc (nên bản gốc bị soft-delete + bản đính chính đang hiệu lực CỐ Ý trùng mã) — unique
+  // chỉ áp dụng cho bản ĐANG hiệu lực: UNIQUE (tenant_id, prescription_no) WHERE prescription_no IS
+  // NOT NULL AND deleted_at IS NULL, khai raw SQL trong migration (Prisma không biểu diễn được).
+  prescriptionNo   String?   @map("prescription_no")
   signedAt         DateTime? @map("signed_at") @db.Timestamptz(6)
   signedBy         String?   @map("signed_by") @db.Uuid
   signaturePayload Bytes?    @map("signature_payload")

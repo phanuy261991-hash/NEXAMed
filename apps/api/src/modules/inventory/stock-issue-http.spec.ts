@@ -299,6 +299,10 @@ describe('HTTP e2e — /api/v1/inventory (Phiếu xuất kho GĐ3)', () => {
     const beforeStatus = await request(app.getHttpServer()).get(`/api/v1/inventory/prescriptions/${prescriptionId}/dispense-status`).set(authed(doctorToken)).query({ warehouseId });
     expect(beforeStatus.body.data.lines[0].warehouseStockOnHand).toBe(50);
     expect(beforeStatus.body.data.lines[0].remainingQuantity).toBe(5);
+    // "Mã đơn thuốc thật" (#169) — khối thông tin đầu dialog "Phát thuốc".
+    expect(beforeStatus.body.data.prescriptionNo).toMatch(/^DT\d{10}$/);
+    expect(beforeStatus.body.data.signedByName).toBeTruthy();
+    expect(beforeStatus.body.data.diagnosisLabel).toBeTruthy();
 
     const res = await request(app.getHttpServer())
       .post('/api/v1/inventory/issues')

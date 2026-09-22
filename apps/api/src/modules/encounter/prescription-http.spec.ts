@@ -233,6 +233,8 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
     expect(signRes.body.data.signedAt).not.toBeNull();
     expect(signRes.body.data.signedBy).toBe(doctorAUserId);
     expect(signRes.body.data.version).toBe(2);
+    // "Mã đơn thuốc thật" (#169) — sinh lúc ký, đúng khuôn mặc định DT[yy][mm][6 chữ số].
+    expect(signRes.body.data.prescriptionNo).toMatch(/^DT\d{10}$/);
 
     // Sửa lại đơn đã ký → 409 PRESCRIPTION_ALREADY_SIGNED.
     const editAfterSign = await request(app.getHttpServer())
@@ -285,6 +287,8 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
       .send({ items: [{ drugId, dose: '1 viên', frequency: '2 lần/ngày', durationDays: 5, quantity: 10 }] });
     const signRes = await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/prescription/sign`).set(authed(doctorAToken)).send({ version: 1 });
     const originalPrescriptionId = signRes.body.data.id as string;
+    const originalPrescriptionNo = signRes.body.data.prescriptionNo as string;
+    expect(originalPrescriptionNo).toBeTruthy();
 
     // In lần đầu → printedAt set.
     const printRes1 = await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/prescription/print`).set(authed(doctorAToken));
@@ -317,6 +321,8 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
     expect(amendRes.body.data.amendmentReason).toBe('Bổ sung Vitamin C theo yêu cầu bệnh nhân');
     expect(amendRes.body.data.signedAt).not.toBeNull();
     expect(amendRes.body.data.items).toHaveLength(2);
+    // Đính chính GIỮ NGUYÊN mã đơn gốc (#169, chốt qua AskUserQuestion) — không sinh mã mới.
+    expect(amendRes.body.data.prescriptionNo).toBe(originalPrescriptionNo);
 
     // Đơn đang hiệu lực của lượt khám giờ là bản đính chính.
     const consultationRes = await request(app.getHttpServer()).get(`/api/v1/encounters/${encounterId}/consultation`).set(authed(doctorAToken));

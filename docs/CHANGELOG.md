@@ -2,6 +2,16 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-22
+
+### "Mã đơn thuốc thật" + tab "Đã phát hôm nay" + 2 lỗi giao diện "Đã phát thuốc thành công"
+
+Hoàn tất việc treo từ phiên trước (`docs/handoffs/HANDOFF-PhatThuoc-MaDonThuoc-2026-09-21.md`): `prescription.prescription_no` sinh thật lúc ký đơn (khuôn `DT[yy][mm][6 số]`, qua `BusinessCodeService` — tự hiện trong "Cấu hình mẫu mã phát sinh"), đính chính giữ nguyên mã gốc, backfill đủ đơn cũ đã ký trên dev DB thật. Khối thông tin mới ở đầu dialog "Phát thuốc" (mã đơn/BS kê đơn/ngày kê + TẤT CẢ chẩn đoán, không chỉ chẩn đoán chính — theo ảnh tham khảo chủ dự án gửi giữa chừng, khác gợi ý ban đầu của handoff).
+
+Ngoài kế hoạch, chủ dự án yêu cầu trực tiếp trong phiên: sửa 2 lỗi giao diện "Đã phát thuốc thành công" (khung quá to so với nội dung, 2 nút bị vỡ chữ khi xếp ngang trong khung hẹp) và thêm tab "Đã phát hôm nay" vào trang "Phát thuốc" (tận dụng API liệt kê phiếu xuất kho có sẵn từ GĐ3 nhưng chưa web nào dùng tới) — dùng `TwoOptionToggle` có sẵn cho nền trượt đặc.
+
+**Đã xác minh thật**: `pnpm -w typecheck/lint/build` sạch toàn workspace, `apps/api` 845/847 pass (2 flake `role_permission` đã biết). Playwright qua Chrome thật trên tenant test riêng (đúng bài học #166) xác nhận đúng toàn bộ. Xem chi tiết đầy đủ `docs/DECISIONS.md` #169.
+
 ## 2026-09-21
 
 ### Sửa "Đổi mật khẩu" không mở khoá tài khoản + Redesign giao diện "Phát thuốc" + hiển thị Tồn kho thật + sửa luồng mua thêm OTC + guard chặn đổi "Quản lý theo lô" khi còn tồn

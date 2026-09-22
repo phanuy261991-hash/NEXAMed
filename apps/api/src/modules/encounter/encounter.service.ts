@@ -72,6 +72,7 @@ import { PatientFamilyHistoryRepository } from '../patient/patient-family-histor
 import { PatientService } from '../patient/patient.service';
 import { InvoiceRepository } from '../billing/invoice.repository';
 import { ClinicProfileService } from '../clinic/clinic-profile.service';
+import { BusinessCodeService } from '../clinic/business-code.service';
 import { GeoRepository } from '../geo/geo.repository';
 
 const TEMPERATURE_DECI_PER_CELSIUS = 10;
@@ -113,6 +114,7 @@ export class EncounterService {
     private readonly patientService: PatientService,
     private readonly invoiceRepository: InvoiceRepository,
     private readonly clinicProfileService: ClinicProfileService,
+    private readonly businessCodeService: BusinessCodeService,
     private readonly geoRepository: GeoRepository,
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
     @Inject(SIGNATURE_PORT) private readonly signaturePort: SignaturePort,
@@ -973,7 +975,8 @@ export class EncounterService {
       const warnings = this.computeWarnings(active.items, allergenNames);
 
       const signature = await this.signaturePort.sign(tenantId, actorId, { entityType: 'prescription', entityId: active.id });
-      const count = await this.prescriptionRepository.sign(tx, tenantId, active.id, dto.version, actorId, signature.signedAt, signature.signedBy);
+      const prescriptionNo = await this.businessCodeService.generate(tx, tenantId, actorId, 'PRESCRIPTION', signature.signedAt);
+      const count = await this.prescriptionRepository.sign(tx, tenantId, active.id, dto.version, actorId, signature.signedAt, signature.signedBy, prescriptionNo);
       if (count === 0) {
         throw new ConcurrentModificationError();
       }
@@ -1076,6 +1079,8 @@ export class EncounterService {
         amendmentReason: dto.amendmentReason,
         signedAt: signature.signedAt,
         signedBy: signature.signedBy,
+        // Giữ nguyên mã đơn gốc (#169, chốt qua AskUserQuestion) — không gọi businessCodeService.generate() ở đây.
+        prescriptionNo: active.prescriptionNo,
       });
       await this.prescriptionRepository.createItems(tx, tenantId, created.id, actorId, dto.items.map((item) => this.toCreateItemData(item)));
 
@@ -1126,6 +1131,7 @@ export class EncounterService {
       encounterId: row.encounterId,
       items: row.items.map((item) => this.toPrescriptionItem(item)),
       warnings: this.computeWarnings(row.items, allergenNames),
+      prescriptionNo: row.prescriptionNo,
       signedAt: row.signedAt ? row.signedAt.toISOString() : null,
       signedBy: row.signedBy,
       printedAt: row.printedAt ? row.printedAt.toISOString() : null,

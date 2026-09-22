@@ -4194,6 +4194,7 @@ export interface paths {
                                         label: string;
                                         drugNames: string[];
                                     }[];
+                                    prescriptionNo: string | null;
                                     signedAt: string | null;
                                     /** Format: uuid */
                                     signedBy: string | null;
@@ -5141,6 +5142,7 @@ export interface paths {
                                     label: string;
                                     drugNames: string[];
                                 }[];
+                                prescriptionNo: string | null;
                                 signedAt: string | null;
                                 /** Format: uuid */
                                 signedBy: string | null;
@@ -5296,6 +5298,7 @@ export interface paths {
                                     label: string;
                                     drugNames: string[];
                                 }[];
+                                prescriptionNo: string | null;
                                 signedAt: string | null;
                                 /** Format: uuid */
                                 signedBy: string | null;
@@ -5444,6 +5447,7 @@ export interface paths {
                                     label: string;
                                     drugNames: string[];
                                 }[];
+                                prescriptionNo: string | null;
                                 signedAt: string | null;
                                 /** Format: uuid */
                                 signedBy: string | null;
@@ -5578,6 +5582,7 @@ export interface paths {
                                     label: string;
                                     drugNames: string[];
                                 }[];
+                                prescriptionNo: string | null;
                                 signedAt: string | null;
                                 /** Format: uuid */
                                 signedBy: string | null;
@@ -12635,7 +12640,7 @@ export interface paths {
                             data: {
                                 items: {
                                     /** @enum {string} */
-                                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE";
+                                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION";
                                     label: string;
                                     prefix: string;
                                     template: string;
@@ -12708,7 +12713,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE";
+                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION";
                 };
                 cookie?: never;
             };
@@ -12731,7 +12736,7 @@ export interface paths {
                         "application/json": {
                             data: {
                                 /** @enum {string} */
-                                codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE";
+                                codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION";
                                 label: string;
                                 prefix: string;
                                 template: string;
@@ -21887,6 +21892,9 @@ export interface paths {
                                 /** Format: uuid */
                                 encounterId: string;
                                 signedAt: string | null;
+                                prescriptionNo: string | null;
+                                signedByName: string | null;
+                                diagnosisLabel: string | null;
                                 lines: {
                                     /** Format: uuid */
                                     prescriptionItemId: string;

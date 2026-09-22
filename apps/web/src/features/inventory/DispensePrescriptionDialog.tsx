@@ -273,7 +273,7 @@ export function DispensePrescriptionDialog({ prescriptionId, onClose, onDispense
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4" role="dialog" aria-modal="true" aria-label="Phát thuốc">
-      <div className="flex max-h-[88vh] w-full max-w-5xl flex-col rounded-xl bg-white shadow-xl">
+      <div className={`flex max-h-[88vh] w-full flex-col rounded-xl bg-white shadow-xl ${success ? 'max-w-sm' : 'max-w-5xl'}`}>
         {success ? (
           <div className="flex flex-col items-center gap-3 p-8 text-center">
             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-500 text-white">
@@ -293,15 +293,15 @@ export function DispensePrescriptionDialog({ prescriptionId, onClose, onDispense
               </div>
             )}
             <p className="text-xs text-slate-400">Thu ngân sẽ thu khi khách thanh toán.</p>
-            <div className="mt-1 flex gap-2">
+            <div className="mt-1 flex w-full flex-col gap-2">
+              <Button type="button" onClick={onClose} className="w-full">
+                Xong, quay lại hàng đợi
+              </Button>
               {canViewInvoice && success.attachedInvoice && (
-                <Button type="button" variant="secondary" onClick={handleViewInvoice}>
+                <Button type="button" variant="secondary" onClick={handleViewInvoice} className="w-full">
                   Xem hoá đơn →
                 </Button>
               )}
-              <Button type="button" onClick={onClose}>
-                Xong, quay lại hàng đợi
-              </Button>
             </div>
           </div>
         ) : (
@@ -321,6 +321,29 @@ export function DispensePrescriptionDialog({ prescriptionId, onClose, onDispense
                 }
               />
             </div>
+
+            {statusQuery.data && (
+              <div className="grid grid-cols-1 gap-3 px-5 pb-4 sm:grid-cols-2">
+                <div className="rounded-lg border border-slate-200 bg-white px-3.5 py-2.5">
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="text-slate-500">Mã đơn thuốc:</span>
+                    <span className="font-bold text-teal-600">{statusQuery.data.prescriptionNo ?? '—'}</span>
+                  </div>
+                  <div className="mt-1.5 flex items-center justify-between gap-2 text-xs">
+                    <span className="text-slate-500">BS Kê đơn:</span>
+                    <span className="truncate font-bold text-slate-900">{statusQuery.data.signedByName ?? '—'}</span>
+                  </div>
+                  <div className="mt-1.5 flex items-center justify-between gap-2 text-xs">
+                    <span className="text-slate-500">Ngày kê:</span>
+                    <span className="font-bold text-slate-900">{signedAtLabel ?? '—'}</span>
+                  </div>
+                </div>
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2.5">
+                  <p className="text-xs font-bold text-amber-900">Chẩn đoán lâm sàng:</p>
+                  <p className="mt-1 text-xs font-semibold text-amber-700">{statusQuery.data.diagnosisLabel ?? '—'}</p>
+                </div>
+              </div>
+            )}
 
             {statusQuery.isPending && (
               <div className="space-y-2 px-5 pb-5">
