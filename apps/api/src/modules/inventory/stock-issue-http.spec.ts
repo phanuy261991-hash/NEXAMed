@@ -713,4 +713,206 @@ describe('HTTP e2e — /api/v1/inventory (Phiếu xuất kho GĐ3)', () => {
       await privileged.userAccount.update({ where: { id: deptAUserId }, data: { departmentId: deptAId } });
     });
   });
+
+  /**
+   * "Phiếu xuất kho mở rộng" (Kho Thuốc GĐ4, docs/DECISIONS.md #170) — 3 loại Nháp→Duyệt lập tay
+   * (Xuất dùng nội bộ/Xuất trả NCC/Xuất huỷ), khác hẳn "Phát thuốc" (1 bước, luồng test ở trên).
+   */
+  describe('Phiếu xuất kho mở rộng — Nháp→Duyệt (docs/DECISIONS.md #170)', () => {
+    let manualDeptId: string;
+
+    beforeAll(async () => {
+      const deptRes = await request(app.getHttpServer()).post('/api/v1/departments').set(authed(clinicAdminToken)).send({ name: `Khoa tiếp nhận e2e ${randomUUID().slice(0, 6)}` });
+      manualDeptId = deptRes.body.data.id as string;
+    });
+
+    it('INTERNAL_ALLOCATION thiếu departmentId → 400 (Zod)', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/inventory/issues/manual')
+        .set(authed(clinicAdminToken))
+        .send({ issueType: 'INTERNAL_ALLOCATION', warehouseId, note: 'Cấp vật tư', lines: [{ drugId: randomUUID(), quantity: 1 }] });
+      expect(res.status).toBe(400);
+    });
+
+    it('WRITE_OFF kèm departmentId → 400 (loại này không có Khoa/Phòng tiếp nhận)', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/inventory/issues/manual')
+        .set(authed(clinicAdminToken))
+        .send({ issueType: 'WRITE_OFF', warehouseId, departmentId: manualDeptId, note: 'Hỏng do bảo quản sai', lines: [{ drugId: randomUUID(), quantity: 1 }] });
+      expect(res.status).toBe(400);
+    });
+
+    it('thiếu Lý do → 400', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/inventory/issues/manual')
+        .set(authed(clinicAdminToken))
+        .send({ issueType: 'WRITE_OFF', warehouseId, note: '', lines: [{ drugId: randomUUID(), quantity: 1 }] });
+      expect(res.status).toBe(400);
+    });
+
+    it('lễ tân (không có stock_issue.create) → 403 tạo Nháp', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/inventory/issues/manual')
+        .set(authed(receptionistToken))
+        .send({ issueType: 'WRITE_OFF', warehouseId, note: 'Thử tạo', lines: [{ drugId: randomUUID(), quantity: 1 }] });
+      expect(res.status).toBe(403);
+    });
+
+    it('tạo Nháp INTERNAL_ALLOCATION hợp lệ → status DRAFT, chưa đụng tồn kho', async () => {
+      const drugId = await createDrug(clinicAdminToken, { name: 'Cồn sát khuẩn e2e', isBatchManaged: false, isPrescriptionOnly: false });
+      await receiveStock(clinicAdminToken, drugId, 50, 5000, { openingBalance: true });
+
+      const created = await request(app.getHttpServer())
+        .post('/api/v1/inventory/issues/manual')
+        .set(authed(clinicAdminToken))
+        .send({ issueType: 'INTERNAL_ALLOCATION', warehouseId, departmentId: manualDeptId, note: 'Cấp cồn sát khuẩn tuần này', lines: [{ drugId, quantity: 10 }] });
+      expect(created.status).toBe(200);
+      expect(created.body.data.status).toBe('DRAFT');
+      expect(created.body.data.departmentId).toBe(manualDeptId);
+      expect(created.body.data.issueNo).toMatch(/^PXK/);
+
+      const balancesRes = await request(app.getHttpServer()).get('/api/v1/inventory/balances').set(authed(clinicAdminToken)).query({ warehouseId });
+      const bal = (balancesRes.body.data.items as { drugId: string; quantityOnHand: number }[]).find((b) => b.drugId === drugId);
+      expect(bal?.quantityOnHand).toBe(50);
+    });
+
+    it('bác sĩ (có create, KHÔNG có approve) → sửa Nháp OK, Duyệt 403', async () => {
+      const drugId = await createDrug(clinicAdminToken, { name: 'Băng gạc e2e', isBatchManaged: false, isPrescriptionOnly: false });
+      await receiveStock(clinicAdminToken, drugId, 30, 2000, { openingBalance: true });
+      const created = await request(app.getHttpServer())
+        .post('/api/v1/inventory/issues/manual')
+        .set(authed(doctorToken))
+        .send({ issueType: 'WRITE_OFF', warehouseId, note: 'Hỏng do ẩm mốc', lines: [{ drugId, quantity: 5 }] });
+      expect(created.status).toBe(200);
+
+      const updated = await request(app.getHttpServer())
+        .patch(`/api/v1/inventory/issues/manual/${created.body.data.id}`)
+        .set(authed(doctorToken))
+        .send({ issueType: 'WRITE_OFF', warehouseId, note: 'Hỏng do ẩm mốc — cập nhật', lines: [{ drugId, quantity: 6 }], version: created.body.data.version });
+      expect(updated.status).toBe(200);
+      expect(updated.body.data.note).toBe('Hỏng do ẩm mốc — cập nhật');
+
+      const approveRes = await request(app.getHttpServer())
+        .post(`/api/v1/inventory/issues/manual/${created.body.data.id}/approve`)
+        .set(authed(doctorToken))
+        .send({ version: updated.body.data.version });
+      expect(approveRes.status).toBe(403);
+    });
+
+    it('Duyệt thiếu tồn → 422 STOCK_ISSUE_INSUFFICIENT_STOCK, không đổi trạng thái', async () => {
+      const drugId = await createDrug(clinicAdminToken, { name: 'Vitamin C e2e', isBatchManaged: false, isPrescriptionOnly: false });
+      await receiveStock(clinicAdminToken, drugId, 5, 1000, { openingBalance: true });
+      const created = await request(app.getHttpServer())
+        .post('/api/v1/inventory/issues/manual')
+        .set(authed(clinicAdminToken))
+        .send({ issueType: 'RETURN_TO_SUPPLIER', warehouseId, note: 'Trả hàng lỗi NCC', lines: [{ drugId, quantity: 100 }] });
+      expect(created.status).toBe(200);
+
+      const approveRes = await request(app.getHttpServer())
+        .post(`/api/v1/inventory/issues/manual/${created.body.data.id}/approve`)
+        .set(authed(clinicAdminToken))
+        .send({ version: created.body.data.version });
+      expect(approveRes.status).toBe(422);
+      expect(approveRes.body.error.code).toBe('STOCK_ISSUE_INSUFFICIENT_STOCK');
+
+      const getRes = await request(app.getHttpServer()).get(`/api/v1/inventory/issues/${created.body.data.id}`).set(authed(clinicAdminToken));
+      expect(getRes.body.data.status).toBe('DRAFT');
+    });
+
+    it('Duyệt đủ tồn → POSTED, trừ đúng tồn kho + ghi thẻ kho reason ISSUE_INTERNAL_ALLOCATION, KHÔNG gắn tiền', async () => {
+      const drugId = await createDrug(clinicAdminToken, { name: 'Khẩu trang y tế e2e', isBatchManaged: false, isPrescriptionOnly: false });
+      await receiveStock(clinicAdminToken, drugId, 200, 500, { openingBalance: true });
+      const created = await request(app.getHttpServer())
+        .post('/api/v1/inventory/issues/manual')
+        .set(authed(clinicAdminToken))
+        .send({ issueType: 'INTERNAL_ALLOCATION', warehouseId, departmentId: manualDeptId, note: 'Cấp khẩu trang', lines: [{ drugId, quantity: 50 }] });
+
+      const approveRes = await request(app.getHttpServer())
+        .post(`/api/v1/inventory/issues/manual/${created.body.data.id}/approve`)
+        .set(authed(clinicAdminToken))
+        .send({ version: created.body.data.version });
+      expect(approveRes.status).toBe(200);
+      expect(approveRes.body.data.status).toBe('POSTED');
+      expect(approveRes.body.data.approvedByName).toBeTruthy();
+      expect(approveRes.body.data.lines[0].sellPrice).toBe(0);
+      expect(approveRes.body.data.lines[0].lineAmount).toBe(0);
+      expect(approveRes.body.data.totalAmount).toBe(0);
+
+      const balancesRes = await request(app.getHttpServer()).get('/api/v1/inventory/balances').set(authed(clinicAdminToken)).query({ warehouseId });
+      const bal = (balancesRes.body.data.items as { drugId: string; quantityOnHand: number }[]).find((b) => b.drugId === drugId);
+      expect(bal?.quantityOnHand).toBe(150);
+
+      const ledgerRes = await request(app.getHttpServer()).get(`/api/v1/inventory/drugs/${drugId}/ledger`).set(authed(clinicAdminToken)).query({ warehouseId });
+      const entry = (ledgerRes.body.data.items as { reason: string; quantityChange: number; sourceIssueNo: string | null }[]).find((e) => e.reason === 'ISSUE_INTERNAL_ALLOCATION');
+      expect(entry?.quantityChange).toBe(-50);
+      expect(entry?.sourceIssueNo).toBe(approveRes.body.data.issueNo);
+    });
+
+    it('Từ chối Nháp → REJECTED, không đụng tồn kho', async () => {
+      const drugId = await createDrug(clinicAdminToken, { name: 'Bông y tế e2e', isBatchManaged: false, isPrescriptionOnly: false });
+      await receiveStock(clinicAdminToken, drugId, 40, 300, { openingBalance: true });
+      const created = await request(app.getHttpServer())
+        .post('/api/v1/inventory/issues/manual')
+        .set(authed(clinicAdminToken))
+        .send({ issueType: 'WRITE_OFF', warehouseId, note: 'Hết hạn dùng', lines: [{ drugId, quantity: 10 }] });
+
+      const rejectRes = await request(app.getHttpServer())
+        .post(`/api/v1/inventory/issues/manual/${created.body.data.id}/reject`)
+        .set(authed(clinicAdminToken))
+        .send({ version: created.body.data.version, reason: 'Chưa đủ chứng từ' });
+      expect(rejectRes.status).toBe(200);
+      expect(rejectRes.body.data.status).toBe('REJECTED');
+      expect(rejectRes.body.data.rejectionReason).toBe('Chưa đủ chứng từ');
+
+      const balancesRes = await request(app.getHttpServer()).get('/api/v1/inventory/balances').set(authed(clinicAdminToken)).query({ warehouseId });
+      const bal = (balancesRes.body.data.items as { drugId: string; quantityOnHand: number }[]).find((b) => b.drugId === drugId);
+      expect(bal?.quantityOnHand).toBe(40);
+    });
+
+    it('Huỷ phiếu ĐÃ DUYỆT (POSTED, loại mở rộng) — đảo NGƯỢC đúng tồn kho (hồi quy: listForSourceIssue trước đây chỉ lọc reason ISSUE_RETAIL_SALE, âm thầm không đảo gì cho loại mới)', async () => {
+      const drugId = await createDrug(clinicAdminToken, { name: 'Gel rửa tay e2e', isBatchManaged: false, isPrescriptionOnly: false });
+      await receiveStock(clinicAdminToken, drugId, 80, 4000, { openingBalance: true });
+      const created = await request(app.getHttpServer())
+        .post('/api/v1/inventory/issues/manual')
+        .set(authed(clinicAdminToken))
+        .send({ issueType: 'INTERNAL_ALLOCATION', warehouseId, departmentId: manualDeptId, note: 'Cấp gel rửa tay', lines: [{ drugId, quantity: 30 }] });
+      const approveRes = await request(app.getHttpServer())
+        .post(`/api/v1/inventory/issues/manual/${created.body.data.id}/approve`)
+        .set(authed(clinicAdminToken))
+        .send({ version: created.body.data.version });
+      expect(approveRes.status).toBe(200);
+
+      const afterApprove = await request(app.getHttpServer()).get('/api/v1/inventory/balances').set(authed(clinicAdminToken)).query({ warehouseId });
+      expect((afterApprove.body.data.items as { drugId: string; quantityOnHand: number }[]).find((b) => b.drugId === drugId)?.quantityOnHand).toBe(50);
+
+      const voidRes = await request(app.getHttpServer())
+        .post(`/api/v1/inventory/issues/${created.body.data.id}/void`)
+        .set(authed(clinicAdminToken))
+        .send({ version: approveRes.body.data.version, reason: 'Lập nhầm phiếu' });
+      expect(voidRes.status).toBe(200);
+      expect(voidRes.body.data.status).toBe('VOIDED');
+
+      // Đây chính là hồi quy: TRƯỚC khi sửa `StockLedgerRepository.listForSourceIssue()`, tồn kho sẽ
+      // DỪNG LẠI ở 50 (không đảo ngược gì) thay vì quay về đúng 80.
+      const afterVoid = await request(app.getHttpServer()).get('/api/v1/inventory/balances').set(authed(clinicAdminToken)).query({ warehouseId });
+      expect((afterVoid.body.data.items as { drugId: string; quantityOnHand: number }[]).find((b) => b.drugId === drugId)?.quantityOnHand).toBe(80);
+    });
+
+    it('tenant B không tạo/duyệt được phiếu bằng ID của tenant A → 404', async () => {
+      const drugId = await createDrug(clinicAdminToken, { name: 'Thuốc tenant A e2e', isBatchManaged: false, isPrescriptionOnly: false });
+      await receiveStock(clinicAdminToken, drugId, 20, 1000, { openingBalance: true });
+      const created = await request(app.getHttpServer())
+        .post('/api/v1/inventory/issues/manual')
+        .set(authed(clinicAdminToken))
+        .send({ issueType: 'WRITE_OFF', warehouseId, note: 'Hỏng', lines: [{ drugId, quantity: 5 }] });
+
+      const getRes = await request(app.getHttpServer()).get(`/api/v1/inventory/issues/${created.body.data.id}`).set(authed(tenantBAdminToken));
+      expect(getRes.status).toBe(404);
+      const approveRes = await request(app.getHttpServer())
+        .post(`/api/v1/inventory/issues/manual/${created.body.data.id}/approve`)
+        .set(authed(tenantBAdminToken))
+        .send({ version: created.body.data.version });
+      expect(approveRes.status).toBe(404);
+    });
+  });
 });

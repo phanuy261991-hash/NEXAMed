@@ -1,21 +1,20 @@
 import { useState, type FormEvent } from 'react';
 import { ApiError } from '../../shared/api/client';
 import { Button } from '../../shared/ui/Button';
-import { useRejectStockReceiptMutation, useVoidStockReceiptMutation } from './inventory.queries';
 
 /**
- * Popup xác nhận Từ chối/Huỷ phiếu nhập kho — lý do bắt buộc, đúng khuôn
- * `shared/ui/CancelEncounterDialog.tsx` (mục 4.4 Enter-to-submit). Dùng chung 2 hành động (không
- * tách 2 component riêng) vì hình dạng hoàn toàn giống nhau, chỉ khác API gọi + văn bản.
+ * Popup xác nhận 1 hành động cần lý do bắt buộc (Từ chối/Huỷ phiếu nhập kho, Từ chối/Duyệt phiếu
+ * xuất kho mở rộng...) — đúng khuôn `shared/ui/CancelEncounterDialog.tsx` (mục 4.4 Enter-to-submit).
+ * Tách khỏi mutation cụ thể (`onConfirm` do nơi gọi tự truyền) — lần lặp thứ 2 (Kho Thuốc GĐ4,
+ * "Phiếu xuất kho mở rộng", docs/DECISIONS.md #170) đúng ngưỡng trích xuất dùng chung của CLAUDE.md,
+ * thay vì chép nguyên văn thành component riêng cho `stock_issue`.
  */
 export function ReasonConfirmDialog({
   title,
   description,
   confirmLabel,
   confirmVariant,
-  receiptId,
-  version,
-  action,
+  onConfirm,
   onDone,
   onClose,
 }: {
@@ -23,31 +22,26 @@ export function ReasonConfirmDialog({
   description: string;
   confirmLabel: string;
   confirmVariant: 'danger' | 'primary';
-  receiptId: string;
-  version: number;
-  action: 'reject' | 'void';
+  onConfirm: (reason: string) => Promise<unknown>;
   onDone: () => void;
   onClose: () => void;
 }) {
   const [reason, setReason] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const rejectMutation = useRejectStockReceiptMutation();
-  const voidMutation = useVoidStockReceiptMutation();
-  const pending = action === 'reject' ? rejectMutation.isPending : voidMutation.isPending;
+  const [pending, setPending] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
     if (!reason.trim()) return;
+    setPending(true);
     try {
-      if (action === 'reject') {
-        await rejectMutation.mutateAsync({ id: receiptId, body: { reason, version } });
-      } else {
-        await voidMutation.mutateAsync({ id: receiptId, body: { reason, version } });
-      }
+      await onConfirm(reason);
       onDone();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Thao tác thất bại, vui lòng thử lại.');
+    } finally {
+      setPending(false);
     }
   }
 

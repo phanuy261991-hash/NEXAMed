@@ -1,5 +1,6 @@
+import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
-import { Export, Eye, Prohibit } from '@phosphor-icons/react';
+import { Check, Export, Eye, PencilSimple, Plus, Prohibit, X } from '@phosphor-icons/react';
 import type { StockIssueStatus, StockIssueSummary, StockIssueType } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
@@ -14,19 +15,26 @@ import { formatVnd } from '../../shared/format/currency';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
 import { useHasPermission } from '../auth/usePermission';
 import { useWarehousesQuery } from '../drug/warehouse.queries';
-import { useStockIssuesQuery } from './inventory.queries';
+import { useApproveStockIssueMutation, useRejectStockIssueMutation, useStockIssuesQuery } from './inventory.queries';
 import { StockIssueDetailDialog } from './StockIssueDetailDialog';
 import { StockIssueVoidDialog } from './StockIssueVoidDialog';
+import { ReasonConfirmDialog } from './ReasonConfirmDialog';
 
-const GRID_COLUMNS = '130px 150px 110px 130px 1.3fr 110px 80px 130px 1fr 130px';
-const TABLE_MIN_WIDTH_PX = 1300;
+const GRID_COLUMNS = '130px 150px 110px 130px 1.3fr 110px 80px 130px 1fr 170px';
+const TABLE_MIN_WIDTH_PX = 1320;
 const ROW_HEIGHT_PX = 56;
 const PAGE_LIMIT = 50;
 
 const STATUS_META: Record<StockIssueStatus, { label: string; tone: StatusBadgeTone }> = {
+  DRAFT: { label: 'Nháp', tone: 'neutral' },
   POSTED: { label: 'Đã xuất', tone: 'success' },
+  REJECTED: { label: 'Từ chối', tone: 'danger' },
   VOIDED: { label: 'Đã huỷ', tone: 'neutral' },
 };
+
+/** "Phiếu xuất kho mở rộng" (docs/DECISIONS.md #170) — 3 loại Nháp→Duyệt lập tay, khác `RETAIL_SALE`
+ * (1 bước, "Phát thuốc") và `TRANSFER_OUT`/`COUNT_SHORTAGE` (tự sinh, không có "Sửa"/"Duyệt" tay). */
+const MANUAL_ISSUE_TYPES: readonly StockIssueType[] = ['INTERNAL_ALLOCATION', 'RETURN_TO_SUPPLIER', 'WRITE_OFF'];
 
 /** Nhãn đầy đủ 7 giá trị enum (badge hiển thị an toàn dù loại nào xuất hiện) — chỉ 2 loại có dữ
  * liệu thật hiện nay (`RETAIL_SALE` từ GĐ3 #163, `COUNT_SHORTAGE` từ GĐ4 #170), 5 loại còn lại "để
@@ -57,7 +65,10 @@ function formatDateShort(iso: string): string {
  */
 export function StockIssueListPage() {
   useBreadcrumb([{ label: 'Quản lý kho' }, { label: 'Phiếu xuất kho' }]);
+  const navigate = useNavigate();
   const canVoid = useHasPermission('stock_issue', 'create');
+  const canCreateManual = useHasPermission('stock_issue', 'create');
+  const canApproveManual = useHasPermission('stock_issue', 'approve');
 
   const [q, setQ] = useState('');
   const debouncedQ = useDebouncedValue(q, 300);
@@ -67,6 +78,7 @@ export function StockIssueListPage() {
   const [cursorStack, setCursorStack] = useState<string[]>([]);
   const [viewingIssueId, setViewingIssueId] = useState<string | null>(null);
   const [voidTarget, setVoidTarget] = useState<StockIssueSummary | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<StockIssueSummary | null>(null);
 
   const cursor = cursorStack[cursorStack.length - 1];
   const listQuery = useStockIssuesQuery({
@@ -78,59 +90,82 @@ export function StockIssueListPage() {
     q: debouncedQ.trim() || undefined,
   });
   const warehousesQuery = useWarehousesQuery();
+  const approveMutation = useApproveStockIssueMutation();
+  const rejectMutation = useRejectStockIssueMutation();
 
   const items = listQuery.data?.items ?? [];
+
+  async function handleApprove(item: StockIssueSummary) {
+    try {
+      await approveMutation.mutateAsync({ id: item.id, body: { version: item.version } });
+    } catch (err) {
+      window.alert(err instanceof ApiError ? err.message : 'Duyệt phiếu thất bại, vui lòng thử lại.');
+    }
+  }
 
   return (
     <div className="flex h-full flex-col gap-2.5 p-3">
       <h1 className="sr-only">Phiếu xuất kho</h1>
 
-      <div className="flex flex-shrink-0 flex-wrap items-center gap-2.5 px-1">
-        <input
-          type="search"
-          value={q}
-          onChange={(e) => {
-            setQ(e.target.value);
-            setCursorStack([]);
-          }}
-          placeholder="Tìm theo số phiếu, tên, mã bệnh nhân..."
-          className="w-64 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-        />
-        <Combobox
-          id="issue-filter-type"
-          value={issueType}
-          onChange={(v) => {
-            setIssueType(v as StockIssueType | '');
-            setCursorStack([]);
-          }}
-          options={[
-            { value: '', label: 'Loại phiếu: Tất cả' },
-            { value: 'RETAIL_SALE', label: 'Phát thuốc theo đơn' },
-            { value: 'COUNT_SHORTAGE', label: 'Xuất cân bằng kiểm kê' },
-          ]}
-        />
-        <Combobox
-          id="issue-filter-warehouse"
-          value={warehouseId}
-          onChange={(v) => {
-            setWarehouseId(v);
-            setCursorStack([]);
-          }}
-          options={[{ value: '', label: 'Kho: Tất cả' }, ...(warehousesQuery.data?.items ?? []).map((w) => ({ value: w.id, label: w.name }))]}
-        />
-        <Combobox
-          id="issue-filter-status"
-          value={status}
-          onChange={(v) => {
-            setStatus(v as StockIssueStatus | '');
-            setCursorStack([]);
-          }}
-          options={[
-            { value: '', label: 'Trạng thái: Tất cả' },
-            { value: 'POSTED', label: 'Đã xuất' },
-            { value: 'VOIDED', label: 'Đã huỷ' },
-          ]}
-        />
+      <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-2.5 px-1">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <input
+            type="search"
+            value={q}
+            onChange={(e) => {
+              setQ(e.target.value);
+              setCursorStack([]);
+            }}
+            placeholder="Tìm theo số phiếu, tên, mã bệnh nhân..."
+            className="w-64 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+          />
+          <Combobox
+            id="issue-filter-type"
+            value={issueType}
+            onChange={(v) => {
+              setIssueType(v as StockIssueType | '');
+              setCursorStack([]);
+            }}
+            options={[
+              { value: '', label: 'Loại phiếu: Tất cả' },
+              { value: 'RETAIL_SALE', label: 'Phát thuốc theo đơn' },
+              { value: 'INTERNAL_ALLOCATION', label: 'Xuất dùng nội bộ' },
+              { value: 'RETURN_TO_SUPPLIER', label: 'Xuất trả nhà cung cấp' },
+              { value: 'WRITE_OFF', label: 'Xuất huỷ (hỏng/hết hạn)' },
+              { value: 'COUNT_SHORTAGE', label: 'Xuất cân bằng kiểm kê' },
+            ]}
+          />
+          <Combobox
+            id="issue-filter-warehouse"
+            value={warehouseId}
+            onChange={(v) => {
+              setWarehouseId(v);
+              setCursorStack([]);
+            }}
+            options={[{ value: '', label: 'Kho: Tất cả' }, ...(warehousesQuery.data?.items ?? []).map((w) => ({ value: w.id, label: w.name }))]}
+          />
+          <Combobox
+            id="issue-filter-status"
+            value={status}
+            onChange={(v) => {
+              setStatus(v as StockIssueStatus | '');
+              setCursorStack([]);
+            }}
+            options={[
+              { value: '', label: 'Trạng thái: Tất cả' },
+              { value: 'DRAFT', label: 'Nháp' },
+              { value: 'POSTED', label: 'Đã xuất' },
+              { value: 'REJECTED', label: 'Từ chối' },
+              { value: 'VOIDED', label: 'Đã huỷ' },
+            ]}
+          />
+        </div>
+        {canCreateManual && (
+          <Button type="button" onClick={() => navigate('/inventory/issues/manual/new')}>
+            <Plus size={16} weight="bold" aria-hidden="true" />
+            Tạo phiếu xuất
+          </Button>
+        )}
       </div>
 
       {listQuery.isError && (
@@ -193,6 +228,17 @@ export function StockIssueListPage() {
                     <div role="cell" className="min-w-0 truncate text-left font-medium text-slate-600">{item.createdByName}</div>
                     <div role="cell" className="flex items-center justify-center gap-1.5">
                       <RowActionButton icon={Eye} label="Xem" tone="neutral" onClick={() => setViewingIssueId(item.id)} />
+                      {item.status === 'DRAFT' && MANUAL_ISSUE_TYPES.includes(item.issueType) && (
+                        <>
+                          {canCreateManual && <RowActionButton icon={PencilSimple} label="Sửa" tone="primary" onClick={() => navigate(`/inventory/issues/manual/${item.id}`)} />}
+                          {canApproveManual && (
+                            <>
+                              <RowActionButton icon={X} label="Từ chối" tone="danger" onClick={() => setRejectTarget(item)} />
+                              <RowActionButton icon={Check} label="Duyệt" tone="success" disabled={approveMutation.isPending} onClick={() => void handleApprove(item)} />
+                            </>
+                          )}
+                        </>
+                      )}
                       {item.status === 'POSTED' && canVoid && <RowActionButton icon={Prohibit} label="Huỷ phiếu" tone="danger" onClick={() => setVoidTarget(item)} />}
                     </div>
                   </div>
@@ -222,6 +268,17 @@ export function StockIssueListPage() {
           version={voidTarget.version}
           onDone={() => setVoidTarget(null)}
           onClose={() => setVoidTarget(null)}
+        />
+      )}
+      {rejectTarget && (
+        <ReasonConfirmDialog
+          title="Từ chối phiếu xuất kho?"
+          description={`Phiếu ${rejectTarget.issueNo} sẽ chuyển sang trạng thái Từ chối, không đụng tồn kho.`}
+          confirmLabel="Xác nhận từ chối"
+          confirmVariant="danger"
+          onConfirm={(reason) => rejectMutation.mutateAsync({ id: rejectTarget.id, body: { reason, version: rejectTarget.version } })}
+          onDone={() => setRejectTarget(null)}
+          onClose={() => setRejectTarget(null)}
         />
       )}
     </div>

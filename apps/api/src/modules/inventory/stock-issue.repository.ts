@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { Prisma, StockIssue, StockIssueType } from '@prisma/client';
+import type { Prisma, StockIssue, StockIssueStatus, StockIssueType } from '@prisma/client';
 
 export interface StockIssueLineData {
   prescriptionItemId: string | null;
@@ -22,9 +22,23 @@ export interface CreateStockIssueData {
   /** Kho Thuốc GĐ4 (#170) — trỏ về `stock_transfer` khi phiếu này TỰ SINH từ Duyệt xuất
    * (`issueType='TRANSFER_OUT'`). `null` cho mọi phiếu xuất khác. */
   transferId: string | null;
+  /** "Phiếu xuất kho mở rộng" (#170) — Khoa/Phòng TIẾP NHẬN, CHỈ có ý nghĩa với `INTERNAL_ALLOCATION`. */
+  departmentId: string | null;
   occurredAt: Date;
   note: string | null;
   totalAmount: bigint;
+  /** Mặc định `POSTED` (không truyền = hành vi cũ, mọi call site hiện có không đổi). "Phiếu xuất kho
+   * mở rộng" (#170) truyền `DRAFT` tường minh cho 3 loại Nháp→Duyệt lập tay. */
+  status?: StockIssueStatus;
+  lines: StockIssueLineData[];
+}
+
+export interface UpdateManualStockIssueData {
+  warehouseId: string;
+  issueType: StockIssueType;
+  departmentId: string | null;
+  occurredAt: Date;
+  note: string | null;
   lines: StockIssueLineData[];
 }
 
@@ -40,6 +54,9 @@ const CONTEXT_INCLUDE = {
   // kiểm scope trực tiếp trên kết quả JOIN sẵn có, không phải gọi thêm `WarehouseRepository.findById()`.
   warehouse: { select: { name: true, departmentId: true } },
   prescription: { select: { encounter: { select: { id: true, encounterNo: true, patient: { select: { patientCode: true, fullName: true } } } } } },
+  // "Phiếu xuất kho mở rộng" (#170) — Khoa/Phòng TIẾP NHẬN của INTERNAL_ALLOCATION, resolve tên NGAY
+  // trong JOIN thay vì gọi thêm `DoctorDirectoryPort.getDepartmentNames()`.
+  department: { select: { name: true } },
 } satisfies Prisma.StockIssueInclude;
 
 export type StockIssueWithContext = Prisma.StockIssueGetPayload<{ include: typeof CONTEXT_INCLUDE }>;
@@ -48,6 +65,7 @@ export interface StockIssueListRow extends StockIssue {
   warehouse: { name: string };
   // Nullable từ Kho Thuốc GĐ4 (#170) — `COUNT_SHORTAGE` tự sinh không có `prescriptionId`.
   prescription: { encounter: { id: string; encounterNo: string; patient: { patientCode: string; fullName: string } } } | null;
+  department: { name: string } | null;
   _count: { lines: number };
 }
 
@@ -81,9 +99,11 @@ export class StockIssueRepository {
         issueType: data.issueType,
         countId: data.countId,
         transferId: data.transferId,
+        departmentId: data.departmentId,
         occurredAt: data.occurredAt,
         note: data.note,
         totalAmount: data.totalAmount,
+        status: data.status ?? 'POSTED',
         createdBy: actorId,
         updatedBy: actorId,
       },
@@ -141,6 +161,7 @@ export class StockIssueRepository {
       include: {
         warehouse: { select: { name: true } },
         prescription: { select: { encounter: { select: { id: true, encounterNo: true, patient: { select: { patientCode: true, fullName: true } } } } } },
+        department: { select: { name: true } },
         _count: { select: { lines: { where: { deletedAt: null } } } },
       },
       orderBy: { id: 'desc' },
@@ -155,6 +176,64 @@ export class StockIssueRepository {
     const result = await tx.stockIssue.updateMany({
       where: { tenantId, id, version: expectedVersion, deletedAt: null, status: 'POSTED' },
       data: { status: 'VOIDED', voidedBy: actorId, voidedAt: new Date(), voidReason: reason, deletedAt: new Date(), deletedReason: reason, updatedBy: actorId, version: { increment: 1 } },
+    });
+    return result.count;
+  }
+
+  /** "Phiếu xuất kho mở rộng" (#170) — Sửa Nháp, bulk-replace toàn bộ dòng hàng + header, đúng khuôn
+   * `StockReceiptRepository.updateDraft()`. Chỉ gọi khi Service đã xác nhận `status='DRAFT'`. */
+  async updateManualDraft(tx: Prisma.TransactionClient, tenantId: string, id: string, expectedVersion: number, actorId: string, data: UpdateManualStockIssueData): Promise<number> {
+    const result = await tx.stockIssue.updateMany({
+      where: { tenantId, id, version: expectedVersion, deletedAt: null, status: 'DRAFT' },
+      data: {
+        warehouseId: data.warehouseId,
+        issueType: data.issueType,
+        departmentId: data.departmentId,
+        occurredAt: data.occurredAt,
+        note: data.note,
+        updatedBy: actorId,
+        version: { increment: 1 },
+      },
+    });
+    if (result.count === 0) return 0;
+
+    await tx.stockIssueLine.updateMany({
+      where: { tenantId, issueId: id, deletedAt: null },
+      data: { deletedAt: new Date(), deletedReason: 'replaced', updatedBy: actorId },
+    });
+    if (data.lines.length > 0) {
+      await tx.stockIssueLine.createMany({
+        data: data.lines.map((line) => ({
+          tenantId,
+          issueId: id,
+          prescriptionItemId: line.prescriptionItemId,
+          drugId: line.drugId,
+          batchId: line.batchId,
+          quantity: line.quantity,
+          unitCost: line.unitCost,
+          sellPrice: line.sellPrice,
+          lineAmount: line.lineAmount,
+          createdBy: actorId,
+          updatedBy: actorId,
+        })),
+      });
+    }
+    return result.count;
+  }
+
+  /** Duyệt — `WHERE status='DRAFT'` chặn race duyệt trùng, cùng kỹ thuật `StockReceiptRepository.approve()`. */
+  async approveManual(tx: Prisma.TransactionClient, tenantId: string, id: string, expectedVersion: number, actorId: string): Promise<number> {
+    const result = await tx.stockIssue.updateMany({
+      where: { tenantId, id, version: expectedVersion, deletedAt: null, status: 'DRAFT' },
+      data: { status: 'POSTED', approvedBy: actorId, approvedAt: new Date(), updatedBy: actorId, version: { increment: 1 } },
+    });
+    return result.count;
+  }
+
+  async rejectManual(tx: Prisma.TransactionClient, tenantId: string, id: string, expectedVersion: number, actorId: string, reason: string): Promise<number> {
+    const result = await tx.stockIssue.updateMany({
+      where: { tenantId, id, version: expectedVersion, deletedAt: null, status: 'DRAFT' },
+      data: { status: 'REJECTED', rejectionReason: reason, updatedBy: actorId, version: { increment: 1 } },
     });
     return result.count;
   }

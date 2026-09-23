@@ -6,6 +6,7 @@ import {
   sortBatchesByFefo,
   StockIssueExceedsPrescribedQuantityError,
   StockIssueInsufficientStockError,
+  StockIssueNotDraftError,
   StockIssueOtcRequiresNonPrescriptionDrugError,
   StockIssueVoidNotAllowedError,
   stripVietnameseDiacritics,
@@ -13,6 +14,8 @@ import {
   type DoctorDirectoryPort,
 } from '@nexamed/core';
 import type {
+  ApproveStockIssueRequest,
+  CreateManualStockIssueRequest,
   CreateStockIssueRequest,
   DataScope,
   DispenseBatchOption,
@@ -22,9 +25,12 @@ import type {
   ListDispenseQueueResponse,
   ListStockIssuesQuery,
   ListStockIssuesResponse,
+  ManualStockIssueType,
   PrescriptionDispenseLine,
+  RejectStockIssueRequest,
   StockIssueDetail,
   StockIssueSummary,
+  UpdateManualStockIssueRequest,
   VoidStockIssueRequest,
 } from '@nexamed/shared';
 import type { Prisma, StockIssue } from '@prisma/client';
@@ -43,6 +49,16 @@ import { StockIssueRepository, type StockIssueLineData, type StockIssueWithConte
 import { InventoryBatchRepository } from './inventory-batch.repository';
 import { StockLedgerRepository } from './stock-ledger.repository';
 import { StockBalanceRepository } from './stock-balance.repository';
+
+/** 3 loại phiếu xuất Nháp→Duyệt lập TAY ("Phiếu xuất kho mở rộng", docs/DECISIONS.md #170) — khác
+ * `RETAIL_SALE` (1 bước) và `TRANSFER_OUT`/`COUNT_SHORTAGE` (tự sinh bởi hệ thống). */
+const SUPPORTED_MANUAL_ISSUE_TYPES: readonly ManualStockIssueType[] = ['INTERNAL_ALLOCATION', 'RETURN_TO_SUPPLIER', 'WRITE_OFF'];
+
+const MANUAL_ISSUE_TYPE_TO_LEDGER_REASON: Record<ManualStockIssueType, 'ISSUE_INTERNAL_ALLOCATION' | 'ISSUE_RETURN_TO_SUPPLIER' | 'ISSUE_WRITE_OFF'> = {
+  INTERNAL_ALLOCATION: 'ISSUE_INTERNAL_ALLOCATION',
+  RETURN_TO_SUPPLIER: 'ISSUE_RETURN_TO_SUPPLIER',
+  WRITE_OFF: 'ISSUE_WRITE_OFF',
+};
 
 interface InvoiceLineToAppend {
   sourceStockIssueLineId: string;
@@ -109,6 +125,7 @@ export class StockIssueService {
         issueType: 'RETAIL_SALE',
         countId: null,
         transferId: null,
+        departmentId: null,
         occurredAt,
         note: dto.note ?? null,
         totalAmount,
@@ -331,6 +348,240 @@ export class StockIssueService {
     return this.getById(tenantId, actorId, dataScope, id);
   }
 
+  // ============ "Phiếu xuất kho mở rộng" (docs/DECISIONS.md #170, kế hoạch kỹ thuật
+  // bright-bubbling-axolotl.md mục 4, mockup đã duyệt) — 3 loại Nháp→Duyệt lập tay: Xuất dùng nội
+  // bộ/Xuất trả nhà cung cấp/Xuất huỷ. KHÔNG gắn đơn thuốc/hoá đơn (sellPrice/lineAmount luôn 0,
+  // đúng bản chất COUNT_SHORTAGE/TRANSFER_OUT). Kiểm đủ tồn CHỈ lúc Duyệt (đọc SỐNG), không chặn lúc
+  // lập Nháp — đúng khuôn `StockTransferService.approveShip()`, KHÔNG dùng advisory lock (thao tác
+  // không tần suất cao như "Phát thuốc" tại quầy). ============
+
+  async createManual(tenantId: string, actorId: string, dataScope: DataScope, dto: CreateManualStockIssueRequest, meta: RequestMeta): Promise<StockIssueDetail> {
+    if (!SUPPORTED_MANUAL_ISSUE_TYPES.includes(dto.issueType)) {
+      throw new UnprocessableEntityException(`Loại phiếu "${dto.issueType}" chưa được hỗ trợ ở giai đoạn này.`);
+    }
+    const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
+
+    const created = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const warehouse = await this.warehouseRepository.findById(tx, tenantId, dto.warehouseId);
+      if (!warehouse) throw new NotFoundException();
+      assertWarehouseInScope(warehouse.departmentId, dataScope, actorDepartmentId);
+      if (dto.departmentId) {
+        const departments = await this.doctorDirectory.getDepartmentNames(tenantId);
+        if (!departments.has(dto.departmentId)) throw new NotFoundException();
+      }
+
+      const lines = await this.buildManualLineData(tx, tenantId, dto.warehouseId, dto.lines);
+      const occurredAt = dto.occurredAt ? new Date(dto.occurredAt) : new Date();
+      const issueNo = await this.businessCodeService.generate(tx, tenantId, actorId, 'STOCK_ISSUE', occurredAt);
+
+      const row = await this.stockIssueRepository.create(tx, tenantId, actorId, {
+        issueNo,
+        warehouseId: dto.warehouseId,
+        prescriptionId: null,
+        issueType: dto.issueType,
+        countId: null,
+        transferId: null,
+        departmentId: dto.departmentId ?? null,
+        occurredAt,
+        note: dto.note,
+        totalAmount: 0n,
+        status: 'DRAFT',
+        lines,
+      });
+
+      await writeAuditLog(tx, tenantId, {
+        actorId,
+        action: 'stock_issue.created',
+        entityType: 'stock_issue',
+        entityId: row.id,
+        afterJson: { issueNo, issueType: dto.issueType, warehouseId: dto.warehouseId, lineCount: lines.length },
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
+
+      return row;
+    });
+
+    return this.getById(tenantId, actorId, dataScope, created.id);
+  }
+
+  /** Sửa Nháp — bulk-replace toàn bộ dòng hàng + header, chỉ khi `status='DRAFT'`. Kiểm scope CẢ 2
+   * đầu (kho HIỆN TẠI của phiếu VÀ kho MỚI trong `dto`) — đúng khuôn `StockReceiptService.update()`. */
+  async updateManual(tenantId: string, actorId: string, dataScope: DataScope, id: string, dto: UpdateManualStockIssueRequest, meta: RequestMeta): Promise<StockIssueDetail> {
+    if (!SUPPORTED_MANUAL_ISSUE_TYPES.includes(dto.issueType)) {
+      throw new UnprocessableEntityException(`Loại phiếu "${dto.issueType}" chưa được hỗ trợ ở giai đoạn này.`);
+    }
+    const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
+
+    await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const existing = await this.stockIssueRepository.findById(tx, tenantId, id);
+      if (!existing) throw new NotFoundException();
+      if (existing.status !== 'DRAFT') throw new StockIssueNotDraftError();
+
+      const currentWarehouse = await this.warehouseRepository.findById(tx, tenantId, existing.warehouseId);
+      assertWarehouseInScope(currentWarehouse?.departmentId ?? null, dataScope, actorDepartmentId);
+
+      const warehouse = await this.warehouseRepository.findById(tx, tenantId, dto.warehouseId);
+      if (!warehouse) throw new NotFoundException();
+      assertWarehouseInScope(warehouse.departmentId, dataScope, actorDepartmentId);
+      if (dto.departmentId) {
+        const departments = await this.doctorDirectory.getDepartmentNames(tenantId);
+        if (!departments.has(dto.departmentId)) throw new NotFoundException();
+      }
+
+      const lines = await this.buildManualLineData(tx, tenantId, dto.warehouseId, dto.lines);
+      const occurredAt = dto.occurredAt ? new Date(dto.occurredAt) : existing.occurredAt;
+
+      const count = await this.stockIssueRepository.updateManualDraft(tx, tenantId, id, dto.version, actorId, {
+        warehouseId: dto.warehouseId,
+        issueType: dto.issueType,
+        departmentId: dto.departmentId ?? null,
+        occurredAt,
+        note: dto.note,
+        lines,
+      });
+      if (count === 0) throw new ConcurrentModificationError();
+
+      await writeAuditLog(tx, tenantId, {
+        actorId,
+        action: 'stock_issue.updated',
+        entityType: 'stock_issue',
+        entityId: id,
+        afterJson: { issueType: dto.issueType, warehouseId: dto.warehouseId, lineCount: lines.length },
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
+    });
+
+    return this.getById(tenantId, actorId, dataScope, id);
+  }
+
+  /** Duyệt — đọc lại tồn kho SỐNG cho từng dòng, chặn nếu bất kỳ dòng nào không đủ tồn, rồi trừ tồn
+   * + ghi thẻ kho (mirror `applyPostedLines()` phía `StockReceiptService` nhưng CỘNG→TRỪ). */
+  async approveManual(tenantId: string, actorId: string, dataScope: DataScope, id: string, dto: ApproveStockIssueRequest, meta: RequestMeta): Promise<StockIssueDetail> {
+    const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
+
+    await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const existing = await this.stockIssueRepository.findByIdAnyWithContext(tx, tenantId, id);
+      if (!existing) throw new NotFoundException();
+      if (existing.status !== 'DRAFT') throw new StockIssueNotDraftError();
+      assertWarehouseInScope(existing.warehouse.departmentId, dataScope, actorDepartmentId);
+
+      for (const line of existing.lines) {
+        const balance = await this.stockBalanceRepository.findByKey(tx, tenantId, line.drugId, existing.warehouseId, line.batchId);
+        if ((balance?.quantityOnHand ?? 0) < line.quantity) {
+          throw new StockIssueInsufficientStockError(line.drug.name);
+        }
+      }
+
+      const count = await this.stockIssueRepository.approveManual(tx, tenantId, id, dto.version, actorId);
+      if (count === 0) throw new ConcurrentModificationError();
+
+      for (const line of existing.lines) {
+        await this.stockLedgerRepository.create(tx, tenantId, actorId, {
+          drugId: line.drugId,
+          warehouseId: existing.warehouseId,
+          batchId: line.batchId,
+          quantityChange: -line.quantity,
+          unitCost: line.unitCost,
+          reason: MANUAL_ISSUE_TYPE_TO_LEDGER_REASON[existing.issueType as ManualStockIssueType],
+          sourceReceiptId: null,
+          sourceIssueId: id,
+          occurredAt: existing.occurredAt,
+          note: null,
+        });
+        await this.stockBalanceRepository.upsertQuantity(tx, tenantId, actorId, {
+          drugId: line.drugId,
+          warehouseId: existing.warehouseId,
+          batchId: line.batchId,
+          quantityDelta: -line.quantity,
+        });
+      }
+
+      await writeAuditLog(tx, tenantId, {
+        actorId,
+        action: 'stock_issue.approved',
+        entityType: 'stock_issue',
+        entityId: id,
+        beforeJson: { status: 'DRAFT' },
+        afterJson: { status: 'POSTED' },
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
+    });
+
+    return this.getById(tenantId, actorId, dataScope, id);
+  }
+
+  async rejectManual(tenantId: string, actorId: string, dataScope: DataScope, id: string, dto: RejectStockIssueRequest, meta: RequestMeta): Promise<StockIssueDetail> {
+    const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
+
+    await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const existing = await this.stockIssueRepository.findById(tx, tenantId, id);
+      if (!existing) throw new NotFoundException();
+      if (existing.status !== 'DRAFT') throw new StockIssueNotDraftError();
+
+      const warehouse = await this.warehouseRepository.findById(tx, tenantId, existing.warehouseId);
+      assertWarehouseInScope(warehouse?.departmentId ?? null, dataScope, actorDepartmentId);
+
+      const count = await this.stockIssueRepository.rejectManual(tx, tenantId, id, dto.version, actorId, dto.reason);
+      if (count === 0) throw new ConcurrentModificationError();
+
+      await writeAuditLog(tx, tenantId, {
+        actorId,
+        action: 'stock_issue.rejected',
+        entityType: 'stock_issue',
+        entityId: id,
+        beforeJson: { status: 'DRAFT' },
+        afterJson: { status: 'REJECTED', reason: dto.reason },
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
+    });
+
+    return this.getById(tenantId, actorId, dataScope, id);
+  }
+
+  /** Đọc/validate mọi dòng hàng lúc lập/sửa Nháp phiếu xuất mở rộng — KHÔNG kiểm đủ tồn ở đây (chỉ
+   * lúc Duyệt, đúng khuôn `StockTransferService.buildLineData()`). `unitCost` lấy từ lô/tồn kho hiện
+   * có CHỈ để hiển thị/ghi thẻ kho — không chặn nếu lô đang tạm hết hàng lúc lập Nháp. */
+  private async buildManualLineData(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    warehouseId: string,
+    lines: { drugId: string; batchId?: string | null; quantity: number }[],
+  ): Promise<StockIssueLineData[]> {
+    const drugCache = new Map<string, DrugWithDetails>();
+    const result: StockIssueLineData[] = [];
+    for (const line of lines) {
+      let drug = drugCache.get(line.drugId);
+      if (!drug) {
+        const found = await this.drugRepository.findByIdWithDetails(tx, tenantId, line.drugId);
+        if (!found) throw new NotFoundException();
+        drug = found;
+        drugCache.set(line.drugId, drug);
+      }
+
+      let unitCost: bigint;
+      let batchId: string | null = null;
+      if (drug.isBatchManaged) {
+        if (!line.batchId) {
+          throw new UnprocessableEntityException(`Thuốc/vật tư "${drug.name}" quản lý theo lô — phải chọn lô.`);
+        }
+        const batch = await this.inventoryBatchRepository.findById(tx, tenantId, line.batchId);
+        if (!batch || batch.drugId !== line.drugId) throw new NotFoundException();
+        unitCost = batch.unitCost;
+        batchId = line.batchId;
+      } else {
+        const balance = await this.stockBalanceRepository.findByKey(tx, tenantId, line.drugId, warehouseId, null);
+        unitCost = balance?.averageUnitCost ?? 0n;
+      }
+
+      result.push({ prescriptionItemId: null, drugId: line.drugId, batchId, quantity: line.quantity, unitCost, sellPrice: 0n, lineAmount: 0n });
+    }
+    return result;
+  }
+
   /**
    * Kho Thuốc GĐ4 (docs/DECISIONS.md #170) — Kiểm kê phát hiện THIẾU: `StockCountService.approve()`
    * gọi hàm này TRONG CÙNG transaction để tự sinh 1 `StockIssue` (`issueType='COUNT_SHORTAGE'`),
@@ -417,6 +668,7 @@ export class StockIssueService {
       issueType: params.issueType,
       countId: params.countId,
       transferId: params.transferId,
+      departmentId: null,
       occurredAt: params.occurredAt,
       note: params.note,
       totalAmount: 0n,
@@ -628,6 +880,8 @@ export class StockIssueService {
     encounter: { id: string; encounterNo: string; patient: { patientCode: string; fullName: string } } | null,
     lineCount: number,
     names: Map<string, string>,
+    // "Phiếu xuất kho mở rộng" (#170) — `null` cho mọi phiếu không phải INTERNAL_ALLOCATION.
+    departmentName: string | null = null,
   ): StockIssueSummary {
     return {
       id: row.id,
@@ -645,6 +899,11 @@ export class StockIssueService {
       totalAmount: Number(row.totalAmount),
       lineCount,
       createdByName: names.get(row.createdBy) ?? 'Không rõ',
+      approvedByName: row.approvedBy ? (names.get(row.approvedBy) ?? 'Không rõ') : null,
+      approvedAt: row.approvedAt?.toISOString() ?? null,
+      rejectionReason: row.rejectionReason,
+      departmentId: row.departmentId,
+      departmentName,
       voidedByName: row.voidedBy ? (names.get(row.voidedBy) ?? 'Không rõ') : null,
       voidedAt: row.voidedAt?.toISOString() ?? null,
       voidReason: row.voidReason,
@@ -654,7 +913,7 @@ export class StockIssueService {
 
   private toDetailDto(row: StockIssueWithContext, names: Map<string, string>, attachedInvoice: StockIssueDetail['attachedInvoice'] = null): StockIssueDetail {
     return {
-      ...this.toSummaryDto(row, row.warehouse.name, row.prescription?.encounter ?? null, row.lines.length, names),
+      ...this.toSummaryDto(row, row.warehouse.name, row.prescription?.encounter ?? null, row.lines.length, names, row.department?.name ?? null),
       attachedInvoice,
       lines: row.lines.map((line) => ({
         id: line.id,

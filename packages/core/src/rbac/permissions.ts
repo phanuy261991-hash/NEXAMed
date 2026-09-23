@@ -163,11 +163,19 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   { module: 'stock_receipt', action: 'create', description: 'Tạo/sửa Nháp phiếu nhập kho' },
   { module: 'stock_receipt', action: 'read', description: 'Xem phiếu nhập kho, Tồn kho, Thẻ kho' },
   { module: 'stock_receipt', action: 'approve', description: 'Duyệt/Từ chối/Huỷ phiếu nhập kho' },
+  // Kho Thuốc GĐ4, "Báo cáo Nhập-Xuất-Tồn" (docs/DECISIONS.md #170) — TÁCH riêng khỏi
+  // `stock_receipt.read`, mặc định CHỈ clinic_admin (chốt qua AskUserQuestion lúc duyệt mockup, đúng
+  // tinh thần `cash_voucher.report` của Sổ quỹ — báo cáo tổng hợp toàn phòng khám).
+  { module: 'stock_receipt', action: 'report', description: 'Xem Báo cáo Nhập-Xuất-Tồn' },
   // Kho Thuốc & Vật tư y tế — Giai đoạn 3 (Xuất kho theo đơn + FEFO + tiền thuốc, docs/DECISIONS.md
-  // #163). KHÔNG có `.approve` (luồng 1 bước, khác `stock_receipt`) — "Huỷ phiếu xuất" dùng chung
-  // `create`, đúng tinh thần "ai lập được thì tự sửa lỗi được" của `stock_receipt` phòng khám nhỏ.
-  { module: 'stock_issue', action: 'create', description: 'Phát thuốc theo đơn / Huỷ phiếu xuất kho' },
+  // #163). "Huỷ phiếu xuất" (RETAIL_SALE) dùng chung `create`, đúng tinh thần "ai lập được thì tự
+  // sửa lỗi được" của `stock_receipt` phòng khám nhỏ.
+  { module: 'stock_issue', action: 'create', description: 'Phát thuốc theo đơn / Huỷ phiếu xuất kho / Tạo-sửa Nháp phiếu xuất mở rộng' },
   { module: 'stock_issue', action: 'read', description: 'Xem phiếu xuất kho, trạng thái đã phát/còn lại của đơn thuốc' },
+  // Kho Thuốc GĐ4, "Phiếu xuất kho mở rộng" (docs/DECISIONS.md #170) — Duyệt/Từ chối cho 3 loại
+  // Nháp→Duyệt lập tay (Xuất dùng nội bộ/Xuất trả NCC/Xuất huỷ), mặc định CHỈ clinic_admin, đúng
+  // tinh thần `stock_receipt.approve`/`stock_count.approve` — quyền "Trưởng kho".
+  { module: 'stock_issue', action: 'approve', description: 'Duyệt/Từ chối phiếu xuất kho mở rộng (Xuất dùng nội bộ/Trả NCC/Xuất huỷ)' },
   // Kho Thuốc & Vật tư y tế — Giai đoạn 4 (Kiểm kê/Điều chuyển/Mở rộng Nhập-Xuất kho/Báo cáo N-X-T,
   // docs/DECISIONS.md #170). "Kiểm kê" — cùng khuôn Nháp→Duyệt/Từ chối của `stock_receipt`
   // (`approve` gác Duyệt/Từ chối, quyền "Trưởng kho" — mặc định CHỈ clinic_admin).
@@ -352,9 +360,12 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'stock_receipt.create': 'global',
     'stock_receipt.read': 'global',
     'stock_receipt.approve': 'global',
+    'stock_receipt.report': 'global',
     // Kho Thuốc GĐ3 — clinic_admin phát thuốc/huỷ phiếu xuất được như bác sĩ/điều dưỡng.
     'stock_issue.create': 'global',
     'stock_issue.read': 'global',
+    // Kho Thuốc GĐ4, "Phiếu xuất kho mở rộng" — clinic_admin Duyệt/Từ chối được (quyền "Trưởng kho").
+    'stock_issue.approve': 'global',
     // Kho Thuốc GĐ4 — clinic_admin có đủ cả 3: tạo Nháp, xem, Duyệt/Từ chối phiếu kiểm kê.
     'stock_count.create': 'global',
     'stock_count.read': 'global',

@@ -23,6 +23,9 @@ import { StockCountRepository } from './stock-count.repository';
 import { StockTransferController } from './stock-transfer.controller';
 import { StockTransferService } from './stock-transfer.service';
 import { StockTransferRepository } from './stock-transfer.repository';
+import { StockLedgerReportController } from './stock-ledger-report.controller';
+import { StockLedgerReportService } from './stock-ledger-report.service';
+import { StockLedgerReportExportService } from './stock-ledger-report-export.service';
 
 /**
  * Kho Thuốc & Vật tư y tế — Giai đoạn 2 (Nhập kho & tồn theo lô, docs/DECISIONS.md #146). Module
@@ -57,10 +60,27 @@ import { StockTransferRepository } from './stock-transfer.repository';
  * Service/Repository` — cùng chỗ, cùng cách gọi `StockReceiptService.createTransferInReceipt()`/
  * `StockIssueService.createTransferOutIssue()` (method mới, đối xứng `createCountSurplusReceipt()`/
  * `createCountShortageIssue()` ở trên) — không cần khai thêm gì ở `imports`.
+ *
+ * Giai đoạn 4, 3 phần cuối (docs/DECISIONS.md #170, kế hoạch bright-bubbling-axolotl.md mục 3+4+5,
+ * mockup NVC5A4uZsmX9kFsAk5Td88 đã duyệt): "Phiếu xuất kho mở rộng" (`StockIssueService.createManual/
+ * updateManual/approveManual/rejectManual()`, method mới CÙNG service/controller có sẵn — không
+ * tách class riêng) + "Phiếu nhập kho mở rộng" (Chiết khấu + `RETURN_FROM_USE`, mở rộng
+ * `StockReceiptService` có sẵn) + "Báo cáo Nhập-Xuất-Tồn" (`StockLedgerReportController/Service` +
+ * `StockLedgerReportExportService` MỚI — tách khỏi `StockLedgerService`/`StockLedgerController`
+ * hiện có vì khác bản chất: 1 bên là "Thẻ kho" theo TỪNG mặt hàng, 1 bên là báo cáo tổng hợp toàn
+ * phòng khám theo khoảng ngày, đúng tiền lệ tách `CashBookReportModule` khỏi `CashBookModule`).
  */
 @Module({
   imports: [IamModule, ClinicModule, forwardRef(() => DrugModule), BillingModule, EncounterModule],
-  controllers: [StockReceiptController, StockLedgerController, StockBalanceController, StockIssueController, StockCountController, StockTransferController],
+  controllers: [
+    StockReceiptController,
+    StockLedgerController,
+    StockBalanceController,
+    StockIssueController,
+    StockCountController,
+    StockTransferController,
+    StockLedgerReportController,
+  ],
   providers: [
     StockReceiptService,
     StockReceiptRepository,
@@ -75,6 +95,8 @@ import { StockTransferRepository } from './stock-transfer.repository';
     StockCountRepository,
     StockTransferService,
     StockTransferRepository,
+    StockLedgerReportService,
+    StockLedgerReportExportService,
   ],
   exports: [StockBalanceRepository],
 })

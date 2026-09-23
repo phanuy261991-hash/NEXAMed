@@ -343,6 +343,9 @@ export class StockTransferService {
             batchNo: line.batchId ? (line.batch?.batchNo ?? null) : null,
             expiryDate: line.batchId ? (line.batch?.expiryDate ?? null) : null,
             lineAmount: unitCost * BigInt(input.quantityReceived),
+            // Phiếu tự sinh — không có khái niệm chiết khấu (Kho Thuốc GĐ4, "Phiếu nhập kho mở rộng", #170).
+            discountType: null,
+            discountValue: null,
           });
         }
       }

@@ -49066,6 +49066,28 @@
                               "totalAmount": {
                                 "type": "integer"
                               },
+                              "discountType": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "PERCENT",
+                                  "AMOUNT"
+                                ]
+                              },
+                              "discountValue": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "discountReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
                               "lineCount": {
                                 "type": "integer"
                               },
@@ -49110,6 +49132,9 @@
                               "note",
                               "supplierInvoiceNo",
                               "totalAmount",
+                              "discountType",
+                              "discountValue",
+                              "discountReason",
                               "lineCount",
                               "createdByName",
                               "approvedByName",
@@ -49258,6 +49283,29 @@
                       "null"
                     ]
                   },
+                  "discountType": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "enum": [
+                      "PERCENT",
+                      "AMOUNT"
+                    ]
+                  },
+                  "discountValue": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "exclusiveMinimum": 0
+                  },
+                  "discountReason": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
                   "lines": {
                     "type": "array",
                     "items": {
@@ -49292,6 +49340,23 @@
                             "null"
                           ],
                           "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        },
+                        "discountType": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "PERCENT",
+                            "AMOUNT"
+                          ]
+                        },
+                        "discountValue": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ],
+                          "exclusiveMinimum": 0
                         }
                       },
                       "required": [
@@ -49387,6 +49452,28 @@
                         "totalAmount": {
                           "type": "integer"
                         },
+                        "discountType": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "PERCENT",
+                            "AMOUNT"
+                          ]
+                        },
+                        "discountValue": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "discountReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "lineCount": {
                           "type": "integer"
                         },
@@ -49415,6 +49502,20 @@
                           "type": "boolean"
                         },
                         "version": {
+                          "type": "integer"
+                        },
+                        "discountMode": {
+                          "type": "string",
+                          "enum": [
+                            "NONE",
+                            "TOTAL",
+                            "PER_LINE"
+                          ]
+                        },
+                        "discountAmount": {
+                          "type": "integer"
+                        },
+                        "netAmount": {
                           "type": "integer"
                         },
                         "lines": {
@@ -49459,6 +49560,25 @@
                               },
                               "lineAmount": {
                                 "type": "integer"
+                              },
+                              "discountType": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "PERCENT",
+                                  "AMOUNT"
+                                ]
+                              },
+                              "discountValue": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "discountAmount": {
+                                "type": "integer"
                               }
                             },
                             "required": [
@@ -49471,7 +49591,10 @@
                               "unitCost",
                               "batchNo",
                               "expiryDate",
-                              "lineAmount"
+                              "lineAmount",
+                              "discountType",
+                              "discountValue",
+                              "discountAmount"
                             ]
                           }
                         }
@@ -49489,6 +49612,9 @@
                         "note",
                         "supplierInvoiceNo",
                         "totalAmount",
+                        "discountType",
+                        "discountValue",
+                        "discountReason",
                         "lineCount",
                         "createdByName",
                         "approvedByName",
@@ -49496,6 +49622,9 @@
                         "rejectionReason",
                         "voided",
                         "version",
+                        "discountMode",
+                        "discountAmount",
+                        "netAmount",
                         "lines"
                       ]
                     },
@@ -49735,6 +49864,28 @@
                         "totalAmount": {
                           "type": "integer"
                         },
+                        "discountType": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "PERCENT",
+                            "AMOUNT"
+                          ]
+                        },
+                        "discountValue": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "discountReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "lineCount": {
                           "type": "integer"
                         },
@@ -49763,6 +49914,20 @@
                           "type": "boolean"
                         },
                         "version": {
+                          "type": "integer"
+                        },
+                        "discountMode": {
+                          "type": "string",
+                          "enum": [
+                            "NONE",
+                            "TOTAL",
+                            "PER_LINE"
+                          ]
+                        },
+                        "discountAmount": {
+                          "type": "integer"
+                        },
+                        "netAmount": {
                           "type": "integer"
                         },
                         "lines": {
@@ -49807,6 +49972,25 @@
                               },
                               "lineAmount": {
                                 "type": "integer"
+                              },
+                              "discountType": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "PERCENT",
+                                  "AMOUNT"
+                                ]
+                              },
+                              "discountValue": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "discountAmount": {
+                                "type": "integer"
                               }
                             },
                             "required": [
@@ -49819,7 +50003,10 @@
                               "unitCost",
                               "batchNo",
                               "expiryDate",
-                              "lineAmount"
+                              "lineAmount",
+                              "discountType",
+                              "discountValue",
+                              "discountAmount"
                             ]
                           }
                         }
@@ -49837,6 +50024,9 @@
                         "note",
                         "supplierInvoiceNo",
                         "totalAmount",
+                        "discountType",
+                        "discountValue",
+                        "discountReason",
                         "lineCount",
                         "createdByName",
                         "approvedByName",
@@ -49844,6 +50034,9 @@
                         "rejectionReason",
                         "voided",
                         "version",
+                        "discountMode",
+                        "discountAmount",
+                        "netAmount",
                         "lines"
                       ]
                     },
@@ -50015,6 +50208,29 @@
                       "null"
                     ]
                   },
+                  "discountType": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "enum": [
+                      "PERCENT",
+                      "AMOUNT"
+                    ]
+                  },
+                  "discountValue": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "exclusiveMinimum": 0
+                  },
+                  "discountReason": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
                   "lines": {
                     "type": "array",
                     "items": {
@@ -50049,6 +50265,23 @@
                             "null"
                           ],
                           "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        },
+                        "discountType": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "PERCENT",
+                            "AMOUNT"
+                          ]
+                        },
+                        "discountValue": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ],
+                          "exclusiveMinimum": 0
                         }
                       },
                       "required": [
@@ -50148,6 +50381,28 @@
                         "totalAmount": {
                           "type": "integer"
                         },
+                        "discountType": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "PERCENT",
+                            "AMOUNT"
+                          ]
+                        },
+                        "discountValue": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "discountReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "lineCount": {
                           "type": "integer"
                         },
@@ -50176,6 +50431,20 @@
                           "type": "boolean"
                         },
                         "version": {
+                          "type": "integer"
+                        },
+                        "discountMode": {
+                          "type": "string",
+                          "enum": [
+                            "NONE",
+                            "TOTAL",
+                            "PER_LINE"
+                          ]
+                        },
+                        "discountAmount": {
+                          "type": "integer"
+                        },
+                        "netAmount": {
                           "type": "integer"
                         },
                         "lines": {
@@ -50220,6 +50489,25 @@
                               },
                               "lineAmount": {
                                 "type": "integer"
+                              },
+                              "discountType": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "PERCENT",
+                                  "AMOUNT"
+                                ]
+                              },
+                              "discountValue": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "discountAmount": {
+                                "type": "integer"
                               }
                             },
                             "required": [
@@ -50232,7 +50520,10 @@
                               "unitCost",
                               "batchNo",
                               "expiryDate",
-                              "lineAmount"
+                              "lineAmount",
+                              "discountType",
+                              "discountValue",
+                              "discountAmount"
                             ]
                           }
                         }
@@ -50250,6 +50541,9 @@
                         "note",
                         "supplierInvoiceNo",
                         "totalAmount",
+                        "discountType",
+                        "discountValue",
+                        "discountReason",
                         "lineCount",
                         "createdByName",
                         "approvedByName",
@@ -50257,6 +50551,9 @@
                         "rejectionReason",
                         "voided",
                         "version",
+                        "discountMode",
+                        "discountAmount",
+                        "netAmount",
                         "lines"
                       ]
                     },
@@ -50513,6 +50810,28 @@
                         "totalAmount": {
                           "type": "integer"
                         },
+                        "discountType": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "PERCENT",
+                            "AMOUNT"
+                          ]
+                        },
+                        "discountValue": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "discountReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "lineCount": {
                           "type": "integer"
                         },
@@ -50541,6 +50860,20 @@
                           "type": "boolean"
                         },
                         "version": {
+                          "type": "integer"
+                        },
+                        "discountMode": {
+                          "type": "string",
+                          "enum": [
+                            "NONE",
+                            "TOTAL",
+                            "PER_LINE"
+                          ]
+                        },
+                        "discountAmount": {
+                          "type": "integer"
+                        },
+                        "netAmount": {
                           "type": "integer"
                         },
                         "lines": {
@@ -50585,6 +50918,25 @@
                               },
                               "lineAmount": {
                                 "type": "integer"
+                              },
+                              "discountType": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "PERCENT",
+                                  "AMOUNT"
+                                ]
+                              },
+                              "discountValue": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "discountAmount": {
+                                "type": "integer"
                               }
                             },
                             "required": [
@@ -50597,7 +50949,10 @@
                               "unitCost",
                               "batchNo",
                               "expiryDate",
-                              "lineAmount"
+                              "lineAmount",
+                              "discountType",
+                              "discountValue",
+                              "discountAmount"
                             ]
                           }
                         }
@@ -50615,6 +50970,9 @@
                         "note",
                         "supplierInvoiceNo",
                         "totalAmount",
+                        "discountType",
+                        "discountValue",
+                        "discountReason",
                         "lineCount",
                         "createdByName",
                         "approvedByName",
@@ -50622,6 +50980,9 @@
                         "rejectionReason",
                         "voided",
                         "version",
+                        "discountMode",
+                        "discountAmount",
+                        "netAmount",
                         "lines"
                       ]
                     },
@@ -50883,6 +51244,28 @@
                         "totalAmount": {
                           "type": "integer"
                         },
+                        "discountType": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "PERCENT",
+                            "AMOUNT"
+                          ]
+                        },
+                        "discountValue": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "discountReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "lineCount": {
                           "type": "integer"
                         },
@@ -50911,6 +51294,20 @@
                           "type": "boolean"
                         },
                         "version": {
+                          "type": "integer"
+                        },
+                        "discountMode": {
+                          "type": "string",
+                          "enum": [
+                            "NONE",
+                            "TOTAL",
+                            "PER_LINE"
+                          ]
+                        },
+                        "discountAmount": {
+                          "type": "integer"
+                        },
+                        "netAmount": {
                           "type": "integer"
                         },
                         "lines": {
@@ -50955,6 +51352,25 @@
                               },
                               "lineAmount": {
                                 "type": "integer"
+                              },
+                              "discountType": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "PERCENT",
+                                  "AMOUNT"
+                                ]
+                              },
+                              "discountValue": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "discountAmount": {
+                                "type": "integer"
                               }
                             },
                             "required": [
@@ -50967,7 +51383,10 @@
                               "unitCost",
                               "batchNo",
                               "expiryDate",
-                              "lineAmount"
+                              "lineAmount",
+                              "discountType",
+                              "discountValue",
+                              "discountAmount"
                             ]
                           }
                         }
@@ -50985,6 +51404,9 @@
                         "note",
                         "supplierInvoiceNo",
                         "totalAmount",
+                        "discountType",
+                        "discountValue",
+                        "discountReason",
                         "lineCount",
                         "createdByName",
                         "approvedByName",
@@ -50992,6 +51414,9 @@
                         "rejectionReason",
                         "voided",
                         "version",
+                        "discountMode",
+                        "discountAmount",
+                        "netAmount",
                         "lines"
                       ]
                     },
@@ -51253,6 +51678,28 @@
                         "totalAmount": {
                           "type": "integer"
                         },
+                        "discountType": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "PERCENT",
+                            "AMOUNT"
+                          ]
+                        },
+                        "discountValue": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "discountReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "lineCount": {
                           "type": "integer"
                         },
@@ -51281,6 +51728,20 @@
                           "type": "boolean"
                         },
                         "version": {
+                          "type": "integer"
+                        },
+                        "discountMode": {
+                          "type": "string",
+                          "enum": [
+                            "NONE",
+                            "TOTAL",
+                            "PER_LINE"
+                          ]
+                        },
+                        "discountAmount": {
+                          "type": "integer"
+                        },
+                        "netAmount": {
                           "type": "integer"
                         },
                         "lines": {
@@ -51325,6 +51786,25 @@
                               },
                               "lineAmount": {
                                 "type": "integer"
+                              },
+                              "discountType": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "PERCENT",
+                                  "AMOUNT"
+                                ]
+                              },
+                              "discountValue": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "discountAmount": {
+                                "type": "integer"
                               }
                             },
                             "required": [
@@ -51337,7 +51817,10 @@
                               "unitCost",
                               "batchNo",
                               "expiryDate",
-                              "lineAmount"
+                              "lineAmount",
+                              "discountType",
+                              "discountValue",
+                              "discountAmount"
                             ]
                           }
                         }
@@ -51355,6 +51838,9 @@
                         "note",
                         "supplierInvoiceNo",
                         "totalAmount",
+                        "discountType",
+                        "discountValue",
+                        "discountReason",
                         "lineCount",
                         "createdByName",
                         "approvedByName",
@@ -51362,6 +51848,9 @@
                         "rejectionReason",
                         "voided",
                         "version",
+                        "discountMode",
+                        "discountAmount",
+                        "netAmount",
                         "lines"
                       ]
                     },
@@ -52371,7 +52860,9 @@
             "schema": {
               "type": "string",
               "enum": [
+                "DRAFT",
                 "POSTED",
+                "REJECTED",
                 "VOIDED"
               ]
             },
@@ -52463,7 +52954,9 @@
                               "status": {
                                 "type": "string",
                                 "enum": [
+                                  "DRAFT",
                                   "POSTED",
+                                  "REJECTED",
                                   "VOIDED"
                                 ]
                               },
@@ -52518,6 +53011,37 @@
                               "createdByName": {
                                 "type": "string"
                               },
+                              "approvedByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "approvedAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "rejectionReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "departmentId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "departmentName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
                               "voidedByName": {
                                 "type": [
                                   "string",
@@ -52556,6 +53080,11 @@
                               "totalAmount",
                               "lineCount",
                               "createdByName",
+                              "approvedByName",
+                              "approvedAt",
+                              "rejectionReason",
+                              "departmentId",
+                              "departmentName",
                               "voidedByName",
                               "voidedAt",
                               "voidReason",
@@ -52763,7 +53292,9 @@
                         "status": {
                           "type": "string",
                           "enum": [
+                            "DRAFT",
                             "POSTED",
+                            "REJECTED",
                             "VOIDED"
                           ]
                         },
@@ -52817,6 +53348,37 @@
                         },
                         "createdByName": {
                           "type": "string"
+                        },
+                        "approvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "departmentId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "departmentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "voidedByName": {
                           "type": [
@@ -52950,6 +53512,11 @@
                         "totalAmount",
                         "lineCount",
                         "createdByName",
+                        "approvedByName",
+                        "approvedAt",
+                        "rejectionReason",
+                        "departmentId",
+                        "departmentName",
                         "voidedByName",
                         "voidedAt",
                         "voidReason",
@@ -53153,7 +53720,9 @@
                         "status": {
                           "type": "string",
                           "enum": [
+                            "DRAFT",
                             "POSTED",
+                            "REJECTED",
                             "VOIDED"
                           ]
                         },
@@ -53207,6 +53776,37 @@
                         },
                         "createdByName": {
                           "type": "string"
+                        },
+                        "approvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "departmentId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "departmentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "voidedByName": {
                           "type": [
@@ -53340,6 +53940,11 @@
                         "totalAmount",
                         "lineCount",
                         "createdByName",
+                        "approvedByName",
+                        "approvedAt",
+                        "rejectionReason",
+                        "departmentId",
+                        "departmentName",
                         "voidedByName",
                         "voidedAt",
                         "voidReason",
@@ -53534,7 +54139,9 @@
                         "status": {
                           "type": "string",
                           "enum": [
+                            "DRAFT",
                             "POSTED",
+                            "REJECTED",
                             "VOIDED"
                           ]
                         },
@@ -53588,6 +54195,37 @@
                         },
                         "createdByName": {
                           "type": "string"
+                        },
+                        "approvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "departmentId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "departmentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "voidedByName": {
                           "type": [
@@ -53721,6 +54359,11 @@
                         "totalAmount",
                         "lineCount",
                         "createdByName",
+                        "approvedByName",
+                        "approvedAt",
+                        "rejectionReason",
+                        "departmentId",
+                        "departmentName",
                         "voidedByName",
                         "voidedAt",
                         "voidReason",
@@ -53837,6 +54480,1917 @@
           },
           "409": {
             "description": "version không khớp, phiếu không còn hiệu lực, hoặc hoá đơn liên quan đã thu tiền (STOCK_ISSUE_VOID_NOT_ALLOWED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/issues/manual": {
+      "post": {
+        "tags": [
+          "inventory"
+        ],
+        "summary": "Tạo phiếu xuất kho mở rộng ở trạng thái Nháp (Xuất dùng nội bộ/Trả NCC/Xuất huỷ) — chưa đụng tồn kho",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "issueType": {
+                    "type": "string",
+                    "enum": [
+                      "INTERNAL_ALLOCATION",
+                      "RETURN_TO_SUPPLIER",
+                      "WRITE_OFF"
+                    ]
+                  },
+                  "warehouseId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "departmentId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "occurredAt": {
+                    "type": "string"
+                  },
+                  "note": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "drugId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "batchId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "quantity": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0
+                        }
+                      },
+                      "required": [
+                        "drugId",
+                        "quantity"
+                      ]
+                    },
+                    "minItems": 1
+                  }
+                },
+                "required": [
+                  "issueType",
+                  "warehouseId",
+                  "note",
+                  "lines"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "issueNo": {
+                          "type": "string"
+                        },
+                        "issueType": {
+                          "type": "string",
+                          "enum": [
+                            "RETAIL_SALE",
+                            "INTERNAL_ALLOCATION",
+                            "SERVICE_CONSUMPTION",
+                            "TRANSFER_OUT",
+                            "RETURN_TO_SUPPLIER",
+                            "WRITE_OFF",
+                            "COUNT_SHORTAGE"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "DRAFT",
+                            "POSTED",
+                            "REJECTED",
+                            "VOIDED"
+                          ]
+                        },
+                        "warehouseId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "warehouseName": {
+                          "type": "string"
+                        },
+                        "prescriptionId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "encounterId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "patientCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "patientFullName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "occurredAt": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "totalAmount": {
+                          "type": "integer"
+                        },
+                        "lineCount": {
+                          "type": "integer"
+                        },
+                        "createdByName": {
+                          "type": "string"
+                        },
+                        "approvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "departmentId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "departmentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "voidedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "voidedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "voidReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        },
+                        "lines": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "prescriptionItemId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "drugId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "drugCode": {
+                                "type": "string"
+                              },
+                              "drugName": {
+                                "type": "string"
+                              },
+                              "batchId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "batchNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "unitCost": {
+                                "type": "integer"
+                              },
+                              "sellPrice": {
+                                "type": "integer"
+                              },
+                              "lineAmount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "prescriptionItemId",
+                              "drugId",
+                              "drugCode",
+                              "drugName",
+                              "batchId",
+                              "batchNo",
+                              "quantity",
+                              "unitCost",
+                              "sellPrice",
+                              "lineAmount"
+                            ]
+                          }
+                        },
+                        "attachedInvoice": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "invoiceId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "invoiceNo": {
+                              "type": "string"
+                            },
+                            "invoiceType": {
+                              "type": "string",
+                              "enum": [
+                                "SERVICE",
+                                "DRUG"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "invoiceId",
+                            "invoiceNo",
+                            "invoiceType"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "issueNo",
+                        "issueType",
+                        "status",
+                        "warehouseId",
+                        "warehouseName",
+                        "prescriptionId",
+                        "encounterId",
+                        "patientCode",
+                        "patientFullName",
+                        "occurredAt",
+                        "note",
+                        "totalAmount",
+                        "lineCount",
+                        "createdByName",
+                        "approvedByName",
+                        "approvedAt",
+                        "rejectionReason",
+                        "departmentId",
+                        "departmentName",
+                        "voidedByName",
+                        "voidedAt",
+                        "voidReason",
+                        "version",
+                        "lines",
+                        "attachedInvoice"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền stock_issue.create",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Kho/Khoa-Phòng/Thuốc/Lô tham chiếu không tồn tại",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Thiếu lô cho thuốc quản lý theo lô, hoặc loại phiếu chưa hỗ trợ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/issues/manual/{id}": {
+      "patch": {
+        "tags": [
+          "inventory"
+        ],
+        "summary": "Sửa phiếu xuất kho mở rộng Nháp — thay toàn bộ dòng hàng + header",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "issueType": {
+                    "type": "string",
+                    "enum": [
+                      "INTERNAL_ALLOCATION",
+                      "RETURN_TO_SUPPLIER",
+                      "WRITE_OFF"
+                    ]
+                  },
+                  "warehouseId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "departmentId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "occurredAt": {
+                    "type": "string"
+                  },
+                  "note": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "drugId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "batchId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "quantity": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0
+                        }
+                      },
+                      "required": [
+                        "drugId",
+                        "quantity"
+                      ]
+                    },
+                    "minItems": 1
+                  },
+                  "version": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "issueType",
+                  "warehouseId",
+                  "note",
+                  "lines",
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "issueNo": {
+                          "type": "string"
+                        },
+                        "issueType": {
+                          "type": "string",
+                          "enum": [
+                            "RETAIL_SALE",
+                            "INTERNAL_ALLOCATION",
+                            "SERVICE_CONSUMPTION",
+                            "TRANSFER_OUT",
+                            "RETURN_TO_SUPPLIER",
+                            "WRITE_OFF",
+                            "COUNT_SHORTAGE"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "DRAFT",
+                            "POSTED",
+                            "REJECTED",
+                            "VOIDED"
+                          ]
+                        },
+                        "warehouseId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "warehouseName": {
+                          "type": "string"
+                        },
+                        "prescriptionId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "encounterId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "patientCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "patientFullName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "occurredAt": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "totalAmount": {
+                          "type": "integer"
+                        },
+                        "lineCount": {
+                          "type": "integer"
+                        },
+                        "createdByName": {
+                          "type": "string"
+                        },
+                        "approvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "departmentId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "departmentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "voidedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "voidedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "voidReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        },
+                        "lines": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "prescriptionItemId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "drugId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "drugCode": {
+                                "type": "string"
+                              },
+                              "drugName": {
+                                "type": "string"
+                              },
+                              "batchId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "batchNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "unitCost": {
+                                "type": "integer"
+                              },
+                              "sellPrice": {
+                                "type": "integer"
+                              },
+                              "lineAmount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "prescriptionItemId",
+                              "drugId",
+                              "drugCode",
+                              "drugName",
+                              "batchId",
+                              "batchNo",
+                              "quantity",
+                              "unitCost",
+                              "sellPrice",
+                              "lineAmount"
+                            ]
+                          }
+                        },
+                        "attachedInvoice": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "invoiceId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "invoiceNo": {
+                              "type": "string"
+                            },
+                            "invoiceType": {
+                              "type": "string",
+                              "enum": [
+                                "SERVICE",
+                                "DRUG"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "invoiceId",
+                            "invoiceNo",
+                            "invoiceType"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "issueNo",
+                        "issueType",
+                        "status",
+                        "warehouseId",
+                        "warehouseName",
+                        "prescriptionId",
+                        "encounterId",
+                        "patientCode",
+                        "patientFullName",
+                        "occurredAt",
+                        "note",
+                        "totalAmount",
+                        "lineCount",
+                        "createdByName",
+                        "approvedByName",
+                        "approvedAt",
+                        "rejectionReason",
+                        "departmentId",
+                        "departmentName",
+                        "voidedByName",
+                        "voidedAt",
+                        "voidReason",
+                        "version",
+                        "lines",
+                        "attachedInvoice"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền stock_issue.create",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy, hoặc Kho/Khoa-Phòng/Thuốc/Lô tham chiếu không tồn tại",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp, hoặc phiếu không còn ở trạng thái Nháp (STOCK_ISSUE_NOT_DRAFT)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/issues/manual/{id}/approve": {
+      "post": {
+        "tags": [
+          "inventory"
+        ],
+        "summary": "Duyệt phiếu xuất kho mở rộng — đọc tồn kho SỐNG, chặn nếu thiếu, rồi trừ thật vào Thẻ kho/Tồn kho",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "issueNo": {
+                          "type": "string"
+                        },
+                        "issueType": {
+                          "type": "string",
+                          "enum": [
+                            "RETAIL_SALE",
+                            "INTERNAL_ALLOCATION",
+                            "SERVICE_CONSUMPTION",
+                            "TRANSFER_OUT",
+                            "RETURN_TO_SUPPLIER",
+                            "WRITE_OFF",
+                            "COUNT_SHORTAGE"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "DRAFT",
+                            "POSTED",
+                            "REJECTED",
+                            "VOIDED"
+                          ]
+                        },
+                        "warehouseId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "warehouseName": {
+                          "type": "string"
+                        },
+                        "prescriptionId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "encounterId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "patientCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "patientFullName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "occurredAt": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "totalAmount": {
+                          "type": "integer"
+                        },
+                        "lineCount": {
+                          "type": "integer"
+                        },
+                        "createdByName": {
+                          "type": "string"
+                        },
+                        "approvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "departmentId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "departmentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "voidedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "voidedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "voidReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        },
+                        "lines": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "prescriptionItemId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "drugId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "drugCode": {
+                                "type": "string"
+                              },
+                              "drugName": {
+                                "type": "string"
+                              },
+                              "batchId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "batchNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "unitCost": {
+                                "type": "integer"
+                              },
+                              "sellPrice": {
+                                "type": "integer"
+                              },
+                              "lineAmount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "prescriptionItemId",
+                              "drugId",
+                              "drugCode",
+                              "drugName",
+                              "batchId",
+                              "batchNo",
+                              "quantity",
+                              "unitCost",
+                              "sellPrice",
+                              "lineAmount"
+                            ]
+                          }
+                        },
+                        "attachedInvoice": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "invoiceId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "invoiceNo": {
+                              "type": "string"
+                            },
+                            "invoiceType": {
+                              "type": "string",
+                              "enum": [
+                                "SERVICE",
+                                "DRUG"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "invoiceId",
+                            "invoiceNo",
+                            "invoiceType"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "issueNo",
+                        "issueType",
+                        "status",
+                        "warehouseId",
+                        "warehouseName",
+                        "prescriptionId",
+                        "encounterId",
+                        "patientCode",
+                        "patientFullName",
+                        "occurredAt",
+                        "note",
+                        "totalAmount",
+                        "lineCount",
+                        "createdByName",
+                        "approvedByName",
+                        "approvedAt",
+                        "rejectionReason",
+                        "departmentId",
+                        "departmentName",
+                        "voidedByName",
+                        "voidedAt",
+                        "voidReason",
+                        "version",
+                        "lines",
+                        "attachedInvoice"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền stock_issue.approve",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp, hoặc phiếu không còn ở trạng thái Nháp (STOCK_ISSUE_NOT_DRAFT)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Không đủ tồn kho (STOCK_ISSUE_INSUFFICIENT_STOCK)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/issues/manual/{id}/reject": {
+      "post": {
+        "tags": [
+          "inventory"
+        ],
+        "summary": "Từ chối phiếu xuất kho mở rộng Nháp — lý do bắt buộc, không đụng tồn kho",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "version": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "reason",
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "issueNo": {
+                          "type": "string"
+                        },
+                        "issueType": {
+                          "type": "string",
+                          "enum": [
+                            "RETAIL_SALE",
+                            "INTERNAL_ALLOCATION",
+                            "SERVICE_CONSUMPTION",
+                            "TRANSFER_OUT",
+                            "RETURN_TO_SUPPLIER",
+                            "WRITE_OFF",
+                            "COUNT_SHORTAGE"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "DRAFT",
+                            "POSTED",
+                            "REJECTED",
+                            "VOIDED"
+                          ]
+                        },
+                        "warehouseId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "warehouseName": {
+                          "type": "string"
+                        },
+                        "prescriptionId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "encounterId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "patientCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "patientFullName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "occurredAt": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "totalAmount": {
+                          "type": "integer"
+                        },
+                        "lineCount": {
+                          "type": "integer"
+                        },
+                        "createdByName": {
+                          "type": "string"
+                        },
+                        "approvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "departmentId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "departmentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "voidedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "voidedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "voidReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        },
+                        "lines": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "prescriptionItemId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "drugId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "drugCode": {
+                                "type": "string"
+                              },
+                              "drugName": {
+                                "type": "string"
+                              },
+                              "batchId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "batchNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "unitCost": {
+                                "type": "integer"
+                              },
+                              "sellPrice": {
+                                "type": "integer"
+                              },
+                              "lineAmount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "prescriptionItemId",
+                              "drugId",
+                              "drugCode",
+                              "drugName",
+                              "batchId",
+                              "batchNo",
+                              "quantity",
+                              "unitCost",
+                              "sellPrice",
+                              "lineAmount"
+                            ]
+                          }
+                        },
+                        "attachedInvoice": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "invoiceId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "invoiceNo": {
+                              "type": "string"
+                            },
+                            "invoiceType": {
+                              "type": "string",
+                              "enum": [
+                                "SERVICE",
+                                "DRUG"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "invoiceId",
+                            "invoiceNo",
+                            "invoiceType"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "issueNo",
+                        "issueType",
+                        "status",
+                        "warehouseId",
+                        "warehouseName",
+                        "prescriptionId",
+                        "encounterId",
+                        "patientCode",
+                        "patientFullName",
+                        "occurredAt",
+                        "note",
+                        "totalAmount",
+                        "lineCount",
+                        "createdByName",
+                        "approvedByName",
+                        "approvedAt",
+                        "rejectionReason",
+                        "departmentId",
+                        "departmentName",
+                        "voidedByName",
+                        "voidedAt",
+                        "voidReason",
+                        "version",
+                        "lines",
+                        "attachedInvoice"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền stock_issue.approve",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp, hoặc phiếu không còn ở trạng thái Nháp (STOCK_ISSUE_NOT_DRAFT)",
             "content": {
               "application/json": {
                 "schema": {
@@ -59010,6 +61564,220 @@
           },
           "422": {
             "description": "Nhận vượt số đã xuất, hoặc nhận thiếu số lượng nhưng chưa nhập ghi chú chênh lệch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/reports/stock-ledger": {
+      "get": {
+        "tags": [
+          "inventory"
+        ],
+        "summary": "Báo cáo Nhập-Xuất-Tồn — Đầu kỳ/Nhập/Xuất/Cuối kỳ theo mặt hàng trong khoảng ngày",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "to",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "warehouseId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "drugId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "drugId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "drugCode": {
+                                "type": "string"
+                              },
+                              "drugName": {
+                                "type": "string"
+                              },
+                              "unitCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "warehouseId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "warehouseName": {
+                                "type": "string"
+                              },
+                              "openingQuantity": {
+                                "type": "integer"
+                              },
+                              "totalIn": {
+                                "type": "integer"
+                              },
+                              "totalOut": {
+                                "type": "integer"
+                              },
+                              "closingQuantity": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "drugId",
+                              "drugCode",
+                              "drugName",
+                              "unitCode",
+                              "warehouseId",
+                              "warehouseName",
+                              "openingQuantity",
+                              "totalIn",
+                              "totalOut",
+                              "closingQuantity"
+                            ]
+                          }
+                        },
+                        "totalOpeningQuantity": {
+                          "type": "integer"
+                        },
+                        "totalIn": {
+                          "type": "integer"
+                        },
+                        "totalOut": {
+                          "type": "integer"
+                        },
+                        "totalClosingQuantity": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "totalOpeningQuantity",
+                        "totalIn",
+                        "totalOut",
+                        "totalClosingQuantity"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền stock_receipt.report",
             "content": {
               "application/json": {
                 "schema": {

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { invoiceTypeSchema } from './billing';
+import { invoiceTypeSchema, discountTypeSchema } from './billing';
 
 /**
  * Kho Thuốc & Vật tư y tế — Giai đoạn 2 (Nhập kho & tồn theo lô, docs/DECISIONS.md #146, kế hoạch
@@ -30,6 +30,11 @@ export const stockReceiptLineInputSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .nullable()
     .optional(),
+  /** Chiết khấu "Từng dòng" (Kho Thuốc GĐ4, "Phiếu nhập kho mở rộng", docs/DECISIONS.md #170) — CHỈ
+   * có ý nghĩa khi phiếu cha `receiptType='PURCHASE'` VÀ không dòng nào khác đồng thời dùng chiết
+   * khấu cấp header (Service kiểm mutual-exclusion, đúng tinh thần `computeInvoiceDiscount()`). */
+  discountType: discountTypeSchema.nullable().optional(),
+  discountValue: z.number().int().positive().nullable().optional(),
 });
 export type StockReceiptLineInput = z.infer<typeof stockReceiptLineInputSchema>;
 
@@ -43,8 +48,40 @@ const stockReceiptHeaderFieldsSchema = z.object({
   note: z.string().nullable().optional(),
   /** Mã hoá đơn NCC — đối chiếu, không dùng để tính toán gì. */
   supplierInvoiceNo: z.string().nullable().optional(),
+  /** Chiết khấu "Toàn phiếu" — CHỈ có ý nghĩa khi `receiptType='PURCHASE'`, loại trừ lẫn nhau với
+   * chiết khấu "Từng dòng" (`lines[].discountType`) — chọn 1 trong 2, không cộng dồn (đúng thiết kế
+   * đã chốt ở Thu ngân #137, tái dùng nguyên `computeInvoiceDiscount()` ở `@nexamed/core`). */
+  discountType: discountTypeSchema.nullable().optional(),
+  discountValue: z.number().int().positive().nullable().optional(),
+  discountReason: z.string().nullable().optional(),
   lines: z.array(stockReceiptLineInputSchema).min(1, 'Phải có ít nhất 1 dòng hàng.'),
 });
+
+function checkStockReceiptDiscountRules(v: z.infer<typeof stockReceiptHeaderFieldsSchema>, ctx: z.RefinementCtx): void {
+  const hasHeaderDiscount = v.discountType != null;
+  const hasLineDiscount = v.lines.some((l) => l.discountType != null);
+  if ((hasHeaderDiscount || hasLineDiscount) && v.receiptType !== 'PURCHASE') {
+    ctx.addIssue({ code: 'custom', message: 'Chỉ phiếu "Nhập nhà cung cấp" mới áp dụng chiết khấu.', path: ['discountType'] });
+  }
+  if (hasHeaderDiscount && hasLineDiscount) {
+    ctx.addIssue({ code: 'custom', message: 'Chỉ chọn 1 trong 2 cách chiết khấu — Toàn phiếu hoặc Từng dòng.', path: ['discountType'] });
+  }
+  if (hasHeaderDiscount) {
+    if (v.discountValue == null) {
+      ctx.addIssue({ code: 'custom', message: 'Phải nhập giá trị chiết khấu.', path: ['discountValue'] });
+    } else if (v.discountType === 'PERCENT' && v.discountValue > 100) {
+      ctx.addIssue({ code: 'custom', message: 'Chiết khấu theo % không vượt quá 100.', path: ['discountValue'] });
+    }
+    if (!v.discountReason) {
+      ctx.addIssue({ code: 'custom', message: 'Phải nhập lý do chiết khấu.', path: ['discountReason'] });
+    }
+  }
+  v.lines.forEach((l, i) => {
+    if (l.discountType === 'PERCENT' && l.discountValue != null && l.discountValue > 100) {
+      ctx.addIssue({ code: 'custom', message: 'Chiết khấu theo % không vượt quá 100.', path: ['lines', i, 'discountValue'] });
+    }
+  });
+}
 
 /** `POST /inventory/receipts` — tạo phiếu Nháp. `PATCH /inventory/receipts/:id` dùng chung hình
  * dạng này (bulk-replace toàn bộ dòng hàng + header, đúng khuôn `diagnosis`), cộng `version`. */
@@ -55,6 +92,7 @@ export const createStockReceiptRequestSchema = stockReceiptHeaderFieldsSchema.su
   if (v.receiptType !== 'PURCHASE' && v.supplierId) {
     ctx.addIssue({ code: 'custom', message: 'Loại phiếu này không có Nhà cung cấp.', path: ['supplierId'] });
   }
+  checkStockReceiptDiscountRules(v, ctx);
 });
 export type CreateStockReceiptRequest = z.infer<typeof createStockReceiptRequestSchema>;
 
@@ -67,6 +105,7 @@ export const updateStockReceiptRequestSchema = stockReceiptHeaderFieldsSchema
     if (v.receiptType !== 'PURCHASE' && v.supplierId) {
       ctx.addIssue({ code: 'custom', message: 'Loại phiếu này không có Nhà cung cấp.', path: ['supplierId'] });
     }
+    checkStockReceiptDiscountRules(v, ctx);
   });
 export type UpdateStockReceiptRequest = z.infer<typeof updateStockReceiptRequestSchema>;
 
@@ -97,8 +136,16 @@ export const stockReceiptLineSchema = z.object({
   batchNo: z.string().nullable(),
   expiryDate: z.string().nullable(),
   lineAmount: z.number().int(),
+  /** Chiết khấu "Từng dòng" (Kho Thuốc GĐ4, docs/DECISIONS.md #170) — `discountType` null khi dòng
+   * không chiết khấu (kể cả khi phiếu dùng chế độ "Toàn phiếu"). `discountAmount` đã tính sẵn. */
+  discountType: discountTypeSchema.nullable(),
+  discountValue: z.number().int().nullable(),
+  discountAmount: z.number().int(),
 });
 export type StockReceiptLine = z.infer<typeof stockReceiptLineSchema>;
+
+export const stockReceiptDiscountModeSchema = z.enum(['NONE', 'TOTAL', 'PER_LINE']);
+export type StockReceiptDiscountMode = z.infer<typeof stockReceiptDiscountModeSchema>;
 
 export const stockReceiptSummarySchema = z.object({
   id: z.string().uuid(),
@@ -112,7 +159,15 @@ export const stockReceiptSummarySchema = z.object({
   occurredAt: z.string(),
   note: z.string().nullable(),
   supplierInvoiceNo: z.string().nullable(),
+  /** Tổng tiền hàng TRƯỚC chiết khấu (gross) — giữ nguyên ý nghĩa cũ. */
   totalAmount: z.number().int(),
+  /** Chiết khấu "Toàn phiếu" cấp header (Kho Thuốc GĐ4, docs/DECISIONS.md #170) — RAW, đọc thẳng từ
+   * DB, `null` khi không dùng cách này (dùng "Từng dòng" hoặc không chiết khấu). Số tiền chiết khấu
+   * ĐÃ TÍNH (`discountAmount`/`netAmount`, cần đọc cả `lines` mới tính đúng mode PER_LINE) chỉ có ở
+   * `stockReceiptDetailSchema`, không lặp lại ở đây (LIST không tải `lines`). */
+  discountType: discountTypeSchema.nullable(),
+  discountValue: z.number().int().nullable(),
+  discountReason: z.string().nullable(),
   lineCount: z.number().int(),
   createdByName: z.string(),
   approvedByName: z.string().nullable(),
@@ -125,6 +180,12 @@ export const stockReceiptSummarySchema = z.object({
 export type StockReceiptSummary = z.infer<typeof stockReceiptSummarySchema>;
 
 export const stockReceiptDetailSchema = stockReceiptSummarySchema.extend({
+  /** `discountMode` suy ra ở Service (đúng tinh thần `computeInvoiceDiscount()`) từ `discountType`
+   * cấp header VÀ `lines[].discountType`. `netAmount = totalAmount - discountAmount` — số tiền hàng
+   * THẬT sau chiết khấu, dùng để hiển thị "Thành tiền". */
+  discountMode: stockReceiptDiscountModeSchema,
+  discountAmount: z.number().int(),
+  netAmount: z.number().int(),
   lines: z.array(stockReceiptLineSchema),
 });
 export type StockReceiptDetail = z.infer<typeof stockReceiptDetailSchema>;
@@ -319,9 +380,17 @@ export const stockIssueTypeSchema = z.enum([
 ]);
 export type StockIssueType = z.infer<typeof stockIssueTypeSchema>;
 
-/** KHÔNG có `DRAFT`/`REJECTED` như `stock_receipt` — luồng 1 bước, chọn lô là trừ kho + sinh tiền ngay. */
-export const stockIssueStatusSchema = z.enum(['POSTED', 'VOIDED']);
+/** Kho Thuốc GĐ4, "Phiếu xuất kho mở rộng" (docs/DECISIONS.md #170) — thêm `DRAFT`/`REJECTED` cho 3
+ * loại phiếu xuất mới (`MANUAL_STOCK_ISSUE_TYPES` dưới đây), luồng Nháp→Duyệt đúng khuôn
+ * `stock_receipt`. `RETAIL_SALE`/`TRANSFER_OUT`/`COUNT_SHORTAGE` GIỮ NGUYÊN tạo thẳng `POSTED`. */
+export const stockIssueStatusSchema = z.enum(['DRAFT', 'POSTED', 'REJECTED', 'VOIDED']);
 export type StockIssueStatus = z.infer<typeof stockIssueStatusSchema>;
+
+/** 3 loại phiếu xuất Nháp→Duyệt lập TAY (khác `RETAIL_SALE` 1 bước, và khác `TRANSFER_OUT`/
+ * `COUNT_SHORTAGE` tự sinh bởi hệ thống) — dùng chung cho Zod enum lẫn `SUPPORTED_MANUAL_ISSUE_TYPES`
+ * ở `StockIssueService`. */
+export const manualStockIssueTypeSchema = z.enum(['INTERNAL_ALLOCATION', 'RETURN_TO_SUPPLIER', 'WRITE_OFF']);
+export type ManualStockIssueType = z.infer<typeof manualStockIssueTypeSchema>;
 
 /**
  * 1 dòng hàng lúc tạo phiếu xuất. `prescriptionItemId=null` = dòng OTC bán thêm (không theo đơn),
@@ -355,6 +424,62 @@ export const voidStockIssueRequestSchema = z.object({
 });
 export type VoidStockIssueRequest = z.infer<typeof voidStockIssueRequestSchema>;
 
+// ============ Kho Thuốc GĐ4, "Phiếu xuất kho mở rộng" (docs/DECISIONS.md #170, kế hoạch kỹ thuật
+// bright-bubbling-axolotl.md mục 4, mockup đã duyệt) — 3 loại phiếu xuất Nháp→Duyệt lập tay: Xuất
+// dùng nội bộ (INTERNAL_ALLOCATION)/Xuất trả nhà cung cấp (RETURN_TO_SUPPLIER)/Xuất huỷ (WRITE_OFF).
+// Không gắn đơn thuốc/hoá đơn nào (thuần điều chỉnh tồn kho, sellPrice/lineAmount luôn 0 — cùng
+// bản chất COUNT_SHORTAGE/TRANSFER_OUT tự sinh). ============
+
+/** 1 dòng hàng lúc lập phiếu xuất Nháp — không có `prescriptionItemId` (không gắn đơn thuốc). */
+export const manualStockIssueLineInputSchema = z.object({
+  drugId: z.string().uuid(),
+  batchId: z.string().uuid().nullable().optional(),
+  quantity: z.number().int().positive('Số lượng phải lớn hơn 0.'),
+});
+export type ManualStockIssueLineInput = z.infer<typeof manualStockIssueLineInputSchema>;
+
+const manualStockIssueHeaderFieldsSchema = z.object({
+  issueType: manualStockIssueTypeSchema,
+  warehouseId: z.string().uuid(),
+  /** Khoa/Phòng TIẾP NHẬN — bắt buộc khi `issueType='INTERNAL_ALLOCATION'`, bỏ trống loại khác
+   * (Service chặn gửi kèm, đúng khuôn `supplierId` của `stock_receipt`). */
+  departmentId: z.string().uuid().optional(),
+  /** Bỏ trống mặc định "bây giờ". */
+  occurredAt: z.string().optional(),
+  /** "Lý do" — BẮT BUỘC cho cả 3 loại (kế hoạch #170 mục 4), tái dùng cột `note` có sẵn. */
+  note: z.string().min(1, 'Phải nhập lý do.'),
+  lines: z.array(manualStockIssueLineInputSchema).min(1, 'Phải có ít nhất 1 dòng hàng.'),
+});
+
+function checkManualStockIssueDepartment(v: z.infer<typeof manualStockIssueHeaderFieldsSchema>, ctx: z.RefinementCtx): void {
+  if (v.issueType === 'INTERNAL_ALLOCATION' && !v.departmentId) {
+    ctx.addIssue({ code: 'custom', message: 'Phiếu "Xuất dùng nội bộ" phải chọn Khoa/Phòng tiếp nhận.', path: ['departmentId'] });
+  }
+  if (v.issueType !== 'INTERNAL_ALLOCATION' && v.departmentId) {
+    ctx.addIssue({ code: 'custom', message: 'Loại phiếu này không có Khoa/Phòng tiếp nhận.', path: ['departmentId'] });
+  }
+}
+
+/** `POST /inventory/issues/manual` — tạo phiếu Nháp. `PATCH /inventory/issues/manual/:id` dùng
+ * chung hình dạng này (bulk-replace toàn bộ dòng hàng + header, đúng khuôn `stock_receipt`), cộng
+ * `version`. Route riêng khỏi `POST /inventory/issues` (luồng "Phát thuốc" 1 bước, không đổi). */
+export const createManualStockIssueRequestSchema = manualStockIssueHeaderFieldsSchema.superRefine(checkManualStockIssueDepartment);
+export type CreateManualStockIssueRequest = z.infer<typeof createManualStockIssueRequestSchema>;
+
+export const updateManualStockIssueRequestSchema = manualStockIssueHeaderFieldsSchema
+  .extend({ version: z.number().int() })
+  .superRefine(checkManualStockIssueDepartment);
+export type UpdateManualStockIssueRequest = z.infer<typeof updateManualStockIssueRequestSchema>;
+
+export const approveStockIssueRequestSchema = z.object({ version: z.number().int() });
+export type ApproveStockIssueRequest = z.infer<typeof approveStockIssueRequestSchema>;
+
+export const rejectStockIssueRequestSchema = z.object({
+  reason: z.string().min(1, 'Phải nhập lý do từ chối.'),
+  version: z.number().int(),
+});
+export type RejectStockIssueRequest = z.infer<typeof rejectStockIssueRequestSchema>;
+
 export const stockIssueLineSchema = z.object({
   id: z.string().uuid(),
   prescriptionItemId: z.string().uuid().nullable(),
@@ -386,6 +511,13 @@ export const stockIssueSummarySchema = z.object({
   totalAmount: z.number().int(),
   lineCount: z.number().int(),
   createdByName: z.string(),
+  // Kho Thuốc GĐ4, "Phiếu xuất kho mở rộng" (docs/DECISIONS.md #170) — chỉ có giá trị cho 3 loại
+  // Nháp→Duyệt lập tay (`manualStockIssueTypeSchema`), `null` cho `RETAIL_SALE`/tự sinh hệ thống.
+  approvedByName: z.string().nullable(),
+  approvedAt: z.string().nullable(),
+  rejectionReason: z.string().nullable(),
+  departmentId: z.string().uuid().nullable(),
+  departmentName: z.string().nullable(),
   voidedByName: z.string().nullable(),
   voidedAt: z.string().nullable(),
   voidReason: z.string().nullable(),
@@ -765,3 +897,45 @@ export const listStockTransfersResponseSchema = z.object({
   nextCursor: z.string().nullable(),
 });
 export type ListStockTransfersResponse = z.infer<typeof listStockTransfersResponseSchema>;
+
+// ============ Kho Thuốc GĐ4, "Báo cáo Nhập-Xuất-Tồn" (docs/DECISIONS.md #170, kế hoạch kỹ thuật
+// bright-bubbling-axolotl.md mục 5, mockup đã duyệt) — bảng kê Đầu kỳ/Nhập/Xuất/Cuối kỳ theo mặt
+// hàng trong khoảng ngày, đúng khuôn "Báo cáo dòng tiền" của Sổ quỹ (`cash-flow-report`). Quyền
+// riêng `stock_receipt.report` (chỉ `clinic_admin`, đúng `cash_voucher.report`) — không dùng chung
+// `stock_receipt.read` như đề xuất ban đầu trong kế hoạch (đã chốt lại qua AskUserQuestion lúc duyệt
+// mockup). ============
+
+export const getStockLedgerReportQuerySchema = z.object({
+  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  warehouseId: z.string().uuid().optional(),
+  drugId: z.string().uuid().optional(),
+});
+export type GetStockLedgerReportQuery = z.infer<typeof getStockLedgerReportQuerySchema>;
+
+/** 1 dòng = 1 mặt hàng (không phải 1 chứng từ) — `openingQuantity`/`closingQuantity` tính bằng tổng
+ * biến động `stock_ledger` TRƯỚC mốc `from`/sau mốc `to` (2 lần gọi cùng 1 hàm dùng chung, mirror
+ * `sumBeforeForAccount()` ở `cash-book-report.service.ts`), KHÔNG dùng `stock_balance` (đó là số dư
+ * HIỆN TẠI, không phải số dư tại một mốc thời gian quá khứ bất kỳ). */
+export const stockLedgerReportItemSchema = z.object({
+  drugId: z.string().uuid(),
+  drugCode: z.string(),
+  drugName: z.string(),
+  unitCode: z.string().nullable(),
+  warehouseId: z.string().uuid(),
+  warehouseName: z.string(),
+  openingQuantity: z.number().int(),
+  totalIn: z.number().int(),
+  totalOut: z.number().int(),
+  closingQuantity: z.number().int(),
+});
+export type StockLedgerReportItem = z.infer<typeof stockLedgerReportItemSchema>;
+
+export const getStockLedgerReportResponseSchema = z.object({
+  items: z.array(stockLedgerReportItemSchema),
+  totalOpeningQuantity: z.number().int(),
+  totalIn: z.number().int(),
+  totalOut: z.number().int(),
+  totalClosingQuantity: z.number().int(),
+});
+export type GetStockLedgerReportResponse = z.infer<typeof getStockLedgerReportResponseSchema>;

@@ -1,5 +1,7 @@
 import { Injectable, Inject, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import {
+  computeDiscountAmount,
+  computeInvoiceDiscount,
   computeUnitConversion,
   computeWeightedAverageCost,
   ConcurrentModificationError,
@@ -20,7 +22,7 @@ import type {
   UpdateStockReceiptRequest,
   VoidStockReceiptRequest,
 } from '@nexamed/shared';
-import type { Prisma, StockLedgerReason, StockReceipt, StockReceiptType } from '@prisma/client';
+import type { DiscountType, Prisma, StockLedgerReason, StockReceipt, StockReceiptType } from '@prisma/client';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
 import { assertWarehouseInScope, resolveActorDepartmentId } from '../../common/warehouse-scope.helper';
@@ -34,9 +36,11 @@ import { InventoryBatchRepository } from './inventory-batch.repository';
 import { StockLedgerRepository } from './stock-ledger.repository';
 import { StockBalanceRepository } from './stock-balance.repository';
 
-/** GĐ2 chỉ có logic thật cho 2/5 giá trị `receiptType` — 3 giá trị còn lại khai sẵn trong enum
- * cho GĐ3/4 (Chuyển kho/Hoàn trả/Cân bằng kiểm kê), chưa có gì để "duyệt" nên chặn tạo mới. */
-const SUPPORTED_RECEIPT_TYPES: readonly StockReceiptType[] = ['PURCHASE', 'OPENING_BALANCE'];
+/** "Phiếu nhập kho mở rộng" (Kho Thuốc GĐ4, docs/DECISIONS.md #170) mở khoá thêm `RETURN_FROM_USE`
+ * (lập tay, Nháp→Duyệt đúng khuôn PURCHASE/OPENING_BALANCE — không cột đặc thù, "kiểm duyệt chặt
+ * chẽ" chính là bước Duyệt sẵn có). `TRANSFER_IN`/`COUNT_SURPLUS` KHÔNG có trong danh sách này —
+ * chỉ tự sinh qua `createTransferInReceipt()`/`createCountSurplusReceipt()`, không lập tay được. */
+const SUPPORTED_RECEIPT_TYPES: readonly StockReceiptType[] = ['PURCHASE', 'OPENING_BALANCE', 'RETURN_FROM_USE'];
 
 /** Ánh xạ ĐẦY ĐỦ mọi `receiptType` sang đúng `stock_ledger.reason` — rà soát lúc thêm TRANSFER_IN
  * (Điều chuyển kho, #170): bản trước dùng chuỗi if/else 2 nhánh rồi fallback OPENING_BALANCE cho
@@ -98,6 +102,9 @@ export class StockReceiptService {
         note: dto.note ?? null,
         supplierInvoiceNo: dto.supplierInvoiceNo ?? null,
         totalAmount,
+        discountType: (dto.discountType ?? null) as DiscountType | null,
+        discountValue: dto.discountValue != null ? BigInt(dto.discountValue) : null,
+        discountReason: dto.discountReason ?? null,
         lines,
         countId: null,
         transferId: null,
@@ -156,6 +163,9 @@ export class StockReceiptService {
         note: dto.note ?? null,
         supplierInvoiceNo: dto.supplierInvoiceNo ?? null,
         totalAmount,
+        discountType: (dto.discountType ?? null) as DiscountType | null,
+        discountValue: dto.discountValue != null ? BigInt(dto.discountValue) : null,
+        discountReason: dto.discountReason ?? null,
         lines,
       });
       if (count === 0) throw new ConcurrentModificationError();
@@ -280,6 +290,9 @@ export class StockReceiptService {
       note: `Tự sinh từ phiếu kiểm kê ${params.countNo}`,
       supplierInvoiceNo: null,
       totalAmount,
+      discountType: null,
+      discountValue: null,
+      discountReason: null,
       lines: params.lines,
       countId: params.countId,
       transferId: null,
@@ -320,6 +333,9 @@ export class StockReceiptService {
       note: `Tự sinh từ phiếu điều chuyển kho ${params.transferNo}`,
       supplierInvoiceNo: null,
       totalAmount,
+      discountType: null,
+      discountValue: null,
+      discountReason: null,
       lines: params.lines,
       countId: null,
       transferId: params.transferId,
@@ -507,6 +523,8 @@ export class StockReceiptService {
         batchNo: line.batchNo ?? null,
         expiryDate: line.expiryDate ? new Date(`${line.expiryDate}T00:00:00Z`) : null,
         lineAmount: BigInt(line.quantity) * BigInt(line.unitCost),
+        discountType: (line.discountType ?? null) as DiscountType | null,
+        discountValue: line.discountValue != null ? BigInt(line.discountValue) : null,
       });
     }
     return result;
@@ -544,6 +562,9 @@ export class StockReceiptService {
       note: row.note,
       supplierInvoiceNo: row.supplierInvoiceNo,
       totalAmount: Number(row.totalAmount),
+      discountType: row.discountType,
+      discountValue: row.discountValue !== null ? Number(row.discountValue) : null,
+      discountReason: row.discountReason,
       lineCount,
       createdByName: names.get(row.createdBy) ?? 'Không rõ',
       approvedByName: row.approvedBy ? (names.get(row.approvedBy) ?? 'Không rõ') : null,
@@ -555,8 +576,25 @@ export class StockReceiptService {
   }
 
   private toLineDetailDto(row: StockReceiptWithLines, warehouseName: string, supplierName: string | null, names: Map<string, string>): StockReceiptDetail {
+    // Chiết khấu (Kho Thuốc GĐ4, docs/DECISIONS.md #170) — tái dùng NGUYÊN `computeInvoiceDiscount()`
+    // đã có ở Thu ngân (#137), map `lineAmount`→`lineTotal` (tên khác nhau, cùng ý nghĩa "thành tiền
+    // dòng trước chiết khấu"). `lines[].discountType!=null` bất kỳ dòng nào ⇒ mode PER_LINE, BỎ QUA
+    // discount cấp header — đúng logic hàm dùng chung, KHÔNG viết lại.
+    const discount = computeInvoiceDiscount({
+      totalAmount: Number(row.totalAmount),
+      discountType: row.discountType,
+      discountValue: row.discountValue !== null ? Number(row.discountValue) : null,
+      lines: row.lines.map((l) => ({
+        lineTotal: Number(l.lineAmount),
+        discountType: l.discountType,
+        discountValue: l.discountValue !== null ? Number(l.discountValue) : null,
+      })),
+    });
     return {
       ...this.toSummaryDto(row, warehouseName, supplierName, row.lines.length, names),
+      discountMode: discount.mode,
+      discountAmount: discount.discountAmount,
+      netAmount: discount.dueAmount,
       lines: row.lines.map((line) => ({
         id: line.id,
         drugId: line.drugId,
@@ -568,6 +606,9 @@ export class StockReceiptService {
         batchNo: line.batchNo,
         expiryDate: line.expiryDate ? line.expiryDate.toISOString().slice(0, 10) : null,
         lineAmount: Number(line.lineAmount),
+        discountType: line.discountType,
+        discountValue: line.discountValue !== null ? Number(line.discountValue) : null,
+        discountAmount: computeDiscountAmount(Number(line.lineAmount), line.discountType, line.discountValue !== null ? Number(line.discountValue) : null),
       })),
     };
   }

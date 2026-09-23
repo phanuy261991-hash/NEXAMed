@@ -104,20 +104,53 @@ export class StockLedgerRepository {
   }
 
   /** Mọi dòng thẻ kho GỐC (chưa từng bị đảo) do đúng phiếu `sourceReceiptId` sinh ra — dùng để huỷ
-   * phiếu (đảo ngược chính xác), chỉ 2 reason nhập có thật ở GĐ2. */
+   * phiếu (đảo ngược chính xác). `RECEIPT_RETURN_FROM_USE` thêm cho "Phiếu nhập kho mở rộng" (Kho
+   * Thuốc GĐ4, docs/DECISIONS.md #170) — thiếu reason này thì huỷ phiếu RETURN_FROM_USE sẽ ÂM THẦM
+   * không đảo ngược gì (`originalEntries` rỗng), phát hiện lúc mở khoá loại phiếu này lập tay.
+   * KHÔNG thêm `RECEIPT_TRANSFER_IN`/`RECEIPT_COUNT_SURPLUS` — 2 phiếu tự sinh đó không lập tay/huỷ
+   * độc lập qua endpoint này (ngoài phạm vi "Phiếu nhập kho mở rộng"). */
   listForSourceReceipt(tx: Prisma.TransactionClient, tenantId: string, sourceReceiptId: string): Promise<SourceReceiptLedgerRow[]> {
     return tx.stockLedger.findMany({
-      where: { tenantId, sourceReceiptId, reason: { in: ['RECEIPT_PURCHASE', 'RECEIPT_OPENING_BALANCE'] } },
+      where: { tenantId, sourceReceiptId, reason: { in: ['RECEIPT_PURCHASE', 'RECEIPT_OPENING_BALANCE', 'RECEIPT_RETURN_FROM_USE'] } },
       select: { drugId: true, warehouseId: true, batchId: true, quantityChange: true, unitCost: true },
     });
   }
 
   /** Mọi dòng thẻ kho GỐC do đúng phiếu `sourceIssueId` sinh ra — dùng để huỷ phiếu xuất (đảo
-   * ngược chính xác), Kho Thuốc GĐ3 (#163), chỉ reason `ISSUE_RETAIL_SALE` có thật ở GĐ3. */
+   * ngược chính xác). 3 reason `ISSUE_INTERNAL_ALLOCATION`/`ISSUE_RETURN_TO_SUPPLIER`/`ISSUE_WRITE_OFF`
+   * thêm cho "Phiếu xuất kho mở rộng" (Kho Thuốc GĐ4, docs/DECISIONS.md #170) — cùng lý do
+   * `listForSourceReceipt()` ở trên, thiếu thì huỷ phiếu loại này sẽ âm thầm không đảo ngược gì.
+   * KHÔNG thêm `ISSUE_TRANSFER_OUT`/`ISSUE_COUNT_SHORTAGE` — 2 phiếu tự sinh đó không huỷ độc lập
+   * qua endpoint này. */
   listForSourceIssue(tx: Prisma.TransactionClient, tenantId: string, sourceIssueId: string): Promise<SourceIssueLedgerRow[]> {
     return tx.stockLedger.findMany({
-      where: { tenantId, sourceIssueId, reason: 'ISSUE_RETAIL_SALE' },
+      where: { tenantId, sourceIssueId, reason: { in: ['ISSUE_RETAIL_SALE', 'ISSUE_INTERNAL_ALLOCATION', 'ISSUE_RETURN_TO_SUPPLIER', 'ISSUE_WRITE_OFF'] } },
       select: { drugId: true, warehouseId: true, batchId: true, quantityChange: true, unitCost: true },
     });
+  }
+
+  /**
+   * "Báo cáo Nhập-Xuất-Tồn" (Kho Thuốc GĐ4, docs/DECISIONS.md #170) — tổng biến động `quantityChange`
+   * gộp theo (drugId, warehouseId), lọc theo mốc thời gian + dấu (`quantitySign`). Dùng LẶP LẠI 3 lần
+   * với tham số khác nhau (trước mốc `from` → Đầu kỳ; trong khoảng dương → Nhập; trong khoảng âm →
+   * Xuất) — mirror `sumBeforeForAccount()` ở `cash-book-report.service.ts`, KHÔNG viết 3 hàm riêng.
+   */
+  async sumQuantityGrouped(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    params: { before?: Date; from?: Date; to?: Date; quantitySign?: 'positive' | 'negative'; warehouseId?: string; drugId?: string },
+  ): Promise<{ drugId: string; warehouseId: string; sum: number }[]> {
+    const rows = await tx.stockLedger.groupBy({
+      by: ['drugId', 'warehouseId'],
+      where: {
+        tenantId,
+        warehouseId: params.warehouseId,
+        drugId: params.drugId,
+        occurredAt: params.before ? { lt: params.before } : params.from || params.to ? { gte: params.from, lte: params.to } : undefined,
+        quantityChange: params.quantitySign === 'positive' ? { gt: 0 } : params.quantitySign === 'negative' ? { lt: 0 } : undefined,
+      },
+      _sum: { quantityChange: true },
+    });
+    return rows.map((r) => ({ drugId: r.drugId, warehouseId: r.warehouseId, sum: r._sum.quantityChange ?? 0 }));
   }
 }

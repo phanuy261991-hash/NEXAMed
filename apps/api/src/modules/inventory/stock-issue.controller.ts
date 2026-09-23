@@ -1,6 +1,16 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
 import type { Request } from 'express';
-import { createStockIssueRequestSchema, getPrescriptionDispenseStatusQuerySchema, listDispenseQueueQuerySchema, listStockIssuesQuerySchema, voidStockIssueRequestSchema } from '@nexamed/shared';
+import {
+  approveStockIssueRequestSchema,
+  createManualStockIssueRequestSchema,
+  createStockIssueRequestSchema,
+  getPrescriptionDispenseStatusQuerySchema,
+  listDispenseQueueQuerySchema,
+  listStockIssuesQuerySchema,
+  rejectStockIssueRequestSchema,
+  updateManualStockIssueRequestSchema,
+  voidStockIssueRequestSchema,
+} from '@nexamed/shared';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
@@ -54,6 +64,47 @@ export class StockIssueController {
     const dto = voidStockIssueRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
     return this.stockIssueService.voidIssue(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+  }
+
+  // ============ "Phiếu xuất kho mở rộng" (docs/DECISIONS.md #170) — 3 loại Nháp→Duyệt lập tay
+  // (Xuất dùng nội bộ/Xuất trả NCC/Xuất huỷ). Route RIÊNG `issues/manual*` khỏi `POST /issues` (luồng
+  // "Phát thuốc" 1 bước, không đổi) — literal path `manual` không xung đột thứ tự với `:id` phía
+  // trên (Express/NestJS khớp đoạn literal trước, đủ phân biệt với `:id` khác số đoạn đường dẫn).
+  // ============
+
+  @Post('issues/manual')
+  @RequirePermission('stock_issue', 'create')
+  @HttpCode(200)
+  async createManual(@Body() body: unknown, @Req() req: Request) {
+    const dto = createManualStockIssueRequestSchema.parse(body);
+    const { userId, tenantId } = req.user!;
+    return this.stockIssueService.createManual(tenantId, userId, req.dataScope!, dto, extractRequestMeta(req));
+  }
+
+  @Patch('issues/manual/:id')
+  @RequirePermission('stock_issue', 'create')
+  async updateManual(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
+    const dto = updateManualStockIssueRequestSchema.parse(body);
+    const { userId, tenantId } = req.user!;
+    return this.stockIssueService.updateManual(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+  }
+
+  @Post('issues/manual/:id/approve')
+  @RequirePermission('stock_issue', 'approve')
+  @HttpCode(200)
+  async approveManual(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
+    const dto = approveStockIssueRequestSchema.parse(body);
+    const { userId, tenantId } = req.user!;
+    return this.stockIssueService.approveManual(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+  }
+
+  @Post('issues/manual/:id/reject')
+  @RequirePermission('stock_issue', 'approve')
+  @HttpCode(200)
+  async rejectManual(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
+    const dto = rejectStockIssueRequestSchema.parse(body);
+    const { userId, tenantId } = req.user!;
+    return this.stockIssueService.rejectManual(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 
   @Get('prescriptions/:prescriptionId/dispense-status')

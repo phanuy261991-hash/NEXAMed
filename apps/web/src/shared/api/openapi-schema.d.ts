@@ -20032,6 +20032,10 @@ export interface paths {
                                     note: string | null;
                                     supplierInvoiceNo: string | null;
                                     totalAmount: number;
+                                    /** @enum {string|null} */
+                                    discountType: "PERCENT" | "AMOUNT" | null;
+                                    discountValue: number | null;
+                                    discountReason: string | null;
                                     lineCount: number;
                                     createdByName: string;
                                     approvedByName: string | null;
@@ -20099,6 +20103,10 @@ export interface paths {
                         occurredAt?: string;
                         note?: string | null;
                         supplierInvoiceNo?: string | null;
+                        /** @enum {string|null} */
+                        discountType?: "PERCENT" | "AMOUNT" | null;
+                        discountValue?: number | null;
+                        discountReason?: string | null;
                         lines: {
                             /** Format: uuid */
                             drugId: string;
@@ -20107,6 +20115,9 @@ export interface paths {
                             unitCost: number;
                             batchNo?: string | null;
                             expiryDate?: string | null;
+                            /** @enum {string|null} */
+                            discountType?: "PERCENT" | "AMOUNT" | null;
+                            discountValue?: number | null;
                         }[];
                     };
                 };
@@ -20137,6 +20148,10 @@ export interface paths {
                                 note: string | null;
                                 supplierInvoiceNo: string | null;
                                 totalAmount: number;
+                                /** @enum {string|null} */
+                                discountType: "PERCENT" | "AMOUNT" | null;
+                                discountValue: number | null;
+                                discountReason: string | null;
                                 lineCount: number;
                                 createdByName: string;
                                 approvedByName: string | null;
@@ -20144,6 +20159,10 @@ export interface paths {
                                 rejectionReason: string | null;
                                 voided: boolean;
                                 version: number;
+                                /** @enum {string} */
+                                discountMode: "NONE" | "TOTAL" | "PER_LINE";
+                                discountAmount: number;
+                                netAmount: number;
                                 lines: {
                                     /** Format: uuid */
                                     id: string;
@@ -20157,6 +20176,10 @@ export interface paths {
                                     batchNo: string | null;
                                     expiryDate: string | null;
                                     lineAmount: number;
+                                    /** @enum {string|null} */
+                                    discountType: "PERCENT" | "AMOUNT" | null;
+                                    discountValue: number | null;
+                                    discountAmount: number;
                                 }[];
                             };
                             meta: Record<string, never>;
@@ -20275,6 +20298,10 @@ export interface paths {
                                 note: string | null;
                                 supplierInvoiceNo: string | null;
                                 totalAmount: number;
+                                /** @enum {string|null} */
+                                discountType: "PERCENT" | "AMOUNT" | null;
+                                discountValue: number | null;
+                                discountReason: string | null;
                                 lineCount: number;
                                 createdByName: string;
                                 approvedByName: string | null;
@@ -20282,6 +20309,10 @@ export interface paths {
                                 rejectionReason: string | null;
                                 voided: boolean;
                                 version: number;
+                                /** @enum {string} */
+                                discountMode: "NONE" | "TOTAL" | "PER_LINE";
+                                discountAmount: number;
+                                netAmount: number;
                                 lines: {
                                     /** Format: uuid */
                                     id: string;
@@ -20295,6 +20326,10 @@ export interface paths {
                                     batchNo: string | null;
                                     expiryDate: string | null;
                                     lineAmount: number;
+                                    /** @enum {string|null} */
+                                    discountType: "PERCENT" | "AMOUNT" | null;
+                                    discountValue: number | null;
+                                    discountAmount: number;
                                 }[];
                             };
                             meta: Record<string, never>;
@@ -20375,6 +20410,10 @@ export interface paths {
                         occurredAt?: string;
                         note?: string | null;
                         supplierInvoiceNo?: string | null;
+                        /** @enum {string|null} */
+                        discountType?: "PERCENT" | "AMOUNT" | null;
+                        discountValue?: number | null;
+                        discountReason?: string | null;
                         lines: {
                             /** Format: uuid */
                             drugId: string;
@@ -20383,6 +20422,9 @@ export interface paths {
                             unitCost: number;
                             batchNo?: string | null;
                             expiryDate?: string | null;
+                            /** @enum {string|null} */
+                            discountType?: "PERCENT" | "AMOUNT" | null;
+                            discountValue?: number | null;
                         }[];
                         version: number;
                     };
@@ -20414,6 +20456,10 @@ export interface paths {
                                 note: string | null;
                                 supplierInvoiceNo: string | null;
                                 totalAmount: number;
+                                /** @enum {string|null} */
+                                discountType: "PERCENT" | "AMOUNT" | null;
+                                discountValue: number | null;
+                                discountReason: string | null;
                                 lineCount: number;
                                 createdByName: string;
                                 approvedByName: string | null;
@@ -20421,6 +20467,10 @@ export interface paths {
                                 rejectionReason: string | null;
                                 voided: boolean;
                                 version: number;
+                                /** @enum {string} */
+                                discountMode: "NONE" | "TOTAL" | "PER_LINE";
+                                discountAmount: number;
+                                netAmount: number;
                                 lines: {
                                     /** Format: uuid */
                                     id: string;
@@ -20434,6 +20484,10 @@ export interface paths {
                                     batchNo: string | null;
                                     expiryDate: string | null;
                                     lineAmount: number;
+                                    /** @enum {string|null} */
+                                    discountType: "PERCENT" | "AMOUNT" | null;
+                                    discountValue: number | null;
+                                    discountAmount: number;
                                 }[];
                             };
                             meta: Record<string, never>;
@@ -20556,6 +20610,10 @@ export interface paths {
                                 note: string | null;
                                 supplierInvoiceNo: string | null;
                                 totalAmount: number;
+                                /** @enum {string|null} */
+                                discountType: "PERCENT" | "AMOUNT" | null;
+                                discountValue: number | null;
+                                discountReason: string | null;
                                 lineCount: number;
                                 createdByName: string;
                                 approvedByName: string | null;
@@ -20563,6 +20621,10 @@ export interface paths {
                                 rejectionReason: string | null;
                                 voided: boolean;
                                 version: number;
+                                /** @enum {string} */
+                                discountMode: "NONE" | "TOTAL" | "PER_LINE";
+                                discountAmount: number;
+                                netAmount: number;
                                 lines: {
                                     /** Format: uuid */
                                     id: string;
@@ -20576,6 +20638,10 @@ export interface paths {
                                     batchNo: string | null;
                                     expiryDate: string | null;
                                     lineAmount: number;
+                                    /** @enum {string|null} */
+                                    discountType: "PERCENT" | "AMOUNT" | null;
+                                    discountValue: number | null;
+                                    discountAmount: number;
                                 }[];
                             };
                             meta: Record<string, never>;
@@ -20703,6 +20769,10 @@ export interface paths {
                                 note: string | null;
                                 supplierInvoiceNo: string | null;
                                 totalAmount: number;
+                                /** @enum {string|null} */
+                                discountType: "PERCENT" | "AMOUNT" | null;
+                                discountValue: number | null;
+                                discountReason: string | null;
                                 lineCount: number;
                                 createdByName: string;
                                 approvedByName: string | null;
@@ -20710,6 +20780,10 @@ export interface paths {
                                 rejectionReason: string | null;
                                 voided: boolean;
                                 version: number;
+                                /** @enum {string} */
+                                discountMode: "NONE" | "TOTAL" | "PER_LINE";
+                                discountAmount: number;
+                                netAmount: number;
                                 lines: {
                                     /** Format: uuid */
                                     id: string;
@@ -20723,6 +20797,10 @@ export interface paths {
                                     batchNo: string | null;
                                     expiryDate: string | null;
                                     lineAmount: number;
+                                    /** @enum {string|null} */
+                                    discountType: "PERCENT" | "AMOUNT" | null;
+                                    discountValue: number | null;
+                                    discountAmount: number;
                                 }[];
                             };
                             meta: Record<string, never>;
@@ -20850,6 +20928,10 @@ export interface paths {
                                 note: string | null;
                                 supplierInvoiceNo: string | null;
                                 totalAmount: number;
+                                /** @enum {string|null} */
+                                discountType: "PERCENT" | "AMOUNT" | null;
+                                discountValue: number | null;
+                                discountReason: string | null;
                                 lineCount: number;
                                 createdByName: string;
                                 approvedByName: string | null;
@@ -20857,6 +20939,10 @@ export interface paths {
                                 rejectionReason: string | null;
                                 voided: boolean;
                                 version: number;
+                                /** @enum {string} */
+                                discountMode: "NONE" | "TOTAL" | "PER_LINE";
+                                discountAmount: number;
+                                netAmount: number;
                                 lines: {
                                     /** Format: uuid */
                                     id: string;
@@ -20870,6 +20956,10 @@ export interface paths {
                                     batchNo: string | null;
                                     expiryDate: string | null;
                                     lineAmount: number;
+                                    /** @enum {string|null} */
+                                    discountType: "PERCENT" | "AMOUNT" | null;
+                                    discountValue: number | null;
+                                    discountAmount: number;
                                 }[];
                             };
                             meta: Record<string, never>;
@@ -21323,7 +21413,7 @@ export interface paths {
                     cursor?: string;
                     limit?: number;
                     warehouseId?: string;
-                    status?: "POSTED" | "VOIDED";
+                    status?: "DRAFT" | "POSTED" | "REJECTED" | "VOIDED";
                     issueType?: "RETAIL_SALE" | "INTERNAL_ALLOCATION" | "SERVICE_CONSUMPTION" | "TRANSFER_OUT" | "RETURN_TO_SUPPLIER" | "WRITE_OFF" | "COUNT_SHORTAGE";
                     from?: string;
                     to?: string;
@@ -21350,7 +21440,7 @@ export interface paths {
                                     /** @enum {string} */
                                     issueType: "RETAIL_SALE" | "INTERNAL_ALLOCATION" | "SERVICE_CONSUMPTION" | "TRANSFER_OUT" | "RETURN_TO_SUPPLIER" | "WRITE_OFF" | "COUNT_SHORTAGE";
                                     /** @enum {string} */
-                                    status: "POSTED" | "VOIDED";
+                                    status: "DRAFT" | "POSTED" | "REJECTED" | "VOIDED";
                                     /** Format: uuid */
                                     warehouseId: string;
                                     warehouseName: string;
@@ -21365,6 +21455,12 @@ export interface paths {
                                     totalAmount: number;
                                     lineCount: number;
                                     createdByName: string;
+                                    approvedByName: string | null;
+                                    approvedAt: string | null;
+                                    rejectionReason: string | null;
+                                    /** Format: uuid */
+                                    departmentId: string | null;
+                                    departmentName: string | null;
                                     voidedByName: string | null;
                                     voidedAt: string | null;
                                     voidReason: string | null;
@@ -21453,7 +21549,7 @@ export interface paths {
                                 /** @enum {string} */
                                 issueType: "RETAIL_SALE" | "INTERNAL_ALLOCATION" | "SERVICE_CONSUMPTION" | "TRANSFER_OUT" | "RETURN_TO_SUPPLIER" | "WRITE_OFF" | "COUNT_SHORTAGE";
                                 /** @enum {string} */
-                                status: "POSTED" | "VOIDED";
+                                status: "DRAFT" | "POSTED" | "REJECTED" | "VOIDED";
                                 /** Format: uuid */
                                 warehouseId: string;
                                 warehouseName: string;
@@ -21468,6 +21564,12 @@ export interface paths {
                                 totalAmount: number;
                                 lineCount: number;
                                 createdByName: string;
+                                approvedByName: string | null;
+                                approvedAt: string | null;
+                                rejectionReason: string | null;
+                                /** Format: uuid */
+                                departmentId: string | null;
+                                departmentName: string | null;
                                 voidedByName: string | null;
                                 voidedAt: string | null;
                                 voidReason: string | null;
@@ -21602,7 +21704,7 @@ export interface paths {
                                 /** @enum {string} */
                                 issueType: "RETAIL_SALE" | "INTERNAL_ALLOCATION" | "SERVICE_CONSUMPTION" | "TRANSFER_OUT" | "RETURN_TO_SUPPLIER" | "WRITE_OFF" | "COUNT_SHORTAGE";
                                 /** @enum {string} */
-                                status: "POSTED" | "VOIDED";
+                                status: "DRAFT" | "POSTED" | "REJECTED" | "VOIDED";
                                 /** Format: uuid */
                                 warehouseId: string;
                                 warehouseName: string;
@@ -21617,6 +21719,12 @@ export interface paths {
                                 totalAmount: number;
                                 lineCount: number;
                                 createdByName: string;
+                                approvedByName: string | null;
+                                approvedAt: string | null;
+                                rejectionReason: string | null;
+                                /** Format: uuid */
+                                departmentId: string | null;
+                                departmentName: string | null;
                                 voidedByName: string | null;
                                 voidedAt: string | null;
                                 voidReason: string | null;
@@ -21747,7 +21855,7 @@ export interface paths {
                                 /** @enum {string} */
                                 issueType: "RETAIL_SALE" | "INTERNAL_ALLOCATION" | "SERVICE_CONSUMPTION" | "TRANSFER_OUT" | "RETURN_TO_SUPPLIER" | "WRITE_OFF" | "COUNT_SHORTAGE";
                                 /** @enum {string} */
-                                status: "POSTED" | "VOIDED";
+                                status: "DRAFT" | "POSTED" | "REJECTED" | "VOIDED";
                                 /** Format: uuid */
                                 warehouseId: string;
                                 warehouseName: string;
@@ -21762,6 +21870,12 @@ export interface paths {
                                 totalAmount: number;
                                 lineCount: number;
                                 createdByName: string;
+                                approvedByName: string | null;
+                                approvedAt: string | null;
+                                rejectionReason: string | null;
+                                /** Format: uuid */
+                                departmentId: string | null;
+                                departmentName: string | null;
                                 voidedByName: string | null;
                                 voidedAt: string | null;
                                 voidReason: string | null;
@@ -21841,6 +21955,701 @@ export interface paths {
                     };
                 };
                 /** @description version không khớp, phiếu không còn hiệu lực, hoặc hoá đơn liên quan đã thu tiền (STOCK_ISSUE_VOID_NOT_ALLOWED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/issues/manual": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Tạo phiếu xuất kho mở rộng ở trạng thái Nháp (Xuất dùng nội bộ/Trả NCC/Xuất huỷ) — chưa đụng tồn kho */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        issueType: "INTERNAL_ALLOCATION" | "RETURN_TO_SUPPLIER" | "WRITE_OFF";
+                        /** Format: uuid */
+                        warehouseId: string;
+                        /** Format: uuid */
+                        departmentId?: string;
+                        occurredAt?: string;
+                        note: string;
+                        lines: {
+                            /** Format: uuid */
+                            drugId: string;
+                            /** Format: uuid */
+                            batchId?: string | null;
+                            quantity: number;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                issueNo: string;
+                                /** @enum {string} */
+                                issueType: "RETAIL_SALE" | "INTERNAL_ALLOCATION" | "SERVICE_CONSUMPTION" | "TRANSFER_OUT" | "RETURN_TO_SUPPLIER" | "WRITE_OFF" | "COUNT_SHORTAGE";
+                                /** @enum {string} */
+                                status: "DRAFT" | "POSTED" | "REJECTED" | "VOIDED";
+                                /** Format: uuid */
+                                warehouseId: string;
+                                warehouseName: string;
+                                /** Format: uuid */
+                                prescriptionId: string | null;
+                                /** Format: uuid */
+                                encounterId: string | null;
+                                patientCode: string | null;
+                                patientFullName: string | null;
+                                occurredAt: string;
+                                note: string | null;
+                                totalAmount: number;
+                                lineCount: number;
+                                createdByName: string;
+                                approvedByName: string | null;
+                                approvedAt: string | null;
+                                rejectionReason: string | null;
+                                /** Format: uuid */
+                                departmentId: string | null;
+                                departmentName: string | null;
+                                voidedByName: string | null;
+                                voidedAt: string | null;
+                                voidReason: string | null;
+                                version: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    prescriptionItemId: string | null;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    /** Format: uuid */
+                                    batchId: string | null;
+                                    batchNo: string | null;
+                                    quantity: number;
+                                    unitCost: number;
+                                    sellPrice: number;
+                                    lineAmount: number;
+                                }[];
+                                attachedInvoice: {
+                                    /** Format: uuid */
+                                    invoiceId: string;
+                                    invoiceNo: string;
+                                    /** @enum {string} */
+                                    invoiceType: "SERVICE" | "DRUG";
+                                } | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_issue.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Kho/Khoa-Phòng/Thuốc/Lô tham chiếu không tồn tại */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu lô cho thuốc quản lý theo lô, hoặc loại phiếu chưa hỗ trợ */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/issues/manual/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Sửa phiếu xuất kho mở rộng Nháp — thay toàn bộ dòng hàng + header */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        issueType: "INTERNAL_ALLOCATION" | "RETURN_TO_SUPPLIER" | "WRITE_OFF";
+                        /** Format: uuid */
+                        warehouseId: string;
+                        /** Format: uuid */
+                        departmentId?: string;
+                        occurredAt?: string;
+                        note: string;
+                        lines: {
+                            /** Format: uuid */
+                            drugId: string;
+                            /** Format: uuid */
+                            batchId?: string | null;
+                            quantity: number;
+                        }[];
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                issueNo: string;
+                                /** @enum {string} */
+                                issueType: "RETAIL_SALE" | "INTERNAL_ALLOCATION" | "SERVICE_CONSUMPTION" | "TRANSFER_OUT" | "RETURN_TO_SUPPLIER" | "WRITE_OFF" | "COUNT_SHORTAGE";
+                                /** @enum {string} */
+                                status: "DRAFT" | "POSTED" | "REJECTED" | "VOIDED";
+                                /** Format: uuid */
+                                warehouseId: string;
+                                warehouseName: string;
+                                /** Format: uuid */
+                                prescriptionId: string | null;
+                                /** Format: uuid */
+                                encounterId: string | null;
+                                patientCode: string | null;
+                                patientFullName: string | null;
+                                occurredAt: string;
+                                note: string | null;
+                                totalAmount: number;
+                                lineCount: number;
+                                createdByName: string;
+                                approvedByName: string | null;
+                                approvedAt: string | null;
+                                rejectionReason: string | null;
+                                /** Format: uuid */
+                                departmentId: string | null;
+                                departmentName: string | null;
+                                voidedByName: string | null;
+                                voidedAt: string | null;
+                                voidReason: string | null;
+                                version: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    prescriptionItemId: string | null;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    /** Format: uuid */
+                                    batchId: string | null;
+                                    batchNo: string | null;
+                                    quantity: number;
+                                    unitCost: number;
+                                    sellPrice: number;
+                                    lineAmount: number;
+                                }[];
+                                attachedInvoice: {
+                                    /** Format: uuid */
+                                    invoiceId: string;
+                                    invoiceNo: string;
+                                    /** @enum {string} */
+                                    invoiceType: "SERVICE" | "DRUG";
+                                } | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_issue.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy, hoặc Kho/Khoa-Phòng/Thuốc/Lô tham chiếu không tồn tại */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp, hoặc phiếu không còn ở trạng thái Nháp (STOCK_ISSUE_NOT_DRAFT) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/inventory/issues/manual/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Duyệt phiếu xuất kho mở rộng — đọc tồn kho SỐNG, chặn nếu thiếu, rồi trừ thật vào Thẻ kho/Tồn kho */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                issueNo: string;
+                                /** @enum {string} */
+                                issueType: "RETAIL_SALE" | "INTERNAL_ALLOCATION" | "SERVICE_CONSUMPTION" | "TRANSFER_OUT" | "RETURN_TO_SUPPLIER" | "WRITE_OFF" | "COUNT_SHORTAGE";
+                                /** @enum {string} */
+                                status: "DRAFT" | "POSTED" | "REJECTED" | "VOIDED";
+                                /** Format: uuid */
+                                warehouseId: string;
+                                warehouseName: string;
+                                /** Format: uuid */
+                                prescriptionId: string | null;
+                                /** Format: uuid */
+                                encounterId: string | null;
+                                patientCode: string | null;
+                                patientFullName: string | null;
+                                occurredAt: string;
+                                note: string | null;
+                                totalAmount: number;
+                                lineCount: number;
+                                createdByName: string;
+                                approvedByName: string | null;
+                                approvedAt: string | null;
+                                rejectionReason: string | null;
+                                /** Format: uuid */
+                                departmentId: string | null;
+                                departmentName: string | null;
+                                voidedByName: string | null;
+                                voidedAt: string | null;
+                                voidReason: string | null;
+                                version: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    prescriptionItemId: string | null;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    /** Format: uuid */
+                                    batchId: string | null;
+                                    batchNo: string | null;
+                                    quantity: number;
+                                    unitCost: number;
+                                    sellPrice: number;
+                                    lineAmount: number;
+                                }[];
+                                attachedInvoice: {
+                                    /** Format: uuid */
+                                    invoiceId: string;
+                                    invoiceNo: string;
+                                    /** @enum {string} */
+                                    invoiceType: "SERVICE" | "DRUG";
+                                } | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_issue.approve */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp, hoặc phiếu không còn ở trạng thái Nháp (STOCK_ISSUE_NOT_DRAFT) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không đủ tồn kho (STOCK_ISSUE_INSUFFICIENT_STOCK) */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/issues/manual/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Từ chối phiếu xuất kho mở rộng Nháp — lý do bắt buộc, không đụng tồn kho */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        reason: string;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                issueNo: string;
+                                /** @enum {string} */
+                                issueType: "RETAIL_SALE" | "INTERNAL_ALLOCATION" | "SERVICE_CONSUMPTION" | "TRANSFER_OUT" | "RETURN_TO_SUPPLIER" | "WRITE_OFF" | "COUNT_SHORTAGE";
+                                /** @enum {string} */
+                                status: "DRAFT" | "POSTED" | "REJECTED" | "VOIDED";
+                                /** Format: uuid */
+                                warehouseId: string;
+                                warehouseName: string;
+                                /** Format: uuid */
+                                prescriptionId: string | null;
+                                /** Format: uuid */
+                                encounterId: string | null;
+                                patientCode: string | null;
+                                patientFullName: string | null;
+                                occurredAt: string;
+                                note: string | null;
+                                totalAmount: number;
+                                lineCount: number;
+                                createdByName: string;
+                                approvedByName: string | null;
+                                approvedAt: string | null;
+                                rejectionReason: string | null;
+                                /** Format: uuid */
+                                departmentId: string | null;
+                                departmentName: string | null;
+                                voidedByName: string | null;
+                                voidedAt: string | null;
+                                voidReason: string | null;
+                                version: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    prescriptionItemId: string | null;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    /** Format: uuid */
+                                    batchId: string | null;
+                                    batchNo: string | null;
+                                    quantity: number;
+                                    unitCost: number;
+                                    sellPrice: number;
+                                    lineAmount: number;
+                                }[];
+                                attachedInvoice: {
+                                    /** Format: uuid */
+                                    invoiceId: string;
+                                    invoiceNo: string;
+                                    /** @enum {string} */
+                                    invoiceType: "SERVICE" | "DRUG";
+                                } | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_issue.approve */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp, hoặc phiếu không còn ở trạng thái Nháp (STOCK_ISSUE_NOT_DRAFT) */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -23855,6 +24664,99 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/reports/stock-ledger": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Báo cáo Nhập-Xuất-Tồn — Đầu kỳ/Nhập/Xuất/Cuối kỳ theo mặt hàng trong khoảng ngày */
+        get: {
+            parameters: {
+                query: {
+                    from: string;
+                    to: string;
+                    warehouseId?: string;
+                    drugId?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    unitCode: string | null;
+                                    /** Format: uuid */
+                                    warehouseId: string;
+                                    warehouseName: string;
+                                    openingQuantity: number;
+                                    totalIn: number;
+                                    totalOut: number;
+                                    closingQuantity: number;
+                                }[];
+                                totalOpeningQuantity: number;
+                                totalIn: number;
+                                totalOut: number;
+                                totalClosingQuantity: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_receipt.report */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;

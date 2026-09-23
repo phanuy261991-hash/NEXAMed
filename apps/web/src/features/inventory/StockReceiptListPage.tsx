@@ -15,7 +15,13 @@ import { formatVnd } from '../../shared/format/currency';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
 import { useHasPermission } from '../auth/usePermission';
 import { useWarehousesQuery } from '../drug/warehouse.queries';
-import { useApproveStockReceiptMutation, useStockExpiryWarningsQuery, useStockReceiptsQuery } from './inventory.queries';
+import {
+  useApproveStockReceiptMutation,
+  useRejectStockReceiptMutation,
+  useStockExpiryWarningsQuery,
+  useStockReceiptsQuery,
+  useVoidStockReceiptMutation,
+} from './inventory.queries';
 import { ReasonConfirmDialog } from './ReasonConfirmDialog';
 
 const GRID_COLUMNS = '130px 150px 110px 130px 1.3fr 110px 80px 130px 1fr 170px';
@@ -77,6 +83,8 @@ export function StockReceiptListPage() {
   const warehousesQuery = useWarehousesQuery();
   const expiryQuery = useStockExpiryWarningsQuery(warehouseId || undefined);
   const approveMutation = useApproveStockReceiptMutation();
+  const rejectMutation = useRejectStockReceiptMutation();
+  const voidMutation = useVoidStockReceiptMutation();
 
   const warehouseName = useMemo(() => {
     const map = new Map((warehousesQuery.data?.items ?? []).map((w) => [w.id, w.name]));
@@ -285,9 +293,7 @@ export function StockReceiptListPage() {
           description={`Phiếu ${rejectTarget.receiptNo} sẽ chuyển sang trạng thái Từ chối, không cộng vào tồn kho.`}
           confirmLabel="Xác nhận từ chối"
           confirmVariant="danger"
-          receiptId={rejectTarget.id}
-          version={rejectTarget.version}
-          action="reject"
+          onConfirm={(reason) => rejectMutation.mutateAsync({ id: rejectTarget.id, body: { reason, version: rejectTarget.version } })}
           onDone={() => setRejectTarget(null)}
           onClose={() => setRejectTarget(null)}
         />
@@ -298,9 +304,7 @@ export function StockReceiptListPage() {
           description={`Phiếu ${voidTarget.receiptNo} sẽ bị huỷ — tồn kho đã cộng từ phiếu này sẽ bị trừ ngược lại.`}
           confirmLabel="Xác nhận huỷ"
           confirmVariant="danger"
-          receiptId={voidTarget.id}
-          version={voidTarget.version}
-          action="void"
+          onConfirm={(reason) => voidMutation.mutateAsync({ id: voidTarget.id, body: { reason, version: voidTarget.version } })}
           onDone={() => setVoidTarget(null)}
           onClose={() => setVoidTarget(null)}
         />

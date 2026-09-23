@@ -249,6 +249,10 @@ import {
   listStockIssuesQuerySchema,
   listStockIssuesResponseSchema,
   stockIssueDetailSchema,
+  createManualStockIssueRequestSchema,
+  updateManualStockIssueRequestSchema,
+  approveStockIssueRequestSchema,
+  rejectStockIssueRequestSchema,
   getPrescriptionDispenseStatusQuerySchema,
   getPrescriptionDispenseStatusResponseSchema,
   listDispenseQueueQuerySchema,
@@ -268,6 +272,8 @@ import {
   listStockTransfersQuerySchema,
   listStockTransfersResponseSchema,
   stockTransferDetailSchema,
+  getStockLedgerReportQuerySchema,
+  getStockLedgerReportResponseSchema,
 } from '@nexamed/shared';
 
 /**
@@ -3393,6 +3399,74 @@ registry.registerPath({
   },
 });
 
+// ============ Kho Thuốc GĐ4, "Phiếu xuất kho mở rộng" (docs/DECISIONS.md #170) — 3 loại Nháp→Duyệt
+// lập tay (Xuất dùng nội bộ/Xuất trả NCC/Xuất huỷ), route riêng khỏi POST /issues (Phát thuốc). ============
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/inventory/issues/manual',
+  tags: ['inventory'],
+  summary: 'Tạo phiếu xuất kho mở rộng ở trạng thái Nháp (Xuất dùng nội bộ/Trả NCC/Xuất huỷ) — chưa đụng tồn kho',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createManualStockIssueRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(stockIssueDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_issue.create'),
+    404: errorResponse('Kho/Khoa-Phòng/Thuốc/Lô tham chiếu không tồn tại'),
+    422: errorResponse('Thiếu lô cho thuốc quản lý theo lô, hoặc loại phiếu chưa hỗ trợ'),
+  },
+});
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/inventory/issues/manual/{id}',
+  tags: ['inventory'],
+  summary: 'Sửa phiếu xuất kho mở rộng Nháp — thay toàn bộ dòng hàng + header',
+  security: [{ bearerAuth: [] }],
+  request: { params: stockIssueIdParams, body: { content: { 'application/json': { schema: updateManualStockIssueRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(stockIssueDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_issue.create'),
+    404: errorResponse('Không tìm thấy, hoặc Kho/Khoa-Phòng/Thuốc/Lô tham chiếu không tồn tại'),
+    409: errorResponse('version không khớp, hoặc phiếu không còn ở trạng thái Nháp (STOCK_ISSUE_NOT_DRAFT)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/inventory/issues/manual/{id}/approve',
+  tags: ['inventory'],
+  summary: 'Duyệt phiếu xuất kho mở rộng — đọc tồn kho SỐNG, chặn nếu thiếu, rồi trừ thật vào Thẻ kho/Tồn kho',
+  security: [{ bearerAuth: [] }],
+  request: { params: stockIssueIdParams, body: { content: { 'application/json': { schema: approveStockIssueRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(stockIssueDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_issue.approve'),
+    404: errorResponse('Không tìm thấy'),
+    409: errorResponse('version không khớp, hoặc phiếu không còn ở trạng thái Nháp (STOCK_ISSUE_NOT_DRAFT)'),
+    422: errorResponse('Không đủ tồn kho (STOCK_ISSUE_INSUFFICIENT_STOCK)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/inventory/issues/manual/{id}/reject',
+  tags: ['inventory'],
+  summary: 'Từ chối phiếu xuất kho mở rộng Nháp — lý do bắt buộc, không đụng tồn kho',
+  security: [{ bearerAuth: [] }],
+  request: { params: stockIssueIdParams, body: { content: { 'application/json': { schema: rejectStockIssueRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(stockIssueDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_issue.approve'),
+    404: errorResponse('Không tìm thấy'),
+    409: errorResponse('version không khớp, hoặc phiếu không còn ở trạng thái Nháp (STOCK_ISSUE_NOT_DRAFT)'),
+  },
+});
+
 registry.registerPath({
   method: 'get',
   path: '/api/v1/inventory/prescriptions/{prescriptionId}/dispense-status',
@@ -3633,6 +3707,24 @@ registry.registerPath({
     422: errorResponse('Nhận vượt số đã xuất, hoặc nhận thiếu số lượng nhưng chưa nhập ghi chú chênh lệch'),
   },
 });
+
+// ============ Kho Thuốc GĐ4, "Báo cáo Nhập-Xuất-Tồn" (docs/DECISIONS.md #170) ============
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/inventory/reports/stock-ledger',
+  tags: ['inventory'],
+  summary: 'Báo cáo Nhập-Xuất-Tồn — Đầu kỳ/Nhập/Xuất/Cuối kỳ theo mặt hàng trong khoảng ngày',
+  security: [{ bearerAuth: [] }],
+  request: { query: getStockLedgerReportQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(getStockLedgerReportResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_receipt.report'),
+  },
+});
+// GET /api/v1/inventory/reports/stock-ledger/export không đăng ký OpenAPI — binary qua @Res(), web
+// tải bằng downloadFile() (đúng lý do /cash-flow-report/export không có trong file này).
 
 const generator = new OpenApiGeneratorV31(registry.definitions);
 const document = generator.generateDocument({

@@ -1,11 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   ApproveStockCountRequest,
+  ApproveStockIssueRequest,
   ApproveStockReceiptRequest,
+  CreateManualStockIssueRequest,
   CreateStockCountRequest,
   CreateStockIssueRequest,
   CreateStockReceiptRequest,
   CreateStockTransferRequest,
+  GetStockLedgerReportQuery,
   ListDispenseQueueQuery,
   ListStockBalancesQuery,
   ListStockCountsQuery,
@@ -14,9 +17,11 @@ import type {
   ListStockTransfersQuery,
   ReceiveStockTransferRequest,
   RejectStockCountRequest,
+  RejectStockIssueRequest,
   RejectStockReceiptRequest,
   RejectStockTransferRequest,
   ShipStockTransferRequest,
+  UpdateManualStockIssueRequest,
   UpdateStockCountRequest,
   UpdateStockReceiptRequest,
   UpdateStockTransferRequest,
@@ -27,11 +32,14 @@ import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
 import {
   approveStockCount,
+  approveStockIssue,
   approveStockReceipt,
+  createManualStockIssue,
   createStockCount,
   createStockIssue,
   createStockReceipt,
   createStockTransfer,
+  exportStockLedgerReport,
   getDispenseQueue,
   getDrugBatchBalances,
   getDrugLedger,
@@ -42,15 +50,18 @@ import {
   getStockExpiryWarnings,
   getStockIssue,
   getStockIssues,
+  getStockLedgerReport,
   getStockReceipt,
   getStockReceipts,
   getStockTransfer,
   getStockTransfers,
   receiveStockTransfer,
   rejectStockCount,
+  rejectStockIssue,
   rejectStockReceipt,
   rejectStockTransfer,
   shipStockTransfer,
+  updateManualStockIssue,
   updateStockCount,
   updateStockReceipt,
   updateStockTransfer,
@@ -229,6 +240,40 @@ export function useVoidStockIssueMutation() {
   });
 }
 
+// ============ Kho Thuốc GĐ4 — "Phiếu xuất kho mở rộng" (docs/DECISIONS.md #170) ============
+
+export function useCreateManualStockIssueMutation() {
+  const invalidate = useInvalidateInventory();
+  return useMutation({
+    mutationFn: (body: CreateManualStockIssueRequest) => createManualStockIssue(body),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateManualStockIssueMutation() {
+  const invalidate = useInvalidateInventory();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: UpdateManualStockIssueRequest }) => updateManualStockIssue(id, body),
+    onSuccess: invalidate,
+  });
+}
+
+export function useApproveStockIssueMutation() {
+  const invalidate = useInvalidateInventory();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: ApproveStockIssueRequest }) => approveStockIssue(id, body),
+    onSuccess: invalidate,
+  });
+}
+
+export function useRejectStockIssueMutation() {
+  const invalidate = useInvalidateInventory();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: RejectStockIssueRequest }) => rejectStockIssue(id, body),
+    onSuccess: invalidate,
+  });
+}
+
 // ============ Kho Thuốc GĐ4 — "Kiểm kê" (docs/DECISIONS.md #170) ============
 
 export function useStockCountsQuery(query: ListStockCountsQuery) {
@@ -367,4 +412,18 @@ export function useReceiveStockTransferMutation() {
     mutationFn: ({ id, body }: { id: string; body: ReceiveStockTransferRequest }) => receiveStockTransfer(id, body),
     onSuccess: invalidate,
   });
+}
+
+// ============ Kho Thuốc GĐ4 — "Báo cáo Nhập-Xuất-Tồn" (docs/DECISIONS.md #170) ============
+
+export function useStockLedgerReportQuery(query: GetStockLedgerReportQuery) {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'stock-ledger-report', JSON.stringify(query)),
+    queryFn: () => getStockLedgerReport(query),
+  });
+}
+
+export function useExportStockLedgerReportMutation() {
+  return useMutation({ mutationFn: (query: GetStockLedgerReportQuery) => exportStockLedgerReport(query) });
 }

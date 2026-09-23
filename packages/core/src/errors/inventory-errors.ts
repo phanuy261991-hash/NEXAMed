@@ -19,6 +19,18 @@ export class StockReceiptVoidNotAllowedError extends DomainError {
   }
 }
 
+// ============ Kho Thuốc GĐ4, "Phiếu xuất kho mở rộng" (docs/DECISIONS.md #170) ============
+
+/** Sửa/Duyệt/Từ chối một phiếu xuất kho (loại Nháp→Duyệt: Xuất dùng nội bộ/Xuất trả NCC/Xuất huỷ)
+ * không (còn) ở trạng thái Nháp. */
+export class StockIssueNotDraftError extends DomainError {
+  readonly code = 'STOCK_ISSUE_NOT_DRAFT';
+
+  constructor() {
+    super('Phiếu xuất kho này không còn ở trạng thái Nháp.');
+  }
+}
+
 // ============ Kho Thuốc GĐ3 (Xuất kho theo đơn + FEFO + tiền thuốc, docs/DECISIONS.md #163) ============
 
 /** Phát VƯỢT số lượng còn lại của một dòng thuốc trong đơn — chặn cứng (422), khác PRE-02/03 lâm

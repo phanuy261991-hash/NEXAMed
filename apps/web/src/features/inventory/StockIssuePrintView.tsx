@@ -54,6 +54,11 @@ export function StockIssuePrintView({ issue, clinicHeader }: { issue: StockIssue
             Bệnh nhân: <strong>{issue.patientFullName}</strong> {issue.patientCode && `(${issue.patientCode})`}
           </p>
         )}
+        {issue.departmentName && (
+          <p>
+            Khoa/Phòng tiếp nhận: <strong>{issue.departmentName}</strong>
+          </p>
+        )}
         <p>
           Người lập phiếu: <strong>{issue.createdByName}</strong>
         </p>
@@ -92,7 +97,7 @@ export function StockIssuePrintView({ issue, clinicHeader }: { issue: StockIssue
 
       {issue.note && (
         <p className="mt-2 text-sm">
-          <span className="font-semibold">Ghi chú:</span> {issue.note}
+          <span className="font-semibold">{issue.prescriptionId ? 'Ghi chú' : 'Lý do'}:</span> {issue.note}
         </p>
       )}
 

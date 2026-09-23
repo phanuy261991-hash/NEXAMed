@@ -266,6 +266,9 @@ export class StockCountService {
             batchNo: line.batchId ? (line.batch?.batchNo ?? null) : line.newBatchNo,
             expiryDate: line.batchId ? (line.batch?.expiryDate ?? null) : line.newBatchExpiryDate,
             lineAmount: unitCost * BigInt(difference),
+            // Phiếu tự sinh — không có khái niệm chiết khấu (Kho Thuốc GĐ4, "Phiếu nhập kho mở rộng", #170).
+            discountType: null,
+            discountValue: null,
           });
         } else if (kind === 'SHORTAGE') {
           shortageLines.push({ drugId: line.drugId, batchId: line.batchId, quantity: -difference, unitCost });

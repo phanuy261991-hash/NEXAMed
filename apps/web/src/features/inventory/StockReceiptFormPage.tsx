@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { CaretDown, CaretRight, MagnifyingGlass, Plus, Printer, Trash, Warning } from '@phosphor-icons/react';
-import type { CreateStockReceiptRequest, DrugSummary, StockReceiptLine, StockReceiptType } from '@nexamed/shared';
+import type { CreateStockReceiptRequest, DiscountType, DrugSummary, StockReceiptLine, StockReceiptType } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
@@ -12,6 +12,7 @@ import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { MoneyInput } from '../../shared/ui/MoneyInput';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { StatusBadge, type StatusBadgeTone } from '../../shared/ui/StatusBadge';
+import { TwoOptionToggle } from '../../shared/ui/TwoOptionToggle';
 import { formatVnd } from '../../shared/format/currency';
 import { formatDobDisplay } from '../../shared/format/date';
 import { useCollapsedGroups } from '../../shared/hooks/useCollapsedGroups';
@@ -45,6 +46,9 @@ interface DraftLine {
   unitCost: number | undefined;
   batchNo: string;
   expiryDate: string;
+  /** Chiết khấu "Từng dòng" (Kho Thuốc GĐ4, "Phiếu nhập kho mở rộng", docs/DECISIONS.md #170) — CHỈ
+   * có ý nghĩa khi `receiptType='PURCHASE'` VÀ chế độ chiết khấu đang là "Từng dòng". */
+  discountValue: string;
 }
 
 const STATUS_META: Record<string, { label: string; tone: StatusBadgeTone }> = {
@@ -56,7 +60,28 @@ const STATUS_META: Record<string, { label: string; tone: StatusBadgeTone }> = {
 const RECEIPT_TYPE_OPTIONS: ComboboxOption[] = [
   { value: 'PURCHASE', label: 'Nhập nhà cung cấp' },
   { value: 'OPENING_BALANCE', label: 'Nhập khởi tạo (Đầu kỳ)' },
+  { value: 'RETURN_FROM_USE', label: 'Nhập hoàn trả từ bệnh nhân/khoa phòng' },
 ];
+
+const DISCOUNT_MODE_OPTIONS = [
+  { value: 'PER_LINE', label: 'Từng dòng' },
+  { value: 'TOTAL', label: 'Toàn phiếu' },
+] as const;
+
+const DISCOUNT_TYPE_OPTIONS = [
+  { value: 'PERCENT', label: '%' },
+  { value: 'AMOUNT', label: 'Số tiền' },
+] as const;
+
+/** Chiết khấu — hàm THUẦN nhỏ khai RIÊNG ở đây (không import `computeDiscountAmount` từ
+ * `@nexamed/core`, apps/web bị chặn import gói này #073) — chỉ dùng để XEM TRƯỚC lúc còn đang sửa
+ * Nháp, số thật luôn do backend tính lại (`computeInvoiceDiscount()`) lúc lưu. PERCENT: luôn 0-100
+ * (ép ở input), AMOUNT: clamp về [0, base] tránh xem trước ra số âm. */
+function previewDiscountAmount(base: number, type: 'PERCENT' | 'AMOUNT' | null, value: number): number {
+  if (!type || !value) return 0;
+  const raw = type === 'PERCENT' ? Math.round((base * value) / 100) : value;
+  return Math.min(Math.max(raw, 0), base);
+}
 
 function unitOptionsFor(drug: DrugSummary): string[] {
   const options = [drug.baseUnitCode, ...drug.units.map((u) => u.unitCode)].filter((u): u is string => Boolean(u));
@@ -118,6 +143,14 @@ export function StockReceiptFormPage() {
   const [lines, setLines] = useState<DraftLine[]>([]);
   const [drugQuery, setDrugQuery] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
+  // Chiết khấu (Kho Thuốc GĐ4, "Phiếu nhập kho mở rộng", docs/DECISIONS.md #170) — CHỈ có ý nghĩa
+  // khi `receiptType='PURCHASE'`. `null` = CHƯA chọn cách nào (đúng mục 4.1c ui-guidelines — không
+  // tô sẵn lựa chọn mặc định), đúng khuôn `discountEditMode` ở `InvoiceDetailPage.tsx` (#137).
+  const [discountMode, setDiscountMode] = useState<'PER_LINE' | 'TOTAL' | null>(null);
+  const [totalDiscountType, setTotalDiscountType] = useState<DiscountType>('PERCENT');
+  const [totalDiscountValue, setTotalDiscountValue] = useState<number | undefined>(undefined);
+  // "Lý do" KHÔNG nạp sẵn giá trị cũ khi mở lại phiếu (đúng #137) — luôn gõ mới mỗi lần sửa.
+  const [totalDiscountReason, setTotalDiscountReason] = useState('');
 
   useBreadcrumb([
     { label: 'Quản lý kho' },
@@ -148,8 +181,13 @@ export function StockReceiptFormPage() {
         unitCost: l.unitCost,
         batchNo: l.batchNo ?? '',
         expiryDate: l.expiryDate ?? '',
+        discountValue: l.discountValue != null ? String(l.discountValue) : '',
       })),
     );
+    setDiscountMode(r.discountMode === 'TOTAL' ? 'TOTAL' : 'PER_LINE');
+    setTotalDiscountType(r.discountType ?? 'PERCENT');
+    setTotalDiscountValue(r.discountValue ?? undefined);
+    setTotalDiscountReason(r.discountReason ?? '');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [receiptQuery.data?.id]);
 
@@ -163,6 +201,20 @@ export function StockReceiptFormPage() {
   const searchResults = isSearchingDrug ? (drugSearchQuery.data?.items ?? []) : [];
 
   const totalAmount = useMemo(() => lines.reduce((sum, l) => sum + (Number(l.quantity) || 0) * (l.unitCost ?? 0), 0), [lines]);
+
+  // Chiết khấu — xem trước CLIENT-SIDE (số thật do backend tính lại lúc lưu, `computeInvoiceDiscount()`).
+  const hasLineDiscount = receiptType === 'PURCHASE' && discountMode === 'PER_LINE' && lines.some((l) => Number(l.discountValue) > 0);
+  const discountAmount = useMemo(() => {
+    if (receiptType !== 'PURCHASE') return 0;
+    if (discountMode === 'PER_LINE') {
+      return lines.reduce((sum, l) => {
+        const lineAmount = (Number(l.quantity) || 0) * (l.unitCost ?? 0);
+        return sum + previewDiscountAmount(lineAmount, Number(l.discountValue) > 0 ? 'PERCENT' : null, Number(l.discountValue) || 0);
+      }, 0);
+    }
+    return previewDiscountAmount(totalAmount, totalDiscountType, totalDiscountValue ?? 0);
+  }, [receiptType, discountMode, lines, totalAmount, totalDiscountType, totalDiscountValue]);
+  const netAmount = totalAmount - discountAmount;
 
   // Nhóm theo `drugId` để hiện 1 dòng tiêu đề sản phẩm + N dòng lô bên dưới (thay vì liệt kê phẳng
   // từng lô lặp lại tên sản phẩm) — `Map` giữ đúng thứ tự thêm vào lần đầu, đúng chốt thiết kế trực
@@ -203,6 +255,7 @@ export function StockReceiptFormPage() {
         unitCost: undefined,
         batchNo: '',
         expiryDate: '',
+        discountValue: '',
       },
     ]);
     setDrugQuery('');
@@ -228,6 +281,7 @@ export function StockReceiptFormPage() {
           unitCost: undefined,
           batchNo: '',
           expiryDate: '',
+          discountValue: '',
         },
       ];
     });
@@ -268,6 +322,17 @@ export function StockReceiptFormPage() {
         return null;
       }
     }
+    const useTotalDiscount = receiptType === 'PURCHASE' && discountMode === 'TOTAL' && !hasLineDiscount;
+    if (useTotalDiscount && totalDiscountValue) {
+      if (!totalDiscountReason.trim()) {
+        setFormError('Phải nhập lý do chiết khấu.');
+        return null;
+      }
+      if (totalDiscountType === 'PERCENT' && totalDiscountValue > 100) {
+        setFormError('Chiết khấu theo % không vượt quá 100.');
+        return null;
+      }
+    }
     setFormError(null);
     return {
       warehouseId,
@@ -276,6 +341,9 @@ export function StockReceiptFormPage() {
       occurredAt: `${occurredAt}T00:00:00+07:00`,
       note: note || undefined,
       supplierInvoiceNo: supplierInvoiceNo || undefined,
+      discountType: useTotalDiscount && totalDiscountValue ? totalDiscountType : undefined,
+      discountValue: useTotalDiscount && totalDiscountValue ? totalDiscountValue : undefined,
+      discountReason: useTotalDiscount && totalDiscountValue ? totalDiscountReason.trim() : undefined,
       lines: lines.map((l) => ({
         drugId: l.drugId,
         unitCode: l.unitCode,
@@ -283,6 +351,8 @@ export function StockReceiptFormPage() {
         unitCost: l.unitCost!,
         batchNo: l.batchNo || undefined,
         expiryDate: l.expiryDate || undefined,
+        discountType: receiptType === 'PURCHASE' && discountMode === 'PER_LINE' && Number(l.discountValue) > 0 ? ('PERCENT' as const) : undefined,
+        discountValue: receiptType === 'PURCHASE' && discountMode === 'PER_LINE' && Number(l.discountValue) > 0 ? Number(l.discountValue) : undefined,
       })),
     };
   }
@@ -324,6 +394,10 @@ export function StockReceiptFormPage() {
   }
 
   const saving = createMutation.isPending || updateMutation.isPending || approveMutation.isPending;
+  // Cột "Chiết khấu" trong bảng dòng hàng — CHỈ hiện khi chế độ "Từng dòng" đang chọn, đúng khuôn
+  // cột "Chiết khấu" của `InvoiceDetailPage.tsx` (chỉ hiện khi `discountEditMode==='PER_LINE'`).
+  const showLineDiscountCol = receiptType === 'PURCHASE' && discountMode === 'PER_LINE';
+  const lineGridCols = ['1.8fr', '100px', '110px', '130px', '130px', '130px', ...(showLineDiscountCol ? ['110px'] : []), '130px', ...(!readOnly ? ['50px'] : [])].join(' ');
 
   return (
     <div className="flex h-full flex-col gap-3 p-3">
@@ -413,6 +487,57 @@ export function StockReceiptFormPage() {
         </div>
       </div>
 
+      {/* ============ Chiết khấu (Kho Thuốc GĐ4, "Phiếu nhập kho mở rộng", docs/DECISIONS.md #170)
+          — CHỈ hiện với loại phiếu "Nhập nhà cung cấp", Toàn phiếu/Từng dòng loại trừ lẫn nhau. ============ */}
+      {receiptType === 'PURCHASE' && (
+        <div className="flex-shrink-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="mb-2 flex items-center gap-3">
+            <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Chiết khấu</span>
+            {!readOnly && <TwoOptionToggle options={DISCOUNT_MODE_OPTIONS} value={discountMode} onChange={setDiscountMode} />}
+            {readOnly && discountMode && <span className="text-xs font-semibold text-slate-600">{DISCOUNT_MODE_OPTIONS.find((o) => o.value === discountMode)?.label}</span>}
+          </div>
+          {discountMode === 'TOTAL' ? (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-slate-800">Cách tính</label>
+                <TwoOptionToggle options={DISCOUNT_TYPE_OPTIONS} value={totalDiscountType} disabled={readOnly} onChange={(v) => v && setTotalDiscountType(v)} />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-slate-800">Giá trị</label>
+                {totalDiscountType === 'PERCENT' ? (
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    disabled={readOnly}
+                    value={totalDiscountValue ?? ''}
+                    onChange={(e) => setTotalDiscountValue(e.target.value ? Number(e.target.value) : undefined)}
+                    className="w-full rounded-md border border-slate-300 px-2.5 py-2 text-sm font-semibold text-slate-900 disabled:bg-slate-50"
+                  />
+                ) : (
+                  <MoneyInput id="receipt-total-discount-value" value={totalDiscountValue} onChange={setTotalDiscountValue} disabled={readOnly} />
+                )}
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-slate-800">
+                  Lý do <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={totalDiscountReason}
+                  disabled={readOnly}
+                  onChange={(e) => setTotalDiscountReason(e.target.value)}
+                  placeholder="Vd: chiết khấu đơn hàng lớn"
+                  className="w-full rounded-md border border-slate-300 px-2.5 py-2 text-sm font-semibold text-slate-900 disabled:bg-slate-50"
+                />
+              </div>
+            </div>
+          ) : discountMode === 'PER_LINE' ? (
+            <p className="text-xs text-slate-500">Nhập trực tiếp % chiết khấu ở cột "Chiết khấu" trong bảng mặt hàng bên dưới.</p>
+          ) : null}
+        </div>
+      )}
+
       {!readOnly && (
         <div className="flex-shrink-0 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
           <div className="relative">
@@ -455,7 +580,7 @@ export function StockReceiptFormPage() {
             <div className="flex h-full flex-col" style={{ minWidth: 900 }}>
               <div
                 role="row"
-                style={{ gridTemplateColumns: readOnly ? '1.8fr 100px 110px 130px 130px 130px 130px' : '1.8fr 100px 110px 130px 130px 130px 130px 50px' }}
+                style={{ gridTemplateColumns: lineGridCols }}
                 className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-bold uppercase tracking-wide text-slate-800"
               >
                 <div role="columnheader" className="py-2.5 text-left">Thuốc / vật tư</div>
@@ -464,6 +589,7 @@ export function StockReceiptFormPage() {
                 <div role="columnheader" className="py-2.5 text-center">Giá vốn</div>
                 <div role="columnheader" className="py-2.5 text-center">Số lô</div>
                 <div role="columnheader" className="py-2.5 text-center">Hạn dùng</div>
+                {showLineDiscountCol && <div role="columnheader" className="py-2.5 text-center">Chiết khấu</div>}
                 <div role="columnheader" className="py-2.5 text-center">Thành tiền</div>
                 {!readOnly && <div role="columnheader" className="py-2.5" />}
               </div>
@@ -476,7 +602,7 @@ export function StockReceiptFormPage() {
                     <div key={head.drugId}>
                       <div
                         role="row"
-                        style={{ gridTemplateColumns: readOnly ? '1.8fr 100px 110px 130px 130px 130px 130px' : '1.8fr 100px 110px 130px 130px 130px 130px 50px', minHeight: 40 }}
+                        style={{ gridTemplateColumns: lineGridCols, minHeight: 40 }}
                         className="grid items-center border-b border-slate-100 bg-slate-50/70 px-4 text-sm"
                       >
                         <div role="cell" className="flex min-w-0 items-center gap-1.5 truncate font-bold text-slate-900" title={head.drugName}>
@@ -496,7 +622,7 @@ export function StockReceiptFormPage() {
                           </span>
                           {collapsible && <span className="flex-shrink-0 text-xs font-semibold text-blue-600">· {group.length} lô</span>}
                         </div>
-                        <div role="cell" className="col-span-6" />
+                        <div role="cell" style={{ gridColumn: `span ${showLineDiscountCol ? 7 : 6}` }} />
                         {!readOnly && (
                           <div role="cell" className="text-center">
                             {head.isBatchManaged && (
@@ -517,7 +643,7 @@ export function StockReceiptFormPage() {
                         <div
                           key={l.key}
                           role="row"
-                          style={{ gridTemplateColumns: readOnly ? '1.8fr 100px 110px 130px 130px 130px 130px' : '1.8fr 100px 110px 130px 130px 130px 130px 50px', minHeight: 56 }}
+                          style={{ gridTemplateColumns: lineGridCols, minHeight: 56 }}
                           className="grid items-center border-b border-slate-100 px-4 text-sm"
                         >
                           <div role="cell" className="min-w-0 pl-3 text-slate-300">↳</div>
@@ -577,8 +703,29 @@ export function StockReceiptFormPage() {
                               <DateInput id={`expiry-${l.key}`} value={l.expiryDate} onChange={(v) => updateLine(l.key, { expiryDate: v })} dense />
                             )}
                           </div>
+                          {showLineDiscountCol && (
+                            <div role="cell" className="px-1">
+                              {readOnly ? (
+                                <div className="text-center tabular-nums">{l.discountValue ? `${l.discountValue}%` : '—'}</div>
+                              ) : (
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={100}
+                                  value={l.discountValue}
+                                  onChange={(e) => updateLine(l.key, { discountValue: e.target.value })}
+                                  placeholder="0"
+                                  className="w-full rounded-md border border-slate-300 px-1.5 py-1.5 text-center text-sm font-semibold text-slate-900"
+                                />
+                              )}
+                            </div>
+                          )}
                           <div role="cell" className="text-center font-semibold tabular-nums text-slate-900">
-                            {formatVnd((Number(l.quantity) || 0) * (l.unitCost ?? 0))}
+                            {(() => {
+                              const lineAmount = (Number(l.quantity) || 0) * (l.unitCost ?? 0);
+                              const lineDiscount = showLineDiscountCol ? previewDiscountAmount(lineAmount, Number(l.discountValue) > 0 ? 'PERCENT' : null, Number(l.discountValue) || 0) : 0;
+                              return formatVnd(lineAmount - lineDiscount);
+                            })()}
                           </div>
                           {!readOnly && (
                             <div role="cell" className="text-center">
@@ -599,9 +746,26 @@ export function StockReceiptFormPage() {
       </div>
 
       <div className="flex flex-shrink-0 items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
-        <div className="text-sm font-semibold text-slate-600">
-          Tổng cộng: <span className="ml-1 text-lg font-bold text-slate-900">{formatVnd(totalAmount)}</span>
-        </div>
+        {discountAmount > 0 ? (
+          <div className="text-sm">
+            <div className="flex justify-between gap-6 text-slate-600">
+              <span>Tổng tiền hàng</span>
+              <span className="font-semibold text-slate-900">{formatVnd(totalAmount)}</span>
+            </div>
+            <div className="flex justify-between gap-6 text-slate-600">
+              <span>Chiết khấu</span>
+              <span className="font-semibold text-rose-600">-{formatVnd(discountAmount)}</span>
+            </div>
+            <div className="mt-0.5 flex justify-between gap-6 border-t border-slate-200 pt-0.5">
+              <span className="font-bold text-slate-900">Thành tiền</span>
+              <span className="text-lg font-bold text-slate-900">{formatVnd(netAmount)}</span>
+            </div>
+          </div>
+        ) : (
+          <div className="text-sm font-semibold text-slate-600">
+            Tổng cộng: <span className="ml-1 text-lg font-bold text-slate-900">{formatVnd(totalAmount)}</span>
+          </div>
+        )}
         {formError && <p className="text-sm font-medium text-rose-600">{formError}</p>}
         {!readOnly && (
           <div className="flex gap-2">

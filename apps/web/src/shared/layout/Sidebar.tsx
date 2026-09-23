@@ -75,7 +75,19 @@ const WORK_SCHEDULE_GROUP_PATHS = ['/work-schedule'];
  * "Danh mục Thuốc và Vật Tư" khỏi "Quản trị" theo yêu cầu chủ dự án, đặt ngay dưới "Sổ quỹ & Thu
  * chi". Route GIỮ NGUYÊN `/admin/catalog-pharmacy` (không đổi permission/route, chỉ đổi vị trí
  * hiển thị trong sidebar — cùng cách đã làm với "Hồ sơ Bệnh nhân"/`PATIENT_RECORDS_GROUP_PATHS`). */
-const WAREHOUSE_GROUP_PATHS = ['/admin/catalog-pharmacy', '/inventory/receipts', '/inventory/balances', '/inventory/dispense', '/inventory/issues', '/inventory/counts'];
+// "/inventory/transfers"/"/inventory/reports" thêm ở đây (23/09/2026, GĐ4 3 phần cuối #170) — tiện
+// vá luôn 1 lỗ hổng có sẵn: "/inventory/transfers" (Điều chuyển kho, #173) trước đó CHƯA từng được
+// thêm vào danh sách này, khiến nhóm "Quản lý kho" không tự mở khi đang đứng ở trang đó.
+const WAREHOUSE_GROUP_PATHS = [
+  '/admin/catalog-pharmacy',
+  '/inventory/receipts',
+  '/inventory/balances',
+  '/inventory/dispense',
+  '/inventory/issues',
+  '/inventory/counts',
+  '/inventory/transfers',
+  '/inventory/reports',
+];
 /** Đường dẫn thuộc nhóm "Quản lý nhà cung cấp" — tách "Nhà cung cấp" khỏi pill con của "Danh mục
  * Thuốc và Vật Tư" thành trang/nhóm menu riêng (route mới `/suppliers`, cùng quyền `drug.create`/
  * `drug.update`, tách từ `drug.manage` gộp cũ #156). */
@@ -200,6 +212,9 @@ export function Sidebar() {
   const canSeeStockCount = useHasPermission('stock_count', 'read');
   // Kho Thuốc GĐ4, phần "Điều chuyển kho" (docs/DECISIONS.md #170), gate riêng theo `stock_transfer.read`.
   const canSeeStockTransfer = useHasPermission('stock_transfer', 'read');
+  // Kho Thuốc GĐ4, "Báo cáo Nhập-Xuất-Tồn" (docs/DECISIONS.md #170) — quyền RIÊNG `stock_receipt.report`
+  // (chỉ `clinic_admin` mặc định), KHÁC `canSeeInventory` (`stock_receipt.read`, mọi vai trò kho).
+  const canSeeStockLedgerReport = useHasPermission('stock_receipt', 'report');
   const canSeeSystemConfig = useHasPermission('clinic_config', 'update');
   const canSeeActivityLog = useHasPermission('audit_log', 'read');
   const canSeePatients = useHasPermission('patient', 'read');
@@ -464,7 +479,11 @@ export function Sidebar() {
               "Quản trị" theo yêu cầu chủ dự án, route giữ nguyên /admin/catalog-pharmacy. GĐ2
               (#146) thêm "Phiếu nhập kho"/"Tồn kho" — nhóm hiện cả khi chỉ có stock_receipt.read
               (điều dưỡng/bác sĩ xem tồn, không quản lý danh mục thuốc). */}
-          {(canSeeCatalogPharmacy || canSeeInventory || canSeeDispenseQueue || canSeeStockCount) && (
+          {/* Tiện vá 2 lỗ hổng có sẵn phát hiện lúc thêm `canSeeStockLedgerReport` vào đây (23/09/2026,
+              GĐ4 3 phần cuối #170): điều kiện hiện nhóm thiếu `canSeeStockTransfer` (Điều chuyển kho,
+              #173 — vai trò CHỈ có quyền xem phần này trước đây sẽ không thấy nổi cả nhóm "Quản lý
+              kho" dù mục con `canSeeStockTransfer` bên trong đã đúng), giờ thêm đủ cả 2 quyền mới. */}
+          {(canSeeCatalogPharmacy || canSeeInventory || canSeeDispenseQueue || canSeeStockCount || canSeeStockTransfer || canSeeStockLedgerReport) && (
             <li>
               <button
                 type="button"
@@ -511,6 +530,8 @@ export function Sidebar() {
                   {canSeeStockCount && <NavItem to="/inventory/counts" label="Kiểm kê" icon={ClipboardText} collapsed={false} indent />}
                   {/* Kho Thuốc GĐ4, phần "Điều chuyển kho" (docs/DECISIONS.md #170). */}
                   {canSeeStockTransfer && <NavItem to="/inventory/transfers" label="Điều chuyển kho" icon={ArrowsLeftRight} collapsed={false} indent />}
+                  {/* Kho Thuốc GĐ4, "Báo cáo Nhập-Xuất-Tồn" (docs/DECISIONS.md #170). */}
+                  {canSeeStockLedgerReport && <NavItem to="/inventory/reports/stock-ledger" label="Báo cáo Nhập-Xuất-Tồn" icon={ChartLine} collapsed={false} indent />}
                 </ul>
               )}
             </li>

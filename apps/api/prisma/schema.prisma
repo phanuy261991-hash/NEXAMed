@@ -444,6 +444,9 @@ model Department {
   encounters     Encounter[]
   // Kho Thuốc & Vật tư GĐ1 (docs/DECISIONS.md #146) — "Khoa/Phòng quản lý" tuỳ chọn của một kho.
   warehouses     Warehouse[]
+  // Kho Thuốc GĐ4, "Phiếu xuất kho mở rộng" (docs/DECISIONS.md #170) — Khoa/Phòng TIẾP NHẬN của
+  // phiếu "Xuất dùng nội bộ" (issueType=INTERNAL_ALLOCATION).
+  stockIssues    StockIssue[]
 
   // Đích của composite FK (tenant_id, id) từ user_account/encounter/warehouse.
   @@unique([tenantId, id])
@@ -1797,6 +1800,14 @@ model StockReceipt {
   // Xác nhận nhận hàng (receiptType=TRANSFER_IN). NULL cho mọi phiếu nhập khác. Cùng bản chất
   // `countId` ở trên — chỉ để hiển thị "xem chứng từ gốc", KHÔNG dùng để tính lại gì.
   transferId        String?            @map("transfer_id") @db.Uuid
+  // Kho Thuốc GĐ4, "Phiếu nhập kho mở rộng" (docs/DECISIONS.md #170) — Chiết khấu "Toàn phiếu",
+  // CHỈ có ý nghĩa khi receiptType='PURCHASE' (ép ở tầng Service, không CHECK DB — cùng cách
+  // `invoice`/`invoice_line` #137 xử lý). Loại trừ lẫn nhau với chiết khấu "Từng dòng"
+  // (`StockReceiptLine.discountType`) — computeInvoiceDiscount() (@nexamed/core) tái dùng nguyên
+  // logic đã có ở Thu ngân, không viết lại. Số tiền chiết khấu KHÔNG lưu cột riêng (derived).
+  discountType      DiscountType?      @map("discount_type")
+  discountValue     BigInt?            @map("discount_value")
+  discountReason    String?            @map("discount_reason")
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -1861,6 +1872,10 @@ model StockReceiptLine {
   expiryDate DateTime? @map("expiry_date") @db.Date
   // Snapshot quantity × unitCost, theo đơn vị đã chọn — khớp đúng thành tiền dòng trên hoá đơn giấy.
   lineAmount BigInt    @map("line_amount")
+  // Kho Thuốc GĐ4, "Phiếu nhập kho mở rộng" (docs/DECISIONS.md #170) — Chiết khấu "Từng dòng", loại
+  // trừ lẫn nhau với `StockReceipt.discountType` cấp header (xem comment ở đó).
+  discountType  DiscountType? @map("discount_type")
+  discountValue BigInt?       @map("discount_value")
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -2033,10 +2048,14 @@ enum StockIssueType {
   @@map("stock_issue_type")
 }
 
-// KHÔNG có DRAFT/REJECTED như StockReceiptStatus — luồng 1 bước (#146/#163): chọn lô, xác nhận là
-// trừ kho + sinh tiền ngay.
+// Kho Thuốc GĐ4, "Phiếu xuất kho mở rộng" (docs/DECISIONS.md #170) — thêm DRAFT/REJECTED cho 3
+// loại phiếu xuất mới (INTERNAL_ALLOCATION/RETURN_TO_SUPPLIER/WRITE_OFF, Nháp→Duyệt). `RETAIL_SALE`
+// (Phát thuốc, GĐ3, #146/#163) và 2 loại tự sinh (TRANSFER_OUT/COUNT_SHORTAGE) GIỮ NGUYÊN tạo thẳng
+// POSTED, không đi qua DRAFT — xem `StockIssueService.create()`/`createSystemGeneratedIssue()`.
 enum StockIssueStatus {
+  DRAFT
   POSTED
+  REJECTED
   VOIDED
 
   @@map("stock_issue_status")
@@ -2075,6 +2094,15 @@ model StockIssue {
   // Duyệt xuất (issueType=TRANSFER_OUT). NULL cho mọi phiếu xuất khác. Cùng bản chất `countId` ở
   // trên — chỉ để hiển thị "xem chứng từ gốc", KHÔNG dùng để tính lại gì.
   transferId     String?          @map("transfer_id") @db.Uuid
+  // Kho Thuốc GĐ4, "Phiếu xuất kho mở rộng" (docs/DECISIONS.md #170) — 3 cột Nháp→Duyệt cho
+  // INTERNAL_ALLOCATION/RETURN_TO_SUPPLIER/WRITE_OFF, đúng khuôn `stock_receipt`.
+  approvedBy      String?          @map("approved_by") @db.Uuid
+  approvedAt      DateTime?        @map("approved_at") @db.Timestamptz(6)
+  // Bắt buộc khi status=REJECTED, NULL các trạng thái khác (CHECK ở migration).
+  rejectionReason String?          @map("rejection_reason")
+  // Khoa/Phòng TIẾP NHẬN — CHỈ có ý nghĩa khi issueType='INTERNAL_ALLOCATION' (CHECK ở migration
+  // chặn chiều ngược lại, KHÔNG bắt buộc NOT NULL ở DB — kiểm ở tầng Zod/Service).
+  departmentId    String?          @map("department_id") @db.Uuid
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -2093,6 +2121,8 @@ model StockIssue {
   count         StockCount?      @relation(fields: [tenantId, countId], references: [tenantId, id])
   // Composite FK (tenant_id, transfer_id) -> stock_transfer(tenant_id, id), NULLABLE (GĐ4).
   transfer      StockTransfer?   @relation(fields: [tenantId, transferId], references: [tenantId, id])
+  // Composite FK (tenant_id, department_id) -> department(tenant_id, id), NULLABLE ("Phiếu xuất kho mở rộng").
+  department    Department?      @relation(fields: [tenantId, departmentId], references: [tenantId, id])
   lines         StockIssueLine[]
   ledgerEntries StockLedger[]
 

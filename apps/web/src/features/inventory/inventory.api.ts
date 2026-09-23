@@ -1,6 +1,8 @@
 import type {
   ApproveStockCountRequest,
+  ApproveStockIssueRequest,
   ApproveStockReceiptRequest,
+  CreateManualStockIssueRequest,
   CreateStockCountRequest,
   CreateStockIssueRequest,
   CreateStockReceiptRequest,
@@ -8,6 +10,8 @@ import type {
   GetDrugBatchBalancesResponse,
   GetDrugLedgerResponse,
   GetPrescriptionDispenseStatusResponse,
+  GetStockLedgerReportQuery,
+  GetStockLedgerReportResponse,
   ListDispenseQueueQuery,
   ListDispenseQueueResponse,
   ListStockBalancesQuery,
@@ -23,6 +27,7 @@ import type {
   ListStockTransfersResponse,
   ReceiveStockTransferRequest,
   RejectStockCountRequest,
+  RejectStockIssueRequest,
   RejectStockReceiptRequest,
   RejectStockTransferRequest,
   ShipStockTransferRequest,
@@ -30,13 +35,14 @@ import type {
   StockIssueDetail,
   StockReceiptDetail,
   StockTransferDetail,
+  UpdateManualStockIssueRequest,
   UpdateStockCountRequest,
   UpdateStockReceiptRequest,
   UpdateStockTransferRequest,
   VoidStockIssueRequest,
   VoidStockReceiptRequest,
 } from '@nexamed/shared';
-import { getApiClient, unwrap } from '../../shared/api/client';
+import { downloadFile, getApiClient, unwrap } from '../../shared/api/client';
 
 export async function getStockReceipts(query: ListStockReceiptsQuery): Promise<ListStockReceiptsResponse> {
   return unwrap(await getApiClient().GET('/api/v1/inventory/receipts', { params: { query } })) as ListStockReceiptsResponse;
@@ -112,6 +118,24 @@ export async function getDispenseQueue(query: ListDispenseQueueQuery): Promise<L
   return unwrap(await getApiClient().GET('/api/v1/inventory/dispense-queue', { params: { query } })) as ListDispenseQueueResponse;
 }
 
+// ============ Kho Thuốc GĐ4 — "Phiếu xuất kho mở rộng" (docs/DECISIONS.md #170) ============
+
+export async function createManualStockIssue(body: CreateManualStockIssueRequest): Promise<StockIssueDetail> {
+  return unwrap(await getApiClient().POST('/api/v1/inventory/issues/manual', { body })) as StockIssueDetail;
+}
+
+export async function updateManualStockIssue(id: string, body: UpdateManualStockIssueRequest): Promise<StockIssueDetail> {
+  return unwrap(await getApiClient().PATCH('/api/v1/inventory/issues/manual/{id}', { params: { path: { id } }, body })) as StockIssueDetail;
+}
+
+export async function approveStockIssue(id: string, body: ApproveStockIssueRequest): Promise<StockIssueDetail> {
+  return unwrap(await getApiClient().POST('/api/v1/inventory/issues/manual/{id}/approve', { params: { path: { id } }, body })) as StockIssueDetail;
+}
+
+export async function rejectStockIssue(id: string, body: RejectStockIssueRequest): Promise<StockIssueDetail> {
+  return unwrap(await getApiClient().POST('/api/v1/inventory/issues/manual/{id}/reject', { params: { path: { id } }, body })) as StockIssueDetail;
+}
+
 // ============ Kho Thuốc GĐ4 — "Kiểm kê" (docs/DECISIONS.md #170) ============
 
 export async function getStockCounts(query: ListStockCountsQuery): Promise<ListStockCountsResponse> {
@@ -166,4 +190,19 @@ export async function rejectStockTransfer(id: string, body: RejectStockTransferR
 
 export async function receiveStockTransfer(id: string, body: ReceiveStockTransferRequest): Promise<StockTransferDetail> {
   return unwrap(await getApiClient().POST('/api/v1/inventory/transfers/{id}/receive', { params: { path: { id } }, body })) as StockTransferDetail;
+}
+
+// ============ Kho Thuốc GĐ4 — "Báo cáo Nhập-Xuất-Tồn" (docs/DECISIONS.md #170) ============
+
+export async function getStockLedgerReport(query: GetStockLedgerReportQuery): Promise<GetStockLedgerReportResponse> {
+  return unwrap(await getApiClient().GET('/api/v1/inventory/reports/stock-ledger', { params: { query } })) as GetStockLedgerReportResponse;
+}
+
+/** Xuất Excel — tải file thô qua `downloadFile()` (fetch trực tiếp), KHÔNG qua client sinh từ
+ * OpenAPI (binary, endpoint này cố ý không đăng ký OpenAPI — đúng khuôn `cash-flow-report.api.ts`). */
+export async function exportStockLedgerReport(query: GetStockLedgerReportQuery): Promise<void> {
+  const params = new URLSearchParams({ from: query.from, to: query.to });
+  if (query.warehouseId) params.set('warehouseId', query.warehouseId);
+  if (query.drugId) params.set('drugId', query.drugId);
+  await downloadFile(`/api/v1/inventory/reports/stock-ledger/export?${params.toString()}`, `nhap-xuat-ton-${query.from}_${query.to}.xlsx`);
 }

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { Prisma, StockReceipt, StockReceiptType } from '@prisma/client';
+import type { DiscountType, Prisma, StockReceipt, StockReceiptType } from '@prisma/client';
 
 export interface StockReceiptLineData {
   drugId: string;
@@ -9,6 +9,9 @@ export interface StockReceiptLineData {
   batchNo: string | null;
   expiryDate: Date | null;
   lineAmount: bigint;
+  /** Chiết khấu "Từng dòng" (Kho Thuốc GĐ4, "Phiếu nhập kho mở rộng", docs/DECISIONS.md #170). */
+  discountType: DiscountType | null;
+  discountValue: bigint | null;
 }
 
 export interface CreateStockReceiptData {
@@ -20,6 +23,10 @@ export interface CreateStockReceiptData {
   note: string | null;
   supplierInvoiceNo: string | null;
   totalAmount: bigint;
+  /** Chiết khấu "Toàn phiếu" — `null` cả 3 khi không chiết khấu/dùng chế độ "Từng dòng". */
+  discountType: DiscountType | null;
+  discountValue: bigint | null;
+  discountReason: string | null;
   lines: StockReceiptLineData[];
   /** Kho Thuốc GĐ4 (#170) — trỏ về `stock_count` khi phiếu này TỰ SINH từ Duyệt phiếu kiểm kê
    * (`receiptType='COUNT_SURPLUS'`). `null` cho mọi phiếu nhập lập tay bình thường. */
@@ -37,6 +44,9 @@ export interface UpdateStockReceiptData {
   note: string | null;
   supplierInvoiceNo: string | null;
   totalAmount: bigint;
+  discountType: DiscountType | null;
+  discountValue: bigint | null;
+  discountReason: string | null;
   lines: StockReceiptLineData[];
 }
 
@@ -91,6 +101,9 @@ export class StockReceiptRepository {
         note: data.note,
         supplierInvoiceNo: data.supplierInvoiceNo,
         totalAmount: data.totalAmount,
+        discountType: data.discountType,
+        discountValue: data.discountValue,
+        discountReason: data.discountReason,
         countId: data.countId,
         transferId: data.transferId,
         createdBy: actorId,
@@ -109,6 +122,8 @@ export class StockReceiptRepository {
           batchNo: line.batchNo,
           expiryDate: line.expiryDate,
           lineAmount: line.lineAmount,
+          discountType: line.discountType,
+          discountValue: line.discountValue,
           createdBy: actorId,
           updatedBy: actorId,
         })),
@@ -131,6 +146,9 @@ export class StockReceiptRepository {
         note: data.note,
         supplierInvoiceNo: data.supplierInvoiceNo,
         totalAmount: data.totalAmount,
+        discountType: data.discountType,
+        discountValue: data.discountValue,
+        discountReason: data.discountReason,
         updatedBy: actorId,
         version: { increment: 1 },
       },
@@ -153,6 +171,8 @@ export class StockReceiptRepository {
           batchNo: line.batchNo,
           expiryDate: line.expiryDate,
           lineAmount: line.lineAmount,
+          discountType: line.discountType,
+          discountValue: line.discountValue,
           createdBy: actorId,
           updatedBy: actorId,
         })),
