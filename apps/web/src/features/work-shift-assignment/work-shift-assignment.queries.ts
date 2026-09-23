@@ -7,6 +7,7 @@ import {
   copyWorkShiftAssignments,
   createWorkShiftAssignment,
   deleteWorkShiftAssignment,
+  getWorkShiftAssignmentBusinessHours,
   getWorkShiftAssignmentMonthLockStatus,
   listWorkShiftAssignments,
 } from './work-shift-assignment.api';
@@ -29,6 +30,17 @@ export function useWorkShiftAssignmentMonthLockStatusQuery(month: string) {
   return useQuery({
     queryKey: queryKey(tenantId, 'work-shift-assignment', 'month-lock-status', month),
     queryFn: () => getWorkShiftAssignmentMonthLockStatus(month),
+  });
+}
+
+/** "Lịch làm việc của tôi" (lưới theo tuần) — giờ làm việc theo tuần, tự-phục vụ, đúng khuôn
+ * `useWorkShiftAssignmentMonthLockStatusQuery`. Không đổi theo ngày/tuần đang xem nên không cần
+ * tham số — 1 cache key dùng chung cho toàn trang. */
+export function useWorkShiftAssignmentBusinessHoursQuery() {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'work-shift-assignment', 'business-hours'),
+    queryFn: getWorkShiftAssignmentBusinessHours,
   });
 }
 

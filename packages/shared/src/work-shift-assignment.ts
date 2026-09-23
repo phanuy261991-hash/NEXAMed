@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { workShiftColorSchema } from './work-shift';
+import { businessHoursSchema } from './clinic';
 
 /**
  * "Đăng ký ca làm việc" — Giai đoạn 2 của danh mục "Ca làm việc" (`work-shift.ts`, #101). MỌI
@@ -179,3 +180,14 @@ export const workShiftAssignmentMonthLockStatusResponseSchema = z.object({
   canBypass: z.boolean(),
 });
 export type WorkShiftAssignmentMonthLockStatusResponse = z.infer<typeof workShiftAssignmentMonthLockStatusResponseSchema>;
+
+/**
+ * `GET .../business-hours` — tự-phục vụ, đúng khuôn `month-lock-status` ở trên: "Lịch làm việc của
+ * tôi" (lưới theo tuần) cần biết ngày nào phòng khám đóng cửa để hiện "Nghỉ", nhưng KHÔNG dùng
+ * `GET /appointments/schedule-config` (gắn `appointment.read` — điều dưỡng tự đăng ký ca không có
+ * quyền này, xem `WorkShiftAssignmentService.getBusinessHours()`).
+ */
+export const workShiftAssignmentBusinessHoursResponseSchema = z.object({
+  businessHours: businessHoursSchema.nullable(),
+});
+export type WorkShiftAssignmentBusinessHoursResponse = z.infer<typeof workShiftAssignmentBusinessHoursResponseSchema>;

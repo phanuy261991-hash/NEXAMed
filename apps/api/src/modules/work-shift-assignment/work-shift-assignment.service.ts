@@ -21,6 +21,7 @@ import type {
   ListWorkShiftAssignmentsQuery,
   ListWorkShiftAssignmentsResponse,
   WorkShiftAssignmentBulkResult,
+  WorkShiftAssignmentBusinessHoursResponse,
   WorkShiftAssignmentItem,
   WorkShiftAssignmentMonthLockStatusResponse,
 } from '@nexamed/shared';
@@ -350,6 +351,16 @@ export class WorkShiftAssignmentService implements WorkShiftAssignmentReaderPort
     const locked = isMonthLocked(month, getVietnamDateString(), graceDays);
     const canBypass = await this.unitOfWork.runInTenantScope(tenantId, (tx) => canBypassMonthLock(tx, tenantId, actorId));
     return { locked, canBypass };
+  }
+
+  /** Tự-phục vụ, cùng khuôn `getMonthLockStatus` — "Lịch làm việc của tôi" (lưới theo tuần) cần
+   * biết ngày nào phòng khám ĐÓNG CỬA để hiện "Nghỉ" thay vì "+ Đăng ký", nhưng MỌI nhân viên tự
+   * đăng ký ca (kể cả điều dưỡng — không có `appointment.read`) đều cần đọc được, nên KHÔNG dùng
+   * `GET /appointments/schedule-config` (gắn `appointment.read`, #030-era lỗ hổng "lễ tân không có
+   * quyền đọc module khác" lặp lại nếu tái dùng thẳng route đó ở đây). */
+  async getBusinessHours(tenantId: string): Promise<WorkShiftAssignmentBusinessHoursResponse> {
+    const { businessHours } = await this.clinicConfigReader.getScheduleConfig(tenantId);
+    return { businessHours };
   }
 
   /** `WorkShiftAssignmentReaderPort` — dùng cho lưới Lịch hẹn (module `appointment`, qua port). */

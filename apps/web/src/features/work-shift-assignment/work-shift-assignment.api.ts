@@ -7,6 +7,7 @@ import type {
   ListWorkShiftAssignmentsQuery,
   ListWorkShiftAssignmentsResponse,
   WorkShiftAssignmentBulkResult,
+  WorkShiftAssignmentBusinessHoursResponse,
   WorkShiftAssignmentItem,
   WorkShiftAssignmentMonthLockStatusResponse,
 } from '@nexamed/shared';
@@ -38,6 +39,12 @@ export async function getWorkShiftAssignmentMonthLockStatus(month: string): Prom
   return unwrap(
     await getApiClient().GET('/api/v1/work-shift-assignments/month-lock-status', { params: { query: { month } } }),
   ) as WorkShiftAssignmentMonthLockStatusResponse;
+}
+
+/** "Lịch làm việc của tôi" (lưới theo tuần) — giờ làm việc theo tuần, tự-phục vụ (không cần
+ * `appointment.read`/`clinic_config.read`), dùng để hiện "Nghỉ" đúng ngày phòng khám đóng cửa. */
+export async function getWorkShiftAssignmentBusinessHours(): Promise<WorkShiftAssignmentBusinessHoursResponse> {
+  return unwrap(await getApiClient().GET('/api/v1/work-shift-assignments/business-hours', {})) as WorkShiftAssignmentBusinessHoursResponse;
 }
 
 /** Nhập/Xuất Excel — chỉ "Lịch làm việc nhân viên" (scope global), theo THÁNG (`YYYY-MM`), xem

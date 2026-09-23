@@ -342,4 +342,40 @@ describe('HTTP e2e — /api/v1/work-shift-assignments', () => {
       expect(res.status).toBe(403);
     });
   });
+
+  describe('GET /work-shift-assignments/business-hours (tự-phục vụ — "Lịch làm việc của tôi" lưới theo tuần)', () => {
+    it('401 khi không có token', async () => {
+      const res = await request(app.getHttpServer()).get('/api/v1/work-shift-assignments/business-hours');
+      expect(res.status).toBe(401);
+    });
+
+    it('bác sĩ đọc được dù không có clinic_config.read/appointment.read → 200, mặc định null (chưa cấu hình)', async () => {
+      const res = await request(app.getHttpServer()).get('/api/v1/work-shift-assignments/business-hours').set(authed(doctorAToken));
+      expect(res.status).toBe(200);
+      expect(res.body.data).toHaveProperty('businessHours');
+    });
+
+    it('cấu hình xong (kể cả ngày đóng cửa = null) → phản ánh đúng, kể cả cho bác sĩ không có quyền cấu hình', async () => {
+      const businessHours = {
+        monday: { open: '08:00', close: '17:00' },
+        tuesday: { open: '08:00', close: '17:00' },
+        wednesday: { open: '08:00', close: '17:00' },
+        thursday: { open: '08:00', close: '17:00' },
+        friday: { open: '08:00', close: '17:00' },
+        saturday: null,
+        sunday: null,
+      };
+      await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(clinicAdminToken)).send({ businessHours });
+
+      const res = await request(app.getHttpServer()).get('/api/v1/work-shift-assignments/business-hours').set(authed(doctorAToken));
+      expect(res.status).toBe(200);
+      expect(res.body.data.businessHours).toEqual(businessHours);
+    });
+
+    it('cách ly tenant: tenant B đọc cấu hình của CHÍNH MÌNH, không lẫn businessHours tenant A vừa đặt', async () => {
+      const res = await request(app.getHttpServer()).get('/api/v1/work-shift-assignments/business-hours').set(authed(tenantBAdminToken));
+      expect(res.status).toBe(200);
+      expect(res.body.data.businessHours).toBeNull();
+    });
+  });
 });

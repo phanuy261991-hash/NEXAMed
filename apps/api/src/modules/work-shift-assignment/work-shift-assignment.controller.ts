@@ -59,6 +59,15 @@ export class WorkShiftAssignmentController {
     return this.service.getMonthLockStatus(tenantId, userId, month);
   }
 
+  /** "Lịch làm việc của tôi" (lưới theo tuần) — tự-phục vụ, KHÔNG `@RequirePermission`, cùng lý do
+   * `month-lock-status` ở trên: cần biết ngày nào phòng khám đóng cửa để hiện "Nghỉ", điều dưỡng tự
+   * đăng ký ca không có `appointment.read` nên không dùng `GET /appointments/schedule-config`. */
+  @Get('business-hours')
+  async getBusinessHours(@Req() req: Request) {
+    const { tenantId } = req.user!;
+    return this.service.getBusinessHours(tenantId);
+  }
+
   @Post()
   @RequirePermission('work_shift_assignment', 'create')
   @HttpCode(200)

@@ -39384,6 +39384,237 @@
         }
       }
     },
+    "/api/v1/work-shift-assignments/business-hours": {
+      "get": {
+        "tags": [
+          "work-shift-assignment"
+        ],
+        "summary": "\"Lịch làm việc của tôi\" — giờ làm việc theo tuần, tự-phục vụ, mọi user đã đăng nhập đọc được (không cần appointment.read/clinic_config.read)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "businessHours": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "monday": {
+                              "type": [
+                                "object",
+                                "null"
+                              ],
+                              "properties": {
+                                "open": {
+                                  "type": "string",
+                                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                                },
+                                "close": {
+                                  "type": "string",
+                                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                                }
+                              },
+                              "required": [
+                                "open",
+                                "close"
+                              ]
+                            },
+                            "tuesday": {
+                              "type": [
+                                "object",
+                                "null"
+                              ],
+                              "properties": {
+                                "open": {
+                                  "type": "string",
+                                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                                },
+                                "close": {
+                                  "type": "string",
+                                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                                }
+                              },
+                              "required": [
+                                "open",
+                                "close"
+                              ]
+                            },
+                            "wednesday": {
+                              "type": [
+                                "object",
+                                "null"
+                              ],
+                              "properties": {
+                                "open": {
+                                  "type": "string",
+                                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                                },
+                                "close": {
+                                  "type": "string",
+                                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                                }
+                              },
+                              "required": [
+                                "open",
+                                "close"
+                              ]
+                            },
+                            "thursday": {
+                              "type": [
+                                "object",
+                                "null"
+                              ],
+                              "properties": {
+                                "open": {
+                                  "type": "string",
+                                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                                },
+                                "close": {
+                                  "type": "string",
+                                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                                }
+                              },
+                              "required": [
+                                "open",
+                                "close"
+                              ]
+                            },
+                            "friday": {
+                              "type": [
+                                "object",
+                                "null"
+                              ],
+                              "properties": {
+                                "open": {
+                                  "type": "string",
+                                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                                },
+                                "close": {
+                                  "type": "string",
+                                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                                }
+                              },
+                              "required": [
+                                "open",
+                                "close"
+                              ]
+                            },
+                            "saturday": {
+                              "type": [
+                                "object",
+                                "null"
+                              ],
+                              "properties": {
+                                "open": {
+                                  "type": "string",
+                                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                                },
+                                "close": {
+                                  "type": "string",
+                                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                                }
+                              },
+                              "required": [
+                                "open",
+                                "close"
+                              ]
+                            },
+                            "sunday": {
+                              "type": [
+                                "object",
+                                "null"
+                              ],
+                              "properties": {
+                                "open": {
+                                  "type": "string",
+                                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                                },
+                                "close": {
+                                  "type": "string",
+                                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                                }
+                              },
+                              "required": [
+                                "open",
+                                "close"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "monday",
+                            "tuesday",
+                            "wednesday",
+                            "thursday",
+                            "friday",
+                            "saturday",
+                            "sunday"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "businessHours"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/work-shift-assignments/month-lock-status": {
       "get": {
         "tags": [

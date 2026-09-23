@@ -216,6 +216,7 @@ import {
   workShiftAssignmentMonthSchema,
   workShiftAssignmentMonthLockStatusQuerySchema,
   workShiftAssignmentMonthLockStatusResponseSchema,
+  workShiftAssignmentBusinessHoursResponseSchema,
   approveCashierShiftRequestSchema,
   cashierShiftBlindCloseStatusSchema,
   cashierShiftRequiredStatusSchema,
@@ -2583,6 +2584,18 @@ registry.registerPath({
     200: jsonResponse('Thành công', envelope(listWorkShiftAssignmentsResponseSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền work_shift_assignment.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/work-shift-assignments/business-hours',
+  tags: ['work-shift-assignment'],
+  summary: '"Lịch làm việc của tôi" — giờ làm việc theo tuần, tự-phục vụ, mọi user đã đăng nhập đọc được (không cần appointment.read/clinic_config.read)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(workShiftAssignmentBusinessHoursResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
   },
 });
 

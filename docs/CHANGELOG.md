@@ -2,6 +2,18 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-24
+
+### "Lịch làm việc của tôi" — redesign lưới theo tuần (Ca × Ngày) + widget "Đã đăng ký N/M ca"
+
+Chủ dự án gửi ảnh tham khảo, yêu cầu đổi cách hiển thị chế độ Tuần từ "cột ngày, mỗi ngày xếp dọc các chip ca" sang **lưới Ca × Ngày** (hàng = mẫu ca, cột = 7 ngày) + thêm widget tổng kết "Đã đăng ký N/M ca (X giờ)" kèm vòng tròn %. Đã hỏi chốt 2 điểm trước khi code (đúng `feedback_confirm_before_feature`, xem `docs/DECISIONS.md` #181): KHÔNG thêm quy trình duyệt ca (ảnh mẫu có "Đã duyệt"/"Chờ duyệt" nhưng hệ thống hiện tại tự đăng ký là có ngay, không qua duyệt) — chỉ đổi nhãn thành "Đã đăng ký"; mẫu số "M" = tổng số ô ca khả dụng trong tuần (số mẫu ca × số ngày phòng khám mở cửa), không phải chỉ tiêu cấu hình riêng.
+
+Bổ sung `GET /work-shift-assignments/business-hours` (tự-phục vụ, không `@RequirePermission`, đúng khuôn `month-lock-status`) để lấy Giờ làm việc hiện "Nghỉ" đúng ngày đóng cửa — KHÔNG tái dùng `GET /appointments/schedule-config` vì gắn `appointment.read` mà điều dưỡng (cũng tự đăng ký ca) không có quyền này. Component mới `shared/ui/ProgressRing.tsx` (vòng tròn % dùng chung). Ô "+ Đăng ký" trong lưới mới gọi thẳng API tạo 1 ca (biết trước ca của hàng đang bấm), không mở `WorkShiftPickerModal` nữa — modal đó chỉ còn dùng cho luồng "Chọn nhiều ngày" (bulk, giữ nguyên logic cũ).
+
+**Bug thật phát hiện lúc verify Playwright, đã sửa**: thanh checkbox "Chọn ngày để áp dụng ca" đặt ở cuối khung lưới bị `SelectionToolbar` nổi cố định đáy màn hình đè lên (che mất quá nửa checkbox) — chuyển thanh này lên ngay dưới toolbar Tuần/Tháng, tránh xung đột với mọi overlay cố định đáy trang.
+
+**Đã xác minh thật**: `work-shift-assignment-http.spec.ts` +4 test (bác sĩ đọc được `business-hours` dù không có `appointment.read`/`clinic_config.read`, phản ánh đúng cấu hình, 401, cách ly tenant) — 18/18 test file, toàn bộ suite `apps/api` không regress (1 flake `icd10-http.spec.ts` đã biết, xác nhận lại bằng chạy riêng). `pnpm -w typecheck/lint` sạch. Playwright qua Chrome thật (tenant dev `01a070f4-...`, tài khoản `dev.admin`, seed 3 mẫu ca) xác nhận: lưới hiện đúng "Nghỉ" cuối tuần, đăng ký nhanh 1 ô → "Đã đăng ký" xanh + đúng số giờ, widget tính đúng (vd 1/15 ca sau 1 lần đăng ký với 3 ca × 5 ngày mở cửa), luồng "Chọn nhiều ngày" + modal chọn ca vẫn hoạt động đúng sau khi sửa vị trí, không lỗi console.
+
 ## 2026-09-23
 
 ### Kho Thuốc GĐ4, phần 3/4/5 — hoàn tất 5/5 GĐ4 (Xuất kho mở rộng/Nhập kho mở rộng-Chiết khấu/Báo cáo Nhập-Xuất-Tồn)

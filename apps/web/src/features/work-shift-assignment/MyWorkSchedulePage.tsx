@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react';
-import { CaretLeft, CaretRight, CheckSquare, Lock, WarningCircle, X as XIcon } from '@phosphor-icons/react';
+import { Fragment, useEffect, useState } from 'react';
+import { CaretLeft, CaretRight, CheckCircle, CheckSquare, Clock, Lock, Plus, WarningCircle, X as XIcon } from '@phosphor-icons/react';
+import type { BusinessHours } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useAuthStore } from '../auth/auth.store';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
+import { ProgressRing } from '../../shared/ui/ProgressRing';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
 import { useRowSelection } from '../../shared/hooks/useRowSelection';
@@ -16,11 +18,25 @@ import {
   useCopyWorkShiftAssignmentsMutation,
   useCreateWorkShiftAssignmentMutation,
   useDeleteWorkShiftAssignmentMutation,
+  useWorkShiftAssignmentBusinessHoursQuery,
   useWorkShiftAssignmentMonthLockStatusQuery,
   useWorkShiftAssignmentsQuery,
 } from './work-shift-assignment.queries';
 
 const WEEKDAY_LABELS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+/** `days[i]` (Thứ 2 → CN) khớp đúng thứ tự khoá của `BusinessHours` (`clinic.ts`). */
+const WEEKDAY_KEYS: (keyof BusinessHours)[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+
+/** Số giờ giữa 2 mốc "HH:mm" — chỉ phục vụ hiển thị (làm tròn 1 chữ số thập phân, bỏ ".0" nếu tròn giờ). */
+function hoursBetween(start: string, end: string): number {
+  const [sh, sm] = start.split(':').map(Number);
+  const [eh, em] = end.split(':').map(Number);
+  const minutes = (eh ?? 0) * 60 + (em ?? 0) - ((sh ?? 0) * 60 + (sm ?? 0));
+  return Math.round((minutes / 60) * 10) / 10;
+}
+function formatHours(hours: number): string {
+  return Number.isInteger(hours) ? String(hours) : hours.toFixed(1);
+}
 
 function toDateOnlyUtc(dateStr: string): Date {
   return new Date(`${dateStr}T00:00:00.000Z`);
@@ -139,12 +155,13 @@ export function MyWorkSchedulePage() {
   // `userId` bắt buộc truyền tường minh: với actor có data_scope `global` (vd. clinic_admin),
   // bỏ trống sẽ khiến backend không lọc gì và trả về ca của TOÀN BỘ nhân viên thay vì "của tôi".
   const listQuery = useWorkShiftAssignmentsQuery(view === 'week' ? days[0]! : monthFrom, view === 'week' ? days[6]! : monthTo, ownUserId);
+  const businessHoursQuery = useWorkShiftAssignmentBusinessHoursQuery();
   const createMutation = useCreateWorkShiftAssignmentMutation();
   const bulkMutation = useBulkCreateWorkShiftAssignmentsMutation();
   const copyMutation = useCopyWorkShiftAssignmentsMutation();
   const deleteMutation = useDeleteWorkShiftAssignmentMutation();
 
-  const workShifts = shiftsQuery.data?.items ?? [];
+  const workShifts = [...(shiftsQuery.data?.items ?? [])].sort((a, b) => a.startTime.localeCompare(b.startTime));
   const items = listQuery.data?.items ?? [];
   const itemsByDay = new Map<string, typeof items>();
   for (const item of items) {
@@ -155,6 +172,22 @@ export function MyWorkSchedulePage() {
 
   const loading = shiftsQuery.isPending || listQuery.isPending;
   const error = shiftsQuery.error ?? listQuery.error;
+
+  /** `null` = chưa cấu hình Giờ làm việc — coi như MỌI ngày đều mở (không suy diễn "Nghỉ" khi
+   * không có dữ liệu thật, giữ đúng hành vi hiện có: mọi ngày đều cho đăng ký). */
+  const businessHours = businessHoursQuery.data?.businessHours ?? null;
+  function isWeekdayClosed(dayIndex: number): boolean {
+    if (!businessHours) return false;
+    return businessHours[WEEKDAY_KEYS[dayIndex]!] === null;
+  }
+
+  // "Đã đăng ký N/M ca" (chỉ ở chế độ Tuần) — M = tổng số Ô CA KHẢ DỤNG trong tuần (số loại ca ×
+  // số ngày phòng khám MỞ CỬA), không phải chỉ tiêu cấu hình riêng (chưa có khái niệm này ở v1).
+  const openDayCount = days.filter((_, i) => !isWeekdayClosed(i)).length;
+  const availableSlotCount = workShifts.length * openDayCount;
+  const registeredCount = items.length;
+  const registeredHours = items.reduce((sum, item) => sum + hoursBetween(item.startTime, item.endTime), 0);
+  const registeredPercent = availableSlotCount > 0 ? (registeredCount / availableSlotCount) * 100 : 0;
 
   async function handlePickerSave(shiftIds: string[]) {
     if (!pickerFor) return;
@@ -174,6 +207,16 @@ export function MyWorkSchedulePage() {
     }
     setPickerFor(null);
     selection.clear();
+  }
+
+  /** Đăng ký NHANH đúng 1 ô (ca × ngày) ở lưới tuần — không cần mở `WorkShiftPickerModal` vì hàng
+   * đã CHÍNH LÀ loại ca, khác đăng ký từ cột ngày (chưa biết chọn ca nào) ở chế độ Tháng/bulk. */
+  async function handleQuickRegister(workShiftId: string, workDate: string) {
+    try {
+      await createMutation.mutateAsync({ workShiftId, workDate });
+    } catch (err) {
+      showLockErrorIfApplicable(err);
+    }
   }
 
   function showCopyToast(result: { createdCount: number; skippedCount: number }) {
@@ -199,6 +242,21 @@ export function MyWorkSchedulePage() {
   return (
     <div className="flex h-full flex-col gap-3 p-3">
       <h1 className="sr-only">Lịch làm việc của tôi</h1>
+
+      {/* "Đã đăng ký N/M ca" — chỉ ở chế độ Tuần (khớp đúng phạm vi lưới tuần bên dưới). */}
+      {view === 'week' && !loading && !error && (
+        <div className="flex flex-shrink-0 justify-end px-1">
+          <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white px-4 py-2.5 shadow-sm">
+            <div>
+              <div className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Đã đăng ký</div>
+              <div className="mt-0.5 text-lg font-bold text-slate-900">
+                {registeredCount}/{availableSlotCount} ca <span className="text-sm font-semibold text-slate-400">({formatHours(registeredHours)} giờ)</span>
+              </div>
+            </div>
+            <ProgressRing percent={registeredPercent} />
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-2.5 px-1">
         <div className="flex items-center gap-1.5">
@@ -309,6 +367,25 @@ export function MyWorkSchedulePage() {
         )}
       </div>
 
+      {/* "Chọn nhiều ngày" (chế độ Tuần) — đặt ở ĐÂY (ngay dưới toolbar), KHÔNG đặt cuối khung lưới:
+          `SelectionToolbar` nổi cố định đáy màn hình sẽ đè lên nếu đặt checkbox ở cuối trang (bug
+          thật phát hiện lúc verify Playwright — chụp ảnh thấy toolbar che mất 4/7 checkbox). */}
+      {view === 'week' && bulkMode && (
+        <div className="flex flex-shrink-0 flex-wrap items-center gap-x-4 gap-y-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5">
+          <span className="text-xs font-semibold text-slate-500">Chọn ngày để áp dụng ca:</span>
+          {days.map((day, index) => {
+            const dayLocked = lockedMonths.has(day.slice(0, 7)) && !unlockedForEditing;
+            if (dayLocked) return null;
+            return (
+              <label key={day} className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
+                <input type="checkbox" checked={selection.isSelected(day)} onChange={() => selection.toggle(day)} className="h-3.5 w-3.5" />
+                {WEEKDAY_LABELS[index]} {formatDDMM(day)}
+              </label>
+            );
+          })}
+        </div>
+      )}
+
       {/* Trạng thái cấu hình, không phải lỗi/cảnh báo khẩn — chú thích gọn màu trung tính, không
           bọc khung banner đầy màu (chốt 2026-09-03, phản hồi trực tiếp chủ dự án). */}
       {!selfScheduleEnabled && (
@@ -391,73 +468,112 @@ export function MyWorkSchedulePage() {
         />
       )}
 
+      {/* Lưới "Ca × Ngày" theo tuần (chốt qua ảnh tham khảo chủ dự án gửi) — hàng = loại ca (mẫu ca
+          `work_shift`), cột = 7 ngày. Màu ô theo TRẠNG THÁI đăng ký (xanh lá = đã đăng ký), khác
+          chấm màu theo ca ở lưới Tháng bên dưới (giữ nguyên, không đổi). "+ Đăng ký" ở đây gọi
+          thẳng `handleQuickRegister` (biết chính xác ca của hàng đang bấm) — không mở
+          `WorkShiftPickerModal` nữa (khác trước đây phải mở modal để CHỌN ca vì theo cột-ngày
+          không biết trước ca nào). */}
       {!loading && !error && view === 'week' && (
-        <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-slate-200 bg-white p-4 shadow-sm scroll-hover">
-          <div className="grid grid-cols-7 items-start gap-3">
-            {days.map((day, index) => {
-              const dayItems = itemsByDay.get(day) ?? [];
-              const isToday = day === today;
-              const isWeekend = index >= 5;
-              const dayLocked = lockedMonths.has(day.slice(0, 7)) && !unlockedForEditing;
-              return (
-                <div
-                  key={day}
-                  className={`flex flex-col overflow-hidden rounded-lg border transition-shadow hover:shadow-md ${
-                    isToday ? 'border-blue-500 shadow-[0_0_0_3px_rgba(37,99,235,0.12)]' : 'border-slate-200'
-                  }`}
-                >
-                  <div className={`px-2.5 py-2.5 text-center ${isToday ? 'bg-blue-600' : isWeekend ? 'bg-slate-100' : 'bg-slate-50'}`}>
-                    <div className={`text-[10.5px] font-bold uppercase tracking-wide ${isToday ? 'text-blue-100' : 'text-slate-400'}`}>
-                      {isToday ? 'Hôm nay' : WEEKDAY_LABELS[index]}
-                    </div>
-                    <div className={`text-[16px] font-extrabold ${isToday ? 'text-white' : 'text-slate-900'}`}>{formatDDMM(day)}</div>
-                  </div>
-                  <div className="flex flex-col gap-1.5 bg-white p-2">
-                    {bulkMode && !dayLocked && (
-                      <label className="flex items-center justify-center gap-1.5 pb-0.5 text-[11px] text-slate-400">
-                        <input type="checkbox" checked={selection.isSelected(day)} onChange={() => selection.toggle(day)} className="h-3.5 w-3.5" />
-                        Chọn ngày
-                      </label>
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="scroll-hover min-h-0 flex-1 overflow-auto">
+            <div className="grid" style={{ gridTemplateColumns: `168px repeat(7, minmax(128px, 1fr))`, minWidth: 168 + 128 * 7 }}>
+              <div className="sticky left-0 top-0 z-20 border-b border-r border-slate-200 bg-slate-50 px-3 py-2.5 text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                Ca / Thời gian
+              </div>
+              {days.map((day, index) => {
+                const isToday = day === today;
+                return (
+                  <div
+                    key={day}
+                    className={`sticky top-0 z-10 border-b border-r border-slate-200 px-2 py-2 text-center last:border-r-0 ${isToday ? 'bg-blue-600' : 'bg-slate-50'}`}
+                  >
+                    {isToday && (
+                      <span className="mb-0.5 inline-block rounded-full bg-white/25 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                        Hôm nay
+                      </span>
                     )}
-                    {dayItems.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center gap-1.5 rounded-md px-2 py-2 text-[13px] font-semibold text-white shadow-sm"
-                        style={{ background: WORK_SHIFT_COLOR_HEX[item.workShiftColor] }}
-                      >
-                        {(!item.canEdit || dayLocked) && (
-                          <Lock size={10} weight="bold" className="flex-shrink-0 text-white/80" aria-hidden="true" />
-                        )}
-                        <span className="min-w-0 flex-1 truncate">
-                          {item.workShiftName}
-                          <span className="block text-[11px] font-medium text-white/85">
-                            {item.startTime}–{item.endTime}
-                          </span>
-                        </span>
-                        {item.canEdit && selfScheduleEnabled && !dayLocked && (
+                    {!isToday && <div className="text-[11px] font-bold uppercase tracking-wide text-slate-400">{WEEKDAY_LABELS[index]}</div>}
+                    <div className={`text-[15px] font-extrabold ${isToday ? 'text-white' : 'text-slate-900'}`}>{formatDDMM(day)}</div>
+                  </div>
+                );
+              })}
+
+              {workShifts.length === 0 && (
+                <div className="col-span-8 px-3 py-6 text-center text-sm text-slate-400">Chưa có mẫu ca nào — liên hệ quản lý để tạo Ca làm việc.</div>
+              )}
+
+              {workShifts.map((shift) => (
+                <Fragment key={shift.id}>
+                  <div className="sticky left-0 z-10 border-b border-r border-slate-200 bg-slate-50 px-3 py-3">
+                    <div className="text-[13px] font-bold text-slate-800">{shift.name}</div>
+                    <div className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-slate-400">
+                      <Clock size={11} weight="bold" aria-hidden="true" />
+                      {shift.startTime} - {shift.endTime}
+                    </div>
+                  </div>
+                  {days.map((day, index) => {
+                    const item = (itemsByDay.get(day) ?? []).find((it) => it.workShiftId === shift.id);
+                    const dayLocked = lockedMonths.has(day.slice(0, 7)) && !unlockedForEditing;
+                    const cellKey = `${shift.id}-${day}`;
+
+                    if (isWeekdayClosed(index)) {
+                      return (
+                        <div key={cellKey} className="border-b border-r border-slate-100 bg-slate-50/70 p-1.5 text-center last:border-r-0">
+                          <span className="text-xs font-medium text-slate-300">Nghỉ</span>
+                        </div>
+                      );
+                    }
+
+                    if (item) {
+                      const locked = !item.canEdit || dayLocked;
+                      return (
+                        <div key={cellKey} className="border-b border-r border-slate-100 p-1.5 last:border-r-0">
+                          <div className="relative flex h-full flex-col items-center justify-center gap-0.5 rounded-md bg-emerald-50 px-2 py-2 text-center ring-1 ring-inset ring-emerald-200">
+                            {locked && <Lock size={10} weight="bold" className="absolute right-1.5 top-1.5 text-emerald-400" aria-hidden="true" />}
+                            {item.canEdit && selfScheduleEnabled && !dayLocked && (
+                              <button
+                                type="button"
+                                aria-label="Xoá ca"
+                                onClick={() => deleteMutation.mutate({ id: item.id, version: item.version }, { onError: showLockErrorIfApplicable })}
+                                className="absolute right-1 top-1 rounded p-0.5 text-emerald-400 hover:bg-emerald-100 hover:text-emerald-700"
+                              >
+                                <XIcon size={11} weight="bold" />
+                              </button>
+                            )}
+                            <span className="flex items-center gap-1 text-[12.5px] font-bold text-emerald-700">
+                              <CheckCircle size={13} weight="fill" aria-hidden="true" />
+                              Đã đăng ký
+                            </span>
+                            <span className="text-[11px] font-semibold text-emerald-600">{formatHours(hoursBetween(item.startTime, item.endTime))} giờ</span>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    const canAdd = !bulkMode && selfScheduleEnabled && !dayLocked;
+                    return (
+                      <div key={cellKey} className="border-b border-r border-slate-100 p-1.5 last:border-r-0">
+                        {canAdd ? (
                           <button
                             type="button"
-                            aria-label="Xoá ca"
-                            onClick={() =>
-                              deleteMutation.mutate({ id: item.id, version: item.version }, { onError: showLockErrorIfApplicable })
-                            }
-                            className="flex-shrink-0 rounded p-0.5 text-white/75 hover:bg-white/20 hover:text-white"
+                            onClick={() => void handleQuickRegister(shift.id, day)}
+                            className="flex h-full w-full flex-col items-center justify-center gap-0.5 rounded-md border border-dashed border-slate-300 py-2 text-slate-400 transition-colors hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600"
                           >
-                            <XIcon size={11} weight="bold" />
+                            <Plus size={13} weight="bold" aria-hidden="true" />
+                            <span className="text-[11.5px] font-semibold">Đăng ký</span>
                           </button>
+                        ) : (
+                          <div className="h-full rounded-md border border-dashed border-slate-100" />
                         )}
                       </div>
-                    ))}
-                    {!bulkMode && selfScheduleEnabled && !dayLocked && (
-                      <Button type="button" variant="add" className="w-full py-1.5 text-[11px]" onClick={() => setPickerFor([day])}>
-                        {dayItems.length > 0 ? '+ Thêm ca khác' : '+ Đăng ký ca'}
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+                    );
+                  })}
+                </Fragment>
+              ))}
+            </div>
           </div>
+
         </div>
       )}
 

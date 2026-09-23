@@ -16027,6 +16027,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/work-shift-assignments/business-hours": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** "Lịch làm việc của tôi" — giờ làm việc theo tuần, tự-phục vụ, mọi user đã đăng nhập đọc được (không cần appointment.read/clinic_config.read) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                businessHours: {
+                                    monday: {
+                                        open: string;
+                                        close: string;
+                                    } | null;
+                                    tuesday: {
+                                        open: string;
+                                        close: string;
+                                    } | null;
+                                    wednesday: {
+                                        open: string;
+                                        close: string;
+                                    } | null;
+                                    thursday: {
+                                        open: string;
+                                        close: string;
+                                    } | null;
+                                    friday: {
+                                        open: string;
+                                        close: string;
+                                    } | null;
+                                    saturday: {
+                                        open: string;
+                                        close: string;
+                                    } | null;
+                                    sunday: {
+                                        open: string;
+                                        close: string;
+                                    } | null;
+                                } | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/work-shift-assignments/month-lock-status": {
         parameters: {
             query?: never;
