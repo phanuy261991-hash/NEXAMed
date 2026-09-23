@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ReceptionController } from './reception.controller';
 import { ReceptionService } from './reception.service';
+import { ReceptionExportService } from './reception-export.service';
 import { VitalSignRepository } from './vital-sign.repository';
 import { EncounterServiceItemRepository } from './encounter-service-item.repository';
 import { AppointmentModule } from '../appointment/appointment.module';
@@ -31,6 +32,6 @@ import { PatientWalletModule } from '../patient-wallet/patient-wallet.module';
 @Module({
   imports: [AppointmentModule, EncounterModule, BillingModule, PatientModule, ClinicModule, PatientWalletModule],
   controllers: [ReceptionController],
-  providers: [ReceptionService, VitalSignRepository, EncounterServiceItemRepository],
+  providers: [ReceptionService, ReceptionExportService, VitalSignRepository, EncounterServiceItemRepository],
 })
 export class ReceptionModule {}

@@ -11,6 +11,7 @@ import {
 import type {
   ApproveStockReceiptRequest,
   CreateStockReceiptRequest,
+  DataScope,
   ListStockReceiptsQuery,
   ListStockReceiptsResponse,
   RejectStockReceiptRequest,
@@ -22,6 +23,7 @@ import type {
 import type { Prisma, StockLedgerReason, StockReceipt, StockReceiptType } from '@prisma/client';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
+import { assertWarehouseInScope, resolveActorDepartmentId } from '../../common/warehouse-scope.helper';
 import type { RequestMeta } from '../../common/request-meta';
 import { BusinessCodeService } from '../clinic/business-code.service';
 import { DrugRepository, type DrugWithDetails } from '../drug/drug.repository';
@@ -67,14 +69,16 @@ export class StockReceiptService {
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
   ) {}
 
-  async create(tenantId: string, actorId: string, dto: CreateStockReceiptRequest, meta: RequestMeta): Promise<StockReceiptDetail> {
+  async create(tenantId: string, actorId: string, dataScope: DataScope, dto: CreateStockReceiptRequest, meta: RequestMeta): Promise<StockReceiptDetail> {
     if (!SUPPORTED_RECEIPT_TYPES.includes(dto.receiptType)) {
       throw new UnprocessableEntityException(`Loại phiếu "${dto.receiptType}" chưa được hỗ trợ ở giai đoạn này.`);
     }
+    const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
 
     const created = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const warehouse = await this.warehouseRepository.findById(tx, tenantId, dto.warehouseId);
       if (!warehouse) throw new NotFoundException();
+      assertWarehouseInScope(warehouse.departmentId, dataScope, actorDepartmentId);
       if (dto.supplierId) {
         const supplier = await this.supplierRepository.findById(tx, tenantId, dto.supplierId);
         if (!supplier) throw new NotFoundException();
@@ -112,22 +116,29 @@ export class StockReceiptService {
       return row;
     });
 
-    return this.getById(tenantId, created.id);
+    return this.getById(tenantId, actorId, dataScope, created.id);
   }
 
-  /** Sửa Nháp — bulk-replace toàn bộ dòng hàng + header, chỉ khi `status='DRAFT'`. */
-  async update(tenantId: string, actorId: string, id: string, dto: UpdateStockReceiptRequest, meta: RequestMeta): Promise<StockReceiptDetail> {
+  /** Sửa Nháp — bulk-replace toàn bộ dòng hàng + header, chỉ khi `status='DRAFT'`. Kiểm scope CẢ 2
+   * đầu: kho HIỆN TẠI của phiếu (không cho sửa phiếu ngoài Khoa mình) VÀ kho MỚI trong `dto` (không
+   * cho "chuyển" phiếu sang kho ngoài Khoa mình) — đúng khuôn `StockCountService.update()`. */
+  async update(tenantId: string, actorId: string, dataScope: DataScope, id: string, dto: UpdateStockReceiptRequest, meta: RequestMeta): Promise<StockReceiptDetail> {
     if (!SUPPORTED_RECEIPT_TYPES.includes(dto.receiptType)) {
       throw new UnprocessableEntityException(`Loại phiếu "${dto.receiptType}" chưa được hỗ trợ ở giai đoạn này.`);
     }
+    const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
 
     await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.stockReceiptRepository.findById(tx, tenantId, id);
       if (!existing) throw new NotFoundException();
       if (existing.status !== 'DRAFT') throw new StockReceiptNotDraftError();
 
+      const currentWarehouse = await this.warehouseRepository.findById(tx, tenantId, existing.warehouseId);
+      assertWarehouseInScope(currentWarehouse?.departmentId ?? null, dataScope, actorDepartmentId);
+
       const warehouse = await this.warehouseRepository.findById(tx, tenantId, dto.warehouseId);
       if (!warehouse) throw new NotFoundException();
+      assertWarehouseInScope(warehouse.departmentId, dataScope, actorDepartmentId);
       if (dto.supplierId) {
         const supplier = await this.supplierRepository.findById(tx, tenantId, dto.supplierId);
         if (!supplier) throw new NotFoundException();
@@ -160,14 +171,17 @@ export class StockReceiptService {
       });
     });
 
-    return this.getById(tenantId, id);
+    return this.getById(tenantId, actorId, dataScope, id);
   }
 
-  async getById(tenantId: string, id: string): Promise<StockReceiptDetail> {
+  async getById(tenantId: string, actorId: string, dataScope: DataScope, id: string): Promise<StockReceiptDetail> {
+    const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
+
     const row = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const receipt = await this.stockReceiptRepository.findByIdAnyWithLines(tx, tenantId, id);
       if (!receipt) throw new NotFoundException();
       const warehouse = await this.warehouseRepository.findById(tx, tenantId, receipt.warehouseId);
+      assertWarehouseInScope(warehouse?.departmentId ?? null, dataScope, actorDepartmentId);
       const supplier = receipt.supplierId ? await this.supplierRepository.findById(tx, tenantId, receipt.supplierId) : null;
       return { receipt, warehouseName: warehouse?.name ?? '—', supplierName: supplier?.name ?? null };
     });
@@ -176,7 +190,14 @@ export class StockReceiptService {
     return this.toLineDetailDto(row.receipt, row.warehouseName, row.supplierName, names);
   }
 
-  async list(tenantId: string, query: ListStockReceiptsQuery): Promise<ListStockReceiptsResponse> {
+  async list(tenantId: string, actorId: string, dataScope: DataScope, query: ListStockReceiptsQuery): Promise<ListStockReceiptsResponse> {
+    const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
+    // Scope `department` nhưng actor CHƯA gán Khoa/Phòng nào — không thể khớp bất kỳ kho nào, trả
+    // rỗng ngay (không lỗi) thay vì query rồi lọc ra 0 kết quả, đúng khuôn `StockCountService.list()`.
+    if (dataScope === 'department' && actorDepartmentId === null) {
+      return { items: [], nextCursor: null };
+    }
+
     const rows = await this.unitOfWork.runInTenantScope(tenantId, (tx) =>
       this.stockReceiptRepository.list(tx, tenantId, {
         warehouseId: query.warehouseId,
@@ -187,6 +208,7 @@ export class StockReceiptService {
         q: query.q,
         cursor: query.cursor,
         take: query.limit + 1,
+        departmentId: dataScope === 'department' ? (actorDepartmentId ?? undefined) : undefined,
       }),
     );
     const hasMore = rows.length > query.limit;
@@ -203,11 +225,16 @@ export class StockReceiptService {
     return { items: page.map((row) => this.toSummaryDto(row, row.warehouse.name, row.supplier?.name ?? null, row._count.lines, names)), nextCursor };
   }
 
-  async approve(tenantId: string, actorId: string, id: string, dto: ApproveStockReceiptRequest, meta: RequestMeta): Promise<StockReceiptDetail> {
+  async approve(tenantId: string, actorId: string, dataScope: DataScope, id: string, dto: ApproveStockReceiptRequest, meta: RequestMeta): Promise<StockReceiptDetail> {
+    const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
+
     await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.stockReceiptRepository.findByIdAnyWithLines(tx, tenantId, id);
       if (!existing) throw new NotFoundException();
       if (existing.status !== 'DRAFT') throw new StockReceiptNotDraftError();
+
+      const existingWarehouse = await this.warehouseRepository.findById(tx, tenantId, existing.warehouseId);
+      assertWarehouseInScope(existingWarehouse?.departmentId ?? null, dataScope, actorDepartmentId);
 
       const count = await this.stockReceiptRepository.approve(tx, tenantId, id, dto.version, actorId);
       if (count === 0) throw new ConcurrentModificationError();
@@ -226,7 +253,7 @@ export class StockReceiptService {
       });
     });
 
-    return this.getById(tenantId, id);
+    return this.getById(tenantId, actorId, dataScope, id);
   }
 
   /**
@@ -371,11 +398,16 @@ export class StockReceiptService {
     }
   }
 
-  async reject(tenantId: string, actorId: string, id: string, dto: RejectStockReceiptRequest, meta: RequestMeta): Promise<StockReceiptDetail> {
+  async reject(tenantId: string, actorId: string, dataScope: DataScope, id: string, dto: RejectStockReceiptRequest, meta: RequestMeta): Promise<StockReceiptDetail> {
+    const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
+
     await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.stockReceiptRepository.findById(tx, tenantId, id);
       if (!existing) throw new NotFoundException();
       if (existing.status !== 'DRAFT') throw new StockReceiptNotDraftError();
+
+      const warehouse = await this.warehouseRepository.findById(tx, tenantId, existing.warehouseId);
+      assertWarehouseInScope(warehouse?.departmentId ?? null, dataScope, actorDepartmentId);
 
       const count = await this.stockReceiptRepository.reject(tx, tenantId, id, dto.version, actorId, dto.reason);
       if (count === 0) throw new ConcurrentModificationError();
@@ -392,7 +424,7 @@ export class StockReceiptService {
       });
     });
 
-    return this.getById(tenantId, id);
+    return this.getById(tenantId, actorId, dataScope, id);
   }
 
   /** Huỷ phiếu ĐÃ DUYỆT — đảo NGƯỢC đúng các dòng `stock_ledger` mà chính phiếu này đã sinh ra
@@ -400,11 +432,16 @@ export class StockReceiptService {
    * lệch nếu đơn vị quy đổi của thuốc đã đổi sau khi phiếu được duyệt). Chặn huỷ nếu tồn hiện có
    * của bất kỳ lô/dòng nào không đủ để trừ ngược (đã bị dùng bớt — GĐ2 chưa có xuất kho nên trường
    * hợp này chỉ xảy ra khi GĐ3 đã chạy, để sẵn logic đúng từ bây giờ). */
-  async voidReceipt(tenantId: string, actorId: string, id: string, dto: VoidStockReceiptRequest, meta: RequestMeta): Promise<StockReceiptDetail> {
+  async voidReceipt(tenantId: string, actorId: string, dataScope: DataScope, id: string, dto: VoidStockReceiptRequest, meta: RequestMeta): Promise<StockReceiptDetail> {
+    const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
+
     await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.stockReceiptRepository.findById(tx, tenantId, id);
       if (!existing) throw new NotFoundException();
       if (existing.status !== 'POSTED') throw new StockReceiptVoidNotAllowedError('Phiếu này chưa được duyệt hoặc đã bị huỷ trước đó.');
+
+      const warehouse = await this.warehouseRepository.findById(tx, tenantId, existing.warehouseId);
+      assertWarehouseInScope(warehouse?.departmentId ?? null, dataScope, actorDepartmentId);
 
       const originalEntries = await this.stockLedgerRepository.listForSourceReceipt(tx, tenantId, id);
 
@@ -449,7 +486,7 @@ export class StockReceiptService {
       });
     });
 
-    return this.getById(tenantId, id);
+    return this.getById(tenantId, actorId, dataScope, id);
   }
 
   // ============ helpers ============

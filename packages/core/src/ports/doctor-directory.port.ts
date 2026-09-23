@@ -27,6 +27,13 @@ export interface DoctorDirectoryPort {
    * hoặc ngoài tenant) thì bỏ qua thay vì lỗi — caller tự quyết định fallback hiển thị.
    */
   getUserFullNames(tenantId: string, userIds: string[]): Promise<Map<string, string>>;
+  /**
+   * Tên mọi Khoa/Phòng đang active theo id — dùng cho "Xuất Excel" Danh sách tiếp nhận (đúng dữ
+   * liệu `departmentNameById` mà `ReceptionListPage.tsx` đã tự tra qua `GET /departments/options`,
+   * chỉ khác là tra ở backend cho file Excel). Không lọc theo id cụ thể — đúng khuôn
+   * `listActiveOptions()` phía frontend gọi (luôn lấy toàn bộ, không phải chỉ id đang cần).
+   */
+  getDepartmentNames(tenantId: string): Promise<Map<string, string>>;
 }
 
 export const DOCTOR_DIRECTORY_PORT = Symbol('DOCTOR_DIRECTORY_PORT');

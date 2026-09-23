@@ -403,4 +403,103 @@ describe('HTTP e2e — /api/v1/inventory (Phiếu nhập kho GĐ2)', () => {
     const balanceRes = await request(app.getHttpServer()).get('/api/v1/inventory/balances').set(authed(tenantBAdminToken)).query({ warehouseId: tenantBWarehouseId });
     expect(balanceRes.body.data.items.find((i: { drugId: string }) => i.drugId === drugId)).toBeUndefined();
   });
+
+  /** Retrofit phân quyền theo Khoa/Phòng cho `stock_receipt` (docs/DECISIONS.md #173, đúng khuôn
+   * `stock-count-http.spec.ts` — `StockCountService` là bản gốc của cơ chế này). */
+  describe('Phân quyền theo Khoa/Phòng (retrofit #173)', () => {
+    let deptAId: string;
+    let deptAToken: string;
+    let deptAUserId: string;
+    let deptAWarehouseId: string;
+    let otherWarehouseId: string;
+
+    beforeAll(async () => {
+      const deptARes = await request(app.getHttpServer()).post('/api/v1/departments').set(authed(clinicAdminToken)).send({ name: `Khoa Dược e2e ${randomUUID().slice(0, 6)}` });
+      deptAId = deptARes.body.data.id as string;
+
+      const whARes = await request(app.getHttpServer()).post('/api/v1/warehouses').set(authed(clinicAdminToken)).send({ name: `Kho Khoa A ${randomUUID().slice(0, 6)}`, departmentId: deptAId });
+      deptAWarehouseId = whARes.body.data.id as string;
+      // Kho KHÔNG thuộc Khoa Dược — dùng kho mặc định seed sẵn của tenant (không có departmentId).
+      otherWarehouseId = warehouseId;
+
+      // Vai trò tuỳ biến: sao chép ma trận clinic_admin nhưng ép CẢ 6 quyền stock_receipt.* về scope
+      // `department` (đúng cách clinic_admin tự cấu hình qua "Vai trò & Phân quyền").
+      const rolesRes = await request(app.getHttpServer()).get('/api/v1/roles').set(authed(clinicAdminToken));
+      const clinicAdminRole = rolesRes.body.data.items.find((r: { name: string }) => r.name === 'clinic_admin');
+      const matrixRes = await request(app.getHttpServer()).get(`/api/v1/roles/${clinicAdminRole.id}/permissions`).set(authed(clinicAdminToken));
+      const newRole = await request(app.getHttpServer()).post('/api/v1/roles').set(authed(clinicAdminToken)).send({ name: `Kho Khoa e2e ${randomUUID().slice(0, 6)}` });
+      const entries = (matrixRes.body.data.permissions as { permissionId: string; module: string; action: string; dataScope: string }[])
+        .filter((e) => e.dataScope !== 'none')
+        .map((e) => ({ permissionId: e.permissionId, dataScope: e.module === 'stock_receipt' ? 'department' : e.dataScope }));
+      await request(app.getHttpServer()).put(`/api/v1/roles/${newRole.body.data.id}/permissions`).set(authed(clinicAdminToken)).send({ entries });
+
+      const username = `e2e-inv-deptA-${randomUUID()}`;
+      const passwordHash = await argon2.hash(password, { type: argon2.argon2id });
+      const user = await privileged.userAccount.create({
+        data: { tenantId: fixture.tenantA.id, username, passwordHash, fullName: 'Kho viên Khoa A', createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR },
+      });
+      await privileged.userRole.create({ data: { tenantId: fixture.tenantA.id, userId: user.id, roleId: newRole.body.data.id, createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR } });
+      await privileged.userAccount.update({ where: { id: user.id }, data: { departmentId: deptAId } });
+
+      const login = await request(app.getHttpServer()).post('/api/v1/auth/login').send({ tenantId: fixture.tenantA.id, username, password });
+      deptAToken = login.body.data.accessToken as string;
+      deptAUserId = user.id;
+    });
+
+    it('tạo phiếu ở đúng kho của Khoa mình — thành công', async () => {
+      const drugId = await createDrug(clinicAdminToken);
+      const res = await createReceipt(deptAToken, { warehouseId: deptAWarehouseId, lines: [{ drugId, unitCode: 'VIEN', quantity: 5, unitCost: 100, batchNo: 'DEPT1', expiryDate: '2027-01-01' }] });
+      expect(res.status).toBe(200);
+    });
+
+    it('tạo phiếu ở kho NGOÀI Khoa mình — 404 (không phải 403)', async () => {
+      const drugId = await createDrug(clinicAdminToken);
+      const res = await createReceipt(deptAToken, { warehouseId: otherWarehouseId, lines: [{ drugId, unitCode: 'VIEN', quantity: 5, unitCost: 100, batchNo: 'DEPT2', expiryDate: '2027-01-01' }] });
+      expect(res.status).toBe(404);
+    });
+
+    it('xem/duyệt phiếu do clinic_admin (global) tạo ở kho NGOÀI Khoa mình — 404', async () => {
+      const drugId = await createDrug(clinicAdminToken);
+      const created = await createReceipt(clinicAdminToken, { warehouseId: otherWarehouseId, lines: [{ drugId, unitCode: 'VIEN', quantity: 5, unitCost: 100, batchNo: 'DEPT3', expiryDate: '2027-01-01' }] });
+      expect(created.status).toBe(200);
+
+      const getRes = await request(app.getHttpServer()).get(`/api/v1/inventory/receipts/${created.body.data.id}`).set(authed(deptAToken));
+      expect(getRes.status).toBe(404);
+
+      const approveRes = await request(app.getHttpServer()).post(`/api/v1/inventory/receipts/${created.body.data.id}/approve`).set(authed(deptAToken)).send({ version: created.body.data.version });
+      expect(approveRes.status).toBe(404);
+    });
+
+    it('danh sách chỉ trả phiếu thuộc kho của Khoa mình', async () => {
+      const drugId = await createDrug(clinicAdminToken);
+      const ownReceipt = await createReceipt(deptAToken, { warehouseId: deptAWarehouseId, lines: [{ drugId, unitCode: 'VIEN', quantity: 1, unitCost: 100, batchNo: 'DEPT4', expiryDate: '2027-01-01' }] });
+      const otherReceipt = await createReceipt(clinicAdminToken, { warehouseId: otherWarehouseId, lines: [{ drugId, unitCode: 'VIEN', quantity: 1, unitCost: 100, batchNo: 'DEPT5', expiryDate: '2027-01-01' }] });
+
+      const listRes = await request(app.getHttpServer()).get('/api/v1/inventory/receipts').set(authed(deptAToken));
+      const ids = (listRes.body.data.items as { id: string }[]).map((i) => i.id);
+      expect(ids).toContain(ownReceipt.body.data.id);
+      expect(ids).not.toContain(otherReceipt.body.data.id);
+    });
+
+    it('tự Duyệt được phiếu ở đúng Khoa mình — cộng đúng tồn', async () => {
+      const drugId = await createDrug(clinicAdminToken, { name: 'Thuốc test Khoa A' });
+      const created = await createReceipt(deptAToken, { warehouseId: deptAWarehouseId, lines: [{ drugId, unitCode: 'VIEN', quantity: 9, unitCost: 100, batchNo: 'DEPT6', expiryDate: '2027-01-01' }] });
+      const approved = await request(app.getHttpServer()).post(`/api/v1/inventory/receipts/${created.body.data.id}/approve`).set(authed(deptAToken)).send({ version: created.body.data.version });
+      expect(approved.status).toBe(200);
+      expect(approved.body.data.status).toBe('POSTED');
+
+      const balanceRes = await request(app.getHttpServer()).get('/api/v1/inventory/balances').set(authed(clinicAdminToken)).query({ warehouseId: deptAWarehouseId });
+      const row = balanceRes.body.data.items.find((i: { drugId: string }) => i.drugId === drugId);
+      expect(row.quantityOnHand).toBe(9);
+    });
+
+    it('actor scope department nhưng CHƯA gán Khoa/Phòng → danh sách rỗng, không lỗi', async () => {
+      await privileged.userAccount.update({ where: { id: deptAUserId }, data: { departmentId: null } });
+      const listRes = await request(app.getHttpServer()).get('/api/v1/inventory/receipts').set(authed(deptAToken));
+      expect(listRes.status).toBe(200);
+      expect(listRes.body.data.items).toEqual([]);
+      // Khôi phục lại Khoa cho các test khác trong cùng file (nếu describe block chạy tuần tự sau đây).
+      await privileged.userAccount.update({ where: { id: deptAUserId }, data: { departmentId: deptAId } });
+    });
+  });
 });

@@ -12,7 +12,7 @@ import { Skeleton } from '../../shared/ui/Skeleton';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { formatVnd } from '../../shared/format/currency';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
-import { useHasPermission } from '../auth/usePermission';
+import { useActorDepartmentId, useDataScope, useHasPermission } from '../auth/usePermission';
 import { useDrugsQuery } from '../drug/drug.queries';
 import { useWarehousesQuery } from '../drug/warehouse.queries';
 import { useCreateStockIssueMutation, usePrescriptionDispenseStatusQuery } from './inventory.queries';
@@ -103,7 +103,12 @@ export function DispensePrescriptionDialog({ prescriptionId, onClose, onDispense
   const navigate = useNavigate();
   const canViewInvoice = useHasPermission('invoice', 'read');
   const warehousesQuery = useWarehousesQuery();
-  const warehouses = warehousesQuery.data?.items ?? [];
+  // Phân quyền theo Khoa/Phòng (retrofit #173/#177) — đúng khuôn `StockCountFormPage.tsx`. Backend
+  // LUÔN enforce lại (404 nếu chọn sai kho) — lọc ở đây thuần UX, tránh hiện lựa chọn chắc chắn bị chặn.
+  const createDataScope = useDataScope('stock_issue', 'create');
+  const actorDepartmentId = useActorDepartmentId();
+  const isDepartmentScoped = createDataScope === 'department';
+  const warehouses = (warehousesQuery.data?.items ?? []).filter((w) => !isDepartmentScoped || w.departmentId === actorDepartmentId);
   const [warehouseId, setWarehouseId] = useState('');
   const effectiveWarehouseId = warehouseId || warehouses[0]?.id || '';
 

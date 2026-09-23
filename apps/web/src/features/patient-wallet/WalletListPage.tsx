@@ -69,7 +69,7 @@ export function WalletListPage() {
               type="button"
               onClick={() => setStatus(f.value)}
               className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
-                status === f.value ? 'bg-slate-900 text-white' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                status === f.value ? 'bg-blue-600 text-white' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
               }`}
             >
               {f.label}

@@ -16,7 +16,7 @@ import { formatVnd } from '../../shared/format/currency';
 import { formatDobDisplay } from '../../shared/format/date';
 import { useCollapsedGroups } from '../../shared/hooks/useCollapsedGroups';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
-import { useHasPermission } from '../auth/usePermission';
+import { useActorDepartmentId, useDataScope, useHasPermission } from '../auth/usePermission';
 import { useClinicPrintHeaderQuery } from '../clinic/clinic.queries';
 import { useDrugsQuery } from '../drug/drug.queries';
 import { useSuppliersQuery } from '../drug/supplier.queries';
@@ -86,6 +86,11 @@ export function StockReceiptFormPage() {
 
   const receiptQuery = useStockReceiptQuery(id ?? '', isEdit);
   const warehousesQuery = useWarehousesQuery();
+  // Phân quyền theo Khoa/Phòng (retrofit #173/#177) — đúng khuôn `StockCountFormPage.tsx`. Backend
+  // LUÔN enforce lại (404 nếu chọn sai kho) — lọc ở đây thuần UX, tránh hiện lựa chọn chắc chắn bị chặn.
+  const createDataScope = useDataScope('stock_receipt', 'create');
+  const actorDepartmentId = useActorDepartmentId();
+  const isDepartmentScoped = createDataScope === 'department';
   const suppliersQuery = useSuppliersQuery();
   const unitNameByCode = useUnitNameByCode();
   const clinicQuery = useClinicPrintHeaderQuery();
@@ -358,7 +363,9 @@ export function StockReceiptFormPage() {
             disabled={readOnly}
             onChange={setWarehouseId}
             placeholder="— Chọn kho —"
-            options={(warehousesQuery.data?.items ?? []).map((w) => ({ value: w.id, label: w.name }))}
+            options={(warehousesQuery.data?.items ?? [])
+              .filter((w) => !isDepartmentScoped || w.departmentId === actorDepartmentId)
+              .map((w) => ({ value: w.id, label: w.name }))}
           />
         </div>
         {receiptType === 'PURCHASE' && (

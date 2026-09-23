@@ -5,6 +5,7 @@ import {
   CaretRight,
   CheckCircle,
   ClipboardText,
+  DownloadSimple,
   HourglassMedium,
   MagnifyingGlass,
   Prohibit,
@@ -32,7 +33,7 @@ import { computeAgeLabel } from '../patient/patient-form.utils';
 import { ENCOUNTER_STATUS_META } from './encounter-status';
 import { doctorAvailabilityBadgeMeta, waitMinutes } from './queue-card';
 import { ReassignDoctorDialog } from './ReassignDoctorDialog';
-import { useReceptionListQuery } from './reception.queries';
+import { useExportReceptionListMutation, useReceptionListQuery } from './reception.queries';
 
 /** Fallback trước khi `useScheduleConfigQuery()` tải xong — khớp `DEFAULT_OVERDUE_WAIT_WARNING_MINUTES`
  * ở `@nexamed/shared`, khai riêng ở đây (Rollup không dò được named export hằng số qua barrel
@@ -115,6 +116,7 @@ export function ReceptionListPage() {
   const [reassigningId, setReassigningId] = useState<string | null>(null);
 
   const listQuery = useReceptionListQuery(date);
+  const exportMutation = useExportReceptionListMutation();
   const doctorsQuery = useDoctorsQuery();
   const availabilityQuery = useDoctorAvailabilityTodayQuery();
   const departmentsQuery = useDepartmentOptionsQuery();
@@ -226,6 +228,10 @@ export function ReceptionListPage() {
             Hôm nay
           </button>
         </div>
+        <Button type="button" variant="secondary" loading={exportMutation.isPending} onClick={() => exportMutation.mutate(date)}>
+          <DownloadSimple size={16} weight="bold" aria-hidden="true" />
+          Xuất Excel
+        </Button>
       </div>
 
       {listQuery.isPending && (
@@ -275,7 +281,7 @@ export function ReceptionListPage() {
                       type="button"
                       onClick={() => setActiveTab(tab.key)}
                       className={`rounded-md px-3 py-1.5 text-xs font-bold transition-colors ${
-                        activeTab === tab.key ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                        activeTab === tab.key ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
                       }`}
                     >
                       {tab.label} ({tab.count})

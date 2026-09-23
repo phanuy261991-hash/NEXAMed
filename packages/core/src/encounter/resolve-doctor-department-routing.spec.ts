@@ -8,6 +8,7 @@ function createFakeDoctorDirectory(overrides: Partial<DoctorDirectoryPort> = {})
     getDoctorDepartmentId: vi.fn().mockResolvedValue(null),
     getDefaultDepartmentId: vi.fn().mockResolvedValue('default-dept'),
     getUserFullNames: vi.fn().mockRejectedValue(new Error('không dùng trong test này')),
+    getDepartmentNames: vi.fn().mockRejectedValue(new Error('không dùng trong test này')),
     ...overrides,
   };
 }

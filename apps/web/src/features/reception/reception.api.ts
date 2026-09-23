@@ -8,7 +8,7 @@ import type {
   ReleaseEncounterRequest,
   StartConsultationRequest,
 } from '@nexamed/shared';
-import { getApiClient, unwrap } from '../../shared/api/client';
+import { downloadFile, getApiClient, unwrap } from '../../shared/api/client';
 
 export async function checkIn(body: CheckInRequest): Promise<EncounterSummary> {
   return unwrap(await getApiClient().POST('/api/v1/reception/check-in', { body })) as EncounterSummary;
@@ -27,6 +27,13 @@ export async function getReceptionList(
   return unwrap(
     await getApiClient().GET('/api/v1/reception/list', { params: { query: { date, doctorId, includeDepartmentPool, queueView } } }),
   ) as ReceptionListResponse;
+}
+
+/** "Xuất Excel" — LUÔN toàn bộ ngày `date` (bỏ qua tab/tìm kiếm đang chọn trên màn hình, chốt qua
+ * AskUserQuestion) — tải file thô qua `downloadFile()`, KHÔNG qua client sinh từ OpenAPI (endpoint
+ * trả `.xlsx` nhị phân qua `@Res()`, không có envelope `{data,meta}`), đúng khuôn `cash-flow-report.api.ts`. */
+export async function exportReceptionList(date: string): Promise<void> {
+  await downloadFile(`/api/v1/reception/list/export?date=${date}`, `benh-nhan-trong-ngay-${date}.xlsx`);
 }
 
 export async function startConsultation(id: string, body: StartConsultationRequest): Promise<EncounterSummary> {

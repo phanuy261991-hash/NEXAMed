@@ -36,7 +36,9 @@ const LINE_INCLUDE = {
 
 const CONTEXT_INCLUDE = {
   lines: LINE_INCLUDE,
-  warehouse: { select: { name: true } },
+  // `departmentId` (thêm cho retrofit phân quyền Khoa/Phòng #173) — `getById()`/`voidIssue()` cần
+  // kiểm scope trực tiếp trên kết quả JOIN sẵn có, không phải gọi thêm `WarehouseRepository.findById()`.
+  warehouse: { select: { name: true, departmentId: true } },
   prescription: { select: { encounter: { select: { id: true, encounterNo: true, patient: { select: { patientCode: true, fullName: true } } } } } },
 } satisfies Prisma.StockIssueInclude;
 
@@ -58,6 +60,10 @@ export interface ListStockIssuesFilter {
   q?: string;
   cursor?: string;
   take: number;
+  /** Phân quyền theo Khoa/Phòng (retrofit #173, đúng khuôn `StockCountRepository.list()`) — chỉ set
+   * khi actor giữ `stock_issue.read` ở scope `department`, lọc CHỈ phiếu thuộc kho do đúng Khoa này
+   * quản lý (`warehouse.departmentId`). `undefined` (scope `global`) = không lọc gì thêm. */
+  departmentId?: string;
 }
 
 /** Chỗ DUY NHẤT gọi Prisma cho bảng `stock_issue`/`stock_issue_line` (Kho Thuốc GĐ3, #163). */
@@ -126,6 +132,9 @@ export class StockIssueRepository {
         { prescription: { encounter: { patient: { fullName: { contains: filter.q, mode: 'insensitive' } } } } },
         { prescription: { encounter: { patient: { patientCode: { contains: filter.q, mode: 'insensitive' } } } } },
       ];
+    }
+    if (filter.departmentId) {
+      where.warehouse = { departmentId: filter.departmentId };
     }
     const rows = await tx.stockIssue.findMany({
       where,

@@ -6,6 +6,8 @@ import cookieParser from 'cookie-parser';
 import request from 'supertest';
 import { PrismaClient } from '@prisma/client';
 import * as argon2 from 'argon2';
+import ExcelJS from 'exceljs';
+import { getVietnamDateString } from '@nexamed/core';
 import { AppModule } from '../../app.module';
 import { ResponseInterceptor } from '../../common/response.interceptor';
 import { DomainExceptionFilter } from '../../common/domain-exception.filter';
@@ -984,6 +986,72 @@ describe('HTTP e2e — /api/v1/reception', () => {
         .query({ doctorId: doctorAUserId, queueView: 'true' })
         .set(authed(doctorAToken));
       expect((queueAfterPay.body.data.items as Array<{ encounterId: string }>).map((i) => i.encounterId)).toContain(encounterId);
+    });
+  });
+
+  describe('GET /api/v1/reception/list/export — "Xuất Excel" Bệnh nhân trong ngày', () => {
+    it('không có access token → 401', async () => {
+      const res = await request(app.getHttpServer()).get('/api/v1/reception/list/export');
+      expect(res.status).toBe(401);
+    });
+
+    it('200, content-type .xlsx, GHI AUDIT LOG kèm đúng ngày', async () => {
+      const date = getVietnamDateString();
+      const res = await request(app.getHttpServer()).get('/api/v1/reception/list/export').set(authed(receptionistToken));
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toContain('spreadsheetml');
+      expect(res.headers['content-disposition']).toContain('.xlsx');
+
+      const auditRow = await privileged.auditLog.findFirst({
+        where: { tenantId: fixture.tenantA.id, action: 'reception_list.exported', entityId: fixture.tenantA.id },
+        orderBy: { occurredAt: 'desc' },
+      });
+      expect(auditRow).not.toBeNull();
+      expect((auditRow?.afterJson as { date?: string })?.date).toBe(date);
+    });
+
+    it('LUÔN xuất toàn bộ trong ngày — bỏ qua `doctorId`/`queueView` dù client lỡ truyền kèm', async () => {
+      // Đơn CHECKED_IN chưa thu tiền — `queueView=true` sẽ LOẠI khỏi `GET /reception/list` thường
+      // (xem describe "Điều phối Bác sĩ/Khoa..." ở trên), nhưng "Xuất Excel" phải VẪN thấy đơn này
+      // vì cố tình không nhận `doctorId`/`queueView` — chỉ nhận `date` (packages/shared param khác
+      // bị Zod parse nhưng Service export không forward tiếp cho `listReceptions()`).
+      // KHÔNG dùng `isoAt(...)` (tháng 8/2026 cố định) — export không truyền `date` sẽ mặc định
+      // "hôm nay" (giờ hệ thống thật lúc test chạy), đúng cách `checkedInAt: new Date().toISOString()`
+      // đã dùng ở test "trả đúng Người tiếp nhận" phía trên cho cùng lý do.
+      const patient = await createPatient(receptionistToken, { phone: '0933444601' });
+      const created = await request(app.getHttpServer())
+        .post('/api/v1/reception/direct')
+        .set(authed(receptionistToken))
+        .send({
+          patientId: patient.id,
+          doctorId: doctorAUserId,
+          checkedInAt: new Date().toISOString(),
+          services: defaultServices(),
+          receptionTypeCode: 'RT_NEW',
+          examFormCode: 'EF_NORMAL',
+        });
+      const encounterNo = (created.body.data as { encounterNo: string }).encounterNo;
+
+      const res = await request(app.getHttpServer())
+        .get('/api/v1/reception/list/export')
+        .query({ doctorId: doctorAUserId, queueView: 'true' })
+        .set(authed(receptionistToken))
+        .buffer(true)
+        .parse((response, callback) => {
+          const chunks: Buffer[] = [];
+          response.on('data', (chunk: Buffer) => chunks.push(chunk));
+          response.on('end', () => callback(null, Buffer.concat(chunks)));
+        });
+      expect(res.status).toBe(200);
+
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(res.body as unknown as ArrayBuffer);
+      const sheet = workbook.getWorksheet('Bệnh nhân trong ngày')!;
+      const encounterNos: string[] = [];
+      sheet.eachRow((row, rowNumber) => {
+        if (rowNumber > 3) encounterNos.push(String(row.getCell(1).value));
+      });
+      expect(encounterNos).toContain(encounterNo);
     });
   });
 

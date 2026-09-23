@@ -497,6 +497,43 @@ export class ReceptionService {
   }
 
   /**
+   * "Xuất Excel" Bệnh nhân trong ngày (`ReceptionExportService`) — LUÔN toàn bộ trong ngày, bỏ qua
+   * tab/tìm kiếm đang chọn trên màn hình (chốt qua AskUserQuestion, không truyền `doctorIdFilter`).
+   * Resolve kèm tên bác sĩ + tên Khoa/Phòng cho đúng cột "Bác sĩ/Khoa phụ trách" như bảng hiển thị.
+   */
+  async getReceptionListForExport(
+    tenantId: string,
+    actorId: string,
+    dataScope: DataScope,
+    date?: string,
+  ): Promise<{ targetDate: string; items: ReceptionListItem[]; doctorNameById: Map<string, string>; departmentNameById: Map<string, string> }> {
+    const targetDate = date ?? getVietnamDateString();
+    const { items } = await this.listReceptions(tenantId, actorId, dataScope, targetDate);
+
+    const doctorIds = [...new Set(items.map((i) => i.doctorId).filter((id): id is string => id !== null))];
+    const [doctorNameById, departmentNameById] = await Promise.all([
+      this.doctorDirectory.getUserFullNames(tenantId, doctorIds),
+      this.doctorDirectory.getDepartmentNames(tenantId),
+    ]);
+
+    return { targetDate, items, doctorNameById, departmentNameById };
+  }
+
+  async recordReceptionListExportAudit(tenantId: string, actorId: string, date: string, meta: RequestMeta): Promise<void> {
+    await this.unitOfWork.runInTenantScope(tenantId, (tx) =>
+      writeAuditLog(tx, tenantId, {
+        actorId,
+        action: 'reception_list.exported',
+        entityType: 'reception_list_export',
+        entityId: tenantId,
+        afterJson: { date },
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      }),
+    );
+  }
+
+  /**
    * REC-02/03 — luôn cho lưu (kể cả không chỉ số nào trong ngưỡng), `warnings` chỉ để hiển thị
    * cảnh báo phía web, không bao giờ chặn. `temperatureC` (độ C thập phân, web-facing) quy đổi
    * sang `temperature_deci_c` (DB) ở đây — xem `packages/shared/src/encounter.ts`.

@@ -25,8 +25,8 @@ export class StockIssueController {
   @RequirePermission('stock_issue', 'read')
   async list(@Query() query: unknown, @Req() req: Request) {
     const dto = listStockIssuesQuerySchema.parse(query);
-    const { tenantId } = req.user!;
-    return this.stockIssueService.list(tenantId, dto);
+    const { userId, tenantId } = req.user!;
+    return this.stockIssueService.list(tenantId, userId, req.dataScope!, dto);
   }
 
   @Get('issues/:id')
@@ -34,8 +34,8 @@ export class StockIssueController {
   @AuditView('stock_issue')
   @UseInterceptors(AuditViewInterceptor)
   async get(@Param('id') id: string, @Req() req: Request) {
-    const { tenantId } = req.user!;
-    return this.stockIssueService.getById(tenantId, id);
+    const { userId, tenantId } = req.user!;
+    return this.stockIssueService.getById(tenantId, userId, req.dataScope!, id);
   }
 
   @Post('issues')
@@ -44,7 +44,7 @@ export class StockIssueController {
   async create(@Body() body: unknown, @Req() req: Request) {
     const dto = createStockIssueRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.stockIssueService.create(tenantId, userId, dto, extractRequestMeta(req));
+    return this.stockIssueService.create(tenantId, userId, req.dataScope!, dto, extractRequestMeta(req));
   }
 
   @Post('issues/:id/void')
@@ -53,7 +53,7 @@ export class StockIssueController {
   async voidIssue(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = voidStockIssueRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.stockIssueService.voidIssue(tenantId, userId, id, dto, extractRequestMeta(req));
+    return this.stockIssueService.voidIssue(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 
   @Get('prescriptions/:prescriptionId/dispense-status')

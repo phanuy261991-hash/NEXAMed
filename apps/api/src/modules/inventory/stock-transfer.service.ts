@@ -24,6 +24,7 @@ import type {
 import type { Prisma, StockTransfer } from '@prisma/client';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
+import { assertEitherWarehouseInScope, assertWarehouseInScope, resolveActorDepartmentId } from '../../common/warehouse-scope.helper';
 import type { RequestMeta } from '../../common/request-meta';
 import { BusinessCodeService } from '../clinic/business-code.service';
 import { DrugRepository } from '../drug/drug.repository';
@@ -58,38 +59,9 @@ export class StockTransferService {
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
   ) {}
 
-  /** Phân quyền theo Khoa/Phòng (kiến trúc mục 0, docs/DECISIONS.md #170) — đúng khuôn
-   * `StockCountService`. CHỈ gọi khi `dataScope==='department'`. */
-  private async resolveActorDepartmentId(tenantId: string, actorId: string, dataScope: DataScope): Promise<string | null> {
-    if (dataScope !== 'department') return null;
-    return this.doctorDirectory.getDoctorDepartmentId(tenantId, actorId);
-  }
-
-  /** Chặn 404 nếu 1 kho cụ thể không thuộc đúng Khoa của actor khi scope `department` — dùng cho
-   * Tạo/Sửa/Từ chối/Duyệt xuất (luôn kiểm theo kho NGUỒN — phía khởi tạo/xuất hàng) và Xác nhận
-   * nhận hàng (kiểm theo kho ĐÍCH). */
-  private assertWarehouseInScope(warehouseDepartmentId: string | null, dataScope: DataScope, actorDepartmentId: string | null): void {
-    if (dataScope !== 'department') return;
-    if (actorDepartmentId === null || warehouseDepartmentId !== actorDepartmentId) {
-      throw new NotFoundException();
-    }
-  }
-
-  /** XEM (GET) — nới hơn các thao tác ghi: actor thuộc Khoa quản lý kho NGUỒN **hoặc** kho ĐÍCH đều
-   * xem được (cả 2 phía đều liên quan tới cùng 1 phiếu), không chỉ đúng 1 đầu như thao tác ghi. */
-  private assertEitherWarehouseInScope(
-    fromWarehouseDepartmentId: string | null,
-    toWarehouseDepartmentId: string | null,
-    dataScope: DataScope,
-    actorDepartmentId: string | null,
-  ): void {
-    if (dataScope !== 'department') return;
-    const inScope = actorDepartmentId !== null && (fromWarehouseDepartmentId === actorDepartmentId || toWarehouseDepartmentId === actorDepartmentId);
-    if (!inScope) throw new NotFoundException();
-  }
 
   async create(tenantId: string, actorId: string, dataScope: DataScope, dto: CreateStockTransferRequest, meta: RequestMeta): Promise<StockTransferDetail> {
-    const actorDepartmentId = await this.resolveActorDepartmentId(tenantId, actorId, dataScope);
+    const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
 
     const created = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const fromWarehouse = await this.warehouseRepository.findById(tx, tenantId, dto.fromWarehouseId);
@@ -98,7 +70,7 @@ export class StockTransferService {
       if (!toWarehouse) throw new NotFoundException();
       // Lập phiếu là hành động của phía kho NGUỒN (người chuẩn bị hàng đi) — kiểm scope theo kho
       // nguồn, cùng phía với "Duyệt xuất" bên dưới (thường cùng 1 actor ở phòng khám nhỏ).
-      this.assertWarehouseInScope(fromWarehouse.departmentId, dataScope, actorDepartmentId);
+      assertWarehouseInScope(fromWarehouse.departmentId, dataScope, actorDepartmentId);
 
       const lines = await this.buildLineData(tx, tenantId, dto.lines);
       const occurredAt = dto.occurredAt ? new Date(dto.occurredAt) : new Date();
@@ -133,7 +105,7 @@ export class StockTransferService {
    * đầu kho NGUỒN: kho HIỆN TẠI của phiếu (không cho sửa phiếu ngoài Khoa mình) VÀ kho MỚI trong
    * `dto` (không cho "chuyển" phiếu sang kho nguồn ngoài Khoa mình) — đúng khuôn `StockCountService.update()`. */
   async update(tenantId: string, actorId: string, dataScope: DataScope, id: string, dto: UpdateStockTransferRequest, meta: RequestMeta): Promise<StockTransferDetail> {
-    const actorDepartmentId = await this.resolveActorDepartmentId(tenantId, actorId, dataScope);
+    const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
 
     await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.stockTransferRepository.findById(tx, tenantId, id);
@@ -141,11 +113,11 @@ export class StockTransferService {
       if (existing.status !== 'DRAFT') throw new StockTransferNotDraftError();
 
       const currentFromWarehouse = await this.warehouseRepository.findById(tx, tenantId, existing.fromWarehouseId);
-      this.assertWarehouseInScope(currentFromWarehouse?.departmentId ?? null, dataScope, actorDepartmentId);
+      assertWarehouseInScope(currentFromWarehouse?.departmentId ?? null, dataScope, actorDepartmentId);
 
       const fromWarehouse = await this.warehouseRepository.findById(tx, tenantId, dto.fromWarehouseId);
       if (!fromWarehouse) throw new NotFoundException();
-      this.assertWarehouseInScope(fromWarehouse.departmentId, dataScope, actorDepartmentId);
+      assertWarehouseInScope(fromWarehouse.departmentId, dataScope, actorDepartmentId);
       const toWarehouse = await this.warehouseRepository.findById(tx, tenantId, dto.toWarehouseId);
       if (!toWarehouse) throw new NotFoundException();
 
@@ -176,7 +148,7 @@ export class StockTransferService {
   }
 
   async getById(tenantId: string, actorId: string, dataScope: DataScope, id: string): Promise<StockTransferDetail> {
-    const actorDepartmentId = await this.resolveActorDepartmentId(tenantId, actorId, dataScope);
+    const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
 
     const row = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const transfer = await this.stockTransferRepository.findByIdAnyWithLines(tx, tenantId, id);
@@ -185,7 +157,7 @@ export class StockTransferService {
         this.warehouseRepository.findById(tx, tenantId, transfer.fromWarehouseId),
         this.warehouseRepository.findById(tx, tenantId, transfer.toWarehouseId),
       ]);
-      this.assertEitherWarehouseInScope(fromWarehouse?.departmentId ?? null, toWarehouse?.departmentId ?? null, dataScope, actorDepartmentId);
+      assertEitherWarehouseInScope(fromWarehouse?.departmentId ?? null, toWarehouse?.departmentId ?? null, dataScope, actorDepartmentId);
       return { transfer, fromWarehouseName: fromWarehouse?.name ?? '—', toWarehouseName: toWarehouse?.name ?? '—' };
     });
 
@@ -197,7 +169,7 @@ export class StockTransferService {
   }
 
   async list(tenantId: string, actorId: string, dataScope: DataScope, query: ListStockTransfersQuery): Promise<ListStockTransfersResponse> {
-    const actorDepartmentId = await this.resolveActorDepartmentId(tenantId, actorId, dataScope);
+    const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
     if (dataScope === 'department' && actorDepartmentId === null) {
       return { items: [], nextCursor: null };
     }
@@ -229,7 +201,7 @@ export class StockTransferService {
   }
 
   async reject(tenantId: string, actorId: string, dataScope: DataScope, id: string, dto: RejectStockTransferRequest, meta: RequestMeta): Promise<StockTransferDetail> {
-    const actorDepartmentId = await this.resolveActorDepartmentId(tenantId, actorId, dataScope);
+    const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
 
     await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.stockTransferRepository.findById(tx, tenantId, id);
@@ -237,7 +209,7 @@ export class StockTransferService {
       if (existing.status !== 'DRAFT') throw new StockTransferNotDraftError();
 
       const fromWarehouse = await this.warehouseRepository.findById(tx, tenantId, existing.fromWarehouseId);
-      this.assertWarehouseInScope(fromWarehouse?.departmentId ?? null, dataScope, actorDepartmentId);
+      assertWarehouseInScope(fromWarehouse?.departmentId ?? null, dataScope, actorDepartmentId);
 
       const count = await this.stockTransferRepository.reject(tx, tenantId, id, dto.version, actorId, dto.reason);
       if (count === 0) throw new ConcurrentModificationError();
@@ -264,7 +236,7 @@ export class StockTransferService {
    * rollback luôn cả việc đổi trạng thái, không để lại nửa vời).
    */
   async approveShip(tenantId: string, actorId: string, dataScope: DataScope, id: string, dto: ShipStockTransferRequest, meta: RequestMeta): Promise<StockTransferDetail> {
-    const actorDepartmentId = await this.resolveActorDepartmentId(tenantId, actorId, dataScope);
+    const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
 
     await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.stockTransferRepository.findByIdAnyWithLines(tx, tenantId, id);
@@ -272,7 +244,7 @@ export class StockTransferService {
       if (existing.status !== 'DRAFT') throw new StockTransferNotDraftError();
 
       const fromWarehouse = await this.warehouseRepository.findById(tx, tenantId, existing.fromWarehouseId);
-      this.assertWarehouseInScope(fromWarehouse?.departmentId ?? null, dataScope, actorDepartmentId);
+      assertWarehouseInScope(fromWarehouse?.departmentId ?? null, dataScope, actorDepartmentId);
 
       const shippedCount = await this.stockTransferRepository.markShipped(tx, tenantId, id, dto.version, actorId);
       if (shippedCount === 0) throw new ConcurrentModificationError();
@@ -332,7 +304,7 @@ export class StockTransferService {
    * nguồn — có thể đã đổi giữa lúc xuất và lúc nhận).
    */
   async confirmReceive(tenantId: string, actorId: string, dataScope: DataScope, id: string, dto: ReceiveStockTransferRequest, meta: RequestMeta): Promise<StockTransferDetail> {
-    const actorDepartmentId = await this.resolveActorDepartmentId(tenantId, actorId, dataScope);
+    const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
 
     await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.stockTransferRepository.findByIdAnyWithLines(tx, tenantId, id);
@@ -340,7 +312,7 @@ export class StockTransferService {
       if (existing.status !== 'IN_TRANSIT') throw new StockTransferNotInTransitError();
 
       const toWarehouse = await this.warehouseRepository.findById(tx, tenantId, existing.toWarehouseId);
-      this.assertWarehouseInScope(toWarehouse?.departmentId ?? null, dataScope, actorDepartmentId);
+      assertWarehouseInScope(toWarehouse?.departmentId ?? null, dataScope, actorDepartmentId);
 
       if (dto.lines.length !== existing.lines.length) {
         throw new UnprocessableEntityException('Danh sách dòng hàng thực nhận không khớp số dòng của phiếu gốc.');

@@ -4,6 +4,38 @@
 
 ## 2026-09-23
 
+### "Bệnh nhân trong ngày" — thêm "Xuất Excel", chốt phạm vi qua AskUserQuestion
+
+Chủ dự án yêu cầu thêm chức năng xuất dữ liệu ra Excel cho trang "Bệnh nhân trong ngày" (`ReceptionListPage.tsx`). Chốt 2 điểm trước khi code: (1) phạm vi — LUÔN xuất TOÀN BỘ trong ngày, bỏ qua tab/tìm kiếm đang chọn trên màn hình; (2) cột — khớp đúng bảng đang hiển thị (Mã LK, Họ tên, Năm sinh/Tuổi, SĐT, Bác sĩ/Khoa phụ trách, Giờ tiếp nhận, Trạng thái).
+
+Backend: `GET /api/v1/reception/list/export` (`ReceptionController`, cùng quyền `encounter.read` với `list()`), `ReceptionExportService` mới (`exceljs`, backend-only, đúng khuôn `CashBookExportService`) — nhãn trạng thái/tuổi khai RIÊNG (không import từ frontend, cùng lý do #032/#091/#114). `ReceptionService` thêm `getReceptionListForExport()` (gọi lại `listReceptions()` không truyền `doctorId`/`queueView` — đảm bảo LUÔN toàn bộ) + `recordReceptionListExportAudit()`. Bổ sung `DoctorDirectoryPort.getDepartmentNames()` (mới — trả toàn bộ Khoa/Phòng active theo id) để resolve đúng cột "Bác sĩ/Khoa phụ trách" khi chưa gán bác sĩ, adapter đọc qua `DepartmentRepository.listActiveOptions()` có sẵn. Không đăng ký OpenAPI (binary qua `@Res()`, web tải bằng `downloadFile()` — cùng lý do `/cash-flow-report/export` không có trong `generate-openapi.ts`).
+
+Web: `reception.api.ts`/`reception.queries.ts` thêm `exportReceptionList()`/`useExportReceptionListMutation()` (đúng khuôn `cash-flow-report.api.ts`), nút "Xuất Excel" (`Button variant="secondary"`, icon `DownloadSimple`) ở khu vực điều hướng ngày.
+
+**Đã xác minh thật**: `reception-http.spec.ts` +3 test (401, 200+audit log đúng ngày, LUÔN xuất toàn bộ dù truyền kèm `doctorId`/`queueView` — parse thật buffer `.xlsx` trả về bằng `exceljs` để xác nhận đúng dòng dữ liệu, không chỉ kiểm header). 920/920 test `apps/api` pass (57 file, không regress), 212/212 test `packages/core`. `pnpm -w typecheck/lint/build` sạch toàn workspace.
+
+### Retrofit phân quyền theo Khoa/Phòng cho `stock_receipt`/`stock_issue` (GĐ2/GĐ3) — trả lời câu hỏi treo từ #173
+
+Chủ dự án yêu cầu làm ngay câu hỏi treo ghi ở #173 ("có retrofit phân quyền Khoa/Phòng cho `stock_receipt`/`stock_issue` ngay bây giờ hay để dành"). Áp đúng cơ chế đã có ở `stock_count`/`stock_transfer` (kiến trúc mục 0, #170): `req.dataScope` truyền Controller→Service, 404 (không phải 403) nếu kho ngoài Khoa quản lý, `list()` lọc theo `warehouse.departmentId`, actor scope `department` chưa gán Khoa → danh sách rỗng không lỗi. `stock_receipt`: áp cho `create/update/getById/list/approve/reject/voidReceipt` — 2 hàm nội bộ tự sinh chứng từ (`createCountSurplusReceipt`/`createTransferInReceipt`, gọi từ `StockCountService`/`StockTransferService`) giữ nguyên KHÔNG nhận `dataScope` vì caller đã tự kiểm trước. `stock_issue`: áp cho `create/voidIssue/getById/list` — CHỦ ĐỘNG không áp cho `getDispenseStatus()`/`listDispenseQueue()` (đọc xem trước lúc phát thuốc, không đụng tồn kho thật; áp thêm cần tính "kho mặc định theo Khoa" phức tạp hơn phạm vi retrofit, để dành nếu cần sau).
+
+Trích xuất `apps/api/src/common/warehouse-scope.helper.ts` dùng chung (`resolveActorDepartmentId`/`assertWarehouseInScope`/`assertEitherWarehouseInScope`) — trước đó `StockCountService`/`StockTransferService` mỗi nơi tự khai 1 bản giống hệt nhau, retrofit thêm 2 nơi nữa là lặp lần thứ 3/4, đúng ngưỡng phải trích xuất (`CLAUDE.md`). Refactor lại cả 2 service cũ dùng chung helper, không đổi hành vi.
+
+**Đã xác minh thật**: thêm 11 test HTTP mới (`inventory-http.spec.ts` +6, `stock-issue-http.spec.ts` +5 — tạo/xem/huỷ đúng-sai Khoa, danh sách lọc đúng, actor chưa gán Khoa → rỗng), toàn bộ 917/917 test `apps/api` pass (không regress). `pnpm -w typecheck/lint/build` sạch toàn workspace. Không đổi API contract (không cần regen OpenAPI). ~~Chưa verify Playwright~~ **ĐÃ VERIFY XONG cùng ngày, xem mục ngay dưới đây.**
+
+### Verify Playwright retrofit Khoa/Phòng — phát hiện + sửa lỗ hổng thật: frontend chưa lọc dropdown Kho theo Khoa
+
+Verify qua Chrome thật (tenant dev riêng, `dev.admin` tạo Khoa/Kho/vai trò tuỳ biến scope `department` cho `stock_receipt.*` qua HTTP API đúng bài học #166 — không đụng tenant chủ dự án dùng thật): dropdown "Kho" ở "Tạo phiếu nhập kho" chỉ hiện đúng kho của Khoa mình; mở trực tiếp URL phiếu thuộc kho NGOÀI Khoa → "Not Found" đúng thiết kế (backend chặn 404); danh sách tự lọc đúng, không lẫn phiếu ngoài Khoa.
+
+**Phát hiện lúc verify**: backend đã chặn đúng (404) nhưng **frontend chưa từng lọc dropdown "Kho" theo Khoa** ở 2 màn hình `StockReceiptFormPage.tsx` (Phiếu nhập kho) và `DispensePrescriptionDialog.tsx` (Phát thuốc) — khác `StockCountFormPage.tsx`/`StockTransferFormPage.tsx` đã có sẵn từ #170/#173. Người dùng scope `department` vẫn thấy MỌI kho trong dropdown, chỉ báo lỗi sau khi chọn sai kho và bấm Lưu — trải nghiệm tệ dù không rò dữ liệu. Đã sửa cả 2 file, đúng khuôn `useDataScope`/`useActorDepartmentId` (`features/auth/usePermission.ts`) đã có sẵn.
+
+**Đã xác minh thật**: `pnpm -w typecheck/lint` sạch toàn workspace. Playwright qua Chrome thật xác nhận dropdown Kho ở "Tạo phiếu nhập kho" chỉ còn đúng 1 lựa chọn (kho của Khoa mình) sau khi sửa.
+
+### Sửa màu nền tab/nút lọc đang chọn sai quy định — "Bệnh nhân trong ngày" + "Ví tạm ứng"
+
+Chủ dự án phản hồi trực tiếp: tab lọc trạng thái ở "Bệnh nhân trong ngày" (`ReceptionListPage.tsx`) không nổi bật (`bg-white` chìm trong nền `bg-slate-100` bao quanh). Rà soát phát hiện thêm 1 lỗi khác chủ dự án hỏi tới: nút lọc "Đang hoạt động/Đã khoá/Tất cả" ở "Ví tạm ứng" (`WalletListPage.tsx`) dùng `bg-slate-900` — sai quy định (`.claude/docs/ui-guidelines.md` mục 2.1 định nghĩa `bg-slate-900` RIÊNG cho nền Header/Sidebar, không phải trạng thái đang chọn) và là **trường hợp duy nhất** trong toàn app dùng màu này cho việc này (rà soát `grep` xác nhận). Cả 2 đổi sang `bg-blue-600 text-white`, đúng token "Brand" và đúng màu đã dùng ở tab pill của `PatientDetailPage.tsx`.
+
+**Đã xác minh thật**: `pnpm -w typecheck/lint` sạch toàn workspace.
+
 ### Verify Playwright "Điều chuyển kho" (GĐ4) hoàn tất — đúng thiết kế, không phát hiện bug
 
 Xác nhận trực quan qua Chrome thật cả 3 màn hình (danh sách 4 trạng thái, tạo phiếu search-and-pick kể cả tự tách theo lô, Xác nhận nhận hàng tô màu/bắt buộc ghi chú khi thiếu/chặn nhận vượt) + phân quyền theo Khoa/Phòng qua UI thật (không chỉ HTTP test có sẵn). Vá kèm bug vận hành quen thuộc: `stock_transfer.*` chưa có trong `role_permission` dev tenant do thiếu `db:seed`. Chi tiết đầy đủ `docs/DECISIONS.md` #173 (đoạn "Còn treo, việc kế tiếp"). "Điều chuyển kho" (2/5 GĐ4) coi như xong 100%.

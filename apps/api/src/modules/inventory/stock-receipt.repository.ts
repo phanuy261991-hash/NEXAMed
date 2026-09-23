@@ -65,6 +65,10 @@ export interface ListStockReceiptsFilter {
   q?: string;
   cursor?: string;
   take: number;
+  /** Phân quyền theo Khoa/Phòng (retrofit #173, đúng khuôn `StockCountRepository.list()`) — chỉ set
+   * khi actor giữ `stock_receipt.read` ở scope `department`, lọc CHỈ phiếu thuộc kho do đúng Khoa
+   * này quản lý (`warehouse.departmentId`). `undefined` (scope `global`) = không lọc gì thêm. */
+  departmentId?: string;
 }
 
 /** Chỗ DUY NHẤT gọi Prisma cho bảng `stock_receipt`/`stock_receipt_line` (Kho Thuốc GĐ2). */
@@ -176,6 +180,9 @@ export class StockReceiptRepository {
     };
     if (filter.q) {
       where.OR = [{ receiptNo: { contains: filter.q, mode: 'insensitive' } }, { supplier: { name: { contains: filter.q, mode: 'insensitive' } } }];
+    }
+    if (filter.departmentId) {
+      where.warehouse = { departmentId: filter.departmentId };
     }
     const rows = await tx.stockReceipt.findMany({
       where,
