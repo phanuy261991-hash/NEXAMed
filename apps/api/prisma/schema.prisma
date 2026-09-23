@@ -119,6 +119,9 @@ model Tenant {
   // Kho Thuốc GĐ4 (docs/DECISIONS.md #170) — Kiểm kê.
   stockCounts            StockCount[]
   stockCountLines        StockCountLine[]
+  // Kho Thuốc GĐ4 (docs/DECISIONS.md #170) — Điều chuyển kho.
+  stockTransfers         StockTransfer[]
+  stockTransferLines     StockTransferLine[]
 
   @@map("tenant")
 }
@@ -1613,8 +1616,9 @@ model Drug {
   stockBalances     StockBalance[]
   // Kho Thuốc GĐ3 (#163).
   stockIssueLines   StockIssueLine[]
-  // Kho Thuốc GĐ4 (docs/DECISIONS.md #170).
+  // Kho Thuốc GĐ4 (docs/DECISIONS.md #170) — Kiểm kê + Điều chuyển kho.
   stockCountLines   StockCountLine[]
+  stockTransferLines StockTransferLine[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, code])
@@ -1748,8 +1752,12 @@ model Warehouse {
   stockBalances    StockBalance[]
   // Kho Thuốc GĐ3 (#163).
   stockIssues      StockIssue[]
-  // Kho Thuốc GĐ4 (docs/DECISIONS.md #170).
+  // Kho Thuốc GĐ4 (docs/DECISIONS.md #170) — Kiểm kê.
   stockCounts      StockCount[]
+  // Kho Thuốc GĐ4 (docs/DECISIONS.md #170) — Điều chuyển kho. 2 quan hệ RIÊNG (đặt tên) vì Warehouse
+  // là đích của CẢ HAI cột `fromWarehouseId`/`toWarehouseId` trên cùng StockTransfer.
+  stockTransfersFrom StockTransfer[] @relation("StockTransferFromWarehouse")
+  stockTransfersTo   StockTransfer[] @relation("StockTransferToWarehouse")
 
   @@unique([tenantId, id])
   @@unique([tenantId, code])
@@ -1785,6 +1793,10 @@ model StockReceipt {
   // Duyệt phiếu kiểm kê phát hiện dư (receiptType=COUNT_SURPLUS). NULL cho mọi phiếu nhập thường.
   // Chỉ để hiển thị "xem chứng từ gốc" sau này — KHÔNG dùng để tính lại gì.
   countId           String?            @map("count_id") @db.Uuid
+  // Kho Thuốc GĐ4 (docs/DECISIONS.md #170) — trỏ về `stock_transfer` khi phiếu này ĐƯỢC TỰ SINH lúc
+  // Xác nhận nhận hàng (receiptType=TRANSFER_IN). NULL cho mọi phiếu nhập khác. Cùng bản chất
+  // `countId` ở trên — chỉ để hiển thị "xem chứng từ gốc", KHÔNG dùng để tính lại gì.
+  transferId        String?            @map("transfer_id") @db.Uuid
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -1801,6 +1813,8 @@ model StockReceipt {
   supplier      Supplier?          @relation(fields: [tenantId, supplierId], references: [tenantId, id])
   // Composite FK (tenant_id, count_id) -> stock_count(tenant_id, id), NULLABLE (GĐ4).
   count         StockCount?        @relation(fields: [tenantId, countId], references: [tenantId, id])
+  // Composite FK (tenant_id, transfer_id) -> stock_transfer(tenant_id, id), NULLABLE (GĐ4).
+  transfer      StockTransfer?     @relation(fields: [tenantId, transferId], references: [tenantId, id])
   lines         StockReceiptLine[]
   ledgerEntries StockLedger[]
 
@@ -1894,8 +1908,9 @@ model InventoryBatch {
   stockBalances   StockBalance[]
   // Kho Thuốc GĐ3 (#163).
   stockIssueLines StockIssueLine[]
-  // Kho Thuốc GĐ4 (docs/DECISIONS.md #170).
+  // Kho Thuốc GĐ4 (docs/DECISIONS.md #170) — Kiểm kê + Điều chuyển kho.
   stockCountLines StockCountLine[]
+  stockTransferLines StockTransferLine[]
 
   // Unique thật (tenant_id, drug_id, warehouse_id, batch_no) WHERE deleted_at IS NULL là PARTIAL —
   // khai raw SQL trong migration (cùng lý do drug_unit/drug_ingredient), không khai @@unique ở đây.
@@ -2056,6 +2071,10 @@ model StockIssue {
   // Kho Thuốc GĐ4 (docs/DECISIONS.md #170) — trỏ về `stock_count` khi phiếu này ĐƯỢC TỰ SINH lúc
   // Duyệt phiếu kiểm kê phát hiện thiếu (issueType=COUNT_SHORTAGE). NULL cho mọi phiếu xuất thường.
   countId        String?          @map("count_id") @db.Uuid
+  // Kho Thuốc GĐ4 (docs/DECISIONS.md #170) — trỏ về `stock_transfer` khi phiếu này ĐƯỢC TỰ SINH lúc
+  // Duyệt xuất (issueType=TRANSFER_OUT). NULL cho mọi phiếu xuất khác. Cùng bản chất `countId` ở
+  // trên — chỉ để hiển thị "xem chứng từ gốc", KHÔNG dùng để tính lại gì.
+  transferId     String?          @map("transfer_id") @db.Uuid
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -2072,6 +2091,8 @@ model StockIssue {
   prescription  Prescription?    @relation(fields: [tenantId, prescriptionId], references: [tenantId, id])
   // Composite FK (tenant_id, count_id) -> stock_count(tenant_id, id), NULLABLE (GĐ4).
   count         StockCount?      @relation(fields: [tenantId, countId], references: [tenantId, id])
+  // Composite FK (tenant_id, transfer_id) -> stock_transfer(tenant_id, id), NULLABLE (GĐ4).
+  transfer      StockTransfer?   @relation(fields: [tenantId, transferId], references: [tenantId, id])
   lines         StockIssueLine[]
   ledgerEntries StockLedger[]
 
@@ -2213,6 +2234,103 @@ enum StockCountStatus {
   REJECTED
 
   @@map("stock_count_status")
+}
+
+// Kho Thuốc & Vật tư y tế — Giai đoạn 4, phần "Điều chuyển kho" (docs/DECISIONS.md #170, kế hoạch kỹ
+// thuật C:\Users\Administrator\.claude\plans\bright-bubbling-axolotl.md, mockup đã duyệt). 1 LUỒNG
+// DUY NHẤT tự sinh CẶP chứng từ liên kết, tách 2 bước riêng biệt: Duyệt (DRAFT→IN_TRANSIT, xuất kho
+// NGUỒN NGAY, tự sinh 1 StockIssue TRANSFER_OUT) → Xác nhận nhận hàng (IN_TRANSIT→COMPLETED, nhập
+// kho ĐÍCH đúng số lượng THỰC NHẬN — có thể thấp hơn số đã xuất, KHÔNG được cao hơn — tự sinh 1
+// StockReceipt TRANSFER_IN). KHÔNG hỗ trợ Huỷ sau khi đã IN_TRANSIT (giới hạn cố ý v1). Xác nhận
+// nhận hàng là MỘT LẦN DUY NHẤT, không hỗ trợ nhận nhiều đợt — lệch phát hiện sau đó xử lý bằng
+// Kiểm kê riêng ở kho đích, không quay lại sửa phiếu điều chuyển.
+model StockTransfer {
+  id              String              @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId        String              @map("tenant_id") @db.Uuid
+  transferNo      String              @map("transfer_no")
+  fromWarehouseId String              @map("from_warehouse_id") @db.Uuid
+  toWarehouseId   String              @map("to_warehouse_id") @db.Uuid
+  status          StockTransferStatus @default(DRAFT)
+  // Ngày điều chuyển do người dùng khai — khác createdAt (mốc tạo bản ghi).
+  occurredAt      DateTime            @map("occurred_at") @db.Timestamptz(6)
+  note            String?
+  shippedBy       String?             @map("shipped_by") @db.Uuid
+  shippedAt       DateTime?           @map("shipped_at") @db.Timestamptz(6)
+  receivedBy      String?             @map("received_by") @db.Uuid
+  receivedAt      DateTime?           @map("received_at") @db.Timestamptz(6)
+  // Bắt buộc khi status=REJECTED, NULL các trạng thái khác.
+  rejectionReason String?             @map("rejection_reason")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant            Tenant              @relation(fields: [tenantId], references: [id])
+  fromWarehouse     Warehouse           @relation("StockTransferFromWarehouse", fields: [tenantId, fromWarehouseId], references: [tenantId, id])
+  toWarehouse       Warehouse           @relation("StockTransferToWarehouse", fields: [tenantId, toWarehouseId], references: [tenantId, id])
+  lines             StockTransferLine[]
+  // Chứng từ TỰ SINH bởi chính phiếu điều chuyển này — quan hệ NGƯỢC từ `stockReceipt.transferId`/
+  // `stockIssue.transferId` (đúng khuôn `StockCount.generatedReceipts`/`generatedIssues`), CHỈ để
+  // "xem chứng từ liên kết" sau này, KHÔNG dùng để tính lại gì (mọi số liệu đã snapshot trên
+  // `StockTransferLine.unitCost` lúc Duyệt xuất).
+  generatedReceipts StockReceipt[]
+  generatedIssues   StockIssue[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, transferNo])
+  @@map("stock_transfer")
+}
+
+enum StockTransferStatus {
+  DRAFT
+  IN_TRANSIT
+  COMPLETED
+  REJECTED
+
+  @@map("stock_transfer_status")
+}
+
+// Dòng hàng điều chuyển — đúng 1 dòng/(drug, lô cụ thể TẠI KHO NGUỒN). `batchId` bắt buộc nếu
+// `drug.isBatchManaged=true` (lô đã tồn tại ở kho nguồn — KHÔNG có khái niệm "lô mới" như Kiểm kê,
+// hàng phải có thật ở kho nguồn mới chuyển được). `unitCost` SNAPSHOT tại thời điểm Duyệt xuất (đơn
+// vị CƠ SỞ, lấy từ `inventoryBatch.unitCost`/`stockBalance.averageUnitCost` của kho NGUỒN lúc đó) —
+// NULL tới khi phiếu sang IN_TRANSIT, dùng lại đúng số này khi tạo Phiếu nhập TRANSFER_IN tại kho
+// đích (không tính lại, tránh lệch nếu giá vốn kho nguồn đổi giữa lúc xuất và lúc nhận).
+// `quantityReceived`/`varianceNote` NULL tới khi Xác nhận nhận hàng — `varianceNote` bắt buộc (Service
+// kiểm) khi `quantityReceived < quantityShipped`, CHẶN CỨNG (CHECK DB) khi `quantityReceived > quantityShipped`.
+model StockTransferLine {
+  id               String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String  @map("tenant_id") @db.Uuid
+  transferId       String  @map("transfer_id") @db.Uuid
+  drugId           String  @map("drug_id") @db.Uuid
+  batchId          String? @map("batch_id") @db.Uuid
+  quantityShipped  Int     @map("quantity_shipped")
+  unitCost         BigInt? @map("unit_cost")
+  quantityReceived Int?    @map("quantity_received")
+  varianceNote     String? @map("variance_note")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant   Tenant          @relation(fields: [tenantId], references: [id])
+  transfer StockTransfer   @relation(fields: [tenantId, transferId], references: [tenantId, id])
+  drug     Drug            @relation(fields: [tenantId, drugId], references: [tenantId, id])
+  // Composite FK (tenant_id, batch_id) -> inventory_batch(tenant_id, id), NULLABLE.
+  batch    InventoryBatch? @relation(fields: [tenantId, batchId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@map("stock_transfer_line")
 }
 
 // Đơn thuốc (Sprint 4, S4-01/02/04) — .claude/docs/clinical-workflow.md mục "Kê đơn (v1: chỉ in

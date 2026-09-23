@@ -19,7 +19,7 @@ import type {
   UpdateStockReceiptRequest,
   VoidStockReceiptRequest,
 } from '@nexamed/shared';
-import type { Prisma, StockReceipt, StockReceiptType } from '@prisma/client';
+import type { Prisma, StockLedgerReason, StockReceipt, StockReceiptType } from '@prisma/client';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
 import type { RequestMeta } from '../../common/request-meta';
@@ -35,6 +35,22 @@ import { StockBalanceRepository } from './stock-balance.repository';
 /** GĐ2 chỉ có logic thật cho 2/5 giá trị `receiptType` — 3 giá trị còn lại khai sẵn trong enum
  * cho GĐ3/4 (Chuyển kho/Hoàn trả/Cân bằng kiểm kê), chưa có gì để "duyệt" nên chặn tạo mới. */
 const SUPPORTED_RECEIPT_TYPES: readonly StockReceiptType[] = ['PURCHASE', 'OPENING_BALANCE'];
+
+/** Ánh xạ ĐẦY ĐỦ mọi `receiptType` sang đúng `stock_ledger.reason` — rà soát lúc thêm TRANSFER_IN
+ * (Điều chuyển kho, #170): bản trước dùng chuỗi if/else 2 nhánh rồi fallback OPENING_BALANCE cho
+ * "mọi loại khác", sẽ ÂM THẦM gán sai reason cho TRANSFER_IN/RETURN_FROM_USE (đúng số lượng/tồn
+ * kho vẫn khớp, nhưng thẻ kho/báo cáo lọc theo reason sẽ sai) — map tường minh để không tái diễn
+ * khi thêm receiptType mới. RETURN_FROM_USE chưa có logic tạo (StockReceiptService.create() chỉ
+ * PURCHASE/OPENING_BALANCE, createTransferInReceipt()/createCountSurplusReceipt() tự đặt receiptType
+ * đúng) nhưng khai sẵn cho đối xứng, tránh sót khi GĐ4 mở khoá loại này.
+ */
+const RECEIPT_TYPE_TO_LEDGER_REASON: Record<StockReceiptType, StockLedgerReason> = {
+  PURCHASE: 'RECEIPT_PURCHASE',
+  OPENING_BALANCE: 'RECEIPT_OPENING_BALANCE',
+  TRANSFER_IN: 'RECEIPT_TRANSFER_IN',
+  RETURN_FROM_USE: 'RECEIPT_RETURN_FROM_USE',
+  COUNT_SURPLUS: 'RECEIPT_COUNT_SURPLUS',
+};
 
 @Injectable()
 export class StockReceiptService {
@@ -80,6 +96,7 @@ export class StockReceiptService {
         totalAmount,
         lines,
         countId: null,
+        transferId: null,
       });
 
       await writeAuditLog(tx, tenantId, {
@@ -238,10 +255,49 @@ export class StockReceiptService {
       totalAmount,
       lines: params.lines,
       countId: params.countId,
+      transferId: null,
     });
 
     // Chuyển thẳng DRAFT→POSTED (vừa tạo, version chắc chắn = 1, không tranh chấp ai khác trong
     // cùng transaction) — dùng lại nguyên `approve()` repository, không viết lệnh SQL riêng.
+    const postedCount = await this.stockReceiptRepository.approve(tx, tenantId, created.id, created.version, actorId);
+    if (postedCount === 0) throw new ConcurrentModificationError();
+
+    await this.applyPostedLines(tx, tenantId, actorId, created);
+    return created;
+  }
+
+  /**
+   * Kho Thuốc GĐ4, phần "Điều chuyển kho" (docs/DECISIONS.md #170) — Xác nhận nhận hàng:
+   * `StockTransferService.confirmReceive()` gọi hàm này TRONG CÙNG transaction để tự sinh 1
+   * `StockReceipt` (`receiptType='TRANSFER_IN'`) đã ở trạng thái `POSTED` NGAY tại kho ĐÍCH, cộng
+   * đúng SL THỰC NHẬN (có thể thấp hơn SL đã xuất) — dùng lại đúng `applyPostedLines()`, không lặp
+   * lại logic. `unitCost` của từng dòng ĐÃ snapshot sẵn từ lúc Duyệt xuất
+   * (`StockTransferLine.unitCost`), không tính lại/đọc lại giá vốn kho nguồn ở đây.
+   */
+  async createTransferInReceipt(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    actorId: string,
+    params: { warehouseId: string; transferId: string; occurredAt: Date; transferNo: string; lines: StockReceiptLineData[] },
+  ): Promise<StockReceiptWithLines> {
+    const totalAmount = params.lines.reduce((sum, l) => sum + l.lineAmount, 0n);
+    const receiptNo = await this.businessCodeService.generate(tx, tenantId, actorId, 'STOCK_RECEIPT', params.occurredAt);
+
+    const created = await this.stockReceiptRepository.create(tx, tenantId, actorId, {
+      receiptNo,
+      warehouseId: params.warehouseId,
+      supplierId: null,
+      receiptType: 'TRANSFER_IN',
+      occurredAt: params.occurredAt,
+      note: `Tự sinh từ phiếu điều chuyển kho ${params.transferNo}`,
+      supplierInvoiceNo: null,
+      totalAmount,
+      lines: params.lines,
+      countId: null,
+      transferId: params.transferId,
+    });
+
     const postedCount = await this.stockReceiptRepository.approve(tx, tenantId, created.id, created.version, actorId);
     if (postedCount === 0) throw new ConcurrentModificationError();
 
@@ -263,7 +319,7 @@ export class StockReceiptService {
       }
 
       const { baseQuantity, baseUnitCost } = this.convertLineToBaseUnit(drug, line.unitCode, line.quantity, line.unitCost);
-      const reason = receipt.receiptType === 'PURCHASE' ? 'RECEIPT_PURCHASE' : receipt.receiptType === 'COUNT_SURPLUS' ? 'RECEIPT_COUNT_SURPLUS' : 'RECEIPT_OPENING_BALANCE';
+      const reason = RECEIPT_TYPE_TO_LEDGER_REASON[receipt.receiptType];
 
       let batchId: string | null = null;
       if (drug.isBatchManaged) {

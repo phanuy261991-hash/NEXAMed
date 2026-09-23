@@ -261,7 +261,7 @@ export function DrugCatalogPane() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Tìm theo tên, mã hoặc hoạt chất..."
+              placeholder="Tìm theo tên, mã, hoạt chất hoặc mã vạch..."
               className={`${inputClassName} pl-8`}
             />
           </div>

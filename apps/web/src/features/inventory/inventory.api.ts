@@ -4,6 +4,7 @@ import type {
   CreateStockCountRequest,
   CreateStockIssueRequest,
   CreateStockReceiptRequest,
+  CreateStockTransferRequest,
   GetDrugBatchBalancesResponse,
   GetDrugLedgerResponse,
   GetPrescriptionDispenseStatusResponse,
@@ -18,13 +19,20 @@ import type {
   ListStockIssuesResponse,
   ListStockReceiptsQuery,
   ListStockReceiptsResponse,
+  ListStockTransfersQuery,
+  ListStockTransfersResponse,
+  ReceiveStockTransferRequest,
   RejectStockCountRequest,
   RejectStockReceiptRequest,
+  RejectStockTransferRequest,
+  ShipStockTransferRequest,
   StockCountDetail,
   StockIssueDetail,
   StockReceiptDetail,
+  StockTransferDetail,
   UpdateStockCountRequest,
   UpdateStockReceiptRequest,
+  UpdateStockTransferRequest,
   VoidStockIssueRequest,
   VoidStockReceiptRequest,
 } from '@nexamed/shared';
@@ -128,4 +136,34 @@ export async function approveStockCount(id: string, body: ApproveStockCountReque
 
 export async function rejectStockCount(id: string, body: RejectStockCountRequest): Promise<StockCountDetail> {
   return unwrap(await getApiClient().POST('/api/v1/inventory/counts/{id}/reject', { params: { path: { id } }, body })) as StockCountDetail;
+}
+
+// ============ Kho Thuốc GĐ4 — "Điều chuyển kho" (docs/DECISIONS.md #170) ============
+
+export async function getStockTransfers(query: ListStockTransfersQuery): Promise<ListStockTransfersResponse> {
+  return unwrap(await getApiClient().GET('/api/v1/inventory/transfers', { params: { query } })) as ListStockTransfersResponse;
+}
+
+export async function getStockTransfer(id: string): Promise<StockTransferDetail> {
+  return unwrap(await getApiClient().GET('/api/v1/inventory/transfers/{id}', { params: { path: { id } } })) as StockTransferDetail;
+}
+
+export async function createStockTransfer(body: CreateStockTransferRequest): Promise<StockTransferDetail> {
+  return unwrap(await getApiClient().POST('/api/v1/inventory/transfers', { body })) as StockTransferDetail;
+}
+
+export async function updateStockTransfer(id: string, body: UpdateStockTransferRequest): Promise<StockTransferDetail> {
+  return unwrap(await getApiClient().PATCH('/api/v1/inventory/transfers/{id}', { params: { path: { id } }, body })) as StockTransferDetail;
+}
+
+export async function shipStockTransfer(id: string, body: ShipStockTransferRequest): Promise<StockTransferDetail> {
+  return unwrap(await getApiClient().POST('/api/v1/inventory/transfers/{id}/ship', { params: { path: { id } }, body })) as StockTransferDetail;
+}
+
+export async function rejectStockTransfer(id: string, body: RejectStockTransferRequest): Promise<StockTransferDetail> {
+  return unwrap(await getApiClient().POST('/api/v1/inventory/transfers/{id}/reject', { params: { path: { id } }, body })) as StockTransferDetail;
+}
+
+export async function receiveStockTransfer(id: string, body: ReceiveStockTransferRequest): Promise<StockTransferDetail> {
+  return unwrap(await getApiClient().POST('/api/v1/inventory/transfers/{id}/receive', { params: { path: { id } }, body })) as StockTransferDetail;
 }

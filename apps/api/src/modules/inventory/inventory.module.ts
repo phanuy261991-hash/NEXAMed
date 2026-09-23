@@ -20,6 +20,9 @@ import { StockIssueRepository } from './stock-issue.repository';
 import { StockCountController } from './stock-count.controller';
 import { StockCountService } from './stock-count.service';
 import { StockCountRepository } from './stock-count.repository';
+import { StockTransferController } from './stock-transfer.controller';
+import { StockTransferService } from './stock-transfer.service';
+import { StockTransferRepository } from './stock-transfer.repository';
 
 /**
  * Kho Thuốc & Vật tư y tế — Giai đoạn 2 (Nhập kho & tồn theo lô, docs/DECISIONS.md #146). Module
@@ -49,10 +52,15 @@ import { StockCountRepository } from './stock-count.repository';
  * `stock_receipt`/`stock_issue`). `StockCountService` gọi trực tiếp `StockReceiptService`/
  * `StockIssueService` (method mới `createCountSurplusReceipt()`/`createCountShortageIssue()`) —
  * chiều phụ thuộc MỘT phía trong nội bộ module, không cần khai thêm gì ở `imports`.
+ *
+ * Giai đoạn 4, phần "Điều chuyển kho" (docs/DECISIONS.md #170) thêm `StockTransferController/
+ * Service/Repository` — cùng chỗ, cùng cách gọi `StockReceiptService.createTransferInReceipt()`/
+ * `StockIssueService.createTransferOutIssue()` (method mới, đối xứng `createCountSurplusReceipt()`/
+ * `createCountShortageIssue()` ở trên) — không cần khai thêm gì ở `imports`.
  */
 @Module({
   imports: [IamModule, ClinicModule, forwardRef(() => DrugModule), BillingModule, EncounterModule],
-  controllers: [StockReceiptController, StockLedgerController, StockBalanceController, StockIssueController, StockCountController],
+  controllers: [StockReceiptController, StockLedgerController, StockBalanceController, StockIssueController, StockCountController, StockTransferController],
   providers: [
     StockReceiptService,
     StockReceiptRepository,
@@ -65,6 +73,8 @@ import { StockCountRepository } from './stock-count.repository';
     StockIssueRepository,
     StockCountService,
     StockCountRepository,
+    StockTransferService,
+    StockTransferRepository,
   ],
   exports: [StockBalanceRepository],
 })

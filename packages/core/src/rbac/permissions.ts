@@ -174,6 +174,13 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   { module: 'stock_count', action: 'create', description: 'Tạo/sửa Nháp phiếu kiểm kê' },
   { module: 'stock_count', action: 'read', description: 'Xem phiếu kiểm kê' },
   { module: 'stock_count', action: 'approve', description: 'Duyệt/Từ chối phiếu kiểm kê' },
+  // Kho Thuốc & Vật tư y tế — Giai đoạn 4, phần "Điều chuyển kho" (docs/DECISIONS.md #170). Dùng
+  // CHUNG 1 quyền `approve` cho cả 2 bước (Duyệt xuất tại kho NGUỒN / Xác nhận nhận hàng tại kho
+  // ĐÍCH) — kiểm đúng kho của từng bước ở tầng Service khi scope=`department` (mục 0 kế hoạch kỹ
+  // thuật), đơn giản hơn tách permission riêng theo bước cho phòng khám nhỏ.
+  { module: 'stock_transfer', action: 'create', description: 'Tạo/sửa Nháp phiếu điều chuyển kho' },
+  { module: 'stock_transfer', action: 'read', description: 'Xem phiếu điều chuyển kho' },
+  { module: 'stock_transfer', action: 'approve', description: 'Duyệt xuất / Xác nhận nhận hàng / Từ chối phiếu điều chuyển kho' },
 ] as const;
 
 export function permissionKey(p: Pick<PermissionDefinition, 'module' | 'action'>): string {
@@ -254,8 +261,9 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     // Kho Thuốc GĐ3 — điều dưỡng tự phát thuốc tại chỗ được (mô hình "không quầy riêng").
     'stock_issue.create': 'global',
     'stock_issue.read': 'global',
-    // Kho Thuốc GĐ4 — điều dưỡng chỉ xem phiếu kiểm kê, không tạo/duyệt.
+    // Kho Thuốc GĐ4 — điều dưỡng chỉ xem phiếu kiểm kê/điều chuyển, không tạo/duyệt.
     'stock_count.read': 'global',
+    'stock_transfer.read': 'global',
     'work_shift_assignment.create': 'personal',
     'work_shift_assignment.read': 'personal',
     'work_shift_assignment.delete': 'personal',
@@ -298,8 +306,9 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     // Kho Thuốc GĐ3 — bác sĩ tự phát thuốc tại chỗ được (mô hình "không quầy riêng").
     'stock_issue.create': 'global',
     'stock_issue.read': 'global',
-    // Kho Thuốc GĐ4 — bác sĩ chỉ xem phiếu kiểm kê, không tạo/duyệt.
+    // Kho Thuốc GĐ4 — bác sĩ chỉ xem phiếu kiểm kê/điều chuyển, không tạo/duyệt.
     'stock_count.read': 'global',
+    'stock_transfer.read': 'global',
     // Tự thao tác "Tạm nghỉ / Đóng ca" cho chính mình — luôn cho phép (personal), không phụ thuộc
     // 2 công tắc cấu hình (2 công tắc đó chỉ gate nhánh "hộ" của receptionist/clinic_admin).
     'doctor_availability.update': 'personal',
@@ -350,6 +359,11 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'stock_count.create': 'global',
     'stock_count.read': 'global',
     'stock_count.approve': 'global',
+    // Kho Thuốc GĐ4 — Điều chuyển kho: clinic_admin (phòng khám nhỏ thường tự làm cả kho nguồn lẫn
+    // kho đích) có đủ cả 3: tạo Nháp, xem, Duyệt xuất/Xác nhận nhận hàng/Từ chối.
+    'stock_transfer.create': 'global',
+    'stock_transfer.read': 'global',
+    'stock_transfer.approve': 'global',
     // Thu ngân cơ bản — clinic_admin giám sát/xử lý được như lễ tân, cùng mức encounter.*.
     'invoice.read': 'global',
     'invoice.update': 'global',

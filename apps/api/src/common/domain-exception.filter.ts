@@ -131,6 +131,11 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   STOCK_ISSUE_VOID_NOT_ALLOWED: HttpStatus.CONFLICT,
   // Kho Thuốc GĐ4 — trạng thái hiện tại của phiếu kiểm kê không cho phép thao tác này.
   STOCK_COUNT_NOT_DRAFT: HttpStatus.CONFLICT,
+  // Kho Thuốc GĐ4, phần "Điều chuyển kho" — trạng thái hiện tại của phiếu không cho phép thao tác
+  // này, không phải lỗi input. 3 lỗi còn lại (thiếu tồn/nhận vượt/thiếu ghi chú chênh lệch) dùng mặc
+  // định 422 — đúng tinh thần chặn cứng của `stock_issue`.
+  STOCK_TRANSFER_NOT_DRAFT: HttpStatus.CONFLICT,
+  STOCK_TRANSFER_NOT_IN_TRANSIT: HttpStatus.CONFLICT,
 };
 
 /**

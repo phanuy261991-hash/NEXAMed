@@ -44,6 +44,8 @@ const MODULE_LABELS: Record<string, string> = {
   // Kho Thuốc GĐ4, phần "Kiểm kê" (docs/DECISIONS.md #170) — thêm nhãn NGAY từ đầu, tránh lặp lại
   // lỗ hổng đã ghi chú nhiều lần ở trên.
   stock_count: 'Kiểm kê kho',
+  // Kho Thuốc GĐ4, phần "Điều chuyển kho" (docs/DECISIONS.md #170) — thêm nhãn NGAY từ đầu.
+  stock_transfer: 'Điều chuyển kho',
 };
 
 export function moduleLabel(module: string): string {

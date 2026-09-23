@@ -501,7 +501,7 @@ export function StockCountFormPage() {
                   setHighlightedIndex(0);
                 }}
                 onKeyDown={onSearchKeyDown}
-                placeholder="Gõ tên/mã để tìm — Enter/Tab để thêm nhanh..."
+                placeholder="Gõ tên/mã/mã vạch để tìm — Enter/Tab để thêm nhanh..."
                 className="w-full rounded-md border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50"
               />
               {isSearchingDrug && (

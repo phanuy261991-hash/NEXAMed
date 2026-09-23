@@ -104,6 +104,7 @@ export class StockIssueService {
         prescriptionId: dto.prescriptionId,
         issueType: 'RETAIL_SALE',
         countId: null,
+        transferId: null,
         occurredAt,
         note: dto.note ?? null,
         totalAmount,
@@ -335,28 +336,83 @@ export class StockIssueService {
     actorId: string,
     params: { warehouseId: string; countId: string; occurredAt: Date; countNo: string; lines: { drugId: string; batchId: string | null; quantity: number; unitCost: bigint }[] },
   ): Promise<StockIssueWithContext> {
+    return this.createSystemGeneratedIssue(tx, tenantId, actorId, {
+      warehouseId: params.warehouseId,
+      issueType: 'COUNT_SHORTAGE',
+      countId: params.countId,
+      transferId: null,
+      occurredAt: params.occurredAt,
+      note: `Tự sinh từ phiếu kiểm kê ${params.countNo}`,
+      ledgerReason: 'ISSUE_COUNT_SHORTAGE',
+      lines: params.lines,
+    });
+  }
+
+  /**
+   * Kho Thuốc GĐ4, phần "Điều chuyển kho" (docs/DECISIONS.md #170) — `StockTransferService.
+   * approveShip()` gọi hàm này TRONG CÙNG transaction để tự sinh 1 `StockIssue`
+   * (`issueType='TRANSFER_OUT'`) lúc Duyệt xuất — xuất kho NGUỒN NGAY, không gắn đơn thuốc/hoá đơn
+   * nào (cùng bản chất `createCountShortageIssue()`, tách hàm dùng chung `createSystemGeneratedIssue()`
+   * vì đây là lần lặp lại THỨ HAI của cùng 1 khuôn "phiếu xuất tự sinh, không gắn tiền").
+   */
+  async createTransferOutIssue(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    actorId: string,
+    params: { warehouseId: string; transferId: string; occurredAt: Date; transferNo: string; lines: { drugId: string; batchId: string | null; quantity: number; unitCost: bigint }[] },
+  ): Promise<StockIssueWithContext> {
+    return this.createSystemGeneratedIssue(tx, tenantId, actorId, {
+      warehouseId: params.warehouseId,
+      issueType: 'TRANSFER_OUT',
+      countId: null,
+      transferId: params.transferId,
+      occurredAt: params.occurredAt,
+      note: `Tự sinh từ phiếu điều chuyển kho ${params.transferNo}`,
+      ledgerReason: 'ISSUE_TRANSFER_OUT',
+      lines: params.lines,
+    });
+  }
+
+  /** Khuôn dùng chung cho MỌI phiếu xuất TỰ SINH bởi hệ thống (không gắn đơn thuốc/hoá đơn nào,
+   * `sellPrice`/`lineAmount` luôn 0) — `POSTED` NGAY, trừ tồn + ghi thẻ kho. Dùng bởi
+   * `createCountShortageIssue()`/`createTransferOutIssue()` ở trên. */
+  private async createSystemGeneratedIssue(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    actorId: string,
+    params: {
+      warehouseId: string;
+      issueType: 'COUNT_SHORTAGE' | 'TRANSFER_OUT';
+      countId: string | null;
+      transferId: string | null;
+      occurredAt: Date;
+      note: string;
+      ledgerReason: 'ISSUE_COUNT_SHORTAGE' | 'ISSUE_TRANSFER_OUT';
+      lines: { drugId: string; batchId: string | null; quantity: number; unitCost: bigint }[];
+    },
+  ): Promise<StockIssueWithContext> {
     const lineData: StockIssueLineData[] = params.lines.map((l) => ({
       prescriptionItemId: null,
       drugId: l.drugId,
       batchId: l.batchId,
       quantity: l.quantity,
       unitCost: l.unitCost,
-      // Không có "giá bán" — đây là điều chỉnh tồn kho thuần, không gắn hoá đơn nào.
+      // Không có "giá bán" — đây là điều chỉnh/di chuyển tồn kho thuần, không gắn hoá đơn nào.
       sellPrice: 0n,
       lineAmount: 0n,
     }));
-    const totalAmount = lineData.reduce((sum, l) => sum + l.lineAmount, 0n);
     const issueNo = await this.businessCodeService.generate(tx, tenantId, actorId, 'STOCK_ISSUE', params.occurredAt);
 
     const created = await this.stockIssueRepository.create(tx, tenantId, actorId, {
       issueNo,
       warehouseId: params.warehouseId,
       prescriptionId: null,
-      issueType: 'COUNT_SHORTAGE',
+      issueType: params.issueType,
       countId: params.countId,
+      transferId: params.transferId,
       occurredAt: params.occurredAt,
-      note: `Tự sinh từ phiếu kiểm kê ${params.countNo}`,
-      totalAmount,
+      note: params.note,
+      totalAmount: 0n,
       lines: lineData,
     });
 
@@ -367,7 +423,7 @@ export class StockIssueService {
         batchId: line.batchId,
         quantityChange: -line.quantity,
         unitCost: line.unitCost,
-        reason: 'ISSUE_COUNT_SHORTAGE',
+        reason: params.ledgerReason,
         sourceReceiptId: null,
         sourceIssueId: created.id,
         occurredAt: params.occurredAt,

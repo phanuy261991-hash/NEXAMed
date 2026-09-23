@@ -104,9 +104,11 @@ export class DrugRepository {
     return tx.drug.findMany({ where: { tenantId, id: { in: ids }, deletedAt: null } });
   }
 
-  /** `q` — tìm theo tên/mã/hoạt chất (contains, không phân biệt hoa thường) — dùng lúc kê đơn.
-   * `prescriptionOnly` (Kho Thuốc GĐ3, #163) — lọc CHỈ hàng OTC (`false`) cho khu vực "+ Thêm hàng
-   * không theo đơn" ở `DispensePrescriptionDialog.tsx`; `undefined` = không lọc theo cột này. */
+  /** `q` — tìm theo tên/mã/hoạt chất/mã vạch (contains, không phân biệt hoa thường) — dùng lúc kê
+   * đơn, chọn hàng nhập/xuất/kiểm kê/điều chuyển kho. Mã vạch (docs/DECISIONS.md #151) hay được quét
+   * bằng máy đọc mã vạch (gõ nhanh, khớp chính xác gần như tuyệt đối) nên `contains` vẫn đúng, không
+   * cần so khớp riêng. `prescriptionOnly` (Kho Thuốc GĐ3, #163) — lọc CHỈ hàng OTC (`false`) cho khu
+   * vực "+ Thêm hàng không theo đơn" ở `DispensePrescriptionDialog.tsx`; `undefined` = không lọc theo cột này. */
   list(
     tx: Prisma.TransactionClient,
     tenantId: string,
@@ -124,6 +126,7 @@ export class DrugRepository {
         { name: { contains: params.q, mode: 'insensitive' } },
         { code: { contains: params.q, mode: 'insensitive' } },
         { activeIngredient: { contains: params.q, mode: 'insensitive' } },
+        { barcode: { contains: params.q, mode: 'insensitive' } },
       ];
     }
     return tx.drug.findMany({ where, include: DETAIL_INCLUDE, orderBy: { name: 'asc' } });

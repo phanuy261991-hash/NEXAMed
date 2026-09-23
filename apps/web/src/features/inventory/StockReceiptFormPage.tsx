@@ -411,7 +411,7 @@ export function StockReceiptFormPage() {
               type="search"
               value={drugQuery}
               onChange={(e) => setDrugQuery(e.target.value)}
-              placeholder="Gõ tên/mã thuốc, vật tư để thêm dòng hàng..."
+              placeholder="Gõ tên/mã/mã vạch thuốc, vật tư để thêm dòng hàng..."
               className="w-full rounded-md border border-slate-300 py-2 pl-8 pr-3 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             />
           </div>

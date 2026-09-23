@@ -260,6 +260,14 @@ import {
   listStockCountsQuerySchema,
   listStockCountsResponseSchema,
   stockCountDetailSchema,
+  createStockTransferRequestSchema,
+  updateStockTransferRequestSchema,
+  shipStockTransferRequestSchema,
+  rejectStockTransferRequestSchema,
+  receiveStockTransferRequestSchema,
+  listStockTransfersQuerySchema,
+  listStockTransfersResponseSchema,
+  stockTransferDetailSchema,
 } from '@nexamed/shared';
 
 /**
@@ -3507,6 +3515,122 @@ registry.registerPath({
     403: errorResponse('Không có quyền stock_count.approve'),
     404: errorResponse('Không tìm thấy'),
     409: errorResponse('version không khớp, hoặc phiếu không còn ở trạng thái Nháp (STOCK_COUNT_NOT_DRAFT)'),
+  },
+});
+
+// ============ Kho Thuốc GĐ4, phần "Điều chuyển kho" (docs/DECISIONS.md #170) ============
+const stockTransferIdParams = z.object({ id: z.string().uuid() });
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/inventory/transfers',
+  tags: ['inventory'],
+  summary: 'Danh sách Phiếu điều chuyển kho — cursor, lọc theo kho nguồn/đích/trạng thái',
+  security: [{ bearerAuth: [] }],
+  request: { query: listStockTransfersQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listStockTransfersResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_transfer.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/inventory/transfers/{id}',
+  tags: ['inventory'],
+  summary: 'Chi tiết 1 phiếu điều chuyển kèm dòng hàng — xem được nếu thuộc Khoa/Phòng quản lý kho nguồn HOẶC kho đích',
+  security: [{ bearerAuth: [] }],
+  request: { params: stockTransferIdParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(stockTransferDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_transfer.read'),
+    404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài Khoa/Phòng quản lý cả 2 kho)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/inventory/transfers',
+  tags: ['inventory'],
+  summary: 'Tạo phiếu điều chuyển ở trạng thái Nháp — chưa đụng tồn kho',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createStockTransferRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(stockTransferDetailSchema)),
+    400: errorResponse('Kho nguồn và kho đích phải khác nhau'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_transfer.create'),
+    404: errorResponse('Kho/Thuốc tham chiếu không tồn tại, hoặc kho nguồn ngoài Khoa/Phòng quản lý'),
+    422: errorResponse('Thiếu lô cho thuốc quản lý theo lô'),
+  },
+});
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/inventory/transfers/{id}',
+  tags: ['inventory'],
+  summary: 'Sửa phiếu Nháp — thay toàn bộ dòng hàng + header',
+  security: [{ bearerAuth: [] }],
+  request: { params: stockTransferIdParams, body: { content: { 'application/json': { schema: updateStockTransferRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(stockTransferDetailSchema)),
+    400: errorResponse('Kho nguồn và kho đích phải khác nhau'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_transfer.create'),
+    404: errorResponse('Không tìm thấy, hoặc Kho/Thuốc tham chiếu không tồn tại'),
+    409: errorResponse('version không khớp, hoặc phiếu không còn ở trạng thái Nháp (STOCK_TRANSFER_NOT_DRAFT)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/inventory/transfers/{id}/ship',
+  tags: ['inventory'],
+  summary: 'Duyệt (xuất kho NGUỒN NGAY) — DRAFT→IN_TRANSIT, tự sinh Phiếu xuất TRANSFER_OUT',
+  security: [{ bearerAuth: [] }],
+  request: { params: stockTransferIdParams, body: { content: { 'application/json': { schema: shipStockTransferRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(stockTransferDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_transfer.approve'),
+    404: errorResponse('Không tìm thấy'),
+    409: errorResponse('version không khớp, hoặc phiếu không còn ở trạng thái Nháp (STOCK_TRANSFER_NOT_DRAFT)'),
+    422: errorResponse('Không đủ tồn kho tại kho nguồn (STOCK_TRANSFER_INSUFFICIENT_STOCK)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/inventory/transfers/{id}/reject',
+  tags: ['inventory'],
+  summary: 'Từ chối phiếu Nháp — lý do bắt buộc, không đụng tồn kho',
+  security: [{ bearerAuth: [] }],
+  request: { params: stockTransferIdParams, body: { content: { 'application/json': { schema: rejectStockTransferRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(stockTransferDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_transfer.approve'),
+    404: errorResponse('Không tìm thấy'),
+    409: errorResponse('version không khớp, hoặc phiếu không còn ở trạng thái Nháp (STOCK_TRANSFER_NOT_DRAFT)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/inventory/transfers/{id}/receive',
+  tags: ['inventory'],
+  summary: 'Xác nhận nhận hàng (MỘT LẦN DUY NHẤT) — IN_TRANSIT→COMPLETED, cộng đúng SL thực nhận, tự sinh Phiếu nhập TRANSFER_IN',
+  security: [{ bearerAuth: [] }],
+  request: { params: stockTransferIdParams, body: { content: { 'application/json': { schema: receiveStockTransferRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(stockTransferDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_transfer.approve'),
+    404: errorResponse('Không tìm thấy'),
+    409: errorResponse('version không khớp, hoặc phiếu không ở trạng thái Đang vận chuyển (STOCK_TRANSFER_NOT_IN_TRANSIT)'),
+    422: errorResponse('Nhận vượt số đã xuất, hoặc nhận thiếu số lượng nhưng chưa nhập ghi chú chênh lệch'),
   },
 });
 

@@ -12644,7 +12644,7 @@ export interface paths {
                             data: {
                                 items: {
                                     /** @enum {string} */
-                                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT";
+                                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER";
                                     label: string;
                                     prefix: string;
                                     template: string;
@@ -12717,7 +12717,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT";
+                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER";
                 };
                 cookie?: never;
             };
@@ -12740,7 +12740,7 @@ export interface paths {
                         "application/json": {
                             data: {
                                 /** @enum {string} */
-                                codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT";
+                                codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER";
                                 label: string;
                                 prefix: string;
                                 template: string;
@@ -22832,6 +22832,1014 @@ export interface paths {
                 };
                 /** @description version không khớp, hoặc phiếu không còn ở trạng thái Nháp (STOCK_COUNT_NOT_DRAFT) */
                 409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/transfers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Danh sách Phiếu điều chuyển kho — cursor, lọc theo kho nguồn/đích/trạng thái */
+        get: {
+            parameters: {
+                query?: {
+                    cursor?: string;
+                    limit?: number;
+                    fromWarehouseId?: string;
+                    toWarehouseId?: string;
+                    status?: "DRAFT" | "IN_TRANSIT" | "COMPLETED" | "REJECTED";
+                    q?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    transferNo: string;
+                                    /** @enum {string} */
+                                    status: "DRAFT" | "IN_TRANSIT" | "COMPLETED" | "REJECTED";
+                                    /** Format: uuid */
+                                    fromWarehouseId: string;
+                                    fromWarehouseName: string;
+                                    /** Format: uuid */
+                                    toWarehouseId: string;
+                                    toWarehouseName: string;
+                                    occurredAt: string;
+                                    note: string | null;
+                                    lineCount: number;
+                                    createdByName: string;
+                                    shippedByName: string | null;
+                                    shippedAt: string | null;
+                                    receivedByName: string | null;
+                                    receivedAt: string | null;
+                                    rejectionReason: string | null;
+                                    version: number;
+                                }[];
+                                nextCursor: string | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_transfer.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Tạo phiếu điều chuyển ở trạng thái Nháp — chưa đụng tồn kho */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        fromWarehouseId: string;
+                        /** Format: uuid */
+                        toWarehouseId: string;
+                        occurredAt?: string;
+                        note?: string | null;
+                        lines: {
+                            /** Format: uuid */
+                            drugId: string;
+                            /** Format: uuid */
+                            batchId?: string | null;
+                            quantityShipped: number;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                transferNo: string;
+                                /** @enum {string} */
+                                status: "DRAFT" | "IN_TRANSIT" | "COMPLETED" | "REJECTED";
+                                /** Format: uuid */
+                                fromWarehouseId: string;
+                                fromWarehouseName: string;
+                                /** Format: uuid */
+                                toWarehouseId: string;
+                                toWarehouseName: string;
+                                occurredAt: string;
+                                note: string | null;
+                                lineCount: number;
+                                createdByName: string;
+                                shippedByName: string | null;
+                                shippedAt: string | null;
+                                receivedByName: string | null;
+                                receivedAt: string | null;
+                                rejectionReason: string | null;
+                                version: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    isBatchManaged: boolean;
+                                    /** Format: uuid */
+                                    batchId: string | null;
+                                    batchNo: string | null;
+                                    expiryDate: string | null;
+                                    quantityShipped: number;
+                                    quantityReceived: number | null;
+                                    varianceNote: string | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Kho nguồn và kho đích phải khác nhau */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_transfer.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Kho/Thuốc tham chiếu không tồn tại, hoặc kho nguồn ngoài Khoa/Phòng quản lý */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu lô cho thuốc quản lý theo lô */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/transfers/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Chi tiết 1 phiếu điều chuyển kèm dòng hàng — xem được nếu thuộc Khoa/Phòng quản lý kho nguồn HOẶC kho đích */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                transferNo: string;
+                                /** @enum {string} */
+                                status: "DRAFT" | "IN_TRANSIT" | "COMPLETED" | "REJECTED";
+                                /** Format: uuid */
+                                fromWarehouseId: string;
+                                fromWarehouseName: string;
+                                /** Format: uuid */
+                                toWarehouseId: string;
+                                toWarehouseName: string;
+                                occurredAt: string;
+                                note: string | null;
+                                lineCount: number;
+                                createdByName: string;
+                                shippedByName: string | null;
+                                shippedAt: string | null;
+                                receivedByName: string | null;
+                                receivedAt: string | null;
+                                rejectionReason: string | null;
+                                version: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    isBatchManaged: boolean;
+                                    /** Format: uuid */
+                                    batchId: string | null;
+                                    batchNo: string | null;
+                                    expiryDate: string | null;
+                                    quantityShipped: number;
+                                    quantityReceived: number | null;
+                                    varianceNote: string | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_transfer.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài Khoa/Phòng quản lý cả 2 kho) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Sửa phiếu Nháp — thay toàn bộ dòng hàng + header */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        fromWarehouseId: string;
+                        /** Format: uuid */
+                        toWarehouseId: string;
+                        occurredAt?: string;
+                        note?: string | null;
+                        lines: {
+                            /** Format: uuid */
+                            drugId: string;
+                            /** Format: uuid */
+                            batchId?: string | null;
+                            quantityShipped: number;
+                        }[];
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                transferNo: string;
+                                /** @enum {string} */
+                                status: "DRAFT" | "IN_TRANSIT" | "COMPLETED" | "REJECTED";
+                                /** Format: uuid */
+                                fromWarehouseId: string;
+                                fromWarehouseName: string;
+                                /** Format: uuid */
+                                toWarehouseId: string;
+                                toWarehouseName: string;
+                                occurredAt: string;
+                                note: string | null;
+                                lineCount: number;
+                                createdByName: string;
+                                shippedByName: string | null;
+                                shippedAt: string | null;
+                                receivedByName: string | null;
+                                receivedAt: string | null;
+                                rejectionReason: string | null;
+                                version: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    isBatchManaged: boolean;
+                                    /** Format: uuid */
+                                    batchId: string | null;
+                                    batchNo: string | null;
+                                    expiryDate: string | null;
+                                    quantityShipped: number;
+                                    quantityReceived: number | null;
+                                    varianceNote: string | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Kho nguồn và kho đích phải khác nhau */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_transfer.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy, hoặc Kho/Thuốc tham chiếu không tồn tại */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp, hoặc phiếu không còn ở trạng thái Nháp (STOCK_TRANSFER_NOT_DRAFT) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/inventory/transfers/{id}/ship": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Duyệt (xuất kho NGUỒN NGAY) — DRAFT→IN_TRANSIT, tự sinh Phiếu xuất TRANSFER_OUT */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                transferNo: string;
+                                /** @enum {string} */
+                                status: "DRAFT" | "IN_TRANSIT" | "COMPLETED" | "REJECTED";
+                                /** Format: uuid */
+                                fromWarehouseId: string;
+                                fromWarehouseName: string;
+                                /** Format: uuid */
+                                toWarehouseId: string;
+                                toWarehouseName: string;
+                                occurredAt: string;
+                                note: string | null;
+                                lineCount: number;
+                                createdByName: string;
+                                shippedByName: string | null;
+                                shippedAt: string | null;
+                                receivedByName: string | null;
+                                receivedAt: string | null;
+                                rejectionReason: string | null;
+                                version: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    isBatchManaged: boolean;
+                                    /** Format: uuid */
+                                    batchId: string | null;
+                                    batchNo: string | null;
+                                    expiryDate: string | null;
+                                    quantityShipped: number;
+                                    quantityReceived: number | null;
+                                    varianceNote: string | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_transfer.approve */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp, hoặc phiếu không còn ở trạng thái Nháp (STOCK_TRANSFER_NOT_DRAFT) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không đủ tồn kho tại kho nguồn (STOCK_TRANSFER_INSUFFICIENT_STOCK) */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/transfers/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Từ chối phiếu Nháp — lý do bắt buộc, không đụng tồn kho */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        reason: string;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                transferNo: string;
+                                /** @enum {string} */
+                                status: "DRAFT" | "IN_TRANSIT" | "COMPLETED" | "REJECTED";
+                                /** Format: uuid */
+                                fromWarehouseId: string;
+                                fromWarehouseName: string;
+                                /** Format: uuid */
+                                toWarehouseId: string;
+                                toWarehouseName: string;
+                                occurredAt: string;
+                                note: string | null;
+                                lineCount: number;
+                                createdByName: string;
+                                shippedByName: string | null;
+                                shippedAt: string | null;
+                                receivedByName: string | null;
+                                receivedAt: string | null;
+                                rejectionReason: string | null;
+                                version: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    isBatchManaged: boolean;
+                                    /** Format: uuid */
+                                    batchId: string | null;
+                                    batchNo: string | null;
+                                    expiryDate: string | null;
+                                    quantityShipped: number;
+                                    quantityReceived: number | null;
+                                    varianceNote: string | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_transfer.approve */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp, hoặc phiếu không còn ở trạng thái Nháp (STOCK_TRANSFER_NOT_DRAFT) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/transfers/{id}/receive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Xác nhận nhận hàng (MỘT LẦN DUY NHẤT) — IN_TRANSIT→COMPLETED, cộng đúng SL thực nhận, tự sinh Phiếu nhập TRANSFER_IN */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                        lines: {
+                            /** Format: uuid */
+                            lineId: string;
+                            quantityReceived: number;
+                            varianceNote?: string | null;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                transferNo: string;
+                                /** @enum {string} */
+                                status: "DRAFT" | "IN_TRANSIT" | "COMPLETED" | "REJECTED";
+                                /** Format: uuid */
+                                fromWarehouseId: string;
+                                fromWarehouseName: string;
+                                /** Format: uuid */
+                                toWarehouseId: string;
+                                toWarehouseName: string;
+                                occurredAt: string;
+                                note: string | null;
+                                lineCount: number;
+                                createdByName: string;
+                                shippedByName: string | null;
+                                shippedAt: string | null;
+                                receivedByName: string | null;
+                                receivedAt: string | null;
+                                rejectionReason: string | null;
+                                version: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    isBatchManaged: boolean;
+                                    /** Format: uuid */
+                                    batchId: string | null;
+                                    batchNo: string | null;
+                                    expiryDate: string | null;
+                                    quantityShipped: number;
+                                    quantityReceived: number | null;
+                                    varianceNote: string | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_transfer.approve */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp, hoặc phiếu không ở trạng thái Đang vận chuyển (STOCK_TRANSFER_NOT_IN_TRANSIT) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Nhận vượt số đã xuất, hoặc nhận thiếu số lượng nhưng chưa nhập ghi chú chênh lệch */
+                422: {
                     headers: {
                         [name: string]: unknown;
                     };

@@ -72,6 +72,9 @@ const StockIssueListPage = lazy(() => import('../features/inventory/StockIssueLi
 // Kho Thuốc GĐ4, phần "Kiểm kê" (docs/DECISIONS.md #170, kế hoạch bright-bubbling-axolotl.md).
 const StockCountListPage = lazy(() => import('../features/inventory/StockCountListPage').then((m) => ({ default: m.StockCountListPage })));
 const StockCountFormPage = lazy(() => import('../features/inventory/StockCountFormPage').then((m) => ({ default: m.StockCountFormPage })));
+// Kho Thuốc GĐ4, phần "Điều chuyển kho" (docs/DECISIONS.md #170, kế hoạch bright-bubbling-axolotl.md).
+const StockTransferListPage = lazy(() => import('../features/inventory/StockTransferListPage').then((m) => ({ default: m.StockTransferListPage })));
+const StockTransferFormPage = lazy(() => import('../features/inventory/StockTransferFormPage').then((m) => ({ default: m.StockTransferFormPage })));
 // Nhóm Quản trị — chỉ `clinic_admin` dùng tới; lễ tân/điều dưỡng/bác sĩ không bao giờ tải các
 // chunk này (gồm cả trang tra cứu ICD-10 và toàn bộ màn hình danh mục).
 const CatalogAdminPage = lazy(() => import('../features/catalog/CatalogAdminPage').then((m) => ({ default: m.CatalogAdminPage })));
@@ -147,6 +150,9 @@ export const router = createBrowserRouter([
       { path: 'inventory/counts', element: <RequirePermissionRoute module="stock_count" action="read"><StockCountListPage /></RequirePermissionRoute> },
       { path: 'inventory/counts/new', element: <RequirePermissionRoute module="stock_count" action="create"><StockCountFormPage /></RequirePermissionRoute> },
       { path: 'inventory/counts/:id', element: <RequirePermissionRoute module="stock_count" action="read"><StockCountFormPage /></RequirePermissionRoute> },
+      { path: 'inventory/transfers', element: <RequirePermissionRoute module="stock_transfer" action="read"><StockTransferListPage /></RequirePermissionRoute> },
+      { path: 'inventory/transfers/new', element: <RequirePermissionRoute module="stock_transfer" action="create"><StockTransferFormPage /></RequirePermissionRoute> },
+      { path: 'inventory/transfers/:id', element: <RequirePermissionRoute module="stock_transfer" action="read"><StockTransferFormPage /></RequirePermissionRoute> },
       // "Đăng ký ca làm việc" (Giai đoạn 2 #101).
       { path: 'work-schedule/mine', element: <RequirePermissionRoute module="work_shift_assignment" action="read"><MyWorkSchedulePage /></RequirePermissionRoute> },
       { path: 'work-schedule/staff', element: <RequirePermissionRoute module="work_shift_assignment" action="read"><StaffWorkSchedulePage /></RequirePermissionRoute> },

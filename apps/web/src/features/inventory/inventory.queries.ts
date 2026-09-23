@@ -5,15 +5,21 @@ import type {
   CreateStockCountRequest,
   CreateStockIssueRequest,
   CreateStockReceiptRequest,
+  CreateStockTransferRequest,
   ListDispenseQueueQuery,
   ListStockBalancesQuery,
   ListStockCountsQuery,
   ListStockIssuesQuery,
   ListStockReceiptsQuery,
+  ListStockTransfersQuery,
+  ReceiveStockTransferRequest,
   RejectStockCountRequest,
   RejectStockReceiptRequest,
+  RejectStockTransferRequest,
+  ShipStockTransferRequest,
   UpdateStockCountRequest,
   UpdateStockReceiptRequest,
+  UpdateStockTransferRequest,
   VoidStockIssueRequest,
   VoidStockReceiptRequest,
 } from '@nexamed/shared';
@@ -25,6 +31,7 @@ import {
   createStockCount,
   createStockIssue,
   createStockReceipt,
+  createStockTransfer,
   getDispenseQueue,
   getDrugBatchBalances,
   getDrugLedger,
@@ -37,10 +44,16 @@ import {
   getStockIssues,
   getStockReceipt,
   getStockReceipts,
+  getStockTransfer,
+  getStockTransfers,
+  receiveStockTransfer,
   rejectStockCount,
   rejectStockReceipt,
+  rejectStockTransfer,
+  shipStockTransfer,
   updateStockCount,
   updateStockReceipt,
+  updateStockTransfer,
   voidStockIssue,
   voidStockReceipt,
 } from './inventory.api';
@@ -278,6 +291,80 @@ export function useRejectStockCountMutation() {
   const invalidate = useInvalidateAfterCount();
   return useMutation({
     mutationFn: ({ id, body }: { id: string; body: RejectStockCountRequest }) => rejectStockCount(id, body),
+    onSuccess: invalidate,
+  });
+}
+
+// ============ Kho Thuốc GĐ4 — "Điều chuyển kho" (docs/DECISIONS.md #170) ============
+
+export function useStockTransfersQuery(query: ListStockTransfersQuery) {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'stock-transfer', 'list', JSON.stringify(query)),
+    queryFn: () => getStockTransfers(query),
+  });
+}
+
+export function useStockTransferQuery(id: string, enabled = true) {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'stock-transfer', 'detail', id),
+    queryFn: () => getStockTransfer(id),
+    enabled: enabled && id !== '',
+  });
+}
+
+/** Duyệt xuất/Xác nhận nhận hàng đụng tồn kho CẢ 2 kho + tự sinh phiếu nhập/xuất — invalidate đủ
+ * mọi khoá cache liên quan, đúng khuôn `useInvalidateAfterCount()`. */
+function useInvalidateAfterTransfer() {
+  const { tenantId } = useAppConfig();
+  const queryClient = useQueryClient();
+  return () => {
+    void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'stock-transfer') });
+    void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'stock-receipt') });
+    void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'stock-issue') });
+    void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'stock-balance') });
+    void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'stock-ledger') });
+    void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'stock-expiry') });
+  };
+}
+
+export function useCreateStockTransferMutation() {
+  const invalidate = useInvalidateAfterTransfer();
+  return useMutation({
+    mutationFn: (body: CreateStockTransferRequest) => createStockTransfer(body),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateStockTransferMutation() {
+  const invalidate = useInvalidateAfterTransfer();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: UpdateStockTransferRequest }) => updateStockTransfer(id, body),
+    onSuccess: invalidate,
+  });
+}
+
+export function useShipStockTransferMutation() {
+  const invalidate = useInvalidateAfterTransfer();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: ShipStockTransferRequest }) => shipStockTransfer(id, body),
+    onSuccess: invalidate,
+  });
+}
+
+export function useRejectStockTransferMutation() {
+  const invalidate = useInvalidateAfterTransfer();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: RejectStockTransferRequest }) => rejectStockTransfer(id, body),
+    onSuccess: invalidate,
+  });
+}
+
+export function useReceiveStockTransferMutation() {
+  const invalidate = useInvalidateAfterTransfer();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: ReceiveStockTransferRequest }) => receiveStockTransfer(id, body),
     onSuccess: invalidate,
   });
 }

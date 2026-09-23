@@ -19,6 +19,9 @@ export interface CreateStockIssueData {
   prescriptionId: string | null;
   issueType: StockIssueType;
   countId: string | null;
+  /** Kho Thuốc GĐ4 (#170) — trỏ về `stock_transfer` khi phiếu này TỰ SINH từ Duyệt xuất
+   * (`issueType='TRANSFER_OUT'`). `null` cho mọi phiếu xuất khác. */
+  transferId: string | null;
   occurredAt: Date;
   note: string | null;
   totalAmount: bigint;
@@ -71,6 +74,7 @@ export class StockIssueRepository {
         prescriptionId: data.prescriptionId,
         issueType: data.issueType,
         countId: data.countId,
+        transferId: data.transferId,
         occurredAt: data.occurredAt,
         note: data.note,
         totalAmount: data.totalAmount,

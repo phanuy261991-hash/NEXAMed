@@ -61,6 +61,7 @@ describe('HTTP e2e — /api/v1/drugs', () => {
       registrationNumber: string;
       dosageForm: string;
       countryOfOrigin: string;
+      barcode: string;
     }> = {},
   ) {
     const itemType = overrides.itemType ?? 'MEDICINE';
@@ -95,6 +96,7 @@ describe('HTTP e2e — /api/v1/drugs', () => {
         ...(overrides.unitPricingEnabled !== undefined ? { unitPricingEnabled: overrides.unitPricingEnabled } : {}),
         ...(overrides.controlType !== undefined ? { controlType: overrides.controlType } : {}),
         ...(overrides.isPrescriptionOnly !== undefined ? { isPrescriptionOnly: overrides.isPrescriptionOnly } : {}),
+        ...(overrides.barcode !== undefined ? { barcode: overrides.barcode } : {}),
       });
     return res;
   }
@@ -155,6 +157,17 @@ describe('HTTP e2e — /api/v1/drugs', () => {
     const res = await request(app.getHttpServer()).get('/api/v1/drugs').query({ q: 'cefixim' }).set(authed(doctorToken));
     expect(res.status).toBe(200);
     expect(res.body.data.items.some((d: { name: string }) => d.name === 'Cefixim 200mg')).toBe(true);
+  });
+
+  it('tìm thuốc theo mã vạch (yêu cầu chủ dự án 22/09/2026) → khớp, không khớp nhầm mã vạch khác', async () => {
+    const barcode = `89${randomUUID().replace(/-/g, '').slice(0, 11)}`;
+    await createDrug(clinicAdminToken, { name: 'Vitamin C 500mg', barcode });
+    const res = await request(app.getHttpServer()).get('/api/v1/drugs').query({ q: barcode }).set(authed(doctorToken));
+    expect(res.status).toBe(200);
+    expect(res.body.data.items.some((d: { name: string }) => d.name === 'Vitamin C 500mg')).toBe(true);
+
+    const missRes = await request(app.getHttpServer()).get('/api/v1/drugs').query({ q: `${barcode}9999` }).set(authed(doctorToken));
+    expect(missRes.body.data.items.some((d: { name: string }) => d.name === 'Vitamin C 500mg')).toBe(false);
   });
 
   it('receptionist (drug.read) xem được danh sách nhưng không tạo được thuốc (thiếu drug.create) → 403', async () => {

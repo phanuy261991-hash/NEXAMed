@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   Archive,
+  ArrowsLeftRight,
   CalendarBlank,
   CaretRight,
   ChartBar,
@@ -197,6 +198,8 @@ export function Sidebar() {
   const canSeeDispenseQueue = useHasPermission('stock_issue', 'read');
   // Kho Thuốc GĐ4, phần "Kiểm kê" (docs/DECISIONS.md #170), gate riêng theo `stock_count.read`.
   const canSeeStockCount = useHasPermission('stock_count', 'read');
+  // Kho Thuốc GĐ4, phần "Điều chuyển kho" (docs/DECISIONS.md #170), gate riêng theo `stock_transfer.read`.
+  const canSeeStockTransfer = useHasPermission('stock_transfer', 'read');
   const canSeeSystemConfig = useHasPermission('clinic_config', 'update');
   const canSeeActivityLog = useHasPermission('audit_log', 'read');
   const canSeePatients = useHasPermission('patient', 'read');
@@ -506,6 +509,8 @@ export function Sidebar() {
                   {canSeeDispenseQueue && <NavItem to="/inventory/issues" label="Phiếu xuất kho" icon={Export} collapsed={false} indent />}
                   {/* Kho Thuốc GĐ4, phần "Kiểm kê" (docs/DECISIONS.md #170). */}
                   {canSeeStockCount && <NavItem to="/inventory/counts" label="Kiểm kê" icon={ClipboardText} collapsed={false} indent />}
+                  {/* Kho Thuốc GĐ4, phần "Điều chuyển kho" (docs/DECISIONS.md #170). */}
+                  {canSeeStockTransfer && <NavItem to="/inventory/transfers" label="Điều chuyển kho" icon={ArrowsLeftRight} collapsed={false} indent />}
                 </ul>
               )}
             </li>

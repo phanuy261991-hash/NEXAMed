@@ -73,13 +73,18 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       await prisma.stockIssue.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // Kho Thuốc GĐ4, phần "Kiểm kê" (#170) — `stock_count_line.batch_id` tham chiếu
       // `inventory_batch` (FK RESTRICT) nên phải xoá TRƯỚC dòng `inventoryBatch` ngay dưới đây.
+      // Kho Thuốc GĐ4, phần "Điều chuyển kho" (#170) — `stock_transfer_line.batch_id` CŨNG tham
+      // chiếu `inventory_batch` (FK RESTRICT), cùng lý do phải xoá TRƯỚC `inventoryBatch`.
       await prisma.stockCountLine.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await prisma.stockTransferLine.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.inventoryBatch.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.stockReceiptLine.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.stockReceipt.deleteMany({ where: { tenantId: { in: tenantIds } } });
-      // `stock_receipt`/`stock_issue` ở trên có thể trỏ NGƯỢC về `stock_count` (`count_id`, tự sinh
-      // lúc Duyệt) nên `stock_count` (header) phải xoá SAU CẢ HAI — cả hai đã xoá xong ở trên.
+      // `stock_receipt`/`stock_issue` ở trên có thể trỏ NGƯỢC về `stock_count` (`count_id`)/
+      // `stock_transfer` (`transfer_id`, tự sinh lúc Duyệt/Xác nhận nhận hàng) nên CẢ HAI bảng header
+      // này phải xoá SAU `stock_receipt`/`stock_issue` — cả hai đã xoá xong ở trên.
       await prisma.stockCount.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await prisma.stockTransfer.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // cash_voucher/cash_account ("Thu chi tại quầy", Sổ quỹ & Thu chi GĐ1) — cash_voucher tham
       // chiếu CẢ cash_account LẪN cashier_shift (FK RESTRICT), phải xoá TRƯỚC CẢ HAI. payment cũng
       // tham chiếu cash_account (đã xoá ở trên rồi).

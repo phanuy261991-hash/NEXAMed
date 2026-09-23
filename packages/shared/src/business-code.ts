@@ -41,6 +41,7 @@ export const businessCodeTypeSchema = z.enum([
   'STOCK_ISSUE',
   'PRESCRIPTION',
   'STOCK_COUNT',
+  'STOCK_TRANSFER',
 ]);
 export type BusinessCodeType = z.infer<typeof businessCodeTypeSchema>;
 
@@ -78,6 +79,9 @@ export const BUSINESS_CODE_TYPE_REGISTRY: Record<BusinessCodeType, { label: stri
   PRESCRIPTION: { label: 'Mã đơn thuốc', internalPrefix: 'DT' },
   // Kho Thuốc GĐ4 — "Phiếu kiểm kê kho" (docs/DECISIONS.md #170), không trùng tiền tố nào đã dùng ở trên.
   STOCK_COUNT: { label: 'Mã phiếu kiểm kê kho', internalPrefix: 'PKK' },
+  // Kho Thuốc GĐ4 — "Phiếu điều chuyển kho" (docs/DECISIONS.md #170), không trùng "PCK" (đã dùng cho
+  // CASH_TRANSFER) hay tiền tố nào khác đã dùng ở trên.
+  STOCK_TRANSFER: { label: 'Mã phiếu điều chuyển kho', internalPrefix: 'PDC' },
 };
 
 export const DEFAULT_BUSINESS_CODE_COUNTER_DIGITS = 6;

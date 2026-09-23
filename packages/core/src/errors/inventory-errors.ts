@@ -82,3 +82,55 @@ export class StockCountApprovalReasonRequiredError extends DomainError {
     super('Phiếu có dòng dư/thiếu — phải nhập lý do trước khi Duyệt.');
   }
 }
+
+// ============ Kho Thuốc GĐ4, phần "Điều chuyển kho" (docs/DECISIONS.md #170) ============
+
+/** Sửa/Duyệt xuất/Từ chối một phiếu điều chuyển kho không (còn) ở trạng thái Nháp. */
+export class StockTransferNotDraftError extends DomainError {
+  readonly code = 'STOCK_TRANSFER_NOT_DRAFT';
+
+  constructor() {
+    super('Phiếu điều chuyển kho này không còn ở trạng thái Nháp.');
+  }
+}
+
+/** Xác nhận nhận hàng một phiếu không (còn) ở trạng thái Đang vận chuyển. */
+export class StockTransferNotInTransitError extends DomainError {
+  readonly code = 'STOCK_TRANSFER_NOT_IN_TRANSIT';
+
+  constructor() {
+    super('Phiếu điều chuyển kho này không ở trạng thái Đang vận chuyển.');
+  }
+}
+
+/** Duyệt xuất (DRAFT→IN_TRANSIT) — không đủ tồn kho tại kho NGUỒN theo lô/mặt hàng đã chọn để xuất
+ * đúng số lượng đã khai lúc lập phiếu. */
+export class StockTransferInsufficientStockError extends DomainError {
+  readonly code = 'STOCK_TRANSFER_INSUFFICIENT_STOCK';
+
+  constructor(drugName: string) {
+    super(`Không đủ tồn kho tại kho nguồn để chuyển "${drugName}".`);
+  }
+}
+
+/** Xác nhận nhận hàng — nhập số lượng thực nhận CAO HƠN số lượng đã xuất. Chặn CỨNG (kế hoạch
+ * #170 mục 8: kho đích có thể nhận ít hơn số đã xuất, không bao giờ được nhận nhiều hơn — nếu dư
+ * thật thì xử lý bằng Kiểm kê riêng, không lẫn vào Điều chuyển). Cũng có CHECK ở tầng DB, đây là
+ * lớp kiểm tra sớm hơn, thông báo rõ đúng mặt hàng nào vi phạm. */
+export class StockTransferReceivedExceedsShippedError extends DomainError {
+  readonly code = 'STOCK_TRANSFER_RECEIVED_EXCEEDS_SHIPPED';
+
+  constructor(drugName: string) {
+    super(`"${drugName}" — số lượng thực nhận không được vượt quá số lượng đã xuất.`);
+  }
+}
+
+/** Xác nhận nhận hàng — số lượng thực nhận THẤP hơn số lượng đã xuất nhưng thiếu ghi chú lý do
+ * chênh lệch (bắt buộc, kế hoạch #170 mục 8 — "minh bạch & kiểm soát thất thoát"). */
+export class StockTransferVarianceNoteRequiredError extends DomainError {
+  readonly code = 'STOCK_TRANSFER_VARIANCE_NOTE_REQUIRED';
+
+  constructor(drugName: string) {
+    super(`"${drugName}" — nhận ít hơn số đã xuất, phải nhập ghi chú chênh lệch.`);
+  }
+}

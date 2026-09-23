@@ -4,6 +4,18 @@
 
 ## 2026-09-22
 
+### Kho Thuốc GĐ4, phần "Điều chuyển kho" — code + test xong + tìm mã vạch cho thuốc/vật tư
+
+Mockup Artifact (3 tab: Danh sách/Tạo phiếu/Xác nhận nhận hàng) duyệt trong phiên trước khi code. Bảng mới `stock_transfer`/`stock_transfer_line` — 1 luồng duy nhất tự sinh cặp chứng từ liên kết, tách 2 bước Duyệt xuất (trừ kho nguồn ngay, sinh Phiếu xuất TRANSFER_OUT) → Xác nhận nhận hàng (cộng kho đích đúng số lượng thực nhận, sinh Phiếu nhập TRANSFER_IN). Nhận ít hơn được (bắt buộc ghi lý do), nhận nhiều hơn bị chặn cứng cả tầng Service lẫn CHECK DB. Không hỗ trợ Huỷ sau khi đã Đang vận chuyển.
+
+Phân quyền theo Khoa/Phòng kiểm đúng kho của từng bước (kho nguồn cho Duyệt xuất, kho đích cho Xác nhận nhận hàng; xem thì nới hơn — thuộc Khoa 1 trong 2 kho đều xem được), dùng chung 1 quyền `stock_transfer.approve`.
+
+Web: trang "Điều chuyển kho" mới trong "Quản lý kho" — danh sách + trang tạo/sửa/xác nhận nhận hàng/xem dùng chung 1 component theo trạng thái phiếu.
+
+Ngoài kế hoạch, theo yêu cầu trực tiếp: thêm tìm kiếm theo **mã vạch** vào ô tìm thuốc/vật tư dùng chung — áp dụng ngay cho mọi nơi gọi (Danh mục Thuốc & Vật tư, Kê đơn, Nhập kho/Kiểm kê/Điều chuyển kho).
+
+**Đã xác minh thật**: `apps/api` `stock-transfer-http.spec.ts` 23/23 (mới, gồm phân quyền Khoa/Phòng, race Duyệt trùng, chặn nhận vượt/thiếu ghi chú), toàn bộ suite `apps/api` pass (sửa 1 test đếm loại mã nghiệp vụ 16→17 do thêm `STOCK_TRANSFER`, 1 flake race `icd10-http.spec.ts` đã biết không liên quan). `packages/core`/`packages/shared`/`apps/web` pass đủ. `pnpm -w typecheck/lint/build` sạch toàn workspace. Migration đã áp thật lên Postgres dev. **Chưa verify Playwright/trình duyệt thật.** Chi tiết đầy đủ `docs/DECISIONS.md` #173.
+
 ### Đồng bộ nút thao tác toàn app (icon nền màu) + sửa đơn vị tính sai ở phiếu in + 2 bug thật ở "Phát thuốc" (đổi kho không cập nhật tồn, thiếu tên bệnh nhân) + redesign khối thông tin dialog
 
 Phát hiện liên tiếp trong lúc verify Playwright cho #171 — chủ dự án dùng thử trực tiếp qua `pnpm dev` song song.

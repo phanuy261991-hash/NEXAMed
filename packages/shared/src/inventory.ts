@@ -633,3 +633,135 @@ export const listStockCountsResponseSchema = z.object({
   nextCursor: z.string().nullable(),
 });
 export type ListStockCountsResponse = z.infer<typeof listStockCountsResponseSchema>;
+
+// ============ Kho Thuốc & Vật tư y tế — Giai đoạn 4, phần "Điều chuyển kho" (docs/DECISIONS.md
+// #170, kế hoạch kỹ thuật bright-bubbling-axolotl.md, mockup đã duyệt). 1 LUỒNG DUY NHẤT tự sinh
+// CẶP chứng từ liên kết, tách 2 bước: Duyệt (DRAFT→IN_TRANSIT, xuất kho NGUỒN ngay) → Xác nhận
+// nhận hàng (IN_TRANSIT→COMPLETED, nhập kho ĐÍCH đúng số THỰC NHẬN). KHÔNG hỗ trợ Huỷ sau khi đã
+// IN_TRANSIT. Luôn ở đơn vị CƠ SỞ (không chọn đơn vị như `stock_receipt`, đúng khuôn `stock_count`/
+// `stock_issue`). ============
+
+export const stockTransferStatusSchema = z.enum(['DRAFT', 'IN_TRANSIT', 'COMPLETED', 'REJECTED']);
+export type StockTransferStatus = z.infer<typeof stockTransferStatusSchema>;
+
+/** 1 dòng hàng — `batchId` bắt buộc nếu thuốc quản lý theo lô (kiểm ở Service, cần tra
+ * `drug.isBatchManaged`). Lô phải ĐÃ tồn tại TẠI KHO NGUỒN — khác `stock_count`, không có khái
+ * niệm "lô mới" ở đây (hàng phải có thật mới chuyển được). */
+export const stockTransferLineInputSchema = z.object({
+  drugId: z.string().uuid(),
+  batchId: z.string().uuid().nullable().optional(),
+  quantityShipped: z.number().int().positive('Số lượng chuyển phải lớn hơn 0.'),
+});
+export type StockTransferLineInput = z.infer<typeof stockTransferLineInputSchema>;
+
+const stockTransferHeaderFieldsSchema = z.object({
+  fromWarehouseId: z.string().uuid(),
+  toWarehouseId: z.string().uuid(),
+  /** Bỏ trống mặc định "bây giờ". */
+  occurredAt: z.string().optional(),
+  note: z.string().nullable().optional(),
+  lines: z.array(stockTransferLineInputSchema).min(1, 'Phải có ít nhất 1 dòng hàng.'),
+});
+
+function checkStockTransferDifferentWarehouses(v: { fromWarehouseId: string; toWarehouseId: string }, ctx: z.RefinementCtx): void {
+  if (v.fromWarehouseId === v.toWarehouseId) {
+    ctx.addIssue({ code: 'custom', message: 'Kho nguồn và kho đích phải khác nhau.', path: ['toWarehouseId'] });
+  }
+}
+
+/** `POST /inventory/transfers` — tạo phiếu Nháp. `PATCH /inventory/transfers/:id` dùng chung hình
+ * dạng này (bulk-replace toàn bộ dòng hàng + header, đúng khuôn `stock_receipt`/`stock_count`),
+ * cộng `version`. */
+export const createStockTransferRequestSchema = stockTransferHeaderFieldsSchema.superRefine(checkStockTransferDifferentWarehouses);
+export type CreateStockTransferRequest = z.infer<typeof createStockTransferRequestSchema>;
+
+export const updateStockTransferRequestSchema = stockTransferHeaderFieldsSchema
+  .extend({ version: z.number().int() })
+  .superRefine(checkStockTransferDifferentWarehouses);
+export type UpdateStockTransferRequest = z.infer<typeof updateStockTransferRequestSchema>;
+
+export const rejectStockTransferRequestSchema = z.object({
+  reason: z.string().min(1, 'Phải nhập lý do từ chối.'),
+  version: z.number().int(),
+});
+export type RejectStockTransferRequest = z.infer<typeof rejectStockTransferRequestSchema>;
+
+/** `POST /inventory/transfers/:id/ship` — Duyệt (xuất kho NGUỒN ngay), DRAFT→IN_TRANSIT. */
+export const shipStockTransferRequestSchema = z.object({ version: z.number().int() });
+export type ShipStockTransferRequest = z.infer<typeof shipStockTransferRequestSchema>;
+
+/** 1 dòng lúc Xác nhận nhận hàng — `quantityReceived` gửi TƯỜNG MINH cho MỌI dòng (FE mặc định
+ * = `quantityShipped`, người dùng sửa xuống thấp hơn nếu cần). `varianceNote` bắt buộc THẬT chỉ khi
+ * `quantityReceived < quantityShipped` (Service kiểm tra sau khi so với số đã lưu trên dòng, Zod
+ * không biết trước được). Chặn CỨNG nhận nhiều hơn — Zod chỉ chặn âm, Service + CHECK DB chặn vượt
+ * `quantityShipped`. */
+export const receiveStockTransferLineInputSchema = z.object({
+  lineId: z.string().uuid(),
+  quantityReceived: z.number().int().nonnegative(),
+  varianceNote: z.string().trim().min(1).nullable().optional(),
+});
+export type ReceiveStockTransferLineInput = z.infer<typeof receiveStockTransferLineInputSchema>;
+
+/** `POST /inventory/transfers/:id/receive` — Xác nhận nhận hàng, IN_TRANSIT→COMPLETED. MỘT LẦN
+ * DUY NHẤT (không hỗ trợ nhận nhiều đợt/một phần — kế hoạch #170 mục 8). */
+export const receiveStockTransferRequestSchema = z.object({
+  version: z.number().int(),
+  lines: z.array(receiveStockTransferLineInputSchema).min(1),
+});
+export type ReceiveStockTransferRequest = z.infer<typeof receiveStockTransferRequestSchema>;
+
+export const stockTransferLineSchema = z.object({
+  id: z.string().uuid(),
+  drugId: z.string().uuid(),
+  drugCode: z.string(),
+  drugName: z.string(),
+  isBatchManaged: z.boolean(),
+  batchId: z.string().uuid().nullable(),
+  batchNo: z.string().nullable(),
+  expiryDate: z.string().nullable(),
+  quantityShipped: z.number().int(),
+  /** `null` khi phiếu còn `DRAFT` (chưa Duyệt xuất) hoặc `IN_TRANSIT` (chưa Xác nhận nhận hàng). */
+  quantityReceived: z.number().int().nullable(),
+  varianceNote: z.string().nullable(),
+});
+export type StockTransferLine = z.infer<typeof stockTransferLineSchema>;
+
+export const stockTransferSummarySchema = z.object({
+  id: z.string().uuid(),
+  transferNo: z.string(),
+  status: stockTransferStatusSchema,
+  fromWarehouseId: z.string().uuid(),
+  fromWarehouseName: z.string(),
+  toWarehouseId: z.string().uuid(),
+  toWarehouseName: z.string(),
+  occurredAt: z.string(),
+  note: z.string().nullable(),
+  lineCount: z.number().int(),
+  createdByName: z.string(),
+  shippedByName: z.string().nullable(),
+  shippedAt: z.string().nullable(),
+  receivedByName: z.string().nullable(),
+  receivedAt: z.string().nullable(),
+  rejectionReason: z.string().nullable(),
+  version: z.number().int(),
+});
+export type StockTransferSummary = z.infer<typeof stockTransferSummarySchema>;
+
+export const stockTransferDetailSchema = stockTransferSummarySchema.extend({ lines: z.array(stockTransferLineSchema) });
+export type StockTransferDetail = z.infer<typeof stockTransferDetailSchema>;
+
+export const listStockTransfersQuerySchema = z.object({
+  cursor: z.string().uuid().optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  fromWarehouseId: z.string().uuid().optional(),
+  toWarehouseId: z.string().uuid().optional(),
+  status: stockTransferStatusSchema.optional(),
+  q: z.string().min(1).max(100).optional(),
+});
+export type ListStockTransfersQuery = z.infer<typeof listStockTransfersQuerySchema>;
+
+export const listStockTransfersResponseSchema = z.object({
+  items: z.array(stockTransferSummarySchema),
+  nextCursor: z.string().nullable(),
+});
+export type ListStockTransfersResponse = z.infer<typeof listStockTransfersResponseSchema>;
