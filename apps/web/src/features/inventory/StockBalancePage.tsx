@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { ChartBar, Warning } from '@phosphor-icons/react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { ChartBar, Eye, Warning } from '@phosphor-icons/react';
 import type { StockBalanceStatus, StockExpiryWarningItem } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Combobox } from '../../shared/ui/Combobox';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
+import { RowActionButton } from '../../shared/ui/RowActionButton';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { StatusBadge, type StatusBadgeTone } from '../../shared/ui/StatusBadge';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
@@ -151,9 +152,10 @@ function BalanceByItemTable({
   items: { drugId: string; drugCode: string; drugName: string; itemType: string; warehouseName: string; unitCode: string | null; quantityOnHand: number; minStockAlert: number | null; maxStockAlert: number | null; status: StockBalanceStatus }[];
 }) {
   const unitNameByCode = useUnitNameByCode();
-  // Chỉ hiện link "xem lô" cho ai vào được `/admin/catalog-pharmacy` (route đó gate bằng
+  const navigate = useNavigate();
+  // Chỉ hiện nút "Xem" cho ai vào được `/admin/catalog-pharmacy` (route đó gate bằng
   // DRUG_MANAGE_PERMISSIONS) — bác sĩ/điều dưỡng chỉ có `drug.read` sẽ bị chặn route nếu bấm vào,
-  // nên hiện tên thuốc dạng chữ thường như cũ cho các vai trò đó.
+  // nên ẩn hẳn nút cho các vai trò đó (không phải chỉ đổi màu chữ).
   const canOpenDrugDetail = useHasAnyPermission(DRUG_MANAGE_PERMISSIONS);
   if (isError) return <ErrorBanner message={error instanceof ApiError ? error.message : 'Không tải được tồn kho.'} onRetry={onRetry} />;
   if (isPending) {
@@ -171,7 +173,7 @@ function BalanceByItemTable({
     <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
       <div role="table" aria-label="Tồn kho theo mặt hàng" className="scroll-hover h-full overflow-x-auto">
         <div className="flex h-full flex-col" style={{ minWidth: 900 }}>
-          <div role="row" style={{ gridTemplateColumns: '110px 1.6fr 110px 1fr 90px 130px 150px 130px' }} className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-bold uppercase tracking-wide text-slate-800">
+          <div role="row" style={{ gridTemplateColumns: '110px 1.6fr 110px 1fr 90px 130px 150px 130px 90px' }} className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-bold uppercase tracking-wide text-slate-800">
             <div role="columnheader" className="py-2.5 text-center">Mã</div>
             <div role="columnheader" className="py-2.5 text-left">Tên thuốc / vật tư</div>
             <div role="columnheader" className="py-2.5 text-center">Loại</div>
@@ -180,19 +182,12 @@ function BalanceByItemTable({
             <div role="columnheader" className="py-2.5 text-center">Tồn hiện tại</div>
             <div role="columnheader" className="py-2.5 text-center">Định mức</div>
             <div role="columnheader" className="py-2.5 text-center">Trạng thái</div>
+            <div role="columnheader" className="py-2.5 text-center">Thao tác</div>
           </div>
           <div className="scroll-hover flex-1 overflow-y-auto overflow-x-hidden">
             {items.map((item) => (
-              <div key={`${item.drugId}-${item.warehouseName}`} role="row" style={{ gridTemplateColumns: '110px 1.6fr 110px 1fr 90px 130px 150px 130px', minHeight: 56 }} className="grid items-center border-b border-slate-100 px-4 text-sm hover:bg-slate-50">
-                <div role="cell" className="text-center font-bold">
-                  {canOpenDrugDetail ? (
-                    <Link to={`/admin/catalog-pharmacy?drugId=${item.drugId}&tab=batches`} className="text-blue-600 hover:text-blue-700 hover:underline">
-                      {item.drugCode}
-                    </Link>
-                  ) : (
-                    <span className="text-slate-800">{item.drugCode}</span>
-                  )}
-                </div>
+              <div key={`${item.drugId}-${item.warehouseName}`} role="row" style={{ gridTemplateColumns: '110px 1.6fr 110px 1fr 90px 130px 150px 130px 90px', minHeight: 56 }} className="grid items-center border-b border-slate-100 px-4 text-sm hover:bg-slate-50">
+                <div role="cell" className="text-center font-bold text-slate-800">{item.drugCode}</div>
                 <div role="cell" className="min-w-0 truncate text-left font-medium text-slate-900">{item.drugName}</div>
                 <div role="cell" className="text-center">
                   <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${item.itemType === 'MEDICINE' ? 'bg-slate-100 text-slate-700' : 'bg-sky-100 text-sky-700'}`}>
@@ -209,6 +204,11 @@ function BalanceByItemTable({
                 </div>
                 <div role="cell" className="text-center">
                   <StatusBadge tone={BALANCE_STATUS_META[item.status].tone}>{BALANCE_STATUS_META[item.status].label}</StatusBadge>
+                </div>
+                <div role="cell" className="flex items-center justify-center">
+                  {canOpenDrugDetail && (
+                    <RowActionButton icon={Eye} label="Xem" tone="neutral" onClick={() => navigate(`/admin/catalog-pharmacy?drugId=${item.drugId}&tab=batches`)} />
+                  )}
                 </div>
               </div>
             ))}

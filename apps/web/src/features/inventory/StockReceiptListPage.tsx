@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Archive, Check, PencilSimple, Plus, Prohibit, Warning, X } from '@phosphor-icons/react';
+import { Archive, Check, Eye, PencilSimple, Plus, Prohibit, Warning, X } from '@phosphor-icons/react';
 import type { StockReceiptStatus, StockReceiptSummary, StockReceiptType } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
@@ -220,14 +220,9 @@ export function StockReceiptListPage() {
                     style={{ gridTemplateColumns: GRID_COLUMNS, minHeight: ROW_HEIGHT_PX }}
                     className={`grid items-center border-b border-slate-100 px-4 text-sm hover:bg-slate-50 ${item.voided ? 'opacity-60' : item.status === 'REJECTED' ? 'opacity-70' : ''}`}
                   >
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/inventory/receipts/${item.id}`)}
-                      role="cell"
-                      className={`truncate text-center font-medium ${item.voided ? 'text-slate-500 line-through' : 'text-blue-600 hover:text-blue-700'}`}
-                    >
+                    <div role="cell" className={`truncate text-center font-semibold ${item.voided ? 'text-slate-500 line-through' : 'text-slate-800'}`}>
                       {item.receiptNo}
-                    </button>
+                    </div>
                     <div role="cell" className="text-center">
                       <span
                         className={`rounded-full px-2.5 py-1 text-xs font-semibold ${item.receiptType === 'OPENING_BALANCE' ? 'bg-violet-100 text-violet-700' : 'bg-slate-100 text-slate-700'}`}
@@ -249,23 +244,21 @@ export function StockReceiptListPage() {
                     <div role="cell" className="text-center font-semibold tabular-nums text-slate-900">{formatVnd(item.totalAmount)}</div>
                     <div role="cell" className="min-w-0 truncate text-left font-medium text-slate-600">{item.createdByName}</div>
                     <div role="cell" className="flex items-center justify-center gap-1.5">
+                      <RowActionButton icon={Eye} label="Xem" tone="neutral" onClick={() => navigate(`/inventory/receipts/${item.id}`)} />
                       {!item.voided && item.status === 'DRAFT' && (
                         <>
                           {canCreate && <RowActionButton icon={PencilSimple} label="Sửa" tone="primary" onClick={() => navigate(`/inventory/receipts/${item.id}`)} />}
-                          {canApprove ? (
+                          {canApprove && (
                             <>
                               <RowActionButton icon={X} label="Từ chối" tone="danger" onClick={() => setRejectTarget(item)} />
                               <RowActionButton icon={Check} label="Duyệt" tone="success" disabled={approveMutation.isPending} onClick={() => void handleApprove(item)} />
                             </>
-                          ) : (
-                            <span className="text-xs font-medium text-slate-400">Chờ Trưởng kho duyệt</span>
                           )}
                         </>
                       )}
                       {!item.voided && item.status === 'POSTED' && canApprove && (
                         <RowActionButton icon={Prohibit} label="Huỷ phiếu" tone="danger" onClick={() => setVoidTarget(item)} />
                       )}
-                      {(item.status === 'REJECTED' || item.voided) && <span className="text-xs font-medium text-slate-400">—</span>}
                     </div>
                   </div>
                 ))}

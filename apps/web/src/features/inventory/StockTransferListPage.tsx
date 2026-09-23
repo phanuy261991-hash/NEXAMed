@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Eye, PencilSimple, Plus, Printer, Truck, X } from '@phosphor-icons/react';
+import { ArrowRight, Eye, PencilSimple, Plus, Truck, X } from '@phosphor-icons/react';
 import type { StockTransferStatus, StockTransferSummary } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
@@ -164,14 +164,9 @@ export function StockTransferListPage() {
                     style={{ gridTemplateColumns: GRID_COLUMNS, minHeight: ROW_HEIGHT_PX }}
                     className={`grid items-center border-b border-slate-100 px-4 text-sm hover:bg-slate-50 ${item.status === 'IN_TRANSIT' ? 'bg-amber-50/50 hover:bg-amber-50' : ''} ${item.status === 'REJECTED' ? 'opacity-70' : ''}`}
                   >
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/inventory/transfers/${item.id}`)}
-                      role="cell"
-                      className={`truncate text-center font-medium ${item.status === 'REJECTED' ? 'text-slate-500 line-through' : 'text-blue-600 hover:text-blue-700'}`}
-                    >
+                    <div role="cell" className={`truncate text-center font-semibold ${item.status === 'REJECTED' ? 'text-slate-500 line-through' : 'text-slate-800'}`}>
                       {item.transferNo}
-                    </button>
+                    </div>
                     <div role="cell" className="flex items-center justify-center gap-1.5 truncate font-medium text-slate-900">
                       <span className="truncate">{item.fromWarehouseName}</span>
                       <ArrowRight size={13} className="flex-shrink-0 text-slate-400" aria-hidden="true" />
@@ -184,14 +179,11 @@ export function StockTransferListPage() {
                     <div role="cell" className="text-center font-medium tabular-nums text-slate-900">{item.lineCount}</div>
                     <div role="cell" className="min-w-0 truncate text-left font-medium text-slate-600">{item.createdByName}</div>
                     <div role="cell" className="flex items-center justify-center gap-1.5">
+                      <RowActionButton icon={Eye} label="Xem" tone="neutral" onClick={() => navigate(`/inventory/transfers/${item.id}`)} />
                       {item.status === 'DRAFT' && (
                         <>
                           {canCreate && <RowActionButton icon={PencilSimple} label="Sửa" tone="primary" onClick={() => navigate(`/inventory/transfers/${item.id}`)} />}
-                          {canApprove ? (
-                            <RowActionButton icon={X} label="Từ chối" tone="danger" onClick={() => setRejectTarget(item)} />
-                          ) : (
-                            <span className="text-xs font-medium text-slate-400">Chờ duyệt xuất</span>
-                          )}
+                          {canApprove && <RowActionButton icon={X} label="Từ chối" tone="danger" onClick={() => setRejectTarget(item)} />}
                         </>
                       )}
                       {item.status === 'IN_TRANSIT' && canApprove && (
@@ -203,10 +195,6 @@ export function StockTransferListPage() {
                           <Truck size={13} weight="bold" aria-hidden="true" />
                           Xác nhận nhận hàng
                         </button>
-                      )}
-                      {item.status === 'IN_TRANSIT' && !canApprove && <span className="text-xs font-medium text-slate-400">Chờ kho đích xác nhận</span>}
-                      {(item.status === 'COMPLETED' || item.status === 'REJECTED') && (
-                        <RowActionButton icon={item.status === 'COMPLETED' ? Printer : Eye} label={item.status === 'COMPLETED' ? 'Xem / In phiếu' : 'Xem'} tone="neutral" onClick={() => navigate(`/inventory/transfers/${item.id}`)} />
                       )}
                     </div>
                   </div>

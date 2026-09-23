@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Archive, Pill } from '@phosphor-icons/react';
+import { Archive, Eye, Pill } from '@phosphor-icons/react';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
+import { RowActionButton } from '../../shared/ui/RowActionButton';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { TwoOptionToggle } from '../../shared/ui/TwoOptionToggle';
@@ -18,7 +19,7 @@ const GRID_COLUMNS = '160px 1fr 130px 130px 140px 1fr';
 const TABLE_MIN_WIDTH_PX = 900;
 const ROW_HEIGHT_PX = 56;
 
-const ISSUED_GRID_COLUMNS = '150px 1fr 130px 120px 110px 130px';
+const ISSUED_GRID_COLUMNS = '150px 1fr 130px 120px 110px 130px 90px';
 const ISSUED_TABLE_MIN_WIDTH_PX = 900;
 
 function formatDateTime(iso: string): string {
@@ -83,6 +84,7 @@ function DispensedTodayPane() {
                 <div role="columnheader" className="py-2.5 text-center">Giờ phát</div>
                 <div role="columnheader" className="py-2.5 text-center">Trạng thái</div>
                 <div role="columnheader" className="py-2.5 text-center">Tổng tiền</div>
+                <div role="columnheader" className="py-2.5 text-center">Thao tác</div>
               </div>
 
               <div className="scroll-hover flex-1 overflow-y-auto overflow-x-hidden">
@@ -91,10 +93,9 @@ function DispensedTodayPane() {
                     key={item.id}
                     role="row"
                     style={{ gridTemplateColumns: ISSUED_GRID_COLUMNS, minHeight: ROW_HEIGHT_PX }}
-                    className={`grid cursor-pointer items-center border-b border-slate-100 px-4 text-sm hover:bg-slate-50 ${item.status === 'VOIDED' ? 'opacity-60' : ''}`}
-                    onClick={() => setViewingIssueId(item.id)}
+                    className={`grid items-center border-b border-slate-100 px-4 text-sm hover:bg-slate-50 ${item.status === 'VOIDED' ? 'opacity-60' : ''}`}
                   >
-                    <div role="cell" className={`truncate text-center font-medium ${item.status === 'VOIDED' ? 'text-slate-500 line-through' : 'text-blue-600'}`}>{item.issueNo}</div>
+                    <div role="cell" className={`truncate text-center font-semibold ${item.status === 'VOIDED' ? 'text-slate-500 line-through' : 'text-slate-800'}`}>{item.issueNo}</div>
                     <div role="cell" className="min-w-0 truncate text-left font-medium text-slate-900">
                       {item.patientFullName ?? '—'} {item.patientCode && <span className="text-xs text-slate-400">({item.patientCode})</span>}
                     </div>
@@ -104,6 +105,9 @@ function DispensedTodayPane() {
                       <StatusBadge tone={item.status === 'VOIDED' ? 'neutral' : 'success'}>{item.status === 'VOIDED' ? 'Đã huỷ' : 'Đã phát'}</StatusBadge>
                     </div>
                     <div role="cell" className="text-center font-semibold tabular-nums text-slate-900">{formatVnd(item.totalAmount)}</div>
+                    <div role="cell" className="flex items-center justify-center">
+                      <RowActionButton icon={Eye} label="Xem" tone="neutral" onClick={() => setViewingIssueId(item.id)} />
+                    </div>
                   </div>
                 ))}
               </div>
@@ -208,10 +212,9 @@ export function DispenseQueuePage() {
                     key={item.prescriptionId}
                     role="row"
                     style={{ gridTemplateColumns: GRID_COLUMNS, minHeight: ROW_HEIGHT_PX }}
-                    className="grid cursor-pointer items-center border-b border-slate-100 px-4 text-sm hover:bg-slate-50"
-                    onClick={() => setDispensingPrescriptionId(item.prescriptionId)}
+                    className="grid items-center border-b border-slate-100 px-4 text-sm hover:bg-slate-50"
                   >
-                    <div role="cell" className="truncate text-center font-medium text-blue-600">{item.encounterNo}</div>
+                    <div role="cell" className="truncate text-center font-semibold text-slate-800">{item.encounterNo}</div>
                     <div role="cell" className="min-w-0 truncate text-left font-medium text-slate-900">
                       {item.patientFullName} <span className="text-xs text-slate-400">({item.patientCode})</span>
                     </div>
@@ -221,7 +224,7 @@ export function DispenseQueuePage() {
                       {item.totalDispensedQuantity} / {item.totalPrescribedQuantity}
                     </div>
                     <div role="cell" className="flex justify-center">
-                      <button type="button" onClick={(e) => { e.stopPropagation(); setDispensingPrescriptionId(item.prescriptionId); }} className="rounded-md bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-blue-700">
+                      <button type="button" onClick={() => setDispensingPrescriptionId(item.prescriptionId)} className="rounded-md bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-blue-700">
                         Phát thuốc
                       </button>
                     </div>

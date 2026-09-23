@@ -254,9 +254,7 @@ export function CashVoucherListPage() {
                         ariaLabel={`Chọn ${item.voucherNo}`}
                       />
                     </div>
-                    <button type="button" onClick={() => setDetailId(item.id)} role="cell" className="truncate text-center font-medium text-blue-600 hover:text-blue-700">
-                      {item.voucherNo}
-                    </button>
+                    <div role="cell" className="truncate text-center font-semibold text-slate-800">{item.voucherNo}</div>
                     <div role="cell" className="text-center text-slate-600">{formatDateShort(item.occurredAt)}</div>
                     <div role="cell" className="min-w-0 text-center">
                       {item.counterAccountId ? (

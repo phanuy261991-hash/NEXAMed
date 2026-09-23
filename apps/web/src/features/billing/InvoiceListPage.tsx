@@ -329,14 +329,7 @@ export function InvoiceListPage() {
                         ariaLabel={`Chọn ${item.fullName}`}
                       />
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/billing/${item.encounterId}?invoiceId=${item.invoiceId}`)}
-                      role="cell"
-                      className="truncate text-center font-medium text-blue-600 hover:text-blue-700"
-                    >
-                      {item.invoiceNo}
-                    </button>
+                    <div role="cell" className="truncate text-center font-semibold text-slate-800">{item.invoiceNo}</div>
                     <div role="cell" className="min-w-0 text-left">
                       <div className="truncate font-semibold text-slate-900">{item.fullName}</div>
                       <div className="truncate text-xs text-slate-500">{item.patientCode}</div>

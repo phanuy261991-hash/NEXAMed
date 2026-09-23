@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowCircleDown, ArrowCircleUp, ClockCounterClockwise, Receipt, Stethoscope } from '@phosphor-icons/react';
+import { ArrowCircleDown, ArrowCircleUp, ClockCounterClockwise, Eye, Receipt, Stethoscope } from '@phosphor-icons/react';
 import type { CashierShiftDetail } from '@nexamed/shared';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { ModalHeader } from '../../shared/ui/ModalHeader';
+import { RowActionButton } from '../../shared/ui/RowActionButton';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { StatusBadge, type StatusBadgeTone } from '../../shared/ui/StatusBadge';
 import { formatVnd } from '../../shared/format/currency';
@@ -25,7 +26,7 @@ interface ActivityRow {
   statusTone: StatusBadgeTone;
 }
 
-const GRID_COLUMNS = '90px 170px 1.6fr 160px 140px';
+const GRID_COLUMNS = '90px 170px 1.6fr 160px 140px 90px';
 
 function formatTime(iso: string): string {
   const d = new Date(iso);
@@ -150,15 +151,14 @@ export function MyShiftVouchersDialog({ shift, onClose }: { shift: CashierShiftD
                   <div role="columnheader" className="py-3 text-left">Diễn giải</div>
                   <div role="columnheader" className="py-3 text-right">Số tiền</div>
                   <div role="columnheader" className="py-3 text-center">Trạng thái</div>
+                  <div role="columnheader" className="py-3 text-center">Thao tác</div>
                 </div>
 
                 {rows.map((row) => (
-                  <button
+                  <div
                     key={row.id}
-                    type="button"
                     role="row"
                     style={{ gridTemplateColumns: GRID_COLUMNS }}
-                    onClick={() => handleRowClick(row, invoiceByRowId.get(row.id))}
                     className="grid w-full items-center gap-x-4 border-b border-slate-100 px-5 py-3 text-left last:border-0 hover:bg-slate-50"
                   >
                     <div role="cell" className="text-center text-sm font-medium text-slate-600">{formatTime(row.timeIso)}</div>
@@ -183,7 +183,10 @@ export function MyShiftVouchersDialog({ shift, onClose }: { shift: CashierShiftD
                     <div role="cell" className="text-center">
                       <StatusBadge tone={row.statusTone}>{row.statusLabel}</StatusBadge>
                     </div>
-                  </button>
+                    <div role="cell" className="flex items-center justify-center">
+                      <RowActionButton icon={Eye} label="Xem" tone="neutral" onClick={() => handleRowClick(row, invoiceByRowId.get(row.id))} />
+                    </div>
+                  </div>
                 ))}
               </div>
           </div>

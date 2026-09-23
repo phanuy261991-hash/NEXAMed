@@ -163,9 +163,7 @@ export function StockCountListPage() {
               <div className="scroll-hover flex-1 overflow-y-auto overflow-x-hidden">
                 {items.map((item) => (
                   <div key={item.id} role="row" style={{ gridTemplateColumns: GRID_COLUMNS, minHeight: ROW_HEIGHT_PX }} className="grid items-center border-b border-slate-100 px-4 text-sm hover:bg-slate-50">
-                    <button type="button" onClick={() => navigate(`/inventory/counts/${item.id}`)} role="cell" className="truncate text-left font-medium text-blue-600 hover:text-blue-700">
-                      {item.countNo}
-                    </button>
+                    <div role="cell" className="truncate text-left font-semibold text-slate-800">{item.countNo}</div>
                     <div role="cell" className="truncate text-left font-medium text-slate-900">{item.warehouseName}</div>
                     <div role="cell" className="text-center font-medium text-slate-600">{formatDateShort(item.occurredAt)}</div>
                     <div role="cell" className="text-center font-medium tabular-nums text-slate-900">{item.lineCount}</div>
@@ -175,20 +173,18 @@ export function StockCountListPage() {
                     <div role="cell" className="min-w-0 truncate text-left font-medium text-slate-600">{item.createdByName}</div>
                     <div role="cell" className="min-w-0 truncate text-left font-medium text-slate-600">{item.approvedByName ?? '—'}</div>
                     <div role="cell" className="flex items-center justify-center gap-1.5">
+                      <RowActionButton icon={Eye} label="Xem" tone="neutral" onClick={() => navigate(`/inventory/counts/${item.id}`)} />
                       {item.status === 'DRAFT' && (
                         <>
                           {canCreate && <RowActionButton icon={PencilSimple} label="Sửa" tone="primary" onClick={() => navigate(`/inventory/counts/${item.id}`)} />}
-                          {canApprove ? (
+                          {canApprove && (
                             <>
                               <RowActionButton icon={X} label="Từ chối" tone="danger" onClick={() => setRejectTarget(item)} />
                               <RowActionButton icon={Check} label="Duyệt" tone="success" disabled={approveMutation.isPending} onClick={() => void handleApprove(item)} />
                             </>
-                          ) : (
-                            <span className="text-xs font-medium text-slate-400">Chờ Trưởng kho duyệt</span>
                           )}
                         </>
                       )}
-                      {item.status !== 'DRAFT' && <RowActionButton icon={Eye} label="Xem" tone="neutral" onClick={() => navigate(`/inventory/counts/${item.id}`)} />}
                     </div>
                   </div>
                 ))}

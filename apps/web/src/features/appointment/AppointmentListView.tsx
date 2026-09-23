@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { CalendarBlank } from '@phosphor-icons/react';
+import { CalendarBlank, Eye } from '@phosphor-icons/react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import type { AppointmentSummary, DoctorOption } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
+import { RowActionButton } from '../../shared/ui/RowActionButton';
 import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
 import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
 import { Skeleton } from '../../shared/ui/Skeleton';
@@ -16,7 +17,7 @@ import { useAppointmentsListQuery } from './appointment.queries';
  * Cột đầu tiên (4px) là vạch màu trạng thái (`APPOINTMENT_STATUS_META.accent`) — nhận diện nhanh
  * trạng thái mà không cần đọc chữ, theo yêu cầu chủ dự án. Cột "chọn dòng" đứng sau đó.
  */
-const GRID_COLUMNS = '4px 40px 130px 140px 1.4fr 1.1fr 110px 130px';
+const GRID_COLUMNS = '4px 40px 130px 140px 1.4fr 1.1fr 110px 130px 90px';
 const ROW_HEIGHT_PX = 60;
 
 /** Quy đổi UTC+7 cố định — cùng kỹ thuật `vietnam-day-range.ts`/`format-display-code.ts`. */
@@ -131,6 +132,7 @@ export function AppointmentListView({
           <div role="columnheader" className="py-2.5 text-center">Bác sĩ</div>
           <div role="columnheader" className="py-2.5 text-center">Nguồn</div>
           <div role="columnheader" className="py-2.5 text-center">Trạng thái</div>
+          <div role="columnheader" className="py-2.5 text-center">Thao tác</div>
         </div>
 
         <div ref={scrollParentRef} className="scroll-hover flex-1 overflow-y-auto">
@@ -169,13 +171,7 @@ export function AppointmentListView({
                   <div role="cell" className="flex items-center justify-center">
                     <SelectionCheckbox checked={rowSelection.isSelected(a.id)} onChange={() => rowSelection.toggle(a.id)} ariaLabel={`Chọn ${a.fullName}`} />
                   </div>
-                  <div
-                    role="cell"
-                    onDoubleClick={() => onOpenAppointment(a)}
-                    className="cursor-pointer text-center font-medium text-blue-600 hover:text-blue-700"
-                  >
-                    {a.bookingCode}
-                  </div>
+                  <div role="cell" className="text-center font-semibold text-slate-800">{a.bookingCode}</div>
                   <div role="cell" className="text-center leading-tight">
                     <div className="font-semibold text-brand-teal tabular-nums">{formatTimeRange(a.scheduledAt, a.durationMinutes)}</div>
                     <div className="text-xs font-medium text-slate-500 tabular-nums">{formatDateLabel(a.scheduledAt)}</div>
@@ -188,6 +184,9 @@ export function AppointmentListView({
                       {meta.label}
                       {a.status === 'NO_SHOW' && a.noShowAutoMarked && <span className="ml-1 font-normal">(tự động)</span>}
                     </span>
+                  </div>
+                  <div role="cell" className="flex items-center justify-center">
+                    <RowActionButton icon={Eye} label="Xem" tone="neutral" onClick={() => onOpenAppointment(a)} />
                   </div>
                 </div>
               );

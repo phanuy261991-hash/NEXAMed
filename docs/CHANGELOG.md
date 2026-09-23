@@ -2,6 +2,24 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-23
+
+### Verify Playwright "Điều chuyển kho" (GĐ4) hoàn tất — đúng thiết kế, không phát hiện bug
+
+Xác nhận trực quan qua Chrome thật cả 3 màn hình (danh sách 4 trạng thái, tạo phiếu search-and-pick kể cả tự tách theo lô, Xác nhận nhận hàng tô màu/bắt buộc ghi chú khi thiếu/chặn nhận vượt) + phân quyền theo Khoa/Phòng qua UI thật (không chỉ HTTP test có sẵn). Vá kèm bug vận hành quen thuộc: `stock_transfer.*` chưa có trong `role_permission` dev tenant do thiếu `db:seed`. Chi tiết đầy đủ `docs/DECISIONS.md` #173 (đoạn "Còn treo, việc kế tiếp"). "Điều chuyển kho" (2/5 GĐ4) coi như xong 100%.
+
+### Thêm "In phiếu" cho Điều chuyển kho — dùng chung 1 mẫu cho cả kho nguồn lẫn kho đích
+
+`StockTransferPrintView.tsx` mới, đúng khuôn `.print-area` chung với Nhập/Xuất kho. Nút "In phiếu" hiện khi phiếu `IN_TRANSIT` (kho nguồn in ngay sau Duyệt xuất) và `COMPLETED` (kho đích in sau khi Xác nhận nhận hàng) — không hiện với `DRAFT`/`REJECTED`. Không đổi backend/schema. Đã xác minh Playwright qua Chrome thật cả 2 trạng thái. Chi tiết `docs/DECISIONS.md` #174.
+
+### Thu gọn/xổ ra nhóm "1 tiêu đề sản phẩm + N dòng lô" (Kiểm kê, Phiếu nhập kho)
+
+`shared/hooks/useCollapsedGroups.ts` mới — nút thu gọn/xổ ra trên dòng tiêu đề sản phẩm khi có >1 lô, mặc định xổ ra. Áp dụng đúng 2 nơi có kiểu hiển thị này: `StockCountFormPage.tsx`, `StockReceiptFormPage.tsx` (2 nơi khác — Điều chuyển kho, Chi tiết thanh toán — dùng bố cục khác, không thuộc phạm vi). Đã xác minh Playwright qua Chrome thật. Chi tiết `docs/DECISIONS.md` #175.
+
+### Đổi cơ chế "Xem chi tiết" toàn app: gom về 1 nút icon trong cột Thao tác
+
+Thống nhất 12 bảng danh sách (trước đây mỗi nơi tự chọn 1 kiểu: bấm mã, double-click hàng, click cả hàng) về đúng 1 kiểu — nút `Eye`/"Xem" luôn đứng đầu cột Thao tác, cột mã/tên hết bấm được. Ngoại lệ giữ nguyên (theo yêu cầu ban đầu): `PatientListPage.tsx`, `DrugCatalogPane.tsx`, và mọi bảng "master-detail" chọn dòng để lọc panel cùng trang (`RoomPane`/`DepartmentPane`/`AllergenPane`/`Icd10Pane`/`RolePermissionPane`). Cập nhật `.claude/docs/ui-guidelines.md` mục 9 làm quy tắc chốt. Đã xác minh Playwright qua Chrome thật trên hầu hết trang đã sửa, không phát hiện bug. Chi tiết `docs/DECISIONS.md` #176.
+
 ## 2026-09-22
 
 ### Kho Thuốc GĐ4, phần "Điều chuyển kho" — code + test xong + tìm mã vạch cho thuốc/vật tư

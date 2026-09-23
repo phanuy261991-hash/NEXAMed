@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowCircleDown, ArrowCircleUp, MagnifyingGlass, UsersThree, Wallet } from '@phosphor-icons/react';
+import { ArrowCircleDown, ArrowCircleUp, Eye, MagnifyingGlass, UsersThree, Wallet } from '@phosphor-icons/react';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
+import { RowActionButton } from '../../shared/ui/RowActionButton';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { Button } from '../../shared/ui/Button';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
@@ -101,17 +102,14 @@ export function WalletListPage() {
                   <th className="px-3 py-2.5 text-right">Đã dùng</th>
                   <th className="px-3 py-2.5 text-center">Giao dịch gần nhất</th>
                   <th className="px-3 py-2.5 text-center">Trạng thái</th>
+                  <th className="px-3 py-2.5 text-center">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
                 {items.map((item) => (
-                  <tr
-                    key={item.walletId}
-                    onDoubleClick={() => navigate(`/patients/${item.patientId}`)}
-                    className="cursor-pointer border-b border-slate-100 font-medium last:border-0 hover:bg-slate-50"
-                  >
+                  <tr key={item.walletId} className="border-b border-slate-100 font-medium last:border-0 hover:bg-slate-50">
                     <td className="whitespace-nowrap px-3 py-3 text-center">
-                      <span className="font-medium text-blue-600">{item.patientCode}</span>
+                      <span className="font-semibold text-slate-800">{item.patientCode}</span>
                     </td>
                     <td className="px-3 py-3 text-left text-slate-900">{item.fullName}</td>
                     <td className="whitespace-nowrap px-3 py-3 text-center text-slate-700">{item.phone ?? '—'}</td>
@@ -121,6 +119,9 @@ export function WalletListPage() {
                     <td className="whitespace-nowrap px-3 py-3 text-center text-slate-600">{item.lastTransactionAt ? formatWalletDate(item.lastTransactionAt) : '—'}</td>
                     <td className="whitespace-nowrap px-3 py-3 text-center">
                       <StatusBadge tone={item.status === 'ACTIVE' ? 'success' : 'neutral'}>{item.status === 'ACTIVE' ? 'Hoạt động' : 'Đã tất toán'}</StatusBadge>
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-3 text-center">
+                      <RowActionButton icon={Eye} label="Xem" tone="neutral" onClick={() => navigate(`/patients/${item.patientId}`)} />
                     </td>
                   </tr>
                 ))}

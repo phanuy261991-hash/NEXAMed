@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Clock, CurrencyCircleDollar, Receipt, Warning } from '@phosphor-icons/react';
+import { Clock, CurrencyCircleDollar, Eye, Receipt, Warning } from '@phosphor-icons/react';
 import type { CashierShiftListItem } from '@nexamed/shared';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Combobox } from '../../shared/ui/Combobox';
 import { DateInput } from '../../shared/ui/DateInput';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
+import { RowActionButton } from '../../shared/ui/RowActionButton';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { formatVnd } from '../../shared/format/currency';
@@ -146,28 +147,29 @@ export function CashierShiftListPage() {
               <div className="py-2.5 text-center">Hành động</div>
             </div>
             {items.map((item) => (
-              <button
+              <div
                 key={item.id}
-                type="button"
-                onClick={() => setSelectedId(item.id)}
+                role="row"
                 style={{ minHeight: ROW_HEIGHT_PX }}
                 className="grid w-full grid-cols-[140px_130px_1fr_120px_140px_140px_130px_130px_100px] items-center border-b border-slate-100 px-4 text-left text-sm hover:bg-slate-50"
               >
-                <div className="text-center font-semibold text-slate-800">{item.shiftNo}</div>
-                <div className="text-center font-medium text-slate-700">{item.closedAt ? formatDateTime(item.closedAt) : '—'}</div>
-                <div className="truncate font-medium text-slate-900">{item.cashierName}</div>
-                <div className="text-center font-medium text-slate-600">{item.shiftLabel}</div>
-                <div className="text-center font-medium text-slate-700">{item.expectedCashAmount !== null ? formatVnd(item.expectedCashAmount) : '—'}</div>
-                <div className="text-center font-bold text-slate-900">{item.countedCashAmount !== null ? formatVnd(item.countedCashAmount) : '—'}</div>
-                <div className={`text-center font-bold ${item.cashDiscrepancyAmount === 0 ? 'text-slate-300' : 'text-rose-600'}`}>
+                <div role="cell" className="text-center font-semibold text-slate-800">{item.shiftNo}</div>
+                <div role="cell" className="text-center font-medium text-slate-700">{item.closedAt ? formatDateTime(item.closedAt) : '—'}</div>
+                <div role="cell" className="truncate font-medium text-slate-900">{item.cashierName}</div>
+                <div role="cell" className="text-center font-medium text-slate-600">{item.shiftLabel}</div>
+                <div role="cell" className="text-center font-medium text-slate-700">{item.expectedCashAmount !== null ? formatVnd(item.expectedCashAmount) : '—'}</div>
+                <div role="cell" className="text-center font-bold text-slate-900">{item.countedCashAmount !== null ? formatVnd(item.countedCashAmount) : '—'}</div>
+                <div role="cell" className={`text-center font-bold ${item.cashDiscrepancyAmount === 0 ? 'text-slate-300' : 'text-rose-600'}`}>
                   {item.cashDiscrepancyAmount === 0 ? '—' : formatVnd(item.cashDiscrepancyAmount)}
                 </div>
-                <div className="text-center">
+                <div role="cell" className="text-center">
                   <StatusBadge tone={item.status === 'APPROVED' ? 'success' : 'warning'}>{item.status === 'APPROVED' ? 'Đã duyệt' : 'Đã chốt'}</StatusBadge>
                   {item.editedAt && <StatusBadge tone="info">Đã chỉnh sửa</StatusBadge>}
                 </div>
-                <div className="text-center text-xs font-semibold text-blue-600">Xem</div>
-              </button>
+                <div role="cell" className="flex items-center justify-center">
+                  <RowActionButton icon={Eye} label="Xem" tone="neutral" onClick={() => setSelectedId(item.id)} />
+                </div>
+              </div>
             ))}
           </div>
         </div>
