@@ -91,6 +91,12 @@ function useInvalidateInventory() {
   const queryClient = useQueryClient();
   return () => {
     void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'stock-receipt') });
+    // Bug thật phát hiện lúc verify Playwright "Phiếu xuất kho mở rộng" (GĐ4 phần 3, 23/09/2026):
+    // thiếu invalidate 'stock-issue' — Duyệt/Từ chối/Tạo/Sửa phiếu xuất tay (4 mutation dùng hàm
+    // này) cập nhật đúng ở server (đã xác nhận qua DB) nhưng danh sách KHÔNG tự làm mới, hiện
+    // "Nháp" mãi tới khi F5 tay. Cũng đúng cho Kiểm kê/Điều chuyển kho (tự sinh `stock_issue` khi
+    // Duyệt) — cùng 1 hàm dùng chung, sửa 1 chỗ áp dụng hết.
+    void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'stock-issue') });
     void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'stock-balance') });
     void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'stock-ledger') });
     void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'stock-expiry') });

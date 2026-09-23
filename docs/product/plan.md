@@ -195,7 +195,7 @@ Phần đệm lỗi ở sprint này lớn có chủ ý. Nếu pilot ít lỗi, d
 
 **Ngoài kế hoạch, cùng giai đoạn Sprint 6 (15/09/2026) — Kho Thuốc & Vật tư y tế (mở rộng phạm vi v1, `docs/DECISIONS.md` #146/#148, xem `docs/product/prd.md` mục 4.8)**: đảo ngược quyết định "dược/kho ngoài v1" của Sprint 4. Lộ trình 5 giai đoạn, **KHÔNG tính vào điều kiện gate GA ở trên** (gate GA không nêu Kho Thuốc):
 - **GĐ1 — Danh mục nền: đã xong** (mở rộng `drug`, 4 bảng mới `drug_unit`/`drug_ingredient`/`supplier`/`warehouse`, 3 danh mục `reference_catalog` mới).
-- GĐ2 (Nhập kho & tồn theo lô) → GĐ3 (Xuất kho + FEFO + tiền thuốc, duy nhất chạm `invoice` đang chạy thật) → GĐ4 (Kiểm kê/báo cáo) → GĐ5 (trải nghiệm kê đơn) — **chưa ước lượng dev-day, chưa xếp vào sprint nào** — lập kế hoạch chi tiết khi bắt đầu từng giai đoạn, cùng cách đã làm ở GĐ1.
+- GĐ2 (Nhập kho & tồn theo lô, **đã xây xong**) → GĐ3 (Xuất kho + FEFO + tiền thuốc, duy nhất chạm `invoice` đang chạy thật, **đã xây xong, đang chạy tại pilot**) → GĐ4 (Kiểm kê/Điều chuyển kho/Mở rộng Nhập-Xuất kho/Báo cáo Nhập-Xuất-Tồn, **đã xây xong 23/09/2026, `docs/DECISIONS.md` #170...#179**) → GĐ5 (trải nghiệm kê đơn) — **chưa bắt đầu, chưa ước lượng dev-day**.
 
 ---
 

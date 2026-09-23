@@ -4,6 +4,16 @@
 
 ## 2026-09-23
 
+### Kho Thuốc GĐ4, phần 3/4/5 — hoàn tất 5/5 GĐ4 (Xuất kho mở rộng/Nhập kho mở rộng-Chiết khấu/Báo cáo Nhập-Xuất-Tồn)
+
+Tiếp tục từ handoff giữa phiên trước (`docs/handoffs/HANDOFF-KhoThuoc-GD4-Phan3-4-5-2026-09-23.md`, commit `1bcbaff` đã có backend/frontend nhưng test dở dang, chưa verify Playwright). Viết nốt test HTTP còn thiếu: `inventory-http.spec.ts` +6 test (RETURN_FROM_USE, chiết khấu TOTAL/PER_LINE, validate 2 mode loại trừ nhau), file mới `stock-ledger-report-http.spec.ts` 7 test (báo cáo Nhập-Xuất-Tồn, quyền riêng `stock_receipt.report`, xuất Excel). Toàn bộ suite `apps/api` 943/943 pass, `packages/core` 212/212.
+
+Phát hiện + sửa 2 vấn đề vận hành: (1) migration `stock_issue_receipt_gd4_extend` chưa thật sự áp lên Postgres dev (chỉ mới `prisma generate`, không phải `migrate deploy`) — đã `db:deploy`; (2) 2 permission mới (`stock_receipt.report`/`stock_issue.approve`) chưa seed — đã `db:seed` + khởi động lại API để tự đồng bộ `role_permission` cho 16 tenant hiện có.
+
+**Verify Playwright phát hiện + sửa 1 bug thật**: `useInvalidateInventory()` (`inventory.queries.ts`) thiếu invalidate `'stock-issue'` — 4 mutation của "Phiếu xuất kho mở rộng" (tạo/sửa/Duyệt/Từ chối) cập nhật đúng ở server nhưng danh sách không tự làm mới khi thao tác ngay trên trang đang mở, hiện "Nháp" mãi tới khi F5 tay. Đã sửa, xác nhận lại qua Playwright (badge đổi ngay không cần F5).
+
+Chi tiết đầy đủ `docs/DECISIONS.md` #179. **GĐ4 Kho Thuốc hoàn tất 100% (5/5 phần)**: Kiểm kê, Điều chuyển kho, Retrofit phân quyền Khoa/Phòng, Xuất kho mở rộng, Nhập kho mở rộng + Báo cáo Nhập-Xuất-Tồn. Còn GĐ5 (Trải nghiệm kê đơn) chưa bắt đầu.
+
 ### "Bệnh nhân trong ngày" — thêm "Xuất Excel", chốt phạm vi qua AskUserQuestion
 
 Chủ dự án yêu cầu thêm chức năng xuất dữ liệu ra Excel cho trang "Bệnh nhân trong ngày" (`ReceptionListPage.tsx`). Chốt 2 điểm trước khi code: (1) phạm vi — LUÔN xuất TOÀN BỘ trong ngày, bỏ qua tab/tìm kiếm đang chọn trên màn hình; (2) cột — khớp đúng bảng đang hiển thị (Mã LK, Họ tên, Năm sinh/Tuổi, SĐT, Bác sĩ/Khoa phụ trách, Giờ tiếp nhận, Trạng thái).

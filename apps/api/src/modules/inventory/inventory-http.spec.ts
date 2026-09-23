@@ -502,4 +502,115 @@ describe('HTTP e2e — /api/v1/inventory (Phiếu nhập kho GĐ2)', () => {
       await privileged.userAccount.update({ where: { id: deptAUserId }, data: { departmentId: deptAId } });
     });
   });
+
+  /** "Phiếu nhập kho mở rộng" (Kho Thuốc GĐ4, docs/DECISIONS.md #170) — loại phiếu `RETURN_FROM_USE`
+   * (đúng khuôn PURCHASE/OPENING_BALANCE, không cột đặc thù) + Chiết khấu 2 mode `TOTAL`/`PER_LINE`,
+   * chỉ áp cho `receiptType='PURCHASE'`. Xem handoff HANDOFF-KhoThuoc-GD4-Phan3-4-5-2026-09-23.md. */
+  describe('Phiếu nhập kho mở rộng — RETURN_FROM_USE + Chiết khấu (docs/DECISIONS.md #170)', () => {
+    it('tạo + duyệt + huỷ phiếu RETURN_FROM_USE — hồi quy listForSourceReceipt() đảo đúng tồn', async () => {
+      const drugId = await createDrug(clinicAdminToken, { name: 'Thuốc hoàn trả từ sử dụng' });
+      const created = await createReceipt(clinicAdminToken, {
+        receiptType: 'RETURN_FROM_USE',
+        supplierId: undefined,
+        lines: [{ drugId, unitCode: 'VIEN', quantity: 20, unitCost: 400, batchNo: `RFU-${randomUUID().slice(0, 6)}`, expiryDate: '2027-01-01' }],
+      });
+      expect(created.status).toBe(200);
+      expect(created.body.data.supplierId).toBeNull();
+
+      const approved = await request(app.getHttpServer()).post(`/api/v1/inventory/receipts/${created.body.data.id}/approve`).set(authed(clinicAdminToken)).send({ version: created.body.data.version });
+      expect(approved.status).toBe(200);
+
+      const balanceRes = await request(app.getHttpServer()).get('/api/v1/inventory/balances').set(authed(clinicAdminToken)).query({ warehouseId });
+      expect(balanceRes.body.data.items.find((i: { drugId: string }) => i.drugId === drugId).quantityOnHand).toBe(20);
+
+      const ledgerRes = await request(app.getHttpServer()).get(`/api/v1/inventory/drugs/${drugId}/ledger`).set(authed(clinicAdminToken));
+      expect(ledgerRes.body.data.items[0]).toMatchObject({ quantityChange: 20, reason: 'RECEIPT_RETURN_FROM_USE', runningBalance: 20 });
+
+      // Hồi quy: TRƯỚC khi sửa `listForSourceReceipt()`, RECEIPT_RETURN_FROM_USE không nằm trong
+      // danh sách reason được đảo ngược → huỷ phiếu ÂM THẦM không hoàn tồn (tồn vẫn giữ nguyên 20
+      // thay vì về 0). Nếu bug tái diễn, dòng `expect(row.quantityOnHand).toBe(0)` bên dưới sẽ fail.
+      const voided = await request(app.getHttpServer())
+        .post(`/api/v1/inventory/receipts/${created.body.data.id}/void`)
+        .set(authed(clinicAdminToken))
+        .send({ version: approved.body.data.version, reason: 'Ghi nhầm phiếu hoàn trả' });
+      expect(voided.status).toBe(200);
+
+      const balanceAfterVoid = await request(app.getHttpServer()).get('/api/v1/inventory/balances').set(authed(clinicAdminToken)).query({ warehouseId });
+      const row = balanceAfterVoid.body.data.items.find((i: { drugId: string }) => i.drugId === drugId);
+      expect(row === undefined || row.quantityOnHand === 0).toBe(true);
+    });
+
+    it('Chiết khấu "Toàn phiếu" (TOTAL) — thành tiền tính đúng ở cả list và detail', async () => {
+      const drugId = await createDrug(clinicAdminToken, { name: 'Thuốc chiết khấu toàn phiếu' });
+      // Tổng tiền hàng = 100 × 1000 = 100_000 → chiết khấu 10% = 10_000 → thành tiền = 90_000.
+      const created = await createReceipt(clinicAdminToken, {
+        discountType: 'PERCENT',
+        discountValue: 10,
+        discountReason: 'Chiết khấu theo hợp đồng NCC',
+        lines: [{ drugId, unitCode: 'VIEN', quantity: 100, unitCost: 1000, batchNo: `DISC1-${randomUUID().slice(0, 6)}`, expiryDate: '2027-01-01' }],
+      });
+      expect(created.status).toBe(200);
+      expect(created.body.data.totalAmount).toBe(100_000);
+      expect(created.body.data.discountMode).toBe('TOTAL');
+      expect(created.body.data.discountAmount).toBe(10_000);
+      expect(created.body.data.netAmount).toBe(90_000);
+
+      const detailRes = await request(app.getHttpServer()).get(`/api/v1/inventory/receipts/${created.body.data.id}`).set(authed(clinicAdminToken));
+      expect(detailRes.body.data.discountAmount).toBe(10_000);
+      expect(detailRes.body.data.netAmount).toBe(90_000);
+
+      const listRes = await request(app.getHttpServer()).get('/api/v1/inventory/receipts').set(authed(clinicAdminToken)).query({ warehouseId });
+      const listRow = listRes.body.data.items.find((i: { id: string }) => i.id === created.body.data.id);
+      expect(listRow.discountType).toBe('PERCENT');
+      expect(listRow.discountValue).toBe(10);
+    });
+
+    it('Chiết khấu "Từng dòng" (PER_LINE) — mỗi dòng chiết khấu riêng, tổng khớp', async () => {
+      const drugA = await createDrug(clinicAdminToken, { name: 'Thuốc chiết khấu dòng A' });
+      const drugB = await createDrug(clinicAdminToken, { name: 'Thuốc chiết khấu dòng B' });
+      // Dòng A: 10 × 1000 = 10_000, chiết khấu AMOUNT 1_000 → còn 9_000.
+      // Dòng B: 5 × 2000 = 10_000, chiết khấu PERCENT 20% = 2_000 → còn 8_000.
+      // Tổng tiền hàng = 20_000, tổng chiết khấu = 3_000, thành tiền = 17_000.
+      const created = await createReceipt(clinicAdminToken, {
+        lines: [
+          { drugId: drugA, unitCode: 'VIEN', quantity: 10, unitCost: 1000, batchNo: `DISC2A-${randomUUID().slice(0, 6)}`, expiryDate: '2027-01-01', discountType: 'AMOUNT', discountValue: 1000 },
+          { drugId: drugB, unitCode: 'VIEN', quantity: 5, unitCost: 2000, batchNo: `DISC2B-${randomUUID().slice(0, 6)}`, expiryDate: '2027-01-01', discountType: 'PERCENT', discountValue: 20 },
+        ],
+      });
+      expect(created.status).toBe(200);
+      expect(created.body.data.totalAmount).toBe(20_000);
+      expect(created.body.data.discountMode).toBe('PER_LINE');
+      expect(created.body.data.discountAmount).toBe(3_000);
+      expect(created.body.data.netAmount).toBe(17_000);
+
+      const lineA = created.body.data.lines.find((l: { drugId: string }) => l.drugId === drugA);
+      const lineB = created.body.data.lines.find((l: { drugId: string }) => l.drugId === drugB);
+      expect(lineA.discountAmount).toBe(1000);
+      expect(lineB.discountAmount).toBe(2000);
+    });
+
+    it('Chiết khấu trên loại phiếu KHÁC PURCHASE → 400', async () => {
+      const drugId = await createDrug(clinicAdminToken);
+      const res = await createReceipt(clinicAdminToken, {
+        receiptType: 'OPENING_BALANCE',
+        supplierId: undefined,
+        discountType: 'PERCENT',
+        discountValue: 10,
+        discountReason: 'Không hợp lệ',
+        lines: [{ drugId, unitCode: 'VIEN', quantity: 5, unitCost: 100 }],
+      });
+      expect(res.status).toBe(400);
+    });
+
+    it('Đặt cả chiết khấu Toàn phiếu VÀ Từng dòng cùng lúc → 400 (loại trừ nhau)', async () => {
+      const drugId = await createDrug(clinicAdminToken);
+      const res = await createReceipt(clinicAdminToken, {
+        discountType: 'PERCENT',
+        discountValue: 10,
+        discountReason: 'Toàn phiếu',
+        lines: [{ drugId, unitCode: 'VIEN', quantity: 5, unitCost: 100, batchNo: 'MIX1', expiryDate: '2027-01-01', discountType: 'AMOUNT', discountValue: 50 }],
+      });
+      expect(res.status).toBe(400);
+    });
+  });
 });
