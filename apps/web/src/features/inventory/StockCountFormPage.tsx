@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { MagnifyingGlass, Plus, Printer, Trash, X } from '@phosphor-icons/react';
+import { CaretDown, CaretRight, MagnifyingGlass, Plus, Printer, Trash, X } from '@phosphor-icons/react';
 import type { CreateStockCountRequest, DrugSummary, StockCountLine } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
@@ -12,6 +12,7 @@ import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { StatusBadge, type StatusBadgeTone } from '../../shared/ui/StatusBadge';
 import { formatDobDisplay } from '../../shared/format/date';
+import { useCollapsedGroups } from '../../shared/hooks/useCollapsedGroups';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
 import { useActorDepartmentId, useDataScope, useHasPermission } from '../auth/usePermission';
 import { useClinicPrintHeaderQuery } from '../clinic/clinic.queries';
@@ -307,6 +308,7 @@ export function StockCountFormPage() {
   }
 
   // ============ nhóm theo drugId để render (1 tiêu đề sản phẩm + N dòng lô) ============
+  const { isCollapsed, toggle: toggleGroup } = useCollapsedGroups();
 
   const lineGroups = useMemo(() => {
     const map = new Map<string, DraftLine[]>();
@@ -605,11 +607,27 @@ export function StockCountFormPage() {
               <div className="scroll-hover flex-1 overflow-y-auto overflow-x-hidden">
                 {lineGroups.map((group) => {
                   const head = group[0]!;
+                  const collapsible = group.length > 1;
+                  const collapsed = collapsible && isCollapsed(head.drugId);
                   return (
                     <div key={head.drugId}>
                       <div role="row" style={{ gridTemplateColumns: columns, minHeight: 40 }} className="grid items-center border-b border-slate-100 bg-slate-50/70 px-4 text-sm">
-                        <div role="cell" className="min-w-0 truncate font-bold text-slate-900" title={head.drugName}>
-                          {head.drugName} <span className="text-xs font-medium text-slate-400">({head.drugCode})</span>
+                        <div role="cell" className="flex min-w-0 items-center gap-1.5 truncate font-bold text-slate-900" title={head.drugName}>
+                          {collapsible && (
+                            <button
+                              type="button"
+                              onClick={() => toggleGroup(head.drugId)}
+                              aria-label={collapsed ? `Xổ ra ${head.drugName}` : `Thu gọn ${head.drugName}`}
+                              aria-expanded={!collapsed}
+                              className="flex-shrink-0 text-slate-400 hover:text-slate-700"
+                            >
+                              {collapsed ? <CaretRight size={13} weight="bold" aria-hidden="true" /> : <CaretDown size={13} weight="bold" aria-hidden="true" />}
+                            </button>
+                          )}
+                          <span className="truncate">
+                            {head.drugName} <span className="text-xs font-medium text-slate-400">({head.drugCode})</span>
+                          </span>
+                          {collapsible && <span className="flex-shrink-0 text-xs font-semibold text-blue-600">· {group.length} lô</span>}
                         </div>
                         <div role="cell" className={readOnly ? 'col-span-3' : 'col-span-3'} />
                         {!readOnly && (
@@ -622,7 +640,7 @@ export function StockCountFormPage() {
                           </div>
                         )}
                       </div>
-                      {group.map((l) => {
+                      {!collapsed && group.map((l) => {
                         const persistedDiff = countQuery.data?.lines.find((x) => x.id === l.key)?.difference;
                         const diff = readOnly ? (persistedDiff ?? 0) : Number(l.countedQuantity || 0) - l.systemQuantitySnapshot;
                         const meta = diffMeta(diff);

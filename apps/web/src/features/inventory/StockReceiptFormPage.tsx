@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { MagnifyingGlass, Plus, Printer, Trash, Warning } from '@phosphor-icons/react';
+import { CaretDown, CaretRight, MagnifyingGlass, Plus, Printer, Trash, Warning } from '@phosphor-icons/react';
 import type { CreateStockReceiptRequest, DrugSummary, StockReceiptLine, StockReceiptType } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
@@ -14,6 +14,7 @@ import { Skeleton } from '../../shared/ui/Skeleton';
 import { StatusBadge, type StatusBadgeTone } from '../../shared/ui/StatusBadge';
 import { formatVnd } from '../../shared/format/currency';
 import { formatDobDisplay } from '../../shared/format/date';
+import { useCollapsedGroups } from '../../shared/hooks/useCollapsedGroups';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
 import { useHasPermission } from '../auth/usePermission';
 import { useClinicPrintHeaderQuery } from '../clinic/clinic.queries';
@@ -162,6 +163,8 @@ export function StockReceiptFormPage() {
   // từng lô lặp lại tên sản phẩm) — `Map` giữ đúng thứ tự thêm vào lần đầu, đúng chốt thiết kế trực
   // tiếp với chủ dự án: hàng quản lý theo lô thật sự cần nhiều lô/phiếu (khác Số lô/Hạn dùng), gộp
   // cứng theo mã sẽ chặn nhầm tình huống đó.
+  const { isCollapsed, toggle: toggleGroup } = useCollapsedGroups();
+
   const lineGroups = useMemo(() => {
     const map = new Map<string, DraftLine[]>();
     for (const l of lines) {
@@ -460,6 +463,8 @@ export function StockReceiptFormPage() {
               <div className="scroll-hover flex-1 overflow-y-auto overflow-x-hidden">
                 {lineGroups.map((group) => {
                   const head = group[0]!;
+                  const collapsible = group.length > 1;
+                  const collapsed = collapsible && isCollapsed(head.drugId);
                   return (
                     <div key={head.drugId}>
                       <div
@@ -467,9 +472,22 @@ export function StockReceiptFormPage() {
                         style={{ gridTemplateColumns: readOnly ? '1.8fr 100px 110px 130px 130px 130px 130px' : '1.8fr 100px 110px 130px 130px 130px 130px 50px', minHeight: 40 }}
                         className="grid items-center border-b border-slate-100 bg-slate-50/70 px-4 text-sm"
                       >
-                        <div role="cell" className="min-w-0 truncate font-bold text-slate-900" title={head.drugName}>
-                          {head.drugName} <span className="text-xs font-medium text-slate-400">({head.drugCode})</span>
-                          {group.length > 1 && <span className="ml-1.5 text-xs font-semibold text-blue-600">· {group.length} lô</span>}
+                        <div role="cell" className="flex min-w-0 items-center gap-1.5 truncate font-bold text-slate-900" title={head.drugName}>
+                          {collapsible && (
+                            <button
+                              type="button"
+                              onClick={() => toggleGroup(head.drugId)}
+                              aria-label={collapsed ? `Xổ ra ${head.drugName}` : `Thu gọn ${head.drugName}`}
+                              aria-expanded={!collapsed}
+                              className="flex-shrink-0 text-slate-400 hover:text-slate-700"
+                            >
+                              {collapsed ? <CaretRight size={13} weight="bold" aria-hidden="true" /> : <CaretDown size={13} weight="bold" aria-hidden="true" />}
+                            </button>
+                          )}
+                          <span className="truncate">
+                            {head.drugName} <span className="text-xs font-medium text-slate-400">({head.drugCode})</span>
+                          </span>
+                          {collapsible && <span className="flex-shrink-0 text-xs font-semibold text-blue-600">· {group.length} lô</span>}
                         </div>
                         <div role="cell" className="col-span-6" />
                         {!readOnly && (
@@ -488,7 +506,7 @@ export function StockReceiptFormPage() {
                           </div>
                         )}
                       </div>
-                      {group.map((l) => (
+                      {!collapsed && group.map((l) => (
                         <div
                           key={l.key}
                           role="row"
