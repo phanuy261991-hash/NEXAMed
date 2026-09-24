@@ -15,9 +15,11 @@ import {
   GearSix,
   GraduationCap,
   House,
+  HandCoins,
   ListChecks,
   Pill,
   Receipt,
+  Scales,
   SidebarSimple,
   SlidersHorizontal,
   Stethoscope,
@@ -37,6 +39,7 @@ import { useHasAnyPermission, useDataScope, useHasPermission } from '../../featu
 import { ADMIN_ANY_PERMISSIONS, ADMIN_ORG_PERMISSIONS, DRUG_MANAGE_PERMISSIONS } from '../../features/auth/admin-permissions';
 import { DOCTOR_QUEUE_ROLES } from '../../features/auth/workflow-roles';
 import { useSidebarAutoCollapseEnabledQuery } from '../../features/clinic/clinic.queries';
+import { useSupplierDebtSummariesQuery } from '../../features/supplier-debt/supplier-debt.queries';
 import { useAutoCollapseSidebarOnNavigate, useSidebar } from './sidebar.context';
 
 /**
@@ -117,9 +120,12 @@ interface NavItemProps {
   end?: boolean;
   collapsed: boolean;
   indent?: boolean;
+  /** Số phiếu/việc đang chờ xử lý — pill nhỏ cuối dòng (đúng khuôn "Công nợ nhà cung cấp" #180/#182).
+   * Chỉ hiện khi > 0 VÀ sidebar chưa thu gọn (tránh chật khi `collapsed`). */
+  badge?: number;
 }
 
-function NavItem({ to, label, icon: IconComponent, end, collapsed, indent }: NavItemProps) {
+function NavItem({ to, label, icon: IconComponent, end, collapsed, indent, badge }: NavItemProps) {
   return (
     <li>
       <NavLink
@@ -136,6 +142,9 @@ function NavItem({ to, label, icon: IconComponent, end, collapsed, indent }: Nav
           <>
             <IconComponent size={collapsed ? 20 : 18} weight={isActive ? 'fill' : 'regular'} aria-hidden="true" className="flex-shrink-0" />
             {!collapsed && <span className="truncate">{label}</span>}
+            {!collapsed && Boolean(badge) && (
+              <span className="ml-auto flex-shrink-0 rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">{badge}</span>
+            )}
           </>
         )}
       </NavLink>
@@ -201,6 +210,13 @@ export function Sidebar() {
   // "Danh mục cận lâm sàng" còn là ComingSoonPage, chưa có permission route thật — cùng lý do trên.
   const canSeeCatalogParaclinical = isAdmin;
   const canSeeCatalogPharmacy = useHasAnyPermission(DRUG_MANAGE_PERMISSIONS);
+  // "Công nợ nhà cung cấp" Phần B (docs/DECISIONS.md #180/#182) — 2 mục "Công nợ nhà cung cấp"/
+  // "Phiếu thanh toán NCC" trong nhóm "Quản lý nhà cung cấp", gate RIÊNG khỏi `canSeeCatalogPharmacy`
+  // (mặc định CHỈ clinic_admin có `supplier_debt.read`, khác `drug.create`/`drug.update`).
+  const canSeeSupplierDebt = useHasPermission('supplier_debt', 'read');
+  // Badge số phiếu chờ duyệt cạnh "Công nợ nhà cung cấp" — chỉ tải khi có quyền xem (tránh 403 vô ích).
+  const supplierDebtSummariesQuery = useSupplierDebtSummariesQuery(false, canSeeSupplierDebt);
+  const supplierDebtPendingCount = supplierDebtSummariesQuery.data?.items.filter((s) => s.pendingApprovalAmount > 0).length ?? 0;
   // Kho Thuốc GĐ2 — "Phiếu nhập kho"/"Tồn kho" (docs/DECISIONS.md #146), gate riêng khỏi
   // `canSeeCatalogPharmacy` (danh mục thuốc) — điều dưỡng/bác sĩ có `stock_receipt.read` (xem tồn)
   // nhưng KHÔNG có `drug.create`/`drug.update`.
@@ -538,8 +554,11 @@ export function Sidebar() {
           )}
 
           {/* "Quản lý nhà cung cấp" — tách "Nhà cung cấp" khỏi pill con của "Danh mục Thuốc và Vật
-              Tư" thành trang/nhóm menu riêng theo yêu cầu chủ dự án, đặt ngay dưới "Quản lý kho". */}
-          {canSeeCatalogPharmacy && (
+              Tư" thành trang/nhóm menu riêng theo yêu cầu chủ dự án, đặt ngay dưới "Quản lý kho".
+              Phần B (#180/#182) thêm "Công nợ nhà cung cấp"/"Phiếu thanh toán NCC" — nhóm hiện được
+              nếu có MỘT TRONG HAI quyền (drug.* HOẶC supplier_debt.read), từng mục con tự ẩn/hiện
+              riêng theo đúng quyền của nó. */}
+          {(canSeeCatalogPharmacy || canSeeSupplierDebt) && (
             <li>
               <button
                 type="button"
@@ -572,7 +591,11 @@ export function Sidebar() {
               </button>
               {supplierGroupExpanded && (
                 <ul className="mt-0.5 flex flex-col gap-0.5 border-l border-slate-800 pl-3.5">
-                  <NavItem to="/suppliers" label="Nhà cung cấp" icon={Truck} collapsed={false} indent />
+                  {canSeeCatalogPharmacy && <NavItem to="/suppliers" label="Nhà cung cấp" icon={Truck} collapsed={false} indent end />}
+                  {canSeeSupplierDebt && (
+                    <NavItem to="/suppliers/debts" label="Công nợ nhà cung cấp" icon={Scales} collapsed={false} indent badge={supplierDebtPendingCount} />
+                  )}
+                  {canSeeSupplierDebt && <NavItem to="/suppliers/payments" label="Phiếu thanh toán NCC" icon={HandCoins} collapsed={false} indent />}
                 </ul>
               )}
             </li>

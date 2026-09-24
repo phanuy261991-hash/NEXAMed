@@ -4,6 +4,14 @@
 
 ## 2026-09-24
 
+### Công nợ nhà cung cấp, Phần B "Thanh toán" — hoàn tất (code + test + verify Playwright)
+
+Tiếp ngay sau Phần A cùng ngày (`docs/DECISIONS.md` #184). "Thanh toán công nợ" trên TỔNG nợ (không chọn từng phiếu, chặn trả vượt — cộng dồn cả phiếu đang chờ duyệt khác), trang mới "Công nợ nhà cung cấp" (`/suppliers/debts`) + "Phiếu thanh toán NCC" (`/suppliers/payments`), tab "Thanh toán" + nút thanh toán trên trang chi tiết NCC. **Không migration mới** — tái dùng nguyên schema Phần A; hook duyệt/từ chối/huỷ phiếu chi vào `CashVoucherService` hoá ra đã có sẵn từ Phần A, chỉ thiếu đúng 1 chỗ (`create()` khi voucher `POSTED` ngay không cần duyệt) — đã vá.
+
+Trích xuất `resolveRecentDateRange()` (`packages/core/src/date/vietnam-day-range.ts`) dùng chung với `CashVoucherService.resolveDateRange()` — xoá trùng lặp lần 2 theo CLAUDE.md. Sidebar `NavItem` thêm prop `badge?: number` dùng chung (pill hổ phách) cho "Công nợ nhà cung cấp" — đếm số NCC có phiếu chờ duyệt.
+
+**Đã xác minh thật**: `supplier-debt-http.spec.ts` +9 test (29/29), `apps/api` 976/976 toàn suite, `packages/core` +8 test, `pnpm -w typecheck/lint/build` sạch (2 trang mới lazy chunk ~5kB). Playwright qua Chrome thật trên tenant test riêng (không đụng tenant chủ dự án) xác nhận cả 2 luồng: không cần duyệt (voucher POSTED ngay, balance giảm đúng, hiện ở tab "Thanh toán"/trang "Phiếu thanh toán NCC") và cần duyệt (`cashVoucherApprovalEnabled` bật — voucher PENDING_APPROVAL, banner chờ duyệt + sidebar badge "1" hiện đúng, balance giữ nguyên tới khi Duyệt). 0 lỗi console. Chi tiết đầy đủ `docs/DECISIONS.md` #184.
+
 ### Công nợ nhà cung cấp, Phần A "Nền sổ công nợ" — hoàn tất (code + test + verify Playwright)
 
 Mở rộng tiếp của Kho Thuốc GĐ2/GĐ3 (mở rộng phạm vi v1, `docs/DECISIONS.md` #180/#182/#183). Module mới `supplier-debt`: 2 bảng `supplier_debt_account`/`supplier_debt_entry` (sổ append-only, phân bổ FIFO tính lúc đọc), `stock_receipt` thêm 4 cột "Trả ngay" cho NCC, `cash_voucher` thêm `supplier_id`. Ghi công nợ tự động trong CÙNG transaction lúc Duyệt phiếu nhập/Duyệt-Huỷ phiếu chi. Trang `/suppliers/:id` (chi tiết NCC) + khối "Thanh toán" mới trên `StockReceiptFormPage.tsx` (đúng mockup đã duyệt). 5 permission mới, chỉ `clinic_admin` có.

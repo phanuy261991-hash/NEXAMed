@@ -36,6 +36,13 @@ const SupplierManagementPage = lazy(() =>
 const SupplierDetailPage = lazy(() =>
   import('../features/supplier-debt/SupplierDetailPage').then((m) => ({ default: m.SupplierDetailPage })),
 );
+// "Công nợ nhà cung cấp" Phần B (docs/DECISIONS.md #180/#182) — tổng hợp mọi NCC + lịch sử thanh toán.
+const SupplierDebtListPage = lazy(() =>
+  import('../features/supplier-debt/SupplierDebtListPage').then((m) => ({ default: m.SupplierDebtListPage })),
+);
+const SupplierPaymentListPage = lazy(() =>
+  import('../features/supplier-debt/SupplierPaymentListPage').then((m) => ({ default: m.SupplierPaymentListPage })),
+);
 const PatientListPage = lazy(() => import('../features/patient/PatientListPage').then((m) => ({ default: m.PatientListPage })));
 const PatientNewPage = lazy(() => import('../features/patient/PatientNewPage').then((m) => ({ default: m.PatientNewPage })));
 const PatientDetailPage = lazy(() => import('../features/patient/PatientDetailPage').then((m) => ({ default: m.PatientDetailPage })));
@@ -245,6 +252,25 @@ export const router = createBrowserRouter([
         element: (
           <RequirePermissionRoute module="supplier_debt" action="read">
             <SupplierDetailPage />
+          </RequirePermissionRoute>
+        ),
+      },
+      // "Công nợ nhà cung cấp" Phần B (docs/DECISIONS.md #180/#182) — route CỐ ĐỊNH `suppliers/debts`
+      // KHAI TRƯỚC `suppliers/:id` phía trên trong React Router cũng khớp đúng (không greedy như
+      // Express), nhưng giữ thứ tự này cho rõ ý — cùng quyền `supplier_debt.read`.
+      {
+        path: 'suppliers/debts',
+        element: (
+          <RequirePermissionRoute module="supplier_debt" action="read">
+            <SupplierDebtListPage />
+          </RequirePermissionRoute>
+        ),
+      },
+      {
+        path: 'suppliers/payments',
+        element: (
+          <RequirePermissionRoute module="supplier_debt" action="read">
+            <SupplierPaymentListPage />
           </RequirePermissionRoute>
         ),
       },

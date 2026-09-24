@@ -25408,6 +25408,225 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/supplier-debt/{supplierId}/payment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Thanh toán công nợ trên TỔNG nợ — không chọn từng phiếu, chặn trả vượt (đã trừ phiếu chi chờ duyệt) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    supplierId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        amount: number;
+                        paymentMethodCode: string;
+                        /** Format: uuid */
+                        cashAccountId: string;
+                        occurredAt?: string;
+                        note?: string | null;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                supplierId: string;
+                                openingBalanceAmount: number;
+                                totalPurchase: number;
+                                totalPaid: number;
+                                totalReturnAndAdjustment: number;
+                                balance: number;
+                                pendingApprovalAmount: number;
+                                canRecordOpeningBalance: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền supplier_debt.pay */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy nhà cung cấp/quỹ chi */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Số tiền vượt quá công nợ còn lại */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/supplier-debt/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Trang "Phiếu thanh toán NCC" (mọi NCC, lọc được theo 1 NCC) + tab "Thanh toán" ở trang chi tiết NCC */
+        get: {
+            parameters: {
+                query?: {
+                    supplierId?: string;
+                    from?: string;
+                    to?: string;
+                    status?: "POSTED" | "PENDING_APPROVAL" | "REJECTED";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    voucherNo: string;
+                                    /** @enum {string} */
+                                    direction: "INCOME" | "EXPENSE";
+                                    amount: number;
+                                    paymentMethodCode: string;
+                                    occurredAt: string;
+                                    description: string;
+                                    /** @enum {string} */
+                                    status: "POSTED" | "PENDING_APPROVAL" | "REJECTED";
+                                    voided: boolean;
+                                    /** Format: uuid */
+                                    supplierId: string;
+                                    supplierName: string;
+                                    createdByName: string;
+                                    approvedByName: string | null;
+                                    approvedAt: string | null;
+                                    rejectionReason: string | null;
+                                }[];
+                                pendingApprovalCount: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền supplier_debt.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {

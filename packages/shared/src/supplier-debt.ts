@@ -1,12 +1,15 @@
 import { z } from 'zod';
+import { paymentMethodSchema } from './billing';
+import { cashVoucherStatusSchema } from './cash-book';
 
 /**
  * "Công nợ nhà cung cấp" (docs/DECISIONS.md #180/#182, mở rộng phạm vi v1) — module `supplier-debt`.
  * Phần A "Nền sổ công nợ": sổ `SupplierDebtEntry` append-only (nguồn sự thật) + `SupplierDebtAccount`
- * (snapshot `balance`, dương = phòng khám còn nợ NCC, âm = NCC đang nợ lại). Chỉ ghi PURCHASE (lúc
- * Duyệt phiếu nhập)/PAYMENT (từ "Trả ngay" hoặc Thanh toán công nợ Phần B)/OPENING_BALANCE (Khai nợ
- * đầu kỳ) ở giai đoạn này — RETURN/REFUND_RECEIVED/ADJUSTMENT_INCREASE/ADJUSTMENT_DECREASE/REVERSAL
- * khai sẵn enum cho Phần C/D.
+ * (snapshot `balance`, dương = phòng khám còn nợ NCC, âm = NCC đang nợ lại). Phần B "Thanh toán"
+ * thêm `POST .../payment` (Thanh toán công nợ trên TỔNG nợ, không chọn từng phiếu — FIFO ngầm) +
+ * `GET /supplier-debt/payments` (trang "Phiếu thanh toán NCC"). Chỉ ghi PURCHASE/PAYMENT/
+ * OPENING_BALANCE ở giai đoạn này — RETURN/REFUND_RECEIVED/ADJUSTMENT_INCREASE/ADJUSTMENT_DECREASE
+ * khai sẵn enum cho Phần C/D (REVERSAL đã có đường ghi từ Phần A, huỷ phiếu chi).
  */
 
 export const supplierDebtEntryTypeSchema = z.enum([
@@ -122,3 +125,63 @@ export const listSupplierDebtReceiptsResponseSchema = z.object({
   totalDueAmount: z.number().int(),
 });
 export type ListSupplierDebtReceiptsResponse = z.infer<typeof listSupplierDebtReceiptsResponseSchema>;
+
+/**
+ * Phần B — `POST /supplier-debt/:supplierId/payment` — "Thanh toán công nợ" trên TỔNG nợ, KHÔNG
+ * chọn từng phiếu nhập (phân bổ FIFO ngầm lúc đọc, đúng `allocateSupplierDebt()`). Server tự sinh
+ * `description`/`partnerName`/mã phiếu (đúng khuôn "Trả ngay" ở `recordPurchaseApproval()`) — không
+ * nhận `description` từ client. `status` (POSTED/PENDING_APPROVAL) do server quyết theo
+ * `cashVoucherApprovalEnabled`, không nhận từ client.
+ */
+export const recordSupplierDebtPaymentRequestSchema = z.object({
+  amount: z.number().int().positive('Số tiền thanh toán phải lớn hơn 0.'),
+  paymentMethodCode: paymentMethodSchema,
+  cashAccountId: z.string().uuid(),
+  /** Bỏ trống = "bây giờ". */
+  occurredAt: z.string().optional(),
+  note: z.string().nullable().optional(),
+});
+export type RecordSupplierDebtPaymentRequest = z.infer<typeof recordSupplierDebtPaymentRequestSchema>;
+
+/** 1 dòng ở trang "Phiếu thanh toán NCC" (`/suppliers/payments`) + tab "Thanh toán" trên trang chi
+ * tiết NCC — chiếu 1 phần `cash_voucher` gắn `supplierId` (Trả ngay lúc nhập HOẶC Thanh toán công nợ
+ * Phần B), kèm tên NCC resolve sẵn (web không có danh sách đủ NCC ở trang `/suppliers/payments` lọc
+ * "mọi NCC"). */
+export const supplierDebtPaymentSchema = z.object({
+  id: z.string().uuid(),
+  voucherNo: z.string(),
+  direction: z.enum(['INCOME', 'EXPENSE']),
+  amount: z.number().int(),
+  paymentMethodCode: paymentMethodSchema,
+  occurredAt: z.string(),
+  description: z.string(),
+  status: cashVoucherStatusSchema,
+  voided: z.boolean(),
+  supplierId: z.string().uuid(),
+  supplierName: z.string(),
+  createdByName: z.string(),
+  approvedByName: z.string().nullable(),
+  approvedAt: z.string().nullable(),
+  rejectionReason: z.string().nullable(),
+});
+export type SupplierDebtPayment = z.infer<typeof supplierDebtPaymentSchema>;
+
+export const listSupplierDebtPaymentsQuerySchema = z.object({
+  supplierId: z.string().uuid().optional(),
+  from: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+  to: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+  status: cashVoucherStatusSchema.optional(),
+});
+export type ListSupplierDebtPaymentsQuery = z.infer<typeof listSupplierDebtPaymentsQuerySchema>;
+
+export const listSupplierDebtPaymentsResponseSchema = z.object({
+  items: z.array(supplierDebtPaymentSchema),
+  pendingApprovalCount: z.number().int(),
+});
+export type ListSupplierDebtPaymentsResponse = z.infer<typeof listSupplierDebtPaymentsResponseSchema>;

@@ -215,7 +215,7 @@ Mở rộng tiếp của Kho Thuốc GĐ2/GĐ3 (mục 4.8) — mỗi Phiếu nh�
 |---|---|---|
 | SUP-01 | Sổ công nợ NCC append-only, ghi PURCHASE lúc Duyệt phiếu nhập (đúng tiền sau chiết khấu), Khai nợ đầu kỳ (1 lần/NCC, cho phép số âm — NCC nợ lại), phân bổ FIFO tính lúc đọc | P1 (Phần A, **đã xây xong 24/09/2026**) |
 | SUP-02 | "Trả ngay" cho NCC ngay trên Phiếu nhập kho (một phần/toàn bộ/không trả), tự sinh phiếu chi vào Sổ quỹ | P1 (Phần A, **đã xây xong**) |
-| SUP-03 | Thanh toán công nợ trên TỔNG nợ (không cần chọn từng phiếu nhập), trang "Công nợ nhà cung cấp" (tổng hợp mọi NCC) + "Phiếu thanh toán NCC" (lịch sử) | P1 (Phần B, chưa xây) |
+| SUP-03 | Thanh toán công nợ trên TỔNG nợ (không cần chọn từng phiếu nhập), trang "Công nợ nhà cung cấp" (tổng hợp mọi NCC) + "Phiếu thanh toán NCC" (lịch sử) | P1 (Phần B, **đã xây xong 24/09/2026**) |
 | SUP-04 | Trả hàng NCC — dùng lại "Phiếu xuất kho mở rộng" (GĐ4), gắn NCC + trừ công nợ đúng phiếu nhập gốc (nếu chọn) | P2 (Phần C, chưa xây) |
 | SUP-05 | Luồng xử lý sai sót: Huỷ chứng từ (còn đủ tồn để đảo)/Phiếu điều chỉnh công nợ (hàng đã dùng một phần)/Đề nghị huỷ (không có quyền duyệt) — không có nút "Sửa" trên chứng từ đã duyệt | P1 (Phần D, chưa xây) |
 | SUP-06 | Đối chiếu & chốt công nợ theo kỳ — đúng khuôn "Khoá bảng ca" (mục 4.6) | P2 (Phần E, chưa có mockup) |
@@ -401,4 +401,4 @@ Các câu hỏi cần trả lời, kèm hạn chót vì chúng ảnh hưởng t�
 | v1.2 | 22/08/2026 | **Mở rộng phạm vi v1**: thêm mục 4.7 "Thu ngân cơ bản" (BIL-01→04, P0, làm ở Sprint 5/6) — trước đây xếp v2, chuyển vào v1 vì là điều kiện bắt buộc để đạt mốc GA "pilot ngừng dùng sổ giấy hoàn toàn". Thêm phase **v1.5 — Gói chuyên khoa** (Nhi khoa → Sản phụ khoa) vào Appendix A cho 2 khách hàng thật đã có. Xem `docs/DECISIONS.md` #069→#072 |
 | v1.3 | 03/09/2026 | Thêm BIL-05 "Chốt ca" (đối soát tiền mặt/két theo ca làm việc, P1, ngoài kế hoạch — chủ dự án yêu cầu sau khi thu ngân cơ bản chạy pilot). Xem `docs/DECISIONS.md` #112 |
 | v1.4 | 16/09/2026 | Thêm mục 4.8 "Kho Thuốc & Vật tư y tế" (INV-01→05, mở rộng phạm vi v1 — đảo ngược quyết định Sprint 4, `docs/DECISIONS.md` #146). Giai đoạn 1 (Danh mục nền, #148) đã xong; rà soát bổ sung theo tài liệu quy chuẩn quản lý VTYT (#151) — phân loại kiểm soát đặc biệt/Rx-OTC, 8 trường Thuốc, danh mục hoá 5 trường có "thêm nhanh". |
-| v1.5 | 24/09/2026 | Thêm mục 4.9 "Công nợ nhà cung cấp" (SUP-01→06, mở rộng phạm vi v1 — mở rộng tiếp của Kho Thuốc GĐ2/GĐ3, `docs/DECISIONS.md` #180/#182). Phần A (Nền sổ công nợ, #183) đã xong; Phần B→E chưa xây. Làm rõ "công nợ NCC" (đã vào v1) khác "công nợ bệnh nhân" (vẫn ngoài v1). |
+| v1.5 | 24/09/2026 | Thêm mục 4.9 "Công nợ nhà cung cấp" (SUP-01→06, mở rộng phạm vi v1 — mở rộng tiếp của Kho Thuốc GĐ2/GĐ3, `docs/DECISIONS.md` #180/#182). Phần A (Nền sổ công nợ, #183) + Phần B (Thanh toán, #184) đã xong cùng ngày; Phần C→E chưa xây. Làm rõ "công nợ NCC" (đã vào v1) khác "công nợ bệnh nhân" (vẫn ngoài v1). |

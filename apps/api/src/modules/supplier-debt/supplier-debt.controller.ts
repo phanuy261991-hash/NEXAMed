@@ -1,6 +1,11 @@
 import { Body, Controller, Get, HttpCode, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
-import { listSupplierDebtLedgerQuerySchema, recordSupplierDebtOpeningBalanceRequestSchema } from '@nexamed/shared';
+import {
+  listSupplierDebtLedgerQuerySchema,
+  listSupplierDebtPaymentsQuerySchema,
+  recordSupplierDebtOpeningBalanceRequestSchema,
+  recordSupplierDebtPaymentRequestSchema,
+} from '@nexamed/shared';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
@@ -21,6 +26,17 @@ export class SupplierDebtController {
   async listSummaries(@Query('includeInactive') includeInactive: string | undefined, @Req() req: Request) {
     const { tenantId } = req.user!;
     return this.supplierDebtService.listSummaries(tenantId, includeInactive === 'true');
+  }
+
+  /** Phần B — trang "Phiếu thanh toán NCC" (`/suppliers/payments`, mọi NCC) + tab "Thanh toán" trên
+   * trang chi tiết NCC (`?supplierId=`). Route CỐ ĐỊNH, khai TRƯỚC các route `:supplierId` (cùng lý
+   * do `summaries` ở trên). */
+  @Get('payments')
+  @RequirePermission('supplier_debt', 'read')
+  async listPayments(@Query() query: unknown, @Req() req: Request) {
+    const dto = listSupplierDebtPaymentsQuerySchema.parse(query);
+    const { tenantId } = req.user!;
+    return this.supplierDebtService.listPayments(tenantId, dto);
   }
 
   @Get(':supplierId/summary')
@@ -52,5 +68,15 @@ export class SupplierDebtController {
     const dto = recordSupplierDebtOpeningBalanceRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
     return this.supplierDebtService.recordOpeningBalance(tenantId, userId, supplierId, dto, extractRequestMeta(req));
+  }
+
+  /** Phần B — "Thanh toán công nợ" trên TỔNG nợ, không chọn từng phiếu. */
+  @Post(':supplierId/payment')
+  @RequirePermission('supplier_debt', 'pay')
+  @HttpCode(200)
+  async recordPayment(@Param('supplierId') supplierId: string, @Body() body: unknown, @Req() req: Request) {
+    const dto = recordSupplierDebtPaymentRequestSchema.parse(body);
+    const { userId, tenantId } = req.user!;
+    return this.supplierDebtService.recordPayment(tenantId, userId, supplierId, dto, extractRequestMeta(req));
   }
 }

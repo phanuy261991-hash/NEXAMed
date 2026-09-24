@@ -14,12 +14,13 @@ import { seedPermissionCatalog } from '../../infrastructure/persistence/seed-per
 import { seedDefaultRolesForTenant } from '../../infrastructure/persistence/seed-tenant-roles';
 
 /**
- * HTTP e2e — "Công nợ nhà cung cấp" Phần A "Nền sổ công nợ" (docs/DECISIONS.md #180/#182, kế hoạch
- * kỹ thuật C:\Users\Administrator\.claude\plans\supplier-debt-cong-no-ncc.md). Bao phủ: Duyệt phiếu
- * nhập ghi PURCHASE đúng netAmount, "Trả ngay" (voucher POSTED ngay/Chờ duyệt rồi Duyệt sau/Huỷ
- * đảo ngược), Khai nợ đầu kỳ (chỉ 1 lần), cách ly tenant, permission.
+ * HTTP e2e — "Công nợ nhà cung cấp" Phần A "Nền sổ công nợ" + Phần B "Thanh toán" (docs/DECISIONS.md
+ * #180/#182, kế hoạch kỹ thuật C:\Users\Administrator\.claude\plans\supplier-debt-cong-no-ncc.md).
+ * Phần A: Duyệt phiếu nhập ghi PURCHASE đúng netAmount, "Trả ngay" (voucher POSTED ngay/Chờ duyệt rồi
+ * Duyệt sau/Huỷ đảo ngược), Khai nợ đầu kỳ (chỉ 1 lần), cách ly tenant, permission. Phần B: "Thanh
+ * toán công nợ" trên TỔNG nợ (không chọn từng phiếu, chặn trả vượt), `GET /supplier-debt/payments`.
  */
-describe('HTTP e2e — /api/v1/supplier-debt (Công nợ nhà cung cấp, Phần A)', () => {
+describe('HTTP e2e — /api/v1/supplier-debt (Công nợ nhà cung cấp, Phần A + Phần B)', () => {
   let app: INestApplication;
   let privileged: PrismaClient;
   let fixture: TwoTenantFixture;
@@ -403,6 +404,126 @@ describe('HTTP e2e — /api/v1/supplier-debt (Công nợ nhà cung cấp, Phần
     });
   });
 
+  describe('Phần B — POST :supplierId/payment (Thanh toán công nợ trên TỔNG nợ)', () => {
+    it('trả MỘT PHẦN → voucher POSTED ngay (mặc định không cần duyệt), balance giảm đúng, ghi PAYMENT trong Sổ công nợ', async () => {
+      const supplierId = await createSupplier(clinicAdminToken);
+      await createAndApprovePurchase(clinicAdminToken, supplierId, { quantity: 10, unitCost: 10000 });
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/supplier-debt/${supplierId}/payment`)
+        .set(authed(clinicAdminToken))
+        .send({ amount: 40000, paymentMethodCode: 'CASH', cashAccountId, occurredAt: '2026-09-24' });
+      expect(res.status).toBe(200);
+      expect(res.body.data).toMatchObject({ balance: 60000, totalPaid: 40000, pendingApprovalAmount: 0 });
+
+      const ledger = await request(app.getHttpServer()).get(`/api/v1/supplier-debt/${supplierId}/ledger`).set(authed(clinicAdminToken));
+      expect(ledger.body.data.items.at(-1)).toMatchObject({ entryType: 'PAYMENT', amountChange: -40000, balanceAfter: 60000 });
+    });
+
+    it('trả ĐÚNG hết công nợ → balance = 0', async () => {
+      const supplierId = await createSupplier(clinicAdminToken);
+      await createAndApprovePurchase(clinicAdminToken, supplierId, { quantity: 5, unitCost: 20000 });
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/supplier-debt/${supplierId}/payment`)
+        .set(authed(clinicAdminToken))
+        .send({ amount: 100000, paymentMethodCode: 'CASH', cashAccountId });
+      expect(res.status).toBe(200);
+      expect(res.body.data.balance).toBe(0);
+    });
+
+    it('trả VƯỢT công nợ hiện tại → 422, không tạo bút toán/voucher nào', async () => {
+      const supplierId = await createSupplier(clinicAdminToken);
+      await createAndApprovePurchase(clinicAdminToken, supplierId, { quantity: 2, unitCost: 10000 });
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/supplier-debt/${supplierId}/payment`)
+        .set(authed(clinicAdminToken))
+        .send({ amount: 30000, paymentMethodCode: 'CASH', cashAccountId });
+      expect(res.status).toBe(422);
+      const summary = await request(app.getHttpServer()).get(`/api/v1/supplier-debt/${supplierId}/summary`).set(authed(clinicAdminToken));
+      expect(summary.body.data.balance).toBe(20000);
+    });
+
+    it('cộng dồn với phiếu chi đang CHỜ DUYỆT khác cho cùng NCC → vượt quá phần còn lại → 422', async () => {
+      await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(clinicAdminToken)).send({ cashVoucherApprovalEnabled: true });
+      const supplierId = await createSupplier(clinicAdminToken);
+      await createAndApprovePurchase(clinicAdminToken, supplierId, { quantity: 10, unitCost: 10000 }); // nợ 100.000
+
+      const first = await request(app.getHttpServer())
+        .post(`/api/v1/supplier-debt/${supplierId}/payment`)
+        .set(authed(clinicAdminToken))
+        .send({ amount: 70000, paymentMethodCode: 'CASH', cashAccountId });
+      expect(first.status).toBe(200); // vẫn Chờ duyệt, balance snapshot chưa đổi — chỉ pendingApprovalAmount tăng
+      expect(first.body.data).toMatchObject({ balance: 100000, pendingApprovalAmount: 70000 });
+
+      const second = await request(app.getHttpServer())
+        .post(`/api/v1/supplier-debt/${supplierId}/payment`)
+        .set(authed(clinicAdminToken))
+        .send({ amount: 40000, paymentMethodCode: 'CASH', cashAccountId }); // 70.000 (chờ duyệt) + 40.000 > 100.000
+      expect(second.status).toBe(422);
+
+      await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(clinicAdminToken)).send({ cashVoucherApprovalEnabled: false });
+    });
+
+    it('cashVoucherApprovalEnabled BẬT → voucher PENDING_APPROVAL, balance CHƯA giảm → Duyệt phiếu chi → balance giảm đúng', async () => {
+      await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(clinicAdminToken)).send({ cashVoucherApprovalEnabled: true });
+      const supplierId = await createSupplier(clinicAdminToken);
+      await createAndApprovePurchase(clinicAdminToken, supplierId, { quantity: 10, unitCost: 10000 });
+
+      const payRes = await request(app.getHttpServer())
+        .post(`/api/v1/supplier-debt/${supplierId}/payment`)
+        .set(authed(clinicAdminToken))
+        .send({ amount: 60000, paymentMethodCode: 'CASH', cashAccountId });
+      expect(payRes.status).toBe(200);
+      expect(payRes.body.data).toMatchObject({ balance: 100000, totalPaid: 0, pendingApprovalAmount: 60000 });
+
+      const payments = await request(app.getHttpServer()).get(`/api/v1/supplier-debt/payments?supplierId=${supplierId}`).set(authed(clinicAdminToken));
+      const voucherId = payments.body.data.items.find((i: { status: string }) => i.status === 'PENDING_APPROVAL').id as string;
+
+      const voucher = await request(app.getHttpServer()).get(`/api/v1/cash-vouchers/${voucherId}`).set(authed(clinicAdminToken));
+      const approveRes = await request(app.getHttpServer()).post(`/api/v1/cash-vouchers/${voucherId}/approve`).set(authed(clinicAdminToken)).send({ version: voucher.body.data.version });
+      expect(approveRes.status).toBe(200);
+
+      const summaryAfter = await request(app.getHttpServer()).get(`/api/v1/supplier-debt/${supplierId}/summary`).set(authed(clinicAdminToken));
+      expect(summaryAfter.body.data).toMatchObject({ balance: 40000, totalPaid: 60000, pendingApprovalAmount: 0 });
+
+      await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(clinicAdminToken)).send({ cashVoucherApprovalEnabled: false });
+    });
+
+    it('thiếu quyền supplier_debt.pay (lễ tân) → 403', async () => {
+      const supplierId = await createSupplier(clinicAdminToken);
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/supplier-debt/${supplierId}/payment`)
+        .set(authed(receptionistToken))
+        .send({ amount: 10000, paymentMethodCode: 'CASH', cashAccountId });
+      expect(res.status).toBe(403);
+    });
+  });
+
+  describe('Phần B — GET /supplier-debt/payments (trang "Phiếu thanh toán NCC")', () => {
+    it('gồm CẢ "Trả ngay" lúc nhập LẪN "Thanh toán công nợ" đứng riêng, lọc đúng theo supplierId', async () => {
+      const s1 = await createSupplier(clinicAdminToken);
+      const s2 = await createSupplier(clinicAdminToken);
+      await createAndApprovePurchase(clinicAdminToken, s1, { quantity: 10, unitCost: 10000, prepaidAmount: 20000 });
+      await request(app.getHttpServer()).post(`/api/v1/supplier-debt/${s1}/payment`).set(authed(clinicAdminToken)).send({ amount: 30000, paymentMethodCode: 'CASH', cashAccountId });
+      await createAndApprovePurchase(clinicAdminToken, s2, { quantity: 1, unitCost: 50000, prepaidAmount: 50000 });
+
+      const forS1 = await request(app.getHttpServer()).get(`/api/v1/supplier-debt/payments?supplierId=${s1}`).set(authed(clinicAdminToken));
+      expect(forS1.status).toBe(200);
+      expect(forS1.body.data.items).toHaveLength(2);
+      expect(forS1.body.data.items.every((i: { supplierId: string }) => i.supplierId === s1)).toBe(true);
+
+      const all = await request(app.getHttpServer()).get('/api/v1/supplier-debt/payments').set(authed(clinicAdminToken));
+      const ids = new Set(all.body.data.items.map((i: { supplierId: string }) => i.supplierId));
+      expect(ids.has(s1)).toBe(true);
+      expect(ids.has(s2)).toBe(true);
+    });
+
+    it('thiếu quyền supplier_debt.read (lễ tân) → 403', async () => {
+      const res = await request(app.getHttpServer()).get('/api/v1/supplier-debt/payments').set(authed(receptionistToken));
+      expect(res.status).toBe(403);
+    });
+  });
+
   describe('Cách ly tenant', () => {
     it('NCC của tenant A, xem summary bằng token tenant B → 404', async () => {
       const supplierId = await createSupplier(clinicAdminToken);
@@ -413,6 +534,15 @@ describe('HTTP e2e — /api/v1/supplier-debt (Công nợ nhà cung cấp, Phần
     it('Khai nợ đầu kỳ cho NCC tenant khác → 404', async () => {
       const supplierId = await createSupplier(clinicAdminToken);
       const res = await request(app.getHttpServer()).post(`/api/v1/supplier-debt/${supplierId}/opening-balance`).set(authed(tenantBAdminToken)).send({ amount: 100000, occurredAt: '2026-09-01' });
+      expect(res.status).toBe(404);
+    });
+
+    it('Thanh toán công nợ cho NCC tenant khác → 404', async () => {
+      const supplierId = await createSupplier(clinicAdminToken);
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/supplier-debt/${supplierId}/payment`)
+        .set(authed(tenantBAdminToken))
+        .send({ amount: 10000, paymentMethodCode: 'CASH', cashAccountId });
       expect(res.status).toBe(404);
     });
   });

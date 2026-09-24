@@ -5,6 +5,7 @@ import {
   CLINIC_CONFIG_READER_PORT,
   ConcurrentModificationError,
   DOCTOR_DIRECTORY_PORT,
+  resolveRecentDateRange,
   SupplierDebtOpeningBalanceAlreadyExistsError,
   type CashierShiftReaderPort,
   type ClinicConfigReaderPort,
@@ -14,9 +15,12 @@ import {
 import type {
   ListSupplierDebtLedgerQuery,
   ListSupplierDebtLedgerResponse,
+  ListSupplierDebtPaymentsQuery,
+  ListSupplierDebtPaymentsResponse,
   ListSupplierDebtReceiptsResponse,
   ListSupplierDebtSummariesResponse,
   RecordSupplierDebtOpeningBalanceRequest,
+  RecordSupplierDebtPaymentRequest,
   SupplierDebtSummary,
 } from '@nexamed/shared';
 import type { CashVoucher, Prisma, SupplierDebtAccount, SupplierDebtEntry, SupplierDebtEntryType } from '@prisma/client';
@@ -295,6 +299,68 @@ export class SupplierDebtService {
     return this.getSummary(tenantId, supplierId);
   }
 
+  /**
+   * Phần B — `POST /supplier-debt/:supplierId/payment` — "Thanh toán công nợ" trên TỔNG nợ (KHÔNG
+   * chọn từng phiếu, phân bổ FIFO ngầm lúc đọc — đúng `allocateSupplierDebt()`). Cùng khuôn tạo
+   * voucher như phần "Trả ngay" ở `recordPurchaseApproval()` (mã `CASH_PAYMENT`, `description`/
+   * `partnerName` tự sinh — không nhận từ client), khác ở chỗ đây là top-level method tự mở
+   * transaction của chính nó (không tham gia transaction Duyệt phiếu nhập nào). Ràng buộc (kế hoạch
+   * kỹ thuật mục 3): số tiền ≤ (số nợ hiện tại − tổng phiếu chi gắn NCC đang Chờ duyệt) — chặn lập
+   * nhiều yêu cầu thanh toán cộng dồn vượt quá công nợ thật.
+   */
+  async recordPayment(tenantId: string, actorId: string, supplierId: string, dto: RecordSupplierDebtPaymentRequest, meta: RequestMeta): Promise<SupplierDebtSummary> {
+    // Đúng khuôn "port tự mở transaction đọc riêng, resolve TRƯỚC transaction chính" đã áp dụng ở
+    // `CashVoucherService.create()`.
+    const approvalEnabled = await this.clinicConfigReader.getCashVoucherApprovalEnabled(tenantId);
+    const cashierShiftId = await this.cashierShiftReader.getRelevantOpenShiftId(tenantId, actorId);
+    const occurredAt = dto.occurredAt ? new Date(dto.occurredAt) : new Date();
+
+    await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const supplier = await this.supplierRepository.findById(tx, tenantId, supplierId);
+      if (!supplier) throw new NotFoundException();
+      const cashAccount = await this.cashAccountRepository.findById(tx, tenantId, dto.cashAccountId);
+      if (!cashAccount) throw new NotFoundException();
+
+      const account0 = await this.getOrCreateAccount(tx, tenantId, actorId, supplierId);
+      const pendingMap = await this.cashVoucherRepository.sumPendingApprovalBySupplierIds(tx, tenantId, [supplierId]);
+      const maxPayable = account0.balance - (pendingMap.get(supplierId) ?? 0n);
+      if (BigInt(dto.amount) > maxPayable) {
+        throw new UnprocessableEntityException('Số tiền thanh toán không được vượt quá công nợ còn lại (đã trừ phiếu chờ duyệt).');
+      }
+
+      const voucherNo = await this.businessCodeService.generate(tx, tenantId, actorId, 'CASH_PAYMENT', occurredAt);
+      const status: 'POSTED' | 'PENDING_APPROVAL' = approvalEnabled ? 'PENDING_APPROVAL' : 'POSTED';
+      const voucher = await this.cashVoucherRepository.create(tx, tenantId, actorId, {
+        voucherNo,
+        direction: 'EXPENSE',
+        incomeExpenseTypeCode: 'SUPPLIER_DEBT_PAYMENT',
+        cashAccountId: dto.cashAccountId,
+        paymentMethodCode: dto.paymentMethodCode,
+        amount: BigInt(dto.amount),
+        occurredAt,
+        partnerName: supplier.name,
+        description: dto.note?.trim() ? `Thanh toán công nợ — ${supplier.name} (${dto.note.trim()})` : `Thanh toán công nợ — ${supplier.name}`,
+        status,
+        cashierShiftId,
+        supplierId,
+      });
+      await writeAuditLog(tx, tenantId, {
+        actorId,
+        action: 'cash_voucher.created',
+        entityType: 'cash_voucher',
+        entityId: voucher.id,
+        afterJson: { voucherNo, direction: 'EXPENSE', amount: dto.amount.toString(), status, supplierId },
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
+
+      if (status === 'POSTED') {
+        await this.applyVoucherEntry(tx, tenantId, actorId, account0, voucher, null, meta);
+      }
+    });
+    return this.getSummary(tenantId, supplierId);
+  }
+
   private toEntryInputs(entries: SupplierDebtEntry[]): SupplierDebtEntryInput[] {
     return entries.map((e) => ({
       id: e.id,
@@ -439,6 +505,49 @@ export class SupplierDebtService {
         totalPaidAmount: items.reduce((sum, it) => sum + it.paidAmount, 0),
         totalDueAmount: items.reduce((sum, it) => sum + it.dueAmount, 0),
       };
+    });
+  }
+
+  /** Phần B — `GET /supplier-debt/payments` — trang "Phiếu thanh toán NCC" (mọi NCC, lọc được theo
+   * 1 NCC) + tab "Thanh toán" trên trang chi tiết NCC (`supplierId` cố định). Mọi `cash_voucher` có
+   * `supplierId` (Trả ngay lúc nhập LẪN Thanh toán công nợ Phần B) — chưa có nguồn INCOME nào (Phần
+   * C "NCC hoàn tiền" chưa code). Mặc định 90 ngày gần nhất khi bỏ trống `from`/`to` (S6-03 #142). */
+  async listPayments(tenantId: string, query: ListSupplierDebtPaymentsQuery): Promise<ListSupplierDebtPaymentsResponse> {
+    const { from, to } = resolveRecentDateRange(query.from, query.to);
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const rows = await this.cashVoucherRepository.listSupplierLinked(tx, tenantId, { supplierId: query.supplierId, from, to, status: query.status });
+      const suppliers = await this.supplierRepository.list(tx, tenantId, true);
+      const supplierNameById = new Map(suppliers.map((s) => [s.id, s.name]));
+
+      const userIds = new Set<string>();
+      for (const r of rows) {
+        userIds.add(r.createdBy);
+        if (r.approvedBy) userIds.add(r.approvedBy);
+      }
+      const names = userIds.size > 0 ? await this.doctorDirectory.getUserFullNames(tenantId, [...userIds]) : new Map<string, string>();
+
+      let pendingApprovalCount = 0;
+      const items = rows.map((r) => {
+        if (r.status === 'PENDING_APPROVAL' && !r.deletedAt) pendingApprovalCount += 1;
+        return {
+          id: r.id,
+          voucherNo: r.voucherNo,
+          direction: r.direction,
+          amount: Number(r.amount),
+          paymentMethodCode: r.paymentMethodCode,
+          occurredAt: r.occurredAt.toISOString(),
+          description: r.description,
+          status: r.status,
+          voided: r.deletedAt !== null,
+          supplierId: r.supplierId!,
+          supplierName: supplierNameById.get(r.supplierId!) ?? 'Không rõ',
+          createdByName: names.get(r.createdBy) ?? 'Không rõ',
+          approvedByName: r.approvedBy ? (names.get(r.approvedBy) ?? 'Không rõ') : null,
+          approvedAt: r.approvedAt?.toISOString() ?? null,
+          rejectionReason: r.rejectionReason,
+        };
+      });
+      return { items, pendingApprovalCount };
     });
   }
 }

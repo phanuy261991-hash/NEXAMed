@@ -37,3 +37,21 @@ export function getVietnamDateString(nowUtc: Date = new Date()): string {
   const day = String(shifted.getUTCDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
+
+/**
+ * Khoảng ngày mặc định N ngày gần nhất (giờ Việt Nam) khi client bỏ trống `from`/`to` — dùng cho
+ * mọi danh sách có thể trả về không giới hạn nếu thiếu bộ lọc ngày (bài học S6-03, docs/DECISIONS.md
+ * #142: `CashVoucherRepository.list()` từng trả toàn bộ lịch sử khi bỏ trống). `to` mặc định hôm
+ * nay, `from` mặc định `defaultDaysBack` ngày trước THỜI ĐIỂM GỌI HÀM (không phải trước `to` — giữ
+ * đúng hành vi gốc của `CashVoucherService.resolveDateRange()` trước khi trích xuất ra đây) — chỉ
+ * áp dụng cho tham số ĐANG bỏ trống, không đè giá trị client đã gửi.
+ */
+export function resolveRecentDateRange(fromStr: string | undefined, toStr: string | undefined, defaultDaysBack = 90): { from: Date; to: Date } {
+  const todayStr = getVietnamDateString();
+  const to = toStr ?? todayStr;
+  const from = fromStr ?? getVietnamDateString(new Date(Date.now() - defaultDaysBack * 24 * 60 * 60_000));
+  return {
+    from: new Date(`${from}T00:00:00+07:00`),
+    to: new Date(`${to}T23:59:59.999+07:00`),
+  };
+}

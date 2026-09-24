@@ -1,9 +1,12 @@
 import type {
   ListSupplierDebtLedgerQuery,
   ListSupplierDebtLedgerResponse,
+  ListSupplierDebtPaymentsQuery,
+  ListSupplierDebtPaymentsResponse,
   ListSupplierDebtReceiptsResponse,
   ListSupplierDebtSummariesResponse,
   RecordSupplierDebtOpeningBalanceRequest,
+  RecordSupplierDebtPaymentRequest,
   SupplierDebtSummary,
 } from '@nexamed/shared';
 import { getApiClient, unwrap } from '../../shared/api/client';
@@ -32,4 +35,12 @@ export async function recordSupplierDebtOpeningBalance(supplierId: string, body:
   return unwrap(
     await getApiClient().POST('/api/v1/supplier-debt/{supplierId}/opening-balance', { params: { path: { supplierId } }, body }),
   ) as SupplierDebtSummary;
+}
+
+export async function recordSupplierDebtPayment(supplierId: string, body: RecordSupplierDebtPaymentRequest): Promise<SupplierDebtSummary> {
+  return unwrap(await getApiClient().POST('/api/v1/supplier-debt/{supplierId}/payment', { params: { path: { supplierId } }, body })) as SupplierDebtSummary;
+}
+
+export async function listSupplierDebtPayments(query: ListSupplierDebtPaymentsQuery): Promise<ListSupplierDebtPaymentsResponse> {
+  return unwrap(await getApiClient().GET('/api/v1/supplier-debt/payments', { params: { query } })) as ListSupplierDebtPaymentsResponse;
 }

@@ -222,6 +222,25 @@ export class CashVoucherRepository {
     });
   }
 
+  /** "Phiếu thanh toán NCC" (Phần B, docs/DECISIONS.md #180/#182) — mọi phiếu GẮN 1 NCC (`supplierId
+   * IS NOT NULL`, gồm cả "Trả ngay" lúc nhập lẫn Thanh toán công nợ đứng riêng), lọc thêm đúng 1 NCC
+   * nếu có. KHÔNG lọc `deletedAt` — phiếu đã huỷ vẫn hiện (đúng khuôn `list()`). */
+  listSupplierLinked(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    filter: { supplierId?: string; from?: Date; to?: Date; status?: 'POSTED' | 'PENDING_APPROVAL' | 'REJECTED' },
+  ): Promise<CashVoucher[]> {
+    return tx.cashVoucher.findMany({
+      where: {
+        tenantId,
+        supplierId: filter.supplierId ?? { not: null },
+        occurredAt: filter.from || filter.to ? { gte: filter.from, lte: filter.to } : undefined,
+        status: filter.status,
+      },
+      orderBy: [{ occurredAt: 'desc' }, { createdAt: 'desc' }],
+    });
+  }
+
   /** "Công nợ nhà cung cấp" (docs/DECISIONS.md #180/#182) — tổng phiếu chi gắn NCC đang CHỜ DUYỆT
    * cho NHIỀU NCC cùng lúc (tránh N+1 ở trang danh sách). Chỉ tính `direction='EXPENSE'` — phiếu
    * "NCC hoàn tiền" (INCOME) không qua duyệt (đúng `CashVoucherService.create()`), không thể ở

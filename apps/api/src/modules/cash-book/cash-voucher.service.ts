@@ -7,7 +7,7 @@ import {
   ConcurrentModificationError,
   DOCTOR_DIRECTORY_PORT,
   maxDataScope,
-  toVietnamDateParts,
+  resolveRecentDateRange,
   type CashierShiftReaderPort,
   type ClinicConfigReaderPort,
   type DoctorDirectoryPort,
@@ -137,26 +137,10 @@ export class CashVoucherService {
     return this.toDto(tenantId, row);
   }
 
-  /**
-   * `to` mặc định = hôm nay (giờ Việt Nam), `from` mặc định = 90 ngày trước `to` — chỉ áp dụng khi
-   * client bỏ trống tham số tương ứng. Dùng `toVietnamDateParts` (giống `BusinessCodeService`,
-   * `format-display-code.ts`) thay vì cắt mốc ngày trực tiếp bằng `new Date()` phía server (CLAUDE.md).
-   */
+  /** `to` mặc định = hôm nay (giờ Việt Nam), `from` mặc định = 90 ngày trước `to` — chỉ áp dụng khi
+   * client bỏ trống tham số tương ứng (S6-03 #142). */
   private resolveDateRange(query: ListCashVouchersQuery): { from: Date; to: Date } {
-    const nowParts = toVietnamDateParts(new Date());
-    const todayStr = `${nowParts.year}-${String(nowParts.month).padStart(2, '0')}-${String(nowParts.day).padStart(2, '0')}`;
-    const toStr = query.to ?? todayStr;
-
-    let fromStr = query.from;
-    if (!fromStr) {
-      const ninetyDaysAgoParts = toVietnamDateParts(new Date(Date.now() - 90 * 24 * 60 * 60 * 1000));
-      fromStr = `${ninetyDaysAgoParts.year}-${String(ninetyDaysAgoParts.month).padStart(2, '0')}-${String(ninetyDaysAgoParts.day).padStart(2, '0')}`;
-    }
-
-    return {
-      from: new Date(`${fromStr}T00:00:00+07:00`),
-      to: new Date(`${toStr}T23:59:59.999+07:00`),
-    };
+    return resolveRecentDateRange(query.from, query.to);
   }
 
   async list(tenantId: string, query: ListCashVouchersQuery): Promise<ListCashVouchersResponse> {

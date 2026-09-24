@@ -281,6 +281,9 @@ import {
   listSupplierDebtLedgerQuerySchema,
   listSupplierDebtLedgerResponseSchema,
   listSupplierDebtReceiptsResponseSchema,
+  recordSupplierDebtPaymentRequestSchema,
+  listSupplierDebtPaymentsQuerySchema,
+  listSupplierDebtPaymentsResponseSchema,
 } from '@nexamed/shared';
 
 /**
@@ -3820,6 +3823,37 @@ registry.registerPath({
     403: errorResponse('Không có quyền supplier_debt.pay'),
     404: errorResponse('Không tìm thấy nhà cung cấp'),
     409: errorResponse('NCC đã có bút toán rồi (SUPPLIER_DEBT_OPENING_BALANCE_ALREADY_EXISTS)'),
+  },
+});
+
+// ============ Phần B — "Thanh toán" (docs/DECISIONS.md #180/#182) ============
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/supplier-debt/{supplierId}/payment',
+  tags: ['supplier-debt'],
+  summary: 'Thanh toán công nợ trên TỔNG nợ — không chọn từng phiếu, chặn trả vượt (đã trừ phiếu chi chờ duyệt)',
+  security: [{ bearerAuth: [] }],
+  request: { params: supplierDebtSupplierIdParams, body: { content: { 'application/json': { schema: recordSupplierDebtPaymentRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(supplierDebtSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền supplier_debt.pay'),
+    404: errorResponse('Không tìm thấy nhà cung cấp/quỹ chi'),
+    422: errorResponse('Số tiền vượt quá công nợ còn lại'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/supplier-debt/payments',
+  tags: ['supplier-debt'],
+  summary: 'Trang "Phiếu thanh toán NCC" (mọi NCC, lọc được theo 1 NCC) + tab "Thanh toán" ở trang chi tiết NCC',
+  security: [{ bearerAuth: [] }],
+  request: { query: listSupplierDebtPaymentsQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listSupplierDebtPaymentsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền supplier_debt.read'),
   },
 });
 

@@ -63318,6 +63318,495 @@
           }
         }
       }
+    },
+    "/api/v1/supplier-debt/{supplierId}/payment": {
+      "post": {
+        "tags": [
+          "supplier-debt"
+        ],
+        "summary": "Thanh toán công nợ trên TỔNG nợ — không chọn từng phiếu, chặn trả vượt (đã trừ phiếu chi chờ duyệt)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "supplierId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "paymentMethodCode": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "cashAccountId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "occurredAt": {
+                    "type": "string"
+                  },
+                  "note": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "amount",
+                  "paymentMethodCode",
+                  "cashAccountId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "supplierId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "openingBalanceAmount": {
+                          "type": "integer"
+                        },
+                        "totalPurchase": {
+                          "type": "integer"
+                        },
+                        "totalPaid": {
+                          "type": "integer"
+                        },
+                        "totalReturnAndAdjustment": {
+                          "type": "integer"
+                        },
+                        "balance": {
+                          "type": "integer"
+                        },
+                        "pendingApprovalAmount": {
+                          "type": "integer"
+                        },
+                        "canRecordOpeningBalance": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "supplierId",
+                        "openingBalanceAmount",
+                        "totalPurchase",
+                        "totalPaid",
+                        "totalReturnAndAdjustment",
+                        "balance",
+                        "pendingApprovalAmount",
+                        "canRecordOpeningBalance"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền supplier_debt.pay",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy nhà cung cấp/quỹ chi",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Số tiền vượt quá công nợ còn lại",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/supplier-debt/payments": {
+      "get": {
+        "tags": [
+          "supplier-debt"
+        ],
+        "summary": "Trang \"Phiếu thanh toán NCC\" (mọi NCC, lọc được theo 1 NCC) + tab \"Thanh toán\" ở trang chi tiết NCC",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "supplierId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": false,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": false,
+            "name": "to",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "POSTED",
+                "PENDING_APPROVAL",
+                "REJECTED"
+              ]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "voucherNo": {
+                                "type": "string"
+                              },
+                              "direction": {
+                                "type": "string",
+                                "enum": [
+                                  "INCOME",
+                                  "EXPENSE"
+                                ]
+                              },
+                              "amount": {
+                                "type": "integer"
+                              },
+                              "paymentMethodCode": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "occurredAt": {
+                                "type": "string"
+                              },
+                              "description": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "POSTED",
+                                  "PENDING_APPROVAL",
+                                  "REJECTED"
+                                ]
+                              },
+                              "voided": {
+                                "type": "boolean"
+                              },
+                              "supplierId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "supplierName": {
+                                "type": "string"
+                              },
+                              "createdByName": {
+                                "type": "string"
+                              },
+                              "approvedByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "approvedAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "rejectionReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "voucherNo",
+                              "direction",
+                              "amount",
+                              "paymentMethodCode",
+                              "occurredAt",
+                              "description",
+                              "status",
+                              "voided",
+                              "supplierId",
+                              "supplierName",
+                              "createdByName",
+                              "approvedByName",
+                              "approvedAt",
+                              "rejectionReason"
+                            ]
+                          }
+                        },
+                        "pendingApprovalCount": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "pendingApprovalCount"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền supplier_debt.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "webhooks": {}
