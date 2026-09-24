@@ -2,6 +2,7 @@ import { forwardRef, Module } from '@nestjs/common';
 import { IamModule } from '../iam/iam.module';
 import { ClinicModule } from '../clinic/clinic.module';
 import { CashierShiftModule } from '../cashier-shift/cashier-shift.module';
+import { SupplierDebtModule } from '../supplier-debt/supplier-debt.module';
 import { CashAccountController } from './cash-account.controller';
 import { CashAccountService } from './cash-account.service';
 import { CashAccountRepository } from './cash-account.repository';
@@ -26,9 +27,14 @@ import { CashVoucherRepository } from './cash-voucher.repository';
  * `exports: [CashVoucherService]` — "Xuất Excel" cho "Phiếu thu/chi" (`CashBookReportModule` gọi
  * thẳng `list()` đã có sẵn logic tổng kết, tránh chép lại — đúng nguyên tắc "không tạo bản sao
  * logic", CLAUDE.md).
+ *
+ * `forwardRef(() => SupplierDebtModule)` — "Công nợ nhà cung cấp" (docs/DECISIONS.md #180/#182):
+ * `CashVoucherService.approve()`/`voidVoucher()` gọi `SupplierDebtService.recordVoucherPosted()`/
+ * `.reverseVoucherPayment()` khi voucher có `supplierId` (hook TRONG CÙNG transaction — xem giải
+ * thích đầy đủ ở `supplier-debt.module.ts`).
  */
 @Module({
-  imports: [IamModule, ClinicModule, forwardRef(() => CashierShiftModule)],
+  imports: [IamModule, ClinicModule, forwardRef(() => CashierShiftModule), forwardRef(() => SupplierDebtModule)],
   controllers: [CashAccountController, CashVoucherController],
   providers: [CashAccountService, CashAccountRepository, CashVoucherService, CashVoucherRepository],
   exports: [CashAccountRepository, CashVoucherRepository, CashVoucherService],

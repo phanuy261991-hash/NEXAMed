@@ -4,6 +4,7 @@ import { CaretDown, CaretRight, MagnifyingGlass, Plus, Printer, Trash, Warning }
 import type { CreateStockReceiptRequest, DiscountType, DrugSummary, StockReceiptLine, StockReceiptType } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
+import { BoxedSection } from '../../shared/ui/BoxedSection';
 import { Button } from '../../shared/ui/Button';
 import { Combobox, type ComboboxOption } from '../../shared/ui/Combobox';
 import { DateInput } from '../../shared/ui/DateInput';
@@ -18,11 +19,14 @@ import { formatDobDisplay } from '../../shared/format/date';
 import { useCollapsedGroups } from '../../shared/hooks/useCollapsedGroups';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
 import { useActorDepartmentId, useDataScope, useHasPermission } from '../auth/usePermission';
+import { useCashAccountsQuery } from '../cash-book/cash-account.queries';
 import { useClinicPrintHeaderQuery } from '../clinic/clinic.queries';
 import { useDrugsQuery } from '../drug/drug.queries';
 import { useSuppliersQuery } from '../drug/supplier.queries';
 import { useUnitNameByCode, unitLabel } from '../drug/useUnitNameByCode';
 import { useWarehousesQuery } from '../drug/warehouse.queries';
+import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
+import { useSupplierDebtSummaryQuery } from '../supplier-debt/supplier-debt.queries';
 import {
   useApproveStockReceiptMutation,
   useCreateStockReceiptMutation,
@@ -117,6 +121,8 @@ export function StockReceiptFormPage() {
   const actorDepartmentId = useActorDepartmentId();
   const isDepartmentScoped = createDataScope === 'department';
   const suppliersQuery = useSuppliersQuery();
+  const paymentMethodQuery = useReferenceCatalogQuery('PAYMENT_METHOD');
+  const cashAccountsQuery = useCashAccountsQuery();
   const unitNameByCode = useUnitNameByCode();
   const clinicQuery = useClinicPrintHeaderQuery();
   const createMutation = useCreateStockReceiptMutation();
@@ -151,6 +157,12 @@ export function StockReceiptFormPage() {
   const [totalDiscountValue, setTotalDiscountValue] = useState<number | undefined>(undefined);
   // "Lý do" KHÔNG nạp sẵn giá trị cũ khi mở lại phiếu (đúng #137) — luôn gõ mới mỗi lần sửa.
   const [totalDiscountReason, setTotalDiscountReason] = useState('');
+  // "Trả ngay" cho NCC (Công nợ nhà cung cấp, docs/DECISIONS.md #180/#182) — CHỈ có ý nghĩa khi
+  // `receiptType='PURCHASE'`. Mặc định 0 = ghi nợ hết (giá trị số thật, không phải chip tô sẵn —
+  // đúng mockup màn 5, `https://claude.ai/artifact/WvZtCgwbdEKAb9LcCzyCfh`).
+  const [prepaidAmount, setPrepaidAmount] = useState<number | undefined>(0);
+  const [prepaidPaymentMethodCode, setPrepaidPaymentMethodCode] = useState('');
+  const [prepaidCashAccountId, setPrepaidCashAccountId] = useState('');
 
   useBreadcrumb([
     { label: 'Quản lý kho' },
@@ -188,6 +200,9 @@ export function StockReceiptFormPage() {
     setTotalDiscountType(r.discountType ?? 'PERCENT');
     setTotalDiscountValue(r.discountValue ?? undefined);
     setTotalDiscountReason(r.discountReason ?? '');
+    setPrepaidAmount(r.prepaidAmount);
+    setPrepaidPaymentMethodCode(r.prepaidPaymentMethodCode ?? '');
+    setPrepaidCashAccountId(r.prepaidCashAccountId ?? '');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [receiptQuery.data?.id]);
 
@@ -215,6 +230,15 @@ export function StockReceiptFormPage() {
     return previewDiscountAmount(totalAmount, totalDiscountType, totalDiscountValue ?? 0);
   }, [receiptType, discountMode, lines, totalAmount, totalDiscountType, totalDiscountValue]);
   const netAmount = totalAmount - discountAmount;
+
+  // "Thanh toán" (mới, #180/#182) — chỉ có ý nghĩa khi Loại phiếu = Nhập nhà cung cấp + đã chọn NCC.
+  const showPaymentSection = receiptType === 'PURCHASE' && Boolean(supplierId);
+  const paymentMethods = useMemo(() => paymentMethodQuery.data?.items.filter((i) => i.isActive) ?? [], [paymentMethodQuery.data]);
+  const cashAccounts = useMemo(() => cashAccountsQuery.data?.items.filter((a) => a.isActive) ?? [], [cashAccountsQuery.data]);
+  const supplierDebtSummaryQuery = useSupplierDebtSummaryQuery(supplierId, showPaymentSection);
+  const currentDebtBalance = supplierDebtSummaryQuery.data?.balance ?? 0;
+  const remainingToDebt = netAmount - (prepaidAmount ?? 0);
+  const prepaidExceedsPayable = (prepaidAmount ?? 0) > netAmount;
 
   // Nhóm theo `drugId` để hiện 1 dòng tiêu đề sản phẩm + N dòng lô bên dưới (thay vì liệt kê phẳng
   // từng lô lặp lại tên sản phẩm) — `Map` giữ đúng thứ tự thêm vào lần đầu, đúng chốt thiết kế trực
@@ -333,6 +357,21 @@ export function StockReceiptFormPage() {
         return null;
       }
     }
+    const usePrepaid = receiptType === 'PURCHASE' && (prepaidAmount ?? 0) > 0;
+    if (usePrepaid) {
+      if ((prepaidAmount ?? 0) > netAmount) {
+        setFormError('Số tiền "Trả ngay" không được vượt quá tiền phải trả NCC.');
+        return null;
+      }
+      if (!prepaidPaymentMethodCode) {
+        setFormError('Phải chọn Phương thức thanh toán khi có "Trả ngay".');
+        return null;
+      }
+      if (!prepaidCashAccountId) {
+        setFormError('Phải chọn Quỹ chi khi có "Trả ngay".');
+        return null;
+      }
+    }
     setFormError(null);
     return {
       warehouseId,
@@ -344,6 +383,9 @@ export function StockReceiptFormPage() {
       discountType: useTotalDiscount && totalDiscountValue ? totalDiscountType : undefined,
       discountValue: useTotalDiscount && totalDiscountValue ? totalDiscountValue : undefined,
       discountReason: useTotalDiscount && totalDiscountValue ? totalDiscountReason.trim() : undefined,
+      prepaidAmount: usePrepaid ? prepaidAmount : undefined,
+      prepaidPaymentMethodCode: usePrepaid ? prepaidPaymentMethodCode : undefined,
+      prepaidCashAccountId: usePrepaid ? prepaidCashAccountId : undefined,
       lines: lines.map((l) => ({
         drugId: l.drugId,
         unitCode: l.unitCode,
@@ -487,54 +529,129 @@ export function StockReceiptFormPage() {
         </div>
       </div>
 
-      {/* ============ Chiết khấu (Kho Thuốc GĐ4, "Phiếu nhập kho mở rộng", docs/DECISIONS.md #170)
-          — CHỈ hiện với loại phiếu "Nhập nhà cung cấp", Toàn phiếu/Từng dòng loại trừ lẫn nhau. ============ */}
+      {/* ============ Chiết khấu (Kho Thuốc GĐ4, docs/DECISIONS.md #170) + Thanh toán (Công nợ nhà
+          cung cấp, #180/#182) — CHỈ hiện với loại phiếu "Nhập nhà cung cấp" (đúng mockup màn 5,
+          `https://claude.ai/artifact/WvZtCgwbdEKAb9LcCzyCfh`). ============ */}
       {receiptType === 'PURCHASE' && (
-        <div className="flex-shrink-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="mb-2 flex items-center gap-3">
-            <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Chiết khấu</span>
-            {!readOnly && <TwoOptionToggle options={DISCOUNT_MODE_OPTIONS} value={discountMode} onChange={setDiscountMode} />}
-            {readOnly && discountMode && <span className="text-xs font-semibold text-slate-600">{DISCOUNT_MODE_OPTIONS.find((o) => o.value === discountMode)?.label}</span>}
-          </div>
-          {discountMode === 'TOTAL' ? (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <div>
-                <label className="mb-1 block text-sm font-semibold text-slate-800">Cách tính</label>
-                <TwoOptionToggle options={DISCOUNT_TYPE_OPTIONS} value={totalDiscountType} disabled={readOnly} onChange={(v) => v && setTotalDiscountType(v)} />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-semibold text-slate-800">Giá trị</label>
-                {totalDiscountType === 'PERCENT' ? (
+        <div className="grid flex-shrink-0 grid-cols-1 gap-3 lg:grid-cols-[1fr_1.35fr]">
+          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="mb-2 flex items-center gap-3">
+              <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Chiết khấu</span>
+              {!readOnly && <TwoOptionToggle options={DISCOUNT_MODE_OPTIONS} value={discountMode} onChange={setDiscountMode} />}
+              {readOnly && discountMode && <span className="text-xs font-semibold text-slate-600">{DISCOUNT_MODE_OPTIONS.find((o) => o.value === discountMode)?.label}</span>}
+            </div>
+            {discountMode === 'TOTAL' ? (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-slate-800">Cách tính</label>
+                  <TwoOptionToggle options={DISCOUNT_TYPE_OPTIONS} value={totalDiscountType} disabled={readOnly} onChange={(v) => v && setTotalDiscountType(v)} />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-slate-800">Giá trị</label>
+                  {totalDiscountType === 'PERCENT' ? (
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      disabled={readOnly}
+                      value={totalDiscountValue ?? ''}
+                      onChange={(e) => setTotalDiscountValue(e.target.value ? Number(e.target.value) : undefined)}
+                      className="w-full rounded-md border border-slate-300 px-2.5 py-2 text-sm font-semibold text-slate-900 disabled:bg-slate-50"
+                    />
+                  ) : (
+                    <MoneyInput id="receipt-total-discount-value" value={totalDiscountValue} onChange={setTotalDiscountValue} disabled={readOnly} />
+                  )}
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-slate-800">
+                    Lý do <span className="text-rose-500">*</span>
+                  </label>
                   <input
-                    type="number"
-                    min={0}
-                    max={100}
+                    type="text"
+                    value={totalDiscountReason}
                     disabled={readOnly}
-                    value={totalDiscountValue ?? ''}
-                    onChange={(e) => setTotalDiscountValue(e.target.value ? Number(e.target.value) : undefined)}
+                    onChange={(e) => setTotalDiscountReason(e.target.value)}
+                    placeholder="Vd: chiết khấu đơn hàng lớn"
                     className="w-full rounded-md border border-slate-300 px-2.5 py-2 text-sm font-semibold text-slate-900 disabled:bg-slate-50"
                   />
-                ) : (
-                  <MoneyInput id="receipt-total-discount-value" value={totalDiscountValue} onChange={setTotalDiscountValue} disabled={readOnly} />
-                )}
+                </div>
               </div>
-              <div>
-                <label className="mb-1 block text-sm font-semibold text-slate-800">
-                  Lý do <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={totalDiscountReason}
-                  disabled={readOnly}
-                  onChange={(e) => setTotalDiscountReason(e.target.value)}
-                  placeholder="Vd: chiết khấu đơn hàng lớn"
-                  className="w-full rounded-md border border-slate-300 px-2.5 py-2 text-sm font-semibold text-slate-900 disabled:bg-slate-50"
-                />
+            ) : discountMode === 'PER_LINE' ? (
+              <p className="text-xs text-slate-500">Nhập trực tiếp % chiết khấu ở cột "Chiết khấu" trong bảng mặt hàng bên dưới.</p>
+            ) : null}
+          </div>
+
+          {showPaymentSection && (
+            <BoxedSection badge="Thanh toán">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="sm:col-span-2">
+                  <label className="mb-1 block text-sm font-semibold text-slate-800">Trả ngay cho NCC</label>
+                  <MoneyInput
+                    id="receipt-prepaid-amount"
+                    value={prepaidAmount}
+                    onChange={setPrepaidAmount}
+                    disabled={readOnly}
+                    className="w-full rounded-md border border-slate-300 px-2.5 py-2 text-sm font-semibold text-slate-900 disabled:bg-slate-50"
+                  />
+                  {!readOnly && (
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setPrepaidAmount(0)}
+                        className="rounded-full border-2 border-slate-300 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 transition-colors hover:border-blue-400 hover:bg-brand-teal-tint"
+                      >
+                        Không trả (ghi nợ hết)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPrepaidAmount(netAmount)}
+                        className="rounded-full border-2 border-slate-300 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 transition-colors hover:border-blue-400 hover:bg-brand-teal-tint"
+                      >
+                        Trả hết {formatVnd(netAmount)}
+                      </button>
+                    </div>
+                  )}
+                  {prepaidExceedsPayable && <p className="mt-1.5 text-xs font-semibold text-rose-600">Số tiền trả ngay không được vượt quá tiền phải trả NCC.</p>}
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-slate-800">
+                    Phương thức {(prepaidAmount ?? 0) > 0 && <span className="text-rose-500">*</span>}
+                  </label>
+                  <Combobox
+                    id="receipt-prepaid-payment-method"
+                    value={prepaidPaymentMethodCode}
+                    onChange={setPrepaidPaymentMethodCode}
+                    disabled={readOnly}
+                    placeholder="— Chọn —"
+                    options={paymentMethods.map((m) => ({ value: m.code, label: m.name }))}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-slate-800">
+                    Quỹ chi {(prepaidAmount ?? 0) > 0 && <span className="text-rose-500">*</span>}
+                  </label>
+                  <Combobox
+                    id="receipt-prepaid-cash-account"
+                    value={prepaidCashAccountId}
+                    onChange={setPrepaidCashAccountId}
+                    disabled={readOnly}
+                    placeholder="— Chọn —"
+                    options={cashAccounts.map((a) => ({ value: a.id, label: a.name }))}
+                  />
+                </div>
               </div>
-            </div>
-          ) : discountMode === 'PER_LINE' ? (
-            <p className="text-xs text-slate-500">Nhập trực tiếp % chiết khấu ở cột "Chiết khấu" trong bảng mặt hàng bên dưới.</p>
-          ) : null}
+              <div className="mt-4 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm">
+                <div className="flex justify-between gap-3 font-semibold text-blue-900">
+                  <span>Ghi vào công nợ NCC</span>
+                  <span className="text-lg font-bold">{formatVnd(Math.max(remainingToDebt, 0))}</span>
+                </div>
+                <div className="mt-0.5 flex justify-between gap-3 text-xs font-medium text-blue-800">
+                  <span>Công nợ hiện tại {formatVnd(currentDebtBalance)} → sau khi Duyệt phiếu</span>
+                  <span className="font-bold">{formatVnd(currentDebtBalance + Math.max(remainingToDebt, 0))}</span>
+                </div>
+              </div>
+            </BoxedSection>
+          )}
         </div>
       )}
 

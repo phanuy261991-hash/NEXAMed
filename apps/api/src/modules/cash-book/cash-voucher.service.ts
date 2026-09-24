@@ -28,6 +28,7 @@ import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper
 import { findScopesForUserPermission } from '../../infrastructure/persistence/permission-lookup.helper';
 import type { RequestMeta } from '../../common/request-meta';
 import { BusinessCodeService } from '../clinic/business-code.service';
+import { SupplierDebtService } from '../supplier-debt/supplier-debt.service';
 import { CashAccountRepository } from './cash-account.repository';
 import { CashVoucherRepository, type UpdateCashVoucherData } from './cash-voucher.repository';
 
@@ -49,6 +50,7 @@ export class CashVoucherService {
     private readonly cashVoucherRepository: CashVoucherRepository,
     private readonly cashAccountRepository: CashAccountRepository,
     private readonly businessCodeService: BusinessCodeService,
+    private readonly supplierDebtService: SupplierDebtService,
     @Inject(CASHIER_SHIFT_READER_PORT) private readonly cashierShiftReader: CashierShiftReaderPort,
     @Inject(CLINIC_CONFIG_READER_PORT) private readonly clinicConfigReader: ClinicConfigReaderPort,
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
@@ -267,6 +269,11 @@ export class CashVoucherService {
         ip: meta.ip,
         userAgent: meta.userAgent,
       });
+      // "Công nợ nhà cung cấp" (#180/#182) — voucher gắn NCC vừa bị huỷ, đảo bút toán PAYMENT/
+      // REFUND_RECEIVED nếu có (no-op nếu voucher chưa từng POSTED, xem `reverseVoucherPayment()`).
+      if (existing.supplierId) {
+        await this.supplierDebtService.reverseVoucherPayment(tx, tenantId, actorId, existing, dto.reason, meta);
+      }
       // `findById` lọc `deletedAt: null` (vừa huỷ xong sẽ trả null) — dùng `findByIdAny` để đọc
       // lại đúng bản ghi vừa huỷ (voided=true), không tái tạo DTO thủ công.
       return this.cashVoucherRepository.findByIdAny(tx, tenantId, id);
@@ -299,7 +306,14 @@ export class CashVoucherService {
         ip: meta.ip,
         userAgent: meta.userAgent,
       });
-      return this.cashVoucherRepository.findById(tx, tenantId, id);
+      const posted = await this.cashVoucherRepository.findById(tx, tenantId, id);
+      // "Công nợ nhà cung cấp" (docs/DECISIONS.md #180/#182) — voucher gắn NCC vừa POSTED, ghi bút
+      // toán PAYMENT/REFUND_RECEIVED TRONG CÙNG transaction (đúng khuôn mọi nơi khác gọi hook xuyên
+      // module qua Service, không phải port — xem comment `supplier-debt.module.ts`).
+      if (posted?.supplierId) {
+        await this.supplierDebtService.recordVoucherPosted(tx, tenantId, actorId, posted, meta);
+      }
+      return posted;
     });
     return this.toDto(tenantId, updated!);
   }

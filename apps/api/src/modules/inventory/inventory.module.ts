@@ -4,6 +4,7 @@ import { ClinicModule } from '../clinic/clinic.module';
 import { DrugModule } from '../drug/drug.module';
 import { BillingModule } from '../billing/billing.module';
 import { EncounterModule } from '../encounter/encounter.module';
+import { SupplierDebtModule } from '../supplier-debt/supplier-debt.module';
 import { StockReceiptController } from './stock-receipt.controller';
 import { StockReceiptService } from './stock-receipt.service';
 import { StockReceiptRepository } from './stock-receipt.repository';
@@ -69,9 +70,21 @@ import { StockLedgerReportExportService } from './stock-ledger-report-export.ser
  * `StockLedgerReportExportService` MỚI — tách khỏi `StockLedgerService`/`StockLedgerController`
  * hiện có vì khác bản chất: 1 bên là "Thẻ kho" theo TỪNG mặt hàng, 1 bên là báo cáo tổng hợp toàn
  * phòng khám theo khoảng ngày, đúng tiền lệ tách `CashBookReportModule` khỏi `CashBookModule`).
+ *
+ * "Công nợ nhà cung cấp" (docs/DECISIONS.md #180/#182, Phần A) thêm `imports: [forwardRef(() =>
+ * SupplierDebtModule)]` — MỘT CHIỀU về mặt DI (`supplier-debt` không cần PROVIDER nào từ
+ * `inventory`), NHƯNG `supplier-debt` giờ nằm GIỮA `cash-book ⇄ cashier-shift ⇄ billing` (đã có
+ * `forwardRef` từ trước) — chuỗi require() dài `billing → cashier-shift → cash-book → supplier-debt
+ * → drug → inventory` (Node module load, không phải NestJS DI) khiến `inventory.module.ts` bị nạp
+ * LẦN ĐẦU từ GIỮA chuỗi require() của chính `billing.module.ts`, làm tham chiếu THƯỜNG (không
+ * `forwardRef`) tới `BillingModule` NGAY TRONG mảng `imports` của chính `InventoryModule` nhận về
+ * `undefined` — đã bọc `forwardRef(() => BillingModule)` để sửa (lỗi thật gặp lúc test: "The module
+ * at index [3] of the InventoryModule imports array is undefined"). `StockReceiptService.approve()`
+ * gọi `SupplierDebtService.recordPurchaseApproval()` TRONG CÙNG transaction khi `receiptType=
+ * 'PURCHASE'` có `supplierId` — ghi PURCHASE + xử lý "Trả ngay".
  */
 @Module({
-  imports: [IamModule, ClinicModule, forwardRef(() => DrugModule), BillingModule, EncounterModule],
+  imports: [IamModule, ClinicModule, forwardRef(() => DrugModule), forwardRef(() => BillingModule), forwardRef(() => EncounterModule), forwardRef(() => SupplierDebtModule)],
   controllers: [
     StockReceiptController,
     StockLedgerController,

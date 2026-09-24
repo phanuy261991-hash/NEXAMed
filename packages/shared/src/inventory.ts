@@ -54,8 +54,30 @@ const stockReceiptHeaderFieldsSchema = z.object({
   discountType: discountTypeSchema.nullable().optional(),
   discountValue: z.number().int().positive().nullable().optional(),
   discountReason: z.string().nullable().optional(),
+  /** "Trả ngay" cho NCC (Công nợ nhà cung cấp, docs/DECISIONS.md #180/#182) — CHỈ có ý nghĩa khi
+   * `receiptType='PURCHASE'` (Service chặn gửi kèm ở loại khác, cùng cách `discountType` xử lý).
+   * Khai lúc Nháp, phiếu chi CHỈ thực sự sinh lúc Duyệt phiếu (§2.4 kế hoạch kỹ thuật). Mặc định 0
+   * = ghi nợ hết (không phải chip tô sẵn, đúng mockup màn 5). */
+  prepaidAmount: z.number().int().nonnegative().optional(),
+  prepaidPaymentMethodCode: z.string().min(1).nullable().optional(),
+  prepaidCashAccountId: z.string().uuid().nullable().optional(),
   lines: z.array(stockReceiptLineInputSchema).min(1, 'Phải có ít nhất 1 dòng hàng.'),
 });
+
+function checkStockReceiptPrepaidRules(v: z.infer<typeof stockReceiptHeaderFieldsSchema>, ctx: z.RefinementCtx): void {
+  const prepaidAmount = v.prepaidAmount ?? 0;
+  if (prepaidAmount > 0 && v.receiptType !== 'PURCHASE') {
+    ctx.addIssue({ code: 'custom', message: 'Chỉ phiếu "Nhập nhà cung cấp" mới có "Trả ngay".', path: ['prepaidAmount'] });
+  }
+  if (prepaidAmount > 0) {
+    if (!v.prepaidPaymentMethodCode) {
+      ctx.addIssue({ code: 'custom', message: 'Phải chọn Phương thức thanh toán khi có Trả ngay.', path: ['prepaidPaymentMethodCode'] });
+    }
+    if (!v.prepaidCashAccountId) {
+      ctx.addIssue({ code: 'custom', message: 'Phải chọn Quỹ chi khi có Trả ngay.', path: ['prepaidCashAccountId'] });
+    }
+  }
+}
 
 function checkStockReceiptDiscountRules(v: z.infer<typeof stockReceiptHeaderFieldsSchema>, ctx: z.RefinementCtx): void {
   const hasHeaderDiscount = v.discountType != null;
@@ -93,6 +115,7 @@ export const createStockReceiptRequestSchema = stockReceiptHeaderFieldsSchema.su
     ctx.addIssue({ code: 'custom', message: 'Loại phiếu này không có Nhà cung cấp.', path: ['supplierId'] });
   }
   checkStockReceiptDiscountRules(v, ctx);
+  checkStockReceiptPrepaidRules(v, ctx);
 });
 export type CreateStockReceiptRequest = z.infer<typeof createStockReceiptRequestSchema>;
 
@@ -106,6 +129,7 @@ export const updateStockReceiptRequestSchema = stockReceiptHeaderFieldsSchema
       ctx.addIssue({ code: 'custom', message: 'Loại phiếu này không có Nhà cung cấp.', path: ['supplierId'] });
     }
     checkStockReceiptDiscountRules(v, ctx);
+    checkStockReceiptPrepaidRules(v, ctx);
   });
 export type UpdateStockReceiptRequest = z.infer<typeof updateStockReceiptRequestSchema>;
 
@@ -168,6 +192,13 @@ export const stockReceiptSummarySchema = z.object({
   discountType: discountTypeSchema.nullable(),
   discountValue: z.number().int().nullable(),
   discountReason: z.string().nullable(),
+  /** "Trả ngay" cho NCC (Công nợ nhà cung cấp, docs/DECISIONS.md #180/#182) — `prepaidVoucherId`
+   * chỉ có giá trị SAU khi phiếu đã Duyệt kèm `prepaidAmount > 0` (sinh lúc Duyệt, không phải lúc
+   * khai Nháp). Xem chi tiết phiếu chi này ở "Phiếu thanh toán NCC" (Phần B) qua `prepaidVoucherId`. */
+  prepaidAmount: z.number().int(),
+  prepaidPaymentMethodCode: z.string().nullable(),
+  prepaidCashAccountId: z.string().uuid().nullable(),
+  prepaidVoucherId: z.string().uuid().nullable(),
   lineCount: z.number().int(),
   createdByName: z.string(),
   approvedByName: z.string().nullable(),
@@ -199,6 +230,10 @@ export const listStockReceiptsQuerySchema = z.object({
   from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   q: z.string().min(1).max(100).optional(),
+  /** Tab "Phiếu nhập" ở trang chi tiết NCC (Công nợ nhà cung cấp, #180/#182) — web ghép danh sách
+   * này với `GET /supplier-debt/:supplierId/receipts` theo `stockReceiptId` để hiện đủ receiptNo/
+   * occurredAt/voided cạnh trạng thái công nợ, tránh `supplier-debt` phải phụ thuộc ngược `inventory`. */
+  supplierId: z.string().uuid().optional(),
 });
 export type ListStockReceiptsQuery = z.infer<typeof listStockReceiptsQuerySchema>;
 

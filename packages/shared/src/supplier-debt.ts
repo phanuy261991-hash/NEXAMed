@@ -1,0 +1,124 @@
+import { z } from 'zod';
+
+/**
+ * "Công nợ nhà cung cấp" (docs/DECISIONS.md #180/#182, mở rộng phạm vi v1) — module `supplier-debt`.
+ * Phần A "Nền sổ công nợ": sổ `SupplierDebtEntry` append-only (nguồn sự thật) + `SupplierDebtAccount`
+ * (snapshot `balance`, dương = phòng khám còn nợ NCC, âm = NCC đang nợ lại). Chỉ ghi PURCHASE (lúc
+ * Duyệt phiếu nhập)/PAYMENT (từ "Trả ngay" hoặc Thanh toán công nợ Phần B)/OPENING_BALANCE (Khai nợ
+ * đầu kỳ) ở giai đoạn này — RETURN/REFUND_RECEIVED/ADJUSTMENT_INCREASE/ADJUSTMENT_DECREASE/REVERSAL
+ * khai sẵn enum cho Phần C/D.
+ */
+
+export const supplierDebtEntryTypeSchema = z.enum([
+  'OPENING_BALANCE',
+  'PURCHASE',
+  'PAYMENT',
+  'RETURN',
+  'REFUND_RECEIVED',
+  'ADJUSTMENT_INCREASE',
+  'ADJUSTMENT_DECREASE',
+  'REVERSAL',
+]);
+export type SupplierDebtEntryType = z.infer<typeof supplierDebtEntryTypeSchema>;
+
+export const supplierDebtItemStatusSchema = z.enum(['UNPAID', 'PARTIALLY_PAID', 'FULLY_PAID']);
+export type SupplierDebtItemStatus = z.infer<typeof supplierDebtItemStatusSchema>;
+
+/** `POST /supplier-debt/:supplierId/opening-balance` — chỉ gọi được khi NCC CHƯA có bút toán nào
+ * (Q7, kế hoạch mục 0). `amount` cho phép ÂM (Q8 — NCC đã nợ lại phòng khám từ trước khi dùng phần mềm). */
+export const recordSupplierDebtOpeningBalanceRequestSchema = z.object({
+  amount: z.number().int().refine((v) => v !== 0, 'Số nợ đầu kỳ phải khác 0.'),
+  /** `yyyy-mm-dd` hoặc ISO — ngày tính đến (biên bản đối chiếu). */
+  occurredAt: z.string().min(1, 'Phải nhập ngày tính đến.'),
+  note: z.string().nullable().optional(),
+});
+export type RecordSupplierDebtOpeningBalanceRequest = z.infer<typeof recordSupplierDebtOpeningBalanceRequestSchema>;
+
+/** 1 dòng ở trang "Công nợ nhà cung cấp" (danh sách mọi NCC) + cột "Còn nợ" ở `/suppliers` + dải
+ * metric đầu trang chi tiết NCC — CÙNG 1 hình dạng cho cả 3 nơi dùng, tránh 3 kiểu tính khác nhau. */
+export const supplierDebtSummarySchema = z.object({
+  supplierId: z.string().uuid(),
+  /** Tổng nợ đầu kỳ (0 nếu chưa khai / khai = 0). */
+  openingBalanceAmount: z.number().int(),
+  /** Tổng PURCHASE đã duyệt (không tính phiếu đã huỷ — REVERSAL tự trừ ra vì tính trực tiếp từ SUM
+   * amountChange theo entryType, không phải allocate). */
+  totalPurchase: z.number().int(),
+  /** Tổng |PAYMENT| đã ghi sổ (chỉ phiếu chi ĐÃ POSTED — Chờ duyệt chưa ghi sổ, xem `pendingApprovalAmount`). */
+  totalPaid: z.number().int(),
+  /** Tổng |RETURN| + |ADJUSTMENT_DECREASE| − ADJUSTMENT_INCREASE (Phần A luôn 0 — chưa có đường ghi). */
+  totalReturnAndAdjustment: z.number().int(),
+  /** Dương = còn nợ NCC; âm = NCC đang nợ lại. */
+  balance: z.number().int(),
+  /** Tổng phiếu chi gắn NCC đang `PENDING_APPROVAL` — CHƯA trừ vào `balance` (chỉ trừ khi Duyệt). */
+  pendingApprovalAmount: z.number().int(),
+  /** NCC chưa từng có bút toán nào — hiện/ẩn nút "Khai nợ đầu kỳ" (Q7). */
+  canRecordOpeningBalance: z.boolean(),
+});
+export type SupplierDebtSummary = z.infer<typeof supplierDebtSummarySchema>;
+
+export const listSupplierDebtSummariesResponseSchema = z.object({ items: z.array(supplierDebtSummarySchema) });
+export type ListSupplierDebtSummariesResponse = z.infer<typeof listSupplierDebtSummariesResponseSchema>;
+
+/** Tab "Sổ công nợ" — 1 dòng/bút toán, sắp CŨ→MỚI theo thứ tự ghi sổ (đúng khuôn Sổ quỹ). */
+export const supplierDebtLedgerEntrySchema = z.object({
+  id: z.string().uuid(),
+  entryType: supplierDebtEntryTypeSchema,
+  /** Có dấu — đồng. */
+  amountChange: z.number().int(),
+  balanceAfter: z.number().int(),
+  /** Ngày chứng từ (hiển thị, có thể lùi ngày). */
+  occurredAt: z.string(),
+  /** Thời điểm ghi sổ thật — dùng làm cột phụ "Ghi sổ lúc" (đúng mockup, phân biệt với `occurredAt`). */
+  createdAt: z.string(),
+  stockReceiptId: z.string().uuid().nullable(),
+  stockReceiptNo: z.string().nullable(),
+  cashVoucherId: z.string().uuid().nullable(),
+  cashVoucherNo: z.string().nullable(),
+  reversalOfId: z.string().uuid().nullable(),
+  /** `true` nếu bút toán này ĐÃ bị 1 dòng REVERSAL khác đảo — web gạch ngang dòng này. */
+  reversed: z.boolean(),
+  note: z.string().nullable(),
+  createdByName: z.string(),
+});
+export type SupplierDebtLedgerEntry = z.infer<typeof supplierDebtLedgerEntrySchema>;
+
+export const listSupplierDebtLedgerQuerySchema = z.object({
+  from: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+  to: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+});
+export type ListSupplierDebtLedgerQuery = z.infer<typeof listSupplierDebtLedgerQuerySchema>;
+
+export const listSupplierDebtLedgerResponseSchema = z.object({ items: z.array(supplierDebtLedgerEntrySchema) });
+export type ListSupplierDebtLedgerResponse = z.infer<typeof listSupplierDebtLedgerResponseSchema>;
+
+/** Tab "Phiếu nhập" — mỗi khoản NỢ (PURCHASE, hoặc dòng ảo "Nợ đầu kỳ") kèm trạng thái đã
+ * trả/còn nợ, tính bằng `allocateSupplierDebt()` (@nexamed/core). CHỈ trả số liệu công nợ — KHÔNG
+ * trả `receiptNo`/`occurredAt`/`supplierInvoiceNo`/`voided` (tránh `supplier-debt` phải phụ thuộc
+ * ngược `inventory` chỉ để join hiển thị): web tự ghép với `GET /inventory/receipts?supplierId=`
+ * (đã có sẵn, thêm filter `supplierId`) theo `stockReceiptId`. */
+export const supplierDebtReceiptStatusSchema = z.object({
+  /** `null` = dòng ảo "Nợ đầu kỳ" (không gắn 1 phiếu nhập cụ thể nào) — xem `isOpeningBalance`. */
+  stockReceiptId: z.string().uuid().nullable(),
+  isOpeningBalance: z.boolean(),
+  /** Tiền hàng GỐC của khoản nợ này (PURCHASE = tiền sau chiết khấu; Nợ đầu kỳ = số đã khai). */
+  originalAmount: z.number().int(),
+  paidAmount: z.number().int(),
+  dueAmount: z.number().int(),
+  status: supplierDebtItemStatusSchema,
+});
+export type SupplierDebtReceiptStatus = z.infer<typeof supplierDebtReceiptStatusSchema>;
+
+export const listSupplierDebtReceiptsResponseSchema = z.object({
+  items: z.array(supplierDebtReceiptStatusSchema),
+  /** Tổng cộng dòng cuối bảng — không tính phiếu đã huỷ (đúng khuôn footer `stock_receipt`). */
+  totalOriginalAmount: z.number().int(),
+  totalPaidAmount: z.number().int(),
+  totalDueAmount: z.number().int(),
+});
+export type ListSupplierDebtReceiptsResponse = z.infer<typeof listSupplierDebtReceiptsResponseSchema>;

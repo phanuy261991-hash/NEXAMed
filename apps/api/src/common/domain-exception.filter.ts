@@ -139,6 +139,9 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   // định 422 — đúng tinh thần chặn cứng của `stock_issue`.
   STOCK_TRANSFER_NOT_DRAFT: HttpStatus.CONFLICT,
   STOCK_TRANSFER_NOT_IN_TRANSIT: HttpStatus.CONFLICT,
+  // "Công nợ nhà cung cấp" (docs/DECISIONS.md #180/#182) — NCC đã có bút toán rồi (Q7: chỉ khai nợ
+  // đầu kỳ được 1 lần) là xung đột với trạng thái hiện có, không phải lỗi input.
+  SUPPLIER_DEBT_OPENING_BALANCE_ALREADY_EXISTS: HttpStatus.CONFLICT,
 };
 
 /**

@@ -1,7 +1,7 @@
 # ERD: NEXAMed v1
 
-**Version**: v1.52 — 17/09/2026 (xem mục 9 để biết lịch sử thay đổi)
-**Phạm vi**: các bảng thuộc v1 (Đặt lịch, Tiếp nhận, Khám bệnh, Kê đơn) cộng các mở rộng phạm vi đã chốt (Thu ngân cơ bản, Sổ quỹ & Thu chi, Ví tạm ứng, Kho Thuốc & Vật tư y tế GĐ1+GĐ2 — xem `CLAUDE.md`). Bảng của v2+ (viện phí đầy đủ, BHYT) và các giai đoạn sau của Kho Thuốc (GĐ3-5, đã lên kế hoạch nhưng chưa code) **không** tạo ở giai đoạn này.
+**Version**: v1.55 — 24/09/2026 (xem mục 9 để biết lịch sử thay đổi)
+**Phạm vi**: các bảng thuộc v1 (Đặt lịch, Tiếp nhận, Khám bệnh, Kê đơn) cộng các mở rộng phạm vi đã chốt (Thu ngân cơ bản, Sổ quỹ & Thu chi, Ví tạm ứng, Kho Thuốc & Vật tư y tế GĐ1→4, Công nợ nhà cung cấp Phần A — xem `CLAUDE.md`). Bảng của v2+ (viện phí đầy đủ, BHYT), Kho Thuốc GĐ5, và Công nợ NCC Phần B→E (đã lên kế hoạch nhưng chưa code) **không** tạo ở giai đoạn này.
 **Căn cứ**: `docs/product/prd.md` v1.0, `docs/product/plan.md` v1.0, `.claude/docs/data-model.md`
 
 ---
@@ -804,6 +804,25 @@ Permission mới `stock_receipt.create/read/approve` — `clinic_admin` đủ c�
 
 Permission mới `stock_transfer.create/read/approve` — `clinic_admin` đủ cả 3; `doctor`/`nurse` chỉ `read`; `receptionist` không có (cùng mẫu `stock_receipt`/`stock_count`).
 
+### 3.10 Công nợ nhà cung cấp — Phần A "Nền sổ công nợ" (`docs/DECISIONS.md` #180/#182/#183)
+
+**Đã hiện thực (v1.55, 24/09/2026)** — mở rộng tiếp của Kho Thuốc GĐ2/GĐ3 (mục 3.8), theo dõi công nợ phòng khám ↔ NCC phát sinh từ Phiếu nhập kho `receiptType='PURCHASE'` đã Duyệt. Migration `20260924100000_supplier_debt_phase_a` (viết tay, đã áp thật lên Postgres dev). Lộ trình 5 phần đã chốt: **Phần A — Nền sổ công nợ (xong)** → Phần B — Thanh toán trên TỔNG nợ (chưa xây) → Phần C — Trả hàng NCC (chưa xây) → Phần D — Luồng xử lý sai sót: Huỷ/Điều chỉnh/Đề nghị huỷ (chưa xây, bảng `supplier_debt_adjustment` **CHƯA tạo** ở Phần A) → Phần E — Đối chiếu & chốt công nợ theo kỳ (chưa có mockup).
+
+| Bảng | Vai trò | Cột đáng chú ý |
+|---|---|---|
+| `supplier_debt_account` | 1 dòng/NCC, số dư SNAPSHOT | `supplier_id` (composite FK → `supplier`, `@@unique([tenantId, supplierId])` — đúng 1 tài khoản/NCC). `balance` (`bigint`, dương = phòng khám còn nợ NCC, âm = NCC đang nợ lại — cho phép âm, Q8 kế hoạch kỹ thuật) |
+| `supplier_debt_entry` | Sổ công nợ, append-only — NGUỒN SỰ THẬT | Đủ 8 cột bắt buộc (cùng khuôn `stock_ledger`/`wallet_transaction`). `entry_type` enum `SupplierDebtEntryType` (8 giá trị: `OPENING_BALANCE`/`PURCHASE`/`PAYMENT`/`RETURN`/`REFUND_RECEIVED`/`ADJUSTMENT_INCREASE`/`ADJUSTMENT_DECREASE`/`REVERSAL` — Phần A chỉ có đường ghi thật cho 3 giá trị đầu, còn lại khai sẵn cho Phần C/D). `amount_change` có dấu (`bigint`), `balance_after` snapshot SAU dòng này (tính theo thứ tự GHI SỔ, không theo `occurred_at` — đúng nguyên tắc Sổ quỹ #125). `stock_receipt_id`/`cash_voucher_id` (composite FK, nullable — trỏ đúng 1 nguồn phát sinh). `reversal_of_id` (tự tham chiếu, nullable, UNIQUE partial — 1 bút toán chỉ đảo được 1 lần, dùng cho Huỷ chứng từ ở Phần D) |
+
+**Phân bổ FIFO tính LÚC ĐỌC** bằng hàm thuần `allocateSupplierDebt()` (`packages/core/src/supplier-debt/`) — KHÔNG lưu bảng phân bổ riêng, đúng khuôn "tính lại từ sổ append-only" thay vì lưu kết quả trung gian.
+
+`stock_receipt` thêm 4 cột "Trả ngay" (chỉ có ý nghĩa với `receiptType='PURCHASE'`): `prepaid_amount` (bigint, mặc định 0), `prepaid_payment_method_code` (text, nullable — mã `PAYMENT_METHOD`), `prepaid_cash_account_id` (UUID, nullable, composite FK → `cash_account`), `prepaid_voucher_id` (UUID, nullable, composite FK → `cash_voucher` — CHỈ có giá trị SAU khi phiếu đã Duyệt kèm `prepaidAmount > 0`, phiếu chi sinh LÚC DUYỆT, không phải lúc khai Nháp). `cash_voucher` thêm 1 cột `supplier_id` (UUID, nullable, composite FK → `supplier`) — lọc "Phiếu thanh toán NCC" (Phần B) khỏi phiếu thu/chi thường, dùng chung cho cả "Trả ngay" lẫn Thanh toán công nợ sau này.
+
+**Hook xuyên module trong CÙNG transaction** (không qua port, đúng tiền lệ `reception`/`encounter`/`appointment` #042): `StockReceiptService.approve()` → `SupplierDebtService.recordPurchaseApproval()` (ghi `PURCHASE` đúng `netAmount` sau chiết khấu + tạo `cash_voucher` "Trả ngay" nếu có); `CashVoucherService.approve()`/`voidVoucher()` → `recordVoucherPosted()`/`reverseVoucherPayment()` khi voucher có `supplierId`. `SupplierDebtModule` phụ thuộc `DrugModule`/`CashierShiftModule`/`CashBookModule` qua `forwardRef()` (chuỗi require dài `Encounter→Billing→CashierShift→CashBook→SupplierDebt→Drug→Inventory` — bắt buộc bọc `forwardRef()` ở cả `inventory.module.ts` lẫn `supplier-debt.module.ts`, không được gỡ).
+
+5 permission mới `supplier_debt.read/pay/adjust/approve/unlock` — CHỈ `clinic_admin=global` lúc ra mắt (Q4 #182), vai trò khác chưa được cấp gì.
+
+Trang web `/suppliers/:id` (chi tiết NCC — header + `StatCardRow` 3 số liệu + banner "chờ duyệt" + 2 tab "Phiếu nhập"/"Sổ công nợ" + dialog "Khai nợ đầu kỳ"), `StockReceiptFormPage.tsx` thêm khối "Thanh toán" (`BoxedSection`, đúng mockup màn 5 `https://claude.ai/artifact/WvZtCgwbdEKAb9LcCzyCfh`) cạnh khối "Chiết khấu" có sẵn. `SupplierPane.tsx` thêm cột "Tổng mua"/"Còn nợ" + nút "Xem".
+
 ---
 
 ## 4. Ràng buộc ở tầng cơ sở dữ liệu
@@ -892,6 +911,7 @@ Khớp với `docs/product/plan.md`.
 | Ngoài kế hoạch, sau S5-S6 (2026-09-03) | `cashier_shift` (BIL-05, "Chốt ca" — đối soát tiền mặt/két, `docs/DECISIONS.md` #112), xem mục 3.6 |
 | Ngoài kế hoạch, sau S5-S6 (2026-09-05) | `cash_account`, `cash_voucher` (Sổ quỹ & Thu chi GĐ1 — "Thu chi tại quầy", `docs/DECISIONS.md` #121/#122), xem mục 3.6 |
 | Ngoài kế hoạch, sau S5-S6 (2026-09-15) | `drug_unit`, `drug_ingredient`, `supplier`, `warehouse` (Kho Thuốc & Vật tư y tế GĐ1, mở rộng `drug` sẵn có — `docs/DECISIONS.md` #146/#148), xem mục 3.7 |
+| Ngoài kế hoạch, sau S5-S6 (2026-09-24) | `supplier_debt_account`, `supplier_debt_entry` (Công nợ nhà cung cấp Phần A, mở rộng tiếp Kho Thuốc GĐ2/GĐ3 — `docs/DECISIONS.md` #180/#182/#183), xem mục 3.10 |
 
 Khuyến nghị: tạo đủ 8 cột bắt buộc **ngay từ migration đầu tiên của mỗi bảng**, kể cả khi tính năng dùng tới chúng ở sprint sau. Thêm cột vào bảng đã có dữ liệu thật tốn hơn nhiều.
 
@@ -984,3 +1004,4 @@ Khi thêm, các bảng này vẫn phải đủ 8 cột bắt buộc và tuân th
 | v1.52 | 17/09/2026 | Kho Thuốc & Vật tư y tế Giai đoạn 2 — Nhập kho & tồn theo lô (`docs/DECISIONS.md` #159, mockup + kế hoạch kỹ thuật duyệt phiên trước, code đầu phiên này). 5 bảng MỚI: `stock_receipt`/`stock_receipt_line`/`inventory_batch`/`stock_ledger`/`stock_balance` (migration `20260917090000_pharmacy_inventory_gd2`, thêm C29/C30/C31). `drug` thêm 2 cột `last_purchase_unit_cost`/`last_purchase_at` (cache giá nhập gần nhất). Permission mới `stock_receipt.create/read/approve`. Xem mục 3.8. |
 | v1.53 | 22/09/2026 | Kho Thuốc & Vật tư y tế Giai đoạn 4, phần "Điều chuyển kho" (`docs/DECISIONS.md` #170, mockup Artifact duyệt trong phiên, kế hoạch kỹ thuật `bright-bubbling-axolotl.md`). 2 bảng MỚI: `stock_transfer`/`stock_transfer_line` (migration `20260922130000_stock_transfer_ge4`, thêm C32/C33/C34). `stock_receipt`/`stock_issue` thêm cột `transfer_id` (trỏ ngược, cùng bản chất `count_id`). 1 luồng 2 bước (Duyệt xuất → Xác nhận nhận hàng) tự sinh cặp `stock_issue` `TRANSFER_OUT`/`stock_receipt` `TRANSFER_IN`. Phân quyền theo Khoa/Phòng kiểm ĐÚNG kho của từng bước (kiến trúc mục 0 #170, dùng chung `stock_transfer.approve`). Permission mới `stock_transfer.create/read/approve`. Xem mục 3.9. |
 | v1.54 | 23/09/2026 | Kho Thuốc & Vật tư y tế Giai đoạn 4, phần 3/4/5 (Xuất kho mở rộng/Nhập kho mở rộng-Chiết khấu/Báo cáo Nhập-Xuất-Tồn) — **GĐ4 hoàn tất 100% (`docs/DECISIONS.md` #179)**. Không bảng mới. `stock_issue` thêm `approved_by`/`approved_at`/`rejection_reason`/`department_id` (FK `department`) + enum `stock_issue_status` thêm `DRAFT`/`REJECTED` (2 migration tách riêng: `20260923100000_stock_issue_status_draft_rejected` rồi `20260923110000_stock_issue_receipt_gd4_extend`, đúng tiền lệ #091/#114 tách transaction khi thêm giá trị enum mới). `stock_receipt` thêm `discount_type`/`discount_value`/`discount_reason`; `stock_receipt_line` thêm `discount_type`/`discount_value` (dùng lại enum `invoice_discount_type` có sẵn từ Thu ngân #137, không tạo enum mới) — chỉ có ý nghĩa khi `receipt_type='PURCHASE'`, 2 mode Toàn phiếu/Từng dòng loại trừ nhau (validate Zod, không CHECK DB). Permission mới `stock_receipt.report`/`stock_issue.approve`. Xem mục 3.7/3.8 (ghi chú nợ tài liệu). |
+| v1.55 | 24/09/2026 | Công nợ nhà cung cấp — Phần A "Nền sổ công nợ" (`docs/DECISIONS.md` #180/#182/#183, mở rộng phạm vi v1, kế hoạch kỹ thuật `supplier-debt-cong-no-ncc.md`). 2 bảng MỚI: `supplier_debt_account` (số dư snapshot/NCC)/`supplier_debt_entry` (sổ append-only, migration `20260924100000_supplier_debt_phase_a`). `stock_receipt` thêm 4 cột "Trả ngay": `prepaid_amount`/`prepaid_payment_method_code`/`prepaid_cash_account_id`/`prepaid_voucher_id`. `cash_voucher` thêm 1 cột `supplier_id`. Phân bổ FIFO tính lúc đọc (`allocateSupplierDebt()`, `packages/core`), không lưu bảng phân bổ riêng. Hook ghi sổ trong CÙNG transaction lúc `StockReceiptService.approve()`/`CashVoucherService.approve()`/`voidVoucher()`. 5 permission mới `supplier_debt.read/pay/adjust/approve/unlock` (CHỈ `clinic_admin`). Xem mục 3.10. |

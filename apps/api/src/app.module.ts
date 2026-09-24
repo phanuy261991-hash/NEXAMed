@@ -26,6 +26,7 @@ import { CashierShiftModule } from './modules/cashier-shift/cashier-shift.module
 import { CashBookModule } from './modules/cash-book/cash-book.module';
 import { CashBookReportModule } from './modules/cash-book/cash-book-report.module';
 import { PatientWalletModule } from './modules/patient-wallet/patient-wallet.module';
+import { SupplierDebtModule } from './modules/supplier-debt/supplier-debt.module';
 import { HealthModule } from './modules/health/health.module';
 import { BackupStatusModule } from './modules/backup-status/backup-status.module';
 import { TenantContextMiddleware } from './common/tenant-context.middleware';
@@ -59,6 +60,7 @@ import { TenantContextMiddleware } from './common/tenant-context.middleware';
     CashBookModule,
     CashBookReportModule,
     PatientWalletModule,
+    SupplierDebtModule,
     HealthModule,
     BackupStatusModule,
   ],

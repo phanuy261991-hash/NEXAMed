@@ -49216,6 +49216,15 @@
             "required": false,
             "name": "q",
             "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "supplierId",
+            "in": "query"
           }
         ],
         "responses": {
@@ -49319,6 +49328,29 @@
                                   "null"
                                 ]
                               },
+                              "prepaidAmount": {
+                                "type": "integer"
+                              },
+                              "prepaidPaymentMethodCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "prepaidCashAccountId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "prepaidVoucherId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
                               "lineCount": {
                                 "type": "integer"
                               },
@@ -49366,6 +49398,10 @@
                               "discountType",
                               "discountValue",
                               "discountReason",
+                              "prepaidAmount",
+                              "prepaidPaymentMethodCode",
+                              "prepaidCashAccountId",
+                              "prepaidVoucherId",
                               "lineCount",
                               "createdByName",
                               "approvedByName",
@@ -49537,6 +49573,24 @@
                       "null"
                     ]
                   },
+                  "prepaidAmount": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "prepaidPaymentMethodCode": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1
+                  },
+                  "prepaidCashAccountId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "uuid"
+                  },
                   "lines": {
                     "type": "array",
                     "items": {
@@ -49705,6 +49759,29 @@
                             "null"
                           ]
                         },
+                        "prepaidAmount": {
+                          "type": "integer"
+                        },
+                        "prepaidPaymentMethodCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "prepaidCashAccountId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "prepaidVoucherId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
                         "lineCount": {
                           "type": "integer"
                         },
@@ -49846,6 +49923,10 @@
                         "discountType",
                         "discountValue",
                         "discountReason",
+                        "prepaidAmount",
+                        "prepaidPaymentMethodCode",
+                        "prepaidCashAccountId",
+                        "prepaidVoucherId",
                         "lineCount",
                         "createdByName",
                         "approvedByName",
@@ -50117,6 +50198,29 @@
                             "null"
                           ]
                         },
+                        "prepaidAmount": {
+                          "type": "integer"
+                        },
+                        "prepaidPaymentMethodCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "prepaidCashAccountId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "prepaidVoucherId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
                         "lineCount": {
                           "type": "integer"
                         },
@@ -50258,6 +50362,10 @@
                         "discountType",
                         "discountValue",
                         "discountReason",
+                        "prepaidAmount",
+                        "prepaidPaymentMethodCode",
+                        "prepaidCashAccountId",
+                        "prepaidVoucherId",
                         "lineCount",
                         "createdByName",
                         "approvedByName",
@@ -50462,6 +50570,24 @@
                       "null"
                     ]
                   },
+                  "prepaidAmount": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "prepaidPaymentMethodCode": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1
+                  },
+                  "prepaidCashAccountId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "uuid"
+                  },
                   "lines": {
                     "type": "array",
                     "items": {
@@ -50634,6 +50760,29 @@
                             "null"
                           ]
                         },
+                        "prepaidAmount": {
+                          "type": "integer"
+                        },
+                        "prepaidPaymentMethodCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "prepaidCashAccountId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "prepaidVoucherId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
                         "lineCount": {
                           "type": "integer"
                         },
@@ -50775,6 +50924,10 @@
                         "discountType",
                         "discountValue",
                         "discountReason",
+                        "prepaidAmount",
+                        "prepaidPaymentMethodCode",
+                        "prepaidCashAccountId",
+                        "prepaidVoucherId",
                         "lineCount",
                         "createdByName",
                         "approvedByName",
@@ -51063,6 +51216,29 @@
                             "null"
                           ]
                         },
+                        "prepaidAmount": {
+                          "type": "integer"
+                        },
+                        "prepaidPaymentMethodCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "prepaidCashAccountId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "prepaidVoucherId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
                         "lineCount": {
                           "type": "integer"
                         },
@@ -51204,6 +51380,10 @@
                         "discountType",
                         "discountValue",
                         "discountReason",
+                        "prepaidAmount",
+                        "prepaidPaymentMethodCode",
+                        "prepaidCashAccountId",
+                        "prepaidVoucherId",
                         "lineCount",
                         "createdByName",
                         "approvedByName",
@@ -51497,6 +51677,29 @@
                             "null"
                           ]
                         },
+                        "prepaidAmount": {
+                          "type": "integer"
+                        },
+                        "prepaidPaymentMethodCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "prepaidCashAccountId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "prepaidVoucherId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
                         "lineCount": {
                           "type": "integer"
                         },
@@ -51638,6 +51841,10 @@
                         "discountType",
                         "discountValue",
                         "discountReason",
+                        "prepaidAmount",
+                        "prepaidPaymentMethodCode",
+                        "prepaidCashAccountId",
+                        "prepaidVoucherId",
                         "lineCount",
                         "createdByName",
                         "approvedByName",
@@ -51931,6 +52138,29 @@
                             "null"
                           ]
                         },
+                        "prepaidAmount": {
+                          "type": "integer"
+                        },
+                        "prepaidPaymentMethodCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "prepaidCashAccountId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "prepaidVoucherId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
                         "lineCount": {
                           "type": "integer"
                         },
@@ -52072,6 +52302,10 @@
                         "discountType",
                         "discountValue",
                         "discountReason",
+                        "prepaidAmount",
+                        "prepaidPaymentMethodCode",
+                        "prepaidCashAccountId",
+                        "prepaidVoucherId",
                         "lineCount",
                         "createdByName",
                         "approvedByName",
@@ -62009,6 +62243,1050 @@
           },
           "403": {
             "description": "Không có quyền stock_receipt.report",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/supplier-debt/summaries": {
+      "get": {
+        "tags": [
+          "supplier-debt"
+        ],
+        "summary": "Tổng hợp công nợ MỌI nhà cung cấp — cột \"Còn nợ\" ở trang Nhà cung cấp + trang Công nợ nhà cung cấp",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "required": false,
+            "name": "includeInactive",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "supplierId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "openingBalanceAmount": {
+                                "type": "integer"
+                              },
+                              "totalPurchase": {
+                                "type": "integer"
+                              },
+                              "totalPaid": {
+                                "type": "integer"
+                              },
+                              "totalReturnAndAdjustment": {
+                                "type": "integer"
+                              },
+                              "balance": {
+                                "type": "integer"
+                              },
+                              "pendingApprovalAmount": {
+                                "type": "integer"
+                              },
+                              "canRecordOpeningBalance": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "supplierId",
+                              "openingBalanceAmount",
+                              "totalPurchase",
+                              "totalPaid",
+                              "totalReturnAndAdjustment",
+                              "balance",
+                              "pendingApprovalAmount",
+                              "canRecordOpeningBalance"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền supplier_debt.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/supplier-debt/{supplierId}/summary": {
+      "get": {
+        "tags": [
+          "supplier-debt"
+        ],
+        "summary": "Dải metric đầu trang chi tiết NCC — Tổng tiền hàng/Đã thanh toán/Còn nợ/Chờ duyệt",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "supplierId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "supplierId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "openingBalanceAmount": {
+                          "type": "integer"
+                        },
+                        "totalPurchase": {
+                          "type": "integer"
+                        },
+                        "totalPaid": {
+                          "type": "integer"
+                        },
+                        "totalReturnAndAdjustment": {
+                          "type": "integer"
+                        },
+                        "balance": {
+                          "type": "integer"
+                        },
+                        "pendingApprovalAmount": {
+                          "type": "integer"
+                        },
+                        "canRecordOpeningBalance": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "supplierId",
+                        "openingBalanceAmount",
+                        "totalPurchase",
+                        "totalPaid",
+                        "totalReturnAndAdjustment",
+                        "balance",
+                        "pendingApprovalAmount",
+                        "canRecordOpeningBalance"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền supplier_debt.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy nhà cung cấp",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/supplier-debt/{supplierId}/ledger": {
+      "get": {
+        "tags": [
+          "supplier-debt"
+        ],
+        "summary": "Tab \"Sổ công nợ\" — mọi bút toán, cũ→mới, lọc tuỳ chọn theo khoảng ngày phát sinh",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "supplierId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": false,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": false,
+            "name": "to",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "entryType": {
+                                "type": "string",
+                                "enum": [
+                                  "OPENING_BALANCE",
+                                  "PURCHASE",
+                                  "PAYMENT",
+                                  "RETURN",
+                                  "REFUND_RECEIVED",
+                                  "ADJUSTMENT_INCREASE",
+                                  "ADJUSTMENT_DECREASE",
+                                  "REVERSAL"
+                                ]
+                              },
+                              "amountChange": {
+                                "type": "integer"
+                              },
+                              "balanceAfter": {
+                                "type": "integer"
+                              },
+                              "occurredAt": {
+                                "type": "string"
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "stockReceiptId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "stockReceiptNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "cashVoucherId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "cashVoucherNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "reversalOfId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "reversed": {
+                                "type": "boolean"
+                              },
+                              "note": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdByName": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "entryType",
+                              "amountChange",
+                              "balanceAfter",
+                              "occurredAt",
+                              "createdAt",
+                              "stockReceiptId",
+                              "stockReceiptNo",
+                              "cashVoucherId",
+                              "cashVoucherNo",
+                              "reversalOfId",
+                              "reversed",
+                              "note",
+                              "createdByName"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền supplier_debt.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy nhà cung cấp",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/supplier-debt/{supplierId}/receipts": {
+      "get": {
+        "tags": [
+          "supplier-debt"
+        ],
+        "summary": "Tab \"Phiếu nhập\" — trạng thái đã trả/còn nợ từng khoản (PURCHASE/Nợ đầu kỳ), tính bằng allocateSupplierDebt()",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "supplierId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "stockReceiptId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "isOpeningBalance": {
+                                "type": "boolean"
+                              },
+                              "originalAmount": {
+                                "type": "integer"
+                              },
+                              "paidAmount": {
+                                "type": "integer"
+                              },
+                              "dueAmount": {
+                                "type": "integer"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "UNPAID",
+                                  "PARTIALLY_PAID",
+                                  "FULLY_PAID"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "stockReceiptId",
+                              "isOpeningBalance",
+                              "originalAmount",
+                              "paidAmount",
+                              "dueAmount",
+                              "status"
+                            ]
+                          }
+                        },
+                        "totalOriginalAmount": {
+                          "type": "integer"
+                        },
+                        "totalPaidAmount": {
+                          "type": "integer"
+                        },
+                        "totalDueAmount": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "totalOriginalAmount",
+                        "totalPaidAmount",
+                        "totalDueAmount"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền supplier_debt.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy nhà cung cấp",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/supplier-debt/{supplierId}/opening-balance": {
+      "post": {
+        "tags": [
+          "supplier-debt"
+        ],
+        "summary": "Khai nợ đầu kỳ — chỉ 1 lần, chỉ khi NCC CHƯA có bút toán nào (Q7)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "supplierId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "integer"
+                  },
+                  "occurredAt": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "note": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "amount",
+                  "occurredAt"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "supplierId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "openingBalanceAmount": {
+                          "type": "integer"
+                        },
+                        "totalPurchase": {
+                          "type": "integer"
+                        },
+                        "totalPaid": {
+                          "type": "integer"
+                        },
+                        "totalReturnAndAdjustment": {
+                          "type": "integer"
+                        },
+                        "balance": {
+                          "type": "integer"
+                        },
+                        "pendingApprovalAmount": {
+                          "type": "integer"
+                        },
+                        "canRecordOpeningBalance": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "supplierId",
+                        "openingBalanceAmount",
+                        "totalPurchase",
+                        "totalPaid",
+                        "totalReturnAndAdjustment",
+                        "balance",
+                        "pendingApprovalAmount",
+                        "canRecordOpeningBalance"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền supplier_debt.pay",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy nhà cung cấp",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "NCC đã có bút toán rồi (SUPPLIER_DEBT_OPENING_BALANCE_ALREADY_EXISTS)",
             "content": {
               "application/json": {
                 "schema": {

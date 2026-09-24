@@ -16,3 +16,4 @@ export * from './cashier-shift-errors';
 export * from './cash-book-errors';
 export * from './patient-wallet-errors';
 export * from './inventory-errors';
+export * from './supplier-debt-errors';

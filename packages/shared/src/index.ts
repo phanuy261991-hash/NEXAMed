@@ -30,3 +30,4 @@ export * from './audit/action-labels';
 export * from './audit/entity-type-labels';
 export * from './backup-status';
 export * from './inventory';
+export * from './supplier-debt';

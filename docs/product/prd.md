@@ -20,7 +20,7 @@ Hệ thống thay thế sổ giấy và file Excel bằng bệnh án điện t�
 | Team | 3-5 developer |
 | Timeline đề xuất | Pilot tuần 8, GA tuần 12 (xem mục 7 về rủi ro timeline) |
 
-**Ngoài phạm vi v1**: viện phí đầy đủ (bảng giá đa đối tượng, công nợ/trả góp), tích hợp BHYT và cổng giám định, báo cáo doanh thu theo kỳ, ứng dụng cho bệnh nhân, chữ ký số theo chuẩn CA. (**Dược/kho** đảo ngược vào v1 — chốt 2026-09-15, xem mục 4.8.)
+**Ngoài phạm vi v1**: viện phí đầy đủ (bảng giá đa đối tượng, công nợ/trả góp tiền BỆNH NHÂN), tích hợp BHYT và cổng giám định, báo cáo doanh thu theo kỳ, ứng dụng cho bệnh nhân, chữ ký số theo chuẩn CA. (**Dược/kho** đảo ngược vào v1 — chốt 2026-09-15, xem mục 4.8. **Công nợ nhà cung cấp** — khác công nợ bệnh nhân, mở rộng vào v1 — chốt 2026-09-24, xem mục 4.9.)
 
 ---
 
@@ -205,6 +205,23 @@ Phạm vi giới hạn ở **thu ngân mức 1** (một phiếu thu cho một l�
 
 **Vẫn ngoài v1**: bảng giá thuốc đa đối tượng, công nợ/trả góp tiền thuốc, tích hợp cổng Đơn thuốc quốc gia thật (chặn bởi chữ ký số CA thật chưa có + đăng ký mã liên thông thủ công với đơn vị vận hành cổng — đã chuẩn bị port rỗng `EPrescriptionGatewayPort`, `docs/DECISIONS.md` #147).
 
+### 4.9 Công nợ nhà cung cấp (mở rộng phạm vi v1, chốt 2026-09-24 — `docs/DECISIONS.md` #180/#182)
+
+> *Là phòng khám nhập hàng trả chậm, tôi muốn biết đang nợ nhà cung cấp nào bao nhiêu, đã trả bao nhiêu, còn lại bao nhiêu — để không phải ghi sổ nợ NCC song song ngoài phần mềm.*
+
+Mở rộng tiếp của Kho Thuốc GĐ2/GĐ3 (mục 4.8) — mỗi Phiếu nhập kho loại "Nhập nhà cung cấp" (`PURCHASE`) đã Duyệt phát sinh công nợ NCC, tự tính vào Sổ công nợ append-only. **Không phải "công nợ bệnh nhân"** (vẫn ngoài v1, xem mục 7) — hai khái niệm tách biệt hoàn toàn.
+
+| ID | Yêu cầu | Ưu tiên |
+|---|---|---|
+| SUP-01 | Sổ công nợ NCC append-only, ghi PURCHASE lúc Duyệt phiếu nhập (đúng tiền sau chiết khấu), Khai nợ đầu kỳ (1 lần/NCC, cho phép số âm — NCC nợ lại), phân bổ FIFO tính lúc đọc | P1 (Phần A, **đã xây xong 24/09/2026**) |
+| SUP-02 | "Trả ngay" cho NCC ngay trên Phiếu nhập kho (một phần/toàn bộ/không trả), tự sinh phiếu chi vào Sổ quỹ | P1 (Phần A, **đã xây xong**) |
+| SUP-03 | Thanh toán công nợ trên TỔNG nợ (không cần chọn từng phiếu nhập), trang "Công nợ nhà cung cấp" (tổng hợp mọi NCC) + "Phiếu thanh toán NCC" (lịch sử) | P1 (Phần B, chưa xây) |
+| SUP-04 | Trả hàng NCC — dùng lại "Phiếu xuất kho mở rộng" (GĐ4), gắn NCC + trừ công nợ đúng phiếu nhập gốc (nếu chọn) | P2 (Phần C, chưa xây) |
+| SUP-05 | Luồng xử lý sai sót: Huỷ chứng từ (còn đủ tồn để đảo)/Phiếu điều chỉnh công nợ (hàng đã dùng một phần)/Đề nghị huỷ (không có quyền duyệt) — không có nút "Sửa" trên chứng từ đã duyệt | P1 (Phần D, chưa xây) |
+| SUP-06 | Đối chiếu & chốt công nợ theo kỳ — đúng khuôn "Khoá bảng ca" (mục 4.6) | P2 (Phần E, chưa có mockup) |
+
+**Vẫn ngoài v1**: công nợ/trả góp tiền BỆNH NHÂN theo lộ trình điều trị (ngoài phạm vi, xem mục 7), báo cáo doanh thu-lãi lỗ (khác Sổ công nợ NCC — chỉ theo dõi số dư, không tính lãi/lỗ).
+
 ---
 
 ## 5. Success Metrics
@@ -345,7 +362,7 @@ Các câu hỏi cần trả lời, kèm hạn chót vì chúng ảnh hưởng t�
 
 | Phase | Nội dung | Điều kiện bắt đầu |
 |---|---|---|
-| v1 | Đặt lịch, tiếp nhận, khám bệnh, kê đơn in, **thu ngân cơ bản** (BIL-01→04, Sprint 5/6 — `docs/DECISIONS.md` #072), **gộp hồ sơ trùng** (PAT-04, S5-06), **xuất PDF bệnh án** (ADM-05, S6-06 — Sprint 6, trước GA, theo `docs/product/plan.md` mục 9), và **Kho Thuốc & Vật tư y tế** (INV-01→05, mục 4.8 — GĐ1 Danh mục nền đã xong 15/09/2026, GĐ2-5 chưa xây, `docs/DECISIONS.md` #146) | Đang thực hiện |
+| v1 | Đặt lịch, tiếp nhận, khám bệnh, kê đơn in, **thu ngân cơ bản** (BIL-01→04, Sprint 5/6 — `docs/DECISIONS.md` #072), **gộp hồ sơ trùng** (PAT-04, S5-06), **xuất PDF bệnh án** (ADM-05, S6-06 — Sprint 6, trước GA, theo `docs/product/plan.md` mục 9), **Kho Thuốc & Vật tư y tế** (INV-01→05, mục 4.8 — GĐ1→4 đã xong 23/09/2026, GĐ5 chưa xây, `docs/DECISIONS.md` #146), và **Công nợ nhà cung cấp** (SUP-01→06, mục 4.9 — Phần A đã xong 24/09/2026, Phần B→E chưa xây, `docs/DECISIONS.md` #180) | Đang thực hiện |
 | v1.1 | Nhắc lịch SMS/Zalo | Sau GA v1, pilot ổn định 4 tuần |
 | **v1.5** | **Gói chuyên khoa: Nhi khoa (trước) → Sản phụ khoa (sau)** — cam kết với 2 khách hàng thật đã có (`docs/DECISIONS.md` #070/#071). Viết cụ thể từng gói trên kernel hiện có, không dựng khung "Specialty Pack" trước; gating gói (`tenant.enabled_specialties`) làm cùng gói đầu tiên | Sau GA v1. Mỗi gói cần bác sĩ chuyên khoa tương ứng thẩm định mẫu bệnh án + luồng dữ liệu (đã xong cho cả 2) |
 | v2 | Viện phí đầy đủ (bảng giá đa đối tượng, công nợ/trả góp theo lộ trình), báo cáo doanh thu | Sau v1.1, có ít nhất 3 khách hàng đang dùng |
@@ -384,3 +401,4 @@ Các câu hỏi cần trả lời, kèm hạn chót vì chúng ảnh hưởng t�
 | v1.2 | 22/08/2026 | **Mở rộng phạm vi v1**: thêm mục 4.7 "Thu ngân cơ bản" (BIL-01→04, P0, làm ở Sprint 5/6) — trước đây xếp v2, chuyển vào v1 vì là điều kiện bắt buộc để đạt mốc GA "pilot ngừng dùng sổ giấy hoàn toàn". Thêm phase **v1.5 — Gói chuyên khoa** (Nhi khoa → Sản phụ khoa) vào Appendix A cho 2 khách hàng thật đã có. Xem `docs/DECISIONS.md` #069→#072 |
 | v1.3 | 03/09/2026 | Thêm BIL-05 "Chốt ca" (đối soát tiền mặt/két theo ca làm việc, P1, ngoài kế hoạch — chủ dự án yêu cầu sau khi thu ngân cơ bản chạy pilot). Xem `docs/DECISIONS.md` #112 |
 | v1.4 | 16/09/2026 | Thêm mục 4.8 "Kho Thuốc & Vật tư y tế" (INV-01→05, mở rộng phạm vi v1 — đảo ngược quyết định Sprint 4, `docs/DECISIONS.md` #146). Giai đoạn 1 (Danh mục nền, #148) đã xong; rà soát bổ sung theo tài liệu quy chuẩn quản lý VTYT (#151) — phân loại kiểm soát đặc biệt/Rx-OTC, 8 trường Thuốc, danh mục hoá 5 trường có "thêm nhanh". |
+| v1.5 | 24/09/2026 | Thêm mục 4.9 "Công nợ nhà cung cấp" (SUP-01→06, mở rộng phạm vi v1 — mở rộng tiếp của Kho Thuốc GĐ2/GĐ3, `docs/DECISIONS.md` #180/#182). Phần A (Nền sổ công nợ, #183) đã xong; Phần B→E chưa xây. Làm rõ "công nợ NCC" (đã vào v1) khác "công nợ bệnh nhân" (vẫn ngoài v1). |

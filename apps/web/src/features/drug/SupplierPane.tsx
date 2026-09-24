@@ -1,8 +1,9 @@
 import { useRef, useState } from 'react';
-import { ArrowCounterClockwise, PencilSimple, Plus, Prohibit, Truck } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, Eye, PencilSimple, Plus, Prohibit, Truck } from '@phosphor-icons/react';
+import { useNavigate } from 'react-router-dom';
 import type { SupplierSummary } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
-import { useHasAnyPermission } from '../auth/usePermission';
+import { useHasAnyPermission, useHasPermission } from '../auth/usePermission';
 import { DRUG_MANAGE_PERMISSIONS } from '../auth/admin-permissions';
 import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
@@ -16,6 +17,8 @@ import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
 import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
 import { useRowSelection } from '../../shared/hooks/useRowSelection';
 import { useSaveFlash } from '../../shared/hooks/useSaveFlash';
+import { formatVnd } from '../../shared/format/currency';
+import { useSupplierDebtSummariesQuery } from '../supplier-debt/supplier-debt.queries';
 import { useCreateSupplierMutation, useSuppliersQuery, useUpdateSupplierMutation } from './supplier.queries';
 
 const inputClassName =
@@ -31,12 +34,18 @@ interface ModalState {
  * Vật Tư"). Mã tự sinh (tiền tố NCC) — không có ô nhập mã, đúng khuôn `WorkShiftPane`. */
 export function SupplierPane() {
   const canManage = useHasAnyPermission(DRUG_MANAGE_PERMISSIONS);
+  // "Công nợ nhà cung cấp" Phần A (docs/DECISIONS.md #180/#182) — cột "Tổng mua"/"Còn nợ" + nút
+  // "Xem" CHỈ hiện cho ai có supplier_debt.read (mặc định chỉ clinic_admin lúc ra mắt).
+  const canReadDebt = useHasPermission('supplier_debt', 'read');
+  const navigate = useNavigate();
   const [includeInactive, setIncludeInactive] = useState(false);
   const [modal, setModal] = useState<ModalState | null>(null);
   const [deactivateTarget, setDeactivateTarget] = useState<SupplierSummary | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const query = useSuppliersQuery(includeInactive);
+  const debtSummariesQuery = useSupplierDebtSummariesQuery(includeInactive);
+  const debtBySupplierId = new Map((debtSummariesQuery.data?.items ?? []).map((s) => [s.supplierId, s]));
   const createMutation = useCreateSupplierMutation();
   const updateMutation = useUpdateSupplierMutation();
 
@@ -112,12 +121,16 @@ export function SupplierPane() {
                   <th className="w-32 px-4 py-2.5 text-center">Mã số thuế</th>
                   <th className="w-36 px-4 py-2.5 text-center">Điện thoại</th>
                   <th className="w-40 px-4 py-2.5 text-left">Người liên hệ</th>
+                  {canReadDebt && <th className="w-32 px-4 py-2.5 text-center">Tổng mua</th>}
+                  {canReadDebt && <th className="w-32 px-4 py-2.5 text-center">Còn nợ</th>}
                   <th className="w-32 px-4 py-2.5 text-center">Trạng thái</th>
-                  {canManage && <th className="w-20 px-4 py-2.5 text-center">Thao tác</th>}
+                  {(canManage || canReadDebt) && <th className="w-24 px-4 py-2.5 text-center">Thao tác</th>}
                 </tr>
               </thead>
               <tbody>
-                {items.map((supplier) => (
+                {items.map((supplier) => {
+                  const debt = debtBySupplierId.get(supplier.id);
+                  return (
                   <tr key={supplier.id} className={`border-b border-slate-200 last:border-0 ${supplier.isActive ? '' : 'opacity-50'}`}>
                     <td className="px-4 py-2 text-center">
                       <SelectionCheckbox checked={rowSelection.isSelected(supplier.id)} onChange={() => rowSelection.toggle(supplier.id)} ariaLabel={`Chọn ${supplier.name}`} />
@@ -127,23 +140,40 @@ export function SupplierPane() {
                     <td className="px-4 py-2 text-center text-slate-600">{supplier.taxCode ?? '—'}</td>
                     <td className="px-4 py-2 text-center text-slate-600">{supplier.phone ?? '—'}</td>
                     <td className="px-4 py-2 text-left text-slate-600">{supplier.contactName ?? '—'}</td>
+                    {canReadDebt && <td className="px-4 py-2 text-center font-medium text-slate-900">{debt && debt.totalPurchase > 0 ? formatVnd(debt.totalPurchase) : '—'}</td>}
+                    {canReadDebt && (
+                      <td className="px-4 py-2 text-center">
+                        {!debt || debt.balance === 0 ? (
+                          <span className="font-semibold text-emerald-600">{debt ? 'Đã tất toán' : '—'}</span>
+                        ) : debt.balance < 0 ? (
+                          <span className="font-bold text-blue-700">
+                            {formatVnd(Math.abs(debt.balance))} <span className="block text-[11px] font-semibold">NCC nợ lại</span>
+                          </span>
+                        ) : (
+                          <span className="font-bold text-slate-900">{formatVnd(debt.balance)}</span>
+                        )}
+                      </td>
+                    )}
                     <td className="px-4 py-2 text-center">
                       <StatusBadge tone={supplier.isActive ? 'success' : 'neutral'}>{supplier.isActive ? 'Đang dùng' : 'Ngưng'}</StatusBadge>
                     </td>
-                    {canManage && (
+                    {(canManage || canReadDebt) && (
                       <td className="px-4 py-2 text-center">
                         <div className="flex flex-nowrap items-center justify-center gap-1.5">
-                          <RowActionButton icon={PencilSimple} label="Sửa" tone="primary" onClick={() => setModal({ mode: 'edit', item: supplier })} />
-                          {supplier.isActive ? (
-                            <RowActionButton icon={Prohibit} label="Ngưng sử dụng" tone="danger" onClick={() => setDeactivateTarget(supplier)} />
-                          ) : (
-                            <RowActionButton icon={ArrowCounterClockwise} label="Kích hoạt lại" tone="primary" onClick={() => handleReactivate(supplier)} />
-                          )}
+                          {canReadDebt && <RowActionButton icon={Eye} label="Xem" tone="neutral" onClick={() => navigate(`/suppliers/${supplier.id}`)} />}
+                          {canManage && <RowActionButton icon={PencilSimple} label="Sửa" tone="primary" onClick={() => setModal({ mode: 'edit', item: supplier })} />}
+                          {canManage &&
+                            (supplier.isActive ? (
+                              <RowActionButton icon={Prohibit} label="Ngưng sử dụng" tone="danger" onClick={() => setDeactivateTarget(supplier)} />
+                            ) : (
+                              <RowActionButton icon={ArrowCounterClockwise} label="Kích hoạt lại" tone="primary" onClick={() => handleReactivate(supplier)} />
+                            ))}
                         </div>
                       </td>
                     )}
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

@@ -31,6 +31,7 @@ import { BusinessCodeService } from '../clinic/business-code.service';
 import { DrugRepository, type DrugWithDetails } from '../drug/drug.repository';
 import { WarehouseRepository } from '../drug/warehouse.repository';
 import { SupplierRepository } from '../drug/supplier.repository';
+import { SupplierDebtService } from '../supplier-debt/supplier-debt.service';
 import { StockReceiptRepository, type StockReceiptWithLines, type StockReceiptLineData } from './stock-receipt.repository';
 import { InventoryBatchRepository } from './inventory-batch.repository';
 import { StockLedgerRepository } from './stock-ledger.repository';
@@ -70,6 +71,7 @@ export class StockReceiptService {
     private readonly stockLedgerRepository: StockLedgerRepository,
     private readonly stockBalanceRepository: StockBalanceRepository,
     private readonly businessCodeService: BusinessCodeService,
+    private readonly supplierDebtService: SupplierDebtService,
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
   ) {}
 
@@ -105,6 +107,9 @@ export class StockReceiptService {
         discountType: (dto.discountType ?? null) as DiscountType | null,
         discountValue: dto.discountValue != null ? BigInt(dto.discountValue) : null,
         discountReason: dto.discountReason ?? null,
+        prepaidAmount: BigInt(dto.prepaidAmount ?? 0),
+        prepaidPaymentMethodCode: dto.prepaidPaymentMethodCode ?? null,
+        prepaidCashAccountId: dto.prepaidCashAccountId ?? null,
         lines,
         countId: null,
         transferId: null,
@@ -166,6 +171,9 @@ export class StockReceiptService {
         discountType: (dto.discountType ?? null) as DiscountType | null,
         discountValue: dto.discountValue != null ? BigInt(dto.discountValue) : null,
         discountReason: dto.discountReason ?? null,
+        prepaidAmount: BigInt(dto.prepaidAmount ?? 0),
+        prepaidPaymentMethodCode: dto.prepaidPaymentMethodCode ?? null,
+        prepaidCashAccountId: dto.prepaidCashAccountId ?? null,
         lines,
       });
       if (count === 0) throw new ConcurrentModificationError();
@@ -216,6 +224,7 @@ export class StockReceiptService {
         from: query.from ? new Date(`${query.from}T00:00:00+07:00`) : undefined,
         to: query.to ? new Date(`${query.to}T23:59:59.999+07:00`) : undefined,
         q: query.q,
+        supplierId: query.supplierId,
         cursor: query.cursor,
         take: query.limit + 1,
         departmentId: dataScope === 'department' ? (actorDepartmentId ?? undefined) : undefined,
@@ -246,7 +255,35 @@ export class StockReceiptService {
       const existingWarehouse = await this.warehouseRepository.findById(tx, tenantId, existing.warehouseId);
       assertWarehouseInScope(existingWarehouse?.departmentId ?? null, dataScope, actorDepartmentId);
 
-      const count = await this.stockReceiptRepository.approve(tx, tenantId, id, dto.version, actorId);
+      // "Công nợ nhà cung cấp" (docs/DECISIONS.md #180/#182) — ghi PURCHASE + xử lý "Trả ngay" TRƯỚC
+      // khi chuyển phiếu sang POSTED, để `prepaidVoucherId` (nếu có) gắn được ngay trong CÙNG lệnh
+      // `updateMany` bên dưới (tránh 1 lệnh UPDATE riêng chỉ để gắn cột này).
+      let prepaidVoucherId: string | undefined;
+      if (existing.receiptType === 'PURCHASE' && existing.supplierId) {
+        const supplier = await this.supplierRepository.findById(tx, tenantId, existing.supplierId);
+        if (!supplier) throw new NotFoundException();
+        const discount = computeInvoiceDiscount({
+          totalAmount: Number(existing.totalAmount),
+          discountType: existing.discountType,
+          discountValue: existing.discountValue !== null ? Number(existing.discountValue) : null,
+          lines: existing.lines.map((l) => ({ lineTotal: Number(l.lineAmount), discountType: l.discountType, discountValue: l.discountValue !== null ? Number(l.discountValue) : null })),
+        });
+        const { prepaidVoucherId: voucherId } = await this.supplierDebtService.recordPurchaseApproval(tx, tenantId, actorId, {
+          supplierId: existing.supplierId,
+          supplierName: supplier.name,
+          netAmount: BigInt(discount.dueAmount),
+          stockReceiptId: id,
+          receiptNo: existing.receiptNo,
+          occurredAt: existing.occurredAt,
+          prepaidAmount: existing.prepaidAmount,
+          prepaidPaymentMethodCode: existing.prepaidPaymentMethodCode,
+          prepaidCashAccountId: existing.prepaidCashAccountId,
+          meta,
+        });
+        prepaidVoucherId = voucherId ?? undefined;
+      }
+
+      const count = await this.stockReceiptRepository.approve(tx, tenantId, id, dto.version, actorId, prepaidVoucherId);
       if (count === 0) throw new ConcurrentModificationError();
 
       await this.applyPostedLines(tx, tenantId, actorId, existing);
@@ -293,6 +330,9 @@ export class StockReceiptService {
       discountType: null,
       discountValue: null,
       discountReason: null,
+      prepaidAmount: 0n,
+      prepaidPaymentMethodCode: null,
+      prepaidCashAccountId: null,
       lines: params.lines,
       countId: params.countId,
       transferId: null,
@@ -336,6 +376,9 @@ export class StockReceiptService {
       discountType: null,
       discountValue: null,
       discountReason: null,
+      prepaidAmount: 0n,
+      prepaidPaymentMethodCode: null,
+      prepaidCashAccountId: null,
       lines: params.lines,
       countId: null,
       transferId: params.transferId,
@@ -565,6 +608,10 @@ export class StockReceiptService {
       discountType: row.discountType,
       discountValue: row.discountValue !== null ? Number(row.discountValue) : null,
       discountReason: row.discountReason,
+      prepaidAmount: Number(row.prepaidAmount),
+      prepaidPaymentMethodCode: row.prepaidPaymentMethodCode,
+      prepaidCashAccountId: row.prepaidCashAccountId,
+      prepaidVoucherId: row.prepaidVoucherId,
       lineCount,
       createdByName: names.get(row.createdBy) ?? 'Không rõ',
       approvedByName: row.approvedBy ? (names.get(row.approvedBy) ?? 'Không rõ') : null,

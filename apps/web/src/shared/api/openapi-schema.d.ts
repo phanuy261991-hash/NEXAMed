@@ -20084,6 +20084,7 @@ export interface paths {
                     from?: string;
                     to?: string;
                     q?: string;
+                    supplierId?: string;
                 };
                 header?: never;
                 path?: never;
@@ -20121,6 +20122,12 @@ export interface paths {
                                     discountType: "PERCENT" | "AMOUNT" | null;
                                     discountValue: number | null;
                                     discountReason: string | null;
+                                    prepaidAmount: number;
+                                    prepaidPaymentMethodCode: string | null;
+                                    /** Format: uuid */
+                                    prepaidCashAccountId: string | null;
+                                    /** Format: uuid */
+                                    prepaidVoucherId: string | null;
                                     lineCount: number;
                                     createdByName: string;
                                     approvedByName: string | null;
@@ -20192,6 +20199,10 @@ export interface paths {
                         discountType?: "PERCENT" | "AMOUNT" | null;
                         discountValue?: number | null;
                         discountReason?: string | null;
+                        prepaidAmount?: number;
+                        prepaidPaymentMethodCode?: string | null;
+                        /** Format: uuid */
+                        prepaidCashAccountId?: string | null;
                         lines: {
                             /** Format: uuid */
                             drugId: string;
@@ -20237,6 +20248,12 @@ export interface paths {
                                 discountType: "PERCENT" | "AMOUNT" | null;
                                 discountValue: number | null;
                                 discountReason: string | null;
+                                prepaidAmount: number;
+                                prepaidPaymentMethodCode: string | null;
+                                /** Format: uuid */
+                                prepaidCashAccountId: string | null;
+                                /** Format: uuid */
+                                prepaidVoucherId: string | null;
                                 lineCount: number;
                                 createdByName: string;
                                 approvedByName: string | null;
@@ -20387,6 +20404,12 @@ export interface paths {
                                 discountType: "PERCENT" | "AMOUNT" | null;
                                 discountValue: number | null;
                                 discountReason: string | null;
+                                prepaidAmount: number;
+                                prepaidPaymentMethodCode: string | null;
+                                /** Format: uuid */
+                                prepaidCashAccountId: string | null;
+                                /** Format: uuid */
+                                prepaidVoucherId: string | null;
                                 lineCount: number;
                                 createdByName: string;
                                 approvedByName: string | null;
@@ -20499,6 +20522,10 @@ export interface paths {
                         discountType?: "PERCENT" | "AMOUNT" | null;
                         discountValue?: number | null;
                         discountReason?: string | null;
+                        prepaidAmount?: number;
+                        prepaidPaymentMethodCode?: string | null;
+                        /** Format: uuid */
+                        prepaidCashAccountId?: string | null;
                         lines: {
                             /** Format: uuid */
                             drugId: string;
@@ -20545,6 +20572,12 @@ export interface paths {
                                 discountType: "PERCENT" | "AMOUNT" | null;
                                 discountValue: number | null;
                                 discountReason: string | null;
+                                prepaidAmount: number;
+                                prepaidPaymentMethodCode: string | null;
+                                /** Format: uuid */
+                                prepaidCashAccountId: string | null;
+                                /** Format: uuid */
+                                prepaidVoucherId: string | null;
                                 lineCount: number;
                                 createdByName: string;
                                 approvedByName: string | null;
@@ -20699,6 +20732,12 @@ export interface paths {
                                 discountType: "PERCENT" | "AMOUNT" | null;
                                 discountValue: number | null;
                                 discountReason: string | null;
+                                prepaidAmount: number;
+                                prepaidPaymentMethodCode: string | null;
+                                /** Format: uuid */
+                                prepaidCashAccountId: string | null;
+                                /** Format: uuid */
+                                prepaidVoucherId: string | null;
                                 lineCount: number;
                                 createdByName: string;
                                 approvedByName: string | null;
@@ -20858,6 +20897,12 @@ export interface paths {
                                 discountType: "PERCENT" | "AMOUNT" | null;
                                 discountValue: number | null;
                                 discountReason: string | null;
+                                prepaidAmount: number;
+                                prepaidPaymentMethodCode: string | null;
+                                /** Format: uuid */
+                                prepaidCashAccountId: string | null;
+                                /** Format: uuid */
+                                prepaidVoucherId: string | null;
                                 lineCount: number;
                                 createdByName: string;
                                 approvedByName: string | null;
@@ -21017,6 +21062,12 @@ export interface paths {
                                 discountType: "PERCENT" | "AMOUNT" | null;
                                 discountValue: number | null;
                                 discountReason: string | null;
+                                prepaidAmount: number;
+                                prepaidPaymentMethodCode: string | null;
+                                /** Format: uuid */
+                                prepaidCashAccountId: string | null;
+                                /** Format: uuid */
+                                prepaidVoucherId: string | null;
                                 lineCount: number;
                                 createdByName: string;
                                 approvedByName: string | null;
@@ -24842,6 +24893,515 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/supplier-debt/summaries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tổng hợp công nợ MỌI nhà cung cấp — cột "Còn nợ" ở trang Nhà cung cấp + trang Công nợ nhà cung cấp */
+        get: {
+            parameters: {
+                query?: {
+                    includeInactive?: "true" | "false";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    supplierId: string;
+                                    openingBalanceAmount: number;
+                                    totalPurchase: number;
+                                    totalPaid: number;
+                                    totalReturnAndAdjustment: number;
+                                    balance: number;
+                                    pendingApprovalAmount: number;
+                                    canRecordOpeningBalance: boolean;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền supplier_debt.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/supplier-debt/{supplierId}/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dải metric đầu trang chi tiết NCC — Tổng tiền hàng/Đã thanh toán/Còn nợ/Chờ duyệt */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    supplierId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                supplierId: string;
+                                openingBalanceAmount: number;
+                                totalPurchase: number;
+                                totalPaid: number;
+                                totalReturnAndAdjustment: number;
+                                balance: number;
+                                pendingApprovalAmount: number;
+                                canRecordOpeningBalance: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền supplier_debt.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy nhà cung cấp */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/supplier-debt/{supplierId}/ledger": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tab "Sổ công nợ" — mọi bút toán, cũ→mới, lọc tuỳ chọn theo khoảng ngày phát sinh */
+        get: {
+            parameters: {
+                query?: {
+                    from?: string;
+                    to?: string;
+                };
+                header?: never;
+                path: {
+                    supplierId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** @enum {string} */
+                                    entryType: "OPENING_BALANCE" | "PURCHASE" | "PAYMENT" | "RETURN" | "REFUND_RECEIVED" | "ADJUSTMENT_INCREASE" | "ADJUSTMENT_DECREASE" | "REVERSAL";
+                                    amountChange: number;
+                                    balanceAfter: number;
+                                    occurredAt: string;
+                                    createdAt: string;
+                                    /** Format: uuid */
+                                    stockReceiptId: string | null;
+                                    stockReceiptNo: string | null;
+                                    /** Format: uuid */
+                                    cashVoucherId: string | null;
+                                    cashVoucherNo: string | null;
+                                    /** Format: uuid */
+                                    reversalOfId: string | null;
+                                    reversed: boolean;
+                                    note: string | null;
+                                    createdByName: string;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền supplier_debt.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy nhà cung cấp */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/supplier-debt/{supplierId}/receipts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tab "Phiếu nhập" — trạng thái đã trả/còn nợ từng khoản (PURCHASE/Nợ đầu kỳ), tính bằng allocateSupplierDebt() */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    supplierId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    stockReceiptId: string | null;
+                                    isOpeningBalance: boolean;
+                                    originalAmount: number;
+                                    paidAmount: number;
+                                    dueAmount: number;
+                                    /** @enum {string} */
+                                    status: "UNPAID" | "PARTIALLY_PAID" | "FULLY_PAID";
+                                }[];
+                                totalOriginalAmount: number;
+                                totalPaidAmount: number;
+                                totalDueAmount: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền supplier_debt.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy nhà cung cấp */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/supplier-debt/{supplierId}/opening-balance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Khai nợ đầu kỳ — chỉ 1 lần, chỉ khi NCC CHƯA có bút toán nào (Q7) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    supplierId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        amount: number;
+                        occurredAt: string;
+                        note?: string | null;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                supplierId: string;
+                                openingBalanceAmount: number;
+                                totalPurchase: number;
+                                totalPaid: number;
+                                totalReturnAndAdjustment: number;
+                                balance: number;
+                                pendingApprovalAmount: number;
+                                canRecordOpeningBalance: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền supplier_debt.pay */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy nhà cung cấp */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description NCC đã có bút toán rồi (SUPPLIER_DEBT_OPENING_BALANCE_ALREADY_EXISTS) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;

@@ -275,6 +275,12 @@ import {
   stockTransferDetailSchema,
   getStockLedgerReportQuerySchema,
   getStockLedgerReportResponseSchema,
+  recordSupplierDebtOpeningBalanceRequestSchema,
+  supplierDebtSummarySchema,
+  listSupplierDebtSummariesResponseSchema,
+  listSupplierDebtLedgerQuerySchema,
+  listSupplierDebtLedgerResponseSchema,
+  listSupplierDebtReceiptsResponseSchema,
 } from '@nexamed/shared';
 
 /**
@@ -3738,6 +3744,84 @@ registry.registerPath({
 });
 // GET /api/v1/inventory/reports/stock-ledger/export không đăng ký OpenAPI — binary qua @Res(), web
 // tải bằng downloadFile() (đúng lý do /cash-flow-report/export không có trong file này).
+
+// ============ "Công nợ nhà cung cấp" — Phần A "Nền sổ công nợ" (docs/DECISIONS.md #180/#182) ============
+const supplierDebtSupplierIdParams = z.object({ supplierId: z.string().uuid() });
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/supplier-debt/summaries',
+  tags: ['supplier-debt'],
+  summary: 'Tổng hợp công nợ MỌI nhà cung cấp — cột "Còn nợ" ở trang Nhà cung cấp + trang Công nợ nhà cung cấp',
+  security: [{ bearerAuth: [] }],
+  request: { query: z.object({ includeInactive: z.enum(['true', 'false']).optional() }) },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listSupplierDebtSummariesResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền supplier_debt.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/supplier-debt/{supplierId}/summary',
+  tags: ['supplier-debt'],
+  summary: 'Dải metric đầu trang chi tiết NCC — Tổng tiền hàng/Đã thanh toán/Còn nợ/Chờ duyệt',
+  security: [{ bearerAuth: [] }],
+  request: { params: supplierDebtSupplierIdParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(supplierDebtSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền supplier_debt.read'),
+    404: errorResponse('Không tìm thấy nhà cung cấp'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/supplier-debt/{supplierId}/ledger',
+  tags: ['supplier-debt'],
+  summary: 'Tab "Sổ công nợ" — mọi bút toán, cũ→mới, lọc tuỳ chọn theo khoảng ngày phát sinh',
+  security: [{ bearerAuth: [] }],
+  request: { params: supplierDebtSupplierIdParams, query: listSupplierDebtLedgerQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listSupplierDebtLedgerResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền supplier_debt.read'),
+    404: errorResponse('Không tìm thấy nhà cung cấp'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/supplier-debt/{supplierId}/receipts',
+  tags: ['supplier-debt'],
+  summary: 'Tab "Phiếu nhập" — trạng thái đã trả/còn nợ từng khoản (PURCHASE/Nợ đầu kỳ), tính bằng allocateSupplierDebt()',
+  security: [{ bearerAuth: [] }],
+  request: { params: supplierDebtSupplierIdParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listSupplierDebtReceiptsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền supplier_debt.read'),
+    404: errorResponse('Không tìm thấy nhà cung cấp'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/supplier-debt/{supplierId}/opening-balance',
+  tags: ['supplier-debt'],
+  summary: 'Khai nợ đầu kỳ — chỉ 1 lần, chỉ khi NCC CHƯA có bút toán nào (Q7)',
+  security: [{ bearerAuth: [] }],
+  request: { params: supplierDebtSupplierIdParams, body: { content: { 'application/json': { schema: recordSupplierDebtOpeningBalanceRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(supplierDebtSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền supplier_debt.pay'),
+    404: errorResponse('Không tìm thấy nhà cung cấp'),
+    409: errorResponse('NCC đã có bút toán rồi (SUPPLIER_DEBT_OPENING_BALANCE_ALREADY_EXISTS)'),
+  },
+});
 
 const generator = new OpenApiGeneratorV31(registry.definitions);
 const document = generator.generateDocument({

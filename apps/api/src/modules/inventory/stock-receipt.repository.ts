@@ -27,6 +27,10 @@ export interface CreateStockReceiptData {
   discountType: DiscountType | null;
   discountValue: bigint | null;
   discountReason: string | null;
+  /** "Trả ngay" cho NCC (Công nợ nhà cung cấp, #180/#182) — 0/null khi không có. */
+  prepaidAmount: bigint;
+  prepaidPaymentMethodCode: string | null;
+  prepaidCashAccountId: string | null;
   lines: StockReceiptLineData[];
   /** Kho Thuốc GĐ4 (#170) — trỏ về `stock_count` khi phiếu này TỰ SINH từ Duyệt phiếu kiểm kê
    * (`receiptType='COUNT_SURPLUS'`). `null` cho mọi phiếu nhập lập tay bình thường. */
@@ -47,6 +51,9 @@ export interface UpdateStockReceiptData {
   discountType: DiscountType | null;
   discountValue: bigint | null;
   discountReason: string | null;
+  prepaidAmount: bigint;
+  prepaidPaymentMethodCode: string | null;
+  prepaidCashAccountId: string | null;
   lines: StockReceiptLineData[];
 }
 
@@ -73,6 +80,8 @@ export interface ListStockReceiptsFilter {
   from?: Date;
   to?: Date;
   q?: string;
+  /** Tab "Phiếu nhập" ở trang chi tiết NCC (#180/#182). */
+  supplierId?: string;
   cursor?: string;
   take: number;
   /** Phân quyền theo Khoa/Phòng (retrofit #173, đúng khuôn `StockCountRepository.list()`) — chỉ set
@@ -104,6 +113,9 @@ export class StockReceiptRepository {
         discountType: data.discountType,
         discountValue: data.discountValue,
         discountReason: data.discountReason,
+        prepaidAmount: data.prepaidAmount,
+        prepaidPaymentMethodCode: data.prepaidPaymentMethodCode,
+        prepaidCashAccountId: data.prepaidCashAccountId,
         countId: data.countId,
         transferId: data.transferId,
         createdBy: actorId,
@@ -149,6 +161,9 @@ export class StockReceiptRepository {
         discountType: data.discountType,
         discountValue: data.discountValue,
         discountReason: data.discountReason,
+        prepaidAmount: data.prepaidAmount,
+        prepaidPaymentMethodCode: data.prepaidPaymentMethodCode,
+        prepaidCashAccountId: data.prepaidCashAccountId,
         updatedBy: actorId,
         version: { increment: 1 },
       },
@@ -196,6 +211,7 @@ export class StockReceiptRepository {
       warehouseId: filter.warehouseId,
       receiptType: filter.receiptType,
       status: filter.status,
+      supplierId: filter.supplierId,
       occurredAt: filter.from || filter.to ? { gte: filter.from, lte: filter.to } : undefined,
     };
     if (filter.q) {
@@ -214,11 +230,20 @@ export class StockReceiptRepository {
     return rows as StockReceiptListRow[];
   }
 
-  /** Duyệt — `WHERE status='DRAFT'` chặn race duyệt trùng, cùng kỹ thuật `CashVoucherRepository.approve()`. */
-  async approve(tx: Prisma.TransactionClient, tenantId: string, id: string, expectedVersion: number, actorId: string): Promise<number> {
+  /** Duyệt — `WHERE status='DRAFT'` chặn race duyệt trùng, cùng kỹ thuật `CashVoucherRepository.approve()`.
+   * `prepaidVoucherId` (Công nợ nhà cung cấp, #180/#182) — gắn LUÔN trong CÙNG lệnh `updateMany` khi
+   * phiếu có "Trả ngay" > 0 (tránh 1 lệnh UPDATE riêng, cùng version vừa tăng). */
+  async approve(tx: Prisma.TransactionClient, tenantId: string, id: string, expectedVersion: number, actorId: string, prepaidVoucherId?: string): Promise<number> {
     const result = await tx.stockReceipt.updateMany({
       where: { tenantId, id, version: expectedVersion, deletedAt: null, status: 'DRAFT' },
-      data: { status: 'POSTED', approvedBy: actorId, approvedAt: new Date(), updatedBy: actorId, version: { increment: 1 } },
+      data: {
+        status: 'POSTED',
+        approvedBy: actorId,
+        approvedAt: new Date(),
+        updatedBy: actorId,
+        version: { increment: 1 },
+        ...(prepaidVoucherId ? { prepaidVoucherId } : {}),
+      },
     });
     return result.count;
   }

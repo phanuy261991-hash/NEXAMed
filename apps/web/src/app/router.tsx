@@ -32,6 +32,10 @@ const WarehouseCatalogPage = lazy(() => import('../features/drug/WarehouseCatalo
 const SupplierManagementPage = lazy(() =>
   import('../features/drug/SupplierManagementPage').then((m) => ({ default: m.SupplierManagementPage })),
 );
+// "Công nợ nhà cung cấp" Phần A (docs/DECISIONS.md #180/#182) — trang chi tiết NCC.
+const SupplierDetailPage = lazy(() =>
+  import('../features/supplier-debt/SupplierDetailPage').then((m) => ({ default: m.SupplierDetailPage })),
+);
 const PatientListPage = lazy(() => import('../features/patient/PatientListPage').then((m) => ({ default: m.PatientListPage })));
 const PatientNewPage = lazy(() => import('../features/patient/PatientNewPage').then((m) => ({ default: m.PatientNewPage })));
 const PatientDetailPage = lazy(() => import('../features/patient/PatientDetailPage').then((m) => ({ default: m.PatientDetailPage })));
@@ -231,6 +235,17 @@ export const router = createBrowserRouter([
           <RequireAnyPermissionRoute permissions={DRUG_MANAGE_PERMISSIONS}>
             <SupplierManagementPage />
           </RequireAnyPermissionRoute>
+        ),
+      },
+      // "Công nợ nhà cung cấp" Phần A (docs/DECISIONS.md #180/#182) — trang chi tiết NCC, gác bằng
+      // đúng quyền supplier_debt.read (mặc định CHỈ clinic_admin lúc ra mắt), không dùng chung gate
+      // DRUG_MANAGE_PERMISSIONS của trang danh sách vì đây là dữ liệu công nợ/tiền.
+      {
+        path: 'suppliers/:id',
+        element: (
+          <RequirePermissionRoute module="supplier_debt" action="read">
+            <SupplierDetailPage />
+          </RequirePermissionRoute>
         ),
       },
       { path: 'admin/system-config', element: <RequirePermissionRoute module="clinic_config" action="update"><ClinicConfigPage /></RequirePermissionRoute> },

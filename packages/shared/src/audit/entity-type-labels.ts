@@ -35,6 +35,11 @@ const ENTITY_TYPE_LABELS: Record<string, string> = {
   doctor_availability: 'Trạng thái làm việc bác sĩ',
   tenant_setting: 'Cấu hình phòng khám',
   cashier_shift: 'Phiếu chốt ca',
+  // "Công nợ nhà cung cấp" (docs/DECISIONS.md #180/#182) — thêm nhãn NGAY từ đầu, tránh lặp lại lỗ
+  // hổng "quên nhãn tiếng Việt" đã ghi chú nhiều lần ở permission-grouping.ts.
+  supplier: 'Nhà cung cấp',
+  supplier_debt_account: 'Sổ công nợ nhà cung cấp',
+  supplier_debt_entry: 'Bút toán công nợ nhà cung cấp',
 };
 
 export function labelForEntityType(entityType: string): string {

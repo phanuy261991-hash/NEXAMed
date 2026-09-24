@@ -189,6 +189,17 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   { module: 'stock_transfer', action: 'create', description: 'Tạo/sửa Nháp phiếu điều chuyển kho' },
   { module: 'stock_transfer', action: 'read', description: 'Xem phiếu điều chuyển kho' },
   { module: 'stock_transfer', action: 'approve', description: 'Duyệt xuất / Xác nhận nhận hàng / Từ chối phiếu điều chuyển kho' },
+  // "Công nợ nhà cung cấp" (docs/DECISIONS.md #180/#182, mở rộng phạm vi v1) — mặc định CHỈ
+  // `clinic_admin` có đủ 5 quyền (chốt qua AskUserQuestion 24/09/2026, #182), vai trò khác CHƯA
+  // được cấp gì, tự mở rộng sau qua "Vai trò & Phân quyền" nếu tenant cần (thận trọng với dữ liệu
+  // tiền, đúng tinh thần `invoice.refund`/`cashier_shift.manage`).
+  { module: 'supplier_debt', action: 'read', description: 'Xem công nợ, Sổ công nợ, trang chi tiết nhà cung cấp' },
+  { module: 'supplier_debt', action: 'pay', description: 'Lập Thanh toán công nợ / Thu tiền NCC hoàn lại / Khai nợ đầu kỳ' },
+  { module: 'supplier_debt', action: 'adjust', description: 'Lập Phiếu điều chỉnh công nợ / Đề nghị huỷ chứng từ' },
+  { module: 'supplier_debt', action: 'approve', description: 'Duyệt/Từ chối Phiếu điều chỉnh công nợ và Đề nghị huỷ' },
+  // Phần E "Đối chiếu & chốt công nợ theo kỳ" (#182) — mở khoá kỳ đã chốt, đúng khuôn
+  // `work_shift_assignment.unlock` (#110) nhưng KHÔNG tái dùng permission đó (module khác).
+  { module: 'supplier_debt', action: 'unlock', description: 'Mở khoá kỳ công nợ nhà cung cấp đã chốt' },
 ] as const;
 
 export function permissionKey(p: Pick<PermissionDefinition, 'module' | 'action'>): string {
@@ -375,6 +386,12 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'stock_transfer.create': 'global',
     'stock_transfer.read': 'global',
     'stock_transfer.approve': 'global',
+    // "Công nợ nhà cung cấp" (#180/#182) — CHỈ clinic_admin có đủ 5 quyền lúc ra mắt.
+    'supplier_debt.read': 'global',
+    'supplier_debt.pay': 'global',
+    'supplier_debt.adjust': 'global',
+    'supplier_debt.approve': 'global',
+    'supplier_debt.unlock': 'global',
     // Thu ngân cơ bản — clinic_admin giám sát/xử lý được như lễ tân, cùng mức encounter.*.
     'invoice.read': 'global',
     'invoice.update': 'global',

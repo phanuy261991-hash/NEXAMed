@@ -4,6 +4,14 @@
 
 ## 2026-09-24
 
+### Công nợ nhà cung cấp, Phần A "Nền sổ công nợ" — hoàn tất (code + test + verify Playwright)
+
+Mở rộng tiếp của Kho Thuốc GĐ2/GĐ3 (mở rộng phạm vi v1, `docs/DECISIONS.md` #180/#182/#183). Module mới `supplier-debt`: 2 bảng `supplier_debt_account`/`supplier_debt_entry` (sổ append-only, phân bổ FIFO tính lúc đọc), `stock_receipt` thêm 4 cột "Trả ngay" cho NCC, `cash_voucher` thêm `supplier_id`. Ghi công nợ tự động trong CÙNG transaction lúc Duyệt phiếu nhập/Duyệt-Huỷ phiếu chi. Trang `/suppliers/:id` (chi tiết NCC) + khối "Thanh toán" mới trên `StockReceiptFormPage.tsx` (đúng mockup đã duyệt). 5 permission mới, chỉ `clinic_admin` có.
+
+Tiếp nối phiên trước (đã code+test HTTP xong nhưng form web còn thiếu UI cho "Trả ngay", chưa verify Playwright) — phiên này bổ sung khối "Thanh toán" còn thiếu, verify Playwright qua Chrome thật trên tenant test riêng (không đụng tenant chủ dự án), phát hiện + xử lý đúng bug vận hành quen thuộc (permission mới chưa `db:seed`).
+
+**Đã xác minh thật**: build web sạch (không cảnh báo chunk size), typecheck/lint sạch, test web 5/5, Playwright xác nhận toàn bộ luồng (ẩn/hiện khối theo NCC, nút "Trả hết"/"Không trả", cảnh báo + chặn khi vượt tiền phải trả, lưu/mở lại phiếu đúng dữ liệu round-trip), 0 lỗi console. Chi tiết đầy đủ `docs/DECISIONS.md` #183.
+
 ### "Lịch làm việc của tôi" — redesign lưới theo tuần (Ca × Ngày) + widget "Đã đăng ký N/M ca"
 
 Chủ dự án gửi ảnh tham khảo, yêu cầu đổi cách hiển thị chế độ Tuần từ "cột ngày, mỗi ngày xếp dọc các chip ca" sang **lưới Ca × Ngày** (hàng = mẫu ca, cột = 7 ngày) + thêm widget tổng kết "Đã đăng ký N/M ca (X giờ)" kèm vòng tròn %. Đã hỏi chốt 2 điểm trước khi code (đúng `feedback_confirm_before_feature`, xem `docs/DECISIONS.md` #181): KHÔNG thêm quy trình duyệt ca (ảnh mẫu có "Đã duyệt"/"Chờ duyệt" nhưng hệ thống hiện tại tự đăng ký là có ngay, không qua duyệt) — chỉ đổi nhãn thành "Đã đăng ký"; mẫu số "M" = tổng số ô ca khả dụng trong tuần (số mẫu ca × số ngày phòng khám mở cửa), không phải chỉ tiêu cấu hình riêng.
