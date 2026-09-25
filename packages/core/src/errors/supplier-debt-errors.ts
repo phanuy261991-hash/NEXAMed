@@ -9,3 +9,23 @@ export class SupplierDebtOpeningBalanceAlreadyExistsError extends DomainError {
     super('Nhà cung cấp này đã có bút toán công nợ — không khai nợ đầu kỳ được nữa.');
   }
 }
+
+/** Phần D — "Phiếu điều chỉnh công nợ"/"Đề nghị huỷ" đã Duyệt/Từ chối rồi, không Duyệt/Từ chối lại
+ * được (đúng nguyên tắc "không có nút Sửa trên chứng từ đã duyệt", mục 4.2 điểm 1). */
+export class SupplierDebtAdjustmentNotPendingError extends DomainError {
+  readonly code = 'SUPPLIER_DEBT_ADJUSTMENT_NOT_PENDING';
+
+  constructor() {
+    super('Phiếu này đã được xử lý (Duyệt/Từ chối) trước đó — không thể xử lý lại.');
+  }
+}
+
+/** Phần D, mục 4.2 điểm 6 — kiểm tra toàn vẹn số dư trước khi Thanh toán/Thu tiền NCC hoàn lại:
+ * `SUM(amountChange)` lệch với `balance` snapshot (lỗi hệ thống, không do người dùng). */
+export class SupplierDebtIntegrityMismatchError extends DomainError {
+  readonly code = 'SUPPLIER_DEBT_INTEGRITY_MISMATCH';
+
+  constructor() {
+    super('Số dư công nợ không khớp sổ — liên hệ quản trị hệ thống trước khi tiếp tục.');
+  }
+}

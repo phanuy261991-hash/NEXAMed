@@ -111,6 +111,9 @@ import { StockLedgerReportExportService } from './stock-ledger-report-export.ser
     StockLedgerReportService,
     StockLedgerReportExportService,
   ],
-  exports: [StockBalanceRepository],
+  // "Công nợ nhà cung cấp" Phần D (docs/DECISIONS.md #180/#182) — `SupplierDebtService.approveAdjustment()`
+  // gọi `StockReceiptService.voidPostedForAdjustment()`/`StockIssueService.voidPostedForAdjustment()`
+  // để thực thi "Huỷ chứng từ" hộ lúc duyệt "Đề nghị huỷ" (VOID_REQUEST) — export thêm 2 Service này.
+  exports: [StockBalanceRepository, StockReceiptService, StockIssueService],
 })
 export class InventoryModule {}

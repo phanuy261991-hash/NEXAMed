@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import {
   allocateSupplierDebt,
   CASHIER_SHIFT_READER_PORT,
@@ -6,6 +6,8 @@ import {
   ConcurrentModificationError,
   DOCTOR_DIRECTORY_PORT,
   resolveRecentDateRange,
+  SupplierDebtAdjustmentNotPendingError,
+  SupplierDebtIntegrityMismatchError,
   SupplierDebtOpeningBalanceAlreadyExistsError,
   type CashierShiftReaderPort,
   type ClinicConfigReaderPort,
@@ -13,6 +15,10 @@ import {
   type SupplierDebtEntryInput,
 } from '@nexamed/core';
 import type {
+  CreateSupplierDebtAdjustmentRequest,
+  ApproveSupplierDebtAdjustmentRequest,
+  ListSupplierDebtAdjustmentsQuery,
+  ListSupplierDebtAdjustmentsResponse,
   ListSupplierDebtLedgerQuery,
   ListSupplierDebtLedgerResponse,
   ListSupplierDebtPaymentsQuery,
@@ -22,9 +28,18 @@ import type {
   RecordSupplierDebtOpeningBalanceRequest,
   RecordSupplierDebtPaymentRequest,
   RecordSupplierDebtRefundRequest,
+  RejectSupplierDebtAdjustmentRequest,
+  SupplierDebtAdjustment as SupplierDebtAdjustmentDto,
   SupplierDebtSummary,
 } from '@nexamed/shared';
-import type { CashVoucher, Prisma, SupplierDebtAccount, SupplierDebtEntry, SupplierDebtEntryType } from '@prisma/client';
+import type {
+  CashVoucher,
+  Prisma,
+  SupplierDebtAccount,
+  SupplierDebtAdjustment as SupplierDebtAdjustmentRow,
+  SupplierDebtEntry,
+  SupplierDebtEntryType,
+} from '@prisma/client';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
 import type { RequestMeta } from '../../common/request-meta';
@@ -32,8 +47,11 @@ import { BusinessCodeService } from '../clinic/business-code.service';
 import { CashAccountRepository } from '../cash-book/cash-account.repository';
 import { CashVoucherRepository } from '../cash-book/cash-voucher.repository';
 import { SupplierRepository } from '../drug/supplier.repository';
+import { StockReceiptService } from '../inventory/stock-receipt.service';
+import { StockIssueService } from '../inventory/stock-issue.service';
 import { SupplierDebtAccountRepository } from './supplier-debt-account.repository';
 import { SupplierDebtEntryRepository } from './supplier-debt-entry.repository';
+import { SupplierDebtAdjustmentRepository } from './supplier-debt-adjustment.repository';
 
 /**
  * "Công nợ nhà cung cấp" — Phần A "Nền sổ công nợ" (docs/DECISIONS.md #180/#182, kế hoạch kỹ thuật
@@ -62,6 +80,12 @@ export class SupplierDebtService {
     private readonly cashAccountRepository: CashAccountRepository,
     private readonly supplierRepository: SupplierRepository,
     private readonly businessCodeService: BusinessCodeService,
+    private readonly adjustmentRepository: SupplierDebtAdjustmentRepository,
+    // Phần D — vòng phụ thuộc THẬT ở mức Service (approveAdjustment() gọi ngược StockReceiptService/
+    // StockIssueService để thực thi "Huỷ chứng từ" hộ lúc duyệt VOID_REQUEST), bọc forwardRef() đúng
+    // khuyến nghị NestJS, đối xứng với 2 đầu injection ở `stock-receipt.service.ts`/`stock-issue.service.ts`.
+    @Inject(forwardRef(() => StockReceiptService)) private readonly stockReceiptService: StockReceiptService,
+    @Inject(forwardRef(() => StockIssueService)) private readonly stockIssueService: StockIssueService,
     @Inject(CLINIC_CONFIG_READER_PORT) private readonly clinicConfigReader: ClinicConfigReaderPort,
     @Inject(CASHIER_SHIFT_READER_PORT) private readonly cashierShiftReader: CashierShiftReaderPort,
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
@@ -71,6 +95,14 @@ export class SupplierDebtService {
     const existing = await this.accountRepository.findBySupplierId(tx, tenantId, supplierId);
     if (existing) return existing;
     return this.accountRepository.create(tx, tenantId, actorId, supplierId);
+  }
+
+  /** Phần D, mục 4.2 điểm 6 — chặn Thanh toán/Thu tiền NCC hoàn lại nếu sổ đã lệch (lỗi hệ thống,
+   * không do người dùng). Dùng ở nơi CHƯA tải `entries` đầy đủ (khác `rawEntrySum()` ở `buildSummary`
+   * — tính từ `entries` đã có sẵn, không round-trip DB thêm). */
+  private async assertBalanceIntegrity(tx: Prisma.TransactionClient, tenantId: string, account: SupplierDebtAccount): Promise<void> {
+    const rawSum = await this.entryRepository.sumAmountChange(tx, tenantId, account.id);
+    if (rawSum !== account.balance) throw new SupplierDebtIntegrityMismatchError();
   }
 
   /** Ghi 1 bút toán + cập nhật snapshot `balance`, tuần tự hoá qua `version` (đúng khuôn
@@ -90,6 +122,7 @@ export class SupplierDebtService {
       stockIssueId: string | null;
       cashVoucherId: string | null;
       reversalOfId: string | null;
+      adjustmentId: string | null;
       note: string | null;
     },
   ): Promise<{ entry: SupplierDebtEntry; account: SupplierDebtAccount }> {
@@ -106,6 +139,7 @@ export class SupplierDebtService {
       stockIssueId: params.stockIssueId,
       cashVoucherId: params.cashVoucherId,
       reversalOfId: params.reversalOfId,
+      adjustmentId: params.adjustmentId,
       note: params.note,
     });
     return { entry, account: { ...account, balance: newBalance, version: account.version + 1 } };
@@ -143,6 +177,7 @@ export class SupplierDebtService {
       stockIssueId: null,
       cashVoucherId: null,
       reversalOfId: null,
+      adjustmentId: null,
       note: null,
     });
     await writeAuditLog(tx, tenantId, {
@@ -222,6 +257,7 @@ export class SupplierDebtService {
       stockIssueId: params.stockIssueId,
       cashVoucherId: null,
       reversalOfId: null,
+      adjustmentId: null,
       note: null,
     });
     await writeAuditLog(tx, tenantId, {
@@ -257,6 +293,7 @@ export class SupplierDebtService {
       stockIssueId: null,
       cashVoucherId: voucher.id,
       reversalOfId: null,
+      adjustmentId: null,
       note: null,
     });
     await writeAuditLog(tx, tenantId, {
@@ -295,6 +332,7 @@ export class SupplierDebtService {
       stockIssueId: null,
       cashVoucherId: voucher.id,
       reversalOfId: original.id,
+      adjustmentId: null,
       note: reason,
     });
     await writeAuditLog(tx, tenantId, {
@@ -303,6 +341,60 @@ export class SupplierDebtService {
       entityType: 'supplier_debt_account',
       entityId: account.id,
       afterJson: { cashVoucherId: voucher.id, reversalEntryId: entry.id, reversedEntryId: original.id, reason },
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+  }
+
+  /**
+   * Phần D, Tầng 2 "Huỷ chứng từ" (docs/DECISIONS.md #180/#182, mục 4.1) — hook từ
+   * `StockReceiptService.voidReceipt()`/`StockIssueService.voidIssue()` (Huỷ trực tiếp, đã có quyền
+   * duyệt phiếu gốc) LẪN `approveAdjustment()` bên dưới (`VOID_REQUEST` được duyệt — hệ thống tự huỷ
+   * hộ, đúng CÙNG logic huỷ, chỉ khác người thực thi). Mirror `reverseVoucherPayment()` — không có
+   * gì để đảo nếu phiếu này KHÔNG gắn NCC (không tìm thấy bút toán PURCHASE/RETURN gốc) — phòng thủ
+   * cho mọi `receiptType`/`issueType` khác. Đúng đúng 1 trong 2 tham số `stockReceiptId`/`stockIssueId`.
+   */
+  async reverseStockEntry(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    actorId: string,
+    target: { stockReceiptId: string | null; stockIssueId: string | null },
+    reason: string,
+    meta: RequestMeta,
+  ): Promise<void> {
+    const original = target.stockReceiptId
+      ? await this.entryRepository.findActiveByStockReceiptId(tx, tenantId, target.stockReceiptId)
+      : target.stockIssueId
+        ? await this.entryRepository.findActiveByStockIssueId(tx, tenantId, target.stockIssueId)
+        : null;
+    if (!original) return;
+
+    const account = await this.accountRepository.findById(tx, tenantId, original.accountId);
+    if (!account) return; // không nên xảy ra (original tồn tại ⇒ account phải tồn tại) — phòng thủ.
+
+    const { entry } = await this.applyEntry(tx, tenantId, actorId, account, {
+      entryType: 'REVERSAL',
+      amountChange: -original.amountChange,
+      occurredAt: new Date(),
+      stockReceiptId: original.stockReceiptId,
+      stockIssueId: original.stockIssueId,
+      cashVoucherId: null,
+      reversalOfId: original.id,
+      adjustmentId: null,
+      note: reason,
+    });
+    await writeAuditLog(tx, tenantId, {
+      actorId,
+      action: target.stockReceiptId ? 'supplier_debt.purchase_reversed' : 'supplier_debt.return_reversed',
+      entityType: 'supplier_debt_account',
+      entityId: account.id,
+      afterJson: {
+        stockReceiptId: target.stockReceiptId,
+        stockIssueId: target.stockIssueId,
+        reversalEntryId: entry.id,
+        reversedEntryId: original.id,
+        reason,
+      },
       ip: meta.ip,
       userAgent: meta.userAgent,
     });
@@ -328,6 +420,7 @@ export class SupplierDebtService {
         stockIssueId: null,
         cashVoucherId: null,
         reversalOfId: null,
+        adjustmentId: null,
         note: dto.note ?? null,
       });
       await writeAuditLog(tx, tenantId, {
@@ -366,6 +459,7 @@ export class SupplierDebtService {
       if (!cashAccount) throw new NotFoundException();
 
       const account0 = await this.getOrCreateAccount(tx, tenantId, actorId, supplierId);
+      await this.assertBalanceIntegrity(tx, tenantId, account0);
       const pendingMap = await this.cashVoucherRepository.sumPendingApprovalBySupplierIds(tx, tenantId, [supplierId]);
       const maxPayable = account0.balance - (pendingMap.get(supplierId) ?? 0n);
       if (BigInt(dto.amount) > maxPayable) {
@@ -427,6 +521,7 @@ export class SupplierDebtService {
       if (!account0 || account0.balance >= 0n) {
         throw new UnprocessableEntityException('Nhà cung cấp này không đang nợ lại phòng khám — không có gì để hoàn tiền.');
       }
+      await this.assertBalanceIntegrity(tx, tenantId, account0);
       const maxRefundable = -account0.balance;
       if (BigInt(dto.amount) > maxRefundable) {
         throw new UnprocessableEntityException('Số tiền nhận không được vượt quá số nhà cung cấp đang nợ lại.');
@@ -485,7 +580,21 @@ export class SupplierDebtService {
     return map;
   }
 
-  private buildSummary(supplierId: string, account: SupplierDebtAccount | null, entryTotals: Map<SupplierDebtEntryType, bigint>, pendingApproval: bigint): SupplierDebtSummary {
+  /** Phần D, mục 4.2 điểm 6 — `SUM(amountChange)` TOÀN BỘ (gồm cả REVERSAL, khác `entryTotals` đã
+   * loại cặp gốc+REVERSAL) PHẢI khớp `balance` snapshot — tính từ chính `entries` đã tải sẵn (không
+   * round-trip DB thêm, khác `assertBalanceIntegrity()` bên dưới dùng ở nơi CHƯA tải entries). */
+  private rawEntrySum(entries: SupplierDebtEntry[]): bigint {
+    return entries.reduce((sum, e) => sum + e.amountChange, 0n);
+  }
+
+  private buildSummary(
+    supplierId: string,
+    account: SupplierDebtAccount | null,
+    entryTotals: Map<SupplierDebtEntryType, bigint>,
+    pendingApproval: bigint,
+    rawEntrySum: bigint,
+    pendingAdjustmentCount: number,
+  ): SupplierDebtSummary {
     const sum = (type: SupplierDebtEntryType): bigint => entryTotals.get(type) ?? 0n;
     return {
       supplierId,
@@ -496,6 +605,8 @@ export class SupplierDebtService {
       balance: Number(account?.balance ?? 0n),
       pendingApprovalAmount: Number(pendingApproval),
       canRecordOpeningBalance: account === null,
+      pendingAdjustmentCount,
+      balanceIntegrityOk: account === null || rawEntrySum === account.balance,
     };
   }
 
@@ -506,7 +617,15 @@ export class SupplierDebtService {
       const account = await this.accountRepository.findBySupplierId(tx, tenantId, supplierId);
       const entries = account ? await this.entryRepository.listByAccountId(tx, tenantId, account.id) : [];
       const pendingMap = await this.cashVoucherRepository.sumPendingApprovalBySupplierIds(tx, tenantId, [supplierId]);
-      return this.buildSummary(supplierId, account, this.sumByTypeExcludingReversed(entries), pendingMap.get(supplierId) ?? 0n);
+      const pendingAdjustmentMap = await this.adjustmentRepository.countPendingBySupplierIds(tx, tenantId, [supplierId]);
+      return this.buildSummary(
+        supplierId,
+        account,
+        this.sumByTypeExcludingReversed(entries),
+        pendingMap.get(supplierId) ?? 0n,
+        this.rawEntrySum(entries),
+        pendingAdjustmentMap.get(supplierId) ?? 0,
+      );
     });
   }
 
@@ -529,11 +648,19 @@ export class SupplierDebtService {
         entriesByAccountId.set(e.accountId, list);
       }
       const pendingMap = await this.cashVoucherRepository.sumPendingApprovalBySupplierIds(tx, tenantId, supplierIds);
+      const pendingAdjustmentMap = await this.adjustmentRepository.countPendingBySupplierIds(tx, tenantId, supplierIds);
 
       return suppliers.map((s) => {
         const account = accountBySupplierId.get(s.id) ?? null;
         const entries = account ? (entriesByAccountId.get(account.id) ?? []) : [];
-        return this.buildSummary(s.id, account, this.sumByTypeExcludingReversed(entries), pendingMap.get(s.id) ?? 0n);
+        return this.buildSummary(
+          s.id,
+          account,
+          this.sumByTypeExcludingReversed(entries),
+          pendingMap.get(s.id) ?? 0n,
+          this.rawEntrySum(entries),
+          pendingAdjustmentMap.get(s.id) ?? 0,
+        );
       });
     });
     return { items };
@@ -651,6 +778,190 @@ export class SupplierDebtService {
         };
       });
       return { items, pendingApprovalCount };
+    });
+  }
+
+  private async toAdjustmentDtos(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    rows: SupplierDebtAdjustmentRow[],
+  ): Promise<SupplierDebtAdjustmentDto[]> {
+    const suppliers = await this.supplierRepository.list(tx, tenantId, true);
+    const supplierNameById = new Map(suppliers.map((s) => [s.id, s.name]));
+    const userIds = new Set<string>();
+    for (const r of rows) {
+      userIds.add(r.createdBy);
+      if (r.approvedBy) userIds.add(r.approvedBy);
+    }
+    const names = userIds.size > 0 ? await this.doctorDirectory.getUserFullNames(tenantId, [...userIds]) : new Map<string, string>();
+
+    return rows.map((r) => ({
+      id: r.id,
+      version: r.version,
+      supplierId: r.supplierId,
+      supplierName: supplierNameById.get(r.supplierId) ?? 'Không rõ',
+      adjustmentNo: r.adjustmentNo,
+      kind: r.kind,
+      amount: r.amount !== null ? Number(r.amount) : null,
+      targetReceiptId: r.targetReceiptId,
+      targetIssueId: r.targetIssueId,
+      targetVoucherId: r.targetVoucherId,
+      reason: r.reason,
+      evidenceRef: r.evidenceRef,
+      status: r.status,
+      createdAt: r.createdAt.toISOString(),
+      createdByName: names.get(r.createdBy) ?? 'Không rõ',
+      approvedByName: r.approvedBy ? (names.get(r.approvedBy) ?? 'Không rõ') : null,
+      approvedAt: r.approvedAt?.toISOString() ?? null,
+      // #182 câu 1 — CHO PHÉP người có quyền duyệt tự lập rồi tự duyệt luôn (phòng khám nhỏ chỉ 1
+      // quản lý); nhãn "Tự duyệt" giữ dấu vết thay vì cấm hẳn.
+      selfApproved: r.approvedBy !== null && r.approvedBy === r.createdBy,
+      rejectionReason: r.rejectionReason,
+    }));
+  }
+
+  /**
+   * Phần D, Tầng 2 "Đề nghị huỷ" (`kind='VOID_REQUEST'`, người KHÔNG có quyền duyệt phiếu nhập/xuất
+   * gốc) + Tầng 3 "Phiếu điều chỉnh công nợ" (`kind='INCREASE'|'DECREASE'`, KHÔNG đụng tồn kho/giá
+   * vốn) — `POST /supplier-debt/adjustments`. Validate `VOID_REQUEST`: phiếu đích PHẢI đang gắn NCC
+   * (có bút toán PURCHASE/RETURN còn hiệu lực) VÀ thuộc ĐÚNG NCC đã chọn — không kiểm `status` phiếu
+   * ở đây (nếu phiếu đã bị huỷ trước đó, `approveAdjustment()` sẽ thất bại rõ ràng ở bước thực thi,
+   * người duyệt Từ chối thay vì âm thầm sai). KHÔNG đụng sổ công nợ ở bước tạo — chỉ lúc Duyệt.
+   */
+  async createAdjustment(tenantId: string, actorId: string, dto: CreateSupplierDebtAdjustmentRequest, meta: RequestMeta): Promise<SupplierDebtAdjustmentDto> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const supplier = await this.supplierRepository.findById(tx, tenantId, dto.supplierId);
+      if (!supplier) throw new NotFoundException();
+
+      if (dto.kind === 'VOID_REQUEST') {
+        const targetEntry = dto.targetReceiptId
+          ? await this.entryRepository.findActiveByStockReceiptId(tx, tenantId, dto.targetReceiptId)
+          : await this.entryRepository.findActiveByStockIssueId(tx, tenantId, dto.targetIssueId!);
+        if (!targetEntry) {
+          throw new UnprocessableEntityException('Phiếu này không gắn nhà cung cấp hoặc không hợp lệ để đề nghị huỷ.');
+        }
+        const targetAccount = await this.accountRepository.findById(tx, tenantId, targetEntry.accountId);
+        if (!targetAccount || targetAccount.supplierId !== dto.supplierId) {
+          throw new UnprocessableEntityException('Phiếu này không thuộc nhà cung cấp đã chọn.');
+        }
+      }
+
+      const adjustmentNo = await this.businessCodeService.generate(tx, tenantId, actorId, 'SUPPLIER_DEBT_ADJUSTMENT', new Date());
+      const row = await this.adjustmentRepository.create(tx, tenantId, actorId, {
+        supplierId: dto.supplierId,
+        adjustmentNo,
+        kind: dto.kind,
+        amount: dto.amount != null ? BigInt(dto.amount) : null,
+        targetReceiptId: dto.targetReceiptId ?? null,
+        targetIssueId: dto.targetIssueId ?? null,
+        targetVoucherId: dto.targetVoucherId ?? null,
+        reason: dto.reason,
+        evidenceRef: dto.evidenceRef ?? null,
+      });
+      await writeAuditLog(tx, tenantId, {
+        actorId,
+        action: 'supplier_debt_adjustment.created',
+        entityType: 'supplier_debt_adjustment',
+        entityId: row.id,
+        afterJson: { supplierId: dto.supplierId, kind: dto.kind, amount: dto.amount ?? null, reason: dto.reason },
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
+
+      const [item] = await this.toAdjustmentDtos(tx, tenantId, [row]);
+      return item!;
+    });
+  }
+
+  /**
+   * Duyệt "Phiếu điều chỉnh công nợ"/"Đề nghị huỷ" — perm `supplier_debt.approve` (KHÔNG cần thêm
+   * `stock_receipt.approve`/`stock_issue.create` của người duyệt, chốt qua AskUserQuestion phiên
+   * này — mặc định chỉ `clinic_admin` có `supplier_debt.approve` nên luôn đủ thẩm quyền thực tế).
+   * `INCREASE`/`DECREASE` ghi thẳng bút toán; `VOID_REQUEST` gọi `StockReceiptService`/
+   * `StockIssueService.voidPostedForAdjustment()` (chạy TRONG CÙNG transaction — tự đảo công nợ qua
+   * hook đã gắn sẵn ở `voidPostedCore()`, không gọi lại `reverseStockEntry()` ở đây). TOÀN BỘ trong
+   * 1 transaction — nguyên tử giữa "Huỷ chứng từ"/"ghi bút toán" và "chuyển trạng thái Đã duyệt".
+   */
+  async approveAdjustment(tenantId: string, actorId: string, id: string, dto: ApproveSupplierDebtAdjustmentRequest, meta: RequestMeta): Promise<SupplierDebtAdjustmentDto> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const adjustment = await this.adjustmentRepository.findById(tx, tenantId, id);
+      if (!adjustment) throw new NotFoundException();
+      if (adjustment.status !== 'PENDING_APPROVAL') throw new SupplierDebtAdjustmentNotPendingError();
+
+      if (adjustment.kind === 'VOID_REQUEST') {
+        if (adjustment.targetReceiptId) {
+          await this.stockReceiptService.voidPostedForAdjustment(tx, tenantId, actorId, adjustment.targetReceiptId, adjustment.reason, meta);
+        } else {
+          await this.stockIssueService.voidPostedForAdjustment(tx, tenantId, actorId, adjustment.targetIssueId!, adjustment.reason, meta);
+        }
+      } else {
+        const account0 = await this.getOrCreateAccount(tx, tenantId, actorId, adjustment.supplierId);
+        const entryType: SupplierDebtEntryType = adjustment.kind === 'INCREASE' ? 'ADJUSTMENT_INCREASE' : 'ADJUSTMENT_DECREASE';
+        const amountChange = adjustment.kind === 'INCREASE' ? adjustment.amount! : -adjustment.amount!;
+        await this.applyEntry(tx, tenantId, actorId, account0, {
+          entryType,
+          amountChange,
+          occurredAt: new Date(),
+          stockReceiptId: adjustment.targetReceiptId,
+          stockIssueId: adjustment.targetIssueId,
+          cashVoucherId: null,
+          reversalOfId: null,
+          adjustmentId: adjustment.id,
+          note: adjustment.reason,
+        });
+      }
+
+      const count = await this.adjustmentRepository.markApproved(tx, tenantId, id, dto.version, actorId, new Date());
+      if (count === 0) throw new ConcurrentModificationError();
+
+      await writeAuditLog(tx, tenantId, {
+        actorId,
+        action: 'supplier_debt_adjustment.approved',
+        entityType: 'supplier_debt_adjustment',
+        entityId: id,
+        afterJson: { kind: adjustment.kind, selfApproved: actorId === adjustment.createdBy },
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
+
+      const approved = await this.adjustmentRepository.findById(tx, tenantId, id);
+      const [item] = await this.toAdjustmentDtos(tx, tenantId, [approved!]);
+      return item!;
+    });
+  }
+
+  async rejectAdjustment(tenantId: string, actorId: string, id: string, dto: RejectSupplierDebtAdjustmentRequest, meta: RequestMeta): Promise<SupplierDebtAdjustmentDto> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const adjustment = await this.adjustmentRepository.findById(tx, tenantId, id);
+      if (!adjustment) throw new NotFoundException();
+      if (adjustment.status !== 'PENDING_APPROVAL') throw new SupplierDebtAdjustmentNotPendingError();
+
+      const count = await this.adjustmentRepository.markRejected(tx, tenantId, id, dto.version, actorId, dto.rejectionReason);
+      if (count === 0) throw new ConcurrentModificationError();
+
+      await writeAuditLog(tx, tenantId, {
+        actorId,
+        action: 'supplier_debt_adjustment.rejected',
+        entityType: 'supplier_debt_adjustment',
+        entityId: id,
+        afterJson: { kind: adjustment.kind, rejectionReason: dto.rejectionReason },
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
+
+      const rejected = await this.adjustmentRepository.findById(tx, tenantId, id);
+      const [item] = await this.toAdjustmentDtos(tx, tenantId, [rejected!]);
+      return item!;
+    });
+  }
+
+  /** Tab "Nhật ký điều chỉnh" (trang chi tiết NCC) + badge "Có điều chỉnh" trên
+   * `StockReceiptFormPage`/`StockIssueFormPage` (`targetReceiptId`/`targetIssueId`). */
+  async listAdjustments(tenantId: string, query: ListSupplierDebtAdjustmentsQuery): Promise<ListSupplierDebtAdjustmentsResponse> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const rows = await this.adjustmentRepository.list(tx, tenantId, query);
+      const items = await this.toAdjustmentDtos(tx, tenantId, rows);
+      return { items };
     });
   }
 }

@@ -255,18 +255,42 @@ describe('HTTP e2e — /api/v1/supplier-debt (Công nợ nhà cung cấp, Phần
       expect(approveRes.status).toBe(422);
     });
 
-    it('huỷ phiếu nhập KHÔNG tự đụng công nợ/voucher (StockReceiptService.voidReceipt() không gọi hook) — công nợ vẫn còn nguyên, ghi lại để dành Phần D', async () => {
-      // Xác nhận hành vi HIỆN TẠI (Phần A cố ý CHƯA hook Huỷ chứng từ vào công nợ — đó là Phần D,
-      // "Huỷ chứng từ" chưa code). Test này là "characterization test" chống hồi quy im lặng.
+    it('Phần D — huỷ phiếu nhập ĐÃ Duyệt (actor có stock_receipt.approve) tự đảo công nợ NGAY trong cùng transaction', async () => {
       const supplierId = await createSupplier(clinicAdminToken);
       const { receiptId } = await createAndApprovePurchase(clinicAdminToken, supplierId, { quantity: 2, unitCost: 10000 });
       const balanceBefore = (await request(app.getHttpServer()).get(`/api/v1/supplier-debt/${supplierId}/summary`).set(authed(clinicAdminToken))).body.data.balance;
-      await request(app.getHttpServer())
+      expect(balanceBefore).toBe(20000);
+      const voidRes = await request(app.getHttpServer())
         .post(`/api/v1/inventory/receipts/${receiptId}/void`)
         .set(authed(clinicAdminToken))
-        .send({ version: 2, reason: 'test huỷ — không liên quan công nợ' });
+        .send({ version: 2, reason: 'test huỷ — Phần D tự đảo công nợ' });
+      expect(voidRes.status).toBe(200);
       const balanceAfter = (await request(app.getHttpServer()).get(`/api/v1/supplier-debt/${supplierId}/summary`).set(authed(clinicAdminToken))).body.data.balance;
-      expect(balanceAfter).toBe(balanceBefore);
+      expect(balanceAfter).toBe(0);
+      const ledger = await request(app.getHttpServer()).get(`/api/v1/supplier-debt/${supplierId}/ledger`).set(authed(clinicAdminToken));
+      const reversalEntry = ledger.body.data.items.find((e: { entryType: string }) => e.entryType === 'REVERSAL');
+      expect(reversalEntry).toBeDefined();
+      expect(reversalEntry.amountChange).toBe(-20000);
+      expect(reversalEntry.stockReceiptId).toBe(receiptId);
+    });
+
+    it('huỷ phiếu nhập KHÔNG gắn NCC (receiptType=OPENING_BALANCE) không đụng gì tới sổ công nợ (no-op an toàn)', async () => {
+      const createRes = await request(app.getHttpServer())
+        .post('/api/v1/inventory/receipts')
+        .set(authed(clinicAdminToken))
+        .send({
+          warehouseId,
+          receiptType: 'OPENING_BALANCE',
+          lines: [{ drugId, unitCode: 'VIEN', quantity: 1, unitCost: 10000, batchNo: `LOT-${randomUUID().slice(0, 6)}`, expiryDate: '2027-01-01' }],
+        });
+      expect(createRes.status).toBe(200);
+      const approveRes = await request(app.getHttpServer()).post(`/api/v1/inventory/receipts/${createRes.body.data.id}/approve`).set(authed(clinicAdminToken)).send({ version: createRes.body.data.version });
+      expect(approveRes.status).toBe(200);
+      const voidRes = await request(app.getHttpServer())
+        .post(`/api/v1/inventory/receipts/${createRes.body.data.id}/void`)
+        .set(authed(clinicAdminToken))
+        .send({ version: 2, reason: 'test huỷ phiếu không gắn NCC' });
+      expect(voidRes.status).toBe(200);
     });
   });
 
@@ -640,6 +664,298 @@ describe('HTTP e2e — /api/v1/supplier-debt (Công nợ nhà cung cấp, Phần
         .set(authed(tenantBAdminToken))
         .send({ amount: 10000, paymentMethodCode: 'CASH', cashAccountId });
       expect(res.status).toBe(404);
+    });
+  });
+
+  /**
+   * Phần D — "Luồng xử lý sai sót" (docs/DECISIONS.md #180/#182, kế hoạch clever-dazzling-bentley.md).
+   * 2 vai trò tuỳ biến riêng cho phần này (sao chép ma trận `clinic_admin` qua API, cùng khuôn đã
+   * dùng ở `stock-issue-http.spec.ts` "Phân quyền theo Khoa/Phòng"):
+   * - `requesterOnlyToken` — CÓ `supplier_debt.adjust`, KHÔNG có `supplier_debt.approve`/
+   *   `stock_receipt.approve`/`stock_issue.create` — mô phỏng nhân viên chỉ được "Đề nghị huỷ".
+   * - `approverOnlyToken` — CÓ `supplier_debt.approve`, KHÔNG có `stock_receipt.approve`/
+   *   `stock_issue.create` (VÀ không có `supplier_debt.adjust`, để phép thử "Tự duyệt" ở nhánh khác
+   *   không bị lẫn) — xác nhận đúng chốt "chỉ cần supplier_debt.approve, không cần quyền duyệt phiếu
+   *   gốc của người duyệt".
+   */
+  describe('Phần D — Luồng xử lý sai sót', () => {
+    let requesterOnlyToken: string;
+    let approverOnlyToken: string;
+
+    async function createCustomRoleToken(roleLabel: string, overrides: Record<string, 'none' | 'global'>) {
+      const rolesRes = await request(app.getHttpServer()).get('/api/v1/roles').set(authed(clinicAdminToken));
+      const clinicAdminRole = rolesRes.body.data.items.find((r: { name: string }) => r.name === 'clinic_admin');
+      const matrixRes = await request(app.getHttpServer()).get(`/api/v1/roles/${clinicAdminRole.id}/permissions`).set(authed(clinicAdminToken));
+      const newRole = await request(app.getHttpServer()).post('/api/v1/roles').set(authed(clinicAdminToken)).send({ name: `${roleLabel} e2e ${randomUUID().slice(0, 6)}` });
+      const entries = (matrixRes.body.data.permissions as { permissionId: string; module: string; action: string; dataScope: string }[])
+        .filter((e) => e.dataScope !== 'none')
+        .map((e) => {
+          const key = `${e.module}.${e.action}`;
+          return { permissionId: e.permissionId, dataScope: key in overrides ? overrides[key] : e.dataScope };
+        });
+      await request(app.getHttpServer()).put(`/api/v1/roles/${newRole.body.data.id}/permissions`).set(authed(clinicAdminToken)).send({ entries });
+
+      const username = `e2e-sd-${roleLabel}-${randomUUID()}`;
+      const passwordHash = await argon2.hash(password, { type: argon2.argon2id });
+      const user = await privileged.userAccount.create({
+        data: { tenantId: fixture.tenantA.id, username, passwordHash, fullName: `User ${roleLabel}`, createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR },
+      });
+      await privileged.userRole.create({ data: { tenantId: fixture.tenantA.id, userId: user.id, roleId: newRole.body.data.id, createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR } });
+      const login = await request(app.getHttpServer()).post('/api/v1/auth/login').send({ tenantId: fixture.tenantA.id, username, password });
+      return login.body.data.accessToken as string;
+    }
+
+    beforeAll(async () => {
+      requesterOnlyToken = await createCustomRoleToken('requester-only', {
+        'supplier_debt.approve': 'none',
+        'stock_receipt.approve': 'none',
+        'stock_issue.create': 'none',
+      });
+      approverOnlyToken = await createCustomRoleToken('approver-only', {
+        'supplier_debt.adjust': 'none',
+        'stock_receipt.approve': 'none',
+        'stock_issue.create': 'none',
+      });
+    });
+
+    it('lễ tân (không có supplier_debt.adjust) → 403 khi tạo Phiếu điều chỉnh', async () => {
+      const supplierId = await createSupplier(clinicAdminToken);
+      const res = await request(app.getHttpServer()).post('/api/v1/supplier-debt/adjustments').set(authed(receptionistToken)).send({ supplierId, kind: 'INCREASE', amount: 1000, reason: 'test' });
+      expect(res.status).toBe(403);
+    });
+
+    it('lễ tân (không có supplier_debt.approve) → 403 khi duyệt', async () => {
+      const supplierId = await createSupplier(clinicAdminToken);
+      const createRes = await request(app.getHttpServer()).post('/api/v1/supplier-debt/adjustments').set(authed(clinicAdminToken)).send({ supplierId, kind: 'INCREASE', amount: 1000, reason: 'test' });
+      const res = await request(app.getHttpServer()).post(`/api/v1/supplier-debt/adjustments/${createRes.body.data.id}/approve`).set(authed(receptionistToken)).send({ version: 1 });
+      expect(res.status).toBe(403);
+    });
+
+    it('INCREASE — VALIDATE: thiếu amount → 400', async () => {
+      const supplierId = await createSupplier(clinicAdminToken);
+      const res = await request(app.getHttpServer()).post('/api/v1/supplier-debt/adjustments').set(authed(clinicAdminToken)).send({ supplierId, kind: 'INCREASE', reason: 'thiếu số tiền' });
+      expect(res.status).toBe(400);
+    });
+
+    it('VOID_REQUEST — VALIDATE: có amount → 400 (chỉ INCREASE/DECREASE mới có amount)', async () => {
+      const supplierId = await createSupplier(clinicAdminToken);
+      const { receiptId } = await createAndApprovePurchase(clinicAdminToken, supplierId, { quantity: 1, unitCost: 1000 });
+      const res = await request(app.getHttpServer()).post('/api/v1/supplier-debt/adjustments').set(authed(clinicAdminToken)).send({ supplierId, kind: 'VOID_REQUEST', amount: 1000, targetReceiptId: receiptId, reason: 'sai' });
+      expect(res.status).toBe(400);
+    });
+
+    it('VOID_REQUEST — VALIDATE: chọn CẢ targetReceiptId LẪN targetIssueId → 400', async () => {
+      const supplierId = await createSupplier(clinicAdminToken);
+      const { receiptId } = await createAndApprovePurchase(clinicAdminToken, supplierId, { quantity: 1, unitCost: 1000 });
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/supplier-debt/adjustments')
+        .set(authed(clinicAdminToken))
+        .send({ supplierId, kind: 'VOID_REQUEST', targetReceiptId: receiptId, targetIssueId: randomUUID(), reason: 'sai' });
+      expect(res.status).toBe(400);
+    });
+
+    it('VOID_REQUEST — phiếu nhập thuộc NCC KHÁC → 422', async () => {
+      const supplierId = await createSupplier(clinicAdminToken);
+      const otherSupplierId = await createSupplier(clinicAdminToken);
+      const { receiptId } = await createAndApprovePurchase(clinicAdminToken, supplierId, { quantity: 1, unitCost: 1000 });
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/supplier-debt/adjustments')
+        .set(authed(clinicAdminToken))
+        .send({ supplierId: otherSupplierId, kind: 'VOID_REQUEST', targetReceiptId: receiptId, reason: 'nhầm NCC' });
+      expect(res.status).toBe(422);
+    });
+
+    it('INCREASE — duyệt xong ghi ADJUSTMENT_INCREASE, balance tăng đúng, không đụng tồn kho', async () => {
+      const supplierId = await createSupplier(clinicAdminToken);
+      const createRes = await request(app.getHttpServer())
+        .post('/api/v1/supplier-debt/adjustments')
+        .set(authed(clinicAdminToken))
+        .send({ supplierId, kind: 'INCREASE', amount: 30000, reason: 'NCC gửi hoá đơn điều chỉnh tăng', evidenceRef: 'BB-001' });
+      expect(createRes.status).toBe(201);
+      expect(createRes.body.data.status).toBe('PENDING_APPROVAL');
+
+      const summaryBefore = await request(app.getHttpServer()).get(`/api/v1/supplier-debt/${supplierId}/summary`).set(authed(clinicAdminToken));
+      expect(summaryBefore.body.data.balance).toBe(0); // Chờ duyệt — CHƯA đụng sổ.
+      expect(summaryBefore.body.data.pendingAdjustmentCount).toBe(1);
+
+      const approveRes = await request(app.getHttpServer()).post(`/api/v1/supplier-debt/adjustments/${createRes.body.data.id}/approve`).set(authed(approverOnlyToken)).send({ version: 1 });
+      expect(approveRes.status).toBe(200);
+      expect(approveRes.body.data).toMatchObject({ status: 'APPROVED', selfApproved: false });
+
+      const summaryAfter = await request(app.getHttpServer()).get(`/api/v1/supplier-debt/${supplierId}/summary`).set(authed(clinicAdminToken));
+      expect(summaryAfter.body.data.balance).toBe(30000);
+      expect(summaryAfter.body.data.pendingAdjustmentCount).toBe(0);
+
+      const ledger = await request(app.getHttpServer()).get(`/api/v1/supplier-debt/${supplierId}/ledger`).set(authed(clinicAdminToken));
+      expect(ledger.body.data.items[0]).toMatchObject({ entryType: 'ADJUSTMENT_INCREASE', amountChange: 30000, balanceAfter: 30000 });
+    });
+
+    it('DECREASE — duyệt xong ghi ADJUSTMENT_DECREASE, balance giảm đúng (được phép âm — NCC nợ lại)', async () => {
+      const supplierId = await createSupplier(clinicAdminToken);
+      const createRes = await request(app.getHttpServer())
+        .post('/api/v1/supplier-debt/adjustments')
+        .set(authed(clinicAdminToken))
+        .send({ supplierId, kind: 'DECREASE', amount: 5000, reason: 'NCC giảm giá sau khi đã ghi nợ' });
+      const approveRes = await request(app.getHttpServer()).post(`/api/v1/supplier-debt/adjustments/${createRes.body.data.id}/approve`).set(authed(clinicAdminToken)).send({ version: 1 });
+      expect(approveRes.status).toBe(200);
+      const summary = await request(app.getHttpServer()).get(`/api/v1/supplier-debt/${supplierId}/summary`).set(authed(clinicAdminToken));
+      expect(summary.body.data.balance).toBe(-5000);
+    });
+
+    it('"Tự duyệt" (#182 câu 1) — clinic_admin lập rồi tự duyệt luôn → selfApproved=true, ghi rõ trong Nhật ký', async () => {
+      const supplierId = await createSupplier(clinicAdminToken);
+      const createRes = await request(app.getHttpServer())
+        .post('/api/v1/supplier-debt/adjustments')
+        .set(authed(clinicAdminToken))
+        .send({ supplierId, kind: 'INCREASE', amount: 1000, reason: 'test tự duyệt' });
+      const approveRes = await request(app.getHttpServer()).post(`/api/v1/supplier-debt/adjustments/${createRes.body.data.id}/approve`).set(authed(clinicAdminToken)).send({ version: 1 });
+      expect(approveRes.body.data.selfApproved).toBe(true);
+      const list = await request(app.getHttpServer()).get('/api/v1/supplier-debt/adjustments').set(authed(clinicAdminToken)).query({ supplierId });
+      expect(list.body.data.items[0]).toMatchObject({ selfApproved: true, status: 'APPROVED' });
+    });
+
+    it('Từ chối — bắt buộc lý do, KHÔNG đụng sổ công nợ', async () => {
+      const supplierId = await createSupplier(clinicAdminToken);
+      const createRes = await request(app.getHttpServer())
+        .post('/api/v1/supplier-debt/adjustments')
+        .set(authed(clinicAdminToken))
+        .send({ supplierId, kind: 'INCREASE', amount: 1000, reason: 'sẽ bị từ chối' });
+
+      const missingReasonRes = await request(app.getHttpServer()).post(`/api/v1/supplier-debt/adjustments/${createRes.body.data.id}/reject`).set(authed(clinicAdminToken)).send({ version: 1 });
+      expect(missingReasonRes.status).toBe(400);
+
+      const rejectRes = await request(app.getHttpServer())
+        .post(`/api/v1/supplier-debt/adjustments/${createRes.body.data.id}/reject`)
+        .set(authed(approverOnlyToken))
+        .send({ version: 1, rejectionReason: 'Sai số tiền, lập lại' });
+      expect(rejectRes.status).toBe(200);
+      expect(rejectRes.body.data).toMatchObject({ status: 'REJECTED', rejectionReason: 'Sai số tiền, lập lại' });
+
+      const summary = await request(app.getHttpServer()).get(`/api/v1/supplier-debt/${supplierId}/summary`).set(authed(clinicAdminToken));
+      expect(summary.body.data.balance).toBe(0);
+    });
+
+    it('Duyệt/Từ chối lại phiếu ĐÃ xử lý → 409 SUPPLIER_DEBT_ADJUSTMENT_NOT_PENDING', async () => {
+      const supplierId = await createSupplier(clinicAdminToken);
+      const createRes = await request(app.getHttpServer())
+        .post('/api/v1/supplier-debt/adjustments')
+        .set(authed(clinicAdminToken))
+        .send({ supplierId, kind: 'INCREASE', amount: 1000, reason: 'test' });
+      await request(app.getHttpServer()).post(`/api/v1/supplier-debt/adjustments/${createRes.body.data.id}/approve`).set(authed(clinicAdminToken)).send({ version: 1 });
+
+      const reApproveRes = await request(app.getHttpServer()).post(`/api/v1/supplier-debt/adjustments/${createRes.body.data.id}/approve`).set(authed(clinicAdminToken)).send({ version: 2 });
+      expect(reApproveRes.status).toBe(409);
+      expect(reApproveRes.body.error.code).toBe('SUPPLIER_DEBT_ADJUSTMENT_NOT_PENDING');
+
+      const rejectAfterRes = await request(app.getHttpServer()).post(`/api/v1/supplier-debt/adjustments/${createRes.body.data.id}/reject`).set(authed(clinicAdminToken)).send({ version: 2, rejectionReason: 'quá muộn' });
+      expect(rejectAfterRes.status).toBe(409);
+    });
+
+    it('VOID_REQUEST — người CHỈ có supplier_debt.adjust đề nghị, người CHỈ có supplier_debt.approve (không stock_receipt.approve) duyệt → tự huỷ phiếu + tự đảo công nợ', async () => {
+      const supplierId = await createSupplier(clinicAdminToken);
+      const { receiptId } = await createAndApprovePurchase(clinicAdminToken, supplierId, { quantity: 4, unitCost: 5000 }); // netAmount=20000
+
+      // Xác nhận requester THẬT SỰ không có quyền huỷ trực tiếp.
+      const directVoidRes = await request(app.getHttpServer())
+        .post(`/api/v1/inventory/receipts/${receiptId}/void`)
+        .set(authed(requesterOnlyToken))
+        .send({ version: 2, reason: 'thử huỷ trực tiếp — phải bị chặn' });
+      expect(directVoidRes.status).toBe(403);
+
+      const createRes = await request(app.getHttpServer())
+        .post('/api/v1/supplier-debt/adjustments')
+        .set(authed(requesterOnlyToken))
+        .send({ supplierId, kind: 'VOID_REQUEST', targetReceiptId: receiptId, reason: 'Lập nhầm nhà cung cấp, cần huỷ và lập lại' });
+      expect(createRes.status).toBe(201);
+      expect(createRes.body.data.kind).toBe('VOID_REQUEST');
+
+      // Xác nhận approver THẬT SỰ không có quyền huỷ trực tiếp (chỉ có supplier_debt.approve).
+      const approverDirectVoidRes = await request(app.getHttpServer())
+        .post(`/api/v1/inventory/receipts/${receiptId}/void`)
+        .set(authed(approverOnlyToken))
+        .send({ version: 2, reason: 'approver thử huỷ trực tiếp — phải bị chặn' });
+      expect(approverDirectVoidRes.status).toBe(403);
+
+      const approveRes = await request(app.getHttpServer()).post(`/api/v1/supplier-debt/adjustments/${createRes.body.data.id}/approve`).set(authed(approverOnlyToken)).send({ version: 1 });
+      expect(approveRes.status).toBe(200);
+      expect(approveRes.body.data).toMatchObject({ status: 'APPROVED', selfApproved: false });
+
+      const receiptDetail = await request(app.getHttpServer()).get(`/api/v1/inventory/receipts/${receiptId}`).set(authed(clinicAdminToken));
+      expect(receiptDetail.body.data.voided).toBe(true);
+
+      const summary = await request(app.getHttpServer()).get(`/api/v1/supplier-debt/${supplierId}/summary`).set(authed(clinicAdminToken));
+      expect(summary.body.data.balance).toBe(0); // PURCHASE 20000 tự đảo bằng REVERSAL -20000.
+    });
+
+    it('badge "Có điều chỉnh" — GET /supplier-debt/adjustments?targetReceiptId= trả đúng phiếu liên quan', async () => {
+      const supplierId = await createSupplier(clinicAdminToken);
+      const { receiptId } = await createAndApprovePurchase(clinicAdminToken, supplierId, { quantity: 1, unitCost: 1000 });
+      const createRes = await request(app.getHttpServer())
+        .post('/api/v1/supplier-debt/adjustments')
+        .set(authed(clinicAdminToken))
+        .send({ supplierId, kind: 'VOID_REQUEST', targetReceiptId: receiptId, reason: 'test badge' });
+      expect(createRes.status).toBe(201);
+
+      const linked = await request(app.getHttpServer()).get('/api/v1/supplier-debt/adjustments').set(authed(clinicAdminToken)).query({ targetReceiptId: receiptId });
+      expect(linked.body.data.items).toHaveLength(1);
+      expect(linked.body.data.items[0].id).toBe(createRes.body.data.id);
+
+      const unrelated = await request(app.getHttpServer()).get('/api/v1/supplier-debt/adjustments').set(authed(clinicAdminToken)).query({ targetReceiptId: randomUUID() });
+      expect(unrelated.body.data.items).toHaveLength(0);
+    });
+
+    it('Kiểm tra toàn vẹn số dư (mục 4.2.6) — SUM(amountChange) lệch balance snapshot → chặn Thanh toán/Thu tiền hoàn lại (409)', async () => {
+      const supplierId = await createSupplier(clinicAdminToken);
+      await createAndApprovePurchase(clinicAdminToken, supplierId, { quantity: 2, unitCost: 5000 }); // balance=10000
+      const account = await privileged.supplierDebtAccount.findFirstOrThrow({ where: { tenantId: fixture.tenantA.id, supplierId } });
+      // Ghi tay 1 dòng lệch trực tiếp qua Prisma (bỏ qua applyEntry()/updateBalance() cùng lúc) — mô
+      // phỏng lỗi hệ thống giả định, đúng tinh thần "không do người dùng" của mục 4.2.6.
+      await privileged.supplierDebtEntry.create({
+        data: {
+          tenantId: fixture.tenantA.id,
+          accountId: account.id,
+          entryType: 'OPENING_BALANCE',
+          amountChange: 1000n,
+          balanceAfter: 999999n,
+          occurredAt: new Date(),
+          createdBy: SYSTEM_TEST_ACTOR,
+          updatedBy: SYSTEM_TEST_ACTOR,
+        },
+      });
+
+      const paymentRes = await request(app.getHttpServer())
+        .post(`/api/v1/supplier-debt/${supplierId}/payment`)
+        .set(authed(clinicAdminToken))
+        .send({ amount: 1000, paymentMethodCode: 'CASH', cashAccountId });
+      expect(paymentRes.status).toBe(409);
+      expect(paymentRes.body.error.code).toBe('SUPPLIER_DEBT_INTEGRITY_MISMATCH');
+    });
+
+    describe('Cách ly tenant', () => {
+      it('4 endpoint mới đều 404 khi thao tác chéo tenant', async () => {
+        const supplierId = await createSupplier(clinicAdminToken);
+        const createRes = await request(app.getHttpServer())
+          .post('/api/v1/supplier-debt/adjustments')
+          .set(authed(clinicAdminToken))
+          .send({ supplierId, kind: 'INCREASE', amount: 1000, reason: 'test cách ly' });
+        expect(createRes.status).toBe(201);
+        const adjustmentId = createRes.body.data.id;
+
+        const crossCreateRes = await request(app.getHttpServer())
+          .post('/api/v1/supplier-debt/adjustments')
+          .set(authed(tenantBAdminToken))
+          .send({ supplierId, kind: 'INCREASE', amount: 1000, reason: 'test cách ly — NCC tenant khác' });
+        expect(crossCreateRes.status).toBe(404);
+
+        const crossApproveRes = await request(app.getHttpServer()).post(`/api/v1/supplier-debt/adjustments/${adjustmentId}/approve`).set(authed(tenantBAdminToken)).send({ version: 1 });
+        expect(crossApproveRes.status).toBe(404);
+
+        const crossRejectRes = await request(app.getHttpServer()).post(`/api/v1/supplier-debt/adjustments/${adjustmentId}/reject`).set(authed(tenantBAdminToken)).send({ version: 1, rejectionReason: 'x' });
+        expect(crossRejectRes.status).toBe(404);
+
+        const crossListRes = await request(app.getHttpServer()).get('/api/v1/supplier-debt/adjustments').set(authed(tenantBAdminToken)).query({ supplierId });
+        expect(crossListRes.body.data.items).toHaveLength(0);
+      });
     });
   });
 });

@@ -1,4 +1,4 @@
-import { Injectable, Inject, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { forwardRef, Injectable, Inject, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import {
   computeDiscountAmount,
   computeInvoiceDiscount,
@@ -71,7 +71,11 @@ export class StockReceiptService {
     private readonly stockLedgerRepository: StockLedgerRepository,
     private readonly stockBalanceRepository: StockBalanceRepository,
     private readonly businessCodeService: BusinessCodeService,
-    private readonly supplierDebtService: SupplierDebtService,
+    // Phần D (docs/DECISIONS.md #180/#182) làm `supplier-debt ⇄ inventory` thành vòng phụ thuộc THẬT
+    // ở mức Service (SupplierDebtService.approveAdjustment() giờ gọi ngược StockReceiptService.
+    // voidPostedForAdjustment()) — bọc forwardRef() ở CẢ HAI đầu injection, đúng khuyến nghị NestJS
+    // cho circular provider dependency (khác forwardRef Ở MODULE chỉ giải quyết thứ tự require() CommonJS).
+    @Inject(forwardRef(() => SupplierDebtService)) private readonly supplierDebtService: SupplierDebtService,
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
   ) {}
 
@@ -497,55 +501,94 @@ export class StockReceiptService {
     await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.stockReceiptRepository.findById(tx, tenantId, id);
       if (!existing) throw new NotFoundException();
-      if (existing.status !== 'POSTED') throw new StockReceiptVoidNotAllowedError('Phiếu này chưa được duyệt hoặc đã bị huỷ trước đó.');
 
       const warehouse = await this.warehouseRepository.findById(tx, tenantId, existing.warehouseId);
       assertWarehouseInScope(warehouse?.departmentId ?? null, dataScope, actorDepartmentId);
 
-      const originalEntries = await this.stockLedgerRepository.listForSourceReceipt(tx, tenantId, id);
-
-      for (const entry of originalEntries) {
-        const balance = await this.stockBalanceRepository.findByKey(tx, tenantId, entry.drugId, entry.warehouseId, entry.batchId);
-        if (!balance || balance.quantityOnHand < entry.quantityChange) {
-          throw new StockReceiptVoidNotAllowedError();
-        }
-      }
-
-      const count = await this.stockReceiptRepository.voidPosted(tx, tenantId, id, dto.version, actorId, dto.reason);
-      if (count === 0) throw new ConcurrentModificationError();
-
-      for (const entry of originalEntries) {
-        await this.stockLedgerRepository.create(tx, tenantId, actorId, {
-          drugId: entry.drugId,
-          warehouseId: entry.warehouseId,
-          batchId: entry.batchId,
-          quantityChange: -entry.quantityChange,
-          unitCost: entry.unitCost,
-          reason: 'RECEIPT_VOID',
-          sourceReceiptId: id,
-          occurredAt: new Date(),
-          note: 'Đảo dòng thẻ kho do huỷ phiếu nhập kho',
-        });
-        await this.stockBalanceRepository.upsertQuantity(tx, tenantId, actorId, {
-          drugId: entry.drugId,
-          warehouseId: entry.warehouseId,
-          batchId: entry.batchId,
-          quantityDelta: -entry.quantityChange,
-        });
-      }
-
-      await writeAuditLog(tx, tenantId, {
-        actorId,
-        action: 'stock_receipt.voided',
-        entityType: 'stock_receipt',
-        entityId: id,
-        afterJson: { reason: dto.reason, reversedEntryCount: originalEntries.length },
-        ip: meta.ip,
-        userAgent: meta.userAgent,
-      });
+      await this.voidPostedCore(tx, tenantId, actorId, existing, dto.version, dto.reason, meta);
     });
 
     return this.getById(tenantId, actorId, dataScope, id);
+  }
+
+  /**
+   * "Công nợ nhà cung cấp" Phần D, mục 5 (docs/DECISIONS.md #180/#182) — Tầng 2 "Huỷ chứng từ" khi
+   * `SupplierDebtService.approveAdjustment()` duyệt 1 "Đề nghị huỷ" (`VOID_REQUEST`, người KHÔNG có
+   * `stock_receipt.approve` đã lập). Chạy TRONG transaction của caller (nhận `tx`, không tự mở
+   * transaction riêng) — cùng khuôn `createCountSurplusReceipt()`/`createTransferInReceipt()`
+   * (method nội bộ "hệ thống tự sinh/thao tác thay", KHÔNG kiểm `dataScope`/Khoa-Phòng — người duyệt
+   * chỉ cần `supplier_debt.approve`, đã chốt qua AskUserQuestion). Đọc `version` hiện tại NGAY TRƯỚC
+   * khi huỷ (không nhận từ caller — caller không biết trước).
+   */
+  async voidPostedForAdjustment(tx: Prisma.TransactionClient, tenantId: string, actorId: string, id: string, reason: string, meta: RequestMeta): Promise<void> {
+    const existing = await this.stockReceiptRepository.findById(tx, tenantId, id);
+    if (!existing) throw new NotFoundException();
+    await this.voidPostedCore(tx, tenantId, actorId, existing, existing.version, reason, meta);
+  }
+
+  /** Lõi "Huỷ phiếu nhập ĐÃ Duyệt" dùng chung cho `voidReceipt()` (Huỷ trực tiếp, đã qua kiểm
+   * `dataScope`) và `voidPostedForAdjustment()` (hệ thống thực thi thay lúc duyệt "Đề nghị huỷ") —
+   * tách khỏi `voidReceipt()` (24/09/2026) để CẢ HAI đường đều tự đảo công nợ NCC trong CÙNG
+   * transaction (đúng đặc tả mục 4.1 tầng 2, thay vì gọi lại public API mở transaction riêng — mất
+   * tính nguyên tử giữa Huỷ chứng từ và đảo công nợ). */
+  private async voidPostedCore(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    actorId: string,
+    existing: StockReceipt,
+    expectedVersion: number,
+    reason: string,
+    meta: RequestMeta,
+  ): Promise<void> {
+    if (existing.status !== 'POSTED') throw new StockReceiptVoidNotAllowedError('Phiếu này chưa được duyệt hoặc đã bị huỷ trước đó.');
+
+    const originalEntries = await this.stockLedgerRepository.listForSourceReceipt(tx, tenantId, existing.id);
+
+    for (const entry of originalEntries) {
+      const balance = await this.stockBalanceRepository.findByKey(tx, tenantId, entry.drugId, entry.warehouseId, entry.batchId);
+      if (!balance || balance.quantityOnHand < entry.quantityChange) {
+        throw new StockReceiptVoidNotAllowedError();
+      }
+    }
+
+    const count = await this.stockReceiptRepository.voidPosted(tx, tenantId, existing.id, expectedVersion, actorId, reason);
+    if (count === 0) throw new ConcurrentModificationError();
+
+    for (const entry of originalEntries) {
+      await this.stockLedgerRepository.create(tx, tenantId, actorId, {
+        drugId: entry.drugId,
+        warehouseId: entry.warehouseId,
+        batchId: entry.batchId,
+        quantityChange: -entry.quantityChange,
+        unitCost: entry.unitCost,
+        reason: 'RECEIPT_VOID',
+        sourceReceiptId: existing.id,
+        occurredAt: new Date(),
+        note: 'Đảo dòng thẻ kho do huỷ phiếu nhập kho',
+      });
+      await this.stockBalanceRepository.upsertQuantity(tx, tenantId, actorId, {
+        drugId: entry.drugId,
+        warehouseId: entry.warehouseId,
+        batchId: entry.batchId,
+        quantityDelta: -entry.quantityChange,
+      });
+    }
+
+    await writeAuditLog(tx, tenantId, {
+      actorId,
+      action: 'stock_receipt.voided',
+      entityType: 'stock_receipt',
+      entityId: existing.id,
+      afterJson: { reason, reversedEntryCount: originalEntries.length },
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+
+    // Phần D, Tầng 2 — tự đảo công nợ NCC TRONG CÙNG transaction nếu phiếu này gắn NCC (PURCHASE có
+    // supplierId). No-op (không tìm thấy bút toán PURCHASE gốc) cho mọi receiptType khác.
+    if (existing.receiptType === 'PURCHASE' && existing.supplierId) {
+      await this.supplierDebtService.reverseStockEntry(tx, tenantId, actorId, { stockReceiptId: existing.id, stockIssueId: null }, reason, meta);
+    }
   }
 
   // ============ helpers ============

@@ -12644,7 +12644,7 @@ export interface paths {
                             data: {
                                 items: {
                                     /** @enum {string} */
-                                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER";
+                                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT";
                                     label: string;
                                     prefix: string;
                                     template: string;
@@ -12717,7 +12717,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER";
+                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT";
                 };
                 cookie?: never;
             };
@@ -12740,7 +12740,7 @@ export interface paths {
                         "application/json": {
                             data: {
                                 /** @enum {string} */
-                                codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER";
+                                codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT";
                                 label: string;
                                 prefix: string;
                                 template: string;
@@ -25002,6 +25002,8 @@ export interface paths {
                                     balance: number;
                                     pendingApprovalAmount: number;
                                     canRecordOpeningBalance: boolean;
+                                    pendingAdjustmentCount: number;
+                                    balanceIntegrityOk: boolean;
                                 }[];
                             };
                             meta: Record<string, never>;
@@ -25084,6 +25086,8 @@ export interface paths {
                                 balance: number;
                                 pendingApprovalAmount: number;
                                 canRecordOpeningBalance: boolean;
+                                pendingAdjustmentCount: number;
+                                balanceIntegrityOk: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -25404,6 +25408,8 @@ export interface paths {
                                 balance: number;
                                 pendingApprovalAmount: number;
                                 canRecordOpeningBalance: boolean;
+                                pendingAdjustmentCount: number;
+                                balanceIntegrityOk: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -25526,6 +25532,8 @@ export interface paths {
                                 balance: number;
                                 pendingApprovalAmount: number;
                                 canRecordOpeningBalance: boolean;
+                                pendingAdjustmentCount: number;
+                                balanceIntegrityOk: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -25745,6 +25753,8 @@ export interface paths {
                                 balance: number;
                                 pendingApprovalAmount: number;
                                 canRecordOpeningBalance: boolean;
+                                pendingAdjustmentCount: number;
+                                balanceIntegrityOk: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -25797,6 +25807,506 @@ export interface paths {
                 };
                 /** @description NCC không đang nợ lại, hoặc số tiền vượt quá số nợ lại */
                 422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/supplier-debt/adjustments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tab "Nhật ký điều chỉnh" (trang NCC) + badge "Có điều chỉnh" trên phiếu nhập/xuất gốc */
+        get: {
+            parameters: {
+                query?: {
+                    supplierId?: string;
+                    status?: "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
+                    targetReceiptId?: string;
+                    targetIssueId?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    version: number;
+                                    /** Format: uuid */
+                                    supplierId: string;
+                                    supplierName: string;
+                                    adjustmentNo: string;
+                                    /** @enum {string} */
+                                    kind: "INCREASE" | "DECREASE" | "VOID_REQUEST";
+                                    amount: number | null;
+                                    /** Format: uuid */
+                                    targetReceiptId: string | null;
+                                    /** Format: uuid */
+                                    targetIssueId: string | null;
+                                    /** Format: uuid */
+                                    targetVoucherId: string | null;
+                                    reason: string;
+                                    evidenceRef: string | null;
+                                    /** @enum {string} */
+                                    status: "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
+                                    createdAt: string;
+                                    createdByName: string;
+                                    approvedByName: string | null;
+                                    approvedAt: string | null;
+                                    selfApproved: boolean;
+                                    rejectionReason: string | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền supplier_debt.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Lập "Phiếu điều chỉnh công nợ" (Tăng/Giảm) hoặc "Đề nghị huỷ" (VOID_REQUEST) — chờ duyệt, KHÔNG đụng sổ/tồn kho */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        supplierId: string;
+                        /** @enum {string} */
+                        kind: "INCREASE" | "DECREASE" | "VOID_REQUEST";
+                        amount?: number;
+                        /** Format: uuid */
+                        targetReceiptId?: string | null;
+                        /** Format: uuid */
+                        targetIssueId?: string | null;
+                        /** Format: uuid */
+                        targetVoucherId?: string | null;
+                        reason: string;
+                        evidenceRef?: string | null;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                version: number;
+                                /** Format: uuid */
+                                supplierId: string;
+                                supplierName: string;
+                                adjustmentNo: string;
+                                /** @enum {string} */
+                                kind: "INCREASE" | "DECREASE" | "VOID_REQUEST";
+                                amount: number | null;
+                                /** Format: uuid */
+                                targetReceiptId: string | null;
+                                /** Format: uuid */
+                                targetIssueId: string | null;
+                                /** Format: uuid */
+                                targetVoucherId: string | null;
+                                reason: string;
+                                evidenceRef: string | null;
+                                /** @enum {string} */
+                                status: "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
+                                createdAt: string;
+                                createdByName: string;
+                                approvedByName: string | null;
+                                approvedAt: string | null;
+                                selfApproved: boolean;
+                                rejectionReason: string | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền supplier_debt.adjust */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy nhà cung cấp */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Phiếu đích không hợp lệ để đề nghị huỷ, hoặc dữ liệu sai theo kind */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/supplier-debt/adjustments/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Duyệt Phiếu điều chỉnh/Đề nghị huỷ — CHỈ cần supplier_debt.approve (không cần quyền duyệt phiếu gốc) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                version: number;
+                                /** Format: uuid */
+                                supplierId: string;
+                                supplierName: string;
+                                adjustmentNo: string;
+                                /** @enum {string} */
+                                kind: "INCREASE" | "DECREASE" | "VOID_REQUEST";
+                                amount: number | null;
+                                /** Format: uuid */
+                                targetReceiptId: string | null;
+                                /** Format: uuid */
+                                targetIssueId: string | null;
+                                /** Format: uuid */
+                                targetVoucherId: string | null;
+                                reason: string;
+                                evidenceRef: string | null;
+                                /** @enum {string} */
+                                status: "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
+                                createdAt: string;
+                                createdByName: string;
+                                approvedByName: string | null;
+                                approvedAt: string | null;
+                                selfApproved: boolean;
+                                rejectionReason: string | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền supplier_debt.approve */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy phiếu điều chỉnh */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Phiếu đã được xử lý trước đó, hoặc lệch version (CONCURRENT_MODIFICATION) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/supplier-debt/adjustments/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Từ chối Phiếu điều chỉnh/Đề nghị huỷ — bắt buộc lý do, không đụng sổ/tồn kho */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        rejectionReason: string;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                version: number;
+                                /** Format: uuid */
+                                supplierId: string;
+                                supplierName: string;
+                                adjustmentNo: string;
+                                /** @enum {string} */
+                                kind: "INCREASE" | "DECREASE" | "VOID_REQUEST";
+                                amount: number | null;
+                                /** Format: uuid */
+                                targetReceiptId: string | null;
+                                /** Format: uuid */
+                                targetIssueId: string | null;
+                                /** Format: uuid */
+                                targetVoucherId: string | null;
+                                reason: string;
+                                evidenceRef: string | null;
+                                /** @enum {string} */
+                                status: "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
+                                createdAt: string;
+                                createdByName: string;
+                                approvedByName: string | null;
+                                approvedAt: string | null;
+                                selfApproved: boolean;
+                                rejectionReason: string | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền supplier_debt.approve */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy phiếu điều chỉnh */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Phiếu đã được xử lý trước đó, hoặc lệch version (CONCURRENT_MODIFICATION) */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };

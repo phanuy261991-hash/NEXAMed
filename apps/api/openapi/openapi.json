@@ -31647,7 +31647,8 @@
                                   "STOCK_ISSUE",
                                   "PRESCRIPTION",
                                   "STOCK_COUNT",
-                                  "STOCK_TRANSFER"
+                                  "STOCK_TRANSFER",
+                                  "SUPPLIER_DEBT_ADJUSTMENT"
                                 ]
                               },
                               "label": {
@@ -31802,7 +31803,8 @@
                 "STOCK_ISSUE",
                 "PRESCRIPTION",
                 "STOCK_COUNT",
-                "STOCK_TRANSFER"
+                "STOCK_TRANSFER",
+                "SUPPLIER_DEBT_ADJUSTMENT"
               ]
             },
             "required": true,
@@ -31868,7 +31870,8 @@
                             "STOCK_ISSUE",
                             "PRESCRIPTION",
                             "STOCK_COUNT",
-                            "STOCK_TRANSFER"
+                            "STOCK_TRANSFER",
+                            "SUPPLIER_DEBT_ADJUSTMENT"
                           ]
                         },
                         "label": {
@@ -62662,6 +62665,12 @@
                               },
                               "canRecordOpeningBalance": {
                                 "type": "boolean"
+                              },
+                              "pendingAdjustmentCount": {
+                                "type": "integer"
+                              },
+                              "balanceIntegrityOk": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -62672,7 +62681,9 @@
                               "totalReturnAndAdjustment",
                               "balance",
                               "pendingApprovalAmount",
-                              "canRecordOpeningBalance"
+                              "canRecordOpeningBalance",
+                              "pendingAdjustmentCount",
+                              "balanceIntegrityOk"
                             ]
                           }
                         }
@@ -62816,6 +62827,12 @@
                         },
                         "canRecordOpeningBalance": {
                           "type": "boolean"
+                        },
+                        "pendingAdjustmentCount": {
+                          "type": "integer"
+                        },
+                        "balanceIntegrityOk": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -62826,7 +62843,9 @@
                         "totalReturnAndAdjustment",
                         "balance",
                         "pendingApprovalAmount",
-                        "canRecordOpeningBalance"
+                        "canRecordOpeningBalance",
+                        "pendingAdjustmentCount",
+                        "balanceIntegrityOk"
                       ]
                     },
                     "meta": {
@@ -63503,6 +63522,12 @@
                         },
                         "canRecordOpeningBalance": {
                           "type": "boolean"
+                        },
+                        "pendingAdjustmentCount": {
+                          "type": "integer"
+                        },
+                        "balanceIntegrityOk": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -63513,7 +63538,9 @@
                         "totalReturnAndAdjustment",
                         "balance",
                         "pendingApprovalAmount",
-                        "canRecordOpeningBalance"
+                        "canRecordOpeningBalance",
+                        "pendingAdjustmentCount",
+                        "balanceIntegrityOk"
                       ]
                     },
                     "meta": {
@@ -63750,6 +63777,12 @@
                         },
                         "canRecordOpeningBalance": {
                           "type": "boolean"
+                        },
+                        "pendingAdjustmentCount": {
+                          "type": "integer"
+                        },
+                        "balanceIntegrityOk": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -63760,7 +63793,9 @@
                         "totalReturnAndAdjustment",
                         "balance",
                         "pendingApprovalAmount",
-                        "canRecordOpeningBalance"
+                        "canRecordOpeningBalance",
+                        "pendingAdjustmentCount",
+                        "balanceIntegrityOk"
                       ]
                     },
                     "meta": {
@@ -64239,6 +64274,12 @@
                         },
                         "canRecordOpeningBalance": {
                           "type": "boolean"
+                        },
+                        "pendingAdjustmentCount": {
+                          "type": "integer"
+                        },
+                        "balanceIntegrityOk": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -64249,7 +64290,9 @@
                         "totalReturnAndAdjustment",
                         "balance",
                         "pendingApprovalAmount",
-                        "canRecordOpeningBalance"
+                        "canRecordOpeningBalance",
+                        "pendingAdjustmentCount",
+                        "balanceIntegrityOk"
                       ]
                     },
                     "meta": {
@@ -64360,6 +64403,1245 @@
           },
           "422": {
             "description": "NCC không đang nợ lại, hoặc số tiền vượt quá số nợ lại",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/supplier-debt/adjustments": {
+      "post": {
+        "tags": [
+          "supplier-debt"
+        ],
+        "summary": "Lập \"Phiếu điều chỉnh công nợ\" (Tăng/Giảm) hoặc \"Đề nghị huỷ\" (VOID_REQUEST) — chờ duyệt, KHÔNG đụng sổ/tồn kho",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "supplierId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "INCREASE",
+                      "DECREASE",
+                      "VOID_REQUEST"
+                    ]
+                  },
+                  "amount": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "targetReceiptId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "uuid"
+                  },
+                  "targetIssueId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "uuid"
+                  },
+                  "targetVoucherId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "uuid"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "evidenceRef": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "supplierId",
+                  "kind",
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "version": {
+                          "type": "integer"
+                        },
+                        "supplierId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "supplierName": {
+                          "type": "string"
+                        },
+                        "adjustmentNo": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "INCREASE",
+                            "DECREASE",
+                            "VOID_REQUEST"
+                          ]
+                        },
+                        "amount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "targetReceiptId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "targetIssueId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "targetVoucherId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "reason": {
+                          "type": "string"
+                        },
+                        "evidenceRef": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "PENDING_APPROVAL",
+                            "APPROVED",
+                            "REJECTED"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "createdByName": {
+                          "type": "string"
+                        },
+                        "approvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "selfApproved": {
+                          "type": "boolean"
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "version",
+                        "supplierId",
+                        "supplierName",
+                        "adjustmentNo",
+                        "kind",
+                        "amount",
+                        "targetReceiptId",
+                        "targetIssueId",
+                        "targetVoucherId",
+                        "reason",
+                        "evidenceRef",
+                        "status",
+                        "createdAt",
+                        "createdByName",
+                        "approvedByName",
+                        "approvedAt",
+                        "selfApproved",
+                        "rejectionReason"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền supplier_debt.adjust",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy nhà cung cấp",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Phiếu đích không hợp lệ để đề nghị huỷ, hoặc dữ liệu sai theo kind",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "supplier-debt"
+        ],
+        "summary": "Tab \"Nhật ký điều chỉnh\" (trang NCC) + badge \"Có điều chỉnh\" trên phiếu nhập/xuất gốc",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "supplierId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING_APPROVAL",
+                "APPROVED",
+                "REJECTED"
+              ]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "targetReceiptId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "targetIssueId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "version": {
+                                "type": "integer"
+                              },
+                              "supplierId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "supplierName": {
+                                "type": "string"
+                              },
+                              "adjustmentNo": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "INCREASE",
+                                  "DECREASE",
+                                  "VOID_REQUEST"
+                                ]
+                              },
+                              "amount": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "targetReceiptId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "targetIssueId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "targetVoucherId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "reason": {
+                                "type": "string"
+                              },
+                              "evidenceRef": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "PENDING_APPROVAL",
+                                  "APPROVED",
+                                  "REJECTED"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "createdByName": {
+                                "type": "string"
+                              },
+                              "approvedByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "approvedAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "selfApproved": {
+                                "type": "boolean"
+                              },
+                              "rejectionReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "version",
+                              "supplierId",
+                              "supplierName",
+                              "adjustmentNo",
+                              "kind",
+                              "amount",
+                              "targetReceiptId",
+                              "targetIssueId",
+                              "targetVoucherId",
+                              "reason",
+                              "evidenceRef",
+                              "status",
+                              "createdAt",
+                              "createdByName",
+                              "approvedByName",
+                              "approvedAt",
+                              "selfApproved",
+                              "rejectionReason"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền supplier_debt.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/supplier-debt/adjustments/{id}/approve": {
+      "post": {
+        "tags": [
+          "supplier-debt"
+        ],
+        "summary": "Duyệt Phiếu điều chỉnh/Đề nghị huỷ — CHỈ cần supplier_debt.approve (không cần quyền duyệt phiếu gốc)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "version": {
+                          "type": "integer"
+                        },
+                        "supplierId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "supplierName": {
+                          "type": "string"
+                        },
+                        "adjustmentNo": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "INCREASE",
+                            "DECREASE",
+                            "VOID_REQUEST"
+                          ]
+                        },
+                        "amount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "targetReceiptId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "targetIssueId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "targetVoucherId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "reason": {
+                          "type": "string"
+                        },
+                        "evidenceRef": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "PENDING_APPROVAL",
+                            "APPROVED",
+                            "REJECTED"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "createdByName": {
+                          "type": "string"
+                        },
+                        "approvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "selfApproved": {
+                          "type": "boolean"
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "version",
+                        "supplierId",
+                        "supplierName",
+                        "adjustmentNo",
+                        "kind",
+                        "amount",
+                        "targetReceiptId",
+                        "targetIssueId",
+                        "targetVoucherId",
+                        "reason",
+                        "evidenceRef",
+                        "status",
+                        "createdAt",
+                        "createdByName",
+                        "approvedByName",
+                        "approvedAt",
+                        "selfApproved",
+                        "rejectionReason"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền supplier_debt.approve",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy phiếu điều chỉnh",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Phiếu đã được xử lý trước đó, hoặc lệch version (CONCURRENT_MODIFICATION)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/supplier-debt/adjustments/{id}/reject": {
+      "post": {
+        "tags": [
+          "supplier-debt"
+        ],
+        "summary": "Từ chối Phiếu điều chỉnh/Đề nghị huỷ — bắt buộc lý do, không đụng sổ/tồn kho",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "rejectionReason": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "rejectionReason",
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "version": {
+                          "type": "integer"
+                        },
+                        "supplierId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "supplierName": {
+                          "type": "string"
+                        },
+                        "adjustmentNo": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "INCREASE",
+                            "DECREASE",
+                            "VOID_REQUEST"
+                          ]
+                        },
+                        "amount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "targetReceiptId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "targetIssueId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "targetVoucherId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "reason": {
+                          "type": "string"
+                        },
+                        "evidenceRef": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "PENDING_APPROVAL",
+                            "APPROVED",
+                            "REJECTED"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "createdByName": {
+                          "type": "string"
+                        },
+                        "approvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "selfApproved": {
+                          "type": "boolean"
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "version",
+                        "supplierId",
+                        "supplierName",
+                        "adjustmentNo",
+                        "kind",
+                        "amount",
+                        "targetReceiptId",
+                        "targetIssueId",
+                        "targetVoucherId",
+                        "reason",
+                        "evidenceRef",
+                        "status",
+                        "createdAt",
+                        "createdByName",
+                        "approvedByName",
+                        "approvedAt",
+                        "selfApproved",
+                        "rejectionReason"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền supplier_debt.approve",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy phiếu điều chỉnh",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Phiếu đã được xử lý trước đó, hoặc lệch version (CONCURRENT_MODIFICATION)",
             "content": {
               "application/json": {
                 "schema": {

@@ -285,6 +285,12 @@ import {
   listSupplierDebtPaymentsQuerySchema,
   listSupplierDebtPaymentsResponseSchema,
   recordSupplierDebtRefundRequestSchema,
+  createSupplierDebtAdjustmentRequestSchema,
+  approveSupplierDebtAdjustmentRequestSchema,
+  rejectSupplierDebtAdjustmentRequestSchema,
+  supplierDebtAdjustmentSchema,
+  listSupplierDebtAdjustmentsQuerySchema,
+  listSupplierDebtAdjustmentsResponseSchema,
 } from '@nexamed/shared';
 
 /**
@@ -3872,6 +3878,69 @@ registry.registerPath({
     403: errorResponse('Không có quyền supplier_debt.pay'),
     404: errorResponse('Không tìm thấy nhà cung cấp/quỹ nhận'),
     422: errorResponse('NCC không đang nợ lại, hoặc số tiền vượt quá số nợ lại'),
+  },
+});
+
+// ============ Phần D — "Luồng xử lý sai sót" (docs/DECISIONS.md #180/#182) ============
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/supplier-debt/adjustments',
+  tags: ['supplier-debt'],
+  summary: 'Lập "Phiếu điều chỉnh công nợ" (Tăng/Giảm) hoặc "Đề nghị huỷ" (VOID_REQUEST) — chờ duyệt, KHÔNG đụng sổ/tồn kho',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createSupplierDebtAdjustmentRequestSchema } } } },
+  responses: {
+    201: jsonResponse('Thành công', envelope(supplierDebtAdjustmentSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền supplier_debt.adjust'),
+    404: errorResponse('Không tìm thấy nhà cung cấp'),
+    422: errorResponse('Phiếu đích không hợp lệ để đề nghị huỷ, hoặc dữ liệu sai theo kind'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/supplier-debt/adjustments',
+  tags: ['supplier-debt'],
+  summary: 'Tab "Nhật ký điều chỉnh" (trang NCC) + badge "Có điều chỉnh" trên phiếu nhập/xuất gốc',
+  security: [{ bearerAuth: [] }],
+  request: { query: listSupplierDebtAdjustmentsQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listSupplierDebtAdjustmentsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền supplier_debt.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/supplier-debt/adjustments/{id}/approve',
+  tags: ['supplier-debt'],
+  summary: 'Duyệt Phiếu điều chỉnh/Đề nghị huỷ — CHỈ cần supplier_debt.approve (không cần quyền duyệt phiếu gốc)',
+  security: [{ bearerAuth: [] }],
+  request: { params: z.object({ id: z.string().uuid() }), body: { content: { 'application/json': { schema: approveSupplierDebtAdjustmentRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(supplierDebtAdjustmentSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền supplier_debt.approve'),
+    404: errorResponse('Không tìm thấy phiếu điều chỉnh'),
+    409: errorResponse('Phiếu đã được xử lý trước đó, hoặc lệch version (CONCURRENT_MODIFICATION)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/supplier-debt/adjustments/{id}/reject',
+  tags: ['supplier-debt'],
+  summary: 'Từ chối Phiếu điều chỉnh/Đề nghị huỷ — bắt buộc lý do, không đụng sổ/tồn kho',
+  security: [{ bearerAuth: [] }],
+  request: { params: z.object({ id: z.string().uuid() }), body: { content: { 'application/json': { schema: rejectSupplierDebtAdjustmentRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(supplierDebtAdjustmentSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền supplier_debt.approve'),
+    404: errorResponse('Không tìm thấy phiếu điều chỉnh'),
+    409: errorResponse('Phiếu đã được xử lý trước đó, hoặc lệch version (CONCURRENT_MODIFICATION)'),
   },
 });
 

@@ -1,38 +1,46 @@
-# Handoff — Công nợ nhà cung cấp, Phần A+B+C ĐỀU ĐÃ HOÀN TẤT 100% (đã commit + push) — chuyển phiên, sắp sang Phần D
+# Handoff — Công nợ nhà cung cấp, Phần D "Luồng xử lý sai sót" — Frontend + Verify Playwright
 
-**Ngày ghi**: 25/09/2026, chuyển phiên theo yêu cầu chủ dự án (không phải vì hết việc/bị chặn) — Phần C vừa verify Playwright xong, đã commit + push, đang ở điểm dừng tự nhiên trước khi sang Phần D. Tiếp nối trực tiếp `docs/handoffs/HANDOFF-CongNoNhaCungCap-PhanC-2026-09-25.md` (phiên trước, dừng ở code+test HTTP, chưa verify Playwright) — phiên này làm nốt việc kế tiếp của handoff đó (verify Playwright), rồi chủ dự án tranh thủ phản hồi UI trực tiếp qua `pnpm dev` song song lúc verify.
+**Ngày ghi**: 25/09/2026. **Trạng thái**: Backend (schema + service + controller + test HTTP) đã xong hoàn toàn, `apps/api` 1007/1007 test pass, `pnpm -w typecheck/lint/build` sạch toàn workspace. **CHƯA có bất kỳ dòng frontend nào cho Phần D.** Đọc kèm `docs/DECISIONS.md` #187 (tóm tắt đầy đủ quyết định + việc đã làm) và kế hoạch gốc `C:\Users\Administrator\.claude\plans\clever-dazzling-bentley.md` (đặc tả chi tiết mục 7 "Frontend").
 
-## Việc đã xong trong phiên này
+## Đã có sẵn ở backend (không cần đọc lại code, chỉ cần biết đủ để gọi)
 
-1. **Verify Playwright Phần C — 100% xong** (xem đầy đủ `docs/DECISIONS.md` #186): cài `playwright-core` tạm (đã gỡ lại trước khi kết thúc phiên, không commit — đúng quy ước "chỉ cài tạm mỗi phiên"), setup dữ liệu test qua HTTP API (`dev.admin`) trên tenant test — 1 mặt hàng quản lý theo lô mới (`DRG-PHANC01`) + 2 Phiếu nhập kho PURCHASE đã Duyệt cho NCC00001 (1 phiếu chiết khấu dòng 10%, 1 phiếu không) + NCC00003 khai nợ đầu kỳ ÂM (-800.000đ) để có `balance<0` test "Thu tiền hoàn lại". 2 script Playwright (headless Chrome thật) đi qua ĐÚNG UI thật cho cả 4 kịch bản — **13/13 assertion PASS, 0 lỗi console**:
-   - (a) Trả hàng KHÔNG chọn "Phiếu nhập gốc" → giá tự mồi đúng giá vốn lô (100.000đ), sửa tay được, Duyệt → công nợ giảm đúng.
-   - (b) Trả hàng CÓ chọn "Phiếu nhập gốc" — đổi từ phiếu không chiết khấu sang phiếu có chiết khấu 10% → giá dòng tự XOÁ về rỗng đúng thiết kế → để trống, Duyệt → giá tính ra ĐÚNG sau chiết khấu (90.000đ/đơn vị, khác giá vốn lô thô 100.000đ) — xác nhận qua API, không suy luận.
-   - (d) Huỷ phiếu trả đã Duyệt ở (a) → tồn kho đảo đúng (+5) NHƯNG công nợ GIỮ NGUYÊN — đúng đặc tả có chủ đích (không phải bug).
-   - (c) "Thu tiền NCC hoàn lại" khi `balance<0` → nút chỉ hiện đúng lúc âm, lập phiếu 300.000đ → balance tăng đúng, nút vẫn hiện vì còn âm.
-   - **Phần C coi như hoàn tất 100%** (schema, backend, frontend, test HTTP, verify Playwright).
-2. **Loạt polish UI ngoài kế hoạch** (chủ dự án phản hồi trực tiếp qua ảnh chụp lúc dùng `pnpm dev` song song): sửa `StatCardRow` bị kẹt `flex-1` trong layout cột ở `SupplierDetailPage.tsx` (KPI bị kéo giãn quá to); đổi `PaymentDialog`/`RefundDialog` sang bố cục ngang `max-w-2xl` (2 cột); thêm `p-6` còn thiếu ở trang chi tiết NCC; sửa breadcrumb bị TREO tên trang cũ (trang thiếu `useBreadcrumb(...)`, đúng lỗi đã ghi ở `ui-guidelines.md` mục 8.3); làm đẹp nút "← Nhà cung cấp" (chủ dự án xác nhận GIỮ nút này dù theo mục 8.2 breadcrumb đáng lẽ đã đủ thay thế); sửa icon+tên lệch dòng (`items-start`→`items-center`); **trích xuất `shared/ui/TabBar.tsx` dùng chung** (trùng lặp lần 4) — đổi kiểu tab gạch-chân sang nền-đặc (`bg-blue-50`) đồng bộ CẢ 4 nơi (`SupplierDetailPage`/`CashierShiftListPage`/`InvoiceListPage`/`DrugCatalogPane`, chủ dự án xác nhận qua `AskUserQuestion`); thêm dialog "Xem nhanh" tại chỗ cho tab "Phiếu trả hàng"/"Thanh toán" (tái dùng `StockIssueDetailDialog`/`CashVoucherDetailDialog` có sẵn, không viết mới); nới `CashVoucherDetailDialog` (dùng chung toàn app) từ `max-w-2xl`→`max-w-3xl` vì 1 dòng bị wrap 2 dòng lệch nhịp.
-3. **Đổi quy trình tenant test theo yêu cầu trực tiếp của chủ dự án**: `apps/web/public/config.json` (không track git) từ nay LUÔN giữ nguyên trỏ tenant test cố định `01a0cc3c-8626-746b-9d2a-5ea0268ec19f` — **KHÔNG còn tự động trả về tenant thật cuối phiên** như quy tắc cũ học từ sự cố #166. Đã lưu vào memory hệ thống (`feedback_fixed_test_tenant.md`) để các phiên sau tự áp dụng đúng, không cần hỏi lại. Muốn xem dữ liệu thật qua `pnpm dev` thì chủ dự án tự đổi tay `config.json` lúc cần.
-4. **Đã xác minh thật**: `pnpm --filter @nexamed/web run typecheck/build` sạch (không cảnh báo chunk size, `index` 197.48 kB + `vendor` 339.37 kB), `pnpm -w run lint` chỉ còn 8 warning cũ có sẵn không liên quan (0 lỗi). Không đụng backend nên KHÔNG re-run 991 test `apps/api` (chỉ đổi `apps/web`).
-5. **Đã cập nhật tài liệu**: `docs/DECISIONS.md` (#186, chi tiết đầy đủ), `docs/CHANGELOG.md` (mục 2026-09-25 "phiên mới"), `docs/CURRENT.md` (đoạn Phần C sửa thành "ĐÃ HOÀN TẤT 100%", bản ghi cũ giữ lại bên dưới làm lịch sử), handoff Phần C cũ đánh dấu "ĐÃ HOÀN TẤT" ở đầu file, tiêu đề `C:\Users\Administrator\.claude\plans\supplier-debt-cong-no-ncc.md`.
-6. **Đã commit + push**: commit `49583a6` "feat(web): Cong no nha cung cap Phan C - verify Playwright + polish UI" trên `master`, đã push lên `origin/master` thành công (theo yêu cầu trực tiếp "commit và push đi").
+4 endpoint mới, tất cả dưới `/api/v1/supplier-debt/`:
+- `POST /adjustments` (perm `supplier_debt.adjust`) — body theo `createSupplierDebtAdjustmentRequestSchema` (`packages/shared/src/supplier-debt.ts`): `supplierId`, `kind: 'INCREASE'|'DECREASE'|'VOID_REQUEST'`, `amount` (bắt buộc cho INCREASE/DECREASE, CẤM cho VOID_REQUEST), `targetReceiptId`/`targetIssueId` (đúng 1 cho VOID_REQUEST, tuỳ chọn tham khảo cho INCREASE/DECREASE), `targetVoucherId` (chỉ INCREASE/DECREASE), `reason` (bắt buộc), `evidenceRef` (tuỳ chọn). Trả về `supplierDebtAdjustmentSchema`.
+- `GET /adjustments` (perm `supplier_debt.read`) — query `supplierId?`/`status?`/`targetReceiptId?`/`targetIssueId?`. Dùng CẢ cho tab "Nhật ký điều chỉnh" (lọc `supplierId`) LẪN badge "Có điều chỉnh" trên phiếu nhập/xuất (lọc `targetReceiptId`/`targetIssueId`).
+- `POST /adjustments/:id/approve` (perm `supplier_debt.approve`, body `{version}`) — CHỈ cần quyền này, không cần quyền duyệt phiếu gốc (đã test kỹ). Với `VOID_REQUEST`, hệ thống TỰ huỷ phiếu nhập/xuất gốc trong lúc duyệt (không cần gọi endpoint void nào thêm).
+- `POST /adjustments/:id/reject` (perm `supplier_debt.approve`, body `{version, rejectionReason}`).
 
-## Việc kế tiếp — theo đúng thứ tự
+`supplierDebtAdjustmentSchema` có sẵn field `selfApproved: boolean` (người duyệt = người đề nghị) để hiện nhãn "Tự duyệt", và `status: 'PENDING_APPROVAL'|'APPROVED'|'REJECTED'`.
 
-1. **Phần D — Luồng xử lý sai sót** (mục 8 kế hoạch kỹ thuật `supplier-debt-cong-no-ncc.md`): Huỷ chứng từ (đảo bút toán công nợ ĐỒNG BỘ cho CẢ 2 lỗ hổng có chủ đích đang tồn tại — `StockReceiptService.voidReceipt()` từ Phần A và `voidIssue()` cho `RETURN_TO_SUPPLIER` từ Phần C, cả hai hiện KHÔNG đảo công nợ, chỉ đảo tồn kho) + Phiếu điều chỉnh công nợ (hàng đã dùng một phần, không huỷ được) + Đề nghị huỷ (không có quyền duyệt) + phân vai duyệt. **Chưa có mockup/kế hoạch kỹ thuật chi tiết cho riêng Phần D** — đọc lại mục 8 kế hoạch trước, hỏi/xác nhận với chủ dự án các điểm chưa rõ trước khi dựng mockup/code (đúng nhịp độ dự án — luôn hỏi trước khi làm UI mới).
-2. Sau Phần D → **Phần E — Đối chiếu & chốt công nợ theo kỳ** (CHƯA có mockup, phải dựng Artifact riêng trước khi code, đúng khuôn "Khoá bảng ca" #110).
-3. **Môi trường dev**: lúc kết thúc phiên trước, `pnpm dev` (API cổng 3001) đã không còn phản hồi (process bị dừng cùng phiên) — web (cổng 5173) vẫn còn sống độc lập lúc kiểm tra đầu phiên này nhưng KHÔNG đáng tin cậy, nên chạy lại `pnpm dev` từ đầu trước khi làm bất kỳ việc gì cần trình duyệt/API thật.
+`supplierDebtSummarySchema` (response `GET /supplier-debt/:supplierId/summary` VÀ `GET /supplier-debt/summaries`) đã thêm 2 field mới: `pendingAdjustmentCount: number` (số đề nghị/điều chỉnh đang chờ duyệt của NCC này) và `balanceIntegrityOk: boolean` (false = sổ lệch, cần banner đỏ chặn Thanh toán/Thu tiền hoàn lại).
 
-## Việc KHÔNG làm (đừng tự mở rộng)
+Nút "Huỷ phiếu" hiện có trên `StockReceiptFormPage.tsx`/`StockIssueFormPage.tsx` (gọi `POST /inventory/receipts/:id/void`/`POST /inventory/issues/:id/void`) **hành vi đã đổi lặng lẽ ở backend** — nếu phiếu có `supplierId` (PURCHASE/RETURN_TO_SUPPLIER), huỷ xong sẽ TỰ ĐỘNG đảo công nợ luôn (trước đây không). Không cần đổi gì ở nút này ngoài việc thêm 1 dòng cảnh báo phụ trong dialog xác nhận huỷ khi `supplierId` có giá trị (xem mục 3 dưới).
 
-- KHÔNG bắt đầu code Phần D trước khi đọc lại mục 8 kế hoạch kỹ thuật + xác nhận với chủ dự án các điểm chưa rõ (đặc biệt: cơ chế "Sao chép thành phiếu mới" và phân vai duyệt/đề nghị huỷ — 2 khái niệm mới hoàn toàn so với Phần A/B/C).
-- KHÔNG tự trả `config.json` về tenant thật nữa — quy tắc đã đổi, xem mục 3 trên + memory `feedback_fixed_test_tenant.md`.
-- KHÔNG quên đăng ký route mới vào `apps/api/scripts/generate-openapi.ts` khi thêm endpoint Phần D.
+## Việc cần làm — theo đúng mục 7 kế hoạch gốc (`clever-dazzling-bentley.md`)
 
-## Phát hiện phụ chưa xử lý (từ các handoff trước, vẫn còn treo, không liên quan trực tiếp)
+### 1. `apps/web/src/features/supplier-debt/`
+- `supplier-debt.api.ts`/`supplier-debt.queries.ts` — thêm hàm/hook cho 4 endpoint trên (đúng khuôn các hàm hiện có — xem `recordSupplierDebtPayment`/`useRecordSupplierDebtPaymentMutation` làm mẫu). Mutation phải invalidate: `supplier-debt-summary`, `supplier-debt-summaries`, `supplier-debt-ledger`, và query mới `supplier-debt-adjustments`.
+- `SupplierDetailPage.tsx` — thêm tab `'adjustments'` vào `TabId` union hiện có (`'receipts' | 'returns' | 'ledger' | 'payments'`) + `TabBar` (label "Nhật ký điều chỉnh", dùng `shared/ui/TabBar.tsx` đã trích xuất). Nội dung tab: bảng Mã phiếu | Loại | Số tiền | Người đề nghị | Người duyệt (+ nhãn "Tự duyệt" nếu `selfApproved`) | Trạng thái | nút `RowActionButton icon={Eye}` → dialog chi tiết. Dialog chi tiết (mới, hoặc mở rộng dialog có sẵn) chứa nút Duyệt/Từ chối khi `status==='PENDING_APPROVAL' && canApprove` — copy khuôn khối lý do từ chối inline trong `CashVoucherDetailDialog.tsx` (dòng ~251-295, đã khảo sát sẵn ở phiên trước).
+- Nút "Lập phiếu điều chỉnh công nợ" cạnh 2 nút hành động có sẵn ("Thanh toán công nợ"/"Thu tiền NCC hoàn lại"), gate `useHasPermission('supplier_debt', 'adjust')`.
+- `AdjustmentDialog.tsx` (mới) — form Tăng/Giảm: Loại (Tăng/Giảm), Số tiền (`MoneyInput`), Phiếu nhập/Phiếu xuất/Phiếu chi liên quan (tuỳ chọn, `Combobox`), Lý do (bắt buộc), Số biên bản (tuỳ chọn). Copy khuôn `PaymentDialog`/`RefundDialog` đã có trong `SupplierDetailPage.tsx` (`BoxedSection`, banner xanh preview). Nút "Lưu & chuyển duyệt" (mặc định) + "Lưu & Duyệt ngay" (chỉ hiện nếu actor CŨNG có `supplier_debt.approve` — gọi `create` rồi `approve` nối tiếp).
+- Banner đỏ "Số dư công nợ không khớp sổ — liên hệ quản trị" khi `summary.balanceIntegrityOk===false` (đặt cạnh banner amber "chờ duyệt" có sẵn) — disable nút "Thanh toán công nợ"/"Thu tiền NCC hoàn lại" khi banner này hiện.
 
-- `CashVoucherService.voidVoucher()` có thể không đảo số dư "Ví tạm ứng" khi huỷ phiếu nạp/tất toán (`PATIENT_ADVANCE`) — chưa kiểm chứng bằng test, chưa sửa, ngoài phạm vi Công nợ NCC.
-- Q10 (#180): chưa có cơ chế badge "chờ duyệt" hiển thị được ở MỌI trang trong app — để dành bàn riêng.
+### 2. `Sidebar.tsx`
+Mở rộng công thức `supplierDebtPendingCount` (dòng ~219, hiện tính `pendingApprovalAmount>0`) — cộng thêm NCC có `pendingAdjustmentCount>0` (đã có sẵn trong response `listSummaries()`, không cần query mới).
 
-## Trạng thái Git lúc ghi file này
+### 3. `apps/web/src/features/inventory/` — `StockReceiptFormPage.tsx`/`StockIssueFormPage.tsx`
+- Nút "Huỷ phiếu" hiện có (actor có `stock_receipt.approve`/`stock_issue.create`): giữ nguyên, chỉ thêm dòng cảnh báo phụ trong dialog xác nhận khi phiếu có `supplierId` — "Công nợ nhà cung cấp sẽ tự đảo lại tương ứng".
+- **Nút MỚI "Đề nghị huỷ"**: hiện khi actor KHÔNG có quyền void hiện hữu NHƯNG có `supplier_debt.adjust`, VÀ phiếu gắn NCC (`receiptType==='PURCHASE' && supplierId` hoặc `issueType==='RETURN_TO_SUPPLIER'`), VÀ `status` đang duyệt được (chưa huỷ). Mở dialog lý do bắt buộc (copy khuôn `CancelEncounterDialog.tsx`) → gọi `createAdjustment({kind:'VOID_REQUEST', targetReceiptId hoặc targetIssueId, reason})`.
+- **Badge "Có điều chỉnh"**: khi xem phiếu có `supplierId`, gọi `useSupplierDebtAdjustmentsQuery({targetReceiptId: id})` (hoặc `targetIssueId`) — nếu có dòng nào, hiện badge nhỏ cạnh trạng thái phiếu + danh sách rút gọn mở dialog chi tiết Y HỆT dialog dùng ở tab "Nhật ký điều chỉnh" (tái dùng component, không viết 2 lần).
+- **"Sao chép thành phiếu mới"**: hiện khi `status` = đã huỷ (`voided===true`), điều hướng `navigate('/inventory/receipts/new', {state:{copyFromReceipt: receiptDetail}})` (hoặc `/inventory/issues/new`) — trang New đọc `location.state?.copyFromReceipt` để mồi `supplierId`/`warehouseId`/`receiptType`/từng dòng (drugId, unit, quantity, unitCost) NHƯNG để trống `batchNo` (bắt nhập lại lô mới, tránh trùng lô ảo). Chỉ mồi khi trang New đang rỗng (không ghi đè nếu người dùng đã gõ gì).
 
-Nhánh `master`, **đã đồng bộ `origin/master`** — commit `49583a6` đã push xong (toàn bộ thay đổi Phần C verify + polish UI). Working tree sạch, không có gì chưa commit. File handoff này ghi SAU khi đã push — sẽ commit riêng (đúng tiền lệ tách commit `docs` cho file handoff).
+## Xác minh khi xong
+
+- `pnpm --filter @nexamed/web run typecheck/build` sạch — kiểm chunk size (`index`/`vendor` đều nên dưới ngưỡng cảnh báo Vite, 2 dialog mới nên nằm gọn trong chunk lazy có sẵn của `SupplierDetailPage`/`StockReceiptFormPage`/`StockIssueFormPage`).
+- Playwright qua Chrome thật trên **tenant test cố định** `01a0cc3c-8626-746b-9d2a-5ea0268ec19f` (đúng quy ước mới #186, KHÔNG đụng tenant chủ dự án):
+  1. Phiếu điều chỉnh Tăng/Giảm — tạo, duyệt, "Tự duyệt" hiện đúng nhãn, balance đúng.
+  2. Đề nghị huỷ — tài khoản không có quyền duyệt phiếu nhập tạo đề nghị → banner "chờ duyệt" + badge sidebar hiện đúng → tài khoản `clinic_admin` (hoặc vai trò chỉ có `supplier_debt.approve`) duyệt → phiếu gốc chuyển Đã huỷ + công nợ giảm đúng, không cần thao tác gì thêm.
+  3. Huỷ trực tiếp bởi `clinic_admin` (có đủ quyền) → công nợ tự đảo ngay, không cần bước 2.
+  4. Badge "Có điều chỉnh" hiện đúng trên `StockReceiptFormPage`/`StockIssueFormPage`.
+  5. "Sao chép thành phiếu mới" mồi đúng dữ liệu (trừ batchNo để trống).
+  6. Banner lệch số dư — có thể bỏ qua nếu khó dựng dữ liệu lệch qua UI thật (backend đã có test HTTP riêng cho phần này).

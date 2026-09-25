@@ -1,11 +1,15 @@
 import { Body, Controller, Get, HttpCode, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import {
+  approveSupplierDebtAdjustmentRequestSchema,
+  createSupplierDebtAdjustmentRequestSchema,
+  listSupplierDebtAdjustmentsQuerySchema,
   listSupplierDebtLedgerQuerySchema,
   listSupplierDebtPaymentsQuerySchema,
   recordSupplierDebtOpeningBalanceRequestSchema,
   recordSupplierDebtPaymentRequestSchema,
   recordSupplierDebtRefundRequestSchema,
+  rejectSupplierDebtAdjustmentRequestSchema,
 } from '@nexamed/shared';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
@@ -89,5 +93,47 @@ export class SupplierDebtController {
     const dto = recordSupplierDebtRefundRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
     return this.supplierDebtService.recordRefund(tenantId, userId, supplierId, dto, extractRequestMeta(req));
+  }
+
+  // ============ Phần D "Luồng xử lý sai sót" (docs/DECISIONS.md #180/#182) ============
+  // Không xung đột thứ tự với các route `:supplierId/xxx` ở trên (khác bài học `summaries`/`payments`
+  // đầu file): mọi route `:supplierId/...` ở trên đều có ĐOẠN THỨ HAI cố định bắt buộc (`/summary`,
+  // `/ledger`,...) nên không bao giờ khớp nhầm `GET/POST adjustments` (1 đoạn) hay
+  // `POST adjustments/:id/approve` (đoạn đầu literal `adjustments`, không phải biến) — đặt ở cuối
+  // class cho gọn, thứ tự khai không ảnh hưởng ở đây.
+
+  @Post('adjustments')
+  @RequirePermission('supplier_debt', 'adjust')
+  @HttpCode(201)
+  async createAdjustment(@Body() body: unknown, @Req() req: Request) {
+    const dto = createSupplierDebtAdjustmentRequestSchema.parse(body);
+    const { userId, tenantId } = req.user!;
+    return this.supplierDebtService.createAdjustment(tenantId, userId, dto, extractRequestMeta(req));
+  }
+
+  @Get('adjustments')
+  @RequirePermission('supplier_debt', 'read')
+  async listAdjustments(@Query() query: unknown, @Req() req: Request) {
+    const dto = listSupplierDebtAdjustmentsQuerySchema.parse(query);
+    const { tenantId } = req.user!;
+    return this.supplierDebtService.listAdjustments(tenantId, dto);
+  }
+
+  @Post('adjustments/:id/approve')
+  @RequirePermission('supplier_debt', 'approve')
+  @HttpCode(200)
+  async approveAdjustment(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
+    const dto = approveSupplierDebtAdjustmentRequestSchema.parse(body);
+    const { userId, tenantId } = req.user!;
+    return this.supplierDebtService.approveAdjustment(tenantId, userId, id, dto, extractRequestMeta(req));
+  }
+
+  @Post('adjustments/:id/reject')
+  @RequirePermission('supplier_debt', 'approve')
+  @HttpCode(200)
+  async rejectAdjustment(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
+    const dto = rejectSupplierDebtAdjustmentRequestSchema.parse(body);
+    const { userId, tenantId } = req.user!;
+    return this.supplierDebtService.rejectAdjustment(tenantId, userId, id, dto, extractRequestMeta(req));
   }
 }

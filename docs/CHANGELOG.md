@@ -2,7 +2,13 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
-## 2026-09-25 (phiên mới)
+## 2026-09-25 (phiên mới nhất)
+
+### Công nợ nhà cung cấp, Phần D "Luồng xử lý sai sót" — backend code + test xong, chưa làm frontend/Playwright
+
+Lấp lỗ hổng đã biết từ Phần A/C: Huỷ phiếu nhập/phiếu xuất trả NCC đã Duyệt giờ TỰ ĐỘNG đảo công nợ (trước đây cố ý không đụng, có characterization test khoá lại — nay đã xoá/thay). Thêm "Phiếu điều chỉnh công nợ" (Tăng/Giảm, không đụng tồn kho) và "Đề nghị huỷ" (người không có quyền duyệt phiếu gốc chỉ đề nghị, người có `supplier_debt.approve` duyệt — KHÔNG cần thêm quyền duyệt phiếu gốc). Bảng mới `supplier_debt_adjustment`, refactor `voidReceipt()`/`voidIssue()` tách lõi dùng chung (`voidPostedCore`) để cả huỷ trực tiếp lẫn huỷ hộ (duyệt đề nghị) đều tự đảo công nợ trong CÙNG 1 transaction. Kiểm tra toàn vẹn số dư mới (chặn Thanh toán nếu sổ lệch).
+
+**Đã xác minh thật**: `apps/api` 1007/1007 test (+15 mới), `packages/core` 227/227, `pnpm -w typecheck/lint/build` sạch. Migration đã áp thật lên Postgres dev. Chi tiết đầy đủ `docs/DECISIONS.md` #187. **Còn treo**: toàn bộ frontend + verify Playwright (xem `docs/handoffs/HANDOFF-CongNoNhaCungCap-PhanD-2026-09-25.md`).
 
 ### Công nợ nhà cung cấp, Phần C — verify Playwright xong, Phần C hoàn tất 100%
 

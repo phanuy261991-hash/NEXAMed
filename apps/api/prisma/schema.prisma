@@ -111,6 +111,7 @@ model Tenant {
   walletTransactions     WalletTransaction[]
   supplierDebtAccounts   SupplierDebtAccount[]
   supplierDebtEntries    SupplierDebtEntry[]
+  supplierDebtAdjustments SupplierDebtAdjustment[]
   stockReceipts          StockReceipt[]
   stockReceiptLines      StockReceiptLine[]
   inventoryBatches       InventoryBatch[]
@@ -1726,6 +1727,8 @@ model Supplier {
   cashVouchers  CashVoucher[]
   // "Công nợ nhà cung cấp" Phần C — phiếu xuất trả NCC (issueType=RETURN_TO_SUPPLIER) gắn NCC này.
   stockIssues   StockIssue[]
+  // "Công nợ nhà cung cấp" Phần D — Phiếu điều chỉnh công nợ/Đề nghị huỷ gắn NCC này.
+  debtAdjustments SupplierDebtAdjustment[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, code])
@@ -1855,6 +1858,8 @@ model StockReceipt {
   // "Công nợ nhà cung cấp" Phần C — phiếu xuất trả NCC (issueType=RETURN_TO_SUPPLIER) CHỌN phiếu
   // nhập này làm "phiếu nhập gốc" (Q3, tuỳ chọn).
   sourceReceiptIssues StockIssue[]
+  // "Công nợ nhà cung cấp" Phần D — Phiếu điều chỉnh/Đề nghị huỷ THAM CHIẾU phiếu này (target_receipt_id).
+  debtAdjustmentsAsTarget SupplierDebtAdjustment[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, receiptNo])
@@ -2163,6 +2168,8 @@ model StockIssue {
   lines         StockIssueLine[]
   ledgerEntries StockLedger[]
   debtEntries   SupplierDebtEntry[]
+  // "Công nợ nhà cung cấp" Phần D — Phiếu điều chỉnh/Đề nghị huỷ THAM CHIẾU phiếu này (target_issue_id).
+  debtAdjustmentsAsTarget SupplierDebtAdjustment[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, issueNo])
@@ -2832,6 +2839,8 @@ model CashVoucher {
   debtEntries        SupplierDebtEntry[]
   // Phiếu nhập kho mà chính phiếu quỹ này là "Trả ngay" của nó (ngược field StockReceipt.prepaidVoucher).
   stockReceiptsPrepaidBy StockReceipt[]  @relation("StockReceiptPrepaidVoucher")
+  // "Công nợ nhà cung cấp" Phần D — Phiếu điều chỉnh THAM CHIẾU phiếu này (target_voucher_id, tuỳ chọn).
+  debtAdjustmentsAsTarget SupplierDebtAdjustment[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, voucherNo])
@@ -3109,6 +3118,11 @@ model SupplierDebtEntry {
   // Tự tham chiếu — entry ĐÃ bị đảo (dùng bởi dòng REVERSAL để biết đảo bút toán nào). UNIQUE
   // partial ở migration: 1 bút toán chỉ đảo được 1 lần.
   reversalOfId  String?               @map("reversal_of_id") @db.Uuid
+  // "Công nợ nhà cung cấp" Phần D — nguồn bút toán ADJUSTMENT_INCREASE/ADJUSTMENT_DECREASE (bắt buộc
+  // cho 2 loại này, CHECK ở migration). REVERSAL sinh từ "Huỷ chứng từ"/"Đề nghị huỷ" KHÔNG dùng cột
+  // này — tự tương quan qua `stockReceiptId`/`stockIssueId` trùng với `targetReceiptId`/`targetIssueId`
+  // của adjustment `VOID_REQUEST` tương ứng, không cần FK riêng.
+  adjustmentId  String?               @map("adjustment_id") @db.Uuid
   note          String?
 
   // 8 cột bắt buộc
@@ -3132,9 +3146,76 @@ model SupplierDebtEntry {
   // Composite FK tự tham chiếu (tenant_id, reversal_of_id) -> supplier_debt_entry(tenant_id, id), NULLABLE.
   reversalOf   SupplierDebtEntry?   @relation("SupplierDebtEntryReversal", fields: [tenantId, reversalOfId], references: [tenantId, id])
   reversedBy   SupplierDebtEntry[]  @relation("SupplierDebtEntryReversal")
+  // Composite FK (tenant_id, adjustment_id) -> supplier_debt_adjustment(tenant_id, id), NULLABLE.
+  adjustment   SupplierDebtAdjustment? @relation(fields: [tenantId, adjustmentId], references: [tenantId, id])
 
   @@unique([tenantId, id])
   @@map("supplier_debt_entry")
+}
+
+enum SupplierDebtAdjustmentKind {
+  INCREASE
+  DECREASE
+  VOID_REQUEST
+
+  @@map("supplier_debt_adjustment_kind")
+}
+
+enum SupplierDebtAdjustmentStatus {
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+
+  @@map("supplier_debt_adjustment_status")
+}
+
+// "Công nợ nhà cung cấp" Phần D — Luồng xử lý sai sót (docs/DECISIONS.md #180/#182, kế hoạch kỹ
+// thuật supplier-debt-cong-no-ncc.md mục 4 + plan clever-dazzling-bentley.md). 3 kind:
+// INCREASE/DECREASE (Tầng 3 — "Phiếu điều chỉnh công nợ", ghi thẳng bút toán sau khi duyệt, KHÔNG
+// đụng tồn kho/giá vốn) và VOID_REQUEST (Tầng 2 — "Đề nghị huỷ" của người KHÔNG có quyền duyệt
+// phiếu nhập/xuất gốc; duyệt thì hệ thống tự huỷ hộ chứng từ đó, đúng luồng "Huỷ chứng từ" trực
+// tiếp — chỉ khác người thực thi). `amount` NULL cho VOID_REQUEST. `targetReceiptId`/`targetIssueId`
+// bắt buộc ĐÚNG 1 cho VOID_REQUEST (CHECK ở migration), cả 2 + `targetVoucherId` đều TUỲ CHỌN (chỉ
+// tham khảo, không ràng buộc) cho INCREASE/DECREASE.
+model SupplierDebtAdjustment {
+  id             String                       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId       String                       @map("tenant_id") @db.Uuid
+  supplierId     String                       @map("supplier_id") @db.Uuid
+  adjustmentNo   String                       @map("adjustment_no")
+  kind           SupplierDebtAdjustmentKind
+  amount         BigInt?
+  targetReceiptId String?                     @map("target_receipt_id") @db.Uuid
+  targetIssueId   String?                     @map("target_issue_id") @db.Uuid
+  targetVoucherId String?                     @map("target_voucher_id") @db.Uuid
+  reason         String
+  evidenceRef    String?                      @map("evidence_ref")
+  status         SupplierDebtAdjustmentStatus @default(PENDING_APPROVAL)
+  approvedBy     String?                      @map("approved_by") @db.Uuid
+  approvedAt     DateTime?                    @map("approved_at") @db.Timestamptz(6)
+  rejectionReason String?                     @map("rejection_reason")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id])
+  // Composite FK (tenant_id, supplier_id) -> supplier(tenant_id, id).
+  supplier      Supplier      @relation(fields: [tenantId, supplierId], references: [tenantId, id])
+  // Composite FK (tenant_id, target_receipt_id) -> stock_receipt(tenant_id, id), NULLABLE.
+  targetReceipt StockReceipt? @relation(fields: [tenantId, targetReceiptId], references: [tenantId, id])
+  // Composite FK (tenant_id, target_issue_id) -> stock_issue(tenant_id, id), NULLABLE.
+  targetIssue   StockIssue?   @relation(fields: [tenantId, targetIssueId], references: [tenantId, id])
+  // Composite FK (tenant_id, target_voucher_id) -> cash_voucher(tenant_id, id), NULLABLE.
+  targetVoucher CashVoucher?  @relation(fields: [tenantId, targetVoucherId], references: [tenantId, id])
+  entries       SupplierDebtEntry[]
+
+  @@unique([tenantId, id])
+  @@map("supplier_debt_adjustment")
 }
 
 // Dị nguyên đã biết của bệnh nhân (Sprint 4, chốt 2026-08-25) — liên kết `patient` với danh mục

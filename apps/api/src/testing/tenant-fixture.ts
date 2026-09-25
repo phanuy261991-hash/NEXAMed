@@ -77,6 +77,12 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
         if (deleted.count === 0) break;
       }
       await prisma.supplierDebtAccount.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // "Công nợ nhà cung cấp" Phần D (docs/DECISIONS.md #180/#182) — `supplier_debt_adjustment`
+      // tham chiếu CẢ `stock_receipt` LẪN `stock_issue` LẪN `cash_voucher` (target_*_id, FK RESTRICT)
+      // nên phải xoá TRƯỚC CẢ BA, đúng lý do `supplierDebtEntry` ở trên. Ngược lại, `supplier_debt_
+      // entry.adjustment_id` trỏ TỚI adjustment (không phải chiều ngược) nên đã an toàn xoá entry
+      // trước ở trên rồi mới xoá adjustment ở đây (không cần vòng lặp — adjustment không tự tham chiếu).
+      await prisma.supplierDebtAdjustment.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // Kho Thuốc GĐ2+GĐ3 (#146/#163) — di chuyển SỚM LÊN ĐÂY (đảo vị trí so với bản GĐ2 cũ, lúc
       // đó chưa có phụ thuộc chéo nào với lâm sàng nên đặt sau encounter cho gọn): `stock_issue`
       // tham chiếu `prescription` (FK RESTRICT) nên phải xoá TRƯỚC khối prescription/encounter bên

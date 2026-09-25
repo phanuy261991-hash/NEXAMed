@@ -142,6 +142,11 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   // "Công nợ nhà cung cấp" (docs/DECISIONS.md #180/#182) — NCC đã có bút toán rồi (Q7: chỉ khai nợ
   // đầu kỳ được 1 lần) là xung đột với trạng thái hiện có, không phải lỗi input.
   SUPPLIER_DEBT_OPENING_BALANCE_ALREADY_EXISTS: HttpStatus.CONFLICT,
+  // Phần D "Luồng xử lý sai sót" — Duyệt/Từ chối lại phiếu đã xử lý, và số dư lệch sổ trước khi
+  // Thanh toán/Thu tiền hoàn lại — cùng nhóm CONFLICT (trạng thái hiện có không cho phép), không
+  // phải lỗi input.
+  SUPPLIER_DEBT_ADJUSTMENT_NOT_PENDING: HttpStatus.CONFLICT,
+  SUPPLIER_DEBT_INTEGRITY_MISMATCH: HttpStatus.CONFLICT,
 };
 
 /**

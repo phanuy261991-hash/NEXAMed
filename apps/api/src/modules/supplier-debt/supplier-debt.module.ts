@@ -4,10 +4,12 @@ import { ClinicModule } from '../clinic/clinic.module';
 import { DrugModule } from '../drug/drug.module';
 import { CashierShiftModule } from '../cashier-shift/cashier-shift.module';
 import { CashBookModule } from '../cash-book/cash-book.module';
+import { InventoryModule } from '../inventory/inventory.module';
 import { SupplierDebtController } from './supplier-debt.controller';
 import { SupplierDebtService } from './supplier-debt.service';
 import { SupplierDebtAccountRepository } from './supplier-debt-account.repository';
 import { SupplierDebtEntryRepository } from './supplier-debt-entry.repository';
+import { SupplierDebtAdjustmentRepository } from './supplier-debt-adjustment.repository';
 
 /**
  * "Công nợ nhà cung cấp" — Phần A "Nền sổ công nợ" (docs/DECISIONS.md #180/#182). Sở hữu 2 bảng mới
@@ -45,12 +47,29 @@ import { SupplierDebtEntryRepository } from './supplier-debt-entry.repository';
  * đánh đổi tương tự (FIFO thuần, không target đúng phiếu) ở comment đầu `supplier-debt.service.ts`.
  *
  * `exports: [SupplierDebtService]` — `InventoryModule` (`StockReceiptService.approve()`) import
- * THƯỜNG (một chiều, `supplier-debt` không cần gì từ `inventory`).
+ * THƯỜNG (một chiều, `supplier-debt` không cần gì từ `inventory`) TỚI PHẦN D (xem dưới).
+ *
+ * Phần D "Luồng xử lý sai sót" (docs/DECISIONS.md #180/#182, ĐẢO NGƯỢC quyết định "CỐ Ý KHÔNG import
+ * InventoryModule" đã ghi ở trên — lý do cũ chỉ áp dụng cho nhu cầu HIỂN THỊ (join `receiptNo`), còn
+ * đây là nhu cầu NGHIỆP VỤ THẬT: `SupplierDebtService.approveAdjustment()` (duyệt "Đề nghị huỷ") gọi
+ * `StockReceiptService`/`StockIssueService.voidPostedForAdjustment()` TRONG CÙNG transaction để thực
+ * thi "Huỷ chứng từ" hộ người không có quyền duyệt phiếu gốc — không thể qua port (port trong dự án
+ * này LUÔN tự mở transaction đọc riêng, phá vỡ tính nguyên tử). `forwardRef(() => InventoryModule)`
+ * MỚI thêm — giờ `inventory ⇄ supplier-debt` là vòng phụ thuộc 2 chiều THẬT ở mức Service (đã bọc
+ * `@Inject(forwardRef())` ở cả 2 đầu injection, xem `stock-receipt.service.ts`/`stock-issue.service.ts`/
+ * `supplier-debt.service.ts`).
  */
 @Module({
-  imports: [IamModule, ClinicModule, forwardRef(() => DrugModule), forwardRef(() => CashierShiftModule), forwardRef(() => CashBookModule)],
+  imports: [
+    IamModule,
+    ClinicModule,
+    forwardRef(() => DrugModule),
+    forwardRef(() => CashierShiftModule),
+    forwardRef(() => CashBookModule),
+    forwardRef(() => InventoryModule),
+  ],
   controllers: [SupplierDebtController],
-  providers: [SupplierDebtService, SupplierDebtAccountRepository, SupplierDebtEntryRepository],
+  providers: [SupplierDebtService, SupplierDebtAccountRepository, SupplierDebtEntryRepository, SupplierDebtAdjustmentRepository],
   exports: [SupplierDebtService],
 })
 export class SupplierDebtModule {}

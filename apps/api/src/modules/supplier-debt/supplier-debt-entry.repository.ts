@@ -12,6 +12,8 @@ export interface CreateSupplierDebtEntryData {
   stockIssueId: string | null;
   cashVoucherId: string | null;
   reversalOfId: string | null;
+  /** Phần D — nguồn ADJUSTMENT_INCREASE/ADJUSTMENT_DECREASE. */
+  adjustmentId: string | null;
   note: string | null;
 }
 
@@ -32,6 +34,7 @@ export class SupplierDebtEntryRepository {
         stockIssueId: data.stockIssueId,
         cashVoucherId: data.cashVoucherId,
         reversalOfId: data.reversalOfId,
+        adjustmentId: data.adjustmentId,
         note: data.note,
         createdBy: actorId,
         updatedBy: actorId,
@@ -52,6 +55,27 @@ export class SupplierDebtEntryRepository {
 
   findByCashVoucherId(tx: Prisma.TransactionClient, tenantId: string, cashVoucherId: string): Promise<SupplierDebtEntry | null> {
     return tx.supplierDebtEntry.findFirst({ where: { tenantId, cashVoucherId } });
+  }
+
+  /** Phần D — bút toán PURCHASE GỐC của 1 phiếu nhập (để đảo lúc "Huỷ chứng từ"/"Đề nghị huỷ" được
+   * duyệt). Lọc `entryType: 'PURCHASE'` tường minh — `stockReceiptId` còn được TÁI DÙNG làm "đích
+   * chỉ định" ở RETURN/PAYMENT/ADJUSTMENT (xem comment `SupplierDebtEntry.stockReceiptId`), không
+   * phải riêng PURCHASE. */
+  findActiveByStockReceiptId(tx: Prisma.TransactionClient, tenantId: string, stockReceiptId: string): Promise<SupplierDebtEntry | null> {
+    return tx.supplierDebtEntry.findFirst({ where: { tenantId, stockReceiptId, entryType: 'PURCHASE' } });
+  }
+
+  /** Phần D — bút toán RETURN GỐC của 1 phiếu xuất trả NCC (để đảo lúc Huỷ/Đề nghị huỷ được duyệt). */
+  findActiveByStockIssueId(tx: Prisma.TransactionClient, tenantId: string, stockIssueId: string): Promise<SupplierDebtEntry | null> {
+    return tx.supplierDebtEntry.findFirst({ where: { tenantId, stockIssueId, entryType: 'RETURN' } });
+  }
+
+  /** Phần D, mục 4.2 điểm 6 — kiểm tra toàn vẹn số dư: tổng TOÀN BỘ `amountChange` (gồm cả REVERSAL,
+   * không loại trừ gì) PHẢI khớp `balance` snapshot của account. `aggregate` trả `null` nếu chưa có
+   * dòng nào — Service tự coi `0n`. */
+  async sumAmountChange(tx: Prisma.TransactionClient, tenantId: string, accountId: string): Promise<bigint> {
+    const result = await tx.supplierDebtEntry.aggregate({ where: { tenantId, accountId }, _sum: { amountChange: true } });
+    return result._sum.amountChange ?? 0n;
   }
 
   /** Toàn bộ sổ của NHIỀU NCC trong 1 câu truy vấn (tránh N+1 ở trang danh sách "Công nợ nhà cung

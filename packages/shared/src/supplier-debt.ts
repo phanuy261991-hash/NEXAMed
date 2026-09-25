@@ -57,6 +57,12 @@ export const supplierDebtSummarySchema = z.object({
   pendingApprovalAmount: z.number().int(),
   /** NCC chưa từng có bút toán nào — hiện/ẩn nút "Khai nợ đầu kỳ" (Q7). */
   canRecordOpeningBalance: z.boolean(),
+  /** Phần D — số Phiếu điều chỉnh/Đề nghị huỷ đang `PENDING_APPROVAL` của NCC này (gộp vào badge
+   * sidebar/banner "chờ duyệt" cùng `pendingApprovalAmount`). */
+  pendingAdjustmentCount: z.number().int(),
+  /** Phần D, mục 4.2.6 — `false` khi `SUM(amountChange)` lệch với `balance` snapshot (lỗi hệ thống,
+   * không do người dùng) — web hiện banner đỏ, chặn Thanh toán/Thu tiền hoàn lại tới khi xử lý. */
+  balanceIntegrityOk: z.boolean(),
 });
 export type SupplierDebtSummary = z.infer<typeof supplierDebtSummarySchema>;
 
@@ -207,3 +213,89 @@ export const recordSupplierDebtRefundRequestSchema = z.object({
   note: z.string().nullable().optional(),
 });
 export type RecordSupplierDebtRefundRequest = z.infer<typeof recordSupplierDebtRefundRequestSchema>;
+
+/**
+ * Phần D "Luồng xử lý sai sót" (docs/DECISIONS.md #180/#182, kế hoạch mục 4). `INCREASE`/`DECREASE`
+ * — "Phiếu điều chỉnh công nợ" (Tầng 3, KHÔNG đụng tồn kho/giá vốn). `VOID_REQUEST` — "Đề nghị
+ * huỷ" (Tầng 2, người KHÔNG có quyền duyệt phiếu nhập/xuất gốc) — duyệt thì hệ thống tự huỷ hộ
+ * chứng từ đó (đúng luồng "Huỷ chứng từ" trực tiếp, chỉ khác người thực thi).
+ */
+export const supplierDebtAdjustmentKindSchema = z.enum(['INCREASE', 'DECREASE', 'VOID_REQUEST']);
+export type SupplierDebtAdjustmentKind = z.infer<typeof supplierDebtAdjustmentKindSchema>;
+
+export const supplierDebtAdjustmentStatusSchema = z.enum(['PENDING_APPROVAL', 'APPROVED', 'REJECTED']);
+export type SupplierDebtAdjustmentStatus = z.infer<typeof supplierDebtAdjustmentStatusSchema>;
+
+/** `POST /supplier-debt/adjustments` — `amount` bắt buộc >0 cho `INCREASE`/`DECREASE`, PHẢI bỏ
+ * trống cho `VOID_REQUEST`. `VOID_REQUEST` bắt buộc đúng 1 trong `targetReceiptId`/`targetIssueId`,
+ * không có `targetVoucherId`. `INCREASE`/`DECREASE` mọi target đều tuỳ chọn (chỉ tham khảo). */
+export const createSupplierDebtAdjustmentRequestSchema = z
+  .object({
+    supplierId: z.string().uuid(),
+    kind: supplierDebtAdjustmentKindSchema,
+    amount: z.number().int().positive().optional(),
+    targetReceiptId: z.string().uuid().nullable().optional(),
+    targetIssueId: z.string().uuid().nullable().optional(),
+    targetVoucherId: z.string().uuid().nullable().optional(),
+    reason: z.string().trim().min(1, 'Phải nhập lý do.'),
+    evidenceRef: z.string().nullable().optional(),
+  })
+  .refine((v) => (v.kind === 'VOID_REQUEST' ? v.amount === undefined : v.amount !== undefined), {
+    message: 'Số tiền bắt buộc cho Phiếu điều chỉnh, không nhập cho Đề nghị huỷ.',
+    path: ['amount'],
+  })
+  .refine((v) => (v.kind === 'VOID_REQUEST' ? !v.targetVoucherId : true), {
+    message: 'Đề nghị huỷ không gắn phiếu thu/chi.',
+    path: ['targetVoucherId'],
+  })
+  .refine((v) => (v.kind === 'VOID_REQUEST' ? Boolean(v.targetReceiptId) !== Boolean(v.targetIssueId) : true), {
+    message: 'Đề nghị huỷ phải chọn đúng 1 phiếu nhập hoặc 1 phiếu xuất trả.',
+    path: ['targetReceiptId'],
+  });
+export type CreateSupplierDebtAdjustmentRequest = z.infer<typeof createSupplierDebtAdjustmentRequestSchema>;
+
+export const approveSupplierDebtAdjustmentRequestSchema = z.object({ version: z.number().int().positive() });
+export type ApproveSupplierDebtAdjustmentRequest = z.infer<typeof approveSupplierDebtAdjustmentRequestSchema>;
+
+export const rejectSupplierDebtAdjustmentRequestSchema = z.object({
+  rejectionReason: z.string().trim().min(1, 'Phải nhập lý do từ chối.'),
+  version: z.number().int().positive(),
+});
+export type RejectSupplierDebtAdjustmentRequest = z.infer<typeof rejectSupplierDebtAdjustmentRequestSchema>;
+
+/** 1 dòng ở tab "Nhật ký điều chỉnh" (trang chi tiết NCC) + badge "Có điều chỉnh" trên
+ * `StockReceiptFormPage`/`StockIssueFormPage` (lọc `targetReceiptId`/`targetIssueId`). */
+export const supplierDebtAdjustmentSchema = z.object({
+  id: z.string().uuid(),
+  version: z.number().int(),
+  supplierId: z.string().uuid(),
+  supplierName: z.string(),
+  adjustmentNo: z.string(),
+  kind: supplierDebtAdjustmentKindSchema,
+  amount: z.number().int().nullable(),
+  targetReceiptId: z.string().uuid().nullable(),
+  targetIssueId: z.string().uuid().nullable(),
+  targetVoucherId: z.string().uuid().nullable(),
+  reason: z.string(),
+  evidenceRef: z.string().nullable(),
+  status: supplierDebtAdjustmentStatusSchema,
+  createdAt: z.string(),
+  createdByName: z.string(),
+  approvedByName: z.string().nullable(),
+  approvedAt: z.string().nullable(),
+  /** `true` nếu người duyệt CHÍNH LÀ người đề nghị/lập (nhãn "Tự duyệt", #182 câu 1). */
+  selfApproved: z.boolean(),
+  rejectionReason: z.string().nullable(),
+});
+export type SupplierDebtAdjustment = z.infer<typeof supplierDebtAdjustmentSchema>;
+
+export const listSupplierDebtAdjustmentsQuerySchema = z.object({
+  supplierId: z.string().uuid().optional(),
+  status: supplierDebtAdjustmentStatusSchema.optional(),
+  targetReceiptId: z.string().uuid().optional(),
+  targetIssueId: z.string().uuid().optional(),
+});
+export type ListSupplierDebtAdjustmentsQuery = z.infer<typeof listSupplierDebtAdjustmentsQuerySchema>;
+
+export const listSupplierDebtAdjustmentsResponseSchema = z.object({ items: z.array(supplierDebtAdjustmentSchema) });
+export type ListSupplierDebtAdjustmentsResponse = z.infer<typeof listSupplierDebtAdjustmentsResponseSchema>;

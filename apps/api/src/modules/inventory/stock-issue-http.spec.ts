@@ -1089,7 +1089,7 @@ describe('HTTP e2e — /api/v1/inventory (Phiếu xuất kho GĐ3)', () => {
       expect(created.body.data.totalAmount).toBe(10000);
     });
 
-    it('Huỷ phiếu xuất trả ĐÃ DUYỆT — đảo tồn kho nhưng KHÔNG đảo công nợ (đúng khuôn Huỷ phiếu nhập ở Phần A, để dành Phần D)', async () => {
+    it('Phần D — Huỷ phiếu xuất trả ĐÃ DUYỆT tự đảo CẢ tồn kho LẪN công nợ (voidPostedCore() dùng chung)', async () => {
       const supplierId = await createSupplier();
       const drugId = await createDrug(clinicAdminToken, { name: 'Cefixim e2e Phần C', isBatchManaged: true, isPrescriptionOnly: true });
       const { batchId } = await createAndApprovePurchaseWithBatch(clinicAdminToken, supplierId, drugId, { quantity: 50, unitCost: 4000 });
@@ -1105,6 +1105,7 @@ describe('HTTP e2e — /api/v1/inventory (Phiếu xuất kho GĐ3)', () => {
       expect(approveRes.status).toBe(200);
 
       const balanceBefore = (await request(app.getHttpServer()).get(`/api/v1/supplier-debt/${supplierId}/summary`).set(authed(clinicAdminToken))).body.data.balance;
+      expect(balanceBefore).toBe(160000); // PURCHASE 50×4000=200000 − RETURN 10×4000=40000
 
       const balancesBeforeVoid = await request(app.getHttpServer()).get(`/api/v1/inventory/balances`).set(authed(clinicAdminToken)).query({ warehouseId });
       const qtyBeforeVoid = (balancesBeforeVoid.body.data.items as { drugId: string; quantityOnHand: number }[]).filter((b) => b.drugId === drugId).reduce((s, b) => s + b.quantityOnHand, 0);
@@ -1112,15 +1113,15 @@ describe('HTTP e2e — /api/v1/inventory (Phiếu xuất kho GĐ3)', () => {
       const voidRes = await request(app.getHttpServer())
         .post(`/api/v1/inventory/issues/${created.body.data.id}/void`)
         .set(authed(clinicAdminToken))
-        .send({ version: approveRes.body.data.version, reason: 'test huỷ — kiểm tra công nợ KHÔNG tự đảo' });
+        .send({ version: approveRes.body.data.version, reason: 'test huỷ — Phần D tự đảo công nợ' });
       expect(voidRes.status).toBe(200);
 
       const balancesAfterVoid = await request(app.getHttpServer()).get(`/api/v1/inventory/balances`).set(authed(clinicAdminToken)).query({ warehouseId });
       const qtyAfterVoid = (balancesAfterVoid.body.data.items as { drugId: string; quantityOnHand: number }[]).filter((b) => b.drugId === drugId).reduce((s, b) => s + b.quantityOnHand, 0);
-      expect(qtyAfterVoid).toBe(qtyBeforeVoid + 10); // tồn kho ĐÃ đảo lại (hồi quy generic voidIssue()).
+      expect(qtyAfterVoid).toBe(qtyBeforeVoid + 10); // tồn kho đảo lại đúng (hành vi cũ, không đổi).
 
       const balanceAfter = (await request(app.getHttpServer()).get(`/api/v1/supplier-debt/${supplierId}/summary`).set(authed(clinicAdminToken))).body.data.balance;
-      expect(balanceAfter).toBe(balanceBefore); // công nợ GIỮ NGUYÊN — characterization test, xem docs/DECISIONS.md.
+      expect(balanceAfter).toBe(200000); // Phần D — RETURN bị REVERSAL (+40000), chỉ còn lại PURCHASE gốc.
     });
   });
 });
