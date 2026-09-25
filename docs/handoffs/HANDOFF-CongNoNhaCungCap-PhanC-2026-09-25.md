@@ -1,3 +1,5 @@
+**ĐÃ HOÀN TẤT (25/09/2026, cùng ngày, phiên tiếp theo) — xem `docs/DECISIONS.md` #186.** Toàn bộ "Việc kế tiếp" mục dưới đây (verify Playwright) đã làm xong, 13/13 assertion pass qua Chrome thật, 0 lỗi console. Giữ nguyên nội dung gốc bên dưới làm hồ sơ lịch sử.
+
 # Handoff — Công nợ nhà cung cấp, Phần C "Trả hàng NCC" (CODE + TEST HTTP XONG — CHƯA verify Playwright) — chuyển phiên
 
 **Ngày ghi**: 25/09/2026, dừng theo lựa chọn của chủ dự án (hỏi qua `AskUserQuestion` — không phải vì hết việc/bị chặn). Tiếp nối trực tiếp `docs/handoffs/HANDOFF-CongNoNhaCungCap-PhanB-2026-09-24.md` (Phần B, đã hoàn tất kể cả verify Playwright). Phiên này làm Phần C theo đúng mục "Việc kế tiếp" của handoff đó (mục 8 kế hoạch kỹ thuật `C:\Users\Administrator\.claude\plans\supplier-debt-cong-no-ncc.md`). **CHƯA COMMIT khi viết xong file này** — sẽ hỏi chủ dự án trước khi commit (xem cuối file).

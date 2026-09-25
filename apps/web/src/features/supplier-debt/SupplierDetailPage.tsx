@@ -1,14 +1,17 @@
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, ClipboardText, HandCoins, Receipt, Scales, ShoppingCart, Truck, ArrowUUpLeft } from '@phosphor-icons/react';
+import { ArrowLeft, ClipboardText, Eye, HandCoins, Receipt, Scales, ShoppingCart, Truck, ArrowUUpLeft } from '@phosphor-icons/react';
 import type { SupplierDebtLedgerEntry, SupplierDebtPayment, SupplierDebtReceiptStatus } from '@nexamed/shared';
 import { formatVnd } from '../../shared/format/currency';
+import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { EmptyState } from '../../shared/ui/EmptyState';
+import { RowActionButton } from '../../shared/ui/RowActionButton';
 import { StatusBadge, type StatusBadgeTone } from '../../shared/ui/StatusBadge';
 import { StatCardRow } from '../../shared/ui/StatCard';
+import { TabBar } from '../../shared/ui/TabBar';
 import { ModalHeader } from '../../shared/ui/ModalHeader';
 import { BoxedSection } from '../../shared/ui/BoxedSection';
 import { Combobox } from '../../shared/ui/Combobox';
@@ -16,7 +19,9 @@ import { DateInput } from '../../shared/ui/DateInput';
 import { MoneyInput } from '../../shared/ui/MoneyInput';
 import { ApiError } from '../../shared/api/client';
 import { useHasPermission } from '../auth/usePermission';
+import { CashVoucherDetailDialog } from '../cash-book/CashVoucherDetailDialog';
 import { useSuppliersQuery } from '../drug/supplier.queries';
+import { StockIssueDetailDialog } from '../inventory/StockIssueDetailDialog';
 import { useStockIssuesQuery, useStockReceiptsQuery } from '../inventory/inventory.queries';
 import { useCashAccountsQuery } from '../cash-book/cash-account.queries';
 import { useClinicSettingsQuery } from '../clinic/clinic.queries';
@@ -80,6 +85,8 @@ export function SupplierDetailPage() {
   const summaryQuery = useSupplierDebtSummaryQuery(supplierId);
   const supplier = suppliersQuery.data?.items.find((s) => s.id === supplierId);
 
+  useBreadcrumb([{ label: 'Quản lý nhà cung cấp' }, { label: 'Nhà cung cấp', to: '/suppliers' }, { label: supplier?.name ?? 'Đang tải...' }]);
+
   const isLoading = suppliersQuery.isLoading || summaryQuery.isLoading;
   const isError = suppliersQuery.isError || summaryQuery.isError;
 
@@ -98,15 +105,18 @@ export function SupplierDetailPage() {
   const summary = summaryQuery.data;
 
   return (
-    <div className="flex h-full flex-col gap-4">
-      <Link to="/suppliers" className="inline-flex w-fit items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-slate-800">
-        <ArrowLeft size={15} weight="bold" aria-hidden="true" />
+    <div className="flex h-full flex-col gap-4 p-6">
+      <Link
+        to="/suppliers"
+        className="inline-flex w-fit items-center gap-1.5 rounded-full border border-slate-300 bg-slate-50 px-3.5 py-1.5 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+      >
+        <ArrowLeft size={14} weight="bold" aria-hidden="true" />
         Nhà cung cấp
       </Link>
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4 p-5">
-          <div className="flex min-w-0 items-start gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-blue-50 text-blue-600">
               <Truck size={20} weight="bold" aria-hidden="true" />
             </span>
@@ -147,19 +157,21 @@ export function SupplierDetailPage() {
         </div>
       </div>
 
-      <StatCardRow
-        items={[
-          { icon: ShoppingCart, tone: 'slate', label: 'Tổng tiền hàng đã mua', value: formatVnd(summary.totalPurchase) },
-          { icon: HandCoins, tone: 'emerald', label: 'Đã thanh toán', value: formatVnd(summary.totalPaid) },
-          {
-            icon: Scales,
-            tone: summary.balance < 0 ? 'blue' : 'rose',
-            label: summary.balance < 0 ? 'NCC nợ lại' : 'Còn nợ',
-            value: formatVnd(Math.abs(summary.balance)),
-            emphasis: true,
-          },
-        ]}
-      />
+      <div className="flex flex-shrink-0 flex-wrap items-stretch gap-3">
+        <StatCardRow
+          items={[
+            { icon: ShoppingCart, tone: 'slate', label: 'Tổng tiền hàng đã mua', value: formatVnd(summary.totalPurchase) },
+            { icon: HandCoins, tone: 'emerald', label: 'Đã thanh toán', value: formatVnd(summary.totalPaid) },
+            {
+              icon: Scales,
+              tone: summary.balance < 0 ? 'blue' : 'rose',
+              label: summary.balance < 0 ? 'NCC nợ lại' : 'Còn nợ',
+              value: formatVnd(Math.abs(summary.balance)),
+              emphasis: true,
+            },
+          ]}
+        />
+      </div>
       {summary.pendingApprovalAmount > 0 && (
         <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-800">
           Có {formatVnd(summary.pendingApprovalAmount)} phiếu chi đang chờ duyệt — công nợ chưa giảm cho tới khi được duyệt.
@@ -167,23 +179,17 @@ export function SupplierDetailPage() {
       )}
 
       <div className="min-h-0 flex-1 rounded-lg border border-slate-200 bg-white">
-        <div className="flex gap-1 border-b border-slate-200 px-3 pt-2">
-          {([
-            ['receipts', 'Phiếu nhập'],
-            ['returns', 'Phiếu trả hàng'],
-            ['ledger', 'Sổ công nợ'],
-            ['payments', 'Thanh toán'],
-          ] as const).map(([id_, label]) => (
-            <button
-              key={id_}
-              type="button"
-              onClick={() => setTab(id_)}
-              className={`-mb-px border-b-2 px-3 py-2 text-sm font-semibold ${tab === id_ ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <TabBar
+          tabs={[
+            { id: 'receipts', label: 'Phiếu nhập' },
+            { id: 'returns', label: 'Phiếu trả hàng' },
+            { id: 'ledger', label: 'Sổ công nợ' },
+            { id: 'payments', label: 'Thanh toán' },
+          ]}
+          active={tab}
+          onChange={setTab}
+          className="border-b border-slate-200 px-3 py-2"
+        />
         <div className="p-3">
           {tab === 'receipts' && <ReceiptsTab supplierId={supplierId} />}
           {tab === 'returns' && <ReturnsTab supplierId={supplierId} />}
@@ -269,6 +275,7 @@ const ISSUE_STATUS_LABEL: Record<'DRAFT' | 'POSTED' | 'REJECTED' | 'VOIDED', { l
  * đã Duyệt/Từ chối/Huỷ) — CHỈ phiếu ĐÃ DUYỆT mới thật sự trừ công nợ (xem tab "Sổ công nợ"). */
 function ReturnsTab({ supplierId }: { supplierId: string }) {
   const query = useStockIssuesQuery({ supplierId, issueType: 'RETURN_TO_SUPPLIER', limit: 100 });
+  const [viewIssueId, setViewIssueId] = useState<string | null>(null);
 
   if (query.isError) {
     return <ErrorBanner message="Không tải được danh sách phiếu trả hàng." onRetry={() => void query.refetch()} />;
@@ -307,14 +314,13 @@ function ReturnsTab({ supplierId }: { supplierId: string }) {
                 <StatusBadge tone={ISSUE_STATUS_LABEL[it.status].tone}>{ISSUE_STATUS_LABEL[it.status].label}</StatusBadge>
               </td>
               <td className="px-3 py-2 text-center">
-                <Link to={`/inventory/issues/manual/${it.id}`} className="text-sm font-semibold text-blue-600 hover:text-blue-700">
-                  Xem
-                </Link>
+                <RowActionButton icon={Eye} label="Xem" tone="neutral" onClick={() => setViewIssueId(it.id)} />
               </td>
             </tr>
           ))}
         </tbody>
       </table>
+      {viewIssueId && <StockIssueDetailDialog issueId={viewIssueId} onClose={() => setViewIssueId(null)} />}
     </div>
   );
 }
@@ -379,6 +385,7 @@ const PAYMENT_STATUS_LABEL: Record<SupplierDebtPayment['status'], { label: strin
  * mới có bộ lọc đầy đủ cho MỌI NCC. */
 function PaymentsTab({ supplierId }: { supplierId: string }) {
   const query = useSupplierDebtPaymentsQuery({ supplierId });
+  const [viewVoucherId, setViewVoucherId] = useState<string | null>(null);
 
   if (query.isError) {
     return <ErrorBanner message="Không tải được danh sách thanh toán." onRetry={() => query.refetch()} />;
@@ -401,6 +408,7 @@ function PaymentsTab({ supplierId }: { supplierId: string }) {
             <th className="px-3 py-2.5 text-left">Diễn giải</th>
             <th className="px-3 py-2.5 text-center">Số tiền</th>
             <th className="px-3 py-2.5 text-center">Trạng thái</th>
+            <th className="px-3 py-2.5 text-center">Thao tác</th>
           </tr>
         </thead>
         <tbody>
@@ -416,10 +424,14 @@ function PaymentsTab({ supplierId }: { supplierId: string }) {
               <td className="px-3 py-2 text-center">
                 <StatusBadge tone={PAYMENT_STATUS_LABEL[p.status].tone}>{PAYMENT_STATUS_LABEL[p.status].label}</StatusBadge>
               </td>
+              <td className="px-3 py-2 text-center">
+                <RowActionButton icon={Eye} label="Xem" tone="neutral" onClick={() => setViewVoucherId(p.id)} />
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
+      {viewVoucherId && <CashVoucherDetailDialog voucherId={viewVoucherId} onClose={() => setViewVoucherId(null)} />}
     </div>
   );
 }
@@ -547,7 +559,7 @@ function PaymentDialog({ supplierId, supplierName, balance, onClose }: { supplie
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
-      <form className="flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-lg bg-white shadow-xl" onSubmit={handleSubmit}>
+      <form className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg bg-white shadow-xl" onSubmit={handleSubmit}>
         <div className="flex-shrink-0 px-6 pt-6">
           <ModalHeader icon={HandCoins} title="Thanh toán công nợ" subtitle={supplierName} onClose={onClose} />
         </div>
@@ -562,7 +574,7 @@ function PaymentDialog({ supplierId, supplierName, balance, onClose }: { supplie
             </div>
 
             <BoxedSection badge="Thanh toán">
-              <div className="grid grid-cols-1 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="flex flex-col gap-1.5">
                   <label htmlFor="payment-amount" className="text-sm font-semibold text-slate-800">
                     Số tiền <span className="text-rose-500">*</span>
@@ -584,32 +596,6 @@ function PaymentDialog({ supplierId, supplierName, balance, onClose }: { supplie
                   </div>
                   {exceedsBalance && <p className="text-xs font-semibold text-rose-600">Số tiền thanh toán không được vượt quá công nợ hiện tại.</p>}
                 </div>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="flex flex-col gap-1.5">
-                    <label htmlFor="payment-method" className="text-sm font-semibold text-slate-800">
-                      Phương thức <span className="text-rose-500">*</span>
-                    </label>
-                    <Combobox
-                      id="payment-method"
-                      value={paymentMethodCode}
-                      onChange={setPaymentMethodCode}
-                      placeholder="— Chọn —"
-                      options={paymentMethods.map((m) => ({ value: m.code, label: m.name }))}
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label htmlFor="payment-account" className="text-sm font-semibold text-slate-800">
-                      Quỹ <span className="text-rose-500">*</span>
-                    </label>
-                    <Combobox
-                      id="payment-account"
-                      value={cashAccountId}
-                      onChange={setCashAccountId}
-                      placeholder="— Chọn —"
-                      options={cashAccounts.map((a) => ({ value: a.id, label: a.name }))}
-                    />
-                  </div>
-                </div>
                 <div className="flex flex-col gap-1.5">
                   <label htmlFor="payment-date" className="text-sm font-semibold text-slate-800">
                     Ngày phát sinh
@@ -617,6 +603,30 @@ function PaymentDialog({ supplierId, supplierName, balance, onClose }: { supplie
                   <DateInput id="payment-date" value={occurredAt} onChange={setOccurredAt} />
                 </div>
                 <div className="flex flex-col gap-1.5">
+                  <label htmlFor="payment-method" className="text-sm font-semibold text-slate-800">
+                    Phương thức <span className="text-rose-500">*</span>
+                  </label>
+                  <Combobox
+                    id="payment-method"
+                    value={paymentMethodCode}
+                    onChange={setPaymentMethodCode}
+                    placeholder="— Chọn —"
+                    options={paymentMethods.map((m) => ({ value: m.code, label: m.name }))}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="payment-account" className="text-sm font-semibold text-slate-800">
+                    Quỹ <span className="text-rose-500">*</span>
+                  </label>
+                  <Combobox
+                    id="payment-account"
+                    value={cashAccountId}
+                    onChange={setCashAccountId}
+                    placeholder="— Chọn —"
+                    options={cashAccounts.map((a) => ({ value: a.id, label: a.name }))}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5 sm:col-span-2">
                   <label htmlFor="payment-note" className="text-sm font-semibold text-slate-800">
                     Ghi chú
                   </label>
@@ -692,7 +702,7 @@ function RefundDialog({ supplierId, supplierName, balance, onClose }: { supplier
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
-      <form className="flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-lg bg-white shadow-xl" onSubmit={handleSubmit}>
+      <form className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg bg-white shadow-xl" onSubmit={handleSubmit}>
         <div className="flex-shrink-0 px-6 pt-6">
           <ModalHeader icon={ArrowUUpLeft} title="Thu tiền NCC hoàn lại" subtitle={supplierName} onClose={onClose} />
         </div>
@@ -707,7 +717,7 @@ function RefundDialog({ supplierId, supplierName, balance, onClose }: { supplier
             </div>
 
             <BoxedSection badge="Thu tiền">
-              <div className="grid grid-cols-1 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="flex flex-col gap-1.5">
                   <label htmlFor="refund-amount" className="text-sm font-semibold text-slate-800">
                     Số tiền nhận <span className="text-rose-500">*</span>
@@ -729,32 +739,6 @@ function RefundDialog({ supplierId, supplierName, balance, onClose }: { supplier
                   </div>
                   {exceedsBalance && <p className="text-xs font-semibold text-rose-600">Số tiền nhận không được vượt quá số nhà cung cấp đang nợ lại.</p>}
                 </div>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="flex flex-col gap-1.5">
-                    <label htmlFor="refund-method" className="text-sm font-semibold text-slate-800">
-                      Phương thức <span className="text-rose-500">*</span>
-                    </label>
-                    <Combobox
-                      id="refund-method"
-                      value={paymentMethodCode}
-                      onChange={setPaymentMethodCode}
-                      placeholder="— Chọn —"
-                      options={paymentMethods.map((m) => ({ value: m.code, label: m.name }))}
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label htmlFor="refund-account" className="text-sm font-semibold text-slate-800">
-                      Quỹ nhận <span className="text-rose-500">*</span>
-                    </label>
-                    <Combobox
-                      id="refund-account"
-                      value={cashAccountId}
-                      onChange={setCashAccountId}
-                      placeholder="— Chọn —"
-                      options={cashAccounts.map((a) => ({ value: a.id, label: a.name }))}
-                    />
-                  </div>
-                </div>
                 <div className="flex flex-col gap-1.5">
                   <label htmlFor="refund-date" className="text-sm font-semibold text-slate-800">
                     Ngày thu
@@ -762,6 +746,30 @@ function RefundDialog({ supplierId, supplierName, balance, onClose }: { supplier
                   <DateInput id="refund-date" value={occurredAt} onChange={setOccurredAt} />
                 </div>
                 <div className="flex flex-col gap-1.5">
+                  <label htmlFor="refund-method" className="text-sm font-semibold text-slate-800">
+                    Phương thức <span className="text-rose-500">*</span>
+                  </label>
+                  <Combobox
+                    id="refund-method"
+                    value={paymentMethodCode}
+                    onChange={setPaymentMethodCode}
+                    placeholder="— Chọn —"
+                    options={paymentMethods.map((m) => ({ value: m.code, label: m.name }))}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="refund-account" className="text-sm font-semibold text-slate-800">
+                    Quỹ nhận <span className="text-rose-500">*</span>
+                  </label>
+                  <Combobox
+                    id="refund-account"
+                    value={cashAccountId}
+                    onChange={setCashAccountId}
+                    placeholder="— Chọn —"
+                    options={cashAccounts.map((a) => ({ value: a.id, label: a.name }))}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5 sm:col-span-2">
                   <label htmlFor="refund-note" className="text-sm font-semibold text-slate-800">
                     Ghi chú
                   </label>

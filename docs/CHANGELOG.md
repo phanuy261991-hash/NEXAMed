@@ -2,6 +2,16 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-25 (phiên mới)
+
+### Công nợ nhà cung cấp, Phần C — verify Playwright xong, Phần C hoàn tất 100%
+
+Setup dữ liệu test qua HTTP API (tenant test cố định), verify qua Chrome thật cả 4 kịch bản: trả hàng không/có chọn "Phiếu nhập gốc" (giá tự tính đúng cả 2 trường hợp, kể cả sau chiết khấu), huỷ phiếu trả đã Duyệt (tồn kho đảo đúng, công nợ giữ nguyên — đúng thiết kế), "Thu tiền NCC hoàn lại". 13/13 assertion pass, 0 lỗi console. Chi tiết `docs/DECISIONS.md` #186.
+
+### Polish UI (Sổ quỹ/NCC/Kho) — phản hồi trực tiếp lúc dùng thử
+
+Sửa dải KPI bị kéo giãn ở trang chi tiết NCC, đổi dialog Thanh toán/Thu tiền hoàn lại sang bố cục ngang, thêm padding trang còn thiếu, sửa breadcrumb bị treo tên trang cũ, trích xuất `shared/ui/TabBar.tsx` dùng chung (đồng bộ 4 trang), thêm dialog xem nhanh cho tab Phiếu trả hàng/Thanh toán, nới rộng `CashVoucherDetailDialog`. Đổi quy trình tenant test: `config.json` từ nay luôn giữ tenant test cố định, không trả về tenant thật cuối phiên nữa. Chi tiết `docs/DECISIONS.md` #186.
+
 ## 2026-09-25
 
 ### Công nợ nhà cung cấp, Phần C "Trả hàng NCC" — code + test HTTP xong, CHƯA verify Playwright

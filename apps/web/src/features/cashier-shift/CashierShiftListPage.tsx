@@ -9,6 +9,7 @@ import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { RowActionButton } from '../../shared/ui/RowActionButton';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { Skeleton } from '../../shared/ui/Skeleton';
+import { TabBar } from '../../shared/ui/TabBar';
 import { formatVnd } from '../../shared/format/currency';
 import { getVietnamTodayDateString } from '../appointment/schedule-grid.utils';
 import { useUserAccountsQuery } from '../user-account/user-account.queries';
@@ -96,24 +97,16 @@ export function CashierShiftListPage() {
         </div>
       </div>
 
-      <div className="flex flex-shrink-0 items-center gap-1 border-b border-slate-200 px-1">
-        {(
-          [
-            ['all', 'Tất cả'],
-            ['ok', 'Khớp tiền'],
-            ['bad', 'Lệch tiền'],
-          ] as const
-        ).map(([value, label]) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() => setTab(value)}
-            className={`-mb-px border-b-2 px-3.5 py-2 text-[13px] font-semibold ${tab === value ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <TabBar
+        tabs={[
+          { id: 'all', label: 'Tất cả' },
+          { id: 'ok', label: 'Khớp tiền' },
+          { id: 'bad', label: 'Lệch tiền' },
+        ]}
+        active={tab}
+        onChange={setTab}
+        className="flex-shrink-0 border-b border-slate-200 px-1"
+      />
 
       {listQuery.isPending && (
         <div className="min-h-0 flex-1 space-y-2 overflow-hidden rounded-lg bg-white p-4 shadow-sm">

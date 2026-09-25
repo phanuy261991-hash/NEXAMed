@@ -164,7 +164,7 @@ export function CashVoucherDetailDialog({ voucherId, onClose }: { voucherId: str
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
-      <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-6 shadow-xl">
+      <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-lg bg-white p-6 shadow-xl">
         <ModalHeader
           icon={Receipt}
           title={voucher?.voucherNo ?? 'Chi tiết phiếu'}

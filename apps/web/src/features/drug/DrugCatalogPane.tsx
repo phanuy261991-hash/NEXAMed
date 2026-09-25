@@ -14,6 +14,7 @@ import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { RowActionButton } from '../../shared/ui/RowActionButton';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { EmptyState } from '../../shared/ui/EmptyState';
+import { TabBar } from '../../shared/ui/TabBar';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { SaveFlashBanner } from '../../shared/ui/SaveFlashBanner';
 import { ModalHeader } from '../../shared/ui/ModalHeader';
@@ -437,25 +438,17 @@ export function DrugCatalogPane() {
                 stock_receipt.read (điều dưỡng/lễ tân không có quyền này thì panel giữ nguyên như
                 cũ, chỉ 1 tab "Thông tin"). */}
             {canSeeInventory && (
-              <div className="flex flex-shrink-0 gap-1 border-b border-slate-200 px-5 pt-2" role="tablist">
-                {(
-                  [
-                    ['info', 'Thông tin'],
-                    ['batches', 'Tồn kho theo lô'],
-                    ['ledger', 'Thẻ kho'],
-                    ['history', 'Lịch sử giao dịch'],
-                  ] as const
-                ).map(([value, label]) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => setDetailTab(value)}
-                    className={`border-b-2 px-2.5 py-2 text-sm font-semibold ${detailTab === value ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
+              <TabBar
+                tabs={[
+                  { id: 'info', label: 'Thông tin' },
+                  { id: 'batches', label: 'Tồn kho theo lô' },
+                  { id: 'ledger', label: 'Thẻ kho' },
+                  { id: 'history', label: 'Lịch sử giao dịch' },
+                ]}
+                active={detailTab}
+                onChange={setDetailTab}
+                className="flex-shrink-0 border-b border-slate-200 px-5 pt-2"
+              />
             )}
 
             {detailTab === 'info' && (

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, HandCoins, Scales } from '@phosphor-icons/react';
+import { Eye, HandCoins, MagnifyingGlass, Scales } from '@phosphor-icons/react';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
@@ -20,7 +20,8 @@ import { useSupplierDebtSummariesQuery } from './supplier-debt.queries';
 export function SupplierDebtListPage() {
   useBreadcrumb([{ label: 'Quản lý nhà cung cấp' }, { label: 'Công nợ nhà cung cấp' }]);
   const navigate = useNavigate();
-  const [showAll, setShowAll] = useState(false);
+  const [showAll, setShowAll] = useState(true);
+  const [search, setSearch] = useState('');
 
   const suppliersQuery = useSuppliersQuery(true);
   const summariesQuery = useSupplierDebtSummariesQuery(true);
@@ -28,9 +29,11 @@ export function SupplierDebtListPage() {
   const rows = useMemo(() => {
     const summaryBySupplierId = new Map((summariesQuery.data?.items ?? []).map((s) => [s.supplierId, s]));
     const all = (suppliersQuery.data?.items ?? []).map((supplier) => ({ supplier, debt: summaryBySupplierId.get(supplier.id) }));
-    if (showAll) return all;
-    return all.filter(({ debt }) => debt && (debt.balance !== 0 || debt.pendingApprovalAmount > 0));
-  }, [suppliersQuery.data, summariesQuery.data, showAll]);
+    const scoped = showAll ? all : all.filter(({ debt }) => debt && (debt.balance !== 0 || debt.pendingApprovalAmount > 0));
+    const q = search.trim().toLowerCase();
+    if (!q) return scoped;
+    return scoped.filter(({ supplier }) => supplier.code.toLowerCase().includes(q) || supplier.name.toLowerCase().includes(q));
+  }, [suppliersQuery.data, summariesQuery.data, showAll, search]);
 
   const totals = useMemo(() => {
     const items = summariesQuery.data?.items ?? [];
@@ -53,6 +56,16 @@ export function SupplierDebtListPage() {
       <h1 className="sr-only">Công nợ nhà cung cấp</h1>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="relative w-72">
+          <MagnifyingGlass size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Tìm theo mã hoặc tên nhà cung cấp..."
+            className="w-full rounded-md border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+          />
+        </div>
         <label className="flex items-center gap-1.5 text-sm text-slate-600">
           <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />
           Hiện cả nhà cung cấp đã tất toán / chưa phát sinh

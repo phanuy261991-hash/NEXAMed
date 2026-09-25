@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { ArrowCounterClockwise, Eye, PencilSimple, Plus, Prohibit, Truck } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, Eye, MagnifyingGlass, PencilSimple, Plus, Prohibit, Truck } from '@phosphor-icons/react';
 import { useNavigate } from 'react-router-dom';
 import type { SupplierSummary } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
@@ -39,6 +39,7 @@ export function SupplierPane() {
   const canReadDebt = useHasPermission('supplier_debt', 'read');
   const navigate = useNavigate();
   const [includeInactive, setIncludeInactive] = useState(false);
+  const [search, setSearch] = useState('');
   const [modal, setModal] = useState<ModalState | null>(null);
   const [deactivateTarget, setDeactivateTarget] = useState<SupplierSummary | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -49,7 +50,11 @@ export function SupplierPane() {
   const createMutation = useCreateSupplierMutation();
   const updateMutation = useUpdateSupplierMutation();
 
-  const items = query.data?.items ?? [];
+  // Tìm theo mã/tên/SĐT/MST — quy mô nhỏ (tải hết, không phân trang, đúng khuôn danh mục dùng chung), lọc thuần ở client.
+  const q = search.trim().toLowerCase();
+  const items = (query.data?.items ?? []).filter(
+    (s) => !q || s.code.toLowerCase().includes(q) || s.name.toLowerCase().includes(q) || (s.phone ?? '').includes(q) || (s.taxCode ?? '').toLowerCase().includes(q),
+  );
   const itemIds = items.map((s) => s.id);
   const rowSelection = useRowSelection(itemIds);
 
@@ -75,10 +80,22 @@ export function SupplierPane() {
   return (
     <div className="flex h-full flex-col">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <label className="flex items-center gap-1.5 text-sm text-slate-600">
-          <input type="checkbox" checked={includeInactive} onChange={(e) => setIncludeInactive(e.target.checked)} />
-          Hiện cả nhà cung cấp đã ngưng
-        </label>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative w-72">
+            <MagnifyingGlass size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Tìm theo mã, tên, SĐT hoặc mã số thuế..."
+              className="w-full rounded-md border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            />
+          </div>
+          <label className="flex items-center gap-1.5 text-sm text-slate-600">
+            <input type="checkbox" checked={includeInactive} onChange={(e) => setIncludeInactive(e.target.checked)} />
+            Hiện cả nhà cung cấp đã ngưng
+          </label>
+        </div>
         {canManage && (
           <Button type="button" onClick={() => setModal({ mode: 'create' })}>
             <Plus size={16} weight="bold" aria-hidden="true" />
