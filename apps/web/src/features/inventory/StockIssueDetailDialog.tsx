@@ -89,6 +89,12 @@ export function StockIssueDetailDialog({ issueId, onClose }: { issueId: string; 
                 </p>
               )
             )}
+            {issue.supplierName && (
+              <p className="mb-3 text-sm text-slate-600">
+                Nhà cung cấp <span className="font-semibold text-slate-900">{issue.supplierName}</span>
+                {issue.sourceReceiptNo && <span className="text-slate-400"> · Phiếu nhập gốc {issue.sourceReceiptNo}</span>}
+              </p>
+            )}
 
             <div className="flex flex-col divide-y divide-slate-200 rounded-lg border border-slate-200">
               {issue.lines.map((line) => (
@@ -96,7 +102,7 @@ export function StockIssueDetailDialog({ issueId, onClose }: { issueId: string; 
                   <div className="min-w-0">
                     <p className="truncate font-semibold text-slate-900">{line.drugName}</p>
                     <p className="text-xs text-slate-400">
-                      {line.batchNo ? `Lô ${line.batchNo} · ` : ''}SL {line.quantity} × {formatVnd(line.sellPrice)}
+                      {line.batchNo ? `Lô ${line.batchNo} · ` : ''}SL {line.quantity} × {formatVnd(issue.issueType === 'RETURN_TO_SUPPLIER' ? (line.returnUnitPrice ?? 0) : line.sellPrice)}
                     </p>
                   </div>
                   <p className="shrink-0 font-semibold tabular-nums text-slate-900">{formatVnd(line.lineAmount)}</p>
@@ -105,7 +111,7 @@ export function StockIssueDetailDialog({ issueId, onClose }: { issueId: string; 
             </div>
 
             <div className="mt-3 flex items-center justify-between px-1">
-              <span className="text-sm font-semibold text-slate-600">Tổng tiền</span>
+              <span className="text-sm font-semibold text-slate-600">{issue.issueType === 'RETURN_TO_SUPPLIER' ? 'Giá trị trừ công nợ' : 'Tổng tiền'}</span>
               <span className="text-base font-bold text-slate-900">{formatVnd(issue.totalAmount)}</span>
             </div>
 

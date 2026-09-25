@@ -5,6 +5,7 @@ import {
   listSupplierDebtPaymentsQuerySchema,
   recordSupplierDebtOpeningBalanceRequestSchema,
   recordSupplierDebtPaymentRequestSchema,
+  recordSupplierDebtRefundRequestSchema,
 } from '@nexamed/shared';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
@@ -78,5 +79,15 @@ export class SupplierDebtController {
     const dto = recordSupplierDebtPaymentRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
     return this.supplierDebtService.recordPayment(tenantId, userId, supplierId, dto, extractRequestMeta(req));
+  }
+
+  /** Phần C — "Thu tiền NCC hoàn lại" (Q8), CHỈ hợp lệ khi NCC đang nợ lại phòng khám (`balance<0`). */
+  @Post(':supplierId/refund')
+  @RequirePermission('supplier_debt', 'pay')
+  @HttpCode(200)
+  async recordRefund(@Param('supplierId') supplierId: string, @Body() body: unknown, @Req() req: Request) {
+    const dto = recordSupplierDebtRefundRequestSchema.parse(body);
+    const { userId, tenantId } = req.user!;
+    return this.supplierDebtService.recordRefund(tenantId, userId, supplierId, dto, extractRequestMeta(req));
   }
 }

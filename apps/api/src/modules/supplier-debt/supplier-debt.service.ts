@@ -21,6 +21,7 @@ import type {
   ListSupplierDebtSummariesResponse,
   RecordSupplierDebtOpeningBalanceRequest,
   RecordSupplierDebtPaymentRequest,
+  RecordSupplierDebtRefundRequest,
   SupplierDebtSummary,
 } from '@nexamed/shared';
 import type { CashVoucher, Prisma, SupplierDebtAccount, SupplierDebtEntry, SupplierDebtEntryType } from '@prisma/client';
@@ -86,6 +87,7 @@ export class SupplierDebtService {
       amountChange: bigint;
       occurredAt: Date;
       stockReceiptId: string | null;
+      stockIssueId: string | null;
       cashVoucherId: string | null;
       reversalOfId: string | null;
       note: string | null;
@@ -101,6 +103,7 @@ export class SupplierDebtService {
       balanceAfter: newBalance,
       occurredAt: params.occurredAt,
       stockReceiptId: params.stockReceiptId,
+      stockIssueId: params.stockIssueId,
       cashVoucherId: params.cashVoucherId,
       reversalOfId: params.reversalOfId,
       note: params.note,
@@ -137,6 +140,7 @@ export class SupplierDebtService {
       amountChange: params.netAmount,
       occurredAt: params.occurredAt,
       stockReceiptId: params.stockReceiptId,
+      stockIssueId: null,
       cashVoucherId: null,
       reversalOfId: null,
       note: null,
@@ -194,6 +198,43 @@ export class SupplierDebtService {
     return { prepaidVoucherId: voucher.id };
   }
 
+  /**
+   * Phần C — `StockIssueService.approveManual()` (issueType='RETURN_TO_SUPPLIER') gọi TRONG CÙNG
+   * transaction ngay sau khi phiếu chuyển POSTED — ghi RETURN −giá trị trả. `targetStockReceiptId`
+   * (nếu chọn "Phiếu nhập gốc", Q3) trừ vào đúng phiếu đó trước (`allocateSupplierDebt()` FIFO).
+   * Không sinh `cash_voucher` nào (trả hàng không phải tiền thật, chỉ giảm công nợ) — khác
+   * `recordPurchaseApproval()`. Phòng thủ `totalAmount<=0n` (Service đã validate ≥1 dòng có SL>0
+   * nên không nên xảy ra, nhưng tránh ghi bút toán amount_change=0 — CHECK DB sẽ chặn).
+   */
+  async recordReturnApproval(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    actorId: string,
+    params: { supplierId: string; totalAmount: bigint; stockIssueId: string; occurredAt: Date; targetStockReceiptId: string | null; meta: RequestMeta },
+  ): Promise<void> {
+    if (params.totalAmount <= 0n) return;
+    const account0 = await this.getOrCreateAccount(tx, tenantId, actorId, params.supplierId);
+    const { entry } = await this.applyEntry(tx, tenantId, actorId, account0, {
+      entryType: 'RETURN',
+      amountChange: -params.totalAmount,
+      occurredAt: params.occurredAt,
+      stockReceiptId: params.targetStockReceiptId,
+      stockIssueId: params.stockIssueId,
+      cashVoucherId: null,
+      reversalOfId: null,
+      note: null,
+    });
+    await writeAuditLog(tx, tenantId, {
+      actorId,
+      action: 'supplier_debt.return_recorded',
+      entityType: 'supplier_debt_account',
+      entityId: account0.id,
+      afterJson: { supplierId: params.supplierId, stockIssueId: params.stockIssueId, entryId: entry.id, amount: params.totalAmount.toString() },
+      ip: params.meta.ip,
+      userAgent: params.meta.userAgent,
+    });
+  }
+
   /** `EXPENSE` (phiếu chi) → PAYMENT (giảm nợ); `INCOME` (phiếu thu, "NCC hoàn tiền" — Phần C) →
    * REFUND_RECEIVED (tăng nợ, tức giảm phần "NCC nợ lại"). `targetStockReceiptId` chỉ có ý nghĩa với
    * PAYMENT (xem đơn giản hoá đã ghi ở đầu file — `recordVoucherPosted()` luôn truyền `null`). */
@@ -213,6 +254,7 @@ export class SupplierDebtService {
       amountChange,
       occurredAt: voucher.occurredAt,
       stockReceiptId: targetStockReceiptId,
+      stockIssueId: null,
       cashVoucherId: voucher.id,
       reversalOfId: null,
       note: null,
@@ -250,6 +292,7 @@ export class SupplierDebtService {
       amountChange: -original.amountChange,
       occurredAt: new Date(),
       stockReceiptId: original.stockReceiptId,
+      stockIssueId: null,
       cashVoucherId: voucher.id,
       reversalOfId: original.id,
       note: reason,
@@ -282,6 +325,7 @@ export class SupplierDebtService {
         amountChange,
         occurredAt: new Date(dto.occurredAt),
         stockReceiptId: null,
+        stockIssueId: null,
         cashVoucherId: null,
         reversalOfId: null,
         note: dto.note ?? null,
@@ -357,6 +401,63 @@ export class SupplierDebtService {
       if (status === 'POSTED') {
         await this.applyVoucherEntry(tx, tenantId, actorId, account0, voucher, null, meta);
       }
+    });
+    return this.getSummary(tenantId, supplierId);
+  }
+
+  /**
+   * Phần C — `POST /supplier-debt/:supplierId/refund` — "Thu tiền NCC hoàn lại" (Q8), CHỈ hợp lệ khi
+   * `balance < 0` (NCC đang nợ lại phòng khám), `amount ≤ |balance|`. Sinh `cash_voucher` INCOME
+   * (`SUPPLIER_REFUND`) — LUÔN `POSTED` NGAY (đúng `CashVoucherService.create()`: chỉ EXPENSE mới
+   * xét `cashVoucherApprovalEnabled`, xem `sumPendingApprovalBySupplierIds()`), nên ghi
+   * `REFUND_RECEIVED` thẳng trong CÙNG transaction — không cần hook `recordVoucherPosted()` qua
+   * `CashVoucherService.approve()` như "Thanh toán công nợ" (Phần B, EXPENSE có thể Chờ duyệt).
+   */
+  async recordRefund(tenantId: string, actorId: string, supplierId: string, dto: RecordSupplierDebtRefundRequest, meta: RequestMeta): Promise<SupplierDebtSummary> {
+    const cashierShiftId = await this.cashierShiftReader.getRelevantOpenShiftId(tenantId, actorId);
+    const occurredAt = dto.occurredAt ? new Date(dto.occurredAt) : new Date();
+
+    await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const supplier = await this.supplierRepository.findById(tx, tenantId, supplierId);
+      if (!supplier) throw new NotFoundException();
+      const cashAccount = await this.cashAccountRepository.findById(tx, tenantId, dto.cashAccountId);
+      if (!cashAccount) throw new NotFoundException();
+
+      const account0 = await this.accountRepository.findBySupplierId(tx, tenantId, supplierId);
+      if (!account0 || account0.balance >= 0n) {
+        throw new UnprocessableEntityException('Nhà cung cấp này không đang nợ lại phòng khám — không có gì để hoàn tiền.');
+      }
+      const maxRefundable = -account0.balance;
+      if (BigInt(dto.amount) > maxRefundable) {
+        throw new UnprocessableEntityException('Số tiền nhận không được vượt quá số nhà cung cấp đang nợ lại.');
+      }
+
+      const voucherNo = await this.businessCodeService.generate(tx, tenantId, actorId, 'CASH_RECEIPT', occurredAt);
+      const voucher = await this.cashVoucherRepository.create(tx, tenantId, actorId, {
+        voucherNo,
+        direction: 'INCOME',
+        incomeExpenseTypeCode: 'SUPPLIER_REFUND',
+        cashAccountId: dto.cashAccountId,
+        paymentMethodCode: dto.paymentMethodCode,
+        amount: BigInt(dto.amount),
+        occurredAt,
+        partnerName: supplier.name,
+        description: dto.note?.trim() ? `Nhà cung cấp hoàn tiền — ${supplier.name} (${dto.note.trim()})` : `Nhà cung cấp hoàn tiền — ${supplier.name}`,
+        status: 'POSTED',
+        cashierShiftId,
+        supplierId,
+      });
+      await writeAuditLog(tx, tenantId, {
+        actorId,
+        action: 'cash_voucher.created',
+        entityType: 'cash_voucher',
+        entityId: voucher.id,
+        afterJson: { voucherNo, direction: 'INCOME', amount: dto.amount.toString(), status: 'POSTED', supplierId },
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
+
+      await this.applyVoucherEntry(tx, tenantId, actorId, account0, voucher, null, meta);
     });
     return this.getSummary(tenantId, supplierId);
   }
@@ -466,6 +567,8 @@ export class SupplierDebtService {
         createdAt: e.createdAt.toISOString(),
         stockReceiptId: e.stockReceiptId,
         stockReceiptNo: null, // web tự ghép qua GET /inventory/receipts?supplierId= (xem shared/supplier-debt.ts)
+        stockIssueId: e.stockIssueId,
+        stockIssueNo: null, // cùng lý do trên — ghép qua GET /inventory/issues?supplierId= (Phần C)
         cashVoucherId: e.cashVoucherId,
         cashVoucherNo: null, // cùng lý do trên — ghép qua "Phiếu thanh toán NCC" (Phần B)
         reversalOfId: e.reversalOfId,

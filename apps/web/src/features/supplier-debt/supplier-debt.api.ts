@@ -7,6 +7,7 @@ import type {
   ListSupplierDebtSummariesResponse,
   RecordSupplierDebtOpeningBalanceRequest,
   RecordSupplierDebtPaymentRequest,
+  RecordSupplierDebtRefundRequest,
   SupplierDebtSummary,
 } from '@nexamed/shared';
 import { getApiClient, unwrap } from '../../shared/api/client';
@@ -43,4 +44,9 @@ export async function recordSupplierDebtPayment(supplierId: string, body: Record
 
 export async function listSupplierDebtPayments(query: ListSupplierDebtPaymentsQuery): Promise<ListSupplierDebtPaymentsResponse> {
   return unwrap(await getApiClient().GET('/api/v1/supplier-debt/payments', { params: { query } })) as ListSupplierDebtPaymentsResponse;
+}
+
+/** Phần C — "Thu tiền NCC hoàn lại" (Q8). */
+export async function recordSupplierDebtRefund(supplierId: string, body: RecordSupplierDebtRefundRequest): Promise<SupplierDebtSummary> {
+  return unwrap(await getApiClient().POST('/api/v1/supplier-debt/{supplierId}/refund', { params: { path: { supplierId } }, body })) as SupplierDebtSummary;
 }

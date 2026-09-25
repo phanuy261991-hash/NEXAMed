@@ -59,6 +59,16 @@ export function StockIssuePrintView({ issue, clinicHeader }: { issue: StockIssue
             Khoa/Phòng tiếp nhận: <strong>{issue.departmentName}</strong>
           </p>
         )}
+        {issue.supplierName && (
+          <p>
+            Nhà cung cấp: <strong>{issue.supplierName}</strong>
+          </p>
+        )}
+        {issue.sourceReceiptNo && (
+          <p>
+            Phiếu nhập gốc: <strong>{issue.sourceReceiptNo}</strong>
+          </p>
+        )}
         <p>
           Người lập phiếu: <strong>{issue.createdByName}</strong>
         </p>
@@ -84,7 +94,7 @@ export function StockIssuePrintView({ issue, clinicHeader }: { issue: StockIssue
               </td>
               <td className="py-1.5">{line.batchNo ?? '—'}</td>
               <td className="py-1.5 text-right">{line.quantity}</td>
-              <td className="py-1.5 text-right">{formatVnd(line.sellPrice)}</td>
+              <td className="py-1.5 text-right">{formatVnd(issue.issueType === 'RETURN_TO_SUPPLIER' ? (line.returnUnitPrice ?? 0) : line.sellPrice)}</td>
               <td className="py-1.5 text-right">{formatVnd(line.lineAmount)}</td>
             </tr>
           ))}
@@ -92,7 +102,7 @@ export function StockIssuePrintView({ issue, clinicHeader }: { issue: StockIssue
       </table>
 
       <div className="mt-3 flex justify-end border-t-2 border-slate-800 pt-2 text-base font-bold">
-        <span>Tổng cộng: {formatVnd(issue.totalAmount)}</span>
+        <span>{issue.issueType === 'RETURN_TO_SUPPLIER' ? 'Giá trị trừ công nợ' : 'Tổng cộng'}: {formatVnd(issue.totalAmount)}</span>
       </div>
 
       {issue.note && (

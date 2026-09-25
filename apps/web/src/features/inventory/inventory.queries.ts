@@ -69,11 +69,12 @@ import {
   voidStockReceipt,
 } from './inventory.api';
 
-export function useStockReceiptsQuery(query: ListStockReceiptsQuery) {
+export function useStockReceiptsQuery(query: ListStockReceiptsQuery, enabled = true) {
   const { tenantId } = useAppConfig();
   return useQuery({
     queryKey: queryKey(tenantId, 'stock-receipt', 'list', JSON.stringify(query)),
     queryFn: () => getStockReceipts(query),
+    enabled,
   });
 }
 

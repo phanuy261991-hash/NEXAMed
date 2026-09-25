@@ -7,9 +7,10 @@ import { cashVoucherStatusSchema } from './cash-book';
  * Phần A "Nền sổ công nợ": sổ `SupplierDebtEntry` append-only (nguồn sự thật) + `SupplierDebtAccount`
  * (snapshot `balance`, dương = phòng khám còn nợ NCC, âm = NCC đang nợ lại). Phần B "Thanh toán"
  * thêm `POST .../payment` (Thanh toán công nợ trên TỔNG nợ, không chọn từng phiếu — FIFO ngầm) +
- * `GET /supplier-debt/payments` (trang "Phiếu thanh toán NCC"). Chỉ ghi PURCHASE/PAYMENT/
- * OPENING_BALANCE ở giai đoạn này — RETURN/REFUND_RECEIVED/ADJUSTMENT_INCREASE/ADJUSTMENT_DECREASE
- * khai sẵn enum cho Phần C/D (REVERSAL đã có đường ghi từ Phần A, huỷ phiếu chi).
+ * `GET /supplier-debt/payments` (trang "Phiếu thanh toán NCC"). Phần C "Trả hàng NCC" thêm đường ghi
+ * RETURN (Duyệt phiếu xuất trả NCC, `apps/api/src/modules/inventory/`) + `POST .../refund` ("Thu
+ * tiền NCC hoàn lại", REFUND_RECEIVED). ADJUSTMENT_INCREASE/ADJUSTMENT_DECREASE khai sẵn enum cho
+ * Phần D (REVERSAL đã có đường ghi từ Phần A, huỷ phiếu chi).
  */
 
 export const supplierDebtEntryTypeSchema = z.enum([
@@ -75,6 +76,10 @@ export const supplierDebtLedgerEntrySchema = z.object({
   createdAt: z.string(),
   stockReceiptId: z.string().uuid().nullable(),
   stockReceiptNo: z.string().nullable(),
+  /** "Công nợ nhà cung cấp" Phần C — nguồn RETURN (phiếu xuất trả NCC). `stockIssueNo` luôn `null`
+   * ở API (đúng lý do `stockReceiptNo`) — web tự ghép qua `GET /inventory/issues?supplierId=`. */
+  stockIssueId: z.string().uuid().nullable(),
+  stockIssueNo: z.string().nullable(),
   cashVoucherId: z.string().uuid().nullable(),
   cashVoucherNo: z.string().nullable(),
   reversalOfId: z.string().uuid().nullable(),
@@ -185,3 +190,20 @@ export const listSupplierDebtPaymentsResponseSchema = z.object({
   pendingApprovalCount: z.number().int(),
 });
 export type ListSupplierDebtPaymentsResponse = z.infer<typeof listSupplierDebtPaymentsResponseSchema>;
+
+/**
+ * Phần C — `POST /supplier-debt/:supplierId/refund` — "Thu tiền NCC hoàn lại" (Q8), CHỈ gọi được
+ * khi `balance < 0` (NCC đang nợ lại phòng khám), `amount ≤ |balance|` (Service chặn, 422 nếu vượt).
+ * Sinh `cash_voucher` INCOME (`incomeExpenseTypeCode='SUPPLIER_REFUND'`) — LUÔN `POSTED` ngay (phiếu
+ * thu không qua "Duyệt phiếu chi", đúng `CashVoucherService.create()`: chỉ EXPENSE mới xét duyệt).
+ * Server tự sinh `description`/`partnerName`/mã phiếu, không nhận từ client.
+ */
+export const recordSupplierDebtRefundRequestSchema = z.object({
+  amount: z.number().int().positive('Số tiền phải lớn hơn 0.'),
+  paymentMethodCode: paymentMethodSchema,
+  cashAccountId: z.string().uuid(),
+  /** Bỏ trống = "bây giờ". */
+  occurredAt: z.string().optional(),
+  note: z.string().nullable().optional(),
+});
+export type RecordSupplierDebtRefundRequest = z.infer<typeof recordSupplierDebtRefundRequestSchema>;

@@ -53379,6 +53379,15 @@
             "required": false,
             "name": "q",
             "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "supplierId",
+            "in": "query"
           }
         ],
         "responses": {
@@ -53527,6 +53536,32 @@
                               },
                               "version": {
                                 "type": "integer"
+                              },
+                              "supplierId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "supplierName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "sourceReceiptId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "sourceReceiptNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               }
                             },
                             "required": [
@@ -53553,7 +53588,11 @@
                               "voidedByName",
                               "voidedAt",
                               "voidReason",
-                              "version"
+                              "version",
+                              "supplierId",
+                              "supplierName",
+                              "sourceReceiptId",
+                              "sourceReceiptNo"
                             ]
                           }
                         },
@@ -53866,6 +53905,32 @@
                         "version": {
                           "type": "integer"
                         },
+                        "supplierId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "supplierName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "sourceReceiptId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "sourceReceiptNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "lines": {
                           "type": "array",
                           "items": {
@@ -53916,6 +53981,12 @@
                               },
                               "lineAmount": {
                                 "type": "integer"
+                              },
+                              "returnUnitPrice": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
                               }
                             },
                             "required": [
@@ -53929,7 +54000,8 @@
                               "quantity",
                               "unitCost",
                               "sellPrice",
-                              "lineAmount"
+                              "lineAmount",
+                              "returnUnitPrice"
                             ]
                           }
                         },
@@ -53986,6 +54058,10 @@
                         "voidedAt",
                         "voidReason",
                         "version",
+                        "supplierId",
+                        "supplierName",
+                        "sourceReceiptId",
+                        "sourceReceiptNo",
                         "lines",
                         "attachedInvoice"
                       ]
@@ -54294,6 +54370,32 @@
                         "version": {
                           "type": "integer"
                         },
+                        "supplierId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "supplierName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "sourceReceiptId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "sourceReceiptNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "lines": {
                           "type": "array",
                           "items": {
@@ -54344,6 +54446,12 @@
                               },
                               "lineAmount": {
                                 "type": "integer"
+                              },
+                              "returnUnitPrice": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
                               }
                             },
                             "required": [
@@ -54357,7 +54465,8 @@
                               "quantity",
                               "unitCost",
                               "sellPrice",
-                              "lineAmount"
+                              "lineAmount",
+                              "returnUnitPrice"
                             ]
                           }
                         },
@@ -54414,6 +54523,10 @@
                         "voidedAt",
                         "voidReason",
                         "version",
+                        "supplierId",
+                        "supplierName",
+                        "sourceReceiptId",
+                        "sourceReceiptNo",
                         "lines",
                         "attachedInvoice"
                       ]
@@ -54713,6 +54826,32 @@
                         "version": {
                           "type": "integer"
                         },
+                        "supplierId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "supplierName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "sourceReceiptId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "sourceReceiptNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "lines": {
                           "type": "array",
                           "items": {
@@ -54763,6 +54902,12 @@
                               },
                               "lineAmount": {
                                 "type": "integer"
+                              },
+                              "returnUnitPrice": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
                               }
                             },
                             "required": [
@@ -54776,7 +54921,8 @@
                               "quantity",
                               "unitCost",
                               "sellPrice",
-                              "lineAmount"
+                              "lineAmount",
+                              "returnUnitPrice"
                             ]
                           }
                         },
@@ -54833,6 +54979,10 @@
                         "voidedAt",
                         "voidReason",
                         "version",
+                        "supplierId",
+                        "supplierName",
+                        "sourceReceiptId",
+                        "sourceReceiptNo",
                         "lines",
                         "attachedInvoice"
                       ]
@@ -55010,6 +55160,14 @@
                     "type": "string",
                     "format": "uuid"
                   },
+                  "supplierId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "sourceReceiptId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
                   "occurredAt": {
                     "type": "string"
                   },
@@ -55036,6 +55194,10 @@
                         "quantity": {
                           "type": "integer",
                           "exclusiveMinimum": 0
+                        },
+                        "returnUnitPrice": {
+                          "type": "integer",
+                          "minimum": 0
                         }
                       },
                       "required": [
@@ -55198,6 +55360,32 @@
                         "version": {
                           "type": "integer"
                         },
+                        "supplierId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "supplierName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "sourceReceiptId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "sourceReceiptNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "lines": {
                           "type": "array",
                           "items": {
@@ -55248,6 +55436,12 @@
                               },
                               "lineAmount": {
                                 "type": "integer"
+                              },
+                              "returnUnitPrice": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
                               }
                             },
                             "required": [
@@ -55261,7 +55455,8 @@
                               "quantity",
                               "unitCost",
                               "sellPrice",
-                              "lineAmount"
+                              "lineAmount",
+                              "returnUnitPrice"
                             ]
                           }
                         },
@@ -55318,6 +55513,10 @@
                         "voidedAt",
                         "voidReason",
                         "version",
+                        "supplierId",
+                        "supplierName",
+                        "sourceReceiptId",
+                        "sourceReceiptNo",
                         "lines",
                         "attachedInvoice"
                       ]
@@ -55506,6 +55705,14 @@
                     "type": "string",
                     "format": "uuid"
                   },
+                  "supplierId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "sourceReceiptId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
                   "occurredAt": {
                     "type": "string"
                   },
@@ -55532,6 +55739,10 @@
                         "quantity": {
                           "type": "integer",
                           "exclusiveMinimum": 0
+                        },
+                        "returnUnitPrice": {
+                          "type": "integer",
+                          "minimum": 0
                         }
                       },
                       "required": [
@@ -55698,6 +55909,32 @@
                         "version": {
                           "type": "integer"
                         },
+                        "supplierId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "supplierName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "sourceReceiptId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "sourceReceiptNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "lines": {
                           "type": "array",
                           "items": {
@@ -55748,6 +55985,12 @@
                               },
                               "lineAmount": {
                                 "type": "integer"
+                              },
+                              "returnUnitPrice": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
                               }
                             },
                             "required": [
@@ -55761,7 +56004,8 @@
                               "quantity",
                               "unitCost",
                               "sellPrice",
-                              "lineAmount"
+                              "lineAmount",
+                              "returnUnitPrice"
                             ]
                           }
                         },
@@ -55818,6 +56062,10 @@
                         "voidedAt",
                         "voidReason",
                         "version",
+                        "supplierId",
+                        "supplierName",
+                        "sourceReceiptId",
+                        "sourceReceiptNo",
                         "lines",
                         "attachedInvoice"
                       ]
@@ -56143,6 +56391,32 @@
                         "version": {
                           "type": "integer"
                         },
+                        "supplierId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "supplierName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "sourceReceiptId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "sourceReceiptNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "lines": {
                           "type": "array",
                           "items": {
@@ -56193,6 +56467,12 @@
                               },
                               "lineAmount": {
                                 "type": "integer"
+                              },
+                              "returnUnitPrice": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
                               }
                             },
                             "required": [
@@ -56206,7 +56486,8 @@
                               "quantity",
                               "unitCost",
                               "sellPrice",
-                              "lineAmount"
+                              "lineAmount",
+                              "returnUnitPrice"
                             ]
                           }
                         },
@@ -56263,6 +56544,10 @@
                         "voidedAt",
                         "voidReason",
                         "version",
+                        "supplierId",
+                        "supplierName",
+                        "sourceReceiptId",
+                        "sourceReceiptNo",
                         "lines",
                         "attachedInvoice"
                       ]
@@ -56624,6 +56909,32 @@
                         "version": {
                           "type": "integer"
                         },
+                        "supplierId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "supplierName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "sourceReceiptId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "sourceReceiptNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "lines": {
                           "type": "array",
                           "items": {
@@ -56674,6 +56985,12 @@
                               },
                               "lineAmount": {
                                 "type": "integer"
+                              },
+                              "returnUnitPrice": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
                               }
                             },
                             "required": [
@@ -56687,7 +57004,8 @@
                               "quantity",
                               "unitCost",
                               "sellPrice",
-                              "lineAmount"
+                              "lineAmount",
+                              "returnUnitPrice"
                             ]
                           }
                         },
@@ -56744,6 +57062,10 @@
                         "voidedAt",
                         "voidReason",
                         "version",
+                        "supplierId",
+                        "supplierName",
+                        "sourceReceiptId",
+                        "sourceReceiptNo",
                         "lines",
                         "attachedInvoice"
                       ]
@@ -62714,6 +63036,19 @@
                                   "null"
                                 ]
                               },
+                              "stockIssueId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "stockIssueNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
                               "cashVoucherId": {
                                 "type": [
                                   "string",
@@ -62756,6 +63091,8 @@
                               "createdAt",
                               "stockReceiptId",
                               "stockReceiptNo",
+                              "stockIssueId",
+                              "stockIssueNo",
                               "cashVoucherId",
                               "cashVoucherNo",
                               "reversalOfId",
@@ -63776,6 +64113,253 @@
           },
           "403": {
             "description": "Không có quyền supplier_debt.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/supplier-debt/{supplierId}/refund": {
+      "post": {
+        "tags": [
+          "supplier-debt"
+        ],
+        "summary": "\"Thu tiền NCC hoàn lại\" (Q8) — CHỈ hợp lệ khi NCC đang nợ lại phòng khám (balance<0)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "supplierId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "paymentMethodCode": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "cashAccountId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "occurredAt": {
+                    "type": "string"
+                  },
+                  "note": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "amount",
+                  "paymentMethodCode",
+                  "cashAccountId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "supplierId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "openingBalanceAmount": {
+                          "type": "integer"
+                        },
+                        "totalPurchase": {
+                          "type": "integer"
+                        },
+                        "totalPaid": {
+                          "type": "integer"
+                        },
+                        "totalReturnAndAdjustment": {
+                          "type": "integer"
+                        },
+                        "balance": {
+                          "type": "integer"
+                        },
+                        "pendingApprovalAmount": {
+                          "type": "integer"
+                        },
+                        "canRecordOpeningBalance": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "supplierId",
+                        "openingBalanceAmount",
+                        "totalPurchase",
+                        "totalPaid",
+                        "totalReturnAndAdjustment",
+                        "balance",
+                        "pendingApprovalAmount",
+                        "canRecordOpeningBalance"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền supplier_debt.pay",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy nhà cung cấp/quỹ nhận",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "NCC không đang nợ lại, hoặc số tiền vượt quá số nợ lại",
             "content": {
               "application/json": {
                 "schema": {

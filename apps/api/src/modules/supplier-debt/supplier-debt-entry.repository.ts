@@ -9,6 +9,7 @@ export interface CreateSupplierDebtEntryData {
   balanceAfter: bigint;
   occurredAt: Date;
   stockReceiptId: string | null;
+  stockIssueId: string | null;
   cashVoucherId: string | null;
   reversalOfId: string | null;
   note: string | null;
@@ -28,6 +29,7 @@ export class SupplierDebtEntryRepository {
         balanceAfter: data.balanceAfter,
         occurredAt: data.occurredAt,
         stockReceiptId: data.stockReceiptId,
+        stockIssueId: data.stockIssueId,
         cashVoucherId: data.cashVoucherId,
         reversalOfId: data.reversalOfId,
         note: data.note,

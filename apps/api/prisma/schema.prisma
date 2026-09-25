@@ -1724,6 +1724,8 @@ model Supplier {
   debtAccount   SupplierDebtAccount?
   // "Công nợ nhà cung cấp" — cash_voucher gắn NCC (Trả ngay lúc nhập/Thanh toán công nợ/NCC hoàn tiền).
   cashVouchers  CashVoucher[]
+  // "Công nợ nhà cung cấp" Phần C — phiếu xuất trả NCC (issueType=RETURN_TO_SUPPLIER) gắn NCC này.
+  stockIssues   StockIssue[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, code])
@@ -1850,6 +1852,9 @@ model StockReceipt {
   // "Công nợ nhà cung cấp" Phần A — bút toán PURCHASE (luôn đúng 1) + PAYMENT "trả ngay" (nếu có)
   // tham chiếu ngược về phiếu này.
   debtEntries   SupplierDebtEntry[]
+  // "Công nợ nhà cung cấp" Phần C — phiếu xuất trả NCC (issueType=RETURN_TO_SUPPLIER) CHỌN phiếu
+  // nhập này làm "phiếu nhập gốc" (Q3, tuỳ chọn).
+  sourceReceiptIssues StockIssue[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, receiptNo])
@@ -2125,6 +2130,12 @@ model StockIssue {
   // Khoa/Phòng TIẾP NHẬN — CHỈ có ý nghĩa khi issueType='INTERNAL_ALLOCATION' (CHECK ở migration
   // chặn chiều ngược lại, KHÔNG bắt buộc NOT NULL ở DB — kiểm ở tầng Zod/Service).
   departmentId    String?          @map("department_id") @db.Uuid
+  // "Công nợ nhà cung cấp" Phần C (docs/DECISIONS.md #180/#182) — CHỈ có ý nghĩa khi
+  // issueType='RETURN_TO_SUPPLIER' (CHECK ở migration chặn chiều ngược lại, cùng khuôn departmentId).
+  supplierId      String?          @map("supplier_id") @db.Uuid
+  // Phiếu nhập gốc TUỲ CHỌN (Q3, kế hoạch kỹ thuật) — chọn thì `SupplierDebtService.recordReturnApproval()`
+  // trừ đúng phiếu đó trước (allocateSupplierDebt() FIFO), không chọn thì trừ theo FIFO thường.
+  sourceReceiptId String?          @map("source_receipt_id") @db.Uuid
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -2145,8 +2156,13 @@ model StockIssue {
   transfer      StockTransfer?   @relation(fields: [tenantId, transferId], references: [tenantId, id])
   // Composite FK (tenant_id, department_id) -> department(tenant_id, id), NULLABLE ("Phiếu xuất kho mở rộng").
   department    Department?      @relation(fields: [tenantId, departmentId], references: [tenantId, id])
+  // Composite FK (tenant_id, supplier_id) -> supplier(tenant_id, id), NULLABLE ("Công nợ NCC" Phần C).
+  supplier      Supplier?        @relation(fields: [tenantId, supplierId], references: [tenantId, id])
+  // Composite FK (tenant_id, source_receipt_id) -> stock_receipt(tenant_id, id), NULLABLE.
+  sourceReceipt StockReceipt?       @relation(fields: [tenantId, sourceReceiptId], references: [tenantId, id])
   lines         StockIssueLine[]
   ledgerEntries StockLedger[]
+  debtEntries   SupplierDebtEntry[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, issueNo])
@@ -2174,6 +2190,10 @@ model StockIssueLine {
   sellPrice          BigInt  @map("sell_price")
   // Snapshot quantity × sellPrice.
   lineAmount         BigInt  @map("line_amount")
+  // "Công nợ nhà cung cấp" Phần C — giá trả NCC (đơn vị cơ sở), CHỈ có giá trị cho dòng của phiếu
+  // RETURN_TO_SUPPLIER. Cột RIÊNG (không tái dùng sellPrice — tránh lẫn ngữ nghĩa "giá bán → hoá
+  // đơn" với "giá trả NCC → công nợ"). lineAmount = quantity × returnUnitPrice cho loại phiếu này.
+  returnUnitPrice    BigInt? @map("return_unit_price")
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -3082,6 +3102,9 @@ model SupplierDebtEntry {
   balanceAfter  BigInt                @map("balance_after")
   occurredAt    DateTime              @map("occurred_at") @db.Timestamptz(6)
   stockReceiptId String?              @map("stock_receipt_id") @db.Uuid
+  // "Công nợ nhà cung cấp" Phần C — nguồn bút toán RETURN (phiếu xuất trả NCC vừa Duyệt). REVERSAL
+  // đảo 1 bút toán RETURN kế thừa cột này từ bút toán gốc (đúng cashVoucherId ở REVERSAL đảo PAYMENT).
+  stockIssueId  String?               @map("stock_issue_id") @db.Uuid
   cashVoucherId String?               @map("cash_voucher_id") @db.Uuid
   // Tự tham chiếu — entry ĐÃ bị đảo (dùng bởi dòng REVERSAL để biết đảo bút toán nào). UNIQUE
   // partial ở migration: 1 bút toán chỉ đảo được 1 lần.
@@ -3102,6 +3125,8 @@ model SupplierDebtEntry {
   account      SupplierDebtAccount  @relation(fields: [tenantId, accountId], references: [tenantId, id])
   // Composite FK (tenant_id, stock_receipt_id) -> stock_receipt(tenant_id, id), NULLABLE.
   stockReceipt StockReceipt?        @relation(fields: [tenantId, stockReceiptId], references: [tenantId, id])
+  // Composite FK (tenant_id, stock_issue_id) -> stock_issue(tenant_id, id), NULLABLE.
+  stockIssue   StockIssue?          @relation(fields: [tenantId, stockIssueId], references: [tenantId, id])
   // Composite FK (tenant_id, cash_voucher_id) -> cash_voucher(tenant_id, id), NULLABLE.
   cashVoucher  CashVoucher?         @relation(fields: [tenantId, cashVoucherId], references: [tenantId, id])
   // Composite FK tự tham chiếu (tenant_id, reversal_of_id) -> supplier_debt_entry(tenant_id, id), NULLABLE.

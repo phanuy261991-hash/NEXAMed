@@ -1,6 +1,8 @@
 import { Inject, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import {
   CLINIC_CONFIG_READER_PORT,
+  computeDiscountAmount,
+  computeUnitConversion,
   ConcurrentModificationError,
   DOCTOR_DIRECTORY_PORT,
   sortBatchesByFefo,
@@ -45,7 +47,10 @@ import { PrescriptionRepository, type PrescriptionWithItems } from '../encounter
 import { DiagnosisRepository } from '../encounter/diagnosis.repository';
 import { EncounterRepository } from '../encounter/encounter.repository';
 import { InvoiceRepository } from '../billing/invoice.repository';
+import { SupplierRepository } from '../drug/supplier.repository';
+import { SupplierDebtService } from '../supplier-debt/supplier-debt.service';
 import { StockIssueRepository, type StockIssueLineData, type StockIssueWithContext } from './stock-issue.repository';
+import { StockReceiptRepository } from './stock-receipt.repository';
 import { InventoryBatchRepository } from './inventory-batch.repository';
 import { StockLedgerRepository } from './stock-ledger.repository';
 import { StockBalanceRepository } from './stock-balance.repository';
@@ -86,6 +91,9 @@ export class StockIssueService {
     private readonly diagnosisRepository: DiagnosisRepository,
     private readonly encounterRepository: EncounterRepository,
     private readonly invoiceRepository: InvoiceRepository,
+    private readonly supplierRepository: SupplierRepository,
+    private readonly supplierDebtService: SupplierDebtService,
+    private readonly stockReceiptRepository: StockReceiptRepository,
     private readonly inventoryBatchRepository: InventoryBatchRepository,
     private readonly stockLedgerRepository: StockLedgerRepository,
     private readonly stockBalanceRepository: StockBalanceRepository,
@@ -126,6 +134,8 @@ export class StockIssueService {
         countId: null,
         transferId: null,
         departmentId: null,
+        supplierId: null,
+        sourceReceiptId: null,
         occurredAt,
         note: dto.note ?? null,
         totalAmount,
@@ -256,7 +266,7 @@ export class StockIssueService {
       // `DrugUnit.sellPrice` như lúc nhập kho (chỉ có ý nghĩa khi bán theo vỉ/hộp).
       const sellPrice = drug.defaultSellPrice ?? 0n;
       const lineAmount = sellPrice * BigInt(line.quantity);
-      result.push({ prescriptionItemId: line.prescriptionItemId ?? null, drugId: line.drugId, batchId, quantity: line.quantity, unitCost, sellPrice, lineAmount });
+      result.push({ prescriptionItemId: line.prescriptionItemId ?? null, drugId: line.drugId, batchId, quantity: line.quantity, unitCost, sellPrice, lineAmount, returnUnitPrice: null });
     }
     return result;
   }
@@ -369,10 +379,12 @@ export class StockIssueService {
         const departments = await this.doctorDirectory.getDepartmentNames(tenantId);
         if (!departments.has(dto.departmentId)) throw new NotFoundException();
       }
+      await this.validateReturnSupplierRefs(tx, tenantId, dto.supplierId, dto.sourceReceiptId);
 
-      const lines = await this.buildManualLineData(tx, tenantId, dto.warehouseId, dto.lines);
+      const lines = await this.buildManualLineData(tx, tenantId, dto.warehouseId, dto.issueType, dto.sourceReceiptId ?? null, dto.lines);
       const occurredAt = dto.occurredAt ? new Date(dto.occurredAt) : new Date();
       const issueNo = await this.businessCodeService.generate(tx, tenantId, actorId, 'STOCK_ISSUE', occurredAt);
+      const totalAmount = lines.reduce((sum, l) => sum + l.lineAmount, 0n);
 
       const row = await this.stockIssueRepository.create(tx, tenantId, actorId, {
         issueNo,
@@ -382,9 +394,11 @@ export class StockIssueService {
         countId: null,
         transferId: null,
         departmentId: dto.departmentId ?? null,
+        supplierId: dto.supplierId ?? null,
+        sourceReceiptId: dto.sourceReceiptId ?? null,
         occurredAt,
         note: dto.note,
-        totalAmount: 0n,
+        totalAmount,
         status: 'DRAFT',
         lines,
       });
@@ -428,16 +442,21 @@ export class StockIssueService {
         const departments = await this.doctorDirectory.getDepartmentNames(tenantId);
         if (!departments.has(dto.departmentId)) throw new NotFoundException();
       }
+      await this.validateReturnSupplierRefs(tx, tenantId, dto.supplierId, dto.sourceReceiptId);
 
-      const lines = await this.buildManualLineData(tx, tenantId, dto.warehouseId, dto.lines);
+      const lines = await this.buildManualLineData(tx, tenantId, dto.warehouseId, dto.issueType, dto.sourceReceiptId ?? null, dto.lines);
       const occurredAt = dto.occurredAt ? new Date(dto.occurredAt) : existing.occurredAt;
+      const totalAmount = lines.reduce((sum, l) => sum + l.lineAmount, 0n);
 
       const count = await this.stockIssueRepository.updateManualDraft(tx, tenantId, id, dto.version, actorId, {
         warehouseId: dto.warehouseId,
         issueType: dto.issueType,
         departmentId: dto.departmentId ?? null,
+        supplierId: dto.supplierId ?? null,
+        sourceReceiptId: dto.sourceReceiptId ?? null,
         occurredAt,
         note: dto.note,
+        totalAmount,
         lines,
       });
       if (count === 0) throw new ConcurrentModificationError();
@@ -498,6 +517,20 @@ export class StockIssueService {
         });
       }
 
+      // "Công nợ nhà cung cấp" Phần C — Duyệt phiếu xuất trả NCC ghi bút toán RETURN TRONG CÙNG
+      // transaction, đúng khuôn `StockReceiptService.approve()` gọi `recordPurchaseApproval()`.
+      if (existing.issueType === 'RETURN_TO_SUPPLIER' && existing.supplierId) {
+        const totalAmount = existing.lines.reduce((sum, line) => sum + line.lineAmount, 0n);
+        await this.supplierDebtService.recordReturnApproval(tx, tenantId, actorId, {
+          supplierId: existing.supplierId,
+          totalAmount,
+          stockIssueId: id,
+          occurredAt: existing.occurredAt,
+          targetStockReceiptId: existing.sourceReceiptId,
+          meta,
+        });
+      }
+
       await writeAuditLog(tx, tenantId, {
         actorId,
         action: 'stock_issue.approved',
@@ -542,14 +575,34 @@ export class StockIssueService {
     return this.getById(tenantId, actorId, dataScope, id);
   }
 
+  /** "Công nợ nhà cung cấp" Phần C — `supplierId`/`sourceReceiptId` bắt buộc/không tuỳ theo
+   * `issueType` đã ép ở Zod (`checkManualStockIssueDepartment`), Service chỉ còn kiểm TỒN TẠI +
+   * ĐÚNG TENANT. `sourceReceiptId` (nếu có) phải là phiếu nhập `PURCHASE` ĐÃ DUYỆT của ĐÚNG NCC đó
+   * (chọn "phiếu nhập gốc" của NCC khác, hoặc phiếu còn Nháp — CHƯA từng ghi PURCHASE vào sổ công
+   * nợ nên không có gì để "trừ vào đúng phiếu đó trước" — không có ý nghĩa gì). */
+  private async validateReturnSupplierRefs(tx: Prisma.TransactionClient, tenantId: string, supplierId: string | undefined, sourceReceiptId: string | undefined): Promise<void> {
+    if (!supplierId) return;
+    const supplier = await this.supplierRepository.findById(tx, tenantId, supplierId);
+    if (!supplier) throw new NotFoundException();
+    if (!sourceReceiptId) return;
+    const receipt = await this.stockReceiptRepository.findById(tx, tenantId, sourceReceiptId);
+    if (!receipt || receipt.receiptType !== 'PURCHASE' || receipt.status !== 'POSTED' || receipt.supplierId !== supplierId) {
+      throw new UnprocessableEntityException('Phiếu nhập gốc không hợp lệ — phải là phiếu nhập ĐÃ DUYỆT từ đúng nhà cung cấp đã chọn.');
+    }
+  }
+
   /** Đọc/validate mọi dòng hàng lúc lập/sửa Nháp phiếu xuất mở rộng — KHÔNG kiểm đủ tồn ở đây (chỉ
    * lúc Duyệt, đúng khuôn `StockTransferService.buildLineData()`). `unitCost` lấy từ lô/tồn kho hiện
-   * có CHỈ để hiển thị/ghi thẻ kho — không chặn nếu lô đang tạm hết hàng lúc lập Nháp. */
+   * có CHỈ để hiển thị/ghi thẻ kho — không chặn nếu lô đang tạm hết hàng lúc lập Nháp.
+   * `returnUnitPrice`/`lineAmount` CHỈ có giá trị cho `issueType='RETURN_TO_SUPPLIER'` (Phần C) —
+   * xem `resolveReturnUnitPrice()`. */
   private async buildManualLineData(
     tx: Prisma.TransactionClient,
     tenantId: string,
     warehouseId: string,
-    lines: { drugId: string; batchId?: string | null; quantity: number }[],
+    issueType: ManualStockIssueType,
+    sourceReceiptId: string | null,
+    lines: { drugId: string; batchId?: string | null; quantity: number; returnUnitPrice?: number }[],
   ): Promise<StockIssueLineData[]> {
     const drugCache = new Map<string, DrugWithDetails>();
     const result: StockIssueLineData[] = [];
@@ -577,9 +630,58 @@ export class StockIssueService {
         unitCost = balance?.averageUnitCost ?? 0n;
       }
 
-      result.push({ prescriptionItemId: null, drugId: line.drugId, batchId, quantity: line.quantity, unitCost, sellPrice: 0n, lineAmount: 0n });
+      if (issueType === 'RETURN_TO_SUPPLIER') {
+        const returnUnitPrice = await this.resolveReturnUnitPrice(tx, tenantId, warehouseId, sourceReceiptId, drug, batchId, unitCost, line.returnUnitPrice);
+        const lineAmount = returnUnitPrice * BigInt(line.quantity);
+        result.push({ prescriptionItemId: null, drugId: line.drugId, batchId, quantity: line.quantity, unitCost, sellPrice: 0n, lineAmount, returnUnitPrice });
+      } else {
+        result.push({ prescriptionItemId: null, drugId: line.drugId, batchId, quantity: line.quantity, unitCost, sellPrice: 0n, lineAmount: 0n, returnUnitPrice: null });
+      }
     }
     return result;
+  }
+
+  /**
+   * "Công nợ nhà cung cấp" Phần C — giá trả NCC (đơn vị CƠ SỞ) cho 1 dòng của phiếu xuất trả.
+   * Ưu tiên: (1) giá client gửi kèm (đã sửa tay ở form, luôn thắng); (2) có "Phiếu nhập gốc" và tìm
+   * thấy đúng dòng khớp (`drugId` + `batchNo` nếu có lô) → giá SAU chiết khấu dòng của phiếu đó, quy
+   * đổi ra đơn vị cơ sở (`computeUnitConversion`); (3) fallback `unitCost` đã tính sẵn (giá vốn lô/
+   * bình quân gia quyền — LƯU Ý: giá vốn lô là giá TRƯỚC chiết khấu phiếu nhập, #179 — chỉ là gợi ý,
+   * người dùng tự kiểm lại theo biên bản NCC, đúng ghi chú ở mockup màn 6).
+   */
+  private async resolveReturnUnitPrice(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    warehouseId: string,
+    sourceReceiptId: string | null,
+    drug: DrugWithDetails,
+    batchId: string | null,
+    fallbackUnitCost: bigint,
+    explicitPrice: number | undefined,
+  ): Promise<bigint> {
+    if (explicitPrice !== undefined) return BigInt(explicitPrice);
+
+    if (sourceReceiptId && drug.baseUnitCode) {
+      const receipt = await this.stockReceiptRepository.findByIdAnyWithLines(tx, tenantId, sourceReceiptId);
+      if (receipt) {
+        let batchNo: string | null = null;
+        if (batchId) {
+          const batch = await this.inventoryBatchRepository.findById(tx, tenantId, batchId);
+          batchNo = batch?.batchNo ?? null;
+        }
+        const matchedLine = receipt.lines.find((l) => l.drugId === drug.id && (batchNo === null || l.batchNo === batchNo));
+        if (matchedLine && matchedLine.quantity > 0) {
+          const grossAmount = Number(matchedLine.lineAmount);
+          const discount = computeDiscountAmount(grossAmount, matchedLine.discountType, matchedLine.discountValue !== null ? Number(matchedLine.discountValue) : null);
+          const unitPriceEnteredUnit = (grossAmount - discount) / matchedLine.quantity;
+          const factor = computeUnitConversion(drug.baseUnitCode, drug.units).find((l) => l.unitCode === matchedLine.unitCode)?.factorToBaseUnit ?? 1;
+          return BigInt(Math.round(unitPriceEnteredUnit / factor));
+        }
+      }
+    }
+
+    void warehouseId; // giữ tham số cho đúng chữ ký gọi thống nhất (fallback đã tính sẵn ở caller)
+    return fallbackUnitCost;
   }
 
   /**
@@ -658,6 +760,7 @@ export class StockIssueService {
       // Không có "giá bán" — đây là điều chỉnh/di chuyển tồn kho thuần, không gắn hoá đơn nào.
       sellPrice: 0n,
       lineAmount: 0n,
+      returnUnitPrice: null,
     }));
     const issueNo = await this.businessCodeService.generate(tx, tenantId, actorId, 'STOCK_ISSUE', params.occurredAt);
 
@@ -669,6 +772,8 @@ export class StockIssueService {
       countId: params.countId,
       transferId: params.transferId,
       departmentId: null,
+      supplierId: null,
+      sourceReceiptId: null,
       occurredAt: params.occurredAt,
       note: params.note,
       totalAmount: 0n,
@@ -735,6 +840,7 @@ export class StockIssueService {
         cursor: query.cursor,
         take: query.limit + 1,
         departmentId: dataScope === 'department' ? (actorDepartmentId ?? undefined) : undefined,
+        supplierId: query.supplierId,
       }),
     );
     const hasMore = rows.length > query.limit;
@@ -749,7 +855,9 @@ export class StockIssueService {
     const names = ids.size > 0 ? await this.doctorDirectory.getUserFullNames(tenantId, [...ids]) : new Map<string, string>();
 
     return {
-      items: page.map((row) => this.toSummaryDto(row, row.warehouse.name, row.prescription?.encounter ?? null, row._count.lines, names)),
+      items: page.map((row) =>
+        this.toSummaryDto(row, row.warehouse.name, row.prescription?.encounter ?? null, row._count.lines, names, null, row.supplier?.name ?? null, row.sourceReceipt?.receiptNo ?? null),
+      ),
       nextCursor,
     };
   }
@@ -882,6 +990,9 @@ export class StockIssueService {
     names: Map<string, string>,
     // "Phiếu xuất kho mở rộng" (#170) — `null` cho mọi phiếu không phải INTERNAL_ALLOCATION.
     departmentName: string | null = null,
+    // "Công nợ nhà cung cấp" Phần C — `null` cho mọi phiếu không phải RETURN_TO_SUPPLIER.
+    supplierName: string | null = null,
+    sourceReceiptNo: string | null = null,
   ): StockIssueSummary {
     return {
       id: row.id,
@@ -908,12 +1019,25 @@ export class StockIssueService {
       voidedAt: row.voidedAt?.toISOString() ?? null,
       voidReason: row.voidReason,
       version: row.version,
+      supplierId: row.supplierId,
+      supplierName,
+      sourceReceiptId: row.sourceReceiptId,
+      sourceReceiptNo,
     };
   }
 
   private toDetailDto(row: StockIssueWithContext, names: Map<string, string>, attachedInvoice: StockIssueDetail['attachedInvoice'] = null): StockIssueDetail {
     return {
-      ...this.toSummaryDto(row, row.warehouse.name, row.prescription?.encounter ?? null, row.lines.length, names, row.department?.name ?? null),
+      ...this.toSummaryDto(
+        row,
+        row.warehouse.name,
+        row.prescription?.encounter ?? null,
+        row.lines.length,
+        names,
+        row.department?.name ?? null,
+        row.supplier?.name ?? null,
+        row.sourceReceipt?.receiptNo ?? null,
+      ),
       attachedInvoice,
       lines: row.lines.map((line) => ({
         id: line.id,
@@ -927,6 +1051,7 @@ export class StockIssueService {
         unitCost: Number(line.unitCost),
         sellPrice: Number(line.sellPrice),
         lineAmount: Number(line.lineAmount),
+        returnUnitPrice: line.returnUnitPrice !== null ? Number(line.returnUnitPrice) : null,
       })),
     };
   }

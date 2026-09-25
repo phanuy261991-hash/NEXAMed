@@ -2,6 +2,20 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-25
+
+### Công nợ nhà cung cấp, Phần C "Trả hàng NCC" — code + test HTTP xong, CHƯA verify Playwright
+
+Tiếp nối Phần A/B (`docs/DECISIONS.md` #185). Gắn NCC + tiền vào "Phiếu xuất kho mở rộng" loại `RETURN_TO_SUPPLIER` (GĐ4 #170 chỉ khai enum, chưa gắn gì): `stock_issue` thêm `supplierId`/`sourceReceiptId` (tuỳ chọn), `stock_issue_line` thêm `returnUnitPrice` (cột riêng, không tái dùng `sellPrice`). Duyệt phiếu ghi bút toán `RETURN` vào sổ công nợ (trừ đúng "Phiếu nhập gốc" trước nếu có chọn, không thì FIFO). Giá trả mặc định khi để trống: theo phiếu nhập gốc (sau chiết khấu dòng, quy đổi đơn vị) nếu có chọn, không thì theo giá vốn lô/bình quân gia quyền — luôn sửa tay được.
+
+"Thu tiền NCC hoàn lại" (`POST /supplier-debt/:supplierId/refund`, Q8) — chỉ hợp lệ khi NCC đang nợ lại phòng khám (`balance<0`), sinh `cash_voucher` INCOME → `REFUND_RECEIVED`, tái dùng nguyên `applyVoucherEntry()` đã tổng quát hoá sẵn từ Phần A (không sửa gì thêm). Không migration/permission mới ngoài 3 cột trên.
+
+Web: `StockIssueFormPage.tsx` thêm field Nhà cung cấp/Phiếu nhập gốc + cột Đơn giá trả/Thành tiền + tổng "Giá trị trừ công nợ" khi loại phiếu là RETURN_TO_SUPPLIER. Trang chi tiết NCC thêm tab "Phiếu trả hàng" + nút/dialog "Thu tiền NCC hoàn lại" (chỉ hiện khi `balance<0`).
+
+**Đã biết, để dành Phần D**: Huỷ phiếu xuất trả ĐÃ DUYỆT không tự đảo bút toán công nợ — cùng lỗ hổng có chủ đích với "Huỷ phiếu nhập" từ Phần A (`StockReceiptService.voidReceipt()`), cả hai để Phần D ("Huỷ chứng từ") xử lý đồng bộ. Đã khoá hành vi này bằng characterization test ở cả 2 module.
+
+**Đã xác minh thật**: `apps/api` +15 test HTTP mới (`supplier-debt-http.spec.ts` 8, `stock-issue-http.spec.ts` 7), toàn bộ suite `apps/api` 991/991 pass (991 = 976 trước + 15, 1 flake `appointment-work-shift-http.spec.ts` không liên quan, xác nhận qua chạy riêng), `pnpm -w typecheck/lint/build` sạch toàn workspace (build web không cảnh báo chunk size). **Chưa verify Playwright** — playwright-core chưa cài lại trong phiên này, chủ dự án chọn dừng ở bước code+test, để dành phiên sau. Chi tiết đầy đủ `docs/DECISIONS.md` #185.
+
 ## 2026-09-24
 
 ### Công nợ nhà cung cấp, Phần B "Thanh toán" — hoàn tất (code + test + verify Playwright)

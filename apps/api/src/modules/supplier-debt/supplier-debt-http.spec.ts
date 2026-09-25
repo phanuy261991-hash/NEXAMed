@@ -524,6 +524,102 @@ describe('HTTP e2e — /api/v1/supplier-debt (Công nợ nhà cung cấp, Phần
     });
   });
 
+  describe('Phần C — POST :supplierId/refund ("Thu tiền NCC hoàn lại", Q8)', () => {
+    it('NCC chưa nợ gì (balance=0) → 422', async () => {
+      const supplierId = await createSupplier(clinicAdminToken);
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/supplier-debt/${supplierId}/refund`)
+        .set(authed(clinicAdminToken))
+        .send({ amount: 1000, paymentMethodCode: 'CASH', cashAccountId });
+      expect(res.status).toBe(422);
+    });
+
+    it('NCC còn nợ (balance dương) → 422', async () => {
+      const supplierId = await createSupplier(clinicAdminToken);
+      await createAndApprovePurchase(clinicAdminToken, supplierId, { quantity: 2, unitCost: 10000 });
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/supplier-debt/${supplierId}/refund`)
+        .set(authed(clinicAdminToken))
+        .send({ amount: 1000, paymentMethodCode: 'CASH', cashAccountId });
+      expect(res.status).toBe(422);
+    });
+
+    it('NCC đang nợ lại (balance âm, qua Khai nợ đầu kỳ âm) — trả MỘT PHẦN → balance tăng đúng, ghi REFUND_RECEIVED, voucher INCOME POSTED ngay', async () => {
+      const supplierId = await createSupplier(clinicAdminToken);
+      await request(app.getHttpServer()).post(`/api/v1/supplier-debt/${supplierId}/opening-balance`).set(authed(clinicAdminToken)).send({ amount: -100_000, occurredAt: '2026-09-01' });
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/supplier-debt/${supplierId}/refund`)
+        .set(authed(clinicAdminToken))
+        .send({ amount: 40_000, paymentMethodCode: 'CASH', cashAccountId, occurredAt: '2026-09-24' });
+      expect(res.status).toBe(200);
+      expect(res.body.data.balance).toBe(-60_000);
+
+      const ledger = await request(app.getHttpServer()).get(`/api/v1/supplier-debt/${supplierId}/ledger`).set(authed(clinicAdminToken));
+      expect(ledger.body.data.items.at(-1)).toMatchObject({ entryType: 'REFUND_RECEIVED', amountChange: 40_000, balanceAfter: -60_000 });
+
+      const payments = await request(app.getHttpServer()).get(`/api/v1/supplier-debt/payments?supplierId=${supplierId}`).set(authed(clinicAdminToken));
+      const refundRow = payments.body.data.items.find((i: { direction: string }) => i.direction === 'INCOME');
+      expect(refundRow).toMatchObject({ status: 'POSTED', amount: 40_000, supplierId });
+    });
+
+    it('trả ĐÚNG HẾT số nợ lại → balance = 0', async () => {
+      const supplierId = await createSupplier(clinicAdminToken);
+      await request(app.getHttpServer()).post(`/api/v1/supplier-debt/${supplierId}/opening-balance`).set(authed(clinicAdminToken)).send({ amount: -50_000, occurredAt: '2026-09-01' });
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/supplier-debt/${supplierId}/refund`)
+        .set(authed(clinicAdminToken))
+        .send({ amount: 50_000, paymentMethodCode: 'CASH', cashAccountId });
+      expect(res.status).toBe(200);
+      expect(res.body.data.balance).toBe(0);
+    });
+
+    it('trả VƯỢT số nợ lại → 422, không tạo bút toán/voucher nào', async () => {
+      const supplierId = await createSupplier(clinicAdminToken);
+      await request(app.getHttpServer()).post(`/api/v1/supplier-debt/${supplierId}/opening-balance`).set(authed(clinicAdminToken)).send({ amount: -30_000, occurredAt: '2026-09-01' });
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/supplier-debt/${supplierId}/refund`)
+        .set(authed(clinicAdminToken))
+        .send({ amount: 30_001, paymentMethodCode: 'CASH', cashAccountId });
+      expect(res.status).toBe(422);
+      const summary = await request(app.getHttpServer()).get(`/api/v1/supplier-debt/${supplierId}/summary`).set(authed(clinicAdminToken));
+      expect(summary.body.data.balance).toBe(-30_000);
+    });
+
+    it('LUÔN POSTED ngay kể cả khi cashVoucherApprovalEnabled BẬT (chỉ EXPENSE mới xét duyệt)', async () => {
+      await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(clinicAdminToken)).send({ cashVoucherApprovalEnabled: true });
+      const supplierId = await createSupplier(clinicAdminToken);
+      await request(app.getHttpServer()).post(`/api/v1/supplier-debt/${supplierId}/opening-balance`).set(authed(clinicAdminToken)).send({ amount: -20_000, occurredAt: '2026-09-01' });
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/supplier-debt/${supplierId}/refund`)
+        .set(authed(clinicAdminToken))
+        .send({ amount: 20_000, paymentMethodCode: 'CASH', cashAccountId });
+      expect(res.status).toBe(200);
+      expect(res.body.data.balance).toBe(0);
+
+      await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(clinicAdminToken)).send({ cashVoucherApprovalEnabled: false });
+    });
+
+    it('thiếu quyền supplier_debt.pay (lễ tân) → 403', async () => {
+      const supplierId = await createSupplier(clinicAdminToken);
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/supplier-debt/${supplierId}/refund`)
+        .set(authed(receptionistToken))
+        .send({ amount: 1000, paymentMethodCode: 'CASH', cashAccountId });
+      expect(res.status).toBe(403);
+    });
+
+    it('NCC của tenant khác → 404', async () => {
+      const supplierId = await createSupplier(clinicAdminToken);
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/supplier-debt/${supplierId}/refund`)
+        .set(authed(tenantBAdminToken))
+        .send({ amount: 1000, paymentMethodCode: 'CASH', cashAccountId });
+      expect(res.status).toBe(404);
+    });
+  });
+
   describe('Cách ly tenant', () => {
     it('NCC của tenant A, xem summary bằng token tenant B → 404', async () => {
       const supplierId = await createSupplier(clinicAdminToken);

@@ -1,5 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ListSupplierDebtLedgerQuery, ListSupplierDebtPaymentsQuery, RecordSupplierDebtOpeningBalanceRequest, RecordSupplierDebtPaymentRequest } from '@nexamed/shared';
+import type {
+  ListSupplierDebtLedgerQuery,
+  ListSupplierDebtPaymentsQuery,
+  RecordSupplierDebtOpeningBalanceRequest,
+  RecordSupplierDebtPaymentRequest,
+  RecordSupplierDebtRefundRequest,
+} from '@nexamed/shared';
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
 import {
@@ -10,6 +16,7 @@ import {
   listSupplierDebtSummaries,
   recordSupplierDebtOpeningBalance,
   recordSupplierDebtPayment,
+  recordSupplierDebtRefund,
 } from './supplier-debt.api';
 
 /** `enabled` mặc định `true` — Sidebar (badge chờ duyệt "Công nợ nhà cung cấp") truyền `false` cho
@@ -69,6 +76,23 @@ export function useSupplierDebtPaymentsQuery(query: ListSupplierDebtPaymentsQuer
   return useQuery({
     queryKey: queryKey(tenantId, 'supplier-debt-payments', query.supplierId ?? '', query.from ?? '', query.to ?? '', query.status ?? ''),
     queryFn: () => listSupplierDebtPayments(query),
+  });
+}
+
+/** Phần C — "Thu tiền NCC hoàn lại". Cùng 4 nhóm dữ liệu cần làm mới như "Thanh toán công nợ" ở
+ * trên (đúng khuôn) — thêm cả 'stock-issue' KHÔNG cần thiết ở đây (refund không đụng stock_issue). */
+export function useRecordSupplierDebtRefundMutation(supplierId: string) {
+  const { tenantId } = useAppConfig();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: RecordSupplierDebtRefundRequest) => recordSupplierDebtRefund(supplierId, body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'supplier-debt-summary', supplierId) });
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'supplier-debt-ledger', supplierId) });
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'supplier-debt-receipts', supplierId) });
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'supplier-debt-summaries') });
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'supplier-debt-payments') });
+    },
   });
 }
 

@@ -16,6 +16,7 @@ import { useActorDepartmentId, useDataScope, useHasPermission } from '../auth/us
 import { useDepartmentOptionsQuery } from '../department/department.queries';
 import { useClinicPrintHeaderQuery } from '../clinic/clinic.queries';
 import { useDrugsQuery } from '../drug/drug.queries';
+import { useSuppliersQuery } from '../drug/supplier.queries';
 import { useWarehousesQuery } from '../drug/warehouse.queries';
 import { getDrugBatchBalances } from './inventory.api';
 import {
@@ -24,6 +25,7 @@ import {
   useRejectStockIssueMutation,
   useStockBalancesQuery,
   useStockIssueQuery,
+  useStockReceiptsQuery,
   useUpdateManualStockIssueMutation,
 } from './inventory.queries';
 import { ReasonConfirmDialog } from './ReasonConfirmDialog';
@@ -41,6 +43,9 @@ interface DraftLine {
   /** Tồn khả dụng tại kho đã chọn — CHỈ hiển thị tham khảo, Duyệt mới kiểm thật lại. */
   availableQuantity: number;
   quantity: string;
+  /** "Công nợ nhà cung cấp" Phần C — CHỈ có ý nghĩa với `RETURN_TO_SUPPLIER`. Rỗng = để backend tự
+   * tính giá mặc định (theo "Phiếu nhập gốc" nếu có chọn, không thì theo giá vốn lô/tồn kho). */
+  returnUnitPrice: string;
 }
 
 const ISSUE_TYPE_OPTIONS: { value: ManualStockIssueType; label: string }[] = [
@@ -109,6 +114,8 @@ export function StockIssueFormPage() {
   const [issueType, setIssueType] = useState<ManualStockIssueType>('INTERNAL_ALLOCATION');
   const [warehouseId, setWarehouseId] = useState('');
   const [departmentId, setDepartmentId] = useState('');
+  const [supplierId, setSupplierId] = useState('');
+  const [sourceReceiptId, setSourceReceiptId] = useState('');
   const [occurredAt, setOccurredAt] = useState(todayVn());
   const [note, setNote] = useState('');
   const [lines, setLines] = useState<DraftLine[]>([]);
@@ -134,6 +141,8 @@ export function StockIssueFormPage() {
     setIssueType(it.issueType as ManualStockIssueType);
     setWarehouseId(it.warehouseId);
     setDepartmentId(it.departmentId ?? '');
+    setSupplierId(it.supplierId ?? '');
+    setSourceReceiptId(it.sourceReceiptId ?? '');
     setOccurredAt(it.occurredAt.slice(0, 10));
     setNote(it.note ?? '');
     setLines(
@@ -148,6 +157,7 @@ export function StockIssueFormPage() {
         expiryDate: '',
         availableQuantity: 0,
         quantity: String(l.quantity),
+        returnUnitPrice: l.returnUnitPrice !== null ? String(l.returnUnitPrice) : '',
       })),
     );
     setLoadedForId(it.id);
@@ -167,10 +177,18 @@ export function StockIssueFormPage() {
     return map;
   }, [balancesQuery.data]);
 
+  // "Công nợ nhà cung cấp" Phần C — chỉ NCC đang dùng, chỉ phiếu nhập PURCHASE ĐÃ DUYỆT của đúng
+  // NCC đã chọn (khớp `validateReturnSupplierRefs()` backend).
+  const isReturnToSupplier = issueType === 'RETURN_TO_SUPPLIER';
+  const suppliersQuery = useSuppliersQuery(false);
+  const sourceReceiptsQuery = useStockReceiptsQuery({ supplierId, receiptType: 'PURCHASE', status: 'POSTED', limit: 50 }, isReturnToSupplier && supplierId !== '');
+
   async function expandDrugToLines(drug: DrugSummary): Promise<DraftLine[]> {
     if (!drug.isBatchManaged) {
       const available = flatBalanceByDrugId.get(drug.id) ?? 0;
-      return [{ key: makeKey(), drugId: drug.id, drugCode: drug.code, drugName: drug.name, isBatchManaged: false, batchId: null, batchNo: '', expiryDate: '', availableQuantity: available, quantity: '' }];
+      // Không có dữ liệu giá vốn cho hàng KHÔNG quản lý theo lô ở tầng web (chỉ backend biết
+      // `stock_balance.averageUnitCost`) — để trống, backend tự tính lúc lưu.
+      return [{ key: makeKey(), drugId: drug.id, drugCode: drug.code, drugName: drug.name, isBatchManaged: false, batchId: null, batchNo: '', expiryDate: '', availableQuantity: available, quantity: '', returnUnitPrice: '' }];
     }
     const res = await getDrugBatchBalances(drug.id, warehouseId);
     return res.items
@@ -185,6 +203,9 @@ export function StockIssueFormPage() {
         batchNo: b.batchNo,
         expiryDate: b.expiryDate ?? '',
         availableQuantity: b.quantityOnHand,
+        // "Công nợ nhà cung cấp" Phần C — chỉ mồi giá vốn lô khi RETURN_TO_SUPPLIER (giá vốn LUÔN
+        // là fallback đúng của backend); loại phiếu khác không dùng tới trường này.
+        returnUnitPrice: issueType === 'RETURN_TO_SUPPLIER' ? String(b.unitCost) : '',
         quantity: '',
       }));
   }
@@ -233,6 +254,19 @@ export function StockIssueFormPage() {
     setLines((prev) => prev.filter((l) => l.key !== key));
   }
 
+  /** Đổi NCC → "Phiếu nhập gốc" đã chọn (nếu có) không còn hợp lệ, bỏ chọn. */
+  function handleSupplierChange(next: string) {
+    setSupplierId(next);
+    setSourceReceiptId('');
+  }
+
+  /** Đổi/bỏ "Phiếu nhập gốc" → giá trả mỗi dòng có thể đã sai (mồi theo phiếu gốc CŨ hoặc giá vốn
+   * lô) — xoá về rỗng, backend tự tính lại đúng theo lựa chọn MỚI lúc lưu (Duyệt lô mockup #C mục 2). */
+  function handleSourceReceiptChange(next: string) {
+    setSourceReceiptId(next);
+    setLines((prev) => prev.map((l) => ({ ...l, returnUnitPrice: '' })));
+  }
+
   function buildPayload(): CreateManualStockIssueRequest | null {
     if (!warehouseId) {
       setFormError('Phải chọn Kho xuất.');
@@ -240,6 +274,10 @@ export function StockIssueFormPage() {
     }
     if (issueType === 'INTERNAL_ALLOCATION' && !departmentId) {
       setFormError('Phiếu "Xuất dùng nội bộ" phải chọn Khoa/Phòng tiếp nhận.');
+      return null;
+    }
+    if (issueType === 'RETURN_TO_SUPPLIER' && !supplierId) {
+      setFormError('Phiếu "Xuất trả nhà cung cấp" phải chọn Nhà cung cấp.');
       return null;
     }
     if (!note.trim()) {
@@ -261,9 +299,16 @@ export function StockIssueFormPage() {
       issueType,
       warehouseId,
       departmentId: issueType === 'INTERNAL_ALLOCATION' ? departmentId : undefined,
+      supplierId: issueType === 'RETURN_TO_SUPPLIER' ? supplierId : undefined,
+      sourceReceiptId: issueType === 'RETURN_TO_SUPPLIER' && sourceReceiptId ? sourceReceiptId : undefined,
       occurredAt: `${occurredAt}T00:00:00+07:00`,
       note: note.trim(),
-      lines: lines.map((l) => ({ drugId: l.drugId, batchId: l.batchId ?? undefined, quantity: Number(l.quantity) })),
+      lines: lines.map((l) => ({
+        drugId: l.drugId,
+        batchId: l.batchId ?? undefined,
+        quantity: Number(l.quantity),
+        returnUnitPrice: issueType === 'RETURN_TO_SUPPLIER' && l.returnUnitPrice.trim() !== '' ? Number(l.returnUnitPrice) : undefined,
+      })),
     };
   }
 
@@ -305,6 +350,8 @@ export function StockIssueFormPage() {
 
   const saving = createMutation.isPending || updateMutation.isPending || approveMutation.isPending;
   const warehouseOptions = (warehousesQuery.data?.items ?? []).filter((w) => !isDepartmentScoped || w.departmentId === actorDepartmentId);
+  const rowGridColumns = isReturnToSupplier ? (readOnly ? '1.6fr 130px 110px 140px 140px' : '1.6fr 130px 110px 140px 140px 50px') : readOnly ? '1.8fr 150px 150px' : '1.8fr 150px 150px 50px';
+  const returnTotalAmount = isReturnToSupplier && lines.every((l) => l.returnUnitPrice.trim() !== '') ? lines.reduce((sum, l) => sum + Number(l.returnUnitPrice) * Number(l.quantity || 0), 0) : null;
 
   return (
     <div className="flex h-full flex-col gap-3 p-3">
@@ -362,6 +409,34 @@ export function StockIssueFormPage() {
               options={(departmentsQuery.data?.items ?? []).map((d) => ({ value: d.id, label: d.name }))}
             />
           </div>
+        )}
+        {isReturnToSupplier && (
+          <>
+            <div>
+              <label className="mb-1 block text-sm font-semibold text-slate-800">
+                Nhà cung cấp <span className="text-rose-500">*</span>
+              </label>
+              <Combobox
+                id="issue-supplier"
+                value={supplierId}
+                disabled={readOnly}
+                onChange={handleSupplierChange}
+                placeholder="— Chọn nhà cung cấp —"
+                options={(suppliersQuery.data?.items ?? []).map((s) => ({ value: s.id, label: s.name }))}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-semibold text-slate-800">Phiếu nhập gốc (tuỳ chọn)</label>
+              <Combobox
+                id="issue-source-receipt"
+                value={sourceReceiptId}
+                disabled={readOnly || !supplierId}
+                onChange={handleSourceReceiptChange}
+                placeholder={supplierId ? '— Không chọn —' : '— Chọn Nhà cung cấp trước —'}
+                options={(sourceReceiptsQuery.data?.items ?? []).map((r) => ({ value: r.id, label: `${r.receiptNo} · ${r.occurredAt.slice(0, 10).split('-').reverse().join('/')}` }))}
+              />
+            </div>
+          </>
         )}
         <div>
           <label className="mb-1 block text-sm font-semibold text-slate-800">
@@ -428,59 +503,98 @@ export function StockIssueFormPage() {
           <EmptyState icon={MagnifyingGlass} title="Chưa có dòng hàng nào" description={readOnly ? 'Phiếu này không có dòng hàng.' : 'Gõ tên thuốc/vật tư ở ô trên để thêm dòng hàng.'} />
         ) : (
           <div role="table" aria-label="Dòng hàng xuất kho" className="scroll-hover h-full overflow-x-auto">
-            <div className="flex h-full flex-col" style={{ minWidth: 820 }}>
+            <div className="flex h-full flex-col" style={{ minWidth: isReturnToSupplier ? 980 : 820 }}>
               <div
                 role="row"
-                style={{ gridTemplateColumns: readOnly ? '1.8fr 150px 150px' : '1.8fr 150px 150px 50px' }}
+                style={{ gridTemplateColumns: rowGridColumns }}
                 className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-bold uppercase tracking-wide text-slate-800"
               >
                 <div role="columnheader" className="py-2.5 text-left">Lô / Hạn sử dụng (tại kho xuất)</div>
                 <div role="columnheader" className="py-2.5 text-right">Tồn khả dụng</div>
                 <div role="columnheader" className="py-2.5 text-center">SL xuất</div>
+                {isReturnToSupplier && <div role="columnheader" className="py-2.5 text-right">Đơn giá trả</div>}
+                {isReturnToSupplier && <div role="columnheader" className="py-2.5 text-right">Thành tiền</div>}
                 {!readOnly && <div role="columnheader" className="py-2.5" />}
               </div>
               <div className="scroll-hover flex-1 overflow-y-auto overflow-x-hidden">
-                {lines.map((l) => (
-                  <div key={l.key} role="row" style={{ gridTemplateColumns: readOnly ? '1.8fr 150px 150px' : '1.8fr 150px 150px 50px', minHeight: 52 }} className="grid items-center border-b border-slate-100 px-4 text-sm">
-                    <div role="cell" className="min-w-0 truncate">
-                      <span className="font-bold text-slate-900">{l.drugName}</span> <span className="text-xs font-medium text-slate-400">({l.drugCode})</span>
-                      {l.isBatchManaged ? (
-                        <span className="ml-1 text-slate-500">
-                          — Lô {l.batchNo} {l.expiryDate && <>· HSD {l.expiryDate.split('-').reverse().join('/')}</>}
-                        </span>
-                      ) : (
-                        <span className="ml-1 text-slate-400">— (không quản lý lô)</span>
-                      )}
-                    </div>
-                    <div role="cell" className="text-right font-semibold tabular-nums text-slate-900">{l.availableQuantity}</div>
-                    <div role="cell" className="text-center">
-                      {readOnly ? (
-                        <span className="font-semibold tabular-nums text-slate-900">{l.quantity}</span>
-                      ) : (
-                        <input
-                          type="number"
-                          min={1}
-                          max={l.availableQuantity || undefined}
-                          value={l.quantity}
-                          onChange={(e) => updateLine(l.key, { quantity: e.target.value })}
-                          className="w-24 rounded-md border border-slate-300 px-1.5 py-1.5 text-center text-sm font-semibold text-slate-900"
-                        />
-                      )}
-                    </div>
-                    {!readOnly && (
-                      <div role="cell" className="text-center">
-                        <button type="button" onClick={() => removeLine(l.key)} aria-label={`Xoá dòng ${l.drugName}`} className="text-slate-400 hover:text-rose-600">
-                          <Trash size={16} weight="bold" aria-hidden="true" />
-                        </button>
+                {lines.map((l) => {
+                  const lineAmount = l.returnUnitPrice.trim() !== '' && l.quantity.trim() !== '' ? Number(l.returnUnitPrice) * Number(l.quantity) : null;
+                  return (
+                    <div key={l.key} role="row" style={{ gridTemplateColumns: rowGridColumns, minHeight: 52 }} className="grid items-center border-b border-slate-100 px-4 text-sm">
+                      <div role="cell" className="min-w-0 truncate">
+                        <span className="font-bold text-slate-900">{l.drugName}</span> <span className="text-xs font-medium text-slate-400">({l.drugCode})</span>
+                        {l.isBatchManaged ? (
+                          <span className="ml-1 text-slate-500">
+                            — Lô {l.batchNo} {l.expiryDate && <>· HSD {l.expiryDate.split('-').reverse().join('/')}</>}
+                          </span>
+                        ) : (
+                          <span className="ml-1 text-slate-400">— (không quản lý lô)</span>
+                        )}
                       </div>
-                    )}
-                  </div>
-                ))}
+                      <div role="cell" className="text-right font-semibold tabular-nums text-slate-900">{l.availableQuantity}</div>
+                      <div role="cell" className="text-center">
+                        {readOnly ? (
+                          <span className="font-semibold tabular-nums text-slate-900">{l.quantity}</span>
+                        ) : (
+                          <input
+                            type="number"
+                            min={1}
+                            max={l.availableQuantity || undefined}
+                            value={l.quantity}
+                            onChange={(e) => updateLine(l.key, { quantity: e.target.value })}
+                            className="w-24 rounded-md border border-slate-300 px-1.5 py-1.5 text-center text-sm font-semibold text-slate-900"
+                          />
+                        )}
+                      </div>
+                      {isReturnToSupplier && (
+                        <div role="cell" className="text-right">
+                          {readOnly ? (
+                            <span className="font-semibold tabular-nums text-slate-900">{l.returnUnitPrice ? Number(l.returnUnitPrice).toLocaleString('vi-VN') : '—'}</span>
+                          ) : (
+                            <input
+                              type="number"
+                              min={0}
+                              value={l.returnUnitPrice}
+                              placeholder="Tự động"
+                              onChange={(e) => updateLine(l.key, { returnUnitPrice: e.target.value })}
+                              className="w-28 rounded-md border border-slate-300 px-1.5 py-1.5 text-right text-sm font-semibold text-slate-900"
+                            />
+                          )}
+                        </div>
+                      )}
+                      {isReturnToSupplier && (
+                        <div role="cell" className="text-right font-semibold tabular-nums text-slate-900">
+                          {lineAmount !== null ? lineAmount.toLocaleString('vi-VN') : <span className="font-normal text-slate-400">—</span>}
+                        </div>
+                      )}
+                      {!readOnly && (
+                        <div role="cell" className="text-center">
+                          <button type="button" onClick={() => removeLine(l.key)} aria-label={`Xoá dòng ${l.drugName}`} className="text-slate-400 hover:text-rose-600">
+                            <Trash size={16} weight="bold" aria-hidden="true" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
+              {isReturnToSupplier && (
+                <div style={{ gridTemplateColumns: rowGridColumns }} className="grid flex-shrink-0 border-t border-slate-200 bg-slate-50 px-4 py-2.5 text-sm">
+                  <div className={readOnly ? 'col-span-3 text-right font-bold text-slate-600' : 'col-span-4 text-right font-bold text-slate-600'}>Giá trị trừ công nợ</div>
+                  <div className="text-right font-bold text-blue-700">{returnTotalAmount !== null ? `${returnTotalAmount.toLocaleString('vi-VN')} đ` : '—'}</div>
+                  {!readOnly && <div />}
+                </div>
+              )}
             </div>
           </div>
         )}
       </div>
+
+      {isReturnToSupplier && !readOnly && (
+        <p className="flex-shrink-0 text-xs text-slate-500">
+          Để trống "Đơn giá trả" — hệ thống tự tính: theo <b>Phiếu nhập gốc</b> (sau chiết khấu) nếu đã chọn, không thì theo giá vốn lô. Luôn sửa được tay.
+        </p>
+      )}
 
       {/* ============ Footer hành động ============ */}
       <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">

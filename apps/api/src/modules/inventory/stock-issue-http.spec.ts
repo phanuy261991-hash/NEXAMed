@@ -805,7 +805,7 @@ describe('HTTP e2e — /api/v1/inventory (Phiếu xuất kho GĐ3)', () => {
       const created = await request(app.getHttpServer())
         .post('/api/v1/inventory/issues/manual')
         .set(authed(clinicAdminToken))
-        .send({ issueType: 'RETURN_TO_SUPPLIER', warehouseId, note: 'Trả hàng lỗi NCC', lines: [{ drugId, quantity: 100 }] });
+        .send({ issueType: 'RETURN_TO_SUPPLIER', warehouseId, supplierId: await ensureSupplier(clinicAdminToken), note: 'Trả hàng lỗi NCC', lines: [{ drugId, quantity: 100 }] });
       expect(created.status).toBe(200);
 
       const approveRes = await request(app.getHttpServer())
@@ -913,6 +913,214 @@ describe('HTTP e2e — /api/v1/inventory (Phiếu xuất kho GĐ3)', () => {
         .set(authed(tenantBAdminToken))
         .send({ version: created.body.data.version });
       expect(approveRes.status).toBe(404);
+    });
+  });
+
+  /**
+   * "Công nợ nhà cung cấp" Phần C — "Trả hàng NCC" (docs/DECISIONS.md #180/#182, kế hoạch kỹ thuật
+   * supplier-debt-cong-no-ncc.md mục 8). Gắn NCC + tiền vào `RETURN_TO_SUPPLIER` (trước đó chỉ khai
+   * enum, `supplierId`/`totalAmount` luôn null/0) — Duyệt ghi bút toán RETURN vào sổ công nợ.
+   */
+  describe('Công nợ nhà cung cấp Phần C — Xuất trả NCC (docs/DECISIONS.md #180/#182)', () => {
+    /** NCC RIÊNG cho mỗi test (khác `ensureSupplier()` dùng chung/cache cho cả file) — test số dư
+     * công nợ cần 1 NCC "sạch", không lẫn phát sinh nợ từ các test khác trong cùng file. */
+    async function createSupplier() {
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/suppliers')
+        .set(authed(clinicAdminToken))
+        .send({ name: `NCC Phần C ${randomUUID().slice(0, 8)}` });
+      expect(res.status).toBe(200);
+      return res.body.data.id as string;
+    }
+
+    /** Tạo + Duyệt 1 phiếu nhập PURCHASE, trả về `receiptId`/`batchId`/`netAmount` — dùng làm "phiếu
+     * nhập gốc" cho test giá trả theo phiếu gốc (khác `receiveStock()` chỉ trả `batchId`). */
+    async function createAndApprovePurchaseWithBatch(
+      token: string,
+      supplierId: string,
+      drugId: string,
+      opts: { quantity: number; unitCost: number; discountType?: 'PERCENT' | 'AMOUNT'; discountValue?: number },
+    ) {
+      const batchNo = `LOT-RTN-${randomUUID().slice(0, 6)}`;
+      const createRes = await request(app.getHttpServer())
+        .post('/api/v1/inventory/receipts')
+        .set(authed(token))
+        .send({
+          warehouseId,
+          supplierId,
+          receiptType: 'PURCHASE',
+          lines: [
+            {
+              drugId,
+              unitCode: 'VIEN',
+              quantity: opts.quantity,
+              unitCost: opts.unitCost,
+              batchNo,
+              expiryDate: '2028-01-01',
+              ...(opts.discountType ? { discountType: opts.discountType, discountValue: opts.discountValue } : {}),
+            },
+          ],
+        });
+      expect(createRes.status).toBe(200);
+      const receiptId = createRes.body.data.id as string;
+      const approveRes = await request(app.getHttpServer())
+        .post(`/api/v1/inventory/receipts/${receiptId}/approve`)
+        .set(authed(token))
+        .send({ version: createRes.body.data.version });
+      expect(approveRes.status).toBe(200);
+
+      const balancesRes = await request(app.getHttpServer()).get(`/api/v1/inventory/drugs/${drugId}/balances`).set(authed(token)).query({ warehouseId });
+      const batch = (balancesRes.body.data.items as { batchId: string; batchNo: string }[]).find((b) => b.batchNo === batchNo);
+      return { receiptId, batchId: batch!.batchId as string, netAmount: opts.quantity * opts.unitCost };
+    }
+
+    it('thiếu supplierId → 400 (Zod)', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/inventory/issues/manual')
+        .set(authed(clinicAdminToken))
+        .send({ issueType: 'RETURN_TO_SUPPLIER', warehouseId, note: 'Trả hàng lỗi', lines: [{ drugId: randomUUID(), quantity: 1 }] });
+      expect(res.status).toBe(400);
+    });
+
+    it('WRITE_OFF kèm supplierId → 400 (loại này không có Nhà cung cấp)', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/inventory/issues/manual')
+        .set(authed(clinicAdminToken))
+        .send({ issueType: 'WRITE_OFF', warehouseId, supplierId: randomUUID(), note: 'Hỏng', lines: [{ drugId: randomUUID(), quantity: 1 }] });
+      expect(res.status).toBe(400);
+    });
+
+    it('sourceReceiptId của NCC KHÁC → 422', async () => {
+      const drugId = await createDrug(clinicAdminToken, { name: 'Amoxicillin e2e Phần C', isBatchManaged: true, isPrescriptionOnly: true });
+      const supplierA = await createSupplier();
+      const supplierB = await createSupplier();
+      const { batchId } = await createAndApprovePurchaseWithBatch(clinicAdminToken, supplierA, drugId, { quantity: 10, unitCost: 5000 });
+      const { receiptId: receiptOfSupplierB } = await createAndApprovePurchaseWithBatch(clinicAdminToken, supplierB, drugId, { quantity: 1, unitCost: 1000 });
+
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/inventory/issues/manual')
+        .set(authed(clinicAdminToken))
+        .send({
+          issueType: 'RETURN_TO_SUPPLIER',
+          warehouseId,
+          supplierId: supplierA, // NCC A, nhưng chọn phiếu nhập gốc thuộc NCC B
+          sourceReceiptId: receiptOfSupplierB,
+          note: 'Trả nhầm phiếu gốc NCC khác',
+          lines: [{ drugId, batchId, quantity: 1 }],
+        });
+      expect(res.status).toBe(422);
+    });
+
+    it('Duyệt KHÔNG chọn phiếu gốc — giá mặc định = giá vốn lô, ghi RETURN đúng, balance công nợ giảm', async () => {
+      const supplierId = await createSupplier();
+      const drugId = await createDrug(clinicAdminToken, { name: 'Paracetamol e2e Phần C', isBatchManaged: true, isPrescriptionOnly: true });
+      const { batchId, receiptId, netAmount } = await createAndApprovePurchaseWithBatch(clinicAdminToken, supplierId, drugId, { quantity: 100, unitCost: 8000 });
+      expect(netAmount).toBe(800000);
+
+      const created = await request(app.getHttpServer())
+        .post('/api/v1/inventory/issues/manual')
+        .set(authed(clinicAdminToken))
+        .send({ issueType: 'RETURN_TO_SUPPLIER', warehouseId, supplierId, note: 'Hàng lỗi, không chọn phiếu gốc', lines: [{ drugId, batchId, quantity: 10 }] });
+      expect(created.status).toBe(200);
+      expect(created.body.data.lines[0].returnUnitPrice).toBe(8000);
+      expect(created.body.data.totalAmount).toBe(80000);
+
+      const approveRes = await request(app.getHttpServer())
+        .post(`/api/v1/inventory/issues/manual/${created.body.data.id}/approve`)
+        .set(authed(clinicAdminToken))
+        .send({ version: created.body.data.version });
+      expect(approveRes.status).toBe(200);
+      expect(approveRes.body.data.status).toBe('POSTED');
+
+      const summary = await request(app.getHttpServer()).get(`/api/v1/supplier-debt/${supplierId}/summary`).set(authed(clinicAdminToken));
+      expect(summary.body.data).toMatchObject({ balance: netAmount - 80000, totalReturnAndAdjustment: 80000 });
+
+      const ledger = await request(app.getHttpServer()).get(`/api/v1/supplier-debt/${supplierId}/ledger`).set(authed(clinicAdminToken));
+      expect(ledger.body.data.items.at(-1)).toMatchObject({ entryType: 'RETURN', amountChange: -80000, stockReceiptId: null });
+
+      // Không chọn phiếu gốc — FIFO trừ vào khoản nợ cũ nhất (đúng phiếu nhập vừa tạo, khoản duy nhất).
+      const receipts = await request(app.getHttpServer()).get(`/api/v1/supplier-debt/${supplierId}/receipts`).set(authed(clinicAdminToken));
+      expect(receipts.body.data.items.find((it: { stockReceiptId: string }) => it.stockReceiptId === receiptId)).toMatchObject({ dueAmount: netAmount - 80000 });
+    });
+
+    it('Duyệt CÓ chọn phiếu gốc + chiết khấu Từng dòng — giá trả = SAU chiết khấu dòng, trừ ĐÚNG phiếu gốc trước', async () => {
+      const supplierId = await createSupplier();
+      const drugId = await createDrug(clinicAdminToken, { name: 'Omeprazol e2e Phần C', isBatchManaged: true, isPrescriptionOnly: true });
+      // 20 viên × 10.000 = 200.000, chiết khấu 20% dòng = 40.000 → net 160.000 → đơn giá SAU CK = 8.000/viên.
+      const { batchId, receiptId } = await createAndApprovePurchaseWithBatch(clinicAdminToken, supplierId, drugId, {
+        quantity: 20,
+        unitCost: 10000,
+        discountType: 'PERCENT',
+        discountValue: 20,
+      });
+
+      const created = await request(app.getHttpServer())
+        .post('/api/v1/inventory/issues/manual')
+        .set(authed(clinicAdminToken))
+        .send({ issueType: 'RETURN_TO_SUPPLIER', warehouseId, supplierId, sourceReceiptId: receiptId, note: 'Trả 1 phần, có phiếu gốc', lines: [{ drugId, batchId, quantity: 5 }] });
+      expect(created.status).toBe(200);
+      expect(created.body.data.lines[0].returnUnitPrice).toBe(8000); // KHÔNG phải 10.000 (giá trước chiết khấu)
+      expect(created.body.data.totalAmount).toBe(40000);
+
+      const approveRes = await request(app.getHttpServer())
+        .post(`/api/v1/inventory/issues/manual/${created.body.data.id}/approve`)
+        .set(authed(clinicAdminToken))
+        .send({ version: created.body.data.version });
+      expect(approveRes.status).toBe(200);
+
+      const ledger = await request(app.getHttpServer()).get(`/api/v1/supplier-debt/${supplierId}/ledger`).set(authed(clinicAdminToken));
+      expect(ledger.body.data.items.at(-1)).toMatchObject({ entryType: 'RETURN', amountChange: -40000, stockReceiptId: receiptId });
+
+      const receipts = await request(app.getHttpServer()).get(`/api/v1/supplier-debt/${supplierId}/receipts`).set(authed(clinicAdminToken));
+      expect(receipts.body.data.items.find((it: { stockReceiptId: string }) => it.stockReceiptId === receiptId)).toMatchObject({ originalAmount: 160000, dueAmount: 120000 });
+    });
+
+    it('client gửi kèm returnUnitPrice tường minh → ưu tiên dùng giá đó, KHÔNG tính lại theo phiếu gốc/giá vốn', async () => {
+      const supplierId = await createSupplier();
+      const drugId = await createDrug(clinicAdminToken, { name: 'Vitamin B1 e2e Phần C', isBatchManaged: true, isPrescriptionOnly: true });
+      const { batchId } = await createAndApprovePurchaseWithBatch(clinicAdminToken, supplierId, drugId, { quantity: 30, unitCost: 3000 });
+
+      const created = await request(app.getHttpServer())
+        .post('/api/v1/inventory/issues/manual')
+        .set(authed(clinicAdminToken))
+        .send({ issueType: 'RETURN_TO_SUPPLIER', warehouseId, supplierId, note: 'Sửa tay đơn giá trả', lines: [{ drugId, batchId, quantity: 4, returnUnitPrice: 2500 }] });
+      expect(created.status).toBe(200);
+      expect(created.body.data.lines[0].returnUnitPrice).toBe(2500);
+      expect(created.body.data.totalAmount).toBe(10000);
+    });
+
+    it('Huỷ phiếu xuất trả ĐÃ DUYỆT — đảo tồn kho nhưng KHÔNG đảo công nợ (đúng khuôn Huỷ phiếu nhập ở Phần A, để dành Phần D)', async () => {
+      const supplierId = await createSupplier();
+      const drugId = await createDrug(clinicAdminToken, { name: 'Cefixim e2e Phần C', isBatchManaged: true, isPrescriptionOnly: true });
+      const { batchId } = await createAndApprovePurchaseWithBatch(clinicAdminToken, supplierId, drugId, { quantity: 50, unitCost: 4000 });
+
+      const created = await request(app.getHttpServer())
+        .post('/api/v1/inventory/issues/manual')
+        .set(authed(clinicAdminToken))
+        .send({ issueType: 'RETURN_TO_SUPPLIER', warehouseId, supplierId, note: 'Sẽ huỷ ngay sau khi duyệt', lines: [{ drugId, batchId, quantity: 10 }] });
+      const approveRes = await request(app.getHttpServer())
+        .post(`/api/v1/inventory/issues/manual/${created.body.data.id}/approve`)
+        .set(authed(clinicAdminToken))
+        .send({ version: created.body.data.version });
+      expect(approveRes.status).toBe(200);
+
+      const balanceBefore = (await request(app.getHttpServer()).get(`/api/v1/supplier-debt/${supplierId}/summary`).set(authed(clinicAdminToken))).body.data.balance;
+
+      const balancesBeforeVoid = await request(app.getHttpServer()).get(`/api/v1/inventory/balances`).set(authed(clinicAdminToken)).query({ warehouseId });
+      const qtyBeforeVoid = (balancesBeforeVoid.body.data.items as { drugId: string; quantityOnHand: number }[]).filter((b) => b.drugId === drugId).reduce((s, b) => s + b.quantityOnHand, 0);
+
+      const voidRes = await request(app.getHttpServer())
+        .post(`/api/v1/inventory/issues/${created.body.data.id}/void`)
+        .set(authed(clinicAdminToken))
+        .send({ version: approveRes.body.data.version, reason: 'test huỷ — kiểm tra công nợ KHÔNG tự đảo' });
+      expect(voidRes.status).toBe(200);
+
+      const balancesAfterVoid = await request(app.getHttpServer()).get(`/api/v1/inventory/balances`).set(authed(clinicAdminToken)).query({ warehouseId });
+      const qtyAfterVoid = (balancesAfterVoid.body.data.items as { drugId: string; quantityOnHand: number }[]).filter((b) => b.drugId === drugId).reduce((s, b) => s + b.quantityOnHand, 0);
+      expect(qtyAfterVoid).toBe(qtyBeforeVoid + 10); // tồn kho ĐÃ đảo lại (hồi quy generic voidIssue()).
+
+      const balanceAfter = (await request(app.getHttpServer()).get(`/api/v1/supplier-debt/${supplierId}/summary`).set(authed(clinicAdminToken))).body.data.balance;
+      expect(balanceAfter).toBe(balanceBefore); // công nợ GIỮ NGUYÊN — characterization test, xem docs/DECISIONS.md.
     });
   });
 });

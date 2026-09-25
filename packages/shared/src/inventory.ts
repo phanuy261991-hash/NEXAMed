@@ -465,11 +465,15 @@ export type VoidStockIssueRequest = z.infer<typeof voidStockIssueRequestSchema>;
 // Không gắn đơn thuốc/hoá đơn nào (thuần điều chỉnh tồn kho, sellPrice/lineAmount luôn 0 — cùng
 // bản chất COUNT_SHORTAGE/TRANSFER_OUT tự sinh). ============
 
-/** 1 dòng hàng lúc lập phiếu xuất Nháp — không có `prescriptionItemId` (không gắn đơn thuốc). */
+/** 1 dòng hàng lúc lập phiếu xuất Nháp — không có `prescriptionItemId` (không gắn đơn thuốc).
+ * `returnUnitPrice` — "Công nợ nhà cung cấp" Phần C — CHỈ có ý nghĩa với `issueType='RETURN_TO_SUPPLIER'`
+ * (Service chặn gửi kèm loại khác). Bỏ trống ở phiếu trả NCC → Service tự tính giá mặc định (theo
+ * phiếu nhập gốc nếu có chọn, không thì theo giá vốn lô/tồn kho). */
 export const manualStockIssueLineInputSchema = z.object({
   drugId: z.string().uuid(),
   batchId: z.string().uuid().nullable().optional(),
   quantity: z.number().int().positive('Số lượng phải lớn hơn 0.'),
+  returnUnitPrice: z.number().int().nonnegative().optional(),
 });
 export type ManualStockIssueLineInput = z.infer<typeof manualStockIssueLineInputSchema>;
 
@@ -479,6 +483,10 @@ const manualStockIssueHeaderFieldsSchema = z.object({
   /** Khoa/Phòng TIẾP NHẬN — bắt buộc khi `issueType='INTERNAL_ALLOCATION'`, bỏ trống loại khác
    * (Service chặn gửi kèm, đúng khuôn `supplierId` của `stock_receipt`). */
   departmentId: z.string().uuid().optional(),
+  /** "Công nợ nhà cung cấp" Phần C — bắt buộc khi `issueType='RETURN_TO_SUPPLIER'`, bỏ trống loại khác. */
+  supplierId: z.string().uuid().optional(),
+  /** Phiếu nhập gốc TUỲ CHỌN (Q3) — CHỈ hợp lệ khi `issueType='RETURN_TO_SUPPLIER'`. */
+  sourceReceiptId: z.string().uuid().optional(),
   /** Bỏ trống mặc định "bây giờ". */
   occurredAt: z.string().optional(),
   /** "Lý do" — BẮT BUỘC cho cả 3 loại (kế hoạch #170 mục 4), tái dùng cột `note` có sẵn. */
@@ -492,6 +500,12 @@ function checkManualStockIssueDepartment(v: z.infer<typeof manualStockIssueHeade
   }
   if (v.issueType !== 'INTERNAL_ALLOCATION' && v.departmentId) {
     ctx.addIssue({ code: 'custom', message: 'Loại phiếu này không có Khoa/Phòng tiếp nhận.', path: ['departmentId'] });
+  }
+  if (v.issueType === 'RETURN_TO_SUPPLIER' && !v.supplierId) {
+    ctx.addIssue({ code: 'custom', message: 'Phiếu "Xuất trả nhà cung cấp" phải chọn Nhà cung cấp.', path: ['supplierId'] });
+  }
+  if (v.issueType !== 'RETURN_TO_SUPPLIER' && (v.supplierId || v.sourceReceiptId)) {
+    ctx.addIssue({ code: 'custom', message: 'Loại phiếu này không có Nhà cung cấp.', path: ['supplierId'] });
   }
 }
 
@@ -527,6 +541,8 @@ export const stockIssueLineSchema = z.object({
   unitCost: z.number().int(),
   sellPrice: z.number().int(),
   lineAmount: z.number().int(),
+  /** "Công nợ nhà cung cấp" Phần C — `null` cho mọi dòng không phải phiếu RETURN_TO_SUPPLIER. */
+  returnUnitPrice: z.number().int().nullable(),
 });
 export type StockIssueLine = z.infer<typeof stockIssueLineSchema>;
 
@@ -557,6 +573,11 @@ export const stockIssueSummarySchema = z.object({
   voidedAt: z.string().nullable(),
   voidReason: z.string().nullable(),
   version: z.number().int(),
+  // "Công nợ nhà cung cấp" Phần C — chỉ có giá trị cho `issueType='RETURN_TO_SUPPLIER'`.
+  supplierId: z.string().uuid().nullable(),
+  supplierName: z.string().nullable(),
+  sourceReceiptId: z.string().uuid().nullable(),
+  sourceReceiptNo: z.string().nullable(),
 });
 export type StockIssueSummary = z.infer<typeof stockIssueSummarySchema>;
 
@@ -588,6 +609,9 @@ export const listStockIssuesQuerySchema = z.object({
   from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   q: z.string().min(1).max(100).optional(),
+  /** "Công nợ nhà cung cấp" Phần C — tab "Phiếu trả hàng" ở trang chi tiết NCC (kết hợp
+   * `issueType=RETURN_TO_SUPPLIER`). */
+  supplierId: z.string().uuid().optional(),
 });
 export type ListStockIssuesQuery = z.infer<typeof listStockIssuesQuerySchema>;
 

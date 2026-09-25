@@ -284,6 +284,7 @@ import {
   recordSupplierDebtPaymentRequestSchema,
   listSupplierDebtPaymentsQuerySchema,
   listSupplierDebtPaymentsResponseSchema,
+  recordSupplierDebtRefundRequestSchema,
 } from '@nexamed/shared';
 
 /**
@@ -3854,6 +3855,23 @@ registry.registerPath({
     200: jsonResponse('Thành công', envelope(listSupplierDebtPaymentsResponseSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền supplier_debt.read'),
+  },
+});
+
+// ============ Phần C — "Trả hàng NCC" (docs/DECISIONS.md #180/#182) ============
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/supplier-debt/{supplierId}/refund',
+  tags: ['supplier-debt'],
+  summary: '"Thu tiền NCC hoàn lại" (Q8) — CHỈ hợp lệ khi NCC đang nợ lại phòng khám (balance<0)',
+  security: [{ bearerAuth: [] }],
+  request: { params: supplierDebtSupplierIdParams, body: { content: { 'application/json': { schema: recordSupplierDebtRefundRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(supplierDebtSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền supplier_debt.pay'),
+    404: errorResponse('Không tìm thấy nhà cung cấp/quỹ nhận'),
+    422: errorResponse('NCC không đang nợ lại, hoặc số tiền vượt quá số nợ lại'),
   },
 });
 

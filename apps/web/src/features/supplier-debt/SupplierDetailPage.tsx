@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, ClipboardText, HandCoins, Receipt, Scales, ShoppingCart, Truck } from '@phosphor-icons/react';
+import { ArrowLeft, ClipboardText, HandCoins, Receipt, Scales, ShoppingCart, Truck, ArrowUUpLeft } from '@phosphor-icons/react';
 import type { SupplierDebtLedgerEntry, SupplierDebtPayment, SupplierDebtReceiptStatus } from '@nexamed/shared';
 import { formatVnd } from '../../shared/format/currency';
 import { Button } from '../../shared/ui/Button';
@@ -17,13 +17,14 @@ import { MoneyInput } from '../../shared/ui/MoneyInput';
 import { ApiError } from '../../shared/api/client';
 import { useHasPermission } from '../auth/usePermission';
 import { useSuppliersQuery } from '../drug/supplier.queries';
-import { useStockReceiptsQuery } from '../inventory/inventory.queries';
+import { useStockIssuesQuery, useStockReceiptsQuery } from '../inventory/inventory.queries';
 import { useCashAccountsQuery } from '../cash-book/cash-account.queries';
 import { useClinicSettingsQuery } from '../clinic/clinic.queries';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import {
   useRecordSupplierDebtOpeningBalanceMutation,
   useRecordSupplierDebtPaymentMutation,
+  useRecordSupplierDebtRefundMutation,
   useSupplierDebtLedgerQuery,
   useSupplierDebtPaymentsQuery,
   useSupplierDebtReceiptsQuery,
@@ -59,19 +60,20 @@ const ENTRY_TYPE_LABEL: Record<SupplierDebtLedgerEntry['entryType'], string> = {
   REVERSAL: 'Bút toán đảo',
 };
 
-type TabId = 'receipts' | 'ledger' | 'payments';
+type TabId = 'receipts' | 'returns' | 'ledger' | 'payments';
 
-/** Trang chi tiết NCC — "Công nợ nhà cung cấp" Phần A + Phần B (docs/DECISIONS.md #180/#182). 3 tab
- * "Phiếu nhập"/"Sổ công nợ" (Phần A)/"Thanh toán" (Phần B) — "Phiếu trả hàng"/"Nhật ký điều chỉnh"
- * (Phần C/D) chưa có dữ liệu, để dành thêm khi các phần đó code xong, đúng khuôn màn hình khám
- * Sprint 3 (4 tab, mở khoá dần theo từng phần). Không có `GET /suppliers/:id` riêng — tìm trong danh
- * sách đã tải sẵn (không phân trang, quy mô nhỏ, đúng khuôn `SupplierPane`). */
+/** Trang chi tiết NCC — "Công nợ nhà cung cấp" Phần A + Phần B + Phần C (docs/DECISIONS.md
+ * #180/#182). 4 tab "Phiếu nhập"/"Phiếu trả hàng" (Phần C)/"Sổ công nợ" (Phần A)/"Thanh toán" (Phần
+ * B) — "Nhật ký điều chỉnh" (Phần D) chưa có dữ liệu, để dành thêm khi phần đó code xong, đúng khuôn
+ * màn hình khám Sprint 3 (mở khoá dần theo từng phần). Không có `GET /suppliers/:id` riêng — tìm
+ * trong danh sách đã tải sẵn (không phân trang, quy mô nhỏ, đúng khuôn `SupplierPane`). */
 export function SupplierDetailPage() {
   const { id } = useParams<{ id: string }>();
   const supplierId = id!;
   const [tab, setTab] = useState<TabId>('receipts');
   const [openingBalanceOpen, setOpeningBalanceOpen] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
+  const [refundOpen, setRefundOpen] = useState(false);
   const canPay = useHasPermission('supplier_debt', 'pay');
 
   const suppliersQuery = useSuppliersQuery(true);
@@ -135,6 +137,12 @@ export function SupplierDetailPage() {
                 Thanh toán công nợ
               </Button>
             )}
+            {canPay && summary.balance < 0 && (
+              <Button type="button" onClick={() => setRefundOpen(true)}>
+                <ArrowUUpLeft size={16} weight="bold" aria-hidden="true" />
+                Thu tiền NCC hoàn lại
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -162,6 +170,7 @@ export function SupplierDetailPage() {
         <div className="flex gap-1 border-b border-slate-200 px-3 pt-2">
           {([
             ['receipts', 'Phiếu nhập'],
+            ['returns', 'Phiếu trả hàng'],
             ['ledger', 'Sổ công nợ'],
             ['payments', 'Thanh toán'],
           ] as const).map(([id_, label]) => (
@@ -177,6 +186,7 @@ export function SupplierDetailPage() {
         </div>
         <div className="p-3">
           {tab === 'receipts' && <ReceiptsTab supplierId={supplierId} />}
+          {tab === 'returns' && <ReturnsTab supplierId={supplierId} />}
           {tab === 'ledger' && <LedgerTab supplierId={supplierId} />}
           {tab === 'payments' && <PaymentsTab supplierId={supplierId} />}
         </div>
@@ -184,6 +194,7 @@ export function SupplierDetailPage() {
 
       {openingBalanceOpen && <OpeningBalanceDialog supplierId={supplierId} supplierName={supplier.name} onClose={() => setOpeningBalanceOpen(false)} />}
       {paymentOpen && <PaymentDialog supplierId={supplierId} supplierName={supplier.name} balance={summary.balance} onClose={() => setPaymentOpen(false)} />}
+      {refundOpen && <RefundDialog supplierId={supplierId} supplierName={supplier.name} balance={summary.balance} onClose={() => setRefundOpen(false)} />}
     </div>
   );
 }
@@ -241,6 +252,67 @@ function ReceiptsTab({ supplierId }: { supplierId: string }) {
               </tr>
             );
           })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+const ISSUE_STATUS_LABEL: Record<'DRAFT' | 'POSTED' | 'REJECTED' | 'VOIDED', { label: string; tone: StatusBadgeTone }> = {
+  DRAFT: { label: 'Nháp', tone: 'neutral' },
+  POSTED: { label: 'Đã duyệt', tone: 'success' },
+  REJECTED: { label: 'Từ chối', tone: 'danger' },
+  VOIDED: { label: 'Đã huỷ', tone: 'neutral' },
+};
+
+/** Phần C — tab "Phiếu trả hàng": mọi `stock_issue` loại `RETURN_TO_SUPPLIER` gắn NCC này (Nháp lẫn
+ * đã Duyệt/Từ chối/Huỷ) — CHỈ phiếu ĐÃ DUYỆT mới thật sự trừ công nợ (xem tab "Sổ công nợ"). */
+function ReturnsTab({ supplierId }: { supplierId: string }) {
+  const query = useStockIssuesQuery({ supplierId, issueType: 'RETURN_TO_SUPPLIER', limit: 100 });
+
+  if (query.isError) {
+    return <ErrorBanner message="Không tải được danh sách phiếu trả hàng." onRetry={() => void query.refetch()} />;
+  }
+  if (query.isLoading) {
+    return <Skeleton className="h-40 w-full" />;
+  }
+  const items = query.data?.items ?? [];
+  if (items.length === 0) {
+    return <EmptyState icon={ArrowUUpLeft} title="Chưa có phiếu trả hàng nào" description="Lập &quot;Phiếu xuất kho&quot; loại &quot;Xuất trả nhà cung cấp&quot; để trả hàng cho NCC này." />;
+  }
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-slate-200">
+      <table className="w-full border-collapse text-sm">
+        <thead>
+          <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+            <th className="px-3 py-2.5 text-center">Mã phiếu</th>
+            <th className="px-3 py-2.5 text-center">Ngày</th>
+            <th className="px-3 py-2.5 text-center">Phiếu nhập gốc</th>
+            <th className="px-3 py-2.5 text-left">Lý do</th>
+            <th className="px-3 py-2.5 text-center">Giá trị trả</th>
+            <th className="px-3 py-2.5 text-center">Trạng thái</th>
+            <th className="px-3 py-2.5 text-center">Thao tác</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((it) => (
+            <tr key={it.id} className="border-b border-slate-200 last:border-0">
+              <td className="px-3 py-2 text-center font-semibold text-slate-800">{it.issueNo}</td>
+              <td className="px-3 py-2 text-center text-slate-600">{formatDateShort(it.occurredAt)}</td>
+              <td className="px-3 py-2 text-center text-slate-600">{it.sourceReceiptNo ?? '—'}</td>
+              <td className="px-3 py-2 text-left font-medium text-slate-700">{it.note ?? '—'}</td>
+              <td className="px-3 py-2 text-center font-bold text-slate-900">{formatVnd(it.totalAmount)}</td>
+              <td className="px-3 py-2 text-center">
+                <StatusBadge tone={ISSUE_STATUS_LABEL[it.status].tone}>{ISSUE_STATUS_LABEL[it.status].label}</StatusBadge>
+              </td>
+              <td className="px-3 py-2 text-center">
+                <Link to={`/inventory/issues/manual/${it.id}`} className="text-sm font-semibold text-blue-600 hover:text-blue-700">
+                  Xem
+                </Link>
+              </td>
+            </tr>
+          ))}
         </tbody>
       </table>
     </div>
@@ -578,6 +650,148 @@ function PaymentDialog({ supplierId, supplierName, balance, onClose }: { supplie
           </Button>
           <Button type="submit" loading={mutation.isPending} disabled={isInvalid}>
             Xác nhận thanh toán
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+/** Phần C — "Thu tiền NCC hoàn lại" (Q8), CHỈ hiện khi `balance < 0` (NCC đang nợ lại phòng khám).
+ * Cùng khuôn `PaymentDialog` ở trên (server tự sinh mã/diễn giải, LUÔN `POSTED` ngay — không có
+ * đường Chờ duyệt cho phiếu thu, khác phiếu chi). */
+function RefundDialog({ supplierId, supplierName, balance, onClose }: { supplierId: string; supplierName: string; balance: number; onClose: () => void }) {
+  const maxRefundable = Math.abs(balance);
+  const [amount, setAmount] = useState<number | undefined>(undefined);
+  const [paymentMethodCode, setPaymentMethodCode] = useState('');
+  const [cashAccountId, setCashAccountId] = useState('');
+  const [occurredAt, setOccurredAt] = useState(todayDateString());
+  const [note, setNote] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const mutation = useRecordSupplierDebtRefundMutation(supplierId);
+  const paymentMethodQuery = useReferenceCatalogQuery('PAYMENT_METHOD');
+  const cashAccountsQuery = useCashAccountsQuery();
+
+  const paymentMethods = useMemo(() => paymentMethodQuery.data?.items.filter((i) => i.isActive) ?? [], [paymentMethodQuery.data]);
+  const cashAccounts = useMemo(() => cashAccountsQuery.data?.items.filter((a) => a.isActive) ?? [], [cashAccountsQuery.data]);
+
+  const exceedsBalance = (amount ?? 0) > maxRefundable;
+  const isInvalid = !amount || amount <= 0 || exceedsBalance || paymentMethodCode === '' || cashAccountId === '' || !occurredAt;
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (isInvalid || !amount) return;
+    setError(null);
+    try {
+      await mutation.mutateAsync({ amount, paymentMethodCode, cashAccountId, occurredAt, note: note.trim() || undefined });
+      onClose();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Có lỗi xảy ra, vui lòng thử lại.');
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
+      <form className="flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-lg bg-white shadow-xl" onSubmit={handleSubmit}>
+        <div className="flex-shrink-0 px-6 pt-6">
+          <ModalHeader icon={ArrowUUpLeft} title="Thu tiền NCC hoàn lại" subtitle={supplierName} onClose={onClose} />
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-6">
+          {error && <ErrorBanner message={error} />}
+          <div className="my-4 flex flex-col gap-4">
+            <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="font-medium text-blue-800">Nhà cung cấp đang nợ lại phòng khám</span>
+                <span className="font-bold text-blue-700">{formatVnd(maxRefundable)}</span>
+              </div>
+            </div>
+
+            <BoxedSection badge="Thu tiền">
+              <div className="grid grid-cols-1 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="refund-amount" className="text-sm font-semibold text-slate-800">
+                    Số tiền nhận <span className="text-rose-500">*</span>
+                  </label>
+                  <MoneyInput
+                    id="refund-amount"
+                    value={amount}
+                    onChange={setAmount}
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                  <div className="flex flex-wrap gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setAmount(maxRefundable)}
+                      className="rounded-full border-2 border-slate-300 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 transition-colors hover:border-blue-400 hover:bg-brand-teal-tint"
+                    >
+                      Toàn bộ {formatVnd(maxRefundable)}
+                    </button>
+                  </div>
+                  {exceedsBalance && <p className="text-xs font-semibold text-rose-600">Số tiền nhận không được vượt quá số nhà cung cấp đang nợ lại.</p>}
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="flex flex-col gap-1.5">
+                    <label htmlFor="refund-method" className="text-sm font-semibold text-slate-800">
+                      Phương thức <span className="text-rose-500">*</span>
+                    </label>
+                    <Combobox
+                      id="refund-method"
+                      value={paymentMethodCode}
+                      onChange={setPaymentMethodCode}
+                      placeholder="— Chọn —"
+                      options={paymentMethods.map((m) => ({ value: m.code, label: m.name }))}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label htmlFor="refund-account" className="text-sm font-semibold text-slate-800">
+                      Quỹ nhận <span className="text-rose-500">*</span>
+                    </label>
+                    <Combobox
+                      id="refund-account"
+                      value={cashAccountId}
+                      onChange={setCashAccountId}
+                      placeholder="— Chọn —"
+                      options={cashAccounts.map((a) => ({ value: a.id, label: a.name }))}
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="refund-date" className="text-sm font-semibold text-slate-800">
+                    Ngày thu
+                  </label>
+                  <DateInput id="refund-date" value={occurredAt} onChange={setOccurredAt} />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="refund-note" className="text-sm font-semibold text-slate-800">
+                    Ghi chú
+                  </label>
+                  <textarea
+                    id="refund-note"
+                    rows={2}
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                </div>
+              </div>
+            </BoxedSection>
+
+            {amount !== undefined && amount > 0 && !exceedsBalance && (
+              <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm">
+                <div className="flex justify-between gap-3 font-semibold text-blue-900">
+                  <span>Còn nợ lại sau khi thu</span>
+                  <span className="text-lg font-bold">{formatVnd(maxRefundable - amount)}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="flex flex-shrink-0 justify-end gap-2 border-t border-slate-100 bg-slate-50 px-6 py-4">
+          <Button type="button" variant="secondary" onClick={onClose} disabled={mutation.isPending}>
+            Huỷ
+          </Button>
+          <Button type="submit" loading={mutation.isPending} disabled={isInvalid}>
+            Lập phiếu thu
           </Button>
         </div>
       </form>

@@ -9,6 +9,8 @@ export interface StockIssueLineData {
   unitCost: bigint;
   sellPrice: bigint;
   lineAmount: bigint;
+  /** "Công nợ nhà cung cấp" Phần C — CHỈ có giá trị cho dòng của phiếu `RETURN_TO_SUPPLIER`. */
+  returnUnitPrice: bigint | null;
 }
 
 export interface CreateStockIssueData {
@@ -24,6 +26,9 @@ export interface CreateStockIssueData {
   transferId: string | null;
   /** "Phiếu xuất kho mở rộng" (#170) — Khoa/Phòng TIẾP NHẬN, CHỈ có ý nghĩa với `INTERNAL_ALLOCATION`. */
   departmentId: string | null;
+  /** "Công nợ nhà cung cấp" Phần C — CHỈ có ý nghĩa với `RETURN_TO_SUPPLIER`. */
+  supplierId: string | null;
+  sourceReceiptId: string | null;
   occurredAt: Date;
   note: string | null;
   totalAmount: bigint;
@@ -37,8 +42,12 @@ export interface UpdateManualStockIssueData {
   warehouseId: string;
   issueType: StockIssueType;
   departmentId: string | null;
+  supplierId: string | null;
+  sourceReceiptId: string | null;
   occurredAt: Date;
   note: string | null;
+  /** Tổng tiền — CHỈ khác 0 với `issueType='RETURN_TO_SUPPLIER'` (Phần C). */
+  totalAmount: bigint;
   lines: StockIssueLineData[];
 }
 
@@ -57,6 +66,9 @@ const CONTEXT_INCLUDE = {
   // "Phiếu xuất kho mở rộng" (#170) — Khoa/Phòng TIẾP NHẬN của INTERNAL_ALLOCATION, resolve tên NGAY
   // trong JOIN thay vì gọi thêm `DoctorDirectoryPort.getDepartmentNames()`.
   department: { select: { name: true } },
+  // "Công nợ nhà cung cấp" Phần C — NCC + phiếu nhập gốc (tuỳ chọn) của RETURN_TO_SUPPLIER.
+  supplier: { select: { name: true } },
+  sourceReceipt: { select: { receiptNo: true } },
 } satisfies Prisma.StockIssueInclude;
 
 export type StockIssueWithContext = Prisma.StockIssueGetPayload<{ include: typeof CONTEXT_INCLUDE }>;
@@ -66,6 +78,9 @@ export interface StockIssueListRow extends StockIssue {
   // Nullable từ Kho Thuốc GĐ4 (#170) — `COUNT_SHORTAGE` tự sinh không có `prescriptionId`.
   prescription: { encounter: { id: string; encounterNo: string; patient: { patientCode: string; fullName: string } } } | null;
   department: { name: string } | null;
+  // "Công nợ nhà cung cấp" Phần C — `null` cho mọi phiếu không phải RETURN_TO_SUPPLIER.
+  supplier: { name: string } | null;
+  sourceReceipt: { receiptNo: string } | null;
   _count: { lines: number };
 }
 
@@ -82,6 +97,8 @@ export interface ListStockIssuesFilter {
    * khi actor giữ `stock_issue.read` ở scope `department`, lọc CHỈ phiếu thuộc kho do đúng Khoa này
    * quản lý (`warehouse.departmentId`). `undefined` (scope `global`) = không lọc gì thêm. */
   departmentId?: string;
+  /** "Công nợ nhà cung cấp" Phần C — tab "Phiếu trả hàng" ở trang chi tiết NCC. */
+  supplierId?: string;
 }
 
 /** Chỗ DUY NHẤT gọi Prisma cho bảng `stock_issue`/`stock_issue_line` (Kho Thuốc GĐ3, #163). */
@@ -100,6 +117,8 @@ export class StockIssueRepository {
         countId: data.countId,
         transferId: data.transferId,
         departmentId: data.departmentId,
+        supplierId: data.supplierId,
+        sourceReceiptId: data.sourceReceiptId,
         occurredAt: data.occurredAt,
         note: data.note,
         totalAmount: data.totalAmount,
@@ -120,6 +139,7 @@ export class StockIssueRepository {
           unitCost: line.unitCost,
           sellPrice: line.sellPrice,
           lineAmount: line.lineAmount,
+          returnUnitPrice: line.returnUnitPrice,
           createdBy: actorId,
           updatedBy: actorId,
         })),
@@ -156,12 +176,17 @@ export class StockIssueRepository {
     if (filter.departmentId) {
       where.warehouse = { departmentId: filter.departmentId };
     }
+    if (filter.supplierId) {
+      where.supplierId = filter.supplierId;
+    }
     const rows = await tx.stockIssue.findMany({
       where,
       include: {
         warehouse: { select: { name: true } },
         prescription: { select: { encounter: { select: { id: true, encounterNo: true, patient: { select: { patientCode: true, fullName: true } } } } } },
         department: { select: { name: true } },
+        supplier: { select: { name: true } },
+        sourceReceipt: { select: { receiptNo: true } },
         _count: { select: { lines: { where: { deletedAt: null } } } },
       },
       orderBy: { id: 'desc' },
@@ -189,8 +214,11 @@ export class StockIssueRepository {
         warehouseId: data.warehouseId,
         issueType: data.issueType,
         departmentId: data.departmentId,
+        supplierId: data.supplierId,
+        sourceReceiptId: data.sourceReceiptId,
         occurredAt: data.occurredAt,
         note: data.note,
+        totalAmount: data.totalAmount,
         updatedBy: actorId,
         version: { increment: 1 },
       },
@@ -213,6 +241,7 @@ export class StockIssueRepository {
           unitCost: line.unitCost,
           sellPrice: line.sellPrice,
           lineAmount: line.lineAmount,
+          returnUnitPrice: line.returnUnitPrice,
           createdBy: actorId,
           updatedBy: actorId,
         })),

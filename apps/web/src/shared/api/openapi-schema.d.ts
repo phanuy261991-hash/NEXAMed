@@ -21554,6 +21554,7 @@ export interface paths {
                     from?: string;
                     to?: string;
                     q?: string;
+                    supplierId?: string;
                 };
                 header?: never;
                 path?: never;
@@ -21601,6 +21602,12 @@ export interface paths {
                                     voidedAt: string | null;
                                     voidReason: string | null;
                                     version: number;
+                                    /** Format: uuid */
+                                    supplierId: string | null;
+                                    supplierName: string | null;
+                                    /** Format: uuid */
+                                    sourceReceiptId: string | null;
+                                    sourceReceiptNo: string | null;
                                 }[];
                                 nextCursor: string | null;
                             };
@@ -21710,6 +21717,12 @@ export interface paths {
                                 voidedAt: string | null;
                                 voidReason: string | null;
                                 version: number;
+                                /** Format: uuid */
+                                supplierId: string | null;
+                                supplierName: string | null;
+                                /** Format: uuid */
+                                sourceReceiptId: string | null;
+                                sourceReceiptNo: string | null;
                                 lines: {
                                     /** Format: uuid */
                                     id: string;
@@ -21726,6 +21739,7 @@ export interface paths {
                                     unitCost: number;
                                     sellPrice: number;
                                     lineAmount: number;
+                                    returnUnitPrice: number | null;
                                 }[];
                                 attachedInvoice: {
                                     /** Format: uuid */
@@ -21865,6 +21879,12 @@ export interface paths {
                                 voidedAt: string | null;
                                 voidReason: string | null;
                                 version: number;
+                                /** Format: uuid */
+                                supplierId: string | null;
+                                supplierName: string | null;
+                                /** Format: uuid */
+                                sourceReceiptId: string | null;
+                                sourceReceiptNo: string | null;
                                 lines: {
                                     /** Format: uuid */
                                     id: string;
@@ -21881,6 +21901,7 @@ export interface paths {
                                     unitCost: number;
                                     sellPrice: number;
                                     lineAmount: number;
+                                    returnUnitPrice: number | null;
                                 }[];
                                 attachedInvoice: {
                                     /** Format: uuid */
@@ -22016,6 +22037,12 @@ export interface paths {
                                 voidedAt: string | null;
                                 voidReason: string | null;
                                 version: number;
+                                /** Format: uuid */
+                                supplierId: string | null;
+                                supplierName: string | null;
+                                /** Format: uuid */
+                                sourceReceiptId: string | null;
+                                sourceReceiptNo: string | null;
                                 lines: {
                                     /** Format: uuid */
                                     id: string;
@@ -22032,6 +22059,7 @@ export interface paths {
                                     unitCost: number;
                                     sellPrice: number;
                                     lineAmount: number;
+                                    returnUnitPrice: number | null;
                                 }[];
                                 attachedInvoice: {
                                     /** Format: uuid */
@@ -22139,6 +22167,10 @@ export interface paths {
                         warehouseId: string;
                         /** Format: uuid */
                         departmentId?: string;
+                        /** Format: uuid */
+                        supplierId?: string;
+                        /** Format: uuid */
+                        sourceReceiptId?: string;
                         occurredAt?: string;
                         note: string;
                         lines: {
@@ -22147,6 +22179,7 @@ export interface paths {
                             /** Format: uuid */
                             batchId?: string | null;
                             quantity: number;
+                            returnUnitPrice?: number;
                         }[];
                     };
                 };
@@ -22191,6 +22224,12 @@ export interface paths {
                                 voidedAt: string | null;
                                 voidReason: string | null;
                                 version: number;
+                                /** Format: uuid */
+                                supplierId: string | null;
+                                supplierName: string | null;
+                                /** Format: uuid */
+                                sourceReceiptId: string | null;
+                                sourceReceiptNo: string | null;
                                 lines: {
                                     /** Format: uuid */
                                     id: string;
@@ -22207,6 +22246,7 @@ export interface paths {
                                     unitCost: number;
                                     sellPrice: number;
                                     lineAmount: number;
+                                    returnUnitPrice: number | null;
                                 }[];
                                 attachedInvoice: {
                                     /** Format: uuid */
@@ -22320,6 +22360,10 @@ export interface paths {
                         warehouseId: string;
                         /** Format: uuid */
                         departmentId?: string;
+                        /** Format: uuid */
+                        supplierId?: string;
+                        /** Format: uuid */
+                        sourceReceiptId?: string;
                         occurredAt?: string;
                         note: string;
                         lines: {
@@ -22328,6 +22372,7 @@ export interface paths {
                             /** Format: uuid */
                             batchId?: string | null;
                             quantity: number;
+                            returnUnitPrice?: number;
                         }[];
                         version: number;
                     };
@@ -22373,6 +22418,12 @@ export interface paths {
                                 voidedAt: string | null;
                                 voidReason: string | null;
                                 version: number;
+                                /** Format: uuid */
+                                supplierId: string | null;
+                                supplierName: string | null;
+                                /** Format: uuid */
+                                sourceReceiptId: string | null;
+                                sourceReceiptNo: string | null;
                                 lines: {
                                     /** Format: uuid */
                                     id: string;
@@ -22389,6 +22440,7 @@ export interface paths {
                                     unitCost: number;
                                     sellPrice: number;
                                     lineAmount: number;
+                                    returnUnitPrice: number | null;
                                 }[];
                                 attachedInvoice: {
                                     /** Format: uuid */
@@ -22532,6 +22584,12 @@ export interface paths {
                                 voidedAt: string | null;
                                 voidReason: string | null;
                                 version: number;
+                                /** Format: uuid */
+                                supplierId: string | null;
+                                supplierName: string | null;
+                                /** Format: uuid */
+                                sourceReceiptId: string | null;
+                                sourceReceiptNo: string | null;
                                 lines: {
                                     /** Format: uuid */
                                     id: string;
@@ -22548,6 +22606,7 @@ export interface paths {
                                     unitCost: number;
                                     sellPrice: number;
                                     lineAmount: number;
+                                    returnUnitPrice: number | null;
                                 }[];
                                 attachedInvoice: {
                                     /** Format: uuid */
@@ -22711,6 +22770,12 @@ export interface paths {
                                 voidedAt: string | null;
                                 voidReason: string | null;
                                 version: number;
+                                /** Format: uuid */
+                                supplierId: string | null;
+                                supplierName: string | null;
+                                /** Format: uuid */
+                                sourceReceiptId: string | null;
+                                sourceReceiptNo: string | null;
                                 lines: {
                                     /** Format: uuid */
                                     id: string;
@@ -22727,6 +22792,7 @@ export interface paths {
                                     unitCost: number;
                                     sellPrice: number;
                                     lineAmount: number;
+                                    returnUnitPrice: number | null;
                                 }[];
                                 attachedInvoice: {
                                     /** Format: uuid */
@@ -25121,6 +25187,9 @@ export interface paths {
                                     stockReceiptId: string | null;
                                     stockReceiptNo: string | null;
                                     /** Format: uuid */
+                                    stockIssueId: string | null;
+                                    stockIssueNo: string | null;
+                                    /** Format: uuid */
                                     cashVoucherId: string | null;
                                     cashVoucherNo: string | null;
                                     /** Format: uuid */
@@ -25621,6 +25690,128 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/supplier-debt/{supplierId}/refund": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** "Thu tiền NCC hoàn lại" (Q8) — CHỈ hợp lệ khi NCC đang nợ lại phòng khám (balance<0) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    supplierId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        amount: number;
+                        paymentMethodCode: string;
+                        /** Format: uuid */
+                        cashAccountId: string;
+                        occurredAt?: string;
+                        note?: string | null;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                supplierId: string;
+                                openingBalanceAmount: number;
+                                totalPurchase: number;
+                                totalPaid: number;
+                                totalReturnAndAdjustment: number;
+                                balance: number;
+                                pendingApprovalAmount: number;
+                                canRecordOpeningBalance: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền supplier_debt.pay */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy nhà cung cấp/quỹ nhận */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description NCC không đang nợ lại, hoặc số tiền vượt quá số nợ lại */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;

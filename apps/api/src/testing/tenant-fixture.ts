@@ -59,6 +59,24 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       await prisma.payment.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.invoiceLine.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.invoice.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // "Công nợ nhà cung cấp" (docs/DECISIONS.md #180/#182) — `supplier_debt_entry` tham chiếu CẢ
+      // `stock_receipt` LẪN `stock_issue` (Phần C, #180/#182) LẪN `cash_voucher` (FK RESTRICT), phải
+      // xoá TRƯỚC CẢ BA — di chuyển LÊN ĐÂY (đảo vị trí so với bản Phần A cũ, lúc đó `stock_issue_id`
+      // chưa tồn tại nên xoá sau `stockIssue.deleteMany()` vẫn an toàn) để đứng TRƯỚC khối
+      // `stockIssueLine`/`stockIssue` ngay dưới đây. Tự tham chiếu (`reversal_of_id`, đúng lý do C8/
+      // `prescription.supersedesId`) — Phần A/B/C CHƯA có đường ghi REVERSAL nào cho RETURN nên trong
+      // thực tế vòng lặp chỉ chạy 1 lần, nhưng viết đúng "xoá theo tầng" ngay từ đầu để không vỡ khi
+      // Phần D (Huỷ chứng từ) thêm đường ghi REVERSAL thật.
+      for (let i = 0; i < 20; i++) {
+        const referenced = await prisma.supplierDebtEntry.findMany({
+          where: { tenantId: { in: tenantIds }, reversalOfId: { not: null } },
+          select: { reversalOfId: true },
+        });
+        const referencedIds = [...new Set(referenced.map((r) => r.reversalOfId).filter((v): v is string => v !== null))];
+        const deleted = await prisma.supplierDebtEntry.deleteMany({ where: { tenantId: { in: tenantIds }, id: { notIn: referencedIds } } });
+        if (deleted.count === 0) break;
+      }
+      await prisma.supplierDebtAccount.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // Kho Thuốc GĐ2+GĐ3 (#146/#163) — di chuyển SỚM LÊN ĐÂY (đảo vị trí so với bản GĐ2 cũ, lúc
       // đó chưa có phụ thuộc chéo nào với lâm sàng nên đặt sau encounter cho gọn): `stock_issue`
       // tham chiếu `prescription` (FK RESTRICT) nên phải xoá TRƯỚC khối prescription/encounter bên
@@ -78,21 +96,6 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       await prisma.stockCountLine.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.stockTransferLine.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.inventoryBatch.deleteMany({ where: { tenantId: { in: tenantIds } } });
-      // "Công nợ nhà cung cấp" (docs/DECISIONS.md #180/#182) — `supplier_debt_entry` tham chiếu CẢ
-      // `stock_receipt` LẪN `cash_voucher` (FK RESTRICT), phải xoá TRƯỚC CẢ HAI. Tự tham chiếu
-      // (`reversal_of_id`, đúng lý do C8/`prescription.supersedesId` ở dưới) — Phần A CHƯA có đường
-      // ghi REVERSAL nào nên trong thực tế vòng lặp chỉ chạy 1 lần, nhưng viết đúng "xoá theo tầng"
-      // ngay từ đầu để không vỡ khi Phần D (Huỷ chứng từ) thêm đường ghi REVERSAL thật.
-      for (let i = 0; i < 20; i++) {
-        const referenced = await prisma.supplierDebtEntry.findMany({
-          where: { tenantId: { in: tenantIds }, reversalOfId: { not: null } },
-          select: { reversalOfId: true },
-        });
-        const referencedIds = [...new Set(referenced.map((r) => r.reversalOfId).filter((v): v is string => v !== null))];
-        const deleted = await prisma.supplierDebtEntry.deleteMany({ where: { tenantId: { in: tenantIds }, id: { notIn: referencedIds } } });
-        if (deleted.count === 0) break;
-      }
-      await prisma.supplierDebtAccount.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.stockReceiptLine.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.stockReceipt.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // `stock_receipt`/`stock_issue` ở trên có thể trỏ NGƯỢC về `stock_count` (`count_id`)/
