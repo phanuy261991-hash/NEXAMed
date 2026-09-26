@@ -15,6 +15,7 @@ import { formatVnd } from '../../shared/format/currency';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
 import { useHasPermission } from '../auth/usePermission';
 import { useWarehousesQuery } from '../drug/warehouse.queries';
+import { useCreateSupplierDebtAdjustmentMutation } from '../supplier-debt/supplier-debt.queries';
 import { useApproveStockIssueMutation, useRejectStockIssueMutation, useStockIssuesQuery } from './inventory.queries';
 import { StockIssueDetailDialog } from './StockIssueDetailDialog';
 import { StockIssueVoidDialog } from './StockIssueVoidDialog';
@@ -69,6 +70,10 @@ export function StockIssueListPage() {
   const canVoid = useHasPermission('stock_issue', 'create');
   const canCreateManual = useHasPermission('stock_issue', 'create');
   const canApproveManual = useHasPermission('stock_issue', 'approve');
+  // "Đề nghị huỷ" (Phần D, docs/DECISIONS.md #180/#182/#187) — dành cho actor KHÔNG có quyền huỷ
+  // trực tiếp (`stock_issue.create`) nhưng có `supplier_debt.adjust`, chỉ áp dụng phiếu trả NCC.
+  const canAdjustDebt = useHasPermission('supplier_debt', 'adjust');
+  const createAdjustmentMutation = useCreateSupplierDebtAdjustmentMutation();
 
   const [q, setQ] = useState('');
   const debouncedQ = useDebouncedValue(q, 300);
@@ -78,6 +83,7 @@ export function StockIssueListPage() {
   const [cursorStack, setCursorStack] = useState<string[]>([]);
   const [viewingIssueId, setViewingIssueId] = useState<string | null>(null);
   const [voidTarget, setVoidTarget] = useState<StockIssueSummary | null>(null);
+  const [voidRequestTarget, setVoidRequestTarget] = useState<StockIssueSummary | null>(null);
   const [rejectTarget, setRejectTarget] = useState<StockIssueSummary | null>(null);
 
   const cursor = cursorStack[cursorStack.length - 1];
@@ -240,6 +246,9 @@ export function StockIssueListPage() {
                         </>
                       )}
                       {item.status === 'POSTED' && canVoid && <RowActionButton icon={Prohibit} label="Huỷ phiếu" tone="danger" onClick={() => setVoidTarget(item)} />}
+                      {item.status === 'POSTED' && !canVoid && canAdjustDebt && item.issueType === 'RETURN_TO_SUPPLIER' && Boolean(item.supplierId) && (
+                        <RowActionButton icon={Prohibit} label="Đề nghị huỷ" tone="amber" onClick={() => setVoidRequestTarget(item)} />
+                      )}
                     </div>
                   </div>
                 ))}
@@ -268,6 +277,19 @@ export function StockIssueListPage() {
           version={voidTarget.version}
           onDone={() => setVoidTarget(null)}
           onClose={() => setVoidTarget(null)}
+        />
+      )}
+      {voidRequestTarget && (
+        <ReasonConfirmDialog
+          title="Đề nghị huỷ phiếu xuất kho?"
+          description={`Gửi đề nghị huỷ phiếu ${voidRequestTarget.issueNo} tới người có quyền duyệt công nợ — chỉ huỷ thật khi được duyệt.`}
+          confirmLabel="Gửi đề nghị"
+          confirmVariant="danger"
+          onConfirm={(reason) =>
+            createAdjustmentMutation.mutateAsync({ supplierId: voidRequestTarget.supplierId!, kind: 'VOID_REQUEST', targetIssueId: voidRequestTarget.id, reason })
+          }
+          onDone={() => setVoidRequestTarget(null)}
+          onClose={() => setVoidRequestTarget(null)}
         />
       )}
       {rejectTarget && (

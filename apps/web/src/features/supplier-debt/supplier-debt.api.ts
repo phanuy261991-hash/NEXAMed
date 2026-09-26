@@ -1,4 +1,8 @@
 import type {
+  ApproveSupplierDebtAdjustmentRequest,
+  CreateSupplierDebtAdjustmentRequest,
+  ListSupplierDebtAdjustmentsQuery,
+  ListSupplierDebtAdjustmentsResponse,
   ListSupplierDebtLedgerQuery,
   ListSupplierDebtLedgerResponse,
   ListSupplierDebtPaymentsQuery,
@@ -8,6 +12,8 @@ import type {
   RecordSupplierDebtOpeningBalanceRequest,
   RecordSupplierDebtPaymentRequest,
   RecordSupplierDebtRefundRequest,
+  RejectSupplierDebtAdjustmentRequest,
+  SupplierDebtAdjustment,
   SupplierDebtSummary,
 } from '@nexamed/shared';
 import { getApiClient, unwrap } from '../../shared/api/client';
@@ -49,4 +55,25 @@ export async function listSupplierDebtPayments(query: ListSupplierDebtPaymentsQu
 /** Phần C — "Thu tiền NCC hoàn lại" (Q8). */
 export async function recordSupplierDebtRefund(supplierId: string, body: RecordSupplierDebtRefundRequest): Promise<SupplierDebtSummary> {
   return unwrap(await getApiClient().POST('/api/v1/supplier-debt/{supplierId}/refund', { params: { path: { supplierId } }, body })) as SupplierDebtSummary;
+}
+
+// ============ Phần D — "Luồng xử lý sai sót" (docs/DECISIONS.md #180/#182/#187) ============
+
+/** Lập "Phiếu điều chỉnh công nợ" (INCREASE/DECREASE) hoặc "Đề nghị huỷ" (VOID_REQUEST). */
+export async function createSupplierDebtAdjustment(body: CreateSupplierDebtAdjustmentRequest): Promise<SupplierDebtAdjustment> {
+  return unwrap(await getApiClient().POST('/api/v1/supplier-debt/adjustments', { body })) as SupplierDebtAdjustment;
+}
+
+/** Dùng cho CẢ tab "Nhật ký điều chỉnh" (lọc `supplierId`) LẪN badge "Có điều chỉnh" trên phiếu
+ * nhập/xuất gốc (lọc `targetReceiptId`/`targetIssueId`). */
+export async function listSupplierDebtAdjustments(query: ListSupplierDebtAdjustmentsQuery): Promise<ListSupplierDebtAdjustmentsResponse> {
+  return unwrap(await getApiClient().GET('/api/v1/supplier-debt/adjustments', { params: { query } })) as ListSupplierDebtAdjustmentsResponse;
+}
+
+export async function approveSupplierDebtAdjustment(id: string, body: ApproveSupplierDebtAdjustmentRequest): Promise<SupplierDebtAdjustment> {
+  return unwrap(await getApiClient().POST('/api/v1/supplier-debt/adjustments/{id}/approve', { params: { path: { id } }, body })) as SupplierDebtAdjustment;
+}
+
+export async function rejectSupplierDebtAdjustment(id: string, body: RejectSupplierDebtAdjustmentRequest): Promise<SupplierDebtAdjustment> {
+  return unwrap(await getApiClient().POST('/api/v1/supplier-debt/adjustments/{id}/reject', { params: { path: { id } }, body })) as SupplierDebtAdjustment;
 }

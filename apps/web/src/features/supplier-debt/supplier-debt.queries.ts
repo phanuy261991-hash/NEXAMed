@@ -1,15 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
+  ApproveSupplierDebtAdjustmentRequest,
+  CreateSupplierDebtAdjustmentRequest,
+  ListSupplierDebtAdjustmentsQuery,
   ListSupplierDebtLedgerQuery,
   ListSupplierDebtPaymentsQuery,
   RecordSupplierDebtOpeningBalanceRequest,
   RecordSupplierDebtPaymentRequest,
   RecordSupplierDebtRefundRequest,
+  RejectSupplierDebtAdjustmentRequest,
 } from '@nexamed/shared';
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
 import {
+  approveSupplierDebtAdjustment,
+  createSupplierDebtAdjustment,
   getSupplierDebtSummary,
+  listSupplierDebtAdjustments,
   listSupplierDebtLedger,
   listSupplierDebtPayments,
   listSupplierDebtReceipts,
@@ -17,6 +24,7 @@ import {
   recordSupplierDebtOpeningBalance,
   recordSupplierDebtPayment,
   recordSupplierDebtRefund,
+  rejectSupplierDebtAdjustment,
 } from './supplier-debt.api';
 
 /** `enabled` mặc định `true` — Sidebar (badge chờ duyệt "Công nợ nhà cung cấp") truyền `false` cho
@@ -110,6 +118,77 @@ export function useRecordSupplierDebtPaymentMutation(supplierId: string) {
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'supplier-debt-receipts', supplierId) });
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'supplier-debt-summaries') });
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'supplier-debt-payments') });
+    },
+  });
+}
+
+// ============ Phần D — "Luồng xử lý sai sót" (docs/DECISIONS.md #180/#182/#187) ============
+
+/** Tab "Nhật ký điều chỉnh" (trang NCC, lọc `supplierId`) VÀ badge "Có điều chỉnh" trên phiếu nhập/
+ * xuất gốc (lọc `targetReceiptId`/`targetIssueId`) — cùng 1 hook, nơi gọi tự truyền query khác nhau. */
+export function useSupplierDebtAdjustmentsQuery(query: ListSupplierDebtAdjustmentsQuery) {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(
+      tenantId,
+      'supplier-debt-adjustments',
+      query.supplierId ?? '',
+      query.status ?? '',
+      query.targetReceiptId ?? '',
+      query.targetIssueId ?? '',
+    ),
+    queryFn: () => listSupplierDebtAdjustments(query),
+  });
+}
+
+/** Lập "Phiếu điều chỉnh công nợ" (Tăng/Giảm) hoặc "Đề nghị huỷ" — CHƯA đụng sổ/tồn kho (chỉ tạo
+ * bản ghi `PENDING_APPROVAL`), chỉ cần làm mới danh sách điều chỉnh + `pendingAdjustmentCount` ở
+ * `supplier-debt-summaries` (badge Sidebar/banner "chờ duyệt") — khác Duyệt (xem dưới), KHÔNG đụng
+ * ledger/receipts/stock-*. */
+export function useCreateSupplierDebtAdjustmentMutation() {
+  const { tenantId } = useAppConfig();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CreateSupplierDebtAdjustmentRequest) => createSupplierDebtAdjustment(body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'supplier-debt-adjustments') });
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'supplier-debt-summaries') });
+    },
+  });
+}
+
+/** Duyệt Phiếu điều chỉnh/Đề nghị huỷ — `VOID_REQUEST` tự huỷ phiếu nhập/xuất gốc trong CÙNG
+ * transaction (`docs/DECISIONS.md` #187), `INCREASE`/`DECREASE` chỉ đụng sổ công nợ. Không biết
+ * trước loại nào đang duyệt ở đây — invalidate RỘNG đúng khuôn `useInvalidateInventory()`
+ * (`inventory.queries.ts`) CỘNG các khoá công nợ, thay vì tách 2 nhánh theo `kind`. */
+export function useApproveSupplierDebtAdjustmentMutation() {
+  const { tenantId } = useAppConfig();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: ApproveSupplierDebtAdjustmentRequest }) => approveSupplierDebtAdjustment(id, body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'supplier-debt-adjustments') });
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'supplier-debt-summaries') });
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'supplier-debt-summary') });
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'supplier-debt-ledger') });
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'supplier-debt-receipts') });
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'stock-receipt') });
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'stock-issue') });
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'stock-balance') });
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'stock-ledger') });
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'stock-expiry') });
+    },
+  });
+}
+
+export function useRejectSupplierDebtAdjustmentMutation() {
+  const { tenantId } = useAppConfig();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: RejectSupplierDebtAdjustmentRequest }) => rejectSupplierDebtAdjustment(id, body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'supplier-debt-adjustments') });
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'supplier-debt-summaries') });
     },
   });
 }

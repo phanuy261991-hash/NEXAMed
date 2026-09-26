@@ -215,8 +215,11 @@ export function Sidebar() {
   // (mặc định CHỈ clinic_admin có `supplier_debt.read`, khác `drug.create`/`drug.update`).
   const canSeeSupplierDebt = useHasPermission('supplier_debt', 'read');
   // Badge số phiếu chờ duyệt cạnh "Công nợ nhà cung cấp" — chỉ tải khi có quyền xem (tránh 403 vô ích).
+  // Gộp cả NCC có phiếu chi chờ duyệt (Phần B) LẪN có Phiếu điều chỉnh/Đề nghị huỷ chờ duyệt (Phần D,
+  // `pendingAdjustmentCount` — đã có sẵn trong response `listSummaries()`, không cần query mới).
   const supplierDebtSummariesQuery = useSupplierDebtSummariesQuery(false, canSeeSupplierDebt);
-  const supplierDebtPendingCount = supplierDebtSummariesQuery.data?.items.filter((s) => s.pendingApprovalAmount > 0).length ?? 0;
+  const supplierDebtPendingCount =
+    supplierDebtSummariesQuery.data?.items.filter((s) => s.pendingApprovalAmount > 0 || s.pendingAdjustmentCount > 0).length ?? 0;
   // Kho Thuốc GĐ2 — "Phiếu nhập kho"/"Tồn kho" (docs/DECISIONS.md #146), gate riêng khỏi
   // `canSeeCatalogPharmacy` (danh mục thuốc) — điều dưỡng/bác sĩ có `stock_receipt.read` (xem tồn)
   // nhưng KHÔNG có `drug.create`/`drug.update`.

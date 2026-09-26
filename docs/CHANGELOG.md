@@ -2,7 +2,15 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
-## 2026-09-25 (phiên mới nhất)
+## 2026-09-26
+
+### Công nợ nhà cung cấp, Phần D "Luồng xử lý sai sót" — frontend + verify Playwright xong, Phần D hoàn tất 100%
+
+Tiếp ngay theo handoff của phiên trước (backend đã xong). Web mới: `SupplierDebtAdjustmentDialog.tsx` (Lập phiếu điều chỉnh Tăng/Giảm), `SupplierDebtAdjustmentDetailDialog.tsx` (xem + Duyệt/Từ chối, dùng chung tab lẫn badge), `SupplierDebtAdjustmentBadge.tsx` ("Có điều chỉnh (N)"). Tab thứ 5 "Nhật ký điều chỉnh" + nút "Lập phiếu điều chỉnh công nợ" + banner đỏ lệch số dư trên `SupplierDetailPage.tsx`. "Đề nghị huỷ" tái dùng thẳng `ReasonConfirmDialog` có sẵn, thêm vào `StockReceiptListPage.tsx`/`StockIssueListPage.tsx` (không phải Form Page như handoff ghi nhầm — đã đối chiếu code thật). "Sao chép thành phiếu mới" ở Form Page khi phiếu đã huỷ, để trống Lô/Hạn dùng bắt chọn lại. Sidebar badge gộp thêm `pendingAdjustmentCount`.
+
+**Đã xác minh thật**: `pnpm -w typecheck/lint/build` sạch, `apps/web` 5/5 test, không cảnh báo chunk size. Verify Playwright qua Chrome thật trên tenant test cố định — dựng vai trò hạn chế tạm thời (đã dọn sạch sau khi xong) để kiểm đúng kịch bản "Đề nghị huỷ", đủ 6 bước từ lập/duyệt điều chỉnh tới huỷ phiếu tự động + "Sao chép thành phiếu mới" + đối chiếu API. Chi tiết đầy đủ `docs/DECISIONS.md` #188. **Còn lại theo lộ trình gốc: Phần E — Đối chiếu & chốt công nợ theo kỳ (chưa có mockup, chưa bắt đầu).**
+
+## 2026-09-25
 
 ### Công nợ nhà cung cấp, Phần D "Luồng xử lý sai sót" — backend code + test xong, chưa làm frontend/Playwright
 

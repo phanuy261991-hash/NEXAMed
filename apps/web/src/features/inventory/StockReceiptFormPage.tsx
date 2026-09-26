@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { CaretDown, CaretRight, MagnifyingGlass, Plus, Printer, Trash, Warning } from '@phosphor-icons/react';
-import type { CreateStockReceiptRequest, DiscountType, DrugSummary, StockReceiptLine, StockReceiptType } from '@nexamed/shared';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { CaretDown, CaretRight, Copy, MagnifyingGlass, Plus, Printer, Trash, Warning } from '@phosphor-icons/react';
+import type { CreateStockReceiptRequest, DiscountType, DrugSummary, StockReceiptDetail, StockReceiptLine, StockReceiptType } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { BoxedSection } from '../../shared/ui/BoxedSection';
@@ -26,6 +26,7 @@ import { useSuppliersQuery } from '../drug/supplier.queries';
 import { useUnitNameByCode, unitLabel } from '../drug/useUnitNameByCode';
 import { useWarehousesQuery } from '../drug/warehouse.queries';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
+import { SupplierDebtAdjustmentBadge } from '../supplier-debt/SupplierDebtAdjustmentBadge';
 import { useSupplierDebtSummaryQuery } from '../supplier-debt/supplier-debt.queries';
 import {
   useApproveStockReceiptMutation,
@@ -110,7 +111,9 @@ function todayVn(): string {
 export function StockReceiptFormPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const isEdit = Boolean(id);
+  const canCreate = useHasPermission('stock_receipt', 'create');
   const canApprove = useHasPermission('stock_receipt', 'approve');
 
   const receiptQuery = useStockReceiptQuery(id ?? '', isEdit);
@@ -205,6 +208,36 @@ export function StockReceiptFormPage() {
     setPrepaidCashAccountId(r.prepaidCashAccountId ?? '');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [receiptQuery.data?.id]);
+
+  // "Sao chép thành phiếu mới" (Phần D, docs/DECISIONS.md #180/#182/#187) — chỉ mồi lúc TẠO MỚI
+  // (không có `:id`), CHỈ 1 lần lúc mount (mảng phụ thuộc rỗng — trang New luôn rỗng lúc vào, không
+  // cần kiểm "đã gõ gì chưa"). Để trống `batchNo` (bắt nhập lại lô mới, tránh trùng lô ảo).
+  useEffect(() => {
+    if (isEdit) return;
+    const copyFrom = (location.state as { copyFromReceipt?: StockReceiptDetail } | null)?.copyFromReceipt;
+    if (!copyFrom) return;
+    setWarehouseId(copyFrom.warehouseId);
+    setSupplierId(copyFrom.supplierId ?? '');
+    setReceiptType(copyFrom.receiptType);
+    setSupplierInvoiceNo(copyFrom.supplierInvoiceNo ?? '');
+    setLines(
+      copyFrom.lines.map((l) => ({
+        key: makeKey(),
+        drugId: l.drugId,
+        drugCode: l.drugCode,
+        drugName: l.drugName,
+        isBatchManaged: Boolean(l.batchNo),
+        unitOptions: [l.unitCode],
+        unitCode: l.unitCode,
+        quantity: String(l.quantity),
+        unitCost: l.unitCost,
+        batchNo: '',
+        expiryDate: '',
+        discountValue: '',
+      })),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const debouncedDrugQuery = useDebouncedValue(drugQuery, 300);
   // Gate hiện/ẩn dropdown theo `drugQuery` (tức thời), KHÔNG theo `debouncedDrugQuery` — bug thật
@@ -449,10 +482,26 @@ export function StockReceiptFormPage() {
         <div className="flex items-center gap-2.5">
           <h2 className="text-lg font-bold text-slate-900">{readOnly ? receiptQuery.data!.receiptNo : isEdit ? 'Sửa phiếu Nháp' : 'Tạo phiếu nhập kho'}</h2>
           {isEdit && receiptQuery.data && <StatusBadge tone={STATUS_META[receiptQuery.data.status]!.tone}>{STATUS_META[receiptQuery.data.status]!.label}</StatusBadge>}
+          {isEdit && receiptQuery.data && receiptQuery.data.voided && <StatusBadge tone="neutral">Đã huỷ</StatusBadge>}
+          {isEdit && receiptQuery.data && Boolean(receiptQuery.data.supplierId) && (
+            <SupplierDebtAdjustmentBadge targetReceiptId={receiptQuery.data.id} />
+          )}
         </div>
-        <Button type="button" variant="secondary" onClick={() => navigate('/inventory/receipts')}>
-          ← Quay lại danh sách
-        </Button>
+        <div className="flex gap-2">
+          {isEdit && receiptQuery.data?.voided && canCreate && (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => navigate('/inventory/receipts/new', { state: { copyFromReceipt: receiptQuery.data } })}
+            >
+              <Copy size={15} weight="bold" aria-hidden="true" />
+              Sao chép thành phiếu mới
+            </Button>
+          )}
+          <Button type="button" variant="secondary" onClick={() => navigate('/inventory/receipts')}>
+            ← Quay lại danh sách
+          </Button>
+        </div>
       </div>
 
       {/* Khối header — 1 hàng ngang gọn theo mockup. */}

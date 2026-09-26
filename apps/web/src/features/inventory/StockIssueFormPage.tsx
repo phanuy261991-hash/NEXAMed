@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { Check, MagnifyingGlass, Printer, Trash } from '@phosphor-icons/react';
-import type { CreateManualStockIssueRequest, DrugSummary, ManualStockIssueType, StockIssueStatus } from '@nexamed/shared';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Check, Copy, MagnifyingGlass, Printer, Trash } from '@phosphor-icons/react';
+import type { CreateManualStockIssueRequest, DrugSummary, ManualStockIssueType, StockIssueDetail, StockIssueStatus } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
@@ -18,6 +18,7 @@ import { useClinicPrintHeaderQuery } from '../clinic/clinic.queries';
 import { useDrugsQuery } from '../drug/drug.queries';
 import { useSuppliersQuery } from '../drug/supplier.queries';
 import { useWarehousesQuery } from '../drug/warehouse.queries';
+import { SupplierDebtAdjustmentBadge } from '../supplier-debt/SupplierDebtAdjustmentBadge';
 import { getDrugBatchBalances } from './inventory.api';
 import {
   useApproveStockIssueMutation,
@@ -82,6 +83,7 @@ function todayVn(): string {
 export function StockIssueFormPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const isEdit = Boolean(id);
   const canCreate = useHasPermission('stock_issue', 'create');
   const canApprove = useHasPermission('stock_issue', 'approve');
@@ -162,6 +164,37 @@ export function StockIssueFormPage() {
     );
     setLoadedForId(it.id);
   }, [issueQuery.data, loadedForId]);
+
+  // "Sao chép thành phiếu mới" (Phần D, docs/DECISIONS.md #180/#182/#187) — chỉ mồi lúc TẠO MỚI
+  // (không có `:id`), CHỈ 1 lần lúc mount. Để trống `batchId`/`batchNo` (bắt chọn lại lô mới —
+  // tồn kho lúc "Sao chép" có thể đã khác lúc phiếu gốc được lập).
+  useEffect(() => {
+    if (isEdit) return;
+    const copyFrom = (location.state as { copyFromIssue?: StockIssueDetail } | null)?.copyFromIssue;
+    if (!copyFrom) return;
+    setIssueType(copyFrom.issueType as ManualStockIssueType);
+    setWarehouseId(copyFrom.warehouseId);
+    setDepartmentId(copyFrom.departmentId ?? '');
+    setSupplierId(copyFrom.supplierId ?? '');
+    setSourceReceiptId(copyFrom.sourceReceiptId ?? '');
+    setNote(copyFrom.note ?? '');
+    setLines(
+      copyFrom.lines.map((l) => ({
+        key: makeKey(),
+        drugId: l.drugId,
+        drugCode: l.drugCode,
+        drugName: l.drugName,
+        isBatchManaged: Boolean(l.batchNo),
+        batchId: null,
+        batchNo: '',
+        expiryDate: '',
+        availableQuantity: 0,
+        quantity: String(l.quantity),
+        returnUnitPrice: '',
+      })),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const debouncedDrugQuery = useDebouncedValue(drugQuery, 300);
   const isSearchingDrug = drugQuery.trim() !== '';
@@ -361,11 +394,22 @@ export function StockIssueFormPage() {
         <div className="flex items-center gap-2.5">
           <h2 className="text-lg font-bold text-slate-900">{readOnly ? issueQuery.data!.issueNo : isEdit ? 'Sửa phiếu Nháp' : 'Tạo phiếu xuất kho'}</h2>
           {isEdit && issueQuery.data && <StatusBadge tone={STATUS_META[issueQuery.data.status].tone}>{STATUS_META[issueQuery.data.status].label}</StatusBadge>}
+          {isEdit && issueQuery.data && Boolean(issueQuery.data.supplierId) && <SupplierDebtAdjustmentBadge targetIssueId={issueQuery.data.id} />}
         </div>
         <div className="flex gap-2">
           {readOnly && isEdit && issueQuery.data?.status === 'DRAFT' && canApprove && (
             <Button type="button" variant="secondary" onClick={() => setRejecting(true)}>
               Từ chối
+            </Button>
+          )}
+          {isEdit && issueQuery.data?.status === 'VOIDED' && canCreate && (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => navigate('/inventory/issues/manual/new', { state: { copyFromIssue: issueQuery.data } })}
+            >
+              <Copy size={15} weight="bold" aria-hidden="true" />
+              Sao chép thành phiếu mới
             </Button>
           )}
           <Button type="button" variant="secondary" onClick={() => navigate('/inventory/issues')}>

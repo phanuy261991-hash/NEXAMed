@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, ClipboardText, Eye, HandCoins, Receipt, Scales, ShoppingCart, Truck, ArrowUUpLeft } from '@phosphor-icons/react';
-import type { SupplierDebtLedgerEntry, SupplierDebtPayment, SupplierDebtReceiptStatus } from '@nexamed/shared';
+import { ArrowLeft, ClipboardText, Eye, HandCoins, Receipt, Scales, ShoppingCart, Truck, ArrowUUpLeft, Warning } from '@phosphor-icons/react';
+import type { SupplierDebtAdjustment, SupplierDebtLedgerEntry, SupplierDebtPayment, SupplierDebtReceiptStatus } from '@nexamed/shared';
 import { formatVnd } from '../../shared/format/currency';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
@@ -30,11 +30,14 @@ import {
   useRecordSupplierDebtOpeningBalanceMutation,
   useRecordSupplierDebtPaymentMutation,
   useRecordSupplierDebtRefundMutation,
+  useSupplierDebtAdjustmentsQuery,
   useSupplierDebtLedgerQuery,
   useSupplierDebtPaymentsQuery,
   useSupplierDebtReceiptsQuery,
   useSupplierDebtSummaryQuery,
 } from './supplier-debt.queries';
+import { SupplierDebtAdjustmentDialog } from './SupplierDebtAdjustmentDialog';
+import { SupplierDebtAdjustmentDetailDialog } from './SupplierDebtAdjustmentDetailDialog';
 
 function formatDateShort(iso: string): string {
   const d = new Date(iso);
@@ -65,13 +68,12 @@ const ENTRY_TYPE_LABEL: Record<SupplierDebtLedgerEntry['entryType'], string> = {
   REVERSAL: 'Bút toán đảo',
 };
 
-type TabId = 'receipts' | 'returns' | 'ledger' | 'payments';
+type TabId = 'receipts' | 'returns' | 'ledger' | 'payments' | 'adjustments';
 
-/** Trang chi tiết NCC — "Công nợ nhà cung cấp" Phần A + Phần B + Phần C (docs/DECISIONS.md
- * #180/#182). 4 tab "Phiếu nhập"/"Phiếu trả hàng" (Phần C)/"Sổ công nợ" (Phần A)/"Thanh toán" (Phần
- * B) — "Nhật ký điều chỉnh" (Phần D) chưa có dữ liệu, để dành thêm khi phần đó code xong, đúng khuôn
- * màn hình khám Sprint 3 (mở khoá dần theo từng phần). Không có `GET /suppliers/:id` riêng — tìm
- * trong danh sách đã tải sẵn (không phân trang, quy mô nhỏ, đúng khuôn `SupplierPane`). */
+/** Trang chi tiết NCC — "Công nợ nhà cung cấp" Phần A + Phần B + Phần C + Phần D (docs/DECISIONS.md
+ * #180/#182/#187). 5 tab "Phiếu nhập"/"Phiếu trả hàng" (Phần C)/"Sổ công nợ" (Phần A)/"Thanh toán"
+ * (Phần B)/"Nhật ký điều chỉnh" (Phần D). Không có `GET /suppliers/:id` riêng — tìm trong danh sách
+ * đã tải sẵn (không phân trang, quy mô nhỏ, đúng khuôn `SupplierPane`). */
 export function SupplierDetailPage() {
   const { id } = useParams<{ id: string }>();
   const supplierId = id!;
@@ -79,7 +81,9 @@ export function SupplierDetailPage() {
   const [openingBalanceOpen, setOpeningBalanceOpen] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [refundOpen, setRefundOpen] = useState(false);
+  const [adjustmentOpen, setAdjustmentOpen] = useState(false);
   const canPay = useHasPermission('supplier_debt', 'pay');
+  const canAdjust = useHasPermission('supplier_debt', 'adjust');
 
   const suppliersQuery = useSuppliersQuery(true);
   const summaryQuery = useSupplierDebtSummaryQuery(supplierId);
@@ -141,14 +145,20 @@ export function SupplierDetailPage() {
                 Khai nợ đầu kỳ
               </Button>
             )}
+            {canAdjust && (
+              <Button type="button" variant="secondary" onClick={() => setAdjustmentOpen(true)}>
+                <Warning size={16} weight="bold" aria-hidden="true" />
+                Lập phiếu điều chỉnh công nợ
+              </Button>
+            )}
             {canPay && summary.balance > 0 && (
-              <Button type="button" onClick={() => setPaymentOpen(true)}>
+              <Button type="button" disabled={!summary.balanceIntegrityOk} onClick={() => setPaymentOpen(true)}>
                 <HandCoins size={16} weight="bold" aria-hidden="true" />
                 Thanh toán công nợ
               </Button>
             )}
             {canPay && summary.balance < 0 && (
-              <Button type="button" onClick={() => setRefundOpen(true)}>
+              <Button type="button" disabled={!summary.balanceIntegrityOk} onClick={() => setRefundOpen(true)}>
                 <ArrowUUpLeft size={16} weight="bold" aria-hidden="true" />
                 Thu tiền NCC hoàn lại
               </Button>
@@ -172,9 +182,19 @@ export function SupplierDetailPage() {
           ]}
         />
       </div>
+      {!summary.balanceIntegrityOk && (
+        <div className="rounded-lg border border-rose-300 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700">
+          Số dư công nợ không khớp sổ — liên hệ quản trị. Đã tạm chặn Thanh toán/Thu tiền hoàn lại tới khi xử lý.
+        </div>
+      )}
       {summary.pendingApprovalAmount > 0 && (
         <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-800">
           Có {formatVnd(summary.pendingApprovalAmount)} phiếu chi đang chờ duyệt — công nợ chưa giảm cho tới khi được duyệt.
+        </div>
+      )}
+      {summary.pendingAdjustmentCount > 0 && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-800">
+          Có {summary.pendingAdjustmentCount} phiếu điều chỉnh/đề nghị huỷ đang chờ duyệt — xem tab "Nhật ký điều chỉnh".
         </div>
       )}
 
@@ -185,6 +205,7 @@ export function SupplierDetailPage() {
             { id: 'returns', label: 'Phiếu trả hàng' },
             { id: 'ledger', label: 'Sổ công nợ' },
             { id: 'payments', label: 'Thanh toán' },
+            { id: 'adjustments', label: 'Nhật ký điều chỉnh' },
           ]}
           active={tab}
           onChange={setTab}
@@ -195,12 +216,14 @@ export function SupplierDetailPage() {
           {tab === 'returns' && <ReturnsTab supplierId={supplierId} />}
           {tab === 'ledger' && <LedgerTab supplierId={supplierId} />}
           {tab === 'payments' && <PaymentsTab supplierId={supplierId} />}
+          {tab === 'adjustments' && <AdjustmentsTab supplierId={supplierId} />}
         </div>
       </div>
 
       {openingBalanceOpen && <OpeningBalanceDialog supplierId={supplierId} supplierName={supplier.name} onClose={() => setOpeningBalanceOpen(false)} />}
       {paymentOpen && <PaymentDialog supplierId={supplierId} supplierName={supplier.name} balance={summary.balance} onClose={() => setPaymentOpen(false)} />}
       {refundOpen && <RefundDialog supplierId={supplierId} supplierName={supplier.name} balance={summary.balance} onClose={() => setRefundOpen(false)} />}
+      {adjustmentOpen && <SupplierDebtAdjustmentDialog supplierId={supplierId} supplierName={supplier.name} onClose={() => setAdjustmentOpen(false)} />}
     </div>
   );
 }
@@ -432,6 +455,80 @@ function PaymentsTab({ supplierId }: { supplierId: string }) {
         </tbody>
       </table>
       {viewVoucherId && <CashVoucherDetailDialog voucherId={viewVoucherId} onClose={() => setViewVoucherId(null)} />}
+    </div>
+  );
+}
+
+const ADJUSTMENT_KIND_LABEL: Record<SupplierDebtAdjustment['kind'], string> = {
+  INCREASE: 'Điều chỉnh tăng',
+  DECREASE: 'Điều chỉnh giảm',
+  VOID_REQUEST: 'Đề nghị huỷ',
+};
+
+const ADJUSTMENT_STATUS_LABEL: Record<SupplierDebtAdjustment['status'], { label: string; tone: StatusBadgeTone }> = {
+  PENDING_APPROVAL: { label: 'Chờ duyệt', tone: 'warning' },
+  APPROVED: { label: 'Đã duyệt', tone: 'success' },
+  REJECTED: { label: 'Đã từ chối', tone: 'danger' },
+};
+
+/** Phần D — tab "Nhật ký điều chỉnh": mọi Phiếu điều chỉnh/Đề nghị huỷ của NCC này, mới→cũ (server
+ * không sắp thứ tự tường minh — `listAdjustments()` trả theo `createdAt DESC`, đúng khuôn các tab
+ * khác). Nút "Xem" mở `SupplierDebtAdjustmentDetailDialog` dùng chung với badge "Có điều chỉnh" ở
+ * `StockReceiptFormPage.tsx`/`StockIssueFormPage.tsx`. */
+function AdjustmentsTab({ supplierId }: { supplierId: string }) {
+  const query = useSupplierDebtAdjustmentsQuery({ supplierId });
+  const [viewingId, setViewingId] = useState<string | null>(null);
+
+  if (query.isError) {
+    return <ErrorBanner message="Không tải được nhật ký điều chỉnh." onRetry={() => void query.refetch()} />;
+  }
+  if (query.isLoading) {
+    return <Skeleton className="h-40 w-full" />;
+  }
+  const items = query.data?.items ?? [];
+  const viewing = items.find((a) => a.id === viewingId) ?? null;
+  if (items.length === 0) {
+    return <EmptyState icon={Warning} title="Chưa có điều chỉnh nào" description="Phiếu điều chỉnh công nợ/Đề nghị huỷ chứng từ sẽ hiện ở đây." />;
+  }
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-slate-200">
+      <table className="w-full border-collapse text-sm">
+        <thead>
+          <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+            <th className="px-3 py-2.5 text-center">Mã phiếu</th>
+            <th className="px-3 py-2.5 text-center">Loại</th>
+            <th className="px-3 py-2.5 text-center">Số tiền</th>
+            <th className="px-3 py-2.5 text-left">Người đề nghị</th>
+            <th className="px-3 py-2.5 text-left">Người duyệt</th>
+            <th className="px-3 py-2.5 text-center">Trạng thái</th>
+            <th className="px-3 py-2.5 text-center">Thao tác</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((a) => (
+            <tr key={a.id} className="border-b border-slate-200 last:border-0">
+              <td className="px-3 py-2 text-center font-semibold text-slate-800">{a.adjustmentNo}</td>
+              <td className="px-3 py-2 text-center">
+                <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">{ADJUSTMENT_KIND_LABEL[a.kind]}</span>
+              </td>
+              <td className="px-3 py-2 text-center font-bold text-slate-900">{a.amount !== null ? formatVnd(a.amount) : '—'}</td>
+              <td className="px-3 py-2 text-left font-medium text-slate-600">{a.createdByName}</td>
+              <td className="px-3 py-2 text-left font-medium text-slate-600">
+                {a.approvedByName ?? '—'}
+                {a.selfApproved && a.status === 'APPROVED' && <span className="ml-1.5 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-bold text-blue-700">Tự duyệt</span>}
+              </td>
+              <td className="px-3 py-2 text-center">
+                <StatusBadge tone={ADJUSTMENT_STATUS_LABEL[a.status].tone}>{ADJUSTMENT_STATUS_LABEL[a.status].label}</StatusBadge>
+              </td>
+              <td className="px-3 py-2 text-center">
+                <RowActionButton icon={Eye} label="Xem" tone="neutral" onClick={() => setViewingId(a.id)} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {viewing && <SupplierDebtAdjustmentDetailDialog adjustment={viewing} onClose={() => setViewingId(null)} />}
     </div>
   );
 }
