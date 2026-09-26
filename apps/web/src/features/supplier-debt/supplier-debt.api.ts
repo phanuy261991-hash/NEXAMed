@@ -1,6 +1,8 @@
 import type {
   ApproveSupplierDebtAdjustmentRequest,
   CreateSupplierDebtAdjustmentRequest,
+  CreateSupplierDebtReconciliationRequest,
+  FinalizeSupplierDebtReconciliationRequest,
   ListSupplierDebtAdjustmentsQuery,
   ListSupplierDebtAdjustmentsResponse,
   ListSupplierDebtLedgerQuery,
@@ -8,12 +10,15 @@ import type {
   ListSupplierDebtPaymentsQuery,
   ListSupplierDebtPaymentsResponse,
   ListSupplierDebtReceiptsResponse,
+  ListSupplierDebtReconciliationsResponse,
   ListSupplierDebtSummariesResponse,
+  PreviewSupplierDebtReconciliationResponse,
   RecordSupplierDebtOpeningBalanceRequest,
   RecordSupplierDebtPaymentRequest,
   RecordSupplierDebtRefundRequest,
   RejectSupplierDebtAdjustmentRequest,
   SupplierDebtAdjustment,
+  SupplierDebtReconciliation,
   SupplierDebtSummary,
 } from '@nexamed/shared';
 import { getApiClient, unwrap } from '../../shared/api/client';
@@ -76,4 +81,30 @@ export async function approveSupplierDebtAdjustment(id: string, body: ApproveSup
 
 export async function rejectSupplierDebtAdjustment(id: string, body: RejectSupplierDebtAdjustmentRequest): Promise<SupplierDebtAdjustment> {
   return unwrap(await getApiClient().POST('/api/v1/supplier-debt/adjustments/{id}/reject', { params: { path: { id } }, body })) as SupplierDebtAdjustment;
+}
+
+// ============ Phần E — "Đối chiếu & chốt công nợ theo kỳ" (docs/DECISIONS.md #182 câu 3) ============
+
+export async function previewSupplierDebtReconciliation(supplierId: string, asOfDate: string, confirmedBalance: number): Promise<PreviewSupplierDebtReconciliationResponse> {
+  return unwrap(
+    await getApiClient().GET('/api/v1/supplier-debt/{supplierId}/reconciliation-preview', { params: { path: { supplierId }, query: { asOfDate, confirmedBalance } } }),
+  ) as PreviewSupplierDebtReconciliationResponse;
+}
+
+export async function createSupplierDebtReconciliation(supplierId: string, body: CreateSupplierDebtReconciliationRequest): Promise<SupplierDebtReconciliation> {
+  return unwrap(
+    await getApiClient().POST('/api/v1/supplier-debt/{supplierId}/reconciliations', { params: { path: { supplierId } }, body }),
+  ) as SupplierDebtReconciliation;
+}
+
+export async function listSupplierDebtReconciliations(supplierId: string): Promise<ListSupplierDebtReconciliationsResponse> {
+  return unwrap(
+    await getApiClient().GET('/api/v1/supplier-debt/{supplierId}/reconciliations', { params: { path: { supplierId } } }),
+  ) as ListSupplierDebtReconciliationsResponse;
+}
+
+export async function finalizeSupplierDebtReconciliation(supplierId: string, id: string, body: FinalizeSupplierDebtReconciliationRequest): Promise<SupplierDebtReconciliation> {
+  return unwrap(
+    await getApiClient().POST('/api/v1/supplier-debt/{supplierId}/reconciliations/{id}/finalize', { params: { path: { supplierId, id } }, body }),
+  ) as SupplierDebtReconciliation;
 }

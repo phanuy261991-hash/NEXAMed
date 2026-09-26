@@ -78,6 +78,20 @@ export class SupplierDebtEntryRepository {
     return result._sum.amountChange ?? 0n;
   }
 
+  /** Phần E — "số hệ thống tại ngày X" cho Biên bản đối chiếu: tổng `amountChange` của MỌI bút toán
+   * có `occurredAt <= asOfDate`. KHÔNG cần loại cặp gốc+REVERSAL như `sumByTypeExcludingReversed()` ở
+   * Service — REVERSAL luôn mang `occurredAt` = lúc huỷ (xem `reverseStockEntry()`), nên nếu việc huỷ
+   * xảy ra SAU `asOfDate` thì REVERSAL tự bị lọc ra ngoài (đúng ngữ nghĩa "số liệu tại thời điểm đó",
+   * chưa biết việc huỷ sẽ xảy ra); nếu huỷ xảy ra TRƯỚC/BẰNG `asOfDate` thì cả 2 dòng được cộng
+   * (triệt tiêu nhau) — đúng trong mọi trường hợp. */
+  async sumAmountChangeAsOf(tx: Prisma.TransactionClient, tenantId: string, accountId: string, asOfDate: Date): Promise<bigint> {
+    const result = await tx.supplierDebtEntry.aggregate({
+      where: { tenantId, accountId, occurredAt: { lte: asOfDate } },
+      _sum: { amountChange: true },
+    });
+    return result._sum.amountChange ?? 0n;
+  }
+
   /** Toàn bộ sổ của NHIỀU NCC trong 1 câu truy vấn (tránh N+1 ở trang danh sách "Công nợ nhà cung
    * cấp"/"Nhà cung cấp") — cùng dữ liệu thô như `listByAccountId()`, Service tự tính tổng theo
    * `entryType` SAU KHI loại cặp gốc+REVERSAL (đúng `allocateSupplierDebt()`), không tính ở tầng

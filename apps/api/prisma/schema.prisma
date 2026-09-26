@@ -66,65 +66,66 @@ model Tenant {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenantSettings         TenantSetting[]
-  floors                 Floor[]
-  rooms                  Room[]
-  examStations           ExamStation[]
-  workShifts             WorkShift[]
-  workShiftAssignments   WorkShiftAssignment[]
-  departmentTypes        DepartmentType[]
-  departments            Department[]
-  userAccounts           UserAccount[]
-  roles                  Role[]
-  rolePermissions        RolePermission[]
-  codeSequences          CodeSequence[]
-  auditLogs              AuditLog[]
-  breakGlassSessions     BreakGlassSession[]
-  doctorRoomSessions     DoctorRoomSession[]
-  doctorAvailabilities   DoctorAvailability[]
-  userSessions           UserSession[]
-  patients               Patient[]
-  appointments           Appointment[]
-  encounters             Encounter[]
-  vitalSigns             VitalSign[]
-  encounterServiceItems  EncounterServiceItem[]
-  diagnoses              Diagnosis[]
-  clinicalNotes          ClinicalNote[]
-  drugs                  Drug[]
-  drugUnits              DrugUnit[]
-  drugIngredients        DrugIngredient[]
-  suppliers              Supplier[]
-  warehouses             Warehouse[]
-  prescriptions          Prescription[]
-  prescriptionItems      PrescriptionItem[]
-  patientAllergens       PatientAllergen[]
-  patientConditions      PatientCondition[]
-  patientFamilyHistories PatientFamilyHistory[]
-  examTypePrices         ExamTypePrice[]
-  invoices               Invoice[]
-  invoiceLines           InvoiceLine[]
-  payments               Payment[]
-  cashierShifts          CashierShift[]
-  cashAccounts           CashAccount[]
-  cashVouchers           CashVoucher[]
-  patientWallets         PatientWallet[]
-  walletTransactions     WalletTransaction[]
-  supplierDebtAccounts   SupplierDebtAccount[]
-  supplierDebtEntries    SupplierDebtEntry[]
-  supplierDebtAdjustments SupplierDebtAdjustment[]
-  stockReceipts          StockReceipt[]
-  stockReceiptLines      StockReceiptLine[]
-  inventoryBatches       InventoryBatch[]
-  stockLedgers           StockLedger[]
-  stockBalances          StockBalance[]
-  stockIssues            StockIssue[]
-  stockIssueLines        StockIssueLine[]
+  tenantSettings              TenantSetting[]
+  floors                      Floor[]
+  rooms                       Room[]
+  examStations                ExamStation[]
+  workShifts                  WorkShift[]
+  workShiftAssignments        WorkShiftAssignment[]
+  departmentTypes             DepartmentType[]
+  departments                 Department[]
+  userAccounts                UserAccount[]
+  roles                       Role[]
+  rolePermissions             RolePermission[]
+  codeSequences               CodeSequence[]
+  auditLogs                   AuditLog[]
+  breakGlassSessions          BreakGlassSession[]
+  doctorRoomSessions          DoctorRoomSession[]
+  doctorAvailabilities        DoctorAvailability[]
+  userSessions                UserSession[]
+  patients                    Patient[]
+  appointments                Appointment[]
+  encounters                  Encounter[]
+  vitalSigns                  VitalSign[]
+  encounterServiceItems       EncounterServiceItem[]
+  diagnoses                   Diagnosis[]
+  clinicalNotes               ClinicalNote[]
+  drugs                       Drug[]
+  drugUnits                   DrugUnit[]
+  drugIngredients             DrugIngredient[]
+  suppliers                   Supplier[]
+  warehouses                  Warehouse[]
+  prescriptions               Prescription[]
+  prescriptionItems           PrescriptionItem[]
+  patientAllergens            PatientAllergen[]
+  patientConditions           PatientCondition[]
+  patientFamilyHistories      PatientFamilyHistory[]
+  examTypePrices              ExamTypePrice[]
+  invoices                    Invoice[]
+  invoiceLines                InvoiceLine[]
+  payments                    Payment[]
+  cashierShifts               CashierShift[]
+  cashAccounts                CashAccount[]
+  cashVouchers                CashVoucher[]
+  patientWallets              PatientWallet[]
+  walletTransactions          WalletTransaction[]
+  supplierDebtAccounts        SupplierDebtAccount[]
+  supplierDebtEntries         SupplierDebtEntry[]
+  supplierDebtAdjustments     SupplierDebtAdjustment[]
+  supplierDebtReconciliations SupplierDebtReconciliation[]
+  stockReceipts               StockReceipt[]
+  stockReceiptLines           StockReceiptLine[]
+  inventoryBatches            InventoryBatch[]
+  stockLedgers                StockLedger[]
+  stockBalances               StockBalance[]
+  stockIssues                 StockIssue[]
+  stockIssueLines             StockIssueLine[]
   // Kho Thuốc GĐ4 (docs/DECISIONS.md #170) — Kiểm kê.
-  stockCounts            StockCount[]
-  stockCountLines        StockCountLine[]
+  stockCounts                 StockCount[]
+  stockCountLines             StockCountLine[]
   // Kho Thuốc GĐ4 (docs/DECISIONS.md #170) — Điều chuyển kho.
-  stockTransfers         StockTransfer[]
-  stockTransferLines     StockTransferLine[]
+  stockTransfers              StockTransfer[]
+  stockTransferLines          StockTransferLine[]
 
   @@map("tenant")
 }
@@ -1611,19 +1612,19 @@ model Drug {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant            Tenant             @relation(fields: [tenantId], references: [id])
-  prescriptionItems PrescriptionItem[]
-  units             DrugUnit[]
-  ingredients       DrugIngredient[]
+  tenant             Tenant              @relation(fields: [tenantId], references: [id])
+  prescriptionItems  PrescriptionItem[]
+  units              DrugUnit[]
+  ingredients        DrugIngredient[]
   // Kho Thuốc GĐ2 — xem model StockReceiptLine/InventoryBatch/StockLedger/StockBalance.
-  stockReceiptLines StockReceiptLine[]
-  inventoryBatches  InventoryBatch[]
-  stockLedgers      StockLedger[]
-  stockBalances     StockBalance[]
+  stockReceiptLines  StockReceiptLine[]
+  inventoryBatches   InventoryBatch[]
+  stockLedgers       StockLedger[]
+  stockBalances      StockBalance[]
   // Kho Thuốc GĐ3 (#163).
-  stockIssueLines   StockIssueLine[]
+  stockIssueLines    StockIssueLine[]
   // Kho Thuốc GĐ4 (docs/DECISIONS.md #170) — Kiểm kê + Điều chuyển kho.
-  stockCountLines   StockCountLine[]
+  stockCountLines    StockCountLine[]
   stockTransferLines StockTransferLine[]
 
   @@unique([tenantId, id])
@@ -1717,18 +1718,20 @@ model Supplier {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  tenant              Tenant                       @relation(fields: [tenantId], references: [id])
   // Kho Thuốc GĐ2 — phiếu nhập từ nhà cung cấp này (receiptType=PURCHASE).
-  stockReceipts StockReceipt[]
+  stockReceipts       StockReceipt[]
   // "Công nợ nhà cung cấp" Phần A — 1 NCC có nhiều nhất 1 sổ công nợ (find-or-create lúc phát sinh
   // bút toán đầu tiên, chưa chắc đã tồn tại với NCC chưa từng mua/khai nợ).
-  debtAccount   SupplierDebtAccount?
+  debtAccount         SupplierDebtAccount?
   // "Công nợ nhà cung cấp" — cash_voucher gắn NCC (Trả ngay lúc nhập/Thanh toán công nợ/NCC hoàn tiền).
-  cashVouchers  CashVoucher[]
+  cashVouchers        CashVoucher[]
   // "Công nợ nhà cung cấp" Phần C — phiếu xuất trả NCC (issueType=RETURN_TO_SUPPLIER) gắn NCC này.
-  stockIssues   StockIssue[]
+  stockIssues         StockIssue[]
   // "Công nợ nhà cung cấp" Phần D — Phiếu điều chỉnh công nợ/Đề nghị huỷ gắn NCC này.
-  debtAdjustments SupplierDebtAdjustment[]
+  debtAdjustments     SupplierDebtAdjustment[]
+  // "Công nợ nhà cung cấp" Phần E — Biên bản đối chiếu công nợ gắn NCC này.
+  debtReconciliations SupplierDebtReconciliation[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, code])
@@ -1757,22 +1760,22 @@ model Warehouse {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant           Tenant           @relation(fields: [tenantId], references: [id])
+  tenant             Tenant           @relation(fields: [tenantId], references: [id])
   // department_id nullable — FK chỉ áp khi có giá trị (Postgres MATCH SIMPLE, cùng mẫu room.floor).
-  department       Department?      @relation(fields: [tenantId, departmentId], references: [tenantId, id])
+  department         Department?      @relation(fields: [tenantId, departmentId], references: [tenantId, id])
   // Kho Thuốc GĐ2 — xem model StockReceipt/InventoryBatch/StockLedger/StockBalance.
-  stockReceipts    StockReceipt[]
-  inventoryBatches InventoryBatch[]
-  stockLedgers     StockLedger[]
-  stockBalances    StockBalance[]
+  stockReceipts      StockReceipt[]
+  inventoryBatches   InventoryBatch[]
+  stockLedgers       StockLedger[]
+  stockBalances      StockBalance[]
   // Kho Thuốc GĐ3 (#163).
-  stockIssues      StockIssue[]
+  stockIssues        StockIssue[]
   // Kho Thuốc GĐ4 (docs/DECISIONS.md #170) — Kiểm kê.
-  stockCounts      StockCount[]
+  stockCounts        StockCount[]
   // Kho Thuốc GĐ4 (docs/DECISIONS.md #170) — Điều chuyển kho. 2 quan hệ RIÊNG (đặt tên) vì Warehouse
   // là đích của CẢ HAI cột `fromWarehouseId`/`toWarehouseId` trên cùng StockTransfer.
-  stockTransfersFrom StockTransfer[] @relation("StockTransferFromWarehouse")
-  stockTransfersTo   StockTransfer[] @relation("StockTransferToWarehouse")
+  stockTransfersFrom StockTransfer[]  @relation("StockTransferFromWarehouse")
+  stockTransfersTo   StockTransfer[]  @relation("StockTransferToWarehouse")
 
   @@unique([tenantId, id])
   @@unique([tenantId, code])
@@ -1785,48 +1788,48 @@ model Warehouse {
 // Từ chối (REJECTED, bắt buộc lý do, không đụng tồn). Huỷ phiếu ĐÃ POSTED = soft-delete header +
 // ghi dòng stock_ledger đảo chiều (reason RECEIPT_VOID), KHÔNG sửa/xoá dòng ledger gốc.
 model StockReceipt {
-  id                String             @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId          String             @map("tenant_id") @db.Uuid
-  receiptNo         String             @map("receipt_no")
-  warehouseId       String             @map("warehouse_id") @db.Uuid
+  id                       String             @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId                 String             @map("tenant_id") @db.Uuid
+  receiptNo                String             @map("receipt_no")
+  warehouseId              String             @map("warehouse_id") @db.Uuid
   // NULL khi receiptType != PURCHASE (vd OPENING_BALANCE không có nhà cung cấp).
-  supplierId        String?            @map("supplier_id") @db.Uuid
-  receiptType       StockReceiptType   @map("receipt_type")
-  status            StockReceiptStatus @default(DRAFT)
+  supplierId               String?            @map("supplier_id") @db.Uuid
+  receiptType              StockReceiptType   @map("receipt_type")
+  status                   StockReceiptStatus @default(DRAFT)
   // Ngày nhập do người dùng khai (có thể lùi ngày cho tồn đầu kỳ) — khác createdAt (mốc tạo bản ghi).
-  occurredAt        DateTime           @map("occurred_at") @db.Timestamptz(6)
-  note              String?
+  occurredAt               DateTime           @map("occurred_at") @db.Timestamptz(6)
+  note                     String?
   // Mã hoá đơn NCC — đối chiếu, không dùng để tính toán gì (nullable, mọi receiptType).
-  supplierInvoiceNo String?            @map("supplier_invoice_no")
+  supplierInvoiceNo        String?            @map("supplier_invoice_no")
   // Snapshot tổng tiền nhập, tính từ tổng lineAmount các dòng — cập nhật lại nếu sửa lúc còn DRAFT.
-  totalAmount       BigInt             @default(0) @map("total_amount")
-  approvedBy        String?            @map("approved_by") @db.Uuid
-  approvedAt        DateTime?          @map("approved_at") @db.Timestamptz(6)
+  totalAmount              BigInt             @default(0) @map("total_amount")
+  approvedBy               String?            @map("approved_by") @db.Uuid
+  approvedAt               DateTime?          @map("approved_at") @db.Timestamptz(6)
   // Bắt buộc khi status=REJECTED, NULL các trạng thái khác.
-  rejectionReason   String?            @map("rejection_reason")
+  rejectionReason          String?            @map("rejection_reason")
   // Kho Thuốc GĐ4 (docs/DECISIONS.md #170) — trỏ về `stock_count` khi phiếu này ĐƯỢC TỰ SINH lúc
   // Duyệt phiếu kiểm kê phát hiện dư (receiptType=COUNT_SURPLUS). NULL cho mọi phiếu nhập thường.
   // Chỉ để hiển thị "xem chứng từ gốc" sau này — KHÔNG dùng để tính lại gì.
-  countId           String?            @map("count_id") @db.Uuid
+  countId                  String?            @map("count_id") @db.Uuid
   // Kho Thuốc GĐ4 (docs/DECISIONS.md #170) — trỏ về `stock_transfer` khi phiếu này ĐƯỢC TỰ SINH lúc
   // Xác nhận nhận hàng (receiptType=TRANSFER_IN). NULL cho mọi phiếu nhập khác. Cùng bản chất
   // `countId` ở trên — chỉ để hiển thị "xem chứng từ gốc", KHÔNG dùng để tính lại gì.
-  transferId        String?            @map("transfer_id") @db.Uuid
+  transferId               String?            @map("transfer_id") @db.Uuid
   // Kho Thuốc GĐ4, "Phiếu nhập kho mở rộng" (docs/DECISIONS.md #170) — Chiết khấu "Toàn phiếu",
   // CHỈ có ý nghĩa khi receiptType='PURCHASE' (ép ở tầng Service, không CHECK DB — cùng cách
   // `invoice`/`invoice_line` #137 xử lý). Loại trừ lẫn nhau với chiết khấu "Từng dòng"
   // (`StockReceiptLine.discountType`) — computeInvoiceDiscount() (@nexamed/core) tái dùng nguyên
   // logic đã có ở Thu ngân, không viết lại. Số tiền chiết khấu KHÔNG lưu cột riêng (derived).
-  discountType      DiscountType?      @map("discount_type")
-  discountValue     BigInt?            @map("discount_value")
-  discountReason    String?            @map("discount_reason")
+  discountType             DiscountType?      @map("discount_type")
+  discountValue            BigInt?            @map("discount_value")
+  discountReason           String?            @map("discount_reason")
   // "Công nợ nhà cung cấp" Phần A (docs/DECISIONS.md #180/#182) — "Trả ngay" cho NCC ngay lúc Duyệt
   // phiếu, CHỈ có ý nghĩa khi receiptType='PURCHASE' (ép ở tầng Service, không CHECK DB — cùng cách
   // discountType/#170 xử lý). Khai lúc Nháp, phiếu chi (prepaidVoucherId) chỉ THỰC SỰ sinh lúc Duyệt.
-  prepaidAmount            BigInt  @default(0) @map("prepaid_amount")
-  prepaidPaymentMethodCode String? @map("prepaid_payment_method_code")
-  prepaidCashAccountId     String? @map("prepaid_cash_account_id") @db.Uuid
-  prepaidVoucherId         String? @map("prepaid_voucher_id") @db.Uuid
+  prepaidAmount            BigInt             @default(0) @map("prepaid_amount")
+  prepaidPaymentMethodCode String?            @map("prepaid_payment_method_code")
+  prepaidCashAccountId     String?            @map("prepaid_cash_account_id") @db.Uuid
+  prepaidVoucherId         String?            @map("prepaid_voucher_id") @db.Uuid
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -1837,27 +1840,27 @@ model StockReceipt {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant        Tenant             @relation(fields: [tenantId], references: [id])
-  warehouse     Warehouse          @relation(fields: [tenantId, warehouseId], references: [tenantId, id])
+  tenant                  Tenant                   @relation(fields: [tenantId], references: [id])
+  warehouse               Warehouse                @relation(fields: [tenantId, warehouseId], references: [tenantId, id])
   // Composite FK (tenant_id, supplier_id) -> supplier(tenant_id, id), NULLABLE.
-  supplier      Supplier?          @relation(fields: [tenantId, supplierId], references: [tenantId, id])
+  supplier                Supplier?                @relation(fields: [tenantId, supplierId], references: [tenantId, id])
   // Composite FK (tenant_id, count_id) -> stock_count(tenant_id, id), NULLABLE (GĐ4).
-  count         StockCount?        @relation(fields: [tenantId, countId], references: [tenantId, id])
+  count                   StockCount?              @relation(fields: [tenantId, countId], references: [tenantId, id])
   // Composite FK (tenant_id, transfer_id) -> stock_transfer(tenant_id, id), NULLABLE (GĐ4).
-  transfer      StockTransfer?     @relation(fields: [tenantId, transferId], references: [tenantId, id])
+  transfer                StockTransfer?           @relation(fields: [tenantId, transferId], references: [tenantId, id])
   // Composite FK (tenant_id, prepaid_cash_account_id) -> cash_account(tenant_id, id), NULLABLE.
-  prepaidCashAccount CashAccount?  @relation(fields: [tenantId, prepaidCashAccountId], references: [tenantId, id])
+  prepaidCashAccount      CashAccount?             @relation(fields: [tenantId, prepaidCashAccountId], references: [tenantId, id])
   // Composite FK (tenant_id, prepaid_voucher_id) -> cash_voucher(tenant_id, id), NULLABLE — đặt tên
   // quan hệ riêng vì CashVoucher còn 1 quan hệ khác (supplierId) không liên quan trực tiếp field này.
-  prepaidVoucher     CashVoucher?  @relation("StockReceiptPrepaidVoucher", fields: [tenantId, prepaidVoucherId], references: [tenantId, id])
-  lines         StockReceiptLine[]
-  ledgerEntries StockLedger[]
+  prepaidVoucher          CashVoucher?             @relation("StockReceiptPrepaidVoucher", fields: [tenantId, prepaidVoucherId], references: [tenantId, id])
+  lines                   StockReceiptLine[]
+  ledgerEntries           StockLedger[]
   // "Công nợ nhà cung cấp" Phần A — bút toán PURCHASE (luôn đúng 1) + PAYMENT "trả ngay" (nếu có)
   // tham chiếu ngược về phiếu này.
-  debtEntries   SupplierDebtEntry[]
+  debtEntries             SupplierDebtEntry[]
   // "Công nợ nhà cung cấp" Phần C — phiếu xuất trả NCC (issueType=RETURN_TO_SUPPLIER) CHỌN phiếu
   // nhập này làm "phiếu nhập gốc" (Q3, tuỳ chọn).
-  sourceReceiptIssues StockIssue[]
+  sourceReceiptIssues     StockIssue[]
   // "Công nợ nhà cung cấp" Phần D — Phiếu điều chỉnh/Đề nghị huỷ THAM CHIẾU phiếu này (target_receipt_id).
   debtAdjustmentsAsTarget SupplierDebtAdjustment[]
 
@@ -1889,21 +1892,21 @@ enum StockReceiptStatus {
 // chiếu/audit) — lúc approve() mới quy đổi sang đơn vị cơ sở bằng computeUnitConversion() để ghi
 // stock_ledger.
 model StockReceiptLine {
-  id         String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId   String    @map("tenant_id") @db.Uuid
-  receiptId  String    @map("receipt_id") @db.Uuid
-  drugId     String    @map("drug_id") @db.Uuid
+  id            String        @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String        @map("tenant_id") @db.Uuid
+  receiptId     String        @map("receipt_id") @db.Uuid
+  drugId        String        @map("drug_id") @db.Uuid
   // Đơn vị đã chọn lúc nhập (drug_unit.unitCode hoặc drug.baseUnitCode) — KHÔNG phải đơn vị cơ sở.
-  unitCode   String    @map("unit_code")
+  unitCode      String        @map("unit_code")
   // Số lượng theo ĐÚNG unitCode ở trên, KHÔNG phải đơn vị cơ sở.
-  quantity   Int
+  quantity      Int
   // Giá theo ĐÚNG unitCode ở trên — khớp thẳng số trên hoá đơn giấy.
-  unitCost   BigInt    @map("unit_cost")
+  unitCost      BigInt        @map("unit_cost")
   // Bắt buộc nếu drug.isBatchManaged=true (kiểm ở tầng Zod/Service, không CHECK DB).
-  batchNo    String?   @map("batch_no")
-  expiryDate DateTime? @map("expiry_date") @db.Date
+  batchNo       String?       @map("batch_no")
+  expiryDate    DateTime?     @map("expiry_date") @db.Date
   // Snapshot quantity × unitCost, theo đơn vị đã chọn — khớp đúng thành tiền dòng trên hoá đơn giấy.
-  lineAmount BigInt    @map("line_amount")
+  lineAmount    BigInt        @map("line_amount")
   // Kho Thuốc GĐ4, "Phiếu nhập kho mở rộng" (docs/DECISIONS.md #170) — Chiết khấu "Từng dòng", loại
   // trừ lẫn nhau với `StockReceipt.discountType` cấp header (xem comment ở đó).
   discountType  DiscountType? @map("discount_type")
@@ -1948,15 +1951,15 @@ model InventoryBatch {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant          Tenant           @relation(fields: [tenantId], references: [id])
-  drug            Drug             @relation(fields: [tenantId, drugId], references: [tenantId, id])
-  warehouse       Warehouse        @relation(fields: [tenantId, warehouseId], references: [tenantId, id])
-  stockLedgers    StockLedger[]
-  stockBalances   StockBalance[]
+  tenant             Tenant              @relation(fields: [tenantId], references: [id])
+  drug               Drug                @relation(fields: [tenantId, drugId], references: [tenantId, id])
+  warehouse          Warehouse           @relation(fields: [tenantId, warehouseId], references: [tenantId, id])
+  stockLedgers       StockLedger[]
+  stockBalances      StockBalance[]
   // Kho Thuốc GĐ3 (#163).
-  stockIssueLines StockIssueLine[]
+  stockIssueLines    StockIssueLine[]
   // Kho Thuốc GĐ4 (docs/DECISIONS.md #170) — Kiểm kê + Điều chuyển kho.
-  stockCountLines StockCountLine[]
+  stockCountLines    StockCountLine[]
   stockTransferLines StockTransferLine[]
 
   // Unique thật (tenant_id, drug_id, warehouse_id, batch_no) WHERE deleted_at IS NULL là PARTIAL —
@@ -2101,31 +2104,31 @@ enum StockIssueStatus {
 // ISSUE_VOID) + xoá (soft) invoice_line tương ứng — CHỈ cho phép khi hoá đơn liên quan còn UNPAID
 // (đã thu tiền thì phải qua invoice.refund(), không void ở đây).
 model StockIssue {
-  id             String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId       String           @map("tenant_id") @db.Uuid
-  issueNo        String           @map("issue_no")
-  warehouseId    String           @map("warehouse_id") @db.Uuid
+  id              String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId        String           @map("tenant_id") @db.Uuid
+  issueNo         String           @map("issue_no")
+  warehouseId     String           @map("warehouse_id") @db.Uuid
   // Bắt buộc CHỈ khi issueType='RETAIL_SALE' — NULL cho các issueType khác (CHECK ở migration, Kho
   // Thuốc GĐ4 #170: COUNT_SHORTAGE tự sinh lúc Duyệt Kiểm kê không gắn với đơn thuốc nào). Nới
   // nullable từ GĐ3 (comment cũ "bắt buộc, chưa nới" — nay đã tới lúc).
-  prescriptionId String?          @map("prescription_id") @db.Uuid
-  issueType      StockIssueType   @default(RETAIL_SALE) @map("issue_type")
-  status         StockIssueStatus @default(POSTED)
-  occurredAt     DateTime         @map("occurred_at") @db.Timestamptz(6)
-  note           String?
+  prescriptionId  String?          @map("prescription_id") @db.Uuid
+  issueType       StockIssueType   @default(RETAIL_SALE) @map("issue_type")
+  status          StockIssueStatus @default(POSTED)
+  occurredAt      DateTime         @map("occurred_at") @db.Timestamptz(6)
+  note            String?
   // Snapshot tổng tiền, tính từ tổng lineAmount các dòng.
-  totalAmount    BigInt           @default(0) @map("total_amount")
-  voidedBy       String?          @map("voided_by") @db.Uuid
-  voidedAt       DateTime?        @map("voided_at") @db.Timestamptz(6)
+  totalAmount     BigInt           @default(0) @map("total_amount")
+  voidedBy        String?          @map("voided_by") @db.Uuid
+  voidedAt        DateTime?        @map("voided_at") @db.Timestamptz(6)
   // Bắt buộc khi status=VOIDED, NULL trạng thái khác — CHECK ở migration, cùng mẫu rejection_reason.
-  voidReason     String?          @map("void_reason")
+  voidReason      String?          @map("void_reason")
   // Kho Thuốc GĐ4 (docs/DECISIONS.md #170) — trỏ về `stock_count` khi phiếu này ĐƯỢC TỰ SINH lúc
   // Duyệt phiếu kiểm kê phát hiện thiếu (issueType=COUNT_SHORTAGE). NULL cho mọi phiếu xuất thường.
-  countId        String?          @map("count_id") @db.Uuid
+  countId         String?          @map("count_id") @db.Uuid
   // Kho Thuốc GĐ4 (docs/DECISIONS.md #170) — trỏ về `stock_transfer` khi phiếu này ĐƯỢC TỰ SINH lúc
   // Duyệt xuất (issueType=TRANSFER_OUT). NULL cho mọi phiếu xuất khác. Cùng bản chất `countId` ở
   // trên — chỉ để hiển thị "xem chứng từ gốc", KHÔNG dùng để tính lại gì.
-  transferId     String?          @map("transfer_id") @db.Uuid
+  transferId      String?          @map("transfer_id") @db.Uuid
   // Kho Thuốc GĐ4, "Phiếu xuất kho mở rộng" (docs/DECISIONS.md #170) — 3 cột Nháp→Duyệt cho
   // INTERNAL_ALLOCATION/RETURN_TO_SUPPLIER/WRITE_OFF, đúng khuôn `stock_receipt`.
   approvedBy      String?          @map("approved_by") @db.Uuid
@@ -2151,23 +2154,23 @@ model StockIssue {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant        Tenant           @relation(fields: [tenantId], references: [id])
-  warehouse     Warehouse        @relation(fields: [tenantId, warehouseId], references: [tenantId, id])
+  tenant                  Tenant                   @relation(fields: [tenantId], references: [id])
+  warehouse               Warehouse                @relation(fields: [tenantId, warehouseId], references: [tenantId, id])
   // Composite FK (tenant_id, prescription_id) -> prescription(tenant_id, id), NULLABLE (GĐ4).
-  prescription  Prescription?    @relation(fields: [tenantId, prescriptionId], references: [tenantId, id])
+  prescription            Prescription?            @relation(fields: [tenantId, prescriptionId], references: [tenantId, id])
   // Composite FK (tenant_id, count_id) -> stock_count(tenant_id, id), NULLABLE (GĐ4).
-  count         StockCount?      @relation(fields: [tenantId, countId], references: [tenantId, id])
+  count                   StockCount?              @relation(fields: [tenantId, countId], references: [tenantId, id])
   // Composite FK (tenant_id, transfer_id) -> stock_transfer(tenant_id, id), NULLABLE (GĐ4).
-  transfer      StockTransfer?   @relation(fields: [tenantId, transferId], references: [tenantId, id])
+  transfer                StockTransfer?           @relation(fields: [tenantId, transferId], references: [tenantId, id])
   // Composite FK (tenant_id, department_id) -> department(tenant_id, id), NULLABLE ("Phiếu xuất kho mở rộng").
-  department    Department?      @relation(fields: [tenantId, departmentId], references: [tenantId, id])
+  department              Department?              @relation(fields: [tenantId, departmentId], references: [tenantId, id])
   // Composite FK (tenant_id, supplier_id) -> supplier(tenant_id, id), NULLABLE ("Công nợ NCC" Phần C).
-  supplier      Supplier?        @relation(fields: [tenantId, supplierId], references: [tenantId, id])
+  supplier                Supplier?                @relation(fields: [tenantId, supplierId], references: [tenantId, id])
   // Composite FK (tenant_id, source_receipt_id) -> stock_receipt(tenant_id, id), NULLABLE.
-  sourceReceipt StockReceipt?       @relation(fields: [tenantId, sourceReceiptId], references: [tenantId, id])
-  lines         StockIssueLine[]
-  ledgerEntries StockLedger[]
-  debtEntries   SupplierDebtEntry[]
+  sourceReceipt           StockReceipt?            @relation(fields: [tenantId, sourceReceiptId], references: [tenantId, id])
+  lines                   StockIssueLine[]
+  ledgerEntries           StockLedger[]
+  debtEntries             SupplierDebtEntry[]
   // "Công nợ nhà cung cấp" Phần D — Phiếu điều chỉnh/Đề nghị huỷ THAM CHIẾU phiếu này (target_issue_id).
   debtAdjustmentsAsTarget SupplierDebtAdjustment[]
 
@@ -2823,22 +2826,22 @@ model CashVoucher {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant             Tenant              @relation(fields: [tenantId], references: [id])
+  tenant                  Tenant                   @relation(fields: [tenantId], references: [id])
   // Composite FK (tenant_id, cash_account_id) -> cash_account(tenant_id, id).
-  cashAccount        CashAccount         @relation(fields: [tenantId, cashAccountId], references: [tenantId, id])
+  cashAccount             CashAccount              @relation(fields: [tenantId, cashAccountId], references: [tenantId, id])
   // Composite FK (tenant_id, counter_account_id) -> cash_account(tenant_id, id), NULLABLE — quỹ ĐÍCH của phiếu Chuyển quỹ.
-  counterAccount     CashAccount?        @relation("CashVoucherCounterAccount", fields: [tenantId, counterAccountId], references: [tenantId, id])
+  counterAccount          CashAccount?             @relation("CashVoucherCounterAccount", fields: [tenantId, counterAccountId], references: [tenantId, id])
   // Composite FK (tenant_id, cashier_shift_id) -> cashier_shift(tenant_id, id), NULLABLE.
-  cashierShift       CashierShift?       @relation(fields: [tenantId, cashierShiftId], references: [tenantId, id])
+  cashierShift            CashierShift?            @relation(fields: [tenantId, cashierShiftId], references: [tenantId, id])
   // Composite FK (tenant_id, supplier_id) -> supplier(tenant_id, id), NULLABLE.
-  supplier           Supplier?           @relation(fields: [tenantId, supplierId], references: [tenantId, id])
+  supplier                Supplier?                @relation(fields: [tenantId, supplierId], references: [tenantId, id])
   // Ví tạm ứng — dòng TOPUP/SETTLEMENT của `wallet_transaction` liên quan tới chính phiếu quỹ này.
-  walletTransactions WalletTransaction[]
+  walletTransactions      WalletTransaction[]
   // "Công nợ nhà cung cấp" Phần A — bút toán PAYMENT/REFUND_RECEIVED (+ REVERSAL nếu bị huỷ) sinh ra
   // từ chính phiếu này.
-  debtEntries        SupplierDebtEntry[]
+  debtEntries             SupplierDebtEntry[]
   // Phiếu nhập kho mà chính phiếu quỹ này là "Trả ngay" của nó (ngược field StockReceipt.prepaidVoucher).
-  stockReceiptsPrepaidBy StockReceipt[]  @relation("StockReceiptPrepaidVoucher")
+  stockReceiptsPrepaidBy  StockReceipt[]           @relation("StockReceiptPrepaidVoucher")
   // "Công nợ nhà cung cấp" Phần D — Phiếu điều chỉnh THAM CHIẾU phiếu này (target_voucher_id, tuỳ chọn).
   debtAdjustmentsAsTarget SupplierDebtAdjustment[]
 
@@ -3057,10 +3060,15 @@ model WalletTransaction {
 // (#136). `version` dùng để TUẦN TỰ HOÁ mọi bút toán của CÙNG 1 NCC (tăng mỗi lần ghi sổ), không
 // phải optimistic lock cho việc sửa thông tin NCC (bảng `Supplier` tách riêng có `version` riêng).
 model SupplierDebtAccount {
-  id         String @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId   String @map("tenant_id") @db.Uuid
-  supplierId String @map("supplier_id") @db.Uuid
-  balance    BigInt @default(0)
+  id             String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  supplierId     String    @map("supplier_id") @db.Uuid
+  balance        BigInt    @default(0)
+  // Phần E "Đối chiếu & chốt công nợ theo kỳ" (docs/DECISIONS.md #182 câu 3) — mốc `asOfDate` của
+  // biên bản đối chiếu ĐÃ CHỐT gần nhất (chỉ tăng dần, không lùi). `null` = chưa từng chốt. Chứng
+  // từ của NCC này có `occurredAt` <= mốc này chỉ Huỷ/Điều chỉnh được bởi actor có
+  // `supplier_debt.unlock` — xem `SupplierDebtService.assertSupplierDebtWritable()`.
+  lockedAsOfDate DateTime? @map("locked_as_of_date") @db.Timestamptz(6)
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -3071,9 +3079,9 @@ model SupplierDebtAccount {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant   Tenant             @relation(fields: [tenantId], references: [id])
+  tenant   Tenant              @relation(fields: [tenantId], references: [id])
   // Composite FK (tenant_id, supplier_id) -> supplier(tenant_id, id): chống trỏ chéo tenant.
-  supplier Supplier           @relation(fields: [tenantId, supplierId], references: [tenantId, id])
+  supplier Supplier            @relation(fields: [tenantId, supplierId], references: [tenantId, id])
   entries  SupplierDebtEntry[]
 
   @@unique([tenantId, id])
@@ -3103,27 +3111,27 @@ enum SupplierDebtEntryType {
 // `adjustmentId` (trỏ `SupplierDebtAdjustment`) để dành Phần D — CHƯA thêm cột ở Phần A (bảng đó
 // chưa tồn tại), thêm bằng migration riêng khi Phần D code.
 model SupplierDebtEntry {
-  id            String                @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId      String                @map("tenant_id") @db.Uuid
-  accountId     String                @map("account_id") @db.Uuid
-  entryType     SupplierDebtEntryType @map("entry_type")
-  amountChange  BigInt                @map("amount_change")
-  balanceAfter  BigInt                @map("balance_after")
-  occurredAt    DateTime              @map("occurred_at") @db.Timestamptz(6)
-  stockReceiptId String?              @map("stock_receipt_id") @db.Uuid
+  id             String                @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId       String                @map("tenant_id") @db.Uuid
+  accountId      String                @map("account_id") @db.Uuid
+  entryType      SupplierDebtEntryType @map("entry_type")
+  amountChange   BigInt                @map("amount_change")
+  balanceAfter   BigInt                @map("balance_after")
+  occurredAt     DateTime              @map("occurred_at") @db.Timestamptz(6)
+  stockReceiptId String?               @map("stock_receipt_id") @db.Uuid
   // "Công nợ nhà cung cấp" Phần C — nguồn bút toán RETURN (phiếu xuất trả NCC vừa Duyệt). REVERSAL
   // đảo 1 bút toán RETURN kế thừa cột này từ bút toán gốc (đúng cashVoucherId ở REVERSAL đảo PAYMENT).
-  stockIssueId  String?               @map("stock_issue_id") @db.Uuid
-  cashVoucherId String?               @map("cash_voucher_id") @db.Uuid
+  stockIssueId   String?               @map("stock_issue_id") @db.Uuid
+  cashVoucherId  String?               @map("cash_voucher_id") @db.Uuid
   // Tự tham chiếu — entry ĐÃ bị đảo (dùng bởi dòng REVERSAL để biết đảo bút toán nào). UNIQUE
   // partial ở migration: 1 bút toán chỉ đảo được 1 lần.
-  reversalOfId  String?               @map("reversal_of_id") @db.Uuid
+  reversalOfId   String?               @map("reversal_of_id") @db.Uuid
   // "Công nợ nhà cung cấp" Phần D — nguồn bút toán ADJUSTMENT_INCREASE/ADJUSTMENT_DECREASE (bắt buộc
   // cho 2 loại này, CHECK ở migration). REVERSAL sinh từ "Huỷ chứng từ"/"Đề nghị huỷ" KHÔNG dùng cột
   // này — tự tương quan qua `stockReceiptId`/`stockIssueId` trùng với `targetReceiptId`/`targetIssueId`
   // của adjustment `VOID_REQUEST` tương ứng, không cần FK riêng.
-  adjustmentId  String?               @map("adjustment_id") @db.Uuid
-  note          String?
+  adjustmentId   String?               @map("adjustment_id") @db.Uuid
+  note           String?
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -3134,18 +3142,18 @@ model SupplierDebtEntry {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant       Tenant               @relation(fields: [tenantId], references: [id])
+  tenant       Tenant                  @relation(fields: [tenantId], references: [id])
   // Composite FK (tenant_id, account_id) -> supplier_debt_account(tenant_id, id).
-  account      SupplierDebtAccount  @relation(fields: [tenantId, accountId], references: [tenantId, id])
+  account      SupplierDebtAccount     @relation(fields: [tenantId, accountId], references: [tenantId, id])
   // Composite FK (tenant_id, stock_receipt_id) -> stock_receipt(tenant_id, id), NULLABLE.
-  stockReceipt StockReceipt?        @relation(fields: [tenantId, stockReceiptId], references: [tenantId, id])
+  stockReceipt StockReceipt?           @relation(fields: [tenantId, stockReceiptId], references: [tenantId, id])
   // Composite FK (tenant_id, stock_issue_id) -> stock_issue(tenant_id, id), NULLABLE.
-  stockIssue   StockIssue?          @relation(fields: [tenantId, stockIssueId], references: [tenantId, id])
+  stockIssue   StockIssue?             @relation(fields: [tenantId, stockIssueId], references: [tenantId, id])
   // Composite FK (tenant_id, cash_voucher_id) -> cash_voucher(tenant_id, id), NULLABLE.
-  cashVoucher  CashVoucher?         @relation(fields: [tenantId, cashVoucherId], references: [tenantId, id])
+  cashVoucher  CashVoucher?            @relation(fields: [tenantId, cashVoucherId], references: [tenantId, id])
   // Composite FK tự tham chiếu (tenant_id, reversal_of_id) -> supplier_debt_entry(tenant_id, id), NULLABLE.
-  reversalOf   SupplierDebtEntry?   @relation("SupplierDebtEntryReversal", fields: [tenantId, reversalOfId], references: [tenantId, id])
-  reversedBy   SupplierDebtEntry[]  @relation("SupplierDebtEntryReversal")
+  reversalOf   SupplierDebtEntry?      @relation("SupplierDebtEntryReversal", fields: [tenantId, reversalOfId], references: [tenantId, id])
+  reversedBy   SupplierDebtEntry[]     @relation("SupplierDebtEntryReversal")
   // Composite FK (tenant_id, adjustment_id) -> supplier_debt_adjustment(tenant_id, id), NULLABLE.
   adjustment   SupplierDebtAdjustment? @relation(fields: [tenantId, adjustmentId], references: [tenantId, id])
 
@@ -3178,21 +3186,21 @@ enum SupplierDebtAdjustmentStatus {
 // bắt buộc ĐÚNG 1 cho VOID_REQUEST (CHECK ở migration), cả 2 + `targetVoucherId` đều TUỲ CHỌN (chỉ
 // tham khảo, không ràng buộc) cho INCREASE/DECREASE.
 model SupplierDebtAdjustment {
-  id             String                       @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId       String                       @map("tenant_id") @db.Uuid
-  supplierId     String                       @map("supplier_id") @db.Uuid
-  adjustmentNo   String                       @map("adjustment_no")
-  kind           SupplierDebtAdjustmentKind
-  amount         BigInt?
-  targetReceiptId String?                     @map("target_receipt_id") @db.Uuid
-  targetIssueId   String?                     @map("target_issue_id") @db.Uuid
-  targetVoucherId String?                     @map("target_voucher_id") @db.Uuid
-  reason         String
-  evidenceRef    String?                      @map("evidence_ref")
-  status         SupplierDebtAdjustmentStatus @default(PENDING_APPROVAL)
-  approvedBy     String?                      @map("approved_by") @db.Uuid
-  approvedAt     DateTime?                    @map("approved_at") @db.Timestamptz(6)
-  rejectionReason String?                     @map("rejection_reason")
+  id              String                       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId        String                       @map("tenant_id") @db.Uuid
+  supplierId      String                       @map("supplier_id") @db.Uuid
+  adjustmentNo    String                       @map("adjustment_no")
+  kind            SupplierDebtAdjustmentKind
+  amount          BigInt?
+  targetReceiptId String?                      @map("target_receipt_id") @db.Uuid
+  targetIssueId   String?                      @map("target_issue_id") @db.Uuid
+  targetVoucherId String?                      @map("target_voucher_id") @db.Uuid
+  reason          String
+  evidenceRef     String?                      @map("evidence_ref")
+  status          SupplierDebtAdjustmentStatus @default(PENDING_APPROVAL)
+  approvedBy      String?                      @map("approved_by") @db.Uuid
+  approvedAt      DateTime?                    @map("approved_at") @db.Timestamptz(6)
+  rejectionReason String?                      @map("rejection_reason")
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -3203,19 +3211,73 @@ model SupplierDebtAdjustment {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant        Tenant        @relation(fields: [tenantId], references: [id])
+  tenant                      Tenant                       @relation(fields: [tenantId], references: [id])
   // Composite FK (tenant_id, supplier_id) -> supplier(tenant_id, id).
-  supplier      Supplier      @relation(fields: [tenantId, supplierId], references: [tenantId, id])
+  supplier                    Supplier                     @relation(fields: [tenantId, supplierId], references: [tenantId, id])
   // Composite FK (tenant_id, target_receipt_id) -> stock_receipt(tenant_id, id), NULLABLE.
-  targetReceipt StockReceipt? @relation(fields: [tenantId, targetReceiptId], references: [tenantId, id])
+  targetReceipt               StockReceipt?                @relation(fields: [tenantId, targetReceiptId], references: [tenantId, id])
   // Composite FK (tenant_id, target_issue_id) -> stock_issue(tenant_id, id), NULLABLE.
-  targetIssue   StockIssue?   @relation(fields: [tenantId, targetIssueId], references: [tenantId, id])
+  targetIssue                 StockIssue?                  @relation(fields: [tenantId, targetIssueId], references: [tenantId, id])
   // Composite FK (tenant_id, target_voucher_id) -> cash_voucher(tenant_id, id), NULLABLE.
-  targetVoucher CashVoucher?  @relation(fields: [tenantId, targetVoucherId], references: [tenantId, id])
-  entries       SupplierDebtEntry[]
+  targetVoucher               CashVoucher?                 @relation(fields: [tenantId, targetVoucherId], references: [tenantId, id])
+  entries                     SupplierDebtEntry[]
+  // Back-relation — Phần E: biên bản đối chiếu nào tự sinh ra phiếu điều chỉnh này (nếu có, tối đa 1
+  // trong thực tế nhưng Prisma không biểu diễn được ràng buộc unique xuyên bảng ở đây).
+  resultingForReconciliations SupplierDebtReconciliation[]
 
   @@unique([tenantId, id])
   @@map("supplier_debt_adjustment")
+}
+
+enum SupplierDebtReconciliationStatus {
+  DRAFT
+  FINALIZED
+  CANCELLED
+
+  @@map("supplier_debt_reconciliation_status")
+}
+
+// "Công nợ nhà cung cấp" Phần E "Đối chiếu & chốt công nợ theo kỳ" (docs/DECISIONS.md #182 câu 3,
+// kế hoạch mục 4.3/8) — "Biên bản đối chiếu" 1 NCC tại 1 ngày (`asOfDate`). Gộp 1 bước: tạo xong tự
+// tính `systemBalance` (tại `asOfDate`) so với `confirmedBalance` (NCC xác nhận, nhập tay);
+// `differenceAmount=0` → tự CHỐT ngay; khác 0 → tự sinh `supplier_debt_adjustment` PENDING_APPROVAL
+// (`resultingAdjustmentId`), giữ `DRAFT` tới khi phiếu đó được xử lý xong (Duyệt → gọi `finalize()`
+// riêng; Từ chối → `CANCELLED`, không cho sửa lại — phải lập biên bản mới, đúng nguyên tắc "bản ghi
+// bất biến" CLAUDE.md). Sau khi `FINALIZED`, `SupplierDebtAccount.lockedAsOfDate` tăng lên
+// `asOfDate` — chứng từ có `occurredAt` <= mốc này chỉ Huỷ/Điều chỉnh được bởi actor có
+// `supplier_debt.unlock` (xem `SupplierDebtService.assertSupplierDebtWritable()`).
+model SupplierDebtReconciliation {
+  id                    String                           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId              String                           @map("tenant_id") @db.Uuid
+  supplierId            String                           @map("supplier_id") @db.Uuid
+  reconciliationNo      String                           @map("reconciliation_no")
+  asOfDate              DateTime                         @map("as_of_date") @db.Timestamptz(6)
+  systemBalance         BigInt                           @map("system_balance")
+  confirmedBalance      BigInt                           @map("confirmed_balance")
+  differenceAmount      BigInt                           @map("difference_amount")
+  resultingAdjustmentId String?                          @map("resulting_adjustment_id") @db.Uuid
+  status                SupplierDebtReconciliationStatus @default(DRAFT)
+  finalizedBy           String?                          @map("finalized_by") @db.Uuid
+  finalizedAt           DateTime?                        @map("finalized_at") @db.Timestamptz(6)
+  note                  String?
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant              Tenant                  @relation(fields: [tenantId], references: [id])
+  // Composite FK (tenant_id, supplier_id) -> supplier(tenant_id, id).
+  supplier            Supplier                @relation(fields: [tenantId, supplierId], references: [tenantId, id])
+  // Composite FK (tenant_id, resulting_adjustment_id) -> supplier_debt_adjustment(tenant_id, id), NULLABLE.
+  resultingAdjustment SupplierDebtAdjustment? @relation(fields: [tenantId, resultingAdjustmentId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@map("supplier_debt_reconciliation")
 }
 
 // Dị nguyên đã biết của bệnh nhân (Sprint 4, chốt 2026-08-25) — liên kết `patient` với danh mục

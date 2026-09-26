@@ -43,6 +43,7 @@ export const businessCodeTypeSchema = z.enum([
   'STOCK_COUNT',
   'STOCK_TRANSFER',
   'SUPPLIER_DEBT_ADJUSTMENT',
+  'SUPPLIER_DEBT_RECONCILIATION',
 ]);
 export type BusinessCodeType = z.infer<typeof businessCodeTypeSchema>;
 
@@ -86,6 +87,9 @@ export const BUSINESS_CODE_TYPE_REGISTRY: Record<BusinessCodeType, { label: stri
   // "Công nợ nhà cung cấp" Phần D (docs/DECISIONS.md #180/#182) — "Phiếu điều chỉnh công nợ"/"Đề
   // nghị huỷ", không trùng tiền tố nào đã dùng ở trên.
   SUPPLIER_DEBT_ADJUSTMENT: { label: 'Mã phiếu điều chỉnh công nợ', internalPrefix: 'PDN' },
+  // "Công nợ nhà cung cấp" Phần E (docs/DECISIONS.md #182 câu 3) — "Biên bản đối chiếu", không trùng
+  // tiền tố nào đã dùng ở trên.
+  SUPPLIER_DEBT_RECONCILIATION: { label: 'Mã biên bản đối chiếu công nợ', internalPrefix: 'BBD' },
 };
 
 export const DEFAULT_BUSINESS_CODE_COUNTER_DIGITS = 6;

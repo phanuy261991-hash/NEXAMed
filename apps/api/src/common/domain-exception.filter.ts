@@ -147,6 +147,11 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   // phải lỗi input.
   SUPPLIER_DEBT_ADJUSTMENT_NOT_PENDING: HttpStatus.CONFLICT,
   SUPPLIER_DEBT_INTEGRITY_MISMATCH: HttpStatus.CONFLICT,
+  // Phần E "Đối chiếu & chốt công nợ theo kỳ" — cùng nhóm CONFLICT (trạng thái/kỳ hiện có không cho
+  // phép), không phải lỗi input.
+  SUPPLIER_DEBT_RECONCILIATION_AS_OF_DATE_TOO_EARLY: HttpStatus.CONFLICT,
+  SUPPLIER_DEBT_RECONCILIATION_NOT_READY: HttpStatus.CONFLICT,
+  SUPPLIER_DEBT_PERIOD_LOCKED: HttpStatus.CONFLICT,
 };
 
 /**

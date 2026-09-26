@@ -3,9 +3,12 @@ import type { Request } from 'express';
 import {
   approveSupplierDebtAdjustmentRequestSchema,
   createSupplierDebtAdjustmentRequestSchema,
+  createSupplierDebtReconciliationRequestSchema,
+  finalizeSupplierDebtReconciliationRequestSchema,
   listSupplierDebtAdjustmentsQuerySchema,
   listSupplierDebtLedgerQuerySchema,
   listSupplierDebtPaymentsQuerySchema,
+  previewSupplierDebtReconciliationQuerySchema,
   recordSupplierDebtOpeningBalanceRequestSchema,
   recordSupplierDebtPaymentRequestSchema,
   recordSupplierDebtRefundRequestSchema,
@@ -135,5 +138,40 @@ export class SupplierDebtController {
     const dto = rejectSupplierDebtAdjustmentRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
     return this.supplierDebtService.rejectAdjustment(tenantId, userId, id, dto, extractRequestMeta(req));
+  }
+
+  // ============ Phần E "Đối chiếu & chốt công nợ theo kỳ" (docs/DECISIONS.md #182 câu 3) ============
+
+  @Get(':supplierId/reconciliation-preview')
+  @RequirePermission('supplier_debt', 'read')
+  async previewReconciliation(@Param('supplierId') supplierId: string, @Query() query: unknown, @Req() req: Request) {
+    const dto = previewSupplierDebtReconciliationQuerySchema.parse(query);
+    const { tenantId } = req.user!;
+    return this.supplierDebtService.previewReconciliation(tenantId, supplierId, dto.asOfDate, dto.confirmedBalance);
+  }
+
+  @Post(':supplierId/reconciliations')
+  @RequirePermission('supplier_debt', 'adjust')
+  @HttpCode(201)
+  async createReconciliation(@Param('supplierId') supplierId: string, @Body() body: unknown, @Req() req: Request) {
+    const dto = createSupplierDebtReconciliationRequestSchema.parse(body);
+    const { userId, tenantId } = req.user!;
+    return this.supplierDebtService.createReconciliation(tenantId, userId, supplierId, dto, extractRequestMeta(req));
+  }
+
+  @Get(':supplierId/reconciliations')
+  @RequirePermission('supplier_debt', 'read')
+  async listReconciliations(@Param('supplierId') supplierId: string, @Req() req: Request) {
+    const { tenantId } = req.user!;
+    return this.supplierDebtService.listReconciliations(tenantId, supplierId);
+  }
+
+  @Post(':supplierId/reconciliations/:id/finalize')
+  @RequirePermission('supplier_debt', 'approve')
+  @HttpCode(200)
+  async finalizeReconciliation(@Param('supplierId') supplierId: string, @Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
+    const dto = finalizeSupplierDebtReconciliationRequestSchema.parse(body);
+    const { userId, tenantId } = req.user!;
+    return this.supplierDebtService.finalizeReconciliation(tenantId, userId, supplierId, id, dto, extractRequestMeta(req));
   }
 }

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, ClipboardText, Eye, HandCoins, Receipt, Scales, ShoppingCart, Truck, ArrowUUpLeft, Warning } from '@phosphor-icons/react';
-import type { SupplierDebtAdjustment, SupplierDebtLedgerEntry, SupplierDebtPayment, SupplierDebtReceiptStatus } from '@nexamed/shared';
+import { ArrowLeft, ClipboardText, Eye, HandCoins, Lock, Receipt, Scales, ShoppingCart, Truck, ArrowUUpLeft, Warning } from '@phosphor-icons/react';
+import type { SupplierDebtAdjustment, SupplierDebtLedgerEntry, SupplierDebtPayment, SupplierDebtReceiptStatus, SupplierDebtReconciliation } from '@nexamed/shared';
 import { formatVnd } from '../../shared/format/currency';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
@@ -27,6 +27,7 @@ import { useCashAccountsQuery } from '../cash-book/cash-account.queries';
 import { useClinicSettingsQuery } from '../clinic/clinic.queries';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import {
+  useFinalizeSupplierDebtReconciliationMutation,
   useRecordSupplierDebtOpeningBalanceMutation,
   useRecordSupplierDebtPaymentMutation,
   useRecordSupplierDebtRefundMutation,
@@ -34,10 +35,12 @@ import {
   useSupplierDebtLedgerQuery,
   useSupplierDebtPaymentsQuery,
   useSupplierDebtReceiptsQuery,
+  useSupplierDebtReconciliationsQuery,
   useSupplierDebtSummaryQuery,
 } from './supplier-debt.queries';
 import { SupplierDebtAdjustmentDialog } from './SupplierDebtAdjustmentDialog';
 import { SupplierDebtAdjustmentDetailDialog } from './SupplierDebtAdjustmentDetailDialog';
+import { SupplierDebtReconciliationDialog } from './SupplierDebtReconciliationDialog';
 
 function formatDateShort(iso: string): string {
   const d = new Date(iso);
@@ -68,7 +71,7 @@ const ENTRY_TYPE_LABEL: Record<SupplierDebtLedgerEntry['entryType'], string> = {
   REVERSAL: 'Bút toán đảo',
 };
 
-type TabId = 'receipts' | 'returns' | 'ledger' | 'payments' | 'adjustments';
+type TabId = 'receipts' | 'returns' | 'ledger' | 'payments' | 'adjustments' | 'reconciliations';
 
 /** Trang chi tiết NCC — "Công nợ nhà cung cấp" Phần A + Phần B + Phần C + Phần D (docs/DECISIONS.md
  * #180/#182/#187). 5 tab "Phiếu nhập"/"Phiếu trả hàng" (Phần C)/"Sổ công nợ" (Phần A)/"Thanh toán"
@@ -82,6 +85,7 @@ export function SupplierDetailPage() {
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [refundOpen, setRefundOpen] = useState(false);
   const [adjustmentOpen, setAdjustmentOpen] = useState(false);
+  const [reconciliationOpen, setReconciliationOpen] = useState(false);
   const canPay = useHasPermission('supplier_debt', 'pay');
   const canAdjust = useHasPermission('supplier_debt', 'adjust');
 
@@ -151,6 +155,12 @@ export function SupplierDetailPage() {
                 Lập phiếu điều chỉnh công nợ
               </Button>
             )}
+            {canAdjust && (
+              <Button type="button" variant="secondary" onClick={() => setReconciliationOpen(true)}>
+                <Scales size={16} weight="bold" aria-hidden="true" />
+                Lập biên bản đối chiếu
+              </Button>
+            )}
             {canPay && summary.balance > 0 && (
               <Button type="button" disabled={!summary.balanceIntegrityOk} onClick={() => setPaymentOpen(true)}>
                 <HandCoins size={16} weight="bold" aria-hidden="true" />
@@ -197,6 +207,13 @@ export function SupplierDetailPage() {
           Có {summary.pendingAdjustmentCount} phiếu điều chỉnh/đề nghị huỷ đang chờ duyệt — xem tab "Nhật ký điều chỉnh".
         </div>
       )}
+      {summary.lockedAsOfDate && (
+        <div className="flex items-center gap-2 rounded-lg border border-slate-300 bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-700">
+          <Lock size={16} weight="bold" aria-hidden="true" className="shrink-0 text-slate-500" />
+          Đã chốt công nợ tới ngày {formatDateShort(summary.lockedAsOfDate)} — chứng từ trước ngày này chỉ Huỷ/Điều chỉnh được bởi người có quyền mở khoá kỳ công
+          nợ.
+        </div>
+      )}
 
       <div className="min-h-0 flex-1 rounded-lg border border-slate-200 bg-white">
         <TabBar
@@ -206,6 +223,7 @@ export function SupplierDetailPage() {
             { id: 'ledger', label: 'Sổ công nợ' },
             { id: 'payments', label: 'Thanh toán' },
             { id: 'adjustments', label: 'Nhật ký điều chỉnh' },
+            { id: 'reconciliations', label: 'Đối chiếu & Chốt kỳ' },
           ]}
           active={tab}
           onChange={setTab}
@@ -217,6 +235,7 @@ export function SupplierDetailPage() {
           {tab === 'ledger' && <LedgerTab supplierId={supplierId} />}
           {tab === 'payments' && <PaymentsTab supplierId={supplierId} />}
           {tab === 'adjustments' && <AdjustmentsTab supplierId={supplierId} />}
+          {tab === 'reconciliations' && <ReconciliationsTab supplierId={supplierId} />}
         </div>
       </div>
 
@@ -224,6 +243,7 @@ export function SupplierDetailPage() {
       {paymentOpen && <PaymentDialog supplierId={supplierId} supplierName={supplier.name} balance={summary.balance} onClose={() => setPaymentOpen(false)} />}
       {refundOpen && <RefundDialog supplierId={supplierId} supplierName={supplier.name} balance={summary.balance} onClose={() => setRefundOpen(false)} />}
       {adjustmentOpen && <SupplierDebtAdjustmentDialog supplierId={supplierId} supplierName={supplier.name} onClose={() => setAdjustmentOpen(false)} />}
+      {reconciliationOpen && <SupplierDebtReconciliationDialog supplierId={supplierId} supplierName={supplier.name} onClose={() => setReconciliationOpen(false)} />}
     </div>
   );
 }
@@ -529,6 +549,104 @@ function AdjustmentsTab({ supplierId }: { supplierId: string }) {
         </tbody>
       </table>
       {viewing && <SupplierDebtAdjustmentDetailDialog adjustment={viewing} onClose={() => setViewingId(null)} />}
+    </div>
+  );
+}
+
+const RECONCILIATION_STATUS_LABEL: Record<SupplierDebtReconciliation['status'], { label: string; tone: StatusBadgeTone }> = {
+  DRAFT: { label: 'Nháp', tone: 'neutral' },
+  FINALIZED: { label: 'Đã chốt', tone: 'success' },
+  CANCELLED: { label: 'Đã huỷ', tone: 'danger' },
+};
+
+/** Nút "Chốt" cho 1 dòng biên bản còn `DRAFT` — tự quản lý lỗi riêng (409 `NOT_READY` khi phiếu điều
+ * chỉnh liên kết còn Chờ duyệt), không dùng chung `error` của cả tab để không che các dòng khác. */
+function FinalizeReconciliationButton({ supplierId, reconciliation }: { supplierId: string; reconciliation: SupplierDebtReconciliation }) {
+  const [error, setError] = useState<string | null>(null);
+  const mutation = useFinalizeSupplierDebtReconciliationMutation(supplierId);
+  const blocked = reconciliation.resultingAdjustmentStatus === 'PENDING_APPROVAL';
+
+  async function handleClick() {
+    setError(null);
+    try {
+      await mutation.mutateAsync({ id: reconciliation.id, body: { version: reconciliation.version } });
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Có lỗi xảy ra, vui lòng thử lại.');
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <Button type="button" variant="secondary" loading={mutation.isPending} disabled={blocked} onClick={() => void handleClick()}>
+        Chốt
+      </Button>
+      {blocked && <p className="text-[11px] font-medium text-amber-700">Chờ duyệt phiếu điều chỉnh</p>}
+      {error && <p className="max-w-[220px] text-right text-[11px] font-medium text-rose-600">{error}</p>}
+    </div>
+  );
+}
+
+/** Phần E — tab "Đối chiếu & Chốt kỳ": lịch sử "Biên bản đối chiếu" của NCC này, mới→cũ. Nút "Xem
+ * điều chỉnh" mở lại `SupplierDebtAdjustmentDetailDialog` dùng chung (đúng khuôn `AdjustmentsTab`) —
+ * tra theo `resultingAdjustmentId` trong CÙNG danh sách đã tải cho tab "Nhật ký điều chỉnh" (react-
+ * query tự cache theo key, không gọi API 2 lần). */
+function ReconciliationsTab({ supplierId }: { supplierId: string }) {
+  const query = useSupplierDebtReconciliationsQuery(supplierId);
+  const adjustmentsQuery = useSupplierDebtAdjustmentsQuery({ supplierId });
+  const [viewingAdjustmentId, setViewingAdjustmentId] = useState<string | null>(null);
+
+  if (query.isError) {
+    return <ErrorBanner message="Không tải được lịch sử đối chiếu." onRetry={() => void query.refetch()} />;
+  }
+  if (query.isLoading) {
+    return <Skeleton className="h-40 w-full" />;
+  }
+  const items = query.data?.items ?? [];
+  const viewingAdjustment = adjustmentsQuery.data?.items.find((a) => a.id === viewingAdjustmentId) ?? null;
+  if (items.length === 0) {
+    return <EmptyState icon={Scales} title="Chưa có biên bản đối chiếu nào" description="Bấm &quot;Lập biên bản đối chiếu&quot; để đối chiếu công nợ với NCC tại 1 mốc ngày." />;
+  }
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-slate-200">
+      <table className="w-full border-collapse text-sm">
+        <thead>
+          <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+            <th className="px-3 py-2.5 text-center">Mã biên bản</th>
+            <th className="px-3 py-2.5 text-center">Ngày đối chiếu</th>
+            <th className="px-3 py-2.5 text-center">Số hệ thống</th>
+            <th className="px-3 py-2.5 text-center">NCC xác nhận</th>
+            <th className="px-3 py-2.5 text-center">Chênh lệch</th>
+            <th className="px-3 py-2.5 text-center">Trạng thái</th>
+            <th className="px-3 py-2.5 text-center">Thao tác</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((r) => (
+            <tr key={r.id} className="border-b border-slate-200 last:border-0">
+              <td className="px-3 py-2 text-center font-semibold text-slate-800">{r.reconciliationNo}</td>
+              <td className="px-3 py-2 text-center text-slate-600">{formatDateShort(r.asOfDate)}</td>
+              <td className="px-3 py-2 text-center font-medium text-slate-700">{formatVnd(r.systemBalance)}</td>
+              <td className="px-3 py-2 text-center font-medium text-slate-700">{formatVnd(r.confirmedBalance)}</td>
+              <td className={`px-3 py-2 text-center font-bold ${r.differenceAmount === 0 ? 'text-emerald-600' : 'text-amber-700'}`}>
+                {r.differenceAmount === 0 ? 'Khớp' : formatVnd(r.differenceAmount)}
+              </td>
+              <td className="px-3 py-2 text-center">
+                <StatusBadge tone={RECONCILIATION_STATUS_LABEL[r.status].tone}>{RECONCILIATION_STATUS_LABEL[r.status].label}</StatusBadge>
+                {r.resultingAdjustmentId && (
+                  <button type="button" onClick={() => setViewingAdjustmentId(r.resultingAdjustmentId)} className="ml-1.5 text-[11px] font-semibold text-blue-600 underline">
+                    Xem điều chỉnh
+                  </button>
+                )}
+              </td>
+              <td className="px-3 py-2 text-center">
+                {r.status === 'DRAFT' ? <FinalizeReconciliationButton supplierId={supplierId} reconciliation={r} /> : <span className="text-slate-300">—</span>}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {viewingAdjustment && <SupplierDebtAdjustmentDetailDialog adjustment={viewingAdjustment} onClose={() => setViewingAdjustmentId(null)} />}
     </div>
   );
 }

@@ -49,6 +49,13 @@ export class SupplierDebtAdjustmentRepository {
     return tx.supplierDebtAdjustment.findFirst({ where: { tenantId, id, deletedAt: null } });
   }
 
+  /** Phần E — tra trạng thái NHIỀU phiếu điều chỉnh cùng lúc (tab "Đối chiếu & Chốt kỳ" cần biết
+   * `resultingAdjustmentStatus` của mỗi biên bản, tránh N+1). */
+  findByIds(tx: Prisma.TransactionClient, tenantId: string, ids: string[]): Promise<SupplierDebtAdjustment[]> {
+    if (ids.length === 0) return Promise.resolve([]);
+    return tx.supplierDebtAdjustment.findMany({ where: { tenantId, id: { in: ids } } });
+  }
+
   /** `updateMany` + kiểm `count` — optimistic lock, chỉ chuyển được từ `PENDING_APPROVAL`. */
   async markApproved(tx: Prisma.TransactionClient, tenantId: string, id: string, expectedVersion: number, actorId: string, approvedAt: Date): Promise<number> {
     const result = await tx.supplierDebtAdjustment.updateMany({

@@ -31648,7 +31648,8 @@
                                   "PRESCRIPTION",
                                   "STOCK_COUNT",
                                   "STOCK_TRANSFER",
-                                  "SUPPLIER_DEBT_ADJUSTMENT"
+                                  "SUPPLIER_DEBT_ADJUSTMENT",
+                                  "SUPPLIER_DEBT_RECONCILIATION"
                                 ]
                               },
                               "label": {
@@ -31804,7 +31805,8 @@
                 "PRESCRIPTION",
                 "STOCK_COUNT",
                 "STOCK_TRANSFER",
-                "SUPPLIER_DEBT_ADJUSTMENT"
+                "SUPPLIER_DEBT_ADJUSTMENT",
+                "SUPPLIER_DEBT_RECONCILIATION"
               ]
             },
             "required": true,
@@ -31871,7 +31873,8 @@
                             "PRESCRIPTION",
                             "STOCK_COUNT",
                             "STOCK_TRANSFER",
-                            "SUPPLIER_DEBT_ADJUSTMENT"
+                            "SUPPLIER_DEBT_ADJUSTMENT",
+                            "SUPPLIER_DEBT_RECONCILIATION"
                           ]
                         },
                         "label": {
@@ -62671,6 +62674,12 @@
                               },
                               "balanceIntegrityOk": {
                                 "type": "boolean"
+                              },
+                              "lockedAsOfDate": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               }
                             },
                             "required": [
@@ -62683,7 +62692,8 @@
                               "pendingApprovalAmount",
                               "canRecordOpeningBalance",
                               "pendingAdjustmentCount",
-                              "balanceIntegrityOk"
+                              "balanceIntegrityOk",
+                              "lockedAsOfDate"
                             ]
                           }
                         }
@@ -62833,6 +62843,12 @@
                         },
                         "balanceIntegrityOk": {
                           "type": "boolean"
+                        },
+                        "lockedAsOfDate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         }
                       },
                       "required": [
@@ -62845,7 +62861,8 @@
                         "pendingApprovalAmount",
                         "canRecordOpeningBalance",
                         "pendingAdjustmentCount",
-                        "balanceIntegrityOk"
+                        "balanceIntegrityOk",
+                        "lockedAsOfDate"
                       ]
                     },
                     "meta": {
@@ -63528,6 +63545,12 @@
                         },
                         "balanceIntegrityOk": {
                           "type": "boolean"
+                        },
+                        "lockedAsOfDate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         }
                       },
                       "required": [
@@ -63540,7 +63563,8 @@
                         "pendingApprovalAmount",
                         "canRecordOpeningBalance",
                         "pendingAdjustmentCount",
-                        "balanceIntegrityOk"
+                        "balanceIntegrityOk",
+                        "lockedAsOfDate"
                       ]
                     },
                     "meta": {
@@ -63783,6 +63807,12 @@
                         },
                         "balanceIntegrityOk": {
                           "type": "boolean"
+                        },
+                        "lockedAsOfDate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         }
                       },
                       "required": [
@@ -63795,7 +63825,8 @@
                         "pendingApprovalAmount",
                         "canRecordOpeningBalance",
                         "pendingAdjustmentCount",
-                        "balanceIntegrityOk"
+                        "balanceIntegrityOk",
+                        "lockedAsOfDate"
                       ]
                     },
                     "meta": {
@@ -64280,6 +64311,12 @@
                         },
                         "balanceIntegrityOk": {
                           "type": "boolean"
+                        },
+                        "lockedAsOfDate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         }
                       },
                       "required": [
@@ -64292,7 +64329,8 @@
                         "pendingApprovalAmount",
                         "canRecordOpeningBalance",
                         "pendingAdjustmentCount",
-                        "balanceIntegrityOk"
+                        "balanceIntegrityOk",
+                        "lockedAsOfDate"
                       ]
                     },
                     "meta": {
@@ -65642,6 +65680,1024 @@
           },
           "409": {
             "description": "Phiếu đã được xử lý trước đó, hoặc lệch version (CONCURRENT_MODIFICATION)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/supplier-debt/{supplierId}/reconciliation-preview": {
+      "get": {
+        "tags": [
+          "supplier-debt"
+        ],
+        "summary": "Xem trước chênh lệch \"số hệ thống\" so với \"số NCC xác nhận\" tại 1 ngày — chỉ đọc, không ghi gì",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "supplierId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "asOfDate",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "required": false,
+            "name": "confirmedBalance",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "systemBalance": {
+                          "type": "integer"
+                        },
+                        "confirmedBalance": {
+                          "type": "integer"
+                        },
+                        "differenceAmount": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "systemBalance",
+                        "confirmedBalance",
+                        "differenceAmount"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền supplier_debt.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy nhà cung cấp",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/supplier-debt/{supplierId}/reconciliations": {
+      "post": {
+        "tags": [
+          "supplier-debt"
+        ],
+        "summary": "Lập \"Biên bản đối chiếu\" — khớp thì tự Chốt ngay, lệch thì tự sinh Phiếu điều chỉnh Chờ duyệt",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "supplierId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "asOfDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "confirmedBalance": {
+                    "type": "integer"
+                  },
+                  "note": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "asOfDate",
+                  "confirmedBalance"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "version": {
+                          "type": "integer"
+                        },
+                        "supplierId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "reconciliationNo": {
+                          "type": "string"
+                        },
+                        "asOfDate": {
+                          "type": "string"
+                        },
+                        "systemBalance": {
+                          "type": "integer"
+                        },
+                        "confirmedBalance": {
+                          "type": "integer"
+                        },
+                        "differenceAmount": {
+                          "type": "integer"
+                        },
+                        "resultingAdjustmentId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "resultingAdjustmentStatus": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "PENDING_APPROVAL",
+                            "APPROVED",
+                            "REJECTED"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "DRAFT",
+                            "FINALIZED",
+                            "CANCELLED"
+                          ]
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "createdByName": {
+                          "type": "string"
+                        },
+                        "finalizedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "finalizedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "version",
+                        "supplierId",
+                        "reconciliationNo",
+                        "asOfDate",
+                        "systemBalance",
+                        "confirmedBalance",
+                        "differenceAmount",
+                        "resultingAdjustmentId",
+                        "resultingAdjustmentStatus",
+                        "status",
+                        "note",
+                        "createdAt",
+                        "createdByName",
+                        "finalizedByName",
+                        "finalizedAt"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền supplier_debt.adjust",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy nhà cung cấp",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ngày đối chiếu không sau ngày của biên bản đã chốt gần nhất (SUPPLIER_DEBT_RECONCILIATION_AS_OF_DATE_TOO_EARLY)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "supplier-debt"
+        ],
+        "summary": "Tab \"Đối chiếu & Chốt kỳ\" (trang chi tiết NCC) — lịch sử biên bản đối chiếu",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "supplierId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "version": {
+                                "type": "integer"
+                              },
+                              "supplierId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "reconciliationNo": {
+                                "type": "string"
+                              },
+                              "asOfDate": {
+                                "type": "string"
+                              },
+                              "systemBalance": {
+                                "type": "integer"
+                              },
+                              "confirmedBalance": {
+                                "type": "integer"
+                              },
+                              "differenceAmount": {
+                                "type": "integer"
+                              },
+                              "resultingAdjustmentId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "resultingAdjustmentStatus": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "PENDING_APPROVAL",
+                                  "APPROVED",
+                                  "REJECTED"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "DRAFT",
+                                  "FINALIZED",
+                                  "CANCELLED"
+                                ]
+                              },
+                              "note": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "createdByName": {
+                                "type": "string"
+                              },
+                              "finalizedByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "finalizedAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "version",
+                              "supplierId",
+                              "reconciliationNo",
+                              "asOfDate",
+                              "systemBalance",
+                              "confirmedBalance",
+                              "differenceAmount",
+                              "resultingAdjustmentId",
+                              "resultingAdjustmentStatus",
+                              "status",
+                              "note",
+                              "createdAt",
+                              "createdByName",
+                              "finalizedByName",
+                              "finalizedAt"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền supplier_debt.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy nhà cung cấp",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/supplier-debt/{supplierId}/reconciliations/{id}/finalize": {
+      "post": {
+        "tags": [
+          "supplier-debt"
+        ],
+        "summary": "Chốt biên bản đối chiếu (đường lệch, sau khi Phiếu điều chỉnh liên kết đã Duyệt)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "supplierId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "version": {
+                          "type": "integer"
+                        },
+                        "supplierId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "reconciliationNo": {
+                          "type": "string"
+                        },
+                        "asOfDate": {
+                          "type": "string"
+                        },
+                        "systemBalance": {
+                          "type": "integer"
+                        },
+                        "confirmedBalance": {
+                          "type": "integer"
+                        },
+                        "differenceAmount": {
+                          "type": "integer"
+                        },
+                        "resultingAdjustmentId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "resultingAdjustmentStatus": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "PENDING_APPROVAL",
+                            "APPROVED",
+                            "REJECTED"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "DRAFT",
+                            "FINALIZED",
+                            "CANCELLED"
+                          ]
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "createdByName": {
+                          "type": "string"
+                        },
+                        "finalizedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "finalizedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "version",
+                        "supplierId",
+                        "reconciliationNo",
+                        "asOfDate",
+                        "systemBalance",
+                        "confirmedBalance",
+                        "differenceAmount",
+                        "resultingAdjustmentId",
+                        "resultingAdjustmentStatus",
+                        "status",
+                        "note",
+                        "createdAt",
+                        "createdByName",
+                        "finalizedByName",
+                        "finalizedAt"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền supplier_debt.approve",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy biên bản",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Biên bản chưa sẵn sàng Chốt (phiếu điều chỉnh chưa Duyệt xong, hoặc biên bản không còn DRAFT) — SUPPLIER_DEBT_RECONCILIATION_NOT_READY",
             "content": {
               "application/json": {
                 "schema": {

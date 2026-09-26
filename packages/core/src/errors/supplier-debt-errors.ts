@@ -29,3 +29,33 @@ export class SupplierDebtIntegrityMismatchError extends DomainError {
     super('Số dư công nợ không khớp sổ — liên hệ quản trị hệ thống trước khi tiếp tục.');
   }
 }
+
+/** Phần E — ngày đối chiếu (`asOfDate`) không được sớm hơn/bằng biên bản `FINALIZED` gần nhất của
+ * cùng NCC (mốc chốt chỉ tăng dần, không lùi — đúng khuôn "Khoá bảng ca" #110). */
+export class SupplierDebtReconciliationAsOfDateTooEarlyError extends DomainError {
+  readonly code = 'SUPPLIER_DEBT_RECONCILIATION_AS_OF_DATE_TOO_EARLY';
+
+  constructor() {
+    super('Ngày đối chiếu phải sau ngày của biên bản đã chốt gần nhất của nhà cung cấp này.');
+  }
+}
+
+/** Phần E — gọi "Chốt" khi biên bản không còn ở trạng thái Nháp, hoặc phiếu điều chỉnh tự sinh do
+ * chênh lệch vẫn còn Chờ duyệt (phải xử lý xong phiếu đó trước). */
+export class SupplierDebtReconciliationNotReadyError extends DomainError {
+  readonly code = 'SUPPLIER_DEBT_RECONCILIATION_NOT_READY';
+
+  constructor() {
+    super('Biên bản này chưa thể Chốt — phiếu điều chỉnh chênh lệch chưa được xử lý xong, hoặc biên bản đã Chốt/Huỷ trước đó.');
+  }
+}
+
+/** Phần E — chứng từ thuộc kỳ công nợ đã CHỐT (`occurredAt` ≤ `lockedAsOfDate` của NCC), actor thiếu
+ * quyền `supplier_debt.unlock` để Huỷ/Điều chỉnh. */
+export class SupplierDebtPeriodLockedError extends DomainError {
+  readonly code = 'SUPPLIER_DEBT_PERIOD_LOCKED';
+
+  constructor() {
+    super('Chứng từ này thuộc kỳ công nợ đã chốt với nhà cung cấp — liên hệ người có quyền mở khoá kỳ công nợ.');
+  }
+}

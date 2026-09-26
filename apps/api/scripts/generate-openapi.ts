@@ -291,6 +291,12 @@ import {
   supplierDebtAdjustmentSchema,
   listSupplierDebtAdjustmentsQuerySchema,
   listSupplierDebtAdjustmentsResponseSchema,
+  previewSupplierDebtReconciliationQuerySchema,
+  previewSupplierDebtReconciliationResponseSchema,
+  createSupplierDebtReconciliationRequestSchema,
+  finalizeSupplierDebtReconciliationRequestSchema,
+  supplierDebtReconciliationSchema,
+  listSupplierDebtReconciliationsResponseSchema,
 } from '@nexamed/shared';
 
 /**
@@ -3941,6 +3947,72 @@ registry.registerPath({
     403: errorResponse('Không có quyền supplier_debt.approve'),
     404: errorResponse('Không tìm thấy phiếu điều chỉnh'),
     409: errorResponse('Phiếu đã được xử lý trước đó, hoặc lệch version (CONCURRENT_MODIFICATION)'),
+  },
+});
+
+// ============ Phần E — "Đối chiếu & chốt công nợ theo kỳ" (docs/DECISIONS.md #182 câu 3) ============
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/supplier-debt/{supplierId}/reconciliation-preview',
+  tags: ['supplier-debt'],
+  summary: 'Xem trước chênh lệch "số hệ thống" so với "số NCC xác nhận" tại 1 ngày — chỉ đọc, không ghi gì',
+  security: [{ bearerAuth: [] }],
+  request: { params: supplierDebtSupplierIdParams, query: previewSupplierDebtReconciliationQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(previewSupplierDebtReconciliationResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền supplier_debt.read'),
+    404: errorResponse('Không tìm thấy nhà cung cấp'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/supplier-debt/{supplierId}/reconciliations',
+  tags: ['supplier-debt'],
+  summary: 'Lập "Biên bản đối chiếu" — khớp thì tự Chốt ngay, lệch thì tự sinh Phiếu điều chỉnh Chờ duyệt',
+  security: [{ bearerAuth: [] }],
+  request: { params: supplierDebtSupplierIdParams, body: { content: { 'application/json': { schema: createSupplierDebtReconciliationRequestSchema } } } },
+  responses: {
+    201: jsonResponse('Thành công', envelope(supplierDebtReconciliationSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền supplier_debt.adjust'),
+    404: errorResponse('Không tìm thấy nhà cung cấp'),
+    409: errorResponse('Ngày đối chiếu không sau ngày của biên bản đã chốt gần nhất (SUPPLIER_DEBT_RECONCILIATION_AS_OF_DATE_TOO_EARLY)'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/supplier-debt/{supplierId}/reconciliations',
+  tags: ['supplier-debt'],
+  summary: 'Tab "Đối chiếu & Chốt kỳ" (trang chi tiết NCC) — lịch sử biên bản đối chiếu',
+  security: [{ bearerAuth: [] }],
+  request: { params: supplierDebtSupplierIdParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listSupplierDebtReconciliationsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền supplier_debt.read'),
+    404: errorResponse('Không tìm thấy nhà cung cấp'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/supplier-debt/{supplierId}/reconciliations/{id}/finalize',
+  tags: ['supplier-debt'],
+  summary: 'Chốt biên bản đối chiếu (đường lệch, sau khi Phiếu điều chỉnh liên kết đã Duyệt)',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: supplierDebtSupplierIdParams.extend({ id: z.string().uuid() }),
+    body: { content: { 'application/json': { schema: finalizeSupplierDebtReconciliationRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Thành công', envelope(supplierDebtReconciliationSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền supplier_debt.approve'),
+    404: errorResponse('Không tìm thấy biên bản'),
+    409: errorResponse('Biên bản chưa sẵn sàng Chốt (phiếu điều chỉnh chưa Duyệt xong, hoặc biên bản không còn DRAFT) — SUPPLIER_DEBT_RECONCILIATION_NOT_READY'),
   },
 });
 

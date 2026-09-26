@@ -4,6 +4,14 @@
 
 ## 2026-09-26
 
+### Công nợ nhà cung cấp, Phần E "Đối chiếu & chốt công nợ theo kỳ" — HOÀN TẤT 100%, toàn bộ lộ trình Công nợ NCC (Phần A→E) xong
+
+Phần cuối cùng của "Công nợ nhà cung cấp" — chưa có kế hoạch kỹ thuật sẵn (khác Phần A-D), dùng `EnterPlanMode` + 2 agent Explore + `AskUserQuestion` (2 câu: gộp 1 bước lập biên bản; biên bản có phiếu điều chỉnh bị Từ chối tự "Đã huỷ") chốt thiết kế trước khi code. Bảng mới `supplier_debt_reconciliation` ("Biên bản đối chiếu" 1 NCC tại 1 ngày, migration `20260926090000_supplier_debt_phase_e`) + `supplier_debt_account.locked_as_of_date`. Lập biên bản khớp → tự Chốt ngay; lệch → tự sinh Phiếu điều chỉnh Chờ duyệt, Chốt riêng sau khi Duyệt xong (Từ chối → biên bản tự "Đã huỷ"). Sau khi Chốt, chứng từ NCC đó có ngày ≤ ngày chốt chỉ Huỷ/Điều chỉnh được bởi actor có `supplier_debt.unlock` (permission đã seed sẵn từ Phần A, nay mới dùng tới — không cần quyền mới). Web: tab thứ 6 "Đối chiếu & Chốt kỳ" trên `SupplierDetailPage.tsx` + banner khoá kỳ + `SupplierDebtReconciliationDialog.tsx` mới (xem trước chênh lệch trước khi submit).
+
+**Bug thật phát hiện lúc verify Playwright**: Duyệt phiếu điều chỉnh tự sinh từ biên bản xong, nút "Chốt" vẫn bị khoá do thiếu invalidate cache `supplier-debt-reconciliations` ở `useApproveSupplierDebtAdjustmentMutation()` — đã sửa.
+
+**Đã xác minh thật**: `packages/core` +5 test, `apps/api` `supplier-debt-reconciliation-http.spec.ts` mới 10/10 (khoá/mở khoá kỳ, ngày đối chiếu lùi, Từ chối/Duyệt phiếu điều chỉnh liên kết, cách ly tenant, phân quyền), sửa 2 assertion hồi quy đúng dự kiến ở `business-code-http.spec.ts` (thêm codeType `SUPPLIER_DEBT_RECONCILIATION`, prefix `BBD`). `pnpm -w typecheck/lint/build` sạch toàn workspace. Verify Playwright qua Chrome thật trên tenant test cố định, đủ 8 bước (lập/Chốt khớp, lập lệch, Duyệt điều chỉnh, Chốt lại, chặn Huỷ chứng từ khoá kỳ khi thiếu quyền mở khoá, cho Huỷ khi có quyền) — dọn sạch vai trò/tài khoản test sau khi xong. Chi tiết đầy đủ `docs/DECISIONS.md` #189. **Công nợ nhà cung cấp hoàn tất 100% (Phần A→E).**
+
 ### Công nợ nhà cung cấp, Phần D "Luồng xử lý sai sót" — frontend + verify Playwright xong, Phần D hoàn tất 100%
 
 Tiếp ngay theo handoff của phiên trước (backend đã xong). Web mới: `SupplierDebtAdjustmentDialog.tsx` (Lập phiếu điều chỉnh Tăng/Giảm), `SupplierDebtAdjustmentDetailDialog.tsx` (xem + Duyệt/Từ chối, dùng chung tab lẫn badge), `SupplierDebtAdjustmentBadge.tsx` ("Có điều chỉnh (N)"). Tab thứ 5 "Nhật ký điều chỉnh" + nút "Lập phiếu điều chỉnh công nợ" + banner đỏ lệch số dư trên `SupplierDetailPage.tsx`. "Đề nghị huỷ" tái dùng thẳng `ReasonConfirmDialog` có sẵn, thêm vào `StockReceiptListPage.tsx`/`StockIssueListPage.tsx` (không phải Form Page như handoff ghi nhầm — đã đối chiếu code thật). "Sao chép thành phiếu mới" ở Form Page khi phiếu đã huỷ, để trống Lô/Hạn dùng bắt chọn lại. Sidebar badge gộp thêm `pendingAdjustmentCount`.

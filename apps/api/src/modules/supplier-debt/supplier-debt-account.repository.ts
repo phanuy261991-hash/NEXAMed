@@ -33,4 +33,15 @@ export class SupplierDebtAccountRepository {
     if (supplierIds.length === 0) return Promise.resolve([]);
     return tx.supplierDebtAccount.findMany({ where: { tenantId, supplierId: { in: supplierIds }, deletedAt: null } });
   }
+
+  /** Phần E — nâng mốc `lockedAsOfDate` lúc "Chốt" biên bản đối chiếu, optimistic lock qua `version`
+   * (đúng khuôn `updateBalance()`). Caller (`finalizeReconciliationCore()`) đã tự tính `newLockedAsOfDate
+   * = max(hiện tại, asOfDate)` trước khi gọi — method này chỉ ghi, không tự so sánh. */
+  async updateLockedAsOfDate(tx: Prisma.TransactionClient, tenantId: string, id: string, expectedVersion: number, actorId: string, newLockedAsOfDate: Date): Promise<number> {
+    const result = await tx.supplierDebtAccount.updateMany({
+      where: { tenantId, id, version: expectedVersion, deletedAt: null },
+      data: { lockedAsOfDate: newLockedAsOfDate, updatedBy: actorId, version: { increment: 1 } },
+    });
+    return result.count;
+  }
 }

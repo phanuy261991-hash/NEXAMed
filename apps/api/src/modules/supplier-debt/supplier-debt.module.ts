@@ -10,6 +10,7 @@ import { SupplierDebtService } from './supplier-debt.service';
 import { SupplierDebtAccountRepository } from './supplier-debt-account.repository';
 import { SupplierDebtEntryRepository } from './supplier-debt-entry.repository';
 import { SupplierDebtAdjustmentRepository } from './supplier-debt-adjustment.repository';
+import { SupplierDebtReconciliationRepository } from './supplier-debt-reconciliation.repository';
 
 /**
  * "Công nợ nhà cung cấp" — Phần A "Nền sổ công nợ" (docs/DECISIONS.md #180/#182). Sở hữu 2 bảng mới
@@ -69,7 +70,13 @@ import { SupplierDebtAdjustmentRepository } from './supplier-debt-adjustment.rep
     forwardRef(() => InventoryModule),
   ],
   controllers: [SupplierDebtController],
-  providers: [SupplierDebtService, SupplierDebtAccountRepository, SupplierDebtEntryRepository, SupplierDebtAdjustmentRepository],
+  providers: [
+    SupplierDebtService,
+    SupplierDebtAccountRepository,
+    SupplierDebtEntryRepository,
+    SupplierDebtAdjustmentRepository,
+    SupplierDebtReconciliationRepository,
+  ],
   exports: [SupplierDebtService],
 })
 export class SupplierDebtModule {}

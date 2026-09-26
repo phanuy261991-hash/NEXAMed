@@ -63,6 +63,9 @@ export const supplierDebtSummarySchema = z.object({
   /** Phần D, mục 4.2.6 — `false` khi `SUM(amountChange)` lệch với `balance` snapshot (lỗi hệ thống,
    * không do người dùng) — web hiện banner đỏ, chặn Thanh toán/Thu tiền hoàn lại tới khi xử lý. */
   balanceIntegrityOk: z.boolean(),
+  /** Phần E — mốc đối chiếu đã CHỐT gần nhất (`yyyy-mm-dd`), `null` nếu chưa từng chốt. Chứng từ có
+   * `occurredAt` ≤ mốc này chỉ Huỷ/Điều chỉnh được bởi người có `supplier_debt.unlock`. */
+  lockedAsOfDate: z.string().nullable(),
 });
 export type SupplierDebtSummary = z.infer<typeof supplierDebtSummarySchema>;
 
@@ -299,3 +302,63 @@ export type ListSupplierDebtAdjustmentsQuery = z.infer<typeof listSupplierDebtAd
 
 export const listSupplierDebtAdjustmentsResponseSchema = z.object({ items: z.array(supplierDebtAdjustmentSchema) });
 export type ListSupplierDebtAdjustmentsResponse = z.infer<typeof listSupplierDebtAdjustmentsResponseSchema>;
+
+/**
+ * Phần E "Đối chiếu & chốt công nợ theo kỳ" (docs/DECISIONS.md #182 câu 3, kế hoạch mục 4.3/8) —
+ * "Biên bản đối chiếu" 1 NCC tại 1 ngày. Gộp 1 bước (chốt qua AskUserQuestion): `POST .../reconciliations`
+ * tính `systemBalance`/`differenceAmount` ngay, TỰ CHỐT nếu khớp (0), hoặc tự sinh
+ * `supplier_debt_adjustment` PENDING_APPROVAL nếu lệch (nút "Chốt" bị khoá tới khi phiếu đó được xử
+ * lý xong — gọi `POST .../reconciliations/:id/finalize` riêng). Sau khi CHỐT, chứng từ của NCC này có
+ * ngày ≤ `asOfDate` chỉ Huỷ/Điều chỉnh được bởi người có `supplier_debt.unlock`.
+ */
+export const supplierDebtReconciliationStatusSchema = z.enum(['DRAFT', 'FINALIZED', 'CANCELLED']);
+export type SupplierDebtReconciliationStatus = z.infer<typeof supplierDebtReconciliationStatusSchema>;
+
+export const previewSupplierDebtReconciliationQuerySchema = z.object({
+  asOfDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Ngày đối chiếu không hợp lệ.'),
+  confirmedBalance: z.coerce.number().int(),
+});
+export type PreviewSupplierDebtReconciliationQuery = z.infer<typeof previewSupplierDebtReconciliationQuerySchema>;
+
+export const previewSupplierDebtReconciliationResponseSchema = z.object({
+  systemBalance: z.number().int(),
+  confirmedBalance: z.number().int(),
+  differenceAmount: z.number().int(),
+});
+export type PreviewSupplierDebtReconciliationResponse = z.infer<typeof previewSupplierDebtReconciliationResponseSchema>;
+
+export const createSupplierDebtReconciliationRequestSchema = z.object({
+  asOfDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Ngày đối chiếu không hợp lệ.'),
+  confirmedBalance: z.number().int(),
+  note: z.string().nullable().optional(),
+});
+export type CreateSupplierDebtReconciliationRequest = z.infer<typeof createSupplierDebtReconciliationRequestSchema>;
+
+export const finalizeSupplierDebtReconciliationRequestSchema = z.object({ version: z.number().int().positive() });
+export type FinalizeSupplierDebtReconciliationRequest = z.infer<typeof finalizeSupplierDebtReconciliationRequestSchema>;
+
+/** Tab "Đối chiếu & Chốt kỳ" trên trang chi tiết NCC — 1 dòng/biên bản. */
+export const supplierDebtReconciliationSchema = z.object({
+  id: z.string().uuid(),
+  version: z.number().int(),
+  supplierId: z.string().uuid(),
+  reconciliationNo: z.string(),
+  asOfDate: z.string(),
+  systemBalance: z.number().int(),
+  confirmedBalance: z.number().int(),
+  differenceAmount: z.number().int(),
+  resultingAdjustmentId: z.string().uuid().nullable(),
+  /** Trạng thái phiếu điều chỉnh liên kết (nếu có) — web dùng để hiện/disable nút "Chốt" mà không
+   * phải gọi riêng `GET /supplier-debt/adjustments`. */
+  resultingAdjustmentStatus: supplierDebtAdjustmentStatusSchema.nullable(),
+  status: supplierDebtReconciliationStatusSchema,
+  note: z.string().nullable(),
+  createdAt: z.string(),
+  createdByName: z.string(),
+  finalizedByName: z.string().nullable(),
+  finalizedAt: z.string().nullable(),
+});
+export type SupplierDebtReconciliation = z.infer<typeof supplierDebtReconciliationSchema>;
+
+export const listSupplierDebtReconciliationsResponseSchema = z.object({ items: z.array(supplierDebtReconciliationSchema) });
+export type ListSupplierDebtReconciliationsResponse = z.infer<typeof listSupplierDebtReconciliationsResponseSchema>;

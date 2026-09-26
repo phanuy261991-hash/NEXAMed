@@ -12644,7 +12644,7 @@ export interface paths {
                             data: {
                                 items: {
                                     /** @enum {string} */
-                                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT";
+                                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION";
                                     label: string;
                                     prefix: string;
                                     template: string;
@@ -12717,7 +12717,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT";
+                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION";
                 };
                 cookie?: never;
             };
@@ -12740,7 +12740,7 @@ export interface paths {
                         "application/json": {
                             data: {
                                 /** @enum {string} */
-                                codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT";
+                                codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION";
                                 label: string;
                                 prefix: string;
                                 template: string;
@@ -25004,6 +25004,7 @@ export interface paths {
                                     canRecordOpeningBalance: boolean;
                                     pendingAdjustmentCount: number;
                                     balanceIntegrityOk: boolean;
+                                    lockedAsOfDate: string | null;
                                 }[];
                             };
                             meta: Record<string, never>;
@@ -25088,6 +25089,7 @@ export interface paths {
                                 canRecordOpeningBalance: boolean;
                                 pendingAdjustmentCount: number;
                                 balanceIntegrityOk: boolean;
+                                lockedAsOfDate: string | null;
                             };
                             meta: Record<string, never>;
                         };
@@ -25410,6 +25412,7 @@ export interface paths {
                                 canRecordOpeningBalance: boolean;
                                 pendingAdjustmentCount: number;
                                 balanceIntegrityOk: boolean;
+                                lockedAsOfDate: string | null;
                             };
                             meta: Record<string, never>;
                         };
@@ -25534,6 +25537,7 @@ export interface paths {
                                 canRecordOpeningBalance: boolean;
                                 pendingAdjustmentCount: number;
                                 balanceIntegrityOk: boolean;
+                                lockedAsOfDate: string | null;
                             };
                             meta: Record<string, never>;
                         };
@@ -25755,6 +25759,7 @@ export interface paths {
                                 canRecordOpeningBalance: boolean;
                                 pendingAdjustmentCount: number;
                                 balanceIntegrityOk: boolean;
+                                lockedAsOfDate: string | null;
                             };
                             meta: Record<string, never>;
                         };
@@ -26306,6 +26311,454 @@ export interface paths {
                     };
                 };
                 /** @description Phiếu đã được xử lý trước đó, hoặc lệch version (CONCURRENT_MODIFICATION) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/supplier-debt/{supplierId}/reconciliation-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Xem trước chênh lệch "số hệ thống" so với "số NCC xác nhận" tại 1 ngày — chỉ đọc, không ghi gì */
+        get: {
+            parameters: {
+                query: {
+                    asOfDate: string;
+                    confirmedBalance?: number | null;
+                };
+                header?: never;
+                path: {
+                    supplierId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                systemBalance: number;
+                                confirmedBalance: number;
+                                differenceAmount: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền supplier_debt.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy nhà cung cấp */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/supplier-debt/{supplierId}/reconciliations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tab "Đối chiếu & Chốt kỳ" (trang chi tiết NCC) — lịch sử biên bản đối chiếu */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    supplierId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    version: number;
+                                    /** Format: uuid */
+                                    supplierId: string;
+                                    reconciliationNo: string;
+                                    asOfDate: string;
+                                    systemBalance: number;
+                                    confirmedBalance: number;
+                                    differenceAmount: number;
+                                    /** Format: uuid */
+                                    resultingAdjustmentId: string | null;
+                                    /** @enum {string|null} */
+                                    resultingAdjustmentStatus: "PENDING_APPROVAL" | "APPROVED" | "REJECTED" | null;
+                                    /** @enum {string} */
+                                    status: "DRAFT" | "FINALIZED" | "CANCELLED";
+                                    note: string | null;
+                                    createdAt: string;
+                                    createdByName: string;
+                                    finalizedByName: string | null;
+                                    finalizedAt: string | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền supplier_debt.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy nhà cung cấp */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Lập "Biên bản đối chiếu" — khớp thì tự Chốt ngay, lệch thì tự sinh Phiếu điều chỉnh Chờ duyệt */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    supplierId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        asOfDate: string;
+                        confirmedBalance: number;
+                        note?: string | null;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                version: number;
+                                /** Format: uuid */
+                                supplierId: string;
+                                reconciliationNo: string;
+                                asOfDate: string;
+                                systemBalance: number;
+                                confirmedBalance: number;
+                                differenceAmount: number;
+                                /** Format: uuid */
+                                resultingAdjustmentId: string | null;
+                                /** @enum {string|null} */
+                                resultingAdjustmentStatus: "PENDING_APPROVAL" | "APPROVED" | "REJECTED" | null;
+                                /** @enum {string} */
+                                status: "DRAFT" | "FINALIZED" | "CANCELLED";
+                                note: string | null;
+                                createdAt: string;
+                                createdByName: string;
+                                finalizedByName: string | null;
+                                finalizedAt: string | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền supplier_debt.adjust */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy nhà cung cấp */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Ngày đối chiếu không sau ngày của biên bản đã chốt gần nhất (SUPPLIER_DEBT_RECONCILIATION_AS_OF_DATE_TOO_EARLY) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/supplier-debt/{supplierId}/reconciliations/{id}/finalize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Chốt biên bản đối chiếu (đường lệch, sau khi Phiếu điều chỉnh liên kết đã Duyệt) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    supplierId: string;
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                version: number;
+                                /** Format: uuid */
+                                supplierId: string;
+                                reconciliationNo: string;
+                                asOfDate: string;
+                                systemBalance: number;
+                                confirmedBalance: number;
+                                differenceAmount: number;
+                                /** Format: uuid */
+                                resultingAdjustmentId: string | null;
+                                /** @enum {string|null} */
+                                resultingAdjustmentStatus: "PENDING_APPROVAL" | "APPROVED" | "REJECTED" | null;
+                                /** @enum {string} */
+                                status: "DRAFT" | "FINALIZED" | "CANCELLED";
+                                note: string | null;
+                                createdAt: string;
+                                createdByName: string;
+                                finalizedByName: string | null;
+                                finalizedAt: string | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền supplier_debt.approve */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy biên bản */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Biên bản chưa sẵn sàng Chốt (phiếu điều chỉnh chưa Duyệt xong, hoặc biên bản không còn DRAFT) — SUPPLIER_DEBT_RECONCILIATION_NOT_READY */
                 409: {
                     headers: {
                         [name: string]: unknown;

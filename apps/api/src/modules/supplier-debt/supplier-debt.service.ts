@@ -3,12 +3,15 @@ import {
   allocateSupplierDebt,
   CASHIER_SHIFT_READER_PORT,
   CLINIC_CONFIG_READER_PORT,
+  computeSupplierDebtReconciliationOutcome,
   ConcurrentModificationError,
   DOCTOR_DIRECTORY_PORT,
   resolveRecentDateRange,
   SupplierDebtAdjustmentNotPendingError,
   SupplierDebtIntegrityMismatchError,
   SupplierDebtOpeningBalanceAlreadyExistsError,
+  SupplierDebtReconciliationAsOfDateTooEarlyError,
+  SupplierDebtReconciliationNotReadyError,
   type CashierShiftReaderPort,
   type ClinicConfigReaderPort,
   type DoctorDirectoryPort,
@@ -17,6 +20,8 @@ import {
 import type {
   CreateSupplierDebtAdjustmentRequest,
   ApproveSupplierDebtAdjustmentRequest,
+  CreateSupplierDebtReconciliationRequest,
+  FinalizeSupplierDebtReconciliationRequest,
   ListSupplierDebtAdjustmentsQuery,
   ListSupplierDebtAdjustmentsResponse,
   ListSupplierDebtLedgerQuery,
@@ -24,12 +29,15 @@ import type {
   ListSupplierDebtPaymentsQuery,
   ListSupplierDebtPaymentsResponse,
   ListSupplierDebtReceiptsResponse,
+  ListSupplierDebtReconciliationsResponse,
   ListSupplierDebtSummariesResponse,
+  PreviewSupplierDebtReconciliationResponse,
   RecordSupplierDebtOpeningBalanceRequest,
   RecordSupplierDebtPaymentRequest,
   RecordSupplierDebtRefundRequest,
   RejectSupplierDebtAdjustmentRequest,
   SupplierDebtAdjustment as SupplierDebtAdjustmentDto,
+  SupplierDebtReconciliation as SupplierDebtReconciliationDto,
   SupplierDebtSummary,
 } from '@nexamed/shared';
 import type {
@@ -39,6 +47,7 @@ import type {
   SupplierDebtAdjustment as SupplierDebtAdjustmentRow,
   SupplierDebtEntry,
   SupplierDebtEntryType,
+  SupplierDebtReconciliation as SupplierDebtReconciliationRow,
 } from '@prisma/client';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
@@ -52,6 +61,8 @@ import { StockIssueService } from '../inventory/stock-issue.service';
 import { SupplierDebtAccountRepository } from './supplier-debt-account.repository';
 import { SupplierDebtEntryRepository } from './supplier-debt-entry.repository';
 import { SupplierDebtAdjustmentRepository } from './supplier-debt-adjustment.repository';
+import { SupplierDebtReconciliationRepository } from './supplier-debt-reconciliation.repository';
+import { assertSupplierDebtWritable } from './supplier-debt-lock.guard';
 
 /**
  * "Công nợ nhà cung cấp" — Phần A "Nền sổ công nợ" (docs/DECISIONS.md #180/#182, kế hoạch kỹ thuật
@@ -81,6 +92,7 @@ export class SupplierDebtService {
     private readonly supplierRepository: SupplierRepository,
     private readonly businessCodeService: BusinessCodeService,
     private readonly adjustmentRepository: SupplierDebtAdjustmentRepository,
+    private readonly reconciliationRepository: SupplierDebtReconciliationRepository,
     // Phần D — vòng phụ thuộc THẬT ở mức Service (approveAdjustment() gọi ngược StockReceiptService/
     // StockIssueService để thực thi "Huỷ chứng từ" hộ lúc duyệt VOID_REQUEST), bọc forwardRef() đúng
     // khuyến nghị NestJS, đối xứng với 2 đầu injection ở `stock-receipt.service.ts`/`stock-issue.service.ts`.
@@ -372,6 +384,12 @@ export class SupplierDebtService {
     const account = await this.accountRepository.findById(tx, tenantId, original.accountId);
     if (!account) return; // không nên xảy ra (original tồn tại ⇒ account phải tồn tại) — phòng thủ.
 
+    // Phần E — điểm chốt DUY NHẤT cho MỌI đường Huỷ chứng từ (Huỷ trực tiếp `voidReceipt()`/
+    // `voidIssue()` LẪN duyệt "Đề nghị huỷ", cả 2 đều đi qua `voidPostedCore()` → hàm này). Nằm
+    // TRONG `tx` chung với các bước đảo thẻ kho đã chạy trước đó ở `voidPostedCore()` — throw ở đây
+    // rollback toàn bộ giao dịch, không cần sửa gì ở `stock-receipt.service.ts`/`stock-issue.service.ts`.
+    await assertSupplierDebtWritable(tx, tenantId, actorId, account.lockedAsOfDate, original.occurredAt);
+
     const { entry } = await this.applyEntry(tx, tenantId, actorId, account, {
       entryType: 'REVERSAL',
       amountChange: -original.amountChange,
@@ -607,6 +625,7 @@ export class SupplierDebtService {
       canRecordOpeningBalance: account === null,
       pendingAdjustmentCount,
       balanceIntegrityOk: account === null || rawEntrySum === account.balance,
+      lockedAsOfDate: account?.lockedAsOfDate?.toISOString() ?? null,
     };
   }
 
@@ -896,6 +915,17 @@ export class SupplierDebtService {
         }
       } else {
         const account0 = await this.getOrCreateAccount(tx, tenantId, actorId, adjustment.supplierId);
+        // Phần E — CHỈ khi gắn 1 chứng từ cũ cụ thể (`targetReceiptId`/`targetIssueId`, tuỳ chọn cho
+        // INCREASE/DECREASE) mới có "chứng từ có ngày ≤ ngày chốt" bị đụng tới; không có target thì
+        // đây chỉ là 1 khoản điều chỉnh số dư mới (dated hôm nay), không chạm lịch sử, bỏ qua kiểm.
+        const targetEntry = adjustment.targetReceiptId
+          ? await this.entryRepository.findActiveByStockReceiptId(tx, tenantId, adjustment.targetReceiptId)
+          : adjustment.targetIssueId
+            ? await this.entryRepository.findActiveByStockIssueId(tx, tenantId, adjustment.targetIssueId)
+            : null;
+        if (targetEntry) {
+          await assertSupplierDebtWritable(tx, tenantId, actorId, account0.lockedAsOfDate, targetEntry.occurredAt);
+        }
         const entryType: SupplierDebtEntryType = adjustment.kind === 'INCREASE' ? 'ADJUSTMENT_INCREASE' : 'ADJUSTMENT_DECREASE';
         const amountChange = adjustment.kind === 'INCREASE' ? adjustment.amount! : -adjustment.amount!;
         await this.applyEntry(tx, tenantId, actorId, account0, {
@@ -949,6 +979,23 @@ export class SupplierDebtService {
         userAgent: meta.userAgent,
       });
 
+      // Phần E — phiếu điều chỉnh này do 1 "Biên bản đối chiếu" tự sinh ra (chênh lệch) mà bị Từ
+      // chối → biên bản đó chuyển "Đã huỷ" (quyết định chốt qua AskUserQuestion: KHÔNG cho sửa lại,
+      // phải lập biên bản mới — giữ nguyên bản cũ để tra vết, đúng nguyên tắc "bản ghi bất biến").
+      const linkedReconciliation = await this.reconciliationRepository.findByResultingAdjustmentId(tx, tenantId, id);
+      if (linkedReconciliation) {
+        await this.reconciliationRepository.markCancelled(tx, tenantId, linkedReconciliation.id, actorId);
+        await writeAuditLog(tx, tenantId, {
+          actorId,
+          action: 'supplier_debt_reconciliation.cancelled',
+          entityType: 'supplier_debt_reconciliation',
+          entityId: linkedReconciliation.id,
+          afterJson: { reason: 'resulting_adjustment_rejected', adjustmentId: id },
+          ip: meta.ip,
+          userAgent: meta.userAgent,
+        });
+      }
+
       const rejected = await this.adjustmentRepository.findById(tx, tenantId, id);
       const [item] = await this.toAdjustmentDtos(tx, tenantId, [rejected!]);
       return item!;
@@ -963,5 +1010,231 @@ export class SupplierDebtService {
       const items = await this.toAdjustmentDtos(tx, tenantId, rows);
       return { items };
     });
+  }
+
+  // ============ Phần E "Đối chiếu & chốt công nợ theo kỳ" (docs/DECISIONS.md #182 câu 3) ============
+
+  /** `yyyy-mm-dd` → cuối ngày giờ Việt Nam (đúng khuôn `listLedger()`'s `toDate`) — bao trọn mọi
+   * chứng từ trong ngày đối chiếu. */
+  private parseAsOfDate(asOfDate: string): Date {
+    return new Date(`${asOfDate}T23:59:59.999+07:00`);
+  }
+
+  /** "Số hệ thống tại ngày X" — `0` nếu NCC chưa từng có bút toán nào (chưa có account). */
+  private async computeSystemBalanceAsOf(tx: Prisma.TransactionClient, tenantId: string, supplierId: string, asOfDate: Date): Promise<number> {
+    const account = await this.accountRepository.findBySupplierId(tx, tenantId, supplierId);
+    if (!account) return 0;
+    const sum = await this.entryRepository.sumAmountChangeAsOf(tx, tenantId, account.id, asOfDate);
+    return Number(sum);
+  }
+
+  /** `GET /supplier-debt/:supplierId/reconciliation-preview` — chỉ đọc, không ghi gì. Dùng cho ô
+   * xem trước trong dialog "Lập biên bản đối chiếu" TRƯỚC khi submit. */
+  async previewReconciliation(tenantId: string, supplierId: string, asOfDate: string, confirmedBalance: number): Promise<PreviewSupplierDebtReconciliationResponse> {
+    const parsedAsOfDate = this.parseAsOfDate(asOfDate);
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const supplier = await this.supplierRepository.findById(tx, tenantId, supplierId);
+      if (!supplier) throw new NotFoundException();
+      const systemBalance = await this.computeSystemBalanceAsOf(tx, tenantId, supplierId, parsedAsOfDate);
+      const { differenceAmount } = computeSupplierDebtReconciliationOutcome(systemBalance, confirmedBalance);
+      return { systemBalance, confirmedBalance, differenceAmount };
+    });
+  }
+
+  /**
+   * `POST /supplier-debt/:supplierId/reconciliations` — "Lập biên bản đối chiếu" (gộp 1 bước, chốt
+   * qua AskUserQuestion, kế hoạch `playful-baking-kazoo.md`). Tính `systemBalance`/`differenceAmount`
+   * ngay; khớp (`0`) → tự CHỐT trong CÙNG transaction; lệch → tự sinh `supplier_debt_adjustment`
+   * `PENDING_APPROVAL` (kind theo dấu chênh lệch), giữ `DRAFT` — phải Duyệt phiếu đó rồi gọi
+   * `finalizeReconciliation()` riêng.
+   */
+  async createReconciliation(
+    tenantId: string,
+    actorId: string,
+    supplierId: string,
+    dto: CreateSupplierDebtReconciliationRequest,
+    meta: RequestMeta,
+  ): Promise<SupplierDebtReconciliationDto> {
+    const asOfDate = this.parseAsOfDate(dto.asOfDate);
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const supplier = await this.supplierRepository.findById(tx, tenantId, supplierId);
+      if (!supplier) throw new NotFoundException();
+
+      const latestFinalizedAsOfDate = await this.reconciliationRepository.findLatestFinalizedAsOfDate(tx, tenantId, supplierId);
+      if (latestFinalizedAsOfDate && asOfDate.getTime() <= latestFinalizedAsOfDate.getTime()) {
+        throw new SupplierDebtReconciliationAsOfDateTooEarlyError();
+      }
+
+      const systemBalance = await this.computeSystemBalanceAsOf(tx, tenantId, supplierId, asOfDate);
+      const outcome = computeSupplierDebtReconciliationOutcome(systemBalance, dto.confirmedBalance);
+      const reconciliationNo = await this.businessCodeService.generate(tx, tenantId, actorId, 'SUPPLIER_DEBT_RECONCILIATION', new Date());
+
+      let resultingAdjustmentId: string | null = null;
+      if (outcome.adjustmentKind) {
+        const adjustmentNo = await this.businessCodeService.generate(tx, tenantId, actorId, 'SUPPLIER_DEBT_ADJUSTMENT', new Date());
+        const adjustmentRow = await this.adjustmentRepository.create(tx, tenantId, actorId, {
+          supplierId,
+          adjustmentNo,
+          kind: outcome.adjustmentKind,
+          amount: BigInt(outcome.adjustmentAmount!),
+          targetReceiptId: null,
+          targetIssueId: null,
+          targetVoucherId: null,
+          reason: `Tự sinh từ Biên bản đối chiếu ${reconciliationNo} (đối chiếu tại ngày ${dto.asOfDate}) — số hệ thống ${systemBalance.toLocaleString('vi-VN')}đ, NCC xác nhận ${dto.confirmedBalance.toLocaleString('vi-VN')}đ.`,
+          evidenceRef: reconciliationNo,
+        });
+        await writeAuditLog(tx, tenantId, {
+          actorId,
+          action: 'supplier_debt_adjustment.created',
+          entityType: 'supplier_debt_adjustment',
+          entityId: adjustmentRow.id,
+          afterJson: { supplierId, kind: outcome.adjustmentKind, amount: outcome.adjustmentAmount, reconciliationNo },
+          ip: meta.ip,
+          userAgent: meta.userAgent,
+        });
+        resultingAdjustmentId = adjustmentRow.id;
+      }
+
+      const row = await this.reconciliationRepository.create(tx, tenantId, actorId, {
+        supplierId,
+        reconciliationNo,
+        asOfDate,
+        systemBalance: BigInt(systemBalance),
+        confirmedBalance: BigInt(dto.confirmedBalance),
+        differenceAmount: BigInt(outcome.differenceAmount),
+        resultingAdjustmentId,
+        note: dto.note ?? null,
+      });
+      await writeAuditLog(tx, tenantId, {
+        actorId,
+        action: 'supplier_debt_reconciliation.created',
+        entityType: 'supplier_debt_reconciliation',
+        entityId: row.id,
+        afterJson: { supplierId, asOfDate: dto.asOfDate, systemBalance, confirmedBalance: dto.confirmedBalance, differenceAmount: outcome.differenceAmount },
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
+
+      if (outcome.adjustmentKind === null) {
+        // Khớp tuyệt đối — tự Chốt NGAY trong CÙNG transaction (gộp 1 bước, #182 câu 3).
+        await this.finalizeReconciliationCore(tx, tenantId, actorId, row, row.version, meta);
+      }
+
+      const finalRow = await this.reconciliationRepository.findById(tx, tenantId, row.id);
+      const [item] = await this.toReconciliationDtos(tx, tenantId, [finalRow!]);
+      return item!;
+    });
+  }
+
+  /** Lõi "Chốt biên bản" dùng chung cho đường tự-chốt-ngay (`createReconciliation()`, khớp tuyệt
+   * đối) và `finalizeReconciliation()` (đường lệch, sau khi phiếu điều chỉnh đã Duyệt) — nâng
+   * `SupplierDebtAccount.lockedAsOfDate = max(hiện tại, asOfDate)` + chuyển biên bản `FINALIZED`,
+   * TRONG CÙNG transaction (nguyên tử, đúng khuôn `voidPostedCore()` Phần D). `expectedVersion` của
+   * BIÊN BẢN tách riêng khỏi `reconciliation.version` (đọc sẵn) để `finalizeReconciliation()` có thể
+   * truyền `version` do CLIENT gửi lên (bắt đúng race 2 người cùng bấm "Chốt") — đường tự-chốt-ngay
+   * dùng thẳng `row.version` (vừa tạo, không ai khác biết `id` để race). */
+  private async finalizeReconciliationCore(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    actorId: string,
+    reconciliation: SupplierDebtReconciliationRow,
+    expectedVersion: number,
+    meta: RequestMeta,
+  ): Promise<void> {
+    const account = await this.getOrCreateAccount(tx, tenantId, actorId, reconciliation.supplierId);
+    const newLockedAsOfDate =
+      !account.lockedAsOfDate || reconciliation.asOfDate.getTime() > account.lockedAsOfDate.getTime() ? reconciliation.asOfDate : account.lockedAsOfDate;
+    const lockCount = await this.accountRepository.updateLockedAsOfDate(tx, tenantId, account.id, account.version, actorId, newLockedAsOfDate);
+    if (lockCount === 0) throw new ConcurrentModificationError();
+
+    const finalizedAt = new Date();
+    const count = await this.reconciliationRepository.markFinalized(tx, tenantId, reconciliation.id, expectedVersion, actorId, finalizedAt);
+    if (count === 0) throw new ConcurrentModificationError();
+
+    await writeAuditLog(tx, tenantId, {
+      actorId,
+      action: 'supplier_debt_reconciliation.finalized',
+      entityType: 'supplier_debt_reconciliation',
+      entityId: reconciliation.id,
+      afterJson: { supplierId: reconciliation.supplierId, asOfDate: reconciliation.asOfDate.toISOString(), lockedAsOfDate: newLockedAsOfDate.toISOString() },
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+  }
+
+  /** `POST /supplier-debt/:supplierId/reconciliations/:id/finalize` — đường "lệch": gọi SAU khi
+   * phiếu điều chỉnh tự sinh (`resultingAdjustmentId`) đã được Duyệt (`APPROVED`). Chưa Duyệt/đã Từ
+   * chối/biên bản không còn `DRAFT` → `SupplierDebtReconciliationNotReadyError` (409). */
+  async finalizeReconciliation(
+    tenantId: string,
+    actorId: string,
+    supplierId: string,
+    id: string,
+    dto: FinalizeSupplierDebtReconciliationRequest,
+    meta: RequestMeta,
+  ): Promise<SupplierDebtReconciliationDto> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const reconciliation = await this.reconciliationRepository.findById(tx, tenantId, id);
+      if (!reconciliation || reconciliation.supplierId !== supplierId) throw new NotFoundException();
+      if (reconciliation.status !== 'DRAFT') throw new SupplierDebtReconciliationNotReadyError();
+
+      if (reconciliation.resultingAdjustmentId) {
+        const adjustment = await this.adjustmentRepository.findById(tx, tenantId, reconciliation.resultingAdjustmentId);
+        if (!adjustment || adjustment.status !== 'APPROVED') throw new SupplierDebtReconciliationNotReadyError();
+      }
+
+      await this.finalizeReconciliationCore(tx, tenantId, actorId, reconciliation, dto.version, meta);
+
+      const finalRow = await this.reconciliationRepository.findById(tx, tenantId, id);
+      const [item] = await this.toReconciliationDtos(tx, tenantId, [finalRow!]);
+      return item!;
+    });
+  }
+
+  /** Tab "Đối chiếu & Chốt kỳ" (trang chi tiết NCC). */
+  async listReconciliations(tenantId: string, supplierId: string): Promise<ListSupplierDebtReconciliationsResponse> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const supplier = await this.supplierRepository.findById(tx, tenantId, supplierId);
+      if (!supplier) throw new NotFoundException();
+      const rows = await this.reconciliationRepository.list(tx, tenantId, supplierId);
+      const items = await this.toReconciliationDtos(tx, tenantId, rows);
+      return { items };
+    });
+  }
+
+  private async toReconciliationDtos(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    rows: SupplierDebtReconciliationRow[],
+  ): Promise<SupplierDebtReconciliationDto[]> {
+    const adjustmentIds = rows.filter((r) => r.resultingAdjustmentId).map((r) => r.resultingAdjustmentId!);
+    const adjustments = await this.adjustmentRepository.findByIds(tx, tenantId, adjustmentIds);
+    const adjustmentStatusById = new Map(adjustments.map((a) => [a.id, a.status]));
+
+    const userIds = new Set<string>();
+    for (const r of rows) {
+      userIds.add(r.createdBy);
+      if (r.finalizedBy) userIds.add(r.finalizedBy);
+    }
+    const names = userIds.size > 0 ? await this.doctorDirectory.getUserFullNames(tenantId, [...userIds]) : new Map<string, string>();
+
+    return rows.map((r) => ({
+      id: r.id,
+      version: r.version,
+      supplierId: r.supplierId,
+      reconciliationNo: r.reconciliationNo,
+      asOfDate: r.asOfDate.toISOString(),
+      systemBalance: Number(r.systemBalance),
+      confirmedBalance: Number(r.confirmedBalance),
+      differenceAmount: Number(r.differenceAmount),
+      resultingAdjustmentId: r.resultingAdjustmentId,
+      resultingAdjustmentStatus: r.resultingAdjustmentId ? (adjustmentStatusById.get(r.resultingAdjustmentId) ?? null) : null,
+      status: r.status,
+      note: r.note,
+      createdAt: r.createdAt.toISOString(),
+      createdByName: names.get(r.createdBy) ?? 'Không rõ',
+      finalizedByName: r.finalizedBy ? (names.get(r.finalizedBy) ?? 'Không rõ') : null,
+      finalizedAt: r.finalizedAt?.toISOString() ?? null,
+    }));
   }
 }

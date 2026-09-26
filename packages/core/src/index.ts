@@ -43,5 +43,6 @@ export * from './inventory/compute-unit-conversion';
 export * from './inventory/compute-weighted-average-cost';
 export * from './inventory/select-fefo-batches';
 export * from './supplier-debt/allocate-supplier-debt';
+export * from './supplier-debt/compute-reconciliation';
 export * from './backup/backup-status';
 export * from './medical-record/render-patient-medical-record-html';
