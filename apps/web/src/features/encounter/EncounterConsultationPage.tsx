@@ -7,7 +7,6 @@ import {
   CheckCircle,
   ClipboardText,
   ClockCounterClockwise,
-  Flask,
   PencilSimple,
   Pill,
   Plus,
@@ -101,16 +100,15 @@ function formatRelativeTime(iso: string): string {
   return `${Math.round(days / 365)} năm trước`;
 }
 
+/**
+ * Chỉ 2 tab THẬT (Phương án 1 — Tab thật, chốt qua AskUserQuestion khi redesign màn khám cùng lúc
+ * Kho Thuốc GĐ5) — "Chỉ định cận lâm sàng"/"Lời dặn & hẹn tái khám" ẨN HẲN cho tới khi có nội dung
+ * thật, không còn giữ chỗ "Sắp ra mắt" như bản trước.
+ */
 const TABS = [
-  { id: 'section-kham', label: '1. Khám & Chẩn đoán', icon: ClipboardText, comingSoon: false },
-  { id: 'section-cls', label: '2. Chỉ định cận lâm sàng', icon: Flask, comingSoon: true },
-  // Sprint 4 (S4-01/02/04) — tab 3 nay có nội dung thật (PrescriptionPanel), không còn "Sắp ra mắt".
-  { id: 'section-donthuoc', label: '3. Kê đơn thuốc', icon: Pill, comingSoon: false },
-  { id: 'section-hen', label: '4. Lời dặn & hẹn tái khám', icon: CalendarBlank, comingSoon: true },
+  { id: 'section-kham', label: 'Khám & Chẩn đoán', icon: ClipboardText },
+  { id: 'section-donthuoc', label: 'Kê đơn thuốc', icon: Pill },
 ] as const;
-
-/** Thứ tự THẬT của các section trong DOM (khác thứ tự `TABS` — "Kê đơn thuốc" render trước 2 mục "Sắp ra mắt", xem JSX phía dưới `EncounterConsultationPage`), dùng để chọn đúng section đang xem khi nhiều section cùng lọt vào dải phát hiện của scroll-spy. */
-const SECTION_SCROLL_ORDER = ['section-kham', 'section-donthuoc', 'section-cls', 'section-hen'] as const;
 
 /**
  * Màn hình khám bệnh (S3-06/07) — bố cục theo mockup đã duyệt
@@ -242,18 +240,9 @@ export function EncounterConsultationPage() {
    * nhầm việc NẠP dữ liệu là NGƯỜI DÙNG vừa gõ. */
   const skipNextDirtyRef = useRef(false);
 
-  const sectionRefs = {
-    'section-kham': useRef<HTMLDivElement>(null),
-    'section-cls': useRef<HTMLDivElement>(null),
-    'section-donthuoc': useRef<HTMLDivElement>(null),
-    'section-hen': useRef<HTMLDivElement>(null),
-  };
-  const [activeTabId, setActiveTabId] = useState<keyof typeof sectionRefs>('section-kham');
-  const workspaceScrollRef = useRef<HTMLDivElement>(null);
-  /** `true` trong lúc `scrollIntoView({behavior:'smooth'})` do bấm tab đang chạy — scroll-spy tạm ngưng tính lại theo từng khung hình cuộn để tránh giật/nhấp nháy qua các tab liền kề (xem effect scroll-spy bên dưới). */
-  const isProgrammaticScrollRef = useRef(false);
-  /** Timeout dự phòng bật lại scroll-spy nếu sự kiện `scrollend` không bắn (một số trình duyệt/tình huống). */
-  const programmaticScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Phương án 1 — Tab thật: bấm tab đổi HẲN nội dung, không còn cuộn/scroll-spy qua nhiều section
+   * trong cùng 1 cột (xem `TABS` — chỉ 2 giá trị hợp lệ). */
+  const [activeTabId, setActiveTabId] = useState<(typeof TABS)[number]['id']>('section-kham');
 
   /** Trích `version` từng mục ghi chú từ response server — dùng CHUNG cho `populateFromServer` lẫn
    * khôi phục nháp offline (ENC-06, `attemptResync` gọi ngay lúc mount cần versions THẬT của
@@ -490,93 +479,6 @@ export function EncounterConsultationPage() {
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [encounterId]);
-
-  function scrollToTab(sectionId: keyof typeof sectionRefs) {
-    setActiveTabId(sectionId); // phản hồi ngay lúc bấm, không đợi cuộn xong scroll-spy mới xác nhận lại
-    // Chặn scroll-spy tính lại theo từng khung hình TRONG LÚC cuộn mượt — bug thật đã gặp: cuộn
-    // qua section dài (ví dụ "Thông tin khám lâm sàng") khiến scroll-spy liên tục đổi tab theo
-    // đúng vị trí TỨC THỜI của từng khung hình, nhìn như nhảy qua tab liền kề rồi mới về đúng tab
-    // vừa bấm — giật/lag rõ. Coi tab vừa bấm là chính xác NGAY, chỉ bật lại scroll-spy sau khi
-    // `scrollend` báo cuộn xong (kèm timeout dự phòng — `scrollend` không phải mọi trình duyệt đều
-    // bắn đúng lúc cho `scrollIntoView` lập trình, xem MDN).
-    isProgrammaticScrollRef.current = true;
-    if (programmaticScrollTimeoutRef.current !== null) clearTimeout(programmaticScrollTimeoutRef.current);
-    programmaticScrollTimeoutRef.current = setTimeout(() => {
-      isProgrammaticScrollRef.current = false;
-    }, 700);
-    sectionRefs[sectionId].current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-
-  /**
-   * Scroll-spy: tab "đang chọn" theo đúng section đang nằm ở đỉnh khung nhìn của khu vực làm việc —
-   * không chỉ đổi lúc bấm, người dùng cuộn tay cũng phải thấy đúng tab tương ứng được tô sáng.
-   * Tính TRỰC TIẾP theo vị trí cuộn thật (không dùng `IntersectionObserver` — bug thật đã gặp:
-   * trong lúc `scrollIntoView({behavior:'smooth'})` đang chạy, nhiều section cùng cắt ngưỡng gần
-   * như đồng thời, thứ tự các lần bắn callback không khớp thứ tự thật trên màn hình → chọn nhầm
-   * section liền sau). Thuật toán: section CUỐI CÙNG (theo `SECTION_SCROLL_ORDER`) đã cuộn qua khỏi
-   * mép trên (cộng biên `TOP_OFFSET_PX`) là section đang xem. Bỏ qua tính lại khi đang cuộn do BẤM
-   * TAB (`isProgrammaticScrollRef`, xem `scrollToTab`) — tránh giật/nhảy qua tab liền kề giữa lúc
-   * cuộn; cuộn TAY (rê chuột/lăn chuột) vẫn tính lại bình thường, có `requestAnimationFrame` chặn
-   * bớt tần suất tính lại (sự kiện `scroll` có thể bắn hàng chục lần/giây).
-   */
-  useEffect(() => {
-    const root = workspaceScrollRef.current;
-    if (!root || !query.data) return;
-
-    const TOP_OFFSET_PX = 24;
-
-    function computeActiveTab() {
-      if (!root) return;
-      // Đã cuộn hết đáy — section cuối có thể quá ngắn để mép trên của nó vượt qua `TOP_OFFSET_PX`
-      // (không còn chỗ cuộn thêm), vòng lặp bên dưới sẽ không bao giờ chọn được nó nếu chỉ xét vị
-      // trí. Ép chọn thẳng section cuối cùng trong trường hợp này.
-      if (root.scrollTop + root.clientHeight >= root.scrollHeight - 1) {
-        setActiveTabId(SECTION_SCROLL_ORDER[SECTION_SCROLL_ORDER.length - 1]!);
-        return;
-      }
-      let current: keyof typeof sectionRefs = SECTION_SCROLL_ORDER[0];
-      for (const id of SECTION_SCROLL_ORDER) {
-        const el = sectionRefs[id].current;
-        if (!el) continue;
-        const offsetWithinRoot = el.getBoundingClientRect().top - root.getBoundingClientRect().top + root.scrollTop;
-        if (offsetWithinRoot <= root.scrollTop + TOP_OFFSET_PX) {
-          current = id;
-        } else {
-          break;
-        }
-      }
-      setActiveTabId(current);
-    }
-
-    let rafId: number | null = null;
-    function onScroll() {
-      if (isProgrammaticScrollRef.current) return;
-      if (rafId !== null) return;
-      rafId = requestAnimationFrame(() => {
-        rafId = null;
-        computeActiveTab();
-      });
-    }
-
-    function onScrollEnd() {
-      isProgrammaticScrollRef.current = false;
-      if (programmaticScrollTimeoutRef.current !== null) {
-        clearTimeout(programmaticScrollTimeoutRef.current);
-        programmaticScrollTimeoutRef.current = null;
-      }
-      computeActiveTab(); // tự sửa lại nếu vị trí cuộn cuối cùng lệch nhẹ so với tab vừa bấm
-    }
-
-    computeActiveTab();
-    root.addEventListener('scroll', onScroll, { passive: true });
-    root.addEventListener('scrollend', onScrollEnd, { passive: true });
-    return () => {
-      root.removeEventListener('scroll', onScroll);
-      root.removeEventListener('scrollend', onScrollEnd);
-      if (rafId !== null) cancelAnimationFrame(rafId);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `sectionRefs` là object bọc các `useRef` ổn định qua mọi lần render (chỉ object bọc đổi identity, không phải các ref bên trong) — chỉ cần chạy lại khi dữ liệu vừa nạp xong (refs mới có element thật để đọc vị trí).
-  }, [query.data]);
 
   function setField(key: ClinicalKey, value: string) {
     setClinical((c) => ({ ...c, [key]: value }));
@@ -1047,7 +949,7 @@ export function EncounterConsultationPage() {
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => scrollToTab(tab.id)}
+                onClick={() => setActiveTabId(tab.id)}
                 aria-current={activeTabId === tab.id ? 'true' : undefined}
                 className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors ${
                   activeTabId === tab.id ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
@@ -1055,21 +957,16 @@ export function EncounterConsultationPage() {
               >
                 <tab.icon size={15} weight={activeTabId === tab.id ? 'fill' : 'bold'} aria-hidden="true" />
                 {tab.label}
-                {tab.comingSoon && (
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                      activeTabId === tab.id ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-500'
-                    }`}
-                  >
-                    Sắp ra mắt
-                  </span>
+                {tab.id === 'section-kham' && diagnoses.some((d) => d.type === 'PRIMARY') && (
+                  <CheckCircle size={13} weight="fill" className={activeTabId === tab.id ? 'text-white' : 'text-emerald-500'} aria-label="Đã có chẩn đoán chính" />
                 )}
               </button>
             ))}
           </div>
 
-          <div ref={workspaceScrollRef} className="scroll-hover flex-1 overflow-y-auto p-4">
-            <div className="flex flex-col gap-6" ref={sectionRefs['section-kham']}>
+          <div className="scroll-hover flex-1 overflow-y-auto p-4">
+            {activeTabId === 'section-kham' && (
+            <div className="flex flex-col gap-6">
               {/* "THÔNG TIN KHÁM LÂM SÀNG" — MỘT khung duy nhất (không tách 3 khung riêng như bản
                   trước), gộp Tiền sử/Thăm khám/Chẩn đoán bằng tiêu đề phụ nhẹ bên trong; ô nhập rút
                   gọn ~50% (`Textarea dense`) và lưới 3 cột để gọn hơn, theo phản hồi chủ dự án. */}
@@ -1207,27 +1104,43 @@ export function EncounterConsultationPage() {
                   ))}
                 </div>
               </div>
-
-              {/* SECTION 3 — Kê đơn thuốc (Sprint 4, S4-01/02/04). */}
-              <div ref={sectionRefs['section-donthuoc']}>
-                <PrescriptionPanel
-                  encounterId={encounterId}
-                  prescription={prescription}
-                  hasPrimaryDiagnosis={diagnoses.some((d) => d.type === 'PRIMARY')}
-                  isEditableEncounter={canEditNow}
-                  patientFullName={patient.fullName}
-                  patientDob={formatDobDisplay(patient.dob)}
-                  patientGender={GENDER_LABEL[patient.gender] ?? patient.gender}
-                />
-              </div>
-
-              {/* SECTION 2, 4 — chỉ giữ chỗ, ngoài phạm vi v1/Sprint 4 */}
-              {TABS.filter((t) => t.comingSoon).map((tab) => (
-                <div key={tab.id} ref={sectionRefs[tab.id]} className="rounded-lg border border-dashed border-slate-300 bg-white p-8">
-                  <EmptyState icon={tab.icon} title={tab.label.replace(/^\d\.\s*/, '')} description="Tính năng sẽ có ở giai đoạn sau." />
-                </div>
-              ))}
             </div>
+            )}
+
+            {/* Tab "Kê đơn thuốc" (Sprint 4, S4-01/02/04; Kho Thuốc GĐ5) — thanh chẩn đoán dính
+                trên đỉnh khung cuộn (Phương án 1, chốt qua AskUserQuestion): không phải quay lại
+                tab "Khám & Chẩn đoán" để nhớ mã bệnh lúc đang kê đơn. */}
+            {activeTabId === 'section-donthuoc' && (
+            <div className="flex flex-col gap-4">
+              {diagnoses.length > 0 && (
+                <div className="sticky top-0 z-10 -mx-4 -mt-4 flex flex-wrap items-center gap-2 border-b border-slate-200 bg-white px-4 py-2.5">
+                  <span className="text-[11px] font-bold uppercase tracking-wide text-slate-700">Chẩn đoán</span>
+                  {diagnoses.map((d) => (
+                    <span
+                      key={d.icd10Code}
+                      className={
+                        d.type === 'PRIMARY'
+                          ? 'rounded-full border border-brand-teal bg-brand-teal-tint px-2.5 py-1 text-xs font-semibold text-brand-teal-active'
+                          : 'rounded-full border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-600'
+                      }
+                    >
+                      {d.icd10Code} — {d.icd10Name}
+                    </span>
+                  ))}
+                </div>
+              )}
+              <PrescriptionPanel
+                encounterId={encounterId}
+                prescription={prescription}
+                hasPrimaryDiagnosis={diagnoses.some((d) => d.type === 'PRIMARY')}
+                isEditableEncounter={canEditNow}
+                patientFullName={patient.fullName}
+                patientDob={formatDobDisplay(patient.dob)}
+                patientGender={GENDER_LABEL[patient.gender] ?? patient.gender}
+                diagnosisLabel={diagnoses.map((d) => `${d.icd10Name} (${d.icd10Code})`).join(' / ')}
+              />
+            </div>
+            )}
           </div>
         </main>
       </div>

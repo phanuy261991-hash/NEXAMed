@@ -39,6 +39,7 @@ import {
   getDoctorAvailabilityToday,
   getDoctorShiftSummary,
   getMyRoomSession,
+  getPharmacyStockTrackingStatus,
   getRoomOptions,
   listExamStations,
   listFloors,
@@ -149,6 +150,20 @@ export function useSoloClinicWorkflowEnabledQuery() {
   });
 }
 
+/**
+ * "Có kho thuốc" (Kho Thuốc GĐ5) — `PrescriptionPanel.tsx`/`DrugPicker.tsx` dùng riêng hook này
+ * (KHÔNG dùng `useClinicSettingsQuery()`): bác sĩ/điều dưỡng (không chỉ `clinic_admin`) cần biết
+ * công tắc này để hiện/ẩn đúng cột tồn kho + cảnh báo vượt tồn, cùng lý do
+ * `useSoloClinicWorkflowEnabledQuery` ở trên.
+ */
+export function usePharmacyStockTrackingEnabledQuery() {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'clinic', 'pharmacy-stock-tracking-enabled'),
+    queryFn: getPharmacyStockTrackingStatus,
+  });
+}
+
 export function useUpdateClinicSettingsMutation() {
   const { tenantId } = useAppConfig();
   const queryClient = useQueryClient();
@@ -171,6 +186,8 @@ export function useUpdateClinicSettingsMutation() {
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'sidebar-auto-collapse-enabled') });
       // "Chế độ phòng khám 1 người" — TopBar.tsx đọc qua hook tự-phục vụ riêng, làm mới luôn.
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'solo-clinic-workflow-enabled') });
+      // "Có kho thuốc" (Kho Thuốc GĐ5) — PrescriptionPanel.tsx/DrugPicker.tsx đọc qua hook tự-phục vụ riêng, làm mới luôn.
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'pharmacy-stock-tracking-enabled') });
     },
   });
 }

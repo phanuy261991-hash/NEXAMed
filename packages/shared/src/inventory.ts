@@ -282,6 +282,23 @@ export type ListStockBalancesQuery = z.infer<typeof listStockBalancesQuerySchema
 export const listStockBalancesResponseSchema = z.object({ items: z.array(stockBalanceItemSchema) });
 export type ListStockBalancesResponse = z.infer<typeof listStockBalancesResponseSchema>;
 
+/**
+ * Kho Thuốc GĐ5 — "tổng tồn toàn phòng khám" (gộp mọi kho) cho một danh sách thuốc, dùng cho
+ * `DrugPicker.tsx`/`PrescriptionPanel.tsx` hiện badge tồn kho lúc kê đơn — cùng dữ liệu
+ * `StockAvailabilityPort` phía backend đọc lúc ký đơn, khác lối vào (đây là endpoint tự-phục vụ cho
+ * FE, không phải port nội bộ giữa 2 module).
+ */
+export const getStockOnHandSummaryQuerySchema = z.object({
+  drugIds: z
+    .string()
+    .min(1)
+    .transform((v) => v.split(',').filter((id) => id.length > 0)),
+});
+export type GetStockOnHandSummaryQuery = z.infer<typeof getStockOnHandSummaryQuerySchema>;
+
+export const getStockOnHandSummaryResponseSchema = z.object({ onHandByDrugId: z.record(z.string().uuid(), z.number().int()) });
+export type GetStockOnHandSummaryResponse = z.infer<typeof getStockOnHandSummaryResponseSchema>;
+
 // Khai báo trước `drugBatchBalanceItemSchema` bên dưới cần dùng — định nghĩa đầy đủ (kèm
 // `stockExpiryWarningItemSchema`) vẫn giữ nguyên vị trí gốc ở mục "Cảnh báo hạn dùng" phía dưới.
 export const expiryWarningStatusSchema = z.enum(['EXPIRING_SOON', 'EXPIRED']);

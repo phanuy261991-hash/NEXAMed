@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { ConcurrentModificationError, DrugBatchManagementChangeBlockedError, DrugDuplicateCodeError } from '@nexamed/core';
+import { ConcurrentModificationError, DrugBatchManagementChangeBlockedError, DrugDuplicateCodeError, DrugDuplicateShortcutCodeError } from '@nexamed/core';
 import type { CreateDrugRequest, DrugSummary, ListDrugsQuery, ListDrugsResponse, UpdateDrugRequest } from '@nexamed/shared';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
@@ -10,8 +10,25 @@ import { DrugRepository, type DrugWithDetails } from './drug.repository';
 import { DrugIngredientRepository } from './drug-ingredient.repository';
 import { DrugUnitRepository } from './drug-unit.repository';
 
+/** `drug_tenant_id_code_key`/`drug_tenant_id_shortcut_code_key` đều tạo bằng `CREATE UNIQUE INDEX`
+ * viết tay trong migration (không phải `@@unique` do `prisma migrate dev` tự sinh) — Prisma KHÔNG
+ * map được `err.meta.target` về tên cột cho index kiểu này (đã xác nhận thật qua test: `target`
+ * rỗng dù mã lỗi P2002 đúng), cùng tình huống `patient.national_id_hash` (xem comment ở
+ * `patient.service.ts`). Coi MỌI P2002 khi tạo/sửa drug là trùng `code` — an toàn vì gõ tắt
+ * (`shortcutCode`) đã được CHỦ ĐỘNG kiểm tra trước (`assertShortcutCodeAvailable`, dưới) trước khi
+ * chạm DB, nên chỉ còn khả năng va chạm thật từ `code` (hoặc race hiếm gặp trên `shortcutCode` giữa
+ * 2 request gần như đồng thời — chấp nhận thông báo lệch "trùng mã" thay vì "trùng gõ tắt" cho
+ * trường hợp cực hiếm này, cùng đánh đổi đã chấp nhận ở `patient`). */
 function isDuplicateCodeViolation(err: unknown): boolean {
   return err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002';
+}
+
+/** Kho Thuốc GĐ5 — chuẩn hoá gõ tắt trước khi lưu/so khớp: trim + viết thường (KHÔNG bỏ dấu — mã gõ
+ * tắt do bác sĩ tự đặt, giữ nguyên ký tự họ gõ). Chuỗi rỗng sau trim coi như không đặt gõ tắt. */
+function normalizeShortcutCode(raw: string | null | undefined): string | null {
+  if (raw === null || raw === undefined) return raw ?? null;
+  const trimmed = raw.trim().toLowerCase();
+  return trimmed === '' ? null : trimmed;
 }
 
 /**
@@ -37,6 +54,9 @@ export class DrugService {
     }
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const shortcutCode = normalizeShortcutCode(dto.shortcutCode);
+      await this.assertShortcutCodeAvailable(tx, tenantId, shortcutCode, null);
+
       let created;
       try {
         created = await this.drugRepository.create(tx, tenantId, actorId, {
@@ -77,11 +97,10 @@ export class DrugService {
           activeIngredient: dto.activeIngredient ?? null,
           unit: dto.unit ?? null,
           concentration: dto.concentration ?? null,
+          shortcutCode,
         });
       } catch (err) {
-        if (isDuplicateCodeViolation(err)) {
-          throw new DrugDuplicateCodeError();
-        }
+        if (isDuplicateCodeViolation(err)) throw new DrugDuplicateCodeError();
         throw err;
       }
 
@@ -137,6 +156,11 @@ export class DrugService {
         }
       }
 
+      const nextShortcutCode = dto.shortcutCode === undefined ? undefined : normalizeShortcutCode(dto.shortcutCode);
+      if (nextShortcutCode !== undefined) {
+        await this.assertShortcutCodeAvailable(tx, tenantId, nextShortcutCode, id);
+      }
+
       let count: number;
       try {
         count = await this.drugRepository.updateIfVersionMatches(tx, tenantId, id, dto.version, actorId, {
@@ -172,11 +196,10 @@ export class DrugService {
           unit: dto.unit,
           concentration: dto.concentration,
           isActive: dto.isActive,
+          shortcutCode: nextShortcutCode,
         });
       } catch (err) {
-        if (isDuplicateCodeViolation(err)) {
-          throw new DrugDuplicateCodeError();
-        }
+        if (isDuplicateCodeViolation(err)) throw new DrugDuplicateCodeError();
         throw err;
       }
       if (count === 0) {
@@ -205,6 +228,17 @@ export class DrugService {
       }
       return this.toSummary(updated);
     });
+  }
+
+  /** Kho Thuốc GĐ5 — kiểm tra CHỦ ĐỘNG trước khi ghi (không dựa vào bắt P2002, xem comment ở
+   * `isDuplicateCodeViolation`). `excludeId` — bỏ qua chính bản ghi đang sửa (PATCH giữ nguyên gõ
+   * tắt cũ của chính nó không bị coi là trùng). `null`/không đặt gõ tắt thì không cần kiểm. */
+  private async assertShortcutCodeAvailable(tx: Prisma.TransactionClient, tenantId: string, shortcutCode: string | null, excludeId: string | null): Promise<void> {
+    if (shortcutCode === null) return;
+    const existing = await this.drugRepository.findByShortcutCode(tx, tenantId, shortcutCode);
+    if (existing && existing.id !== excludeId) {
+      throw new DrugDuplicateShortcutCodeError();
+    }
   }
 
   private toSummary(drug: DrugWithDetails): DrugSummary {
@@ -236,6 +270,7 @@ export class DrugService {
       storageLocation: drug.storageLocation,
       barcode: drug.barcode,
       packagingSpec: drug.packagingSpec,
+      shortcutCode: drug.shortcutCode,
       lastPurchaseUnitCost: drug.lastPurchaseUnitCost === null ? null : Number(drug.lastPurchaseUnitCost),
       lastPurchaseAt: drug.lastPurchaseAt?.toISOString() ?? null,
       ingredients: drug.ingredients,

@@ -18,6 +18,7 @@ import { ReceptionModule } from './modules/reception/reception.module';
 import { AllergenModule } from './modules/allergen/allergen.module';
 import { DrugModule } from './modules/drug/drug.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
+import { StockAvailabilityModule } from './modules/inventory/stock-availability.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { DoctorAvailabilityModule } from './modules/doctor-availability/doctor-availability.module';
@@ -50,6 +51,10 @@ import { TenantContextMiddleware } from './common/tenant-context.middleware';
     AllergenModule,
     DrugModule,
     InventoryModule,
+    // Kho Thuốc GĐ5 — `@Global()`, tự `imports: [InventoryModule]` (đã import ở dòng trên nên
+    // module thật sự đã load xong, tránh lặp lại vấn đề require()-cycle từng gặp ở `InventoryModule`).
+    // Đặt SAU `InventoryModule`, TRƯỚC `EncounterModule` (nơi tiêu thụ token qua @Inject).
+    StockAvailabilityModule,
     EncounterModule,
     BillingModule,
     ReceptionModule,

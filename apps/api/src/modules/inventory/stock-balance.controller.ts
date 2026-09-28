@@ -1,6 +1,6 @@
 import { Controller, Get, Param, Query, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
-import { getDrugBatchBalancesQuerySchema, listStockBalancesQuerySchema, listStockExpiryWarningsQuerySchema } from '@nexamed/shared';
+import { getDrugBatchBalancesQuerySchema, getStockOnHandSummaryQuerySchema, listStockBalancesQuerySchema, listStockExpiryWarningsQuerySchema } from '@nexamed/shared';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
@@ -19,6 +19,18 @@ export class StockBalanceController {
     const dto = listStockBalancesQuerySchema.parse(query);
     const { tenantId } = req.user!;
     return this.stockBalanceService.list(tenantId, dto);
+  }
+
+  /** Kho Thuốc GĐ5 — "tổng tồn toàn phòng khám" cho một danh sách thuốc, dùng cho `DrugPicker.tsx`/
+   * `PrescriptionPanel.tsx` (bác sĩ/điều dưỡng đã có `stock_receipt.read` từ GĐ2, chuẩn bị sẵn cho
+   * đúng mục đích này). Đặt TRƯỚC `@Get('drugs/:drugId/balances')` không cần thiết (khác path cố
+   * định `balances/on-hand-summary`, không phải `:id`), nhưng đặt gần cho dễ đọc. */
+  @Get('balances/on-hand-summary')
+  @RequirePermission('stock_receipt', 'read')
+  async getOnHandSummary(@Query() query: unknown, @Req() req: Request) {
+    const dto = getStockOnHandSummaryQuerySchema.parse(query);
+    const { tenantId } = req.user!;
+    return this.stockBalanceService.getOnHandSummary(tenantId, dto.drugIds);
   }
 
   @Get('drugs/:drugId/balances')

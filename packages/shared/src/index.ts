@@ -20,6 +20,7 @@ export * from './currency';
 export * from './timezone';
 export * from './drug';
 export * from './prescription';
+export * from './prescription-template';
 export * from './billing';
 export * from './cashier-shift';
 export * from './cash-book';

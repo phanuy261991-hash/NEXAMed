@@ -18,6 +18,7 @@ import {
   allowStaffSelfScheduleStatusSchema,
   sidebarAutoCollapseStatusSchema,
   soloClinicWorkflowStatusSchema,
+  pharmacyStockTrackingStatusSchema,
   breakGlassRequestSchema,
   breakGlassResponseSchema,
   clinicPrintHeaderSchema,
@@ -63,6 +64,10 @@ import {
   updateWarehouseRequestSchema,
   warehouseSummarySchema,
   listWarehousesResponseSchema,
+  createPrescriptionTemplateRequestSchema,
+  updatePrescriptionTemplateRequestSchema,
+  prescriptionTemplateSchema,
+  listPrescriptionTemplatesResponseSchema,
   cashAccountSchema,
   createCashAccountRequestSchema,
   updateCashAccountRequestSchema,
@@ -241,6 +246,8 @@ import {
   getDrugLedgerResponseSchema,
   listStockBalancesQuerySchema,
   listStockBalancesResponseSchema,
+  getStockOnHandSummaryQuerySchema,
+  getStockOnHandSummaryResponseSchema,
   getDrugBatchBalancesQuerySchema,
   getDrugBatchBalancesResponseSchema,
   listStockExpiryWarningsQuerySchema,
@@ -1741,6 +1748,56 @@ registry.registerPath({
 });
 
 registry.registerPath({
+  method: 'get',
+  path: '/api/v1/prescription-templates',
+  tags: ['drug'],
+  summary: '"Đơn thuốc mẫu" (Kho Thuốc GĐ5) — liệt kê mẫu đang hoạt động, dùng chung toàn tenant',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(listPrescriptionTemplatesResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền prescription_template.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/prescription-templates',
+  tags: ['drug'],
+  summary: '"Đơn thuốc mẫu" (Kho Thuốc GĐ5) — tạo mẫu mới kèm dòng thuốc',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createPrescriptionTemplateRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Tạo thành công', envelope(prescriptionTemplateSchema)),
+    400: errorResponse('Có thuốc trong mẫu không tồn tại trong danh mục'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền prescription_template.manage'),
+  },
+});
+
+const prescriptionTemplateIdParams = z.object({ id: z.string().uuid() });
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/prescription-templates/{id}',
+  tags: ['drug'],
+  summary: '"Đơn thuốc mẫu" (Kho Thuốc GĐ5) — sửa tên/dòng thuốc/ẩn mẫu, bắt buộc kèm version hiện có',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: prescriptionTemplateIdParams,
+    body: { content: { 'application/json': { schema: updatePrescriptionTemplateRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Sửa thành công', envelope(prescriptionTemplateSchema)),
+    400: errorResponse('Có thuốc trong mẫu không tồn tại trong danh mục'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền prescription_template.manage'),
+    404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION)'),
+  },
+});
+
+registry.registerPath({
   method: 'post',
   path: '/api/v1/suppliers',
   tags: ['drug'],
@@ -2064,6 +2121,18 @@ registry.registerPath({
   security: [{ bearerAuth: [] }],
   responses: {
     200: jsonResponse('Thành công', envelope(soloClinicWorkflowStatusSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/clinic-settings/pharmacy-stock-tracking-enabled',
+  tags: ['clinic'],
+  summary: '"Có kho thuốc" (Kho Thuốc GĐ5) — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /clinic-settings/solo-clinic-workflow-enabled)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(pharmacyStockTrackingStatusSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
   },
 });
@@ -3336,6 +3405,20 @@ registry.registerPath({
   request: { query: listStockBalancesQuerySchema },
   responses: {
     200: jsonResponse('Thành công', envelope(listStockBalancesResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_receipt.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/inventory/balances/on-hand-summary',
+  tags: ['inventory'],
+  summary: 'Kho Thuốc GĐ5 — tổng tồn TOÀN PHÒNG KHÁM (gộp mọi kho) cho một danh sách thuốc, dùng cho DrugPicker/PrescriptionPanel lúc kê đơn',
+  security: [{ bearerAuth: [] }],
+  request: { query: getStockOnHandSummaryQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(getStockOnHandSummaryResponseSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền stock_receipt.read'),
   },

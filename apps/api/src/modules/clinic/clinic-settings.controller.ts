@@ -96,6 +96,18 @@ export class ClinicSettingsController {
     return { enabled };
   }
 
+  /**
+   * "Có kho thuốc" (Kho Thuốc GĐ5) — tự-phục vụ, KHÔNG gắn `@RequirePermission` (đúng khuôn
+   * `getSoloClinicWorkflowEnabled` ở trên): bác sĩ/điều dưỡng (không chỉ `clinic_admin`) cần biết
+   * công tắc này để màn Kê đơn hiện/ẩn đúng cột tồn kho + cảnh báo vượt tồn.
+   */
+  @Get('pharmacy-stock-tracking-enabled')
+  async getPharmacyStockTrackingEnabled(@Req() req: Request) {
+    const { tenantId } = req.user!;
+    const enabled = await this.clinicSettingsService.getPharmacyStockTrackingEnabled(tenantId);
+    return { enabled };
+  }
+
   @Patch()
   @RequirePermission('clinic_config', 'update')
   async update(@Body() body: unknown, @Req() req: Request) {

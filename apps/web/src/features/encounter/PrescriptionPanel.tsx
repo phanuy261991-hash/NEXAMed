@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import { CheckCircle, PencilSimple, Pill, Plus, Printer, Warning, X } from '@phosphor-icons/react';
-import type { PrescriptionItem, PrescriptionResponse } from '@nexamed/shared';
+import { useRef, useState } from 'react';
+import { CheckCircle, PencilSimple, Pill, Plus, Printer, Stack, Warning, X } from '@phosphor-icons/react';
+import type { PrescriptionItem, PrescriptionResponse, PrescriptionTemplate } from '@nexamed/shared';
 import { useAuthStore } from '../auth/auth.store';
-import { useClinicPrintHeaderQuery, useSoloClinicWorkflowEnabledQuery } from '../clinic/clinic.queries';
+import { useClinicPrintHeaderQuery, usePharmacyStockTrackingEnabledQuery, useSoloClinicWorkflowEnabledQuery } from '../clinic/clinic.queries';
 import { useHasPermission } from '../auth/usePermission';
 import { Button } from '../../shared/ui/Button';
 import { Combobox } from '../../shared/ui/Combobox';
@@ -10,7 +10,9 @@ import { EmptyState } from '../../shared/ui/EmptyState';
 import { appendSentence } from '../../shared/format/append-sentence';
 import { useCreateReferenceCatalogItemMutation, useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { DispensePrescriptionDialog } from '../inventory/DispensePrescriptionDialog';
-import { DrugPicker } from './DrugPicker';
+import { useStockOnHandSummaryQuery } from '../inventory/inventory.queries';
+import { useCreatePrescriptionTemplateMutation, usePrescriptionTemplatesQuery } from '../drug/prescription-template.queries';
+import { DrugPicker, type DrugPickerHandle } from './DrugPicker';
 import { PrescriptionPrintView } from './PrescriptionPrintView';
 import {
   useAmendPrescriptionMutation,
@@ -44,16 +46,27 @@ function itemToDraft(item: PrescriptionItem): DraftLine {
 const WARNING_KIND_LABEL: Record<string, string> = {
   duplicate_active_ingredient: 'Trùng hoạt chất',
   allergy: 'Trùng dị nguyên đã biết của bệnh nhân',
+  // Kho Thuốc GĐ5 — kê vượt TỔNG tồn kho toàn phòng khám, CẢNH BÁO MỀM (chặn cứng là lỗi 422 riêng
+  // khi ký, không đi qua mảng `warnings` này — xem `EncounterConsultationPage`/backend).
+  stock_insufficient: 'Kê vượt tồn kho',
 };
 
 /**
  * Kê đơn (Sprint 4, S4-01/02/04) — tab "Kê đơn thuốc" của màn hình khám. Đơn NHÁP (`signedAt=null`)
  * sửa tự do (thêm/xoá/đổi dòng thuốc, bấm "Lưu đơn nháp" để lưu — KHÔNG autosave từng phím như ghi
  * chú lâm sàng #066, vì đây là hành động rời rạc thêm/bớt dòng thuốc, không phải gõ văn bản dài).
- * Cảnh báo PRE-02/03 CHỈ đọc từ response server (`prescription.warnings`, tính trong
+ * Cảnh báo PRE-02/03/GĐ5-stock CHỈ đọc từ response server (`prescription.warnings`, tính trong
  * `packages/core`) — `apps/web` KHÔNG được import `@nexamed/core` (ESLint chặn, docs/DECISIONS.md
  * #073), nên không tự tính lại ở đây. Sau khi ký (`signedAt != null`) đơn bất biến (trigger C8) —
  * sửa = "Sửa đơn" (đính chính, tạo bản mới đã ký ngay, bắt buộc lý do).
+ *
+ * Kho Thuốc GĐ5 (PRD INV-05, redesign màn khám sang Phương án 1 — Tab thật) — mở rộng thêm:
+ * - Khối "Mã đơn thuốc/BS kê đơn/Ngày kê" + "Chẩn đoán lâm sàng" (đúng mockup đã duyệt).
+ * - "Đơn thuốc mẫu": chọn mẫu có sẵn chèn cả cụm vào đơn đang kê, hoặc lưu đơn hiện tại thành mẫu mới.
+ * - Cột "Tồn kho" mỗi dòng thuốc + badge trong `DrugPicker` — CHỈ hiện khi tenant bật "Có kho thuốc"
+ *   (`pharmacyStockTrackingEnabled`, mặc định bật — giữ nguyên pilot đang chạy).
+ * - Điều hướng bàn phím toàn bộ dòng kê đơn: Enter ở ô "Hướng dẫn dùng" (ô cuối 1 dòng) đưa focus về
+ *   lại ô tìm thuốc, sẵn sàng thêm dòng tiếp theo — Tab tuần tự qua các ô đã là hành vi HTML mặc định.
  */
 export function PrescriptionPanel({
   encounterId,
@@ -63,6 +76,7 @@ export function PrescriptionPanel({
   patientFullName,
   patientDob,
   patientGender,
+  diagnosisLabel,
 }: {
   encounterId: string;
   prescription: PrescriptionResponse;
@@ -73,6 +87,10 @@ export function PrescriptionPanel({
   patientFullName: string;
   patientDob: string;
   patientGender: string;
+  /** Kho Thuốc GĐ5 — "{tên bệnh} (mã)" nối bởi " / " cho MỌI chẩn đoán (chính + phụ), tính sẵn ở
+   * `EncounterConsultationPage.tsx` (đã có `diagnoses` trong state, không cần gọi API riêng) — cùng
+   * định dạng khối "Chẩn đoán lâm sàng" ở màn "Phát thuốc" (docs/DECISIONS.md #169). */
+  diagnosisLabel: string;
 }) {
   const doctorName = useAuthStore((s) => s.user?.displayName ?? s.user?.fullName) ?? '';
   const clinicQuery = useClinicPrintHeaderQuery();
@@ -103,6 +121,11 @@ export function PrescriptionPanel({
   const canDispense = useHasPermission('stock_issue', 'create') && (soloClinicWorkflowQuery.data?.enabled ?? false);
   const [dispenseOpen, setDispenseOpen] = useState(false);
 
+  // Kho Thuốc GĐ5 — "Có kho thuốc", mặc định BẬT (giữ nguyên pilot). Tắt thì ẩn sạch cột tồn kho ở
+  // đây VÀ badge tồn kho trong `DrugPicker.tsx` (hook riêng, tự đọc lại đúng công tắc này).
+  const stockTrackingQuery = usePharmacyStockTrackingEnabledQuery();
+  const showStock = stockTrackingQuery.data?.enabled ?? true;
+
   const [draftLines, setDraftLines] = useState<DraftLine[]>(() => (prescription?.items ?? []).map(itemToDraft));
   const [draftKey, setDraftKey] = useState(prescription?.id ?? 'new');
   // Đơn đổi sang bản khác hẳn (vd sau "Sửa đơn" tạo id mới) — nạp lại draft từ server thay vì giữ
@@ -113,6 +136,15 @@ export function PrescriptionPanel({
     setDraftKey(currentKey);
     setDraftLines((prescription?.items ?? []).map(itemToDraft));
   }
+
+  const onHandQuery = useStockOnHandSummaryQuery(
+    draftLines.map((l) => l.drugId),
+    showStock,
+  );
+  const onHandByDrugId = onHandQuery.data?.onHandByDrugId ?? {};
+
+  const drugPickerRef = useRef<DrugPickerHandle>(null);
+  const [templateModalOpen, setTemplateModalOpen] = useState(false);
 
   const [amendOpen, setAmendOpen] = useState(false);
   const [amendLines, setAmendLines] = useState<DraftLine[]>([]);
@@ -136,12 +168,43 @@ export function PrescriptionPanel({
     setDraftLines((prev) => [...prev, { drugId: drug.drugId, drugName: drug.drugName, dose: '', frequency: '', durationDays: '5', quantity: '1', instruction: '' }]);
   }
 
+  /** Kho Thuốc GĐ5 — "Đơn thuốc mẫu": chèn cả cụm dòng thuốc của mẫu vào đơn đang kê (bỏ qua thuốc
+   * đã có sẵn trong đơn, tránh trùng) — CHƯA lưu ngay, bác sĩ sửa tiếp rồi tự bấm "Lưu đơn nháp",
+   * đúng khuôn `handleAddDrug` (thêm 1 thuốc) ở trên. */
+  function applyTemplate(template: PrescriptionTemplate) {
+    setDraftLines((prev) => {
+      const existingIds = new Set(prev.map((l) => l.drugId));
+      const additions: DraftLine[] = template.items
+        .filter((item) => !existingIds.has(item.drugId))
+        .map((item) => ({
+          drugId: item.drugId,
+          drugName: item.drugName,
+          dose: item.dose,
+          frequency: item.frequency,
+          durationDays: String(item.durationDays),
+          quantity: String(item.quantity),
+          instruction: item.instruction ?? '',
+        }));
+      return [...prev, ...additions];
+    });
+    setTemplateModalOpen(false);
+  }
+
   function handleRemoveLine(drugId: string) {
     persistDraft(draftLines.filter((l) => l.drugId !== drugId));
   }
 
   function updateLine(drugId: string, patch: Partial<DraftLine>) {
     setDraftLines((prev) => prev.map((l) => (l.drugId === drugId ? { ...l, ...patch } : l)));
+  }
+
+  /** Điều hướng bàn phím toàn bộ dòng kê đơn (Kho Thuốc GĐ5) — Enter ở ô CUỐI của 1 dòng (Hướng dẫn
+   * dùng) đưa focus về ô tìm thuốc, sẵn sàng thêm dòng tiếp theo mà không cần với chuột. */
+  function handleLastFieldKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      drugPickerRef.current?.focus();
+    }
   }
 
   function handleSign() {
@@ -192,10 +255,22 @@ export function PrescriptionPanel({
 
   return (
     <div className="flex flex-col gap-4">
+      <PrescriptionInfoHeader
+        prescriptionNo={prescription?.prescriptionNo ?? null}
+        doctorName={doctorName}
+        signedAt={prescription?.signedAt ?? null}
+        diagnosisLabel={diagnosisLabel}
+      />
+
       {warnings.length > 0 && (
-        <div className="flex flex-col gap-1.5 rounded-lg border border-rose-200 bg-rose-50 p-3">
+        <div className="flex flex-col gap-1.5">
           {warnings.map((w, i) => (
-            <p key={i} className="flex items-start gap-2 text-sm font-semibold text-rose-700">
+            <p
+              key={i}
+              className={`flex items-start gap-2 rounded-lg border p-3 text-sm font-semibold ${
+                w.kind === 'stock_insufficient' ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-rose-200 bg-rose-50 text-rose-700'
+              }`}
+            >
               <Warning size={16} weight="fill" className="mt-0.5 shrink-0" aria-hidden="true" />
               {WARNING_KIND_LABEL[w.kind] ?? w.kind}: <span className="font-normal">{w.label}</span> — {w.drugNames.join(', ')}
             </p>
@@ -239,7 +314,18 @@ export function PrescriptionPanel({
               {draftLines.map((line) => (
                 <div key={line.drugId} className="grid grid-cols-[1fr_auto] gap-2 rounded-md border border-slate-200 p-3">
                   <div>
-                    <p className="text-sm font-bold text-slate-900">{line.drugName}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-bold text-slate-900">{line.drugName}</p>
+                      {showStock && onHandByDrugId[line.drugId] !== undefined && (
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[11px] font-bold text-white ${
+                            onHandByDrugId[line.drugId]! > 0 ? 'bg-emerald-500' : 'bg-rose-500'
+                          }`}
+                        >
+                          {onHandByDrugId[line.drugId]! > 0 ? `Tồn ${onHandByDrugId[line.drugId]}` : 'Hết hàng'}
+                        </span>
+                      )}
+                    </div>
                     <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
                       <LineInput label="Liều dùng" value={line.dose} onBlurCommit={(v) => persistDraft(draftLines.map((l) => (l.drugId === line.drugId ? { ...l, dose: v } : l)))} onChange={(v) => updateLine(line.drugId, { dose: v })} disabled={!canEdit} />
                       <LineInput label="Tần suất" value={line.frequency} onBlurCommit={(v) => persistDraft(draftLines.map((l) => (l.drugId === line.drugId ? { ...l, frequency: v } : l)))} onChange={(v) => updateLine(line.drugId, { frequency: v })} disabled={!canEdit} />
@@ -253,6 +339,7 @@ export function PrescriptionPanel({
                           value={line.instruction}
                           onBlurCommit={(v) => persistDraft(draftLines.map((l) => (l.drugId === line.drugId ? { ...l, instruction: v } : l)))}
                           onChange={(v) => updateLine(line.drugId, { instruction: v })}
+                          onKeyDown={handleLastFieldKeyDown}
                           disabled={!canEdit}
                         />
                       </div>
@@ -292,7 +379,14 @@ export function PrescriptionPanel({
 
           {canEdit && (
             <>
-              <DrugPicker excludeDrugIds={draftLines.map((l) => l.drugId)} onSelect={(drug) => handleAddDrug(drug)} />
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <span className="text-sm font-semibold text-slate-800">Thêm thuốc vào đơn</span>
+                <Button type="button" variant="secondary" onClick={() => setTemplateModalOpen(true)}>
+                  <Stack size={15} weight="bold" aria-hidden="true" />
+                  Đơn mẫu
+                </Button>
+              </div>
+              <DrugPicker ref={drugPickerRef} excludeDrugIds={draftLines.map((l) => l.drugId)} onSelect={(drug) => handleAddDrug(drug)} />
               <div className="mt-4 flex justify-end gap-2">
                 <Button type="button" variant="secondary" onClick={() => persistDraft(draftLines)} loading={saveMutation.isPending}>
                   <Plus size={15} weight="bold" aria-hidden="true" />
@@ -324,6 +418,10 @@ export function PrescriptionPanel({
 
       {dispenseOpen && prescription && (
         <DispensePrescriptionDialog prescriptionId={prescription.id} onClose={() => setDispenseOpen(false)} />
+      )}
+
+      {templateModalOpen && (
+        <PrescriptionTemplateModal draftLines={draftLines} onApply={applyTemplate} onClose={() => setTemplateModalOpen(false)} />
       )}
 
       {amendOpen && (
@@ -383,11 +481,170 @@ export function PrescriptionPanel({
   );
 }
 
+/** Kho Thuốc GĐ5 — khối "Mã đơn thuốc/BS kê đơn/Ngày kê" + "Chẩn đoán lâm sàng" (mockup đã duyệt).
+ * Hiện ở CẢ đơn nháp lẫn đã ký — nháp hiện placeholder "Cấp khi ký đơn"/"Đang soạn" cho 2 trường
+ * chỉ có ý nghĩa sau khi ký. `doctorName` là actor ĐANG ĐĂNG NHẬP (không phải resolve `signedBy` từ
+ * server) — cùng cách `PrescriptionPrintView` dùng cho tiêu đề in, chấp nhận được vì `prescription.
+ * create/sign` đều scope `personal` (chỉ chính bác sĩ phụ trách encounter mới kê/ký được đơn này). */
+function PrescriptionInfoHeader({
+  prescriptionNo,
+  doctorName,
+  signedAt,
+  diagnosisLabel,
+}: {
+  prescriptionNo: string | null;
+  doctorName: string;
+  signedAt: string | null;
+  diagnosisLabel: string;
+}) {
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="rounded-lg border border-slate-200 bg-white p-3.5">
+        <dl className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+          <div>
+            <dt className="text-[11px] font-medium text-slate-500">Mã đơn thuốc</dt>
+            <dd className="text-sm font-semibold text-slate-900">{prescriptionNo ?? 'Cấp khi ký đơn'}</dd>
+          </div>
+          <div>
+            <dt className="text-[11px] font-medium text-slate-500">BS kê đơn</dt>
+            <dd className="text-sm font-semibold text-slate-900">{doctorName}</dd>
+          </div>
+          <div>
+            <dt className="text-[11px] font-medium text-slate-500">Ngày kê</dt>
+            <dd className="text-sm font-semibold text-slate-900">{signedAt ? new Date(signedAt).toLocaleString('vi-VN') : 'Đang soạn'}</dd>
+          </div>
+        </dl>
+      </div>
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-3.5">
+        <p className="text-[11px] font-bold uppercase tracking-wide text-amber-800">Chẩn đoán lâm sàng</p>
+        <p className="mt-0.5 text-sm font-semibold text-slate-900">{diagnosisLabel || 'Chưa có chẩn đoán'}</p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Kho Thuốc GĐ5 — "Đơn thuốc mẫu": modal 2 chế độ (danh sách mẫu / tạo mẫu mới từ đơn đang kê).
+ * Dùng CHUNG toàn tenant, quyền `prescription_template.read`/`.manage` (xem
+ * packages/core/src/rbac/permissions.ts) — nút "+ Lưu đơn hiện tại thành mẫu mới" tự ẩn nếu actor
+ * không có quyền `manage` hoặc đơn đang kê chưa có dòng thuốc nào.
+ */
+function PrescriptionTemplateModal({
+  draftLines,
+  onApply,
+  onClose,
+}: {
+  draftLines: DraftLine[];
+  onApply: (template: PrescriptionTemplate) => void;
+  onClose: () => void;
+}) {
+  const templatesQuery = usePrescriptionTemplatesQuery();
+  const createMutation = useCreatePrescriptionTemplateMutation();
+  const canManage = useHasPermission('prescription_template', 'manage');
+  const [mode, setMode] = useState<'list' | 'create'>('list');
+  const [newName, setNewName] = useState('');
+
+  function handleCreateSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (newName.trim() === '' || draftLines.length === 0) return;
+    createMutation.mutate(
+      {
+        name: newName.trim(),
+        items: draftLines.map((l) => ({
+          drugId: l.drugId,
+          dose: l.dose,
+          frequency: l.frequency,
+          durationDays: Math.max(1, Number(l.durationDays) || 1),
+          quantity: Math.max(1, Number(l.quantity) || 1),
+          instruction: l.instruction.trim() || undefined,
+        })),
+      },
+      { onSuccess: () => onClose() },
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
+      <div className="flex max-h-[80vh] w-full max-w-md flex-col rounded-lg bg-white p-5 shadow-xl">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="flex items-center gap-1.5 text-[15px] font-semibold text-slate-900">
+            <Stack size={17} weight="bold" className="text-blue-600" aria-hidden="true" />
+            Đơn thuốc mẫu
+          </h2>
+          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600" aria-label="Đóng">
+            <X size={16} weight="bold" aria-hidden="true" />
+          </button>
+        </div>
+
+        {mode === 'list' ? (
+          <>
+            <div className="scroll-hover flex-1 space-y-2 overflow-y-auto">
+              {templatesQuery.isLoading && <p className="text-sm text-slate-400">Đang tải...</p>}
+              {templatesQuery.isSuccess && templatesQuery.data.items.length === 0 && (
+                <p className="py-4 text-center text-sm text-slate-400">Chưa có đơn thuốc mẫu nào.</p>
+              )}
+              {templatesQuery.data?.items.map((t) => (
+                <div key={t.id} className="flex items-center justify-between gap-2 rounded-md border border-slate-200 p-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold text-slate-900">{t.name}</p>
+                    <p className="text-xs text-slate-500">{t.items.length} thuốc</p>
+                  </div>
+                  <Button type="button" variant="secondary" onClick={() => onApply(t)}>
+                    Dùng mẫu
+                  </Button>
+                </div>
+              ))}
+            </div>
+            {canManage && (
+              <button
+                type="button"
+                onClick={() => setMode('create')}
+                disabled={draftLines.length === 0}
+                title={draftLines.length === 0 ? 'Đơn đang kê phải có ít nhất 1 dòng thuốc' : undefined}
+                className="mt-3 flex items-center justify-center gap-1.5 rounded-md border border-dashed border-slate-300 py-2 text-sm font-semibold text-blue-600 hover:border-blue-400 hover:bg-brand-teal-tint disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:border-slate-300 disabled:hover:bg-transparent"
+              >
+                <Plus size={15} weight="bold" aria-hidden="true" />
+                Lưu đơn hiện tại thành mẫu mới
+              </button>
+            )}
+          </>
+        ) : (
+          <form onSubmit={handleCreateSubmit} className="flex flex-1 flex-col">
+            <p className="mb-3 text-xs text-slate-500">Lưu {draftLines.length} dòng thuốc đang kê thành mẫu dùng lại sau này.</p>
+            <label htmlFor="template-name" className="text-sm font-semibold text-slate-800">
+              Tên mẫu
+            </label>
+            <input
+              id="template-name"
+              type="text"
+              autoFocus
+              required
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="Ví dụ: Phác đồ viêm hô hấp trên"
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <Button type="button" variant="secondary" onClick={() => setMode('list')}>
+                Quay lại
+              </Button>
+              <Button type="submit" loading={createMutation.isPending} disabled={newName.trim() === ''}>
+                Lưu mẫu
+              </Button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function LineInput({
   label,
   value,
   onChange,
   onBlurCommit,
+  onKeyDown,
   type = 'text',
   disabled,
 }: {
@@ -395,6 +652,7 @@ function LineInput({
   value: string;
   onChange: (v: string) => void;
   onBlurCommit?: (v: string) => void;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   type?: 'text' | 'number';
   disabled?: boolean;
 }) {
@@ -407,6 +665,7 @@ function LineInput({
         disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
         onBlur={(e) => onBlurCommit?.(e.target.value)}
+        onKeyDown={onKeyDown}
         className="rounded-md border border-slate-300 px-2 py-1.5 text-sm font-medium text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50"
       />
     </label>

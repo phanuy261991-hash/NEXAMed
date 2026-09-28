@@ -97,6 +97,8 @@ model Tenant {
   warehouses                  Warehouse[]
   prescriptions               Prescription[]
   prescriptionItems           PrescriptionItem[]
+  prescriptionTemplates       PrescriptionTemplate[]
+  prescriptionTemplateItems   PrescriptionTemplateItem[]
   patientAllergens            PatientAllergen[]
   patientConditions           PatientCondition[]
   patientFamilyHistories      PatientFamilyHistory[]
@@ -1602,6 +1604,15 @@ model Drug {
   // mềm nếu giá nhập mới cao hơn, không chặn lưu.
   lastPurchaseUnitCost BigInt?         @map("last_purchase_unit_cost")
   lastPurchaseAt       DateTime?       @map("last_purchase_at") @db.Timestamptz(6)
+  // Kho Thuốc GĐ5 — "Gõ tắt tìm thuốc", tuỳ chọn, duy nhất theo tenant (partial unique index, xem
+  // migration raw SQL — Prisma không biểu diễn được unique có điều kiện, cùng mẫu `patient.
+  // national_id_hash`). Service tự viết thường trước khi lưu/so khớp.
+  shortcutCode         String?         @map("shortcut_code")
+  // Cột GENERATED — tính sẵn `nexamed_unaccent_lower(name)` lúc ghi (STORED), phục vụ tìm không
+  // dấu (Kho Thuốc GĐ5), đúng khuôn `patient.search_key`/`icd10_catalog.search_key`. Khai `String?`
+  // dù DB không NULL trên thực tế (name NOT NULL) — Prisma không có khái niệm "generated column
+  // chỉ đọc", khai `String` thường sẽ bắt buộc phải truyền field này lúc `create()`.
+  searchKey            String?         @map("search_key")
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -1614,6 +1625,7 @@ model Drug {
 
   tenant             Tenant              @relation(fields: [tenantId], references: [id])
   prescriptionItems  PrescriptionItem[]
+  prescriptionTemplateItems PrescriptionTemplateItem[]
   units              DrugUnit[]
   ingredients        DrugIngredient[]
   // Kho Thuốc GĐ2 — xem model StockReceiptLine/InventoryBatch/StockLedger/StockBalance.
@@ -2490,6 +2502,61 @@ model PrescriptionItem {
 
   @@unique([tenantId, id])
   @@map("prescription_item")
+}
+
+// "Đơn thuốc mẫu" (Kho Thuốc GĐ5) — cụm nhiều dòng thuốc lưu sẵn, dùng CHUNG toàn tenant (không
+// tách theo bác sĩ ở v1, xem packages/shared/src/prescription-template.ts). Model riêng, KHÔNG tái
+// dùng `Prescription`/`PrescriptionItem` — mẫu không phải bệnh án, không gắn `encounter`, không có
+// khái niệm ký/bất biến.
+model PrescriptionTemplate {
+  id     String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  name   String
+  isActive Boolean @default(true) @map("is_active")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant Tenant                     @relation(fields: [tenantId], references: [id])
+  items  PrescriptionTemplateItem[]
+
+  @@unique([tenantId, id])
+  @@map("prescription_template")
+}
+
+model PrescriptionTemplateItem {
+  id         String @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId   String @map("tenant_id") @db.Uuid
+  templateId String @map("template_id") @db.Uuid
+  drugId     String @map("drug_id") @db.Uuid
+  dose         String
+  frequency    String
+  durationDays Int     @map("duration_days") @db.SmallInt
+  quantity     Int
+  instruction  String?
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant   Tenant               @relation(fields: [tenantId], references: [id])
+  // Composite FK (tenant_id, template_id/drug_id) -> ...(tenant_id, id): chống trỏ chéo tenant.
+  template PrescriptionTemplate @relation(fields: [tenantId, templateId], references: [tenantId, id])
+  drug     Drug                 @relation(fields: [tenantId, drugId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@map("prescription_template_item")
 }
 
 // CANCELLED/REFUNDED thêm ở #085 (huỷ lượt khám + hoàn tiền) — xem comment model Invoice bên dưới.

@@ -41,6 +41,8 @@ export function PaymentConfigPane() {
   const walletMixedPaymentEnabled = settingsQuery.data?.walletMixedPaymentEnabled ?? false;
   const soloClinicWorkflowEnabled = settingsQuery.data?.soloClinicWorkflowEnabled ?? false;
   const pharmacySeparateInvoiceEnabled = settingsQuery.data?.pharmacySeparateInvoiceEnabled ?? false;
+  const pharmacyStockTrackingEnabled = settingsQuery.data?.pharmacyStockTrackingEnabled ?? true;
+  const prescriptionStockBlockEnabled = settingsQuery.data?.prescriptionStockBlockEnabled ?? false;
 
   return (
     <div className="space-y-8">
@@ -296,6 +298,54 @@ export function PaymentConfigPane() {
               disabled={updateMutation.isPending}
               onChange={(e) => updateMutation.mutate({ pharmacySeparateInvoiceEnabled: e.target.checked })}
               aria-label="Tách hoá đơn tiền thuốc riêng"
+            />
+            <span className="absolute inset-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-brand-teal peer-disabled:opacity-60" />
+            <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
+          </label>
+        </div>
+
+        <div className="mt-6 flex items-start justify-between gap-5 border-t border-slate-100 pt-6">
+          <div>
+            <p className="text-[14.5px] font-bold text-slate-900">Có kho thuốc</p>
+            <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
+              Bật (mặc định): màn Kê đơn hiện tồn kho, cảnh báo/chặn kê vượt tồn, nút &quot;Phát thuốc&quot;.
+              <br />
+              Tắt: phòng khám KHÔNG có kho thuốc riêng — bệnh nhân cầm đơn ra ngoài mua, ẩn sạch các phần trên (trang
+              &quot;Quản lý kho&quot; vẫn hoạt động bình thường nếu có nhu cầu khác).
+            </p>
+          </div>
+          <label className="relative mt-0.5 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center">
+            <input
+              type="checkbox"
+              className="peer sr-only"
+              checked={pharmacyStockTrackingEnabled}
+              disabled={updateMutation.isPending}
+              onChange={(e) => updateMutation.mutate({ pharmacyStockTrackingEnabled: e.target.checked })}
+              aria-label="Có kho thuốc"
+            />
+            <span className="absolute inset-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-brand-teal peer-disabled:opacity-60" />
+            <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
+          </label>
+        </div>
+
+        <div className="mt-6 flex items-start justify-between gap-5 border-t border-slate-100 pt-6">
+          <div>
+            <p className={`text-[14.5px] font-bold ${pharmacyStockTrackingEnabled ? 'text-slate-900' : 'text-slate-400'}`}>Chặn kê vượt tồn</p>
+            <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
+              Tắt (mặc định): kê vượt tổng tồn kho toàn phòng khám chỉ cảnh báo mềm, bác sĩ vẫn ký được.
+              <br />
+              Bật: chặn cứng, không cho ký đơn khi có dòng thuốc vượt tồn. Chỉ có ý nghĩa khi &quot;Có kho
+              thuốc&quot; đang bật.
+            </p>
+          </div>
+          <label className="relative mt-0.5 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center">
+            <input
+              type="checkbox"
+              className="peer sr-only"
+              checked={prescriptionStockBlockEnabled}
+              disabled={updateMutation.isPending || !pharmacyStockTrackingEnabled}
+              onChange={(e) => updateMutation.mutate({ prescriptionStockBlockEnabled: e.target.checked })}
+              aria-label="Chặn kê vượt tồn"
             />
             <span className="absolute inset-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-brand-teal peer-disabled:opacity-60" />
             <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />

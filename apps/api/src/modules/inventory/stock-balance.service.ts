@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { CLINIC_CONFIG_READER_PORT, computeExpiryStatus, toVietnamDateParts, type ClinicConfigReaderPort } from '@nexamed/core';
 import type {
   GetDrugBatchBalancesResponse,
+  GetStockOnHandSummaryResponse,
   ListStockBalancesQuery,
   ListStockBalancesResponse,
   ListStockExpiryWarningsQuery,
@@ -138,5 +139,15 @@ export class StockBalanceService {
     });
 
     return { items, expiringSoonCount, expiredCount };
+  }
+
+  /** Kho Thuốc GĐ5 — "tổng tồn toàn phòng khám" (gộp mọi kho) cho một danh sách thuốc, dùng cho
+   * `DrugPicker.tsx`/`PrescriptionPanel.tsx` hiện badge tồn kho lúc kê đơn. Dùng chung nguyên
+   * `StockBalanceRepository.sumOnHandByDrugIds()` — cùng phép tính `EncounterService.signPrescription()`
+   * đọc qua `StockAvailabilityPort` (khác lối vào, cùng một nguồn dữ liệu). */
+  async getOnHandSummary(tenantId: string, drugIds: string[]): Promise<GetStockOnHandSummaryResponse> {
+    const uniqueIds = [...new Set(drugIds)];
+    const onHandByDrugId = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.stockBalanceRepository.sumOnHandByDrugIds(tx, tenantId, uniqueIds));
+    return { onHandByDrugId };
   }
 }

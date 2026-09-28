@@ -1960,6 +1960,8 @@ export interface paths {
                                 soloClinicWorkflowEnabled: boolean;
                                 expiryWarningDays: number;
                                 pharmacySeparateInvoiceEnabled: boolean;
+                                pharmacyStockTrackingEnabled: boolean;
+                                prescriptionStockBlockEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -4194,7 +4196,7 @@ export interface paths {
                                     }[];
                                     warnings: {
                                         /** @enum {string} */
-                                        kind: "duplicate_active_ingredient" | "allergy";
+                                        kind: "duplicate_active_ingredient" | "allergy" | "stock_insufficient";
                                         label: string;
                                         drugNames: string[];
                                     }[];
@@ -5142,7 +5144,7 @@ export interface paths {
                                 }[];
                                 warnings: {
                                     /** @enum {string} */
-                                    kind: "duplicate_active_ingredient" | "allergy";
+                                    kind: "duplicate_active_ingredient" | "allergy" | "stock_insufficient";
                                     label: string;
                                     drugNames: string[];
                                 }[];
@@ -5298,7 +5300,7 @@ export interface paths {
                                 }[];
                                 warnings: {
                                     /** @enum {string} */
-                                    kind: "duplicate_active_ingredient" | "allergy";
+                                    kind: "duplicate_active_ingredient" | "allergy" | "stock_insufficient";
                                     label: string;
                                     drugNames: string[];
                                 }[];
@@ -5447,7 +5449,7 @@ export interface paths {
                                 }[];
                                 warnings: {
                                     /** @enum {string} */
-                                    kind: "duplicate_active_ingredient" | "allergy";
+                                    kind: "duplicate_active_ingredient" | "allergy" | "stock_insufficient";
                                     label: string;
                                     drugNames: string[];
                                 }[];
@@ -5582,7 +5584,7 @@ export interface paths {
                                 }[];
                                 warnings: {
                                     /** @enum {string} */
-                                    kind: "duplicate_active_ingredient" | "allergy";
+                                    kind: "duplicate_active_ingredient" | "allergy" | "stock_insufficient";
                                     label: string;
                                     drugNames: string[];
                                 }[];
@@ -10172,6 +10174,7 @@ export interface paths {
                                     storageLocation: string | null;
                                     barcode: string | null;
                                     packagingSpec: string | null;
+                                    shortcutCode: string | null;
                                     lastPurchaseUnitCost: number | null;
                                     lastPurchaseAt: string | null;
                                     ingredients: ({
@@ -10280,6 +10283,7 @@ export interface paths {
                         storageLocation?: string;
                         barcode?: string;
                         packagingSpec?: string;
+                        shortcutCode?: string;
                         /** @default [] */
                         ingredients?: {
                             activeIngredientCode: string;
@@ -10338,6 +10342,7 @@ export interface paths {
                                 storageLocation: string | null;
                                 barcode: string | null;
                                 packagingSpec: string | null;
+                                shortcutCode: string | null;
                                 lastPurchaseUnitCost: number | null;
                                 lastPurchaseAt: string | null;
                                 ingredients: ({
@@ -10474,6 +10479,7 @@ export interface paths {
                         storageLocation?: string | null;
                         barcode?: string | null;
                         packagingSpec?: string | null;
+                        shortcutCode?: string | null;
                         ingredients?: {
                             activeIngredientCode: string;
                             strengthValue: number;
@@ -10532,6 +10538,7 @@ export interface paths {
                                 storageLocation: string | null;
                                 barcode: string | null;
                                 packagingSpec: string | null;
+                                shortcutCode: string | null;
                                 lastPurchaseUnitCost: number | null;
                                 lastPurchaseAt: string | null;
                                 ingredients: ({
@@ -10607,6 +10614,347 @@ export interface paths {
                     };
                 };
                 /** @description Trùng mã thuốc, hoặc version không khớp (CONCURRENT_MODIFICATION) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/prescription-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** "Đơn thuốc mẫu" (Kho Thuốc GĐ5) — liệt kê mẫu đang hoạt động, dùng chung toàn tenant */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    items: {
+                                        /** Format: uuid */
+                                        drugId: string;
+                                        dose: string;
+                                        frequency: string;
+                                        durationDays: number;
+                                        quantity: number;
+                                        instruction?: string;
+                                        /** Format: uuid */
+                                        id: string;
+                                        drugName: string;
+                                    }[];
+                                    isActive: boolean;
+                                    version: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền prescription_template.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** "Đơn thuốc mẫu" (Kho Thuốc GĐ5) — tạo mẫu mới kèm dòng thuốc */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        name: string;
+                        items: {
+                            /** Format: uuid */
+                            drugId: string;
+                            dose: string;
+                            frequency: string;
+                            durationDays: number;
+                            quantity: number;
+                            instruction?: string;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Tạo thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                items: {
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    dose: string;
+                                    frequency: string;
+                                    durationDays: number;
+                                    quantity: number;
+                                    instruction?: string;
+                                    /** Format: uuid */
+                                    id: string;
+                                    drugName: string;
+                                }[];
+                                isActive: boolean;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Có thuốc trong mẫu không tồn tại trong danh mục */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền prescription_template.manage */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prescription-templates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** "Đơn thuốc mẫu" (Kho Thuốc GĐ5) — sửa tên/dòng thuốc/ẩn mẫu, bắt buộc kèm version hiện có */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        name?: string;
+                        items?: {
+                            /** Format: uuid */
+                            drugId: string;
+                            dose: string;
+                            frequency: string;
+                            durationDays: number;
+                            quantity: number;
+                            instruction?: string;
+                        }[];
+                        isActive?: boolean;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Sửa thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                items: {
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    dose: string;
+                                    frequency: string;
+                                    durationDays: number;
+                                    quantity: number;
+                                    instruction?: string;
+                                    /** Format: uuid */
+                                    id: string;
+                                    drugName: string;
+                                }[];
+                                isActive: boolean;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Có thuốc trong mẫu không tồn tại trong danh mục */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền prescription_template.manage */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại hoặc thuộc tenant khác) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION) */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -11998,6 +12346,8 @@ export interface paths {
                                 soloClinicWorkflowEnabled: boolean;
                                 expiryWarningDays: number;
                                 pharmacySeparateInvoiceEnabled: boolean;
+                                pharmacyStockTrackingEnabled: boolean;
+                                prescriptionStockBlockEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -12101,6 +12451,8 @@ export interface paths {
                         soloClinicWorkflowEnabled?: boolean;
                         expiryWarningDays?: number;
                         pharmacySeparateInvoiceEnabled?: boolean;
+                        pharmacyStockTrackingEnabled?: boolean;
+                        prescriptionStockBlockEnabled?: boolean;
                     };
                 };
             };
@@ -12163,6 +12515,8 @@ export interface paths {
                                 soloClinicWorkflowEnabled: boolean;
                                 expiryWarningDays: number;
                                 pharmacySeparateInvoiceEnabled: boolean;
+                                pharmacyStockTrackingEnabled: boolean;
+                                prescriptionStockBlockEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -12569,6 +12923,62 @@ export interface paths {
             cookie?: never;
         };
         /** "Chế độ phòng khám 1 người" — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /clinic-settings/deferred-payment-enabled) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                enabled: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinic-settings/pharmacy-stock-tracking-enabled": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** "Có kho thuốc" (Kho Thuốc GĐ5) — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /clinic-settings/solo-clinic-workflow-enabled) */
         get: {
             parameters: {
                 query?: never;
@@ -21311,6 +21721,81 @@ export interface paths {
                                     /** @enum {string} */
                                     status: "NORMAL" | "LOW" | "HIGH" | "OUT";
                                 }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_receipt.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/balances/on-hand-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Kho Thuốc GĐ5 — tổng tồn TOÀN PHÒNG KHÁM (gộp mọi kho) cho một danh sách thuốc, dùng cho DrugPicker/PrescriptionPanel lúc kê đơn */
+        get: {
+            parameters: {
+                query: {
+                    drugIds: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                onHandByDrugId: {
+                                    [key: string]: number;
+                                };
                             };
                             meta: Record<string, never>;
                         };

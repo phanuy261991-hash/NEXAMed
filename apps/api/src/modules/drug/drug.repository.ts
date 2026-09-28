@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Drug, DrugControlType, DrugItemType, Prisma } from '@prisma/client';
+import { stripVietnameseDiacritics } from '@nexamed/core';
 
 export interface CreateDrugData {
   code: string;
@@ -31,6 +32,7 @@ export interface CreateDrugData {
   activeIngredient: string | null;
   unit: string | null;
   concentration: string | null;
+  shortcutCode: string | null;
 }
 
 export interface UpdateDrugData {
@@ -64,6 +66,7 @@ export interface UpdateDrugData {
   unit?: string | null;
   concentration?: string | null;
   isActive?: boolean;
+  shortcutCode?: string | null;
 }
 
 /** Kèm hoạt chất/đơn vị quy đổi (GĐ1) — `DrugService` map sang `DrugSummary.ingredients/units`. */
@@ -107,8 +110,12 @@ export class DrugRepository {
   /** `q` — tìm theo tên/mã/hoạt chất/mã vạch (contains, không phân biệt hoa thường) — dùng lúc kê
    * đơn, chọn hàng nhập/xuất/kiểm kê/điều chuyển kho. Mã vạch (docs/DECISIONS.md #151) hay được quét
    * bằng máy đọc mã vạch (gõ nhanh, khớp chính xác gần như tuyệt đối) nên `contains` vẫn đúng, không
-   * cần so khớp riêng. `prescriptionOnly` (Kho Thuốc GĐ3, #163) — lọc CHỈ hàng OTC (`false`) cho khu
-   * vực "+ Thêm hàng không theo đơn" ở `DispensePrescriptionDialog.tsx`; `undefined` = không lọc theo cột này. */
+   * cần so khớp riêng. Kho Thuốc GĐ5: thêm `searchKey` (tên KHÔNG DẤU, cột generated
+   * `nexamed_unaccent_lower(name)`, đúng khuôn `patient`/`icd10_catalog`) và khớp CHÍNH XÁC
+   * `shortcutCode` (gõ tắt, đã chuẩn hoá thường ở `DrugService` trước khi lưu) — gõ "ptm" ra đúng
+   * "Paracetamol 500mg" dù không phải chuỗi con của tên. `prescriptionOnly` (Kho Thuốc GĐ3, #163) —
+   * lọc CHỈ hàng OTC (`false`) cho khu vực "+ Thêm hàng không theo đơn" ở
+   * `DispensePrescriptionDialog.tsx`; `undefined` = không lọc theo cột này. */
   list(
     tx: Prisma.TransactionClient,
     tenantId: string,
@@ -122,14 +129,23 @@ export class DrugRepository {
       ...(params.prescriptionOnly !== undefined ? { isPrescriptionOnly: params.prescriptionOnly } : {}),
     };
     if (params.q) {
+      const normalized = stripVietnameseDiacritics(params.q);
       where.OR = [
         { name: { contains: params.q, mode: 'insensitive' } },
         { code: { contains: params.q, mode: 'insensitive' } },
         { activeIngredient: { contains: params.q, mode: 'insensitive' } },
         { barcode: { contains: params.q, mode: 'insensitive' } },
+        { searchKey: { contains: normalized } },
+        { shortcutCode: { equals: normalized } },
       ];
     }
     return tx.drug.findMany({ where, include: DETAIL_INCLUDE, orderBy: { name: 'asc' } });
+  }
+
+  /** Kho Thuốc GĐ5 — tra 1 thuốc theo `shortcutCode` CHÍNH XÁC (đã chuẩn hoá thường), dùng cho ô
+   * tìm thuốc gõ tắt (Enter ngay khi khớp đúng 1 gõ tắt, không cần chọn từ danh sách). */
+  findByShortcutCode(tx: Prisma.TransactionClient, tenantId: string, shortcutCode: string): Promise<Drug | null> {
+    return tx.drug.findFirst({ where: { tenantId, shortcutCode, deletedAt: null } });
   }
 
   async updateIfVersionMatches(

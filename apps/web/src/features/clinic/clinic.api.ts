@@ -22,6 +22,7 @@ import type {
   ListFloorsResponse,
   ListRoomOptionsResponse,
   ListRoomsResponse,
+  PharmacyStockTrackingStatus,
   RoomSession,
   RoomSummary,
   SetDoctorAvailabilityRequest,
@@ -71,6 +72,11 @@ export async function getSidebarAutoCollapseStatus(): Promise<SidebarAutoCollaps
 /** "Chế độ phòng khám 1 người" (2026-09-14) — tự-phục vụ, không cần `clinic_config.read` (đúng khuôn `getDeferredPaymentStatus`). */
 export async function getSoloClinicWorkflowStatus(): Promise<SoloClinicWorkflowStatus> {
   return unwrap(await getApiClient().GET('/api/v1/clinic-settings/solo-clinic-workflow-enabled')) as SoloClinicWorkflowStatus;
+}
+
+/** "Có kho thuốc" (Kho Thuốc GĐ5) — tự-phục vụ, không cần `clinic_config.read` (đúng khuôn `getDeferredPaymentStatus`). */
+export async function getPharmacyStockTrackingStatus(): Promise<PharmacyStockTrackingStatus> {
+  return unwrap(await getApiClient().GET('/api/v1/clinic-settings/pharmacy-stock-tracking-enabled')) as PharmacyStockTrackingStatus;
 }
 
 /** S6-01 (ADM-04) — chỉ `clinic_admin` gọi được (`clinic_config.read`), dùng cho banner cảnh báo toàn cục. */

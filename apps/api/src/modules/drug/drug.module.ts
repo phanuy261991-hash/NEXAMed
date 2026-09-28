@@ -11,6 +11,9 @@ import { SupplierRepository } from './supplier.repository';
 import { WarehouseController } from './warehouse.controller';
 import { WarehouseService } from './warehouse.service';
 import { WarehouseRepository } from './warehouse.repository';
+import { PrescriptionTemplateController } from './prescription-template.controller';
+import { PrescriptionTemplateService } from './prescription-template.service';
+import { PrescriptionTemplateRepository } from './prescription-template.repository';
 
 /**
  * Danh mục Thuốc & Vật tư y tế — Drug (Sprint 4, S4-03) + Nhà cung cấp/Kho (Giai đoạn 1 của Kho
@@ -24,11 +27,27 @@ import { WarehouseRepository } from './warehouse.repository';
  * còn tồn) — `DrugService.update()` đọc `StockBalanceRepository` để kiểm tồn trước khi cho đổi cờ.
  * Vòng phụ thuộc 2 chiều CÓ THẬT (`InventoryModule` đã import `DrugModule` từ GĐ2) — `forwardRef`
  * bắt buộc ở CẢ HAI phía, đúng tiền lệ `CashierShiftModule ↔ BillingModule`/`↔ CashBookModule`.
+ *
+ * `PrescriptionTemplateController/Service/Repository` (Kho Thuốc GĐ5, PRD INV-05) — "Đơn thuốc
+ * mẫu", CÙNG module (không tách riêng, đúng chỗ vì `.claude/docs/architecture.md` ghi rõ GĐ5 mở
+ * rộng module `drug`). Dùng chung `DrugRepository` sẵn có trong module để validate `drugId` tồn
+ * tại, không cần thêm `imports` nào.
  */
 @Module({
   imports: [forwardRef(() => InventoryModule)],
-  controllers: [DrugController, SupplierController, WarehouseController],
-  providers: [DrugService, DrugRepository, DrugIngredientRepository, DrugUnitRepository, SupplierService, SupplierRepository, WarehouseService, WarehouseRepository],
+  controllers: [DrugController, SupplierController, WarehouseController, PrescriptionTemplateController],
+  providers: [
+    DrugService,
+    DrugRepository,
+    DrugIngredientRepository,
+    DrugUnitRepository,
+    SupplierService,
+    SupplierRepository,
+    WarehouseService,
+    WarehouseRepository,
+    PrescriptionTemplateService,
+    PrescriptionTemplateRepository,
+  ],
   exports: [DrugRepository, WarehouseRepository, SupplierRepository],
 })
 export class DrugModule {}

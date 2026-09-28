@@ -8,6 +8,7 @@ import type {
   CreateStockReceiptRequest,
   CreateStockTransferRequest,
   GetDrugBatchBalancesResponse,
+  GetStockOnHandSummaryResponse,
   GetDrugLedgerResponse,
   GetPrescriptionDispenseStatusResponse,
   GetStockLedgerReportQuery,
@@ -74,6 +75,12 @@ export async function voidStockReceipt(id: string, body: VoidStockReceiptRequest
 
 export async function getStockBalances(query: ListStockBalancesQuery): Promise<ListStockBalancesResponse> {
   return unwrap(await getApiClient().GET('/api/v1/inventory/balances', { params: { query } })) as ListStockBalancesResponse;
+}
+
+/** Kho Thuốc GĐ5 — tổng tồn TOÀN PHÒNG KHÁM (gộp mọi kho) cho một danh sách thuốc. Rỗng → không gọi API (tránh query lỗi `drugIds` rỗng). */
+export async function getStockOnHandSummary(drugIds: string[]): Promise<GetStockOnHandSummaryResponse> {
+  if (drugIds.length === 0) return { onHandByDrugId: {} };
+  return unwrap(await getApiClient().GET('/api/v1/inventory/balances/on-hand-summary', { params: { query: { drugIds: drugIds.join(',') } } })) as GetStockOnHandSummaryResponse;
 }
 
 export async function getDrugBatchBalances(drugId: string, warehouseId?: string): Promise<GetDrugBatchBalancesResponse> {

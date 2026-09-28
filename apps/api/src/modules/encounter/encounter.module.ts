@@ -36,6 +36,10 @@ import { EncounterReaderAdapter } from '../../infrastructure/encounter/encounter
  * `exports: [..., DiagnosisRepository]` — "Mã đơn thuốc thật" (#169) — `StockIssueService` đọc
  * chẩn đoán chính để hiện ở khối thông tin màn "Phát thuốc", cùng tiền lệ chia sẻ Repository đã có
  * với `PrescriptionRepository` ở trên (không cần port riêng cho một lệnh đọc đơn giản).
+ * Kho Thuốc GĐ5 (cảnh báo/chặn kê vượt tồn) — `EncounterService` inject `STOCK_AVAILABILITY_PORT`
+ * (packages/core) qua `@Inject()` thẳng token, KHÔNG thêm `InventoryModule`/`StockAvailabilityModule`
+ * vào `imports` ở trên — giữ đúng nguyên tắc một chiều đã ghi. `StockAvailabilityModule` (module
+ * `inventory`) đăng ký token này dạng `@Global()`, tự `imports: [InventoryModule]` phía nó.
  */
 @Module({
   imports: [PatientModule, ClinicModule, BillingModule, GeoModule],

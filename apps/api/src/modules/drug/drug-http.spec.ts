@@ -62,6 +62,7 @@ describe('HTTP e2e — /api/v1/drugs', () => {
       dosageForm: string;
       countryOfOrigin: string;
       barcode: string;
+      shortcutCode: string;
     }> = {},
   ) {
     const itemType = overrides.itemType ?? 'MEDICINE';
@@ -97,6 +98,7 @@ describe('HTTP e2e — /api/v1/drugs', () => {
         ...(overrides.controlType !== undefined ? { controlType: overrides.controlType } : {}),
         ...(overrides.isPrescriptionOnly !== undefined ? { isPrescriptionOnly: overrides.isPrescriptionOnly } : {}),
         ...(overrides.barcode !== undefined ? { barcode: overrides.barcode } : {}),
+        ...(overrides.shortcutCode !== undefined ? { shortcutCode: overrides.shortcutCode } : {}),
       });
     return res;
   }
@@ -168,6 +170,27 @@ describe('HTTP e2e — /api/v1/drugs', () => {
 
     const missRes = await request(app.getHttpServer()).get('/api/v1/drugs').query({ q: `${barcode}9999` }).set(authed(doctorToken));
     expect(missRes.body.data.items.some((d: { name: string }) => d.name === 'Vitamin C 500mg')).toBe(false);
+  });
+
+  it('Kho Thuốc GĐ5 — tìm thuốc gõ KHÔNG DẤU khớp tên CÓ DẤU (cột search_key)', async () => {
+    await createDrug(clinicAdminToken, { name: 'Viêm phế quản - Salbutamol xịt' });
+    const res = await request(app.getHttpServer()).get('/api/v1/drugs').query({ q: 'viem phe quan' }).set(authed(doctorToken));
+    expect(res.status).toBe(200);
+    expect(res.body.data.items.some((d: { name: string }) => d.name === 'Viêm phế quản - Salbutamol xịt')).toBe(true);
+  });
+
+  it('Kho Thuốc GĐ5 — "Gõ tắt tìm thuốc": tạo có shortcutCode, tìm đúng gõ tắt (không phân biệt hoa thường), trùng gõ tắt → 409', async () => {
+    const shortcut = `pa${randomUUID().slice(0, 6)}`;
+    const createRes = await createDrug(clinicAdminToken, { name: 'Paracetamol 500mg gõ tắt', shortcutCode: shortcut });
+    expect(createRes.status).toBe(200);
+    expect(createRes.body.data.shortcutCode).toBe(shortcut.toLowerCase());
+
+    const searchRes = await request(app.getHttpServer()).get('/api/v1/drugs').query({ q: shortcut.toUpperCase() }).set(authed(doctorToken));
+    expect(searchRes.body.data.items.some((d: { name: string }) => d.name === 'Paracetamol 500mg gõ tắt')).toBe(true);
+
+    const dupRes = await createDrug(clinicAdminToken, { name: 'Thuốc khác', shortcutCode: shortcut.toUpperCase() });
+    expect(dupRes.status).toBe(409);
+    expect(dupRes.body.error.code).toBe('DRUG_DUPLICATE_SHORTCUT_CODE');
   });
 
   it('receptionist (drug.read) xem được danh sách nhưng không tạo được thuốc (thiếu drug.create) → 403', async () => {

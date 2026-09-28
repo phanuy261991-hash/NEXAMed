@@ -133,6 +133,21 @@ export interface ClinicConfigReaderPort {
    * hữu `tenant_setting`), cùng lý do các cấu hình khác ở trên.
    */
   getPharmacySeparateInvoiceEnabled(tenantId: string): Promise<boolean>;
+
+  /**
+   * "Có kho thuốc" (Kho Thuốc GĐ5) — bật (mặc định) thì màn Kê đơn hiện tồn kho/cảnh báo vượt tồn/
+   * nút "Phát thuốc"; tắt thì phòng khám không có kho thuốc riêng, ẩn sạch các phần đó (`tenant_setting`
+   * key `pharmacy_stock_tracking_enabled`). Module `encounter` đọc qua port này (module `clinic` sở
+   * hữu `tenant_setting`), cùng lý do các cấu hình khác ở trên.
+   */
+  getPharmacyStockTrackingEnabled(tenantId: string): Promise<boolean>;
+
+  /**
+   * "Chặn kê vượt tồn" (Kho Thuốc GĐ5) — tắt (mặc định) chỉ CẢNH BÁO MỀM lúc ký đơn; bật thì chặn
+   * CỨNG (`tenant_setting` key `prescription_stock_block_enabled`). Chỉ có ý nghĩa khi
+   * `getPharmacyStockTrackingEnabled=true`. Module `encounter` đọc qua port này, cùng lý do trên.
+   */
+  getPrescriptionStockBlockEnabled(tenantId: string): Promise<boolean>;
 }
 
 export const CLINIC_CONFIG_READER_PORT = Symbol('CLINIC_CONFIG_READER_PORT');

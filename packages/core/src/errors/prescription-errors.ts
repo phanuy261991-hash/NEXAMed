@@ -55,6 +55,16 @@ export class DrugDuplicateCodeError extends DomainError {
   }
 }
 
+/** Kho Thuốc GĐ5 — DB trả unique violation trên `(tenant_id, shortcut_code)` của `drug` — trùng gõ
+ * tắt tìm thuốc trong cùng phòng khám. */
+export class DrugDuplicateShortcutCodeError extends DomainError {
+  readonly code = 'DRUG_DUPLICATE_SHORTCUT_CODE';
+
+  constructor() {
+    super('Mã gõ tắt này đã được gán cho thuốc khác.');
+  }
+}
+
 /**
  * Đổi `drug.isBatchManaged` khi mặt hàng đang còn tồn kho (bất kỳ kho nào) — chặn để tránh tồn cũ
  * bị "kẹt" dưới khoá lô/phi-lô cũ, không còn nhìn thấy được sau khi đổi cờ (sự cố thật đã gặp với
@@ -66,5 +76,23 @@ export class DrugBatchManagementChangeBlockedError extends DomainError {
 
   constructor() {
     super('Không thể đổi "Quản lý theo lô" khi mặt hàng đang còn tồn kho — cần xuất/kiểm kê hết tồn trước.');
+  }
+}
+
+/**
+ * Kho Thuốc GĐ5 — ký đơn khi có dòng thuốc vượt tổng tồn kho toàn phòng khám VÀ tenant đã bật
+ * "Chặn kê vượt tồn" (`prescriptionStockBlockEnabled=true`). Mặc định (tắt) chỉ CẢNH BÁO MỀM
+ * (`prescription.warnings`, kind `stock_insufficient`) — lỗi này chỉ ném khi công tắc đã bật. Không
+ * map trong `DOMAIN_ERROR_STATUS` → 422 mặc định, cùng nhóm `STOCK_ISSUE_INSUFFICIENT_STOCK`/
+ * `STOCK_TRANSFER_INSUFFICIENT_STOCK` (vi phạm quy tắc nghiệp vụ "đủ tồn", không phải xung đột
+ * trạng thái đồng thời).
+ */
+export class PrescriptionStockInsufficientError extends DomainError {
+  readonly code = 'PRESCRIPTION_STOCK_INSUFFICIENT';
+  readonly details: { drugId: string; drugName: string; required: number; onHand: number }[];
+
+  constructor(shortages: { drugId: string; drugName: string; required: number; onHand: number }[]) {
+    super('Có thuốc trong đơn vượt tồn kho hiện có — không thể ký đơn khi "Chặn kê vượt tồn" đang bật.');
+    this.details = shortages;
   }
 }

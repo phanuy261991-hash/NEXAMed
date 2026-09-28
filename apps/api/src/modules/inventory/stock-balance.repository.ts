@@ -74,4 +74,18 @@ export class StockBalanceRepository {
     });
     return rows.map((r) => ({ drugId: r.drugId, warehouseId: r.warehouseId, quantityOnHand: r._sum.quantityOnHand ?? 0 }));
   }
+
+  /** Kho Thuốc GĐ5 — tổng `quantityOnHand` GỘP MỌI KHO (khác `listAggregated` gộp theo từng kho
+   * riêng) cho một danh sách thuốc, phục vụ `StockAvailabilityAdapter` (cảnh báo/chặn kê vượt tồn
+   * lúc ký đơn — "tổng tồn toàn phòng khám", đã chốt qua AskUserQuestion). Thuốc không có dòng nào
+   * không xuất hiện trong kết quả — caller tự coi thiếu key là `0`. */
+  async sumOnHandByDrugIds(tx: Prisma.TransactionClient, tenantId: string, drugIds: string[]): Promise<Record<string, number>> {
+    if (drugIds.length === 0) return {};
+    const rows = await tx.stockBalance.groupBy({
+      by: ['drugId'],
+      where: { tenantId, drugId: { in: drugIds }, deletedAt: null },
+      _sum: { quantityOnHand: true },
+    });
+    return Object.fromEntries(rows.map((r) => [r.drugId, r._sum.quantityOnHand ?? 0]));
+  }
 }

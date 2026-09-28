@@ -280,6 +280,20 @@ export const clinicSettingsSchema = z.object({
    * dịch vụ khám) — dành cho phòng khám có quầy thuốc/dược sĩ thu tiền riêng, tách bạch sổ sách.
    */
   pharmacySeparateInvoiceEnabled: z.boolean(),
+  /**
+   * "Có kho thuốc" (Kho Thuốc GĐ5) — BẬT (mặc định, giữ nguyên pilot đang chạy): màn Kê đơn hiện
+   * cột tồn kho, cảnh báo/chặn vượt tồn, nút "Phát thuốc". TẮT: phòng khám KHÔNG có kho thuốc
+   * riêng — bệnh nhân cầm đơn ra ngoài mua, đơn thuốc chỉ để lưu hồ sơ và in, ẩn sạch mọi phần phụ
+   * thuộc tồn kho ở màn Kê đơn (không ẩn "Quản lý kho" — trang quản lý kho/nhập-xuất vẫn hoạt động
+   * bình thường cho nhu cầu khác nếu tenant có dùng).
+   */
+  pharmacyStockTrackingEnabled: z.boolean(),
+  /**
+   * "Chặn kê vượt tồn" (Kho Thuốc GĐ5) — TẮT (mặc định): kê vượt tổng tồn kho toàn phòng khám chỉ
+   * CẢNH BÁO MỀM lúc ký đơn, bác sĩ vẫn ký được (cùng khuôn PRE-02/03 hiện có). BẬT: chặn CỨNG,
+   * không cho ký đơn khi có dòng thuốc vượt tồn. Không có ý nghĩa khi `pharmacyStockTrackingEnabled=false`.
+   */
+  prescriptionStockBlockEnabled: z.boolean(),
 });
 export type ClinicSettings = z.infer<typeof clinicSettingsSchema>;
 
@@ -311,6 +325,8 @@ export const updateClinicSettingsRequestSchema = z.object({
   soloClinicWorkflowEnabled: z.boolean().optional(),
   expiryWarningDays: z.number().int().min(1).max(365).optional(),
   pharmacySeparateInvoiceEnabled: z.boolean().optional(),
+  pharmacyStockTrackingEnabled: z.boolean().optional(),
+  prescriptionStockBlockEnabled: z.boolean().optional(),
 });
 export type UpdateClinicSettingsRequest = z.infer<typeof updateClinicSettingsRequestSchema>;
 
@@ -352,6 +368,14 @@ export const DEFAULT_SOLO_CLINIC_WORKFLOW_ENABLED = false;
 export const DEFAULT_EXPIRY_WARNING_DAYS = 30;
 /** Tắt theo mặc định (Kho Thuốc GĐ3, #163) — Phiếu xuất kho cộng thẳng vào hoá đơn SERVICE đang mở. */
 export const DEFAULT_PHARMACY_SEPARATE_INVOICE_ENABLED = false;
+/** Bật theo mặc định (Kho Thuốc GĐ5) — giữ đúng hành vi pilot đang chạy (tồn kho/cảnh báo vượt
+ * tồn/nút "Phát thuốc" hiện đầy đủ ở màn Kê đơn). Tắt cho phòng khám KHÔNG có kho thuốc riêng
+ * (bệnh nhân ra ngoài mua) — ẩn cột tồn kho, cảnh báo vượt tồn, nút "Phát thuốc". */
+export const DEFAULT_PHARMACY_STOCK_TRACKING_ENABLED = true;
+/** Tắt theo mặc định (Kho Thuốc GĐ5) — kê vượt tồn chỉ CẢNH BÁO MỀM lúc ký đơn (cùng khuôn PRE-02/
+ * 03). Bật thì chặn CỨNG, không cho ký khi có dòng thuốc vượt tổng tồn kho toàn phòng khám. Chỉ có
+ * ý nghĩa khi `pharmacyStockTrackingEnabled=true`. */
+export const DEFAULT_PRESCRIPTION_STOCK_BLOCK_ENABLED = false;
 
 /**
  * `GET /clinic-settings/cashier-shift-blind-close-enabled` — chiếu tối thiểu tự-phục vụ, cùng lý
@@ -405,6 +429,14 @@ export type SidebarAutoCollapseStatus = z.infer<typeof sidebarAutoCollapseStatus
  */
 export const soloClinicWorkflowStatusSchema = z.object({ enabled: z.boolean() });
 export type SoloClinicWorkflowStatus = z.infer<typeof soloClinicWorkflowStatusSchema>;
+
+/**
+ * `GET /clinic-settings/pharmacy-stock-tracking-enabled` — chiếu tối thiểu tự-phục vụ, cùng lý do
+ * `soloClinicWorkflowStatusSchema` ở trên: bác sĩ/điều dưỡng (không chỉ `clinic_admin`) cần biết
+ * công tắc "Có kho thuốc" để màn Kê đơn hiện/ẩn đúng cột tồn kho + cảnh báo vượt tồn.
+ */
+export const pharmacyStockTrackingStatusSchema = z.object({ enabled: z.boolean() });
+export type PharmacyStockTrackingStatus = z.infer<typeof pharmacyStockTrackingStatusSchema>;
 
 /**
  * "Nền tảng mạng xã hội" (mở rộng "Thông tin phòng khám" 2026-09-14) — enum cố định ở tầng Zod

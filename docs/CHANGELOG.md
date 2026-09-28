@@ -2,6 +2,18 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-28
+
+### Kho Thuốc GĐ5 "Trải nghiệm kê đơn" + redesign màn khám sang Tab thật — backend+frontend xong, CHƯA verify Playwright
+
+Gộp 3 việc: Kho Thuốc GĐ5 (PRD INV-05 — tìm không dấu, gõ tắt, đơn mẫu, điều hướng bàn phím, cảnh báo/chặn kê vượt tồn), redesign UX màn khám (tab-cuộn cũ → Phương án 1 "Tab thật", chốt qua mockup Artifact so sánh 2 phương án), và phát hiện "Mã đơn thuốc thật" hoá ra đã xong từ #169 (chỉ cần hiện thêm ở tab Kê đơn).
+
+Backend: migration `20260926100000_prescription_ge5` (`drug.shortcut_code`/`drug.search_key` + 2 bảng `prescription_template`/`prescription_template_item`), port mới `StockAvailabilityPort` (giải quyết xung đột `EncounterModule` không được import `InventoryModule`, chốt từ #165), 2 công tắc clinic-settings mới (`pharmacyStockTrackingEnabled` mặc định BẬT, `prescriptionStockBlockEnabled` mặc định TẮT), endpoint `GET /inventory/balances/on-hand-summary`, module `prescription-template` CRUD.
+
+Frontend: `EncounterConsultationPage.tsx` bỏ hẳn scroll-spy sang tab thật (chỉ còn 2 tab, ẩn 2 tab "Sắp ra mắt"), `DrugPicker.tsx` thêm điều hướng bàn phím + badge gõ tắt/tồn kho, `PrescriptionPanel.tsx` thêm khối thông tin đơn thuốc + "Đơn mẫu" + cột tồn kho, `PaymentConfigPane.tsx` thêm 2 công tắc mới.
+
+**Đã xác minh thật**: `apps/api` 1016/1017 (1 flake tiền-nhiệm đã biết), `pnpm -w typecheck/lint/build` sạch toàn workspace. Test HTTP mới: `drug-http.spec.ts`, `prescription-http.spec.ts`, `prescription-template-http.spec.ts` (6/6). Chi tiết đầy đủ `docs/DECISIONS.md` #190. **Còn treo: CHƯA verify Playwright** (phiên bị ngắt giữa chừng lúc cài lại trình duyệt) — xem `docs/handoffs/HANDOFF-KhoThuoc-GD5-RedesignManKham-2026-09-28.md`.
+
 ## 2026-09-26
 
 ### Công nợ nhà cung cấp, Phần E "Đối chiếu & chốt công nợ theo kỳ" — HOÀN TẤT 100%, toàn bộ lộ trình Công nợ NCC (Phần A→E) xong

@@ -4855,6 +4855,12 @@
                         },
                         "pharmacySeparateInvoiceEnabled": {
                           "type": "boolean"
+                        },
+                        "pharmacyStockTrackingEnabled": {
+                          "type": "boolean"
+                        },
+                        "prescriptionStockBlockEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -4878,7 +4884,9 @@
                         "walletMixedPaymentEnabled",
                         "soloClinicWorkflowEnabled",
                         "expiryWarningDays",
-                        "pharmacySeparateInvoiceEnabled"
+                        "pharmacySeparateInvoiceEnabled",
+                        "pharmacyStockTrackingEnabled",
+                        "prescriptionStockBlockEnabled"
                       ]
                     },
                     "meta": {
@@ -10379,7 +10387,8 @@
                                     "type": "string",
                                     "enum": [
                                       "duplicate_active_ingredient",
-                                      "allergy"
+                                      "allergy",
+                                      "stock_insufficient"
                                     ]
                                   },
                                   "label": {
@@ -12830,7 +12839,8 @@
                                 "type": "string",
                                 "enum": [
                                   "duplicate_active_ingredient",
-                                  "allergy"
+                                  "allergy",
+                                  "stock_insufficient"
                                 ]
                               },
                               "label": {
@@ -13201,7 +13211,8 @@
                                 "type": "string",
                                 "enum": [
                                   "duplicate_active_ingredient",
-                                  "allergy"
+                                  "allergy",
+                                  "stock_insufficient"
                                 ]
                               },
                               "label": {
@@ -13555,7 +13566,8 @@
                                 "type": "string",
                                 "enum": [
                                   "duplicate_active_ingredient",
-                                  "allergy"
+                                  "allergy",
+                                  "stock_insufficient"
                                 ]
                               },
                               "label": {
@@ -13908,7 +13920,8 @@
                                 "type": "string",
                                 "enum": [
                                   "duplicate_active_ingredient",
-                                  "allergy"
+                                  "allergy",
+                                  "stock_insufficient"
                                 ]
                               },
                               "label": {
@@ -25685,6 +25698,11 @@
                     "type": "string",
                     "minLength": 1
                   },
+                  "shortcutCode": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 20
+                  },
                   "ingredients": {
                     "type": "array",
                     "items": {
@@ -25930,6 +25948,12 @@
                             "null"
                           ]
                         },
+                        "shortcutCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "lastPurchaseUnitCost": {
                           "type": [
                             "integer",
@@ -26084,6 +26108,7 @@
                         "storageLocation",
                         "barcode",
                         "packagingSpec",
+                        "shortcutCode",
                         "lastPurchaseUnitCost",
                         "lastPurchaseAt",
                         "ingredients",
@@ -26442,6 +26467,12 @@
                                   "null"
                                 ]
                               },
+                              "shortcutCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
                               "lastPurchaseUnitCost": {
                                 "type": [
                                   "integer",
@@ -26596,6 +26627,7 @@
                               "storageLocation",
                               "barcode",
                               "packagingSpec",
+                              "shortcutCode",
                               "lastPurchaseUnitCost",
                               "lastPurchaseAt",
                               "ingredients",
@@ -26886,6 +26918,14 @@
                     ],
                     "minLength": 1
                   },
+                  "shortcutCode": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1,
+                    "maxLength": 20
+                  },
                   "ingredients": {
                     "type": "array",
                     "items": {
@@ -27140,6 +27180,12 @@
                             "null"
                           ]
                         },
+                        "shortcutCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "lastPurchaseUnitCost": {
                           "type": [
                             "integer",
@@ -27294,6 +27340,7 @@
                         "storageLocation",
                         "barcode",
                         "packagingSpec",
+                        "shortcutCode",
                         "lastPurchaseUnitCost",
                         "lastPurchaseAt",
                         "ingredients",
@@ -27413,6 +27460,779 @@
           },
           "409": {
             "description": "Trùng mã thuốc, hoặc version không khớp (CONCURRENT_MODIFICATION)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/prescription-templates": {
+      "get": {
+        "tags": [
+          "drug"
+        ],
+        "summary": "\"Đơn thuốc mẫu\" (Kho Thuốc GĐ5) — liệt kê mẫu đang hoạt động, dùng chung toàn tenant",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "items": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "drugId": {
+                                      "type": "string",
+                                      "format": "uuid"
+                                    },
+                                    "dose": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "frequency": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "durationDays": {
+                                      "type": "integer",
+                                      "exclusiveMinimum": 0
+                                    },
+                                    "quantity": {
+                                      "type": "integer",
+                                      "exclusiveMinimum": 0
+                                    },
+                                    "instruction": {
+                                      "type": "string"
+                                    },
+                                    "id": {
+                                      "type": "string",
+                                      "format": "uuid"
+                                    },
+                                    "drugName": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "drugId",
+                                    "dose",
+                                    "frequency",
+                                    "durationDays",
+                                    "quantity",
+                                    "id",
+                                    "drugName"
+                                  ]
+                                }
+                              },
+                              "isActive": {
+                                "type": "boolean"
+                              },
+                              "version": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "items",
+                              "isActive",
+                              "version"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền prescription_template.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "drug"
+        ],
+        "summary": "\"Đơn thuốc mẫu\" (Kho Thuốc GĐ5) — tạo mẫu mới kèm dòng thuốc",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "drugId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "dose": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "frequency": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "durationDays": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0
+                        },
+                        "quantity": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0
+                        },
+                        "instruction": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "drugId",
+                        "dose",
+                        "frequency",
+                        "durationDays",
+                        "quantity"
+                      ]
+                    },
+                    "minItems": 1
+                  }
+                },
+                "required": [
+                  "name",
+                  "items"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tạo thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "drugId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "dose": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "frequency": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "durationDays": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0
+                              },
+                              "quantity": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0
+                              },
+                              "instruction": {
+                                "type": "string"
+                              },
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "drugName": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "drugId",
+                              "dose",
+                              "frequency",
+                              "durationDays",
+                              "quantity",
+                              "id",
+                              "drugName"
+                            ]
+                          }
+                        },
+                        "isActive": {
+                          "type": "boolean"
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "items",
+                        "isActive",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Có thuốc trong mẫu không tồn tại trong danh mục",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền prescription_template.manage",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/prescription-templates/{id}": {
+      "patch": {
+        "tags": [
+          "drug"
+        ],
+        "summary": "\"Đơn thuốc mẫu\" (Kho Thuốc GĐ5) — sửa tên/dòng thuốc/ẩn mẫu, bắt buộc kèm version hiện có",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "drugId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "dose": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "frequency": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "durationDays": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0
+                        },
+                        "quantity": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0
+                        },
+                        "instruction": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "drugId",
+                        "dose",
+                        "frequency",
+                        "durationDays",
+                        "quantity"
+                      ]
+                    },
+                    "minItems": 1
+                  },
+                  "isActive": {
+                    "type": "boolean"
+                  },
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sửa thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "drugId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "dose": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "frequency": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "durationDays": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0
+                              },
+                              "quantity": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0
+                              },
+                              "instruction": {
+                                "type": "string"
+                              },
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "drugName": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "drugId",
+                              "dose",
+                              "frequency",
+                              "durationDays",
+                              "quantity",
+                              "id",
+                              "drugName"
+                            ]
+                          }
+                        },
+                        "isActive": {
+                          "type": "boolean"
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "items",
+                        "isActive",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Có thuốc trong mẫu không tồn tại trong danh mục",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền prescription_template.manage",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy (không tồn tại hoặc thuộc tenant khác)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp (CONCURRENT_MODIFICATION)",
             "content": {
               "application/json": {
                 "schema": {
@@ -30293,6 +31113,12 @@
                         },
                         "pharmacySeparateInvoiceEnabled": {
                           "type": "boolean"
+                        },
+                        "pharmacyStockTrackingEnabled": {
+                          "type": "boolean"
+                        },
+                        "prescriptionStockBlockEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -30316,7 +31142,9 @@
                         "walletMixedPaymentEnabled",
                         "soloClinicWorkflowEnabled",
                         "expiryWarningDays",
-                        "pharmacySeparateInvoiceEnabled"
+                        "pharmacySeparateInvoiceEnabled",
+                        "pharmacyStockTrackingEnabled",
+                        "prescriptionStockBlockEnabled"
                       ]
                     },
                     "meta": {
@@ -30635,6 +31463,12 @@
                   },
                   "pharmacySeparateInvoiceEnabled": {
                     "type": "boolean"
+                  },
+                  "pharmacyStockTrackingEnabled": {
+                    "type": "boolean"
+                  },
+                  "prescriptionStockBlockEnabled": {
+                    "type": "boolean"
                   }
                 }
               }
@@ -30878,6 +31712,12 @@
                         },
                         "pharmacySeparateInvoiceEnabled": {
                           "type": "boolean"
+                        },
+                        "pharmacyStockTrackingEnabled": {
+                          "type": "boolean"
+                        },
+                        "prescriptionStockBlockEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -30901,7 +31741,9 @@
                         "walletMixedPaymentEnabled",
                         "soloClinicWorkflowEnabled",
                         "expiryWarningDays",
-                        "pharmacySeparateInvoiceEnabled"
+                        "pharmacySeparateInvoiceEnabled",
+                        "pharmacyStockTrackingEnabled",
+                        "prescriptionStockBlockEnabled"
                       ]
                     },
                     "meta": {
@@ -31530,6 +32372,83 @@
           "clinic"
         ],
         "summary": "\"Chế độ phòng khám 1 người\" — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /clinic-settings/deferred-payment-enabled)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "enabled"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clinic-settings/pharmacy-stock-tracking-enabled": {
+      "get": {
+        "tags": [
+          "clinic"
+        ],
+        "summary": "\"Có kho thuốc\" (Kho Thuốc GĐ5) — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /clinic-settings/solo-clinic-workflow-enabled)",
         "security": [
           {
             "bearerAuth": []
@@ -52835,6 +53754,128 @@
                       },
                       "required": [
                         "items"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền stock_receipt.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/balances/on-hand-summary": {
+      "get": {
+        "tags": [
+          "inventory"
+        ],
+        "summary": "Kho Thuốc GĐ5 — tổng tồn TOÀN PHÒNG KHÁM (gộp mọi kho) cho một danh sách thuốc, dùng cho DrugPicker/PrescriptionPanel lúc kê đơn",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "drugIds",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "onHandByDrugId": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer"
+                          }
+                        }
+                      },
+                      "required": [
+                        "onHandByDrugId"
                       ]
                     },
                     "meta": {

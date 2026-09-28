@@ -153,6 +153,10 @@ export const createDrugRequestSchema = z
     // đổi lúc field còn trống, sau đó là text tự do hoàn toàn (đóng gói phức tạp không diễn tả hết
     // bằng bảng quy đổi thuần số, vd "Hộp 1 lọ bột pha tiêm + 1 ống nước cất 5ml").
     packagingSpec: z.string().min(1).optional(),
+    // "Gõ tắt tìm thuốc" (Kho Thuốc GĐ5) — mã ngắn bác sĩ tự đặt để tìm nhanh lúc kê đơn (vd "ptm"
+    // → Paracetamol 500mg). Tuỳ chọn, duy nhất theo tenant (C-style: chữ/số không dấu, service tự
+    // viết thường trước khi so khớp — xem `drug.repository.ts`).
+    shortcutCode: z.string().min(1).max(20).optional(),
     // Vật tư y tế KHÔNG có hoạt chất/hàm lượng (yêu cầu chủ dự án) — validate ở service, không ở đây
     // (Zod không biết được itemType đã xác nhận đúng trước khi tới schema này).
     ingredients: z.array(drugIngredientInputSchema).default([]),
@@ -194,6 +198,7 @@ export const updateDrugRequestSchema = z
     storageLocation: z.string().min(1).nullable().optional(),
     barcode: z.string().min(1).nullable().optional(),
     packagingSpec: z.string().min(1).nullable().optional(),
+    shortcutCode: z.string().min(1).max(20).nullable().optional(),
     ingredients: z.array(drugIngredientInputSchema).optional(),
     units: z.array(drugUnitInputSchema).optional(),
     activeIngredient: z.string().min(1).nullable().optional(),
@@ -240,6 +245,7 @@ export const drugSummarySchema = z.object({
   storageLocation: z.string().nullable(),
   barcode: z.string().nullable(),
   packagingSpec: z.string().nullable(),
+  shortcutCode: z.string().nullable(),
   // Kho Thuốc GĐ2 — cache "giá nhập gần nhất" theo đơn vị CƠ SỞ, chỉ cập nhật khi Duyệt phiếu nhập
   // receiptType=PURCHASE (packages/shared/src/inventory.ts).
   lastPurchaseUnitCost: z.number().int().nullable(),

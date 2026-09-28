@@ -199,7 +199,7 @@ Phạm vi giới hạn ở **thu ngân mức 1** (một phiếu thu cho một l�
 | INV-02 | Nhập kho theo lô (số lô, hạn dùng), tồn kho theo lô/kho, thẻ kho append-only làm nguồn sự thật | P1 (Giai đoạn 2, **đã xây xong**) |
 | INV-03 | Xuất kho theo đơn thuốc — nguyên tắc "đơn thuốc là y lệnh, chỉ Phiếu xuất kho mới sinh tiền/trừ kho" (1 đơn ↔ N phiếu xuất), FEFO (hết hạn trước xuất trước), tiền thuốc gộp/tách khỏi phiếu thu công khám | P1 (Giai đoạn 3, **đã xây xong, đang chạy tại pilot**) |
 | INV-04 | Kiểm kê định kỳ, điều chuyển giữa kho, mở rộng Nhập-Xuất kho (chiết khấu, hoàn trả), báo cáo Nhập-Xuất-Tồn | P2 (Giai đoạn 4, **đã xây xong 23/09/2026**) |
-| INV-05 | Trải nghiệm kê đơn có tồn kho: tìm không dấu, macro, điều hướng bàn phím, cảnh báo/chặn kê vượt tồn | P2 (Giai đoạn 5, chưa xây — cố ý xếp cuối vì phải viết lại bộ chọn thuốc khi đã có tồn kho) |
+| INV-05 | Trải nghiệm kê đơn có tồn kho: tìm không dấu, gõ tắt, đơn mẫu, điều hướng bàn phím, cảnh báo/chặn kê vượt tồn | P2 (Giai đoạn 5, **code+test xong 28/09/2026, CHƯA verify Playwright**, `docs/DECISIONS.md` #190) |
 
 **Đã hoàn tất**: INV-01 phần Danh mục nền (Giai đoạn 1, `docs/DECISIONS.md` #148, 15/09/2026) — mở rộng bảng `drug` sẵn có (không tạo bảng `items` mới). Nhà cung cấp/Kho đã có CRUD; nhập/xuất kho thật (INV-02/03) chưa xây. **Rà soát bổ sung theo tài liệu quy chuẩn quản lý VTYT** (`docs/DECISIONS.md` #151, 16/09/2026) — VTYT giữ nguyên hoãn (chưa mở rộng field riêng), Thuốc bổ sung đầy đủ 10 trường (phân loại kiểm soát/Rx-OTC/SĐK/Dạng bào chế/Nước sản xuất bắt buộc; Liều dùng/Cách dùng/Chống chỉ định/Điều kiện bảo quản/Vị trí lưu kho/Mã vạch tùy chọn), Hãng sản xuất chuyển từ text sang danh mục cả 2 loại. 5 category danh mục mới có "thêm nhanh" ngay tại ô chọn.
 

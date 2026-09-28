@@ -37,11 +37,13 @@ export type PrescriptionItem = z.infer<typeof prescriptionItemSchema>;
 
 /**
  * `kind`: `duplicate_active_ingredient` (PRE-02, giữa các dòng trong đơn) / `allergy` (PRE-03, đối
- * chiếu danh mục "Dị nguyên" đã gán cho bệnh nhân — không phải `patient.allergyNote` tự do). `label`
- * là tên hoạt chất hoặc tên dị nguyên; `drugNames` liệt kê thuốc liên quan để bác sĩ đối chiếu.
+ * chiếu danh mục "Dị nguyên" đã gán cho bệnh nhân — không phải `patient.allergyNote` tự do) /
+ * `stock_insufficient` (Kho Thuốc GĐ5 — kê vượt tổng tồn kho toàn phòng khám, CHỈ tính khi
+ * `pharmacyStockTrackingEnabled=true`). `label` là tên hoạt chất/tên dị nguyên/tên thuốc thiếu tồn;
+ * `drugNames` liệt kê thuốc liên quan để bác sĩ đối chiếu.
  */
 export const prescriptionWarningSchema = z.object({
-  kind: z.enum(['duplicate_active_ingredient', 'allergy']),
+  kind: z.enum(['duplicate_active_ingredient', 'allergy', 'stock_insufficient']),
   label: z.string(),
   drugNames: z.array(z.string()),
 });

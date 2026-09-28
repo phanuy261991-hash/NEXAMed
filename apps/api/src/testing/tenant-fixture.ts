@@ -161,6 +161,10 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       // — xoá trước drug.
       await prisma.drugUnit.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.drugIngredient.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // Kho Thuốc GĐ5 — prescription_template_item tham chiếu drug (FK RESTRICT), phải xoá trước
+      // cả drug lẫn prescription_template (bảng cha của chính nó).
+      await prisma.prescriptionTemplateItem.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await prisma.prescriptionTemplate.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // drug (Sprint 4, S4-03) — prescription_item đã xoá ở trên nên an toàn xoá drug ở đây.
       await prisma.drug.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // supplier (#146) không bị FK nào tham chiếu — xoá tự do.

@@ -26,6 +26,7 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
   const password = 'Test@12345';
 
   let receptionistToken: string;
+  let clinicAdminToken: string;
   let doctorAToken: string;
   let doctorAUserId: string;
   let doctorBToken: string;
@@ -65,6 +66,21 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
       },
     });
     return drug.id as string;
+  }
+
+  /**
+   * Kho Thuốc GĐ5 — `pharmacyStockTrackingEnabled` mặc định BẬT (giữ nguyên pilot), nên
+   * `savePrescriptionItems()`/`signPrescription()` giờ LUÔN tính cảnh báo `stock_insufficient` dựa
+   * trên tồn thật. Test PRE-02/PRE-03 ở file này không quan tâm tồn kho — seed đủ tồn (999) để
+   * không lẫn thêm cảnh báo ngoài ý muốn, giữ đúng số lượng `warnings` các test đó đang kiểm.
+   */
+  async function seedSufficientStock(tenantId: string, drugId: string, quantity = 999) {
+    const warehouse = await privileged.warehouse.create({
+      data: { tenantId, code: `KHO-${randomUUID().slice(0, 8)}`, name: 'Kho test', createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR },
+    });
+    await privileged.stockBalance.create({
+      data: { tenantId, drugId, warehouseId: warehouse.id, quantityOnHand: quantity, createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR },
+    });
   }
 
   /**
@@ -145,6 +161,7 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
     await seedDefaultRolesForTenant(privileged, fixture.tenantB.id, SYSTEM_TEST_ACTOR);
 
     receptionistToken = (await createUserWithRole(fixture.tenantA.id, 'receptionist')).token;
+    clinicAdminToken = (await createUserWithRole(fixture.tenantA.id, 'clinic_admin')).token;
     const doctorA = await createUserWithRole(fixture.tenantA.id, 'doctor');
     doctorAToken = doctorA.token;
     doctorAUserId = doctorA.userId;
@@ -205,6 +222,8 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
     const { encounterId } = await prepareEncounterInConsultation(7);
     const drugA = await createDrug(fixture.tenantA.id, 'Paracetamol 500mg', 'Paracetamol');
     const drugB = await createDrug(fixture.tenantA.id, 'Efferalgan', 'paracetamol');
+    await seedSufficientStock(fixture.tenantA.id, drugA);
+    await seedSufficientStock(fixture.tenantA.id, drugB);
 
     // Tạo đơn nháp RỖNG (items: []) rồi ký ngay → 422 PRESCRIPTION_EMPTY (khác trường hợp chưa
     // từng PUT prescription-items lần nào — lúc đó chưa có đơn nào để ký, trả 404).
@@ -260,6 +279,7 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
     expect(assignRes.body.data.allergens[0].name).toBe('Amoxicillin');
 
     const drugId = await createDrug(fixture.tenantA.id, 'Amoxicillin 500mg', 'Amoxicillin');
+    await seedSufficientStock(fixture.tenantA.id, drugId);
     const saveRes = await request(app.getHttpServer())
       .put(`/api/v1/encounters/${encounterId}/prescription-items`)
       .set(authed(doctorAToken))
@@ -275,6 +295,71 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
     expect(consultationRes.body.data.patient.allergens).toHaveLength(1);
     expect(consultationRes.body.data.prescription.items).toHaveLength(1);
     expect(consultationRes.body.data.prescription.warnings).toHaveLength(1);
+  });
+
+  it('Kho Thuốc GĐ5 — kê vượt tổng tồn kho toàn phòng khám → warning stock_insufficient (mặc định chỉ cảnh báo mềm, vẫn ký được)', async () => {
+    const { encounterId } = await prepareEncounterInConsultation(10);
+    const drugId = await createDrug(fixture.tenantA.id, 'Acetylcystein 200mg', 'Acetylcystein');
+    await seedSufficientStock(fixture.tenantA.id, drugId, 6);
+
+    const saveRes = await request(app.getHttpServer())
+      .put(`/api/v1/encounters/${encounterId}/prescription-items`)
+      .set(authed(doctorAToken))
+      .send({ items: [{ drugId, dose: '1 gói', frequency: '3 lần/ngày', durationDays: 5, quantity: 15 }] });
+    expect(saveRes.status).toBe(200);
+    expect(saveRes.body.data.warnings).toHaveLength(1);
+    expect(saveRes.body.data.warnings[0].kind).toBe('stock_insufficient');
+    expect(saveRes.body.data.warnings[0].label).toBe('Acetylcystein 200mg');
+    expect(saveRes.body.data.warnings[0].drugNames).toEqual(['cần 15, còn 6']);
+
+    // Mặc định `prescriptionStockBlockEnabled=false` — vẫn ký được dù còn cảnh báo.
+    const signRes = await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/prescription/sign`).set(authed(doctorAToken)).send({ version: 1 });
+    expect(signRes.status).toBe(200);
+    expect(signRes.body.data.signedAt).not.toBeNull();
+  });
+
+  it('Kho Thuốc GĐ5 — bật "Chặn kê vượt tồn" → ký đơn vượt tồn bị chặn 422 PRESCRIPTION_STOCK_INSUFFICIENT; tắt lại thì ký được', async () => {
+    const { encounterId } = await prepareEncounterInConsultation(11);
+    const drugId = await createDrug(fixture.tenantA.id, 'Cefpodoxim 100mg', 'Cefpodoxim');
+    await seedSufficientStock(fixture.tenantA.id, drugId, 2);
+
+    await request(app.getHttpServer())
+      .put(`/api/v1/encounters/${encounterId}/prescription-items`)
+      .set(authed(doctorAToken))
+      .send({ items: [{ drugId, dose: '1 viên', frequency: '2 lần/ngày', durationDays: 5, quantity: 10 }] });
+
+    const enableBlock = await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(clinicAdminToken)).send({ prescriptionStockBlockEnabled: true });
+    expect(enableBlock.status).toBe(200);
+
+    const blockedSign = await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/prescription/sign`).set(authed(doctorAToken)).send({ version: 1 });
+    expect(blockedSign.status).toBe(422);
+    expect(blockedSign.body.error.code).toBe('PRESCRIPTION_STOCK_INSUFFICIENT');
+    expect(blockedSign.body.error.details.shortages).toEqual([{ drugId, drugName: 'Cefpodoxim 100mg', required: 10, onHand: 2 }]);
+
+    await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(clinicAdminToken)).send({ prescriptionStockBlockEnabled: false });
+    const okSign = await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/prescription/sign`).set(authed(doctorAToken)).send({ version: 1 });
+    expect(okSign.status).toBe(200);
+  });
+
+  it('Kho Thuốc GĐ5 — tắt "Có kho thuốc" → không còn cảnh báo/chặn vượt tồn dù thiếu tồn thật', async () => {
+    const patchOff = await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(clinicAdminToken)).send({ pharmacyStockTrackingEnabled: false });
+    expect(patchOff.status).toBe(200);
+
+    const { encounterId } = await prepareEncounterInConsultation(12);
+    const drugId = await createDrug(fixture.tenantA.id, 'Domperidon 10mg', 'Domperidon');
+    // KHÔNG seed tồn kho (mặc định 0) — tắt tính năng thì phải không có cảnh báo nào, kể cả tồn=0.
+
+    const saveRes = await request(app.getHttpServer())
+      .put(`/api/v1/encounters/${encounterId}/prescription-items`)
+      .set(authed(doctorAToken))
+      .send({ items: [{ drugId, dose: '1 viên', frequency: '2 lần/ngày', durationDays: 5, quantity: 10 }] });
+    expect(saveRes.body.data.warnings).toHaveLength(0);
+
+    const signRes = await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/prescription/sign`).set(authed(doctorAToken)).send({ version: 1 });
+    expect(signRes.status).toBe(200);
+
+    // Khôi phục mặc định cho các test sau trong file này.
+    await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(clinicAdminToken)).send({ pharmacyStockTrackingEnabled: true });
   });
 
   it('in đơn ghi printedAt (idempotent), rồi đính chính tạo bản mới đã ký, bản cũ bị thay thế', async () => {

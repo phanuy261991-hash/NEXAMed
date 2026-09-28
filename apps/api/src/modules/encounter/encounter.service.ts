@@ -13,12 +13,15 @@ import {
   PrescriptionAlreadySignedError,
   PrescriptionEmptyError,
   PrescriptionRequiresDiagnosisError,
+  PrescriptionStockInsufficientError,
   renderPatientMedicalRecordHtml,
   SIGNATURE_PORT,
+  STOCK_AVAILABILITY_PORT,
   assertEncounterTransition,
   evaluateVitalSignWarnings,
   findAllergyMatches,
   findDuplicateActiveIngredients,
+  findInsufficientStock,
   resolveDoctorDepartmentRouting,
   type ClinicConfigReaderPort,
   type DoctorDirectoryPort,
@@ -27,6 +30,7 @@ import {
   type PdfRendererPort,
   type PrescriptionDrugLine,
   type SignaturePort,
+  type StockAvailabilityPort,
 } from '@nexamed/core';
 import { FAMILY_RELATION_LABELS, calculateAgeYears } from '@nexamed/shared';
 import type {
@@ -120,6 +124,7 @@ export class EncounterService {
     @Inject(SIGNATURE_PORT) private readonly signaturePort: SignaturePort,
     @Inject(CLINIC_CONFIG_READER_PORT) private readonly clinicConfigReader: ClinicConfigReaderPort,
     @Inject(PDF_RENDERER_PORT) private readonly pdfRenderer: PdfRendererPort,
+    @Inject(STOCK_AVAILABILITY_PORT) private readonly stockAvailability: StockAvailabilityPort,
   ) {}
 
   /**
@@ -893,6 +898,17 @@ export class EncounterService {
     dto: SavePrescriptionItemsRequest,
     meta: RequestMeta,
   ): Promise<PrescriptionResponse> {
+    // Kho Thuốc GĐ5 — đọc tồn kho TRƯỚC transaction chính (`ClinicConfigReaderPort`/
+    // `StockAvailabilityPort` tự mở transaction riêng, không lồng được — cùng nguyên tắc
+    // `DoctorDirectoryPort` ở `startConsultation()`). `dto.items` đã có sẵn `drugId` ngay trong
+    // request, không cần đọc DB trước như `signPrescription()`.
+    const pharmacyStockTrackingEnabled = await this.clinicConfigReader.getPharmacyStockTrackingEnabled(tenantId);
+    // `null` = KHÔNG tính cảnh báo tồn kho (khác `{}` — nghĩa là "đã tra, xác nhận tồn = 0" cho MỌI
+    // thuốc, sẽ báo vượt tồn SAI cho mọi dòng khi tenant tắt tính năng này).
+    const onHandByDrugId: Record<string, number> | null = pharmacyStockTrackingEnabled
+      ? await this.stockAvailability.getOnHandQuantities(tenantId, [...new Set(dto.items.map((i) => i.drugId))])
+      : null;
+
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.encounterRepository.findById(tx, tenantId, id);
       if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId)) {
@@ -933,16 +949,20 @@ export class EncounterService {
       if (!updated) {
         throw new NotFoundException();
       }
-      return this.toPrescriptionResponse(updated, allergenRows.map((a) => a.allergenName));
+      return this.toPrescriptionResponse(updated, allergenRows.map((a) => a.allergenName), onHandByDrugId);
     });
   }
 
   /**
    * Ký đơn NHÁP hiện tại — chữ ký logic qua `SignaturePort` (adapter no-op, xem .claude/docs/
-   * security-audit.md). Bắt buộc ≥1 dòng thuốc (`PrescriptionEmptyError`). KHÔNG "chặn ký cứng" ở
-   * v1 — đã hỏi và chốt với chủ dự án (2026-08-25): không có nguồn dữ liệu chống chỉ định/liều theo
-   * tuổi (PRE-06 hoãn P2, `docs/DECISIONS.md` #072) nên PRE-02/03 chỉ là CẢNH BÁO MỀM, không chặn
-   * ký; có cảnh báo mà bác sĩ vẫn ký thì ghi audit action riêng liệt kê cảnh báo đã bỏ qua.
+   * security-audit.md). Bắt buộc ≥1 dòng thuốc (`PrescriptionEmptyError`). KHÔNG "chặn ký cứng" cho
+   * PRE-02/03 — đã hỏi và chốt với chủ dự án (2026-08-25): không có nguồn dữ liệu chống chỉ định/
+   * liều theo tuổi (PRE-06 hoãn P2, `docs/DECISIONS.md` #072) nên 2 cảnh báo đó CHỈ MỀM, không chặn
+   * ký; có cảnh báo mà bác sĩ vẫn ký thì ghi audit action riêng liệt kê cảnh báo đã bỏ qua. Kho
+   * Thuốc GĐ5: "kê vượt tồn" (`stock_insufficient`) MẶC ĐỊNH cũng chỉ cảnh báo mềm như trên, NHƯNG
+   * chặn CỨNG (`PrescriptionStockInsufficientError`, 422) khi tenant bật
+   * `prescriptionStockBlockEnabled` — đã chốt qua AskUserQuestion, khác PRE-02/03 vì "đủ tồn để
+   * phát thuốc" là điều kiện vận hành có thể kiểm chứng khách quan, không phải phán đoán lâm sàng.
    */
   async signPrescription(
     tenantId: string,
@@ -952,6 +972,27 @@ export class EncounterService {
     dto: SignPrescriptionRequest,
     meta: RequestMeta,
   ): Promise<PrescriptionResponse> {
+    // Kho Thuốc GĐ5 — đọc cấu hình + tồn kho TRƯỚC transaction chính (`ClinicConfigReaderPort`/
+    // `StockAvailabilityPort` tự mở transaction riêng, không lồng được — cùng nguyên tắc
+    // `DoctorDirectoryPort` ở `startConsultation()`). Đọc trước NGUYÊN VẸN đơn nháp hiện tại chỉ để
+    // biết danh sách `drugId` cần tra tồn (khác `savePrescriptionItems`/`amendPrescription`, dto ở
+    // đây chỉ có `version`, không có `items`) — bản CHÍNH THỨC đọc lại trong transaction bên dưới
+    // trước khi ký, không có TOCTOU thật (tồn kho lệch nhẹ giữa 2 lần đọc chỉ ảnh hưởng độ chính
+    // xác của cảnh báo/chặn, không ảnh hưởng tính đúng đắn của việc ký đơn).
+    const pharmacyStockTrackingEnabled = await this.clinicConfigReader.getPharmacyStockTrackingEnabled(tenantId);
+    // `null` = KHÔNG tính cảnh báo/chặn tồn kho (khác `{}` — nghĩa là "đã tra, xác nhận tồn = 0" cho
+    // MỌI thuốc, sẽ chặn/báo SAI cho mọi dòng khi tenant tắt tính năng này).
+    let onHandByDrugId: Record<string, number> | null = null;
+    if (pharmacyStockTrackingEnabled) {
+      const draftPreview = await this.unitOfWork.runInTenantScope(tenantId, (previewTx) =>
+        this.prescriptionRepository.findActiveForEncounter(previewTx, tenantId, id),
+      );
+      if (draftPreview) {
+        onHandByDrugId = await this.stockAvailability.getOnHandQuantities(tenantId, [...new Set(draftPreview.items.map((i) => i.drugId))]);
+      }
+    }
+    const prescriptionStockBlockEnabled = pharmacyStockTrackingEnabled && (await this.clinicConfigReader.getPrescriptionStockBlockEnabled(tenantId));
+
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.encounterRepository.findById(tx, tenantId, id);
       if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId)) {
@@ -970,9 +1011,19 @@ export class EncounterService {
         throw new PrescriptionEmptyError();
       }
 
+      if (prescriptionStockBlockEnabled && onHandByDrugId !== null) {
+        const shortages = findInsufficientStock(
+          active.items.map((i) => ({ drugId: i.drugId, drugName: i.drugName, quantity: i.quantity })),
+          onHandByDrugId,
+        );
+        if (shortages.length > 0) {
+          throw new PrescriptionStockInsufficientError(shortages);
+        }
+      }
+
       const allergenRows = await this.patientAllergenRepository.listForPatient(tx, tenantId, existing.patientId);
       const allergenNames = allergenRows.map((a) => a.allergenName);
-      const warnings = this.computeWarnings(active.items, allergenNames);
+      const warnings = this.computeWarnings(active.items, allergenNames, onHandByDrugId);
 
       const signature = await this.signaturePort.sign(tenantId, actorId, { entityType: 'prescription', entityId: active.id });
       const prescriptionNo = await this.businessCodeService.generate(tx, tenantId, actorId, 'PRESCRIPTION', signature.signedAt);
@@ -995,7 +1046,7 @@ export class EncounterService {
       if (!updated) {
         throw new NotFoundException();
       }
-      return this.toPrescriptionResponse(updated, allergenNames);
+      return this.toPrescriptionResponse(updated, allergenNames, onHandByDrugId);
     });
   }
 
@@ -1050,6 +1101,13 @@ export class EncounterService {
     dto: AmendPrescriptionRequest,
     meta: RequestMeta,
   ): Promise<PrescriptionResponse> {
+    // Kho Thuốc GĐ5 — cùng lý do đọc TRƯỚC transaction chính ở `savePrescriptionItems()`. `null` =
+    // KHÔNG tính cảnh báo tồn kho (khác `{}` — xem comment ở `savePrescriptionItems`).
+    const pharmacyStockTrackingEnabled = await this.clinicConfigReader.getPharmacyStockTrackingEnabled(tenantId);
+    const onHandByDrugId: Record<string, number> | null = pharmacyStockTrackingEnabled
+      ? await this.stockAvailability.getOnHandQuantities(tenantId, [...new Set(dto.items.map((i) => i.drugId))])
+      : null;
+
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.encounterRepository.findById(tx, tenantId, id);
       if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId)) {
@@ -1100,7 +1158,7 @@ export class EncounterService {
       if (!updated) {
         throw new NotFoundException();
       }
-      return this.toPrescriptionResponse(updated, allergenRows.map((a) => a.allergenName));
+      return this.toPrescriptionResponse(updated, allergenRows.map((a) => a.allergenName), onHandByDrugId);
     });
   }
 
@@ -1115,22 +1173,36 @@ export class EncounterService {
     };
   }
 
-  /** PRE-02 (trùng hoạt chất) + PRE-03 (đối chiếu dị nguyên đã biết) — CẢNH BÁO MỀM, không chặn ký (xem docstring `signPrescription`). */
-  private computeWarnings(items: PrescriptionWithItems['items'], allergenNames: string[]): PrescriptionWarning[] {
+  /**
+   * PRE-02 (trùng hoạt chất) + PRE-03 (đối chiếu dị nguyên đã biết) — CẢNH BÁO MỀM, không chặn ký
+   * (xem docstring `signPrescription`). Kho Thuốc GĐ5: thêm `stock_insufficient` (kê vượt TỔNG tồn
+   * kho toàn phòng khám) — CŨNG chỉ cảnh báo mềm ở đây; `signPrescription()` mới là nơi chặn CỨNG
+   * khi tenant bật `prescriptionStockBlockEnabled` (xem `PrescriptionStockInsufficientError`).
+   * `onHandByDrugId=null` (mặc định) — caller ở path KHÔNG cần cảnh báo tồn kho (in đơn, xem lịch
+   * sử) cứ để mặc định, BỎ QUA hoàn toàn việc tính `stock_insufficient` — KHÁC hẳn truyền `{}` (nghĩa
+   * là "đã tra tồn kho thật, xác nhận = 0" cho MỌI thuốc, sẽ báo vượt tồn SAI cho mọi dòng).
+   */
+  private computeWarnings(items: PrescriptionWithItems['items'], allergenNames: string[], onHandByDrugId: Record<string, number> | null = null): PrescriptionWarning[] {
     const lines: PrescriptionDrugLine[] = items.map((i) => ({ drugId: i.drugId, drugName: i.drugName, activeIngredient: i.activeIngredient }));
     const duplicates = findDuplicateActiveIngredients(lines).map(
       (d): PrescriptionWarning => ({ kind: 'duplicate_active_ingredient', label: d.activeIngredient, drugNames: d.drugNames }),
     );
     const allergies = findAllergyMatches(lines, allergenNames).map((a): PrescriptionWarning => ({ kind: 'allergy', label: a.allergenName, drugNames: a.drugNames }));
-    return [...duplicates, ...allergies];
+    const stockLines = items.map((i) => ({ drugId: i.drugId, drugName: i.drugName, quantity: i.quantity }));
+    const shortages = onHandByDrugId === null
+      ? []
+      : findInsufficientStock(stockLines, onHandByDrugId).map(
+          (s): PrescriptionWarning => ({ kind: 'stock_insufficient', label: s.drugName, drugNames: [`cần ${s.required}, còn ${s.onHand}`] }),
+        );
+    return [...duplicates, ...allergies, ...shortages];
   }
 
-  private toPrescriptionResponse(row: PrescriptionWithItems, allergenNames: string[]): PrescriptionDto {
+  private toPrescriptionResponse(row: PrescriptionWithItems, allergenNames: string[], onHandByDrugId: Record<string, number> | null = null): PrescriptionDto {
     return {
       id: row.id,
       encounterId: row.encounterId,
       items: row.items.map((item) => this.toPrescriptionItem(item)),
-      warnings: this.computeWarnings(row.items, allergenNames),
+      warnings: this.computeWarnings(row.items, allergenNames, onHandByDrugId),
       prescriptionNo: row.prescriptionNo,
       signedAt: row.signedAt ? row.signedAt.toISOString() : null,
       signedBy: row.signedBy,

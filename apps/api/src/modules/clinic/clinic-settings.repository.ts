@@ -19,6 +19,8 @@ import {
   DEFAULT_NO_SHOW_THRESHOLD_MINUTES,
   DEFAULT_OVERDUE_WAIT_WARNING_MINUTES,
   DEFAULT_PHARMACY_SEPARATE_INVOICE_ENABLED,
+  DEFAULT_PHARMACY_STOCK_TRACKING_ENABLED,
+  DEFAULT_PRESCRIPTION_STOCK_BLOCK_ENABLED,
   DEFAULT_SIDEBAR_AUTO_COLLAPSE_ENABLED,
   DEFAULT_SOLO_CLINIC_WORKFLOW_ENABLED,
   DEFAULT_SLOT_DURATION_MINUTES,
@@ -102,6 +104,13 @@ const expiryWarningDaysSchema = z.number().int().min(1).max(365);
 // cho tenant chưa từng cấu hình.
 const PHARMACY_SEPARATE_INVOICE_ENABLED_KEY = 'pharmacy_separate_invoice_enabled';
 const pharmacySeparateInvoiceEnabledSchema = z.boolean();
+// Kho Thuốc GĐ5 — bật theo mặc định (giữ nguyên pilot đang chạy: tồn kho/cảnh báo/Phát thuốc hiện
+// đầy đủ) cho tenant chưa từng cấu hình.
+const PHARMACY_STOCK_TRACKING_ENABLED_KEY = 'pharmacy_stock_tracking_enabled';
+const pharmacyStockTrackingEnabledSchema = z.boolean();
+// Kho Thuốc GĐ5 — tắt theo mặc định (kê vượt tồn chỉ cảnh báo mềm) cho tenant chưa từng cấu hình.
+const PRESCRIPTION_STOCK_BLOCK_ENABLED_KEY = 'prescription_stock_block_enabled';
+const prescriptionStockBlockEnabledSchema = z.boolean();
 // "Cấu hình mẫu mã phát sinh" (docs/DECISIONS.md #114, 2026-09-03) — 1 object JSON duy nhất,
 // khoá theo loại mã (7 loại), chỉ chứa entry của loại mã ĐÃ được tenant chủ động sửa (loại chưa
 // đụng tới thì KHÔNG có key — service tự áp mặc định khớp hành vi cũ, xem `BusinessCodeService`).
@@ -366,6 +375,32 @@ export class ClinicSettingsRepository {
 
   upsertPharmacySeparateInvoiceEnabled(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
     return this.upsert(tx, tenantId, actorId, PHARMACY_SEPARATE_INVOICE_ENABLED_KEY, value);
+  }
+
+  async getPharmacyStockTrackingEnabled(tx: Prisma.TransactionClient, tenantId: string): Promise<boolean> {
+    const setting = await tx.tenantSetting.findFirst({ where: { tenantId, key: PHARMACY_STOCK_TRACKING_ENABLED_KEY } });
+    if (!setting) {
+      return DEFAULT_PHARMACY_STOCK_TRACKING_ENABLED;
+    }
+    const parsed = pharmacyStockTrackingEnabledSchema.safeParse(setting.valueJson);
+    return parsed.success ? parsed.data : DEFAULT_PHARMACY_STOCK_TRACKING_ENABLED;
+  }
+
+  upsertPharmacyStockTrackingEnabled(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
+    return this.upsert(tx, tenantId, actorId, PHARMACY_STOCK_TRACKING_ENABLED_KEY, value);
+  }
+
+  async getPrescriptionStockBlockEnabled(tx: Prisma.TransactionClient, tenantId: string): Promise<boolean> {
+    const setting = await tx.tenantSetting.findFirst({ where: { tenantId, key: PRESCRIPTION_STOCK_BLOCK_ENABLED_KEY } });
+    if (!setting) {
+      return DEFAULT_PRESCRIPTION_STOCK_BLOCK_ENABLED;
+    }
+    const parsed = prescriptionStockBlockEnabledSchema.safeParse(setting.valueJson);
+    return parsed.success ? parsed.data : DEFAULT_PRESCRIPTION_STOCK_BLOCK_ENABLED;
+  }
+
+  upsertPrescriptionStockBlockEnabled(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
+    return this.upsert(tx, tenantId, actorId, PRESCRIPTION_STOCK_BLOCK_ENABLED_KEY, value);
   }
 
   /** Chỉ trả entry của loại mã tenant ĐÃ chủ động cấu hình — loại mã vắng mặt nghĩa là "dùng mặc

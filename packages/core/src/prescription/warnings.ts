@@ -75,3 +75,40 @@ export function findAllergyMatches(lines: PrescriptionDrugLine[], allergenNames:
   }
   return warnings;
 }
+
+export interface PrescriptionStockLine {
+  drugId: string;
+  drugName: string;
+  quantity: number;
+}
+
+export interface StockShortage {
+  drugId: string;
+  drugName: string;
+  required: number;
+  onHand: number;
+}
+
+/**
+ * Kho Thuốc GĐ5 — "kê vượt tổng tồn kho toàn phòng khám" (đã chốt qua AskUserQuestion, KHÔNG theo
+ * từng kho). CHỈ gọi khi `pharmacyStockTrackingEnabled=true` (caller ở `EncounterService`). Cộng
+ * dồn `quantity` các dòng CÙNG `drugId` trong 1 đơn trước khi so với tồn (phòng vệ — UI hiện tại
+ * chặn thêm trùng thuốc qua `excludeDrugIds`, nhưng service không nên phụ thuộc riêng vào đó).
+ * `onHand` thiếu key coi như `0` (đúng hợp đồng `StockAvailabilityPort.getOnHandQuantities`).
+ */
+export function findInsufficientStock(lines: PrescriptionStockLine[], onHand: Record<string, number>): StockShortage[] {
+  const requiredByDrug = new Map<string, { drugName: string; required: number }>();
+  for (const line of lines) {
+    const current = requiredByDrug.get(line.drugId) ?? { drugName: line.drugName, required: 0 };
+    current.required += line.quantity;
+    requiredByDrug.set(line.drugId, current);
+  }
+  const shortages: StockShortage[] = [];
+  for (const [drugId, { drugName, required }] of requiredByDrug) {
+    const available = onHand[drugId] ?? 0;
+    if (required > available) {
+      shortages.push({ drugId, drugName, required, onHand: available });
+    }
+  }
+  return shortages;
+}

@@ -50,6 +50,8 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         soloClinicWorkflowEnabled,
         expiryWarningDays,
         pharmacySeparateInvoiceEnabled,
+        pharmacyStockTrackingEnabled,
+        prescriptionStockBlockEnabled,
       ] = await Promise.all([
         this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
         this.clinicSettingsRepository.getSlotDurationMinutes(tx, tenantId),
@@ -72,6 +74,8 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getSoloClinicWorkflowEnabled(tx, tenantId),
         this.clinicSettingsRepository.getExpiryWarningDays(tx, tenantId),
         this.clinicSettingsRepository.getPharmacySeparateInvoiceEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getPharmacyStockTrackingEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getPrescriptionStockBlockEnabled(tx, tenantId),
       ]);
       return {
         businessHours,
@@ -95,6 +99,8 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         soloClinicWorkflowEnabled,
         expiryWarningDays,
         pharmacySeparateInvoiceEnabled,
+        pharmacyStockTrackingEnabled,
+        prescriptionStockBlockEnabled,
       };
     });
   }
@@ -286,6 +292,12 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
       if (dto.pharmacySeparateInvoiceEnabled !== undefined) {
         await this.clinicSettingsRepository.upsertPharmacySeparateInvoiceEnabled(tx, tenantId, actorId, dto.pharmacySeparateInvoiceEnabled);
       }
+      if (dto.pharmacyStockTrackingEnabled !== undefined) {
+        await this.clinicSettingsRepository.upsertPharmacyStockTrackingEnabled(tx, tenantId, actorId, dto.pharmacyStockTrackingEnabled);
+      }
+      if (dto.prescriptionStockBlockEnabled !== undefined) {
+        await this.clinicSettingsRepository.upsertPrescriptionStockBlockEnabled(tx, tenantId, actorId, dto.prescriptionStockBlockEnabled);
+      }
 
       const hasChanges =
         dto.businessHours !== undefined ||
@@ -308,7 +320,9 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         dto.walletMixedPaymentEnabled !== undefined ||
         dto.soloClinicWorkflowEnabled !== undefined ||
         dto.expiryWarningDays !== undefined ||
-        dto.pharmacySeparateInvoiceEnabled !== undefined;
+        dto.pharmacySeparateInvoiceEnabled !== undefined ||
+        dto.pharmacyStockTrackingEnabled !== undefined ||
+        dto.prescriptionStockBlockEnabled !== undefined;
       if (hasChanges) {
         await writeAuditLog(tx, tenantId, {
           actorId,
@@ -343,6 +357,8 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         soloClinicWorkflowEnabled,
         expiryWarningDays,
         pharmacySeparateInvoiceEnabled,
+        pharmacyStockTrackingEnabled,
+        prescriptionStockBlockEnabled,
       ] = await Promise.all([
         this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
         this.clinicSettingsRepository.getSlotDurationMinutes(tx, tenantId),
@@ -365,6 +381,8 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getSoloClinicWorkflowEnabled(tx, tenantId),
         this.clinicSettingsRepository.getExpiryWarningDays(tx, tenantId),
         this.clinicSettingsRepository.getPharmacySeparateInvoiceEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getPharmacyStockTrackingEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getPrescriptionStockBlockEnabled(tx, tenantId),
       ]);
       return {
         businessHours,
@@ -388,6 +406,8 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         soloClinicWorkflowEnabled,
         expiryWarningDays,
         pharmacySeparateInvoiceEnabled,
+        pharmacyStockTrackingEnabled,
+        prescriptionStockBlockEnabled,
       };
     });
   }
@@ -395,5 +415,15 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
   /** `ClinicConfigReaderPort` ("Cảnh báo hạn dùng", Kho Thuốc GĐ2) — module `inventory` đọc qua port này (không có endpoint tự-phục vụ, chỉ backend rẽ nhánh lúc tính cảnh báo hạn dùng). */
   getExpiryWarningDays(tenantId: string): ReturnType<ClinicConfigReaderPort['getExpiryWarningDays']> {
     return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getExpiryWarningDays(tx, tenantId));
+  }
+
+  /** `ClinicConfigReaderPort` ("Có kho thuốc", Kho Thuốc GĐ5) — module `encounter` đọc qua port này (không có endpoint tự-phục vụ, chỉ backend rẽ nhánh lúc kê đơn). */
+  getPharmacyStockTrackingEnabled(tenantId: string): ReturnType<ClinicConfigReaderPort['getPharmacyStockTrackingEnabled']> {
+    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getPharmacyStockTrackingEnabled(tx, tenantId));
+  }
+
+  /** `ClinicConfigReaderPort` ("Chặn kê vượt tồn", Kho Thuốc GĐ5) — module `encounter` đọc qua port này, cùng lý do trên. */
+  getPrescriptionStockBlockEnabled(tenantId: string): ReturnType<ClinicConfigReaderPort['getPrescriptionStockBlockEnabled']> {
+    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getPrescriptionStockBlockEnabled(tx, tenantId));
   }
 }

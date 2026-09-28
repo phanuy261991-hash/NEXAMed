@@ -45,6 +45,7 @@ import {
   getDrugLedger,
   getPrescriptionDispenseStatus,
   getStockBalances,
+  getStockOnHandSummary,
   getStockCount,
   getStockCounts,
   getStockExpiryWarnings,
@@ -151,6 +152,18 @@ export function useStockBalancesQuery(query: ListStockBalancesQuery) {
   return useQuery({
     queryKey: queryKey(tenantId, 'stock-balance', 'list', JSON.stringify(query)),
     queryFn: () => getStockBalances(query),
+  });
+}
+
+/** Kho Thuốc GĐ5 — tổng tồn TOÀN PHÒNG KHÁM cho một danh sách thuốc (`DrugPicker.tsx`/`PrescriptionPanel.tsx`).
+ * `drugIds` rỗng → không gọi API, tránh refetch vô ích khi chưa gõ/chưa có dòng thuốc nào. */
+export function useStockOnHandSummaryQuery(drugIds: string[], enabled = true) {
+  const { tenantId } = useAppConfig();
+  const sortedIds = [...drugIds].sort();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'stock-balance', 'on-hand-summary', sortedIds.join(',')),
+    queryFn: () => getStockOnHandSummary(sortedIds),
+    enabled: enabled && sortedIds.length > 0,
   });
 }
 

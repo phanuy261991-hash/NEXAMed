@@ -62,6 +62,8 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   // nghiệp vụ, không phải xung đột trạng thái đồng thời).
   PRESCRIPTION_ALREADY_SIGNED: HttpStatus.CONFLICT,
   DRUG_DUPLICATE_CODE: HttpStatus.CONFLICT,
+  // Kho Thuốc GĐ5 — trùng gõ tắt tìm thuốc, cùng nhóm DRUG_DUPLICATE_CODE ở trên.
+  DRUG_DUPLICATE_SHORTCUT_CODE: HttpStatus.CONFLICT,
   // Guard chặn đổi `isBatchManaged` khi còn tồn (21/09/2026) — xung đột với trạng thái tồn kho
   // hiện có, không phải lỗi input.
   DRUG_BATCH_MANAGEMENT_CHANGE_BLOCKED: HttpStatus.CONFLICT,
@@ -180,6 +182,8 @@ export class DomainExceptionFilter implements ExceptionFilter {
       const status = DOMAIN_ERROR_STATUS[exception.code] ?? HttpStatus.UNPROCESSABLE_ENTITY;
       // Ví tạm ứng — `WalletInsufficientBalanceError` mang theo số liệu để FE hiện đúng khối "Cần
       // thu tối thiểu" mà không phải gọi lại API tính riêng, cùng cơ chế duck-type với `lockedUntil`.
+      // Kho Thuốc GĐ5 — `PrescriptionStockInsufficientError` mang theo danh sách thuốc thiếu tồn để
+      // FE hiện đúng dòng nào vượt tồn bao nhiêu, cùng cơ chế duck-type với `lockedUntil`/`shortfall`.
       const details = 'lockedUntil' in exception
         ? { lockedUntil: (exception as { lockedUntil: Date }).lockedUntil }
         : 'shortfall' in exception
@@ -187,7 +191,9 @@ export class DomainExceptionFilter implements ExceptionFilter {
               const e = exception as unknown as { balance: number; due: number; shortfall: number };
               return { balance: e.balance, due: e.due, shortfall: e.shortfall };
             })()
-          : undefined;
+          : 'details' in exception
+            ? { shortages: (exception as { details: unknown }).details }
+            : undefined;
       response.status(status).json({ error: { code: exception.code, message: exception.message, details } });
       return;
     }
