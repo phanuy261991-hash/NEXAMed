@@ -241,7 +241,7 @@ export function Combobox({
                     selectOption(opt);
                   }}
                   onMouseEnter={() => setHighlighted(i)}
-                  className={`flex h-9 cursor-pointer items-center px-3 text-sm ${
+                  className={`flex min-h-9 cursor-pointer items-center gap-1.5 px-3 py-1.5 text-sm leading-snug ${
                     i === highlighted ? 'bg-blue-50 text-blue-700' : 'text-slate-900'
                   } ${opt.value === value ? 'font-semibold' : ''}`}
                 >
@@ -265,7 +265,7 @@ export function Combobox({
                     void handleCreate();
                   }}
                   onMouseEnter={() => setHighlighted(filtered.length)}
-                  className={`flex h-9 cursor-pointer items-center gap-1.5 border-t border-slate-100 px-3 text-sm font-semibold ${
+                  className={`flex min-h-9 cursor-pointer items-center gap-1.5 border-t border-slate-100 px-3 py-1.5 text-sm font-semibold leading-snug ${
                     filtered.length === highlighted ? 'bg-blue-50 text-blue-700' : 'text-blue-600'
                   }`}
                 >

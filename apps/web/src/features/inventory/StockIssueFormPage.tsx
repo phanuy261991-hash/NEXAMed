@@ -1,16 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Check, Copy, MagnifyingGlass, Printer, Trash } from '@phosphor-icons/react';
+import { Check, Copy, MagnifyingGlass, PencilSimple, Printer, Trash } from '@phosphor-icons/react';
 import type { CreateManualStockIssueRequest, DrugSummary, ManualStockIssueType, StockIssueDetail, StockIssueStatus } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
-import { Combobox } from '../../shared/ui/Combobox';
-import { DateInput } from '../../shared/ui/DateInput';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { StatusBadge, type StatusBadgeTone } from '../../shared/ui/StatusBadge';
+import { SummaryField } from '../../shared/ui/SummaryField';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
 import { useActorDepartmentId, useDataScope, useHasPermission } from '../auth/usePermission';
 import { useDepartmentOptionsQuery } from '../department/department.queries';
@@ -30,6 +29,7 @@ import {
   useUpdateManualStockIssueMutation,
 } from './inventory.queries';
 import { ReasonConfirmDialog } from './ReasonConfirmDialog';
+import { ISSUE_TYPE_OPTIONS, StockIssueHeaderDialog, type StockIssueHeaderValues } from './StockIssueHeaderDialog';
 import { StockIssuePrintView } from './StockIssuePrintView';
 
 interface DraftLine {
@@ -48,12 +48,6 @@ interface DraftLine {
    * tính giá mặc định (theo "Phiếu nhập gốc" nếu có chọn, không thì theo giá vốn lô/tồn kho). */
   returnUnitPrice: string;
 }
-
-const ISSUE_TYPE_OPTIONS: { value: ManualStockIssueType; label: string }[] = [
-  { value: 'INTERNAL_ALLOCATION', label: 'Xuất dùng nội bộ' },
-  { value: 'RETURN_TO_SUPPLIER', label: 'Xuất trả nhà cung cấp' },
-  { value: 'WRITE_OFF', label: 'Xuất huỷ (hỏng/hết hạn)' },
-];
 
 const STATUS_META: Record<StockIssueStatus, { label: string; tone: StatusBadgeTone }> = {
   DRAFT: { label: 'Nháp', tone: 'neutral' },
@@ -128,6 +122,9 @@ export function StockIssueFormPage() {
   const [rejecting, setRejecting] = useState(false);
   const [loadedForId, setLoadedForId] = useState<string | null>(null);
   const rejectMutation = useRejectStockIssueMutation();
+  // Popup "Thông tin phiếu xuất kho" (đúng mẫu `StockReceiptHeaderDialog` đã áp dụng) — mở NGAY khi
+  // tạo phiếu mới, sửa/xem phiếu đã có chỉ mở lại qua nút "Sửa".
+  const [headerDialogOpen, setHeaderDialogOpen] = useState(!isEdit);
 
   useBreadcrumb([
     { label: 'Quản lý kho' },
@@ -287,17 +284,29 @@ export function StockIssueFormPage() {
     setLines((prev) => prev.filter((l) => l.key !== key));
   }
 
-  /** Đổi NCC → "Phiếu nhập gốc" đã chọn (nếu có) không còn hợp lệ, bỏ chọn. */
-  function handleSupplierChange(next: string) {
-    setSupplierId(next);
-    setSourceReceiptId('');
+  /** "Lưu" trên popup `StockIssueHeaderDialog` — commit field header vào state trang cha. Đổi/bỏ
+   * "Phiếu nhập gốc" → giá trả mỗi dòng có thể đã sai (mồi theo phiếu gốc CŨ hoặc giá vốn lô) — xoá
+   * về rỗng, backend tự tính lại đúng theo lựa chọn MỚI lúc lưu (Duyệt lô mockup #C mục 2). */
+  function handleHeaderSave(values: StockIssueHeaderValues) {
+    if (values.sourceReceiptId !== sourceReceiptId) {
+      setLines((prev) => prev.map((l) => ({ ...l, returnUnitPrice: '' })));
+    }
+    setIssueType(values.issueType);
+    setWarehouseId(values.warehouseId);
+    setDepartmentId(values.departmentId);
+    setSupplierId(values.supplierId);
+    setSourceReceiptId(values.sourceReceiptId);
+    setOccurredAt(values.occurredAt);
+    setNote(values.note);
+    setHeaderDialogOpen(false);
   }
 
-  /** Đổi/bỏ "Phiếu nhập gốc" → giá trả mỗi dòng có thể đã sai (mồi theo phiếu gốc CŨ hoặc giá vốn
-   * lô) — xoá về rỗng, backend tự tính lại đúng theo lựa chọn MỚI lúc lưu (Duyệt lô mockup #C mục 2). */
-  function handleSourceReceiptChange(next: string) {
-    setSourceReceiptId(next);
-    setLines((prev) => prev.map((l) => ({ ...l, returnUnitPrice: '' })));
+  /** "Huỷ"/đóng popup — lần mở ĐẦU TIÊN lúc tạo phiếu mới (chưa từng chọn Kho) thì không có gì để
+   * quay lại xem phía sau, điều hướng thẳng về danh sách; các lần mở lại sau (bấm "Sửa") chỉ đóng
+   * popup, giữ nguyên dữ liệu đã có trên trang. */
+  function handleHeaderCancel() {
+    if (!isEdit && !warehouseId) navigate('/inventory/issues');
+    else setHeaderDialogOpen(false);
   }
 
   function buildPayload(): CreateManualStockIssueRequest | null {
@@ -383,7 +392,16 @@ export function StockIssueFormPage() {
 
   const saving = createMutation.isPending || updateMutation.isPending || approveMutation.isPending;
   const warehouseOptions = (warehousesQuery.data?.items ?? []).filter((w) => !isDepartmentScoped || w.departmentId === actorDepartmentId);
-  const rowGridColumns = isReturnToSupplier ? (readOnly ? '1.6fr 130px 110px 140px 140px' : '1.6fr 130px 110px 140px 140px 50px') : readOnly ? '1.8fr 150px 150px' : '1.8fr 150px 150px 50px';
+  // `minmax(180px, Nfr)` (thay Nfr thuần) — đảm bảo cột tên không bị bóp dưới 180px khi khung hẹp,
+  // đúng fix đã áp dụng ở `StockReceiptFormPage.tsx` (#194), phòng ngừa dù trang này chưa có cột
+  // phải cạnh tranh không gian.
+  const rowGridColumns = isReturnToSupplier
+    ? readOnly
+      ? 'minmax(180px, 1.6fr) 130px 110px 140px 140px'
+      : 'minmax(180px, 1.6fr) 130px 110px 140px 140px 50px'
+    : readOnly
+      ? 'minmax(180px, 1.8fr) 150px 150px'
+      : 'minmax(180px, 1.8fr) 150px 150px 50px';
   const returnTotalAmount = isReturnToSupplier && lines.every((l) => l.returnUnitPrice.trim() !== '') ? lines.reduce((sum, l) => sum + Number(l.returnUnitPrice) * Number(l.quantity || 0), 0) : null;
 
   return (
@@ -418,108 +436,55 @@ export function StockIssueFormPage() {
         </div>
       </div>
 
-      {/* Khối header — 1 hàng ngang gọn theo mockup. */}
-      <div className="grid flex-shrink-0 grid-cols-2 gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-3 lg:grid-cols-5">
-        <div>
-          <label className="mb-1 block text-sm font-semibold text-slate-800">
-            Loại phiếu xuất <span className="text-rose-500">*</span>
-          </label>
-          <Combobox id="issue-type" value={issueType} disabled={readOnly} onChange={(v) => setIssueType(v as ManualStockIssueType)} options={ISSUE_TYPE_OPTIONS} />
+      {/* Dải tóm tắt "Thông tin phiếu xuất kho" — thay khối ô nhập cố định trước đây (đúng mẫu
+          `StockReceiptFormPage.tsx`). Nhập/sửa qua popup `StockIssueHeaderDialog`. */}
+      <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-1.5">
+          <SummaryField label="Loại phiếu xuất" value={ISSUE_TYPE_OPTIONS.find((o) => o.value === issueType)?.label ?? '—'} />
+          <SummaryField label="Kho xuất" value={warehouseOptions.find((w) => w.id === warehouseId)?.name ?? '—'} />
+          {issueType === 'INTERNAL_ALLOCATION' && (
+            <SummaryField label="Khoa/Phòng tiếp nhận" value={departmentsQuery.data?.items.find((d) => d.id === departmentId)?.name ?? '—'} />
+          )}
+          {isReturnToSupplier && <SummaryField label="Nhà cung cấp" value={suppliersQuery.data?.items.find((s) => s.id === supplierId)?.name ?? '—'} />}
+          {isReturnToSupplier && sourceReceiptId && (
+            <SummaryField label="Phiếu nhập gốc" value={sourceReceiptsQuery.data?.items.find((r) => r.id === sourceReceiptId)?.receiptNo ?? '—'} />
+          )}
+          <SummaryField label="Ngày xuất" value={occurredAt ? occurredAt.split('-').reverse().join('/') : '—'} />
+          <SummaryField label="Lý do" value={note || '—'} />
         </div>
-        <div>
-          <label className="mb-1 block text-sm font-semibold text-slate-800">
-            Kho xuất <span className="text-rose-500">*</span>
-          </label>
-          <Combobox
-            id="issue-warehouse"
-            value={warehouseId}
-            disabled={readOnly || lines.length > 0}
-            onChange={setWarehouseId}
-            placeholder="— Chọn kho —"
-            options={warehouseOptions.map((w) => ({ value: w.id, label: w.name }))}
-          />
-        </div>
-        {issueType === 'INTERNAL_ALLOCATION' && (
-          <div>
-            <label className="mb-1 block text-sm font-semibold text-slate-800">
-              Khoa/Phòng tiếp nhận <span className="text-rose-500">*</span>
-            </label>
-            <Combobox
-              id="issue-department"
-              value={departmentId}
-              disabled={readOnly}
-              onChange={setDepartmentId}
-              placeholder="— Chọn Khoa/Phòng —"
-              options={(departmentsQuery.data?.items ?? []).map((d) => ({ value: d.id, label: d.name }))}
-            />
-          </div>
+        {!readOnly && (
+          <Button type="button" variant="secondary" onClick={() => setHeaderDialogOpen(true)}>
+            <PencilSimple size={15} weight="bold" aria-hidden="true" />
+            Sửa
+          </Button>
         )}
-        {isReturnToSupplier && (
-          <>
-            <div>
-              <label className="mb-1 block text-sm font-semibold text-slate-800">
-                Nhà cung cấp <span className="text-rose-500">*</span>
-              </label>
-              <Combobox
-                id="issue-supplier"
-                value={supplierId}
-                disabled={readOnly}
-                onChange={handleSupplierChange}
-                placeholder="— Chọn nhà cung cấp —"
-                options={(suppliersQuery.data?.items ?? []).map((s) => ({ value: s.id, label: s.name }))}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-semibold text-slate-800">Phiếu nhập gốc (tuỳ chọn)</label>
-              <Combobox
-                id="issue-source-receipt"
-                value={sourceReceiptId}
-                disabled={readOnly || !supplierId}
-                onChange={handleSourceReceiptChange}
-                placeholder={supplierId ? '— Không chọn —' : '— Chọn Nhà cung cấp trước —'}
-                options={(sourceReceiptsQuery.data?.items ?? []).map((r) => ({ value: r.id, label: `${r.receiptNo} · ${r.occurredAt.slice(0, 10).split('-').reverse().join('/')}` }))}
-              />
-            </div>
-          </>
-        )}
-        <div>
-          <label className="mb-1 block text-sm font-semibold text-slate-800">
-            Ngày xuất <span className="text-rose-500">*</span>
-          </label>
-          <DateInput id="issue-occurred-at" value={occurredAt} onChange={setOccurredAt} disabled={readOnly} required />
-        </div>
-        <div className="col-span-2">
-          <label className="mb-1 block text-sm font-semibold text-slate-800">
-            Lý do <span className="text-rose-500">*</span>
-          </label>
-          <input
-            type="text"
-            value={note}
-            disabled={readOnly}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="Vd: cấp phát vật tư sát khuẩn tuần này..."
-            className="w-full rounded-md border border-slate-300 px-2.5 py-2 text-sm font-semibold text-slate-900 disabled:bg-slate-50"
-          />
-        </div>
       </div>
 
-      {/* ============ Search-and-pick (chỉ khi còn Nháp) ============ */}
+      {/* ============ Search-and-pick (chỉ khi còn Nháp) — style nổi bật đồng bộ với
+          `StockReceiptFormPage.tsx` (phản hồi trực tiếp: áp dụng cách hiển thị ô tìm thuốc cho mọi
+          giao diện đang dùng kiểu này trong Kho Thuốc). ============ */}
       {!readOnly && (
-        <div className="flex flex-shrink-0 items-center gap-2.5 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+        <div className="flex flex-shrink-0 items-center gap-2.5 rounded-lg border-2 border-blue-200 bg-blue-50 p-3 shadow-sm">
           <div className="relative flex-1">
-            <MagnifyingGlass size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-            <input
-              type="text"
-              value={drugQuery}
-              disabled={!warehouseId}
-              onChange={(e) => {
-                setDrugQuery(e.target.value);
-                setHighlightedIndex(0);
-              }}
-              onKeyDown={onSearchKeyDown}
-              placeholder="Gõ tên/mã/mã vạch mặt hàng tại Kho xuất — Enter/Tab để thêm nhanh..."
-              className="w-full rounded-md border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50"
-            />
+            <label htmlFor="issue-drug-search" className="mb-1.5 block text-sm font-semibold text-slate-800">
+              Thêm thuốc / vật tư vào phiếu
+            </label>
+            <div className="relative">
+              <MagnifyingGlass size={16} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-blue-500" aria-hidden="true" />
+              <input
+                id="issue-drug-search"
+                type="text"
+                value={drugQuery}
+                disabled={!warehouseId}
+                onChange={(e) => {
+                  setDrugQuery(e.target.value);
+                  setHighlightedIndex(0);
+                }}
+                onKeyDown={onSearchKeyDown}
+                placeholder="Gõ tên/mã/mã vạch mặt hàng tại Kho xuất — Enter/Tab để thêm nhanh..."
+                className="w-full rounded-md border border-blue-300 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50"
+              />
+            </div>
             {isSearchingDrug && (
               <div className="scroll-hover absolute left-0 right-0 top-full z-20 mt-1 max-h-64 overflow-y-auto rounded-md border border-slate-200 bg-white shadow-lg">
                 {searchResults.length === 0 && <p className="px-3 py-2 text-xs text-slate-400">Không tìm thấy, hoặc đã có sẵn trong phiếu.</p>}
@@ -537,7 +502,6 @@ export function StockIssueFormPage() {
               </div>
             )}
           </div>
-          <span className="text-xs text-slate-400">Chỉ hiện mặt hàng đang có tồn tại Kho xuất</span>
         </div>
       )}
 
@@ -547,7 +511,7 @@ export function StockIssueFormPage() {
           <EmptyState icon={MagnifyingGlass} title="Chưa có dòng hàng nào" description={readOnly ? 'Phiếu này không có dòng hàng.' : 'Gõ tên thuốc/vật tư ở ô trên để thêm dòng hàng.'} />
         ) : (
           <div role="table" aria-label="Dòng hàng xuất kho" className="scroll-hover h-full overflow-x-auto">
-            <div className="flex h-full flex-col" style={{ minWidth: isReturnToSupplier ? 980 : 820 }}>
+            <div className="flex h-full flex-col">
               <div
                 role="row"
                 style={{ gridTemplateColumns: rowGridColumns }}
@@ -675,6 +639,19 @@ export function StockIssueFormPage() {
           onConfirm={(reason) => rejectMutation.mutateAsync({ id: issueQuery.data!.id, body: { reason, version: issueQuery.data!.version } })}
           onDone={() => navigate('/inventory/issues')}
           onClose={() => setRejecting(false)}
+        />
+      )}
+
+      {headerDialogOpen && (
+        <StockIssueHeaderDialog
+          initial={{ issueType, warehouseId, departmentId, supplierId, sourceReceiptId, occurredAt, note }}
+          warehouseOptions={warehouseOptions.map((w) => ({ value: w.id, label: w.name }))}
+          departmentOptions={(departmentsQuery.data?.items ?? []).map((d) => ({ value: d.id, label: d.name }))}
+          supplierOptions={(suppliersQuery.data?.items ?? []).map((s) => ({ value: s.id, label: s.name }))}
+          warehouseLocked={lines.length > 0}
+          allowSimpleClose={isEdit || Boolean(warehouseId)}
+          onCancel={handleHeaderCancel}
+          onSave={handleHeaderSave}
         />
       )}
     </div>

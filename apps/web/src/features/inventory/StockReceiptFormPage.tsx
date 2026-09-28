@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { CaretDown, CaretRight, Copy, MagnifyingGlass, Plus, Printer, Trash, Warning } from '@phosphor-icons/react';
+import { CaretDown, CaretRight, Copy, MagnifyingGlass, PencilSimple, Plus, Printer, Trash, Warning } from '@phosphor-icons/react';
 import type { CreateStockReceiptRequest, DiscountType, DrugSummary, StockReceiptDetail, StockReceiptLine, StockReceiptType } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { BoxedSection } from '../../shared/ui/BoxedSection';
 import { Button } from '../../shared/ui/Button';
-import { Combobox, type ComboboxOption } from '../../shared/ui/Combobox';
+import { Combobox } from '../../shared/ui/Combobox';
 import { DateInput } from '../../shared/ui/DateInput';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
@@ -16,6 +16,7 @@ import { StatusBadge, type StatusBadgeTone } from '../../shared/ui/StatusBadge';
 import { TwoOptionToggle } from '../../shared/ui/TwoOptionToggle';
 import { formatVnd } from '../../shared/format/currency';
 import { formatDobDisplay } from '../../shared/format/date';
+import { RECEIPT_TYPE_OPTIONS, StockReceiptHeaderDialog, type StockReceiptHeaderValues } from './StockReceiptHeaderDialog';
 import { useCollapsedGroups } from '../../shared/hooks/useCollapsedGroups';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
 import { useActorDepartmentId, useDataScope, useHasPermission } from '../auth/usePermission';
@@ -62,12 +63,6 @@ const STATUS_META: Record<string, { label: string; tone: StatusBadgeTone }> = {
   REJECTED: { label: 'Từ chối', tone: 'danger' },
 };
 
-const RECEIPT_TYPE_OPTIONS: ComboboxOption[] = [
-  { value: 'PURCHASE', label: 'Nhập nhà cung cấp' },
-  { value: 'OPENING_BALANCE', label: 'Nhập khởi tạo (Đầu kỳ)' },
-  { value: 'RETURN_FROM_USE', label: 'Nhập hoàn trả từ bệnh nhân/khoa phòng' },
-];
-
 const DISCOUNT_MODE_OPTIONS = [
   { value: 'PER_LINE', label: 'Từng dòng' },
   { value: 'TOTAL', label: 'Toàn phiếu' },
@@ -100,6 +95,18 @@ function makeKey(): string {
 function todayVn(): string {
   const now = new Date(Date.now() + 7 * 60 * 60_000);
   return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}`;
+}
+
+/** 1 cặp label/giá trị trên dải tóm tắt "Thông tin phiếu nhập kho" (thay ô nhập trước đây). */
+function SummaryField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="max-w-[220px]">
+      <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{label}</div>
+      <div className="truncate text-sm font-semibold text-slate-900" title={value}>
+        {value}
+      </div>
+    </div>
+  );
 }
 
 /**
@@ -166,6 +173,10 @@ export function StockReceiptFormPage() {
   const [prepaidAmount, setPrepaidAmount] = useState<number | undefined>(0);
   const [prepaidPaymentMethodCode, setPrepaidPaymentMethodCode] = useState('');
   const [prepaidCashAccountId, setPrepaidCashAccountId] = useState('');
+  // Popup "Thông tin phiếu nhập kho" (phản hồi trực tiếp — tách khỏi trang chính để nhường không gian
+  // cho khu vực thao tác nhập kho, xem `StockReceiptHeaderDialog.tsx`). Mở NGAY khi tạo phiếu mới
+  // (`!isEdit`, chưa có gì để hiển thị tóm tắt); khi sửa/xem phiếu đã có, chỉ mở lại qua nút "Sửa".
+  const [headerDialogOpen, setHeaderDialogOpen] = useState(!isEdit);
 
   useBreadcrumb([
     { label: 'Quản lý kho' },
@@ -352,6 +363,25 @@ export function StockReceiptFormPage() {
     setLines((prev) => prev.filter((l) => l.key !== key));
   }
 
+  /** "Lưu" trên popup `StockReceiptHeaderDialog` — commit toàn bộ field header vào state trang cha. */
+  function handleHeaderSave(values: StockReceiptHeaderValues) {
+    setReceiptType(values.receiptType);
+    setWarehouseId(values.warehouseId);
+    setSupplierId(values.supplierId);
+    setSupplierInvoiceNo(values.supplierInvoiceNo);
+    setOccurredAt(values.occurredAt);
+    setNote(values.note);
+    setHeaderDialogOpen(false);
+  }
+
+  /** "Huỷ"/đóng popup — lần mở ĐẦU TIÊN lúc tạo phiếu mới (chưa từng chọn Kho) thì không có gì để
+   * quay lại xem phía sau, điều hướng thẳng về danh sách; các lần mở lại sau (bấm "Sửa") chỉ đóng
+   * popup, giữ nguyên dữ liệu đã có trên trang. */
+  function handleHeaderCancel() {
+    if (!isEdit && !warehouseId) navigate('/inventory/receipts');
+    else setHeaderDialogOpen(false);
+  }
+
   function buildPayload(): CreateStockReceiptRequest | null {
     if (!warehouseId) {
       setFormError('Phải chọn Kho.');
@@ -469,10 +499,18 @@ export function StockReceiptFormPage() {
   }
 
   const saving = createMutation.isPending || updateMutation.isPending || approveMutation.isPending;
+  const warehouseOptions = (warehousesQuery.data?.items ?? [])
+    .filter((w) => !isDepartmentScoped || w.departmentId === actorDepartmentId)
+    .map((w) => ({ value: w.id, label: w.name }));
+  const supplierOptions = (suppliersQuery.data?.items ?? []).map((s) => ({ value: s.id, label: s.name }));
   // Cột "Chiết khấu" trong bảng dòng hàng — CHỈ hiện khi chế độ "Từng dòng" đang chọn, đúng khuôn
   // cột "Chiết khấu" của `InvoiceDetailPage.tsx` (chỉ hiện khi `discountEditMode==='PER_LINE'`).
   const showLineDiscountCol = receiptType === 'PURCHASE' && discountMode === 'PER_LINE';
-  const lineGridCols = ['1.8fr', '100px', '110px', '130px', '130px', '130px', ...(showLineDiscountCol ? ['110px'] : []), '130px', ...(!readOnly ? ['50px'] : [])].join(' ');
+  // `minmax(180px, 1.8fr)` (thay `1.8fr` thuần) — đảm bảo cột tên KHÔNG BAO GIỜ bị bóp dưới 180px
+  // khi khung trái hẹp (cột phải 380px cạnh tranh không gian, #194), NHƯNG không ép cả bảng phải
+  // rộng hơn mức cần thiết như `minWidth` cố định cũ (gây lệch, đẩy cột phải ra ngoài màn hình) —
+  // bảng tự vừa khít khi đủ chỗ, chỉ cuộn ngang khi thật sự không đủ 180px cho cột tên.
+  const lineGridCols = ['minmax(180px, 1.8fr)', '100px', '110px', '130px', '130px', '130px', ...(showLineDiscountCol ? ['110px'] : []), '130px', ...(!readOnly ? ['50px'] : [])].join(' ');
 
   return (
     <div className="flex h-full flex-col gap-3 p-3">
@@ -504,246 +542,90 @@ export function StockReceiptFormPage() {
         </div>
       </div>
 
-      {/* Khối header — 1 hàng ngang gọn theo mockup. */}
-      <div className="grid flex-shrink-0 grid-cols-2 gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-3 lg:grid-cols-6">
-        <div>
-          <label className="mb-1 block text-sm font-semibold text-slate-800">
-            Loại phiếu <span className="text-rose-500">*</span>
-          </label>
-          <Combobox
-            id="receipt-type"
-            value={receiptType}
-            disabled={readOnly}
-            onChange={(v) => setReceiptType(v as StockReceiptType)}
-            options={RECEIPT_TYPE_OPTIONS}
-          />
+      {/* Dải tóm tắt "Thông tin phiếu nhập kho" — thay cho khối ô nhập cố định trước đây (phản hồi
+          trực tiếp: chiếm quá nhiều chiều cao, đẩy hẹp khu vực thao tác nhập kho chính). Nhập/sửa
+          qua popup `StockReceiptHeaderDialog` (mở lúc tạo mới, hoặc bấm "Sửa"). */}
+      <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-1.5">
+          <SummaryField label="Loại phiếu" value={RECEIPT_TYPE_OPTIONS.find((o) => o.value === receiptType)?.label ?? '—'} />
+          <SummaryField label="Kho" value={warehousesQuery.data?.items.find((w) => w.id === warehouseId)?.name ?? '—'} />
+          {receiptType === 'PURCHASE' && (
+            <SummaryField label="Nhà cung cấp" value={suppliersQuery.data?.items.find((s) => s.id === supplierId)?.name ?? '—'} />
+          )}
+          {receiptType === 'PURCHASE' && supplierInvoiceNo && <SummaryField label="Mã hoá đơn NCC" value={supplierInvoiceNo} />}
+          <SummaryField label="Ngày nhập" value={occurredAt ? formatDobDisplay(occurredAt) : '—'} />
+          {note && <SummaryField label="Ghi chú" value={note} />}
         </div>
-        <div>
-          <label className="mb-1 block text-sm font-semibold text-slate-800">
-            Kho <span className="text-rose-500">*</span>
-          </label>
-          <Combobox
-            id="receipt-warehouse"
-            value={warehouseId}
-            disabled={readOnly}
-            onChange={setWarehouseId}
-            placeholder="— Chọn kho —"
-            options={(warehousesQuery.data?.items ?? [])
-              .filter((w) => !isDepartmentScoped || w.departmentId === actorDepartmentId)
-              .map((w) => ({ value: w.id, label: w.name }))}
-          />
-        </div>
-        {receiptType === 'PURCHASE' && (
-          <div>
-            <label className="mb-1 block text-sm font-semibold text-slate-800">
-              Nhà cung cấp <span className="text-rose-500">*</span>
-            </label>
-            <Combobox
-              id="receipt-supplier"
-              value={supplierId}
-              disabled={readOnly}
-              onChange={setSupplierId}
-              placeholder="— Chọn NCC —"
-              options={(suppliersQuery.data?.items ?? []).map((s) => ({ value: s.id, label: s.name }))}
-            />
-          </div>
+        {!readOnly && (
+          <Button type="button" variant="secondary" onClick={() => setHeaderDialogOpen(true)}>
+            <PencilSimple size={15} weight="bold" aria-hidden="true" />
+            Sửa
+          </Button>
         )}
-        {receiptType === 'PURCHASE' && (
-          <div>
-            <label className="mb-1 block text-sm font-semibold text-slate-800">Mã hoá đơn NCC</label>
-            <input
-              type="text"
-              value={supplierInvoiceNo}
-              disabled={readOnly}
-              onChange={(e) => setSupplierInvoiceNo(e.target.value)}
-              className="w-full rounded-md border border-slate-300 px-2.5 py-2 text-sm font-semibold text-slate-900 disabled:bg-slate-50"
-            />
-          </div>
-        )}
-        <div>
-          <label className="mb-1 block text-sm font-semibold text-slate-800">
-            Ngày nhập <span className="text-rose-500">*</span>
-          </label>
-          <DateInput id="receipt-occurred-at" value={occurredAt} onChange={setOccurredAt} disabled={readOnly} required />
-        </div>
-        <div className="col-span-2">
-          <label className="mb-1 block text-sm font-semibold text-slate-800">Ghi chú</label>
-          <input
-            type="text"
-            value={note}
-            disabled={readOnly}
-            onChange={(e) => setNote(e.target.value)}
-            className="w-full rounded-md border border-slate-300 px-2.5 py-2 text-sm font-semibold text-slate-900 disabled:bg-slate-50"
-          />
-        </div>
       </div>
 
-      {/* ============ Chiết khấu (Kho Thuốc GĐ4, docs/DECISIONS.md #170) + Thanh toán (Công nợ nhà
-          cung cấp, #180/#182) — CHỈ hiện với loại phiếu "Nhập nhà cung cấp" (đúng mockup màn 5,
-          `https://claude.ai/artifact/WvZtCgwbdEKAb9LcCzyCfh`). ============ */}
-      {receiptType === 'PURCHASE' && (
-        <div className="grid flex-shrink-0 grid-cols-1 gap-3 lg:grid-cols-[1fr_1.35fr]">
-          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="mb-2 flex items-center gap-3">
-              <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Chiết khấu</span>
-              {!readOnly && <TwoOptionToggle options={DISCOUNT_MODE_OPTIONS} value={discountMode} onChange={setDiscountMode} />}
-              {readOnly && discountMode && <span className="text-xs font-semibold text-slate-600">{DISCOUNT_MODE_OPTIONS.find((o) => o.value === discountMode)?.label}</span>}
-            </div>
-            {discountMode === 'TOTAL' ? (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <div>
-                  <label className="mb-1 block text-sm font-semibold text-slate-800">Cách tính</label>
-                  <TwoOptionToggle options={DISCOUNT_TYPE_OPTIONS} value={totalDiscountType} disabled={readOnly} onChange={(v) => v && setTotalDiscountType(v)} />
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-semibold text-slate-800">Giá trị</label>
-                  {totalDiscountType === 'PERCENT' ? (
-                    <input
-                      type="number"
-                      min={0}
-                      max={100}
-                      disabled={readOnly}
-                      value={totalDiscountValue ?? ''}
-                      onChange={(e) => setTotalDiscountValue(e.target.value ? Number(e.target.value) : undefined)}
-                      className="w-full rounded-md border border-slate-300 px-2.5 py-2 text-sm font-semibold text-slate-900 disabled:bg-slate-50"
-                    />
-                  ) : (
-                    <MoneyInput id="receipt-total-discount-value" value={totalDiscountValue} onChange={setTotalDiscountValue} disabled={readOnly} />
-                  )}
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-semibold text-slate-800">
-                    Lý do <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={totalDiscountReason}
-                    disabled={readOnly}
-                    onChange={(e) => setTotalDiscountReason(e.target.value)}
-                    placeholder="Vd: chiết khấu đơn hàng lớn"
-                    className="w-full rounded-md border border-slate-300 px-2.5 py-2 text-sm font-semibold text-slate-900 disabled:bg-slate-50"
-                  />
-                </div>
+      {/* ============ Thân trang 2 cột cố định (phản hồi trực tiếp — luôn thấy đồng thời danh sách
+          sản phẩm VÀ Chiết khấu/Thanh toán, không cần bấm mở): cột TRÁI (co giãn) = ô tìm thêm sản
+          phẩm (đặt lên ĐẦU, đúng vị trí ưu tiên cao nhất — phản hồi trực tiếp "vị trí không ưu
+          tiên") + bảng dòng hàng; cột PHẢI (320px cố định) = Chiết khấu (Kho Thuốc GĐ4, #170) +
+          Thanh toán (Công nợ NCC, #180/#182) xếp DỌC, CHỈ hiện với "Nhập nhà cung cấp". ============ */}
+      {/* `minmax(0,1fr)` (KHÔNG phải `1fr` thuần) — CSS Grid mặc định không cho track co dưới kích
+          thước nội dung tối thiểu (`min-width: auto` ngầm định). Bảng bên trong có nội dung tối
+          thiểu ~1020px (do `minmax(180px,...)` ở `lineGridCols`); nếu khung trái hẹp hơn, thiếu
+          `minmax(0,...)` sẽ khiến CẢ LƯỚI 2 CỘT tràn ra ngoài (cuộn ở cấp trang, kéo lệch luôn cột
+          phải) thay vì chỉ cuộn NỘI BỘ trong bảng (`overflow-x-auto` đã có sẵn) — đúng lỗi "lệch
+          khung thanh toán" phản hồi trực tiếp. */}
+      <div className={`grid min-h-0 flex-1 gap-3 ${receiptType === 'PURCHASE' ? 'lg:grid-cols-[minmax(0,1fr)_380px]' : 'grid-cols-1'}`}>
+        <div className="flex min-h-0 flex-col gap-3">
+          {!readOnly && (
+            <div className="flex-shrink-0 rounded-lg border-2 border-blue-200 bg-blue-50 p-3 shadow-sm">
+              <label htmlFor="receipt-drug-search" className="mb-1.5 block text-sm font-semibold text-slate-800">
+                Thêm thuốc / vật tư vào phiếu
+              </label>
+              <div className="relative">
+                <MagnifyingGlass size={16} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-blue-500" aria-hidden="true" />
+                <input
+                  id="receipt-drug-search"
+                  type="search"
+                  value={drugQuery}
+                  onChange={(e) => setDrugQuery(e.target.value)}
+                  placeholder="Gõ tên/mã/mã vạch thuốc, vật tư để thêm dòng hàng..."
+                  className="w-full rounded-md border border-blue-300 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                />
               </div>
-            ) : discountMode === 'PER_LINE' ? (
-              <p className="text-xs text-slate-500">Nhập trực tiếp % chiết khấu ở cột "Chiết khấu" trong bảng mặt hàng bên dưới.</p>
-            ) : null}
-          </div>
-
-          {showPaymentSection && (
-            <BoxedSection badge="Thanh toán">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="sm:col-span-2">
-                  <label className="mb-1 block text-sm font-semibold text-slate-800">Trả ngay cho NCC</label>
-                  <MoneyInput
-                    id="receipt-prepaid-amount"
-                    value={prepaidAmount}
-                    onChange={setPrepaidAmount}
-                    disabled={readOnly}
-                    className="w-full rounded-md border border-slate-300 px-2.5 py-2 text-sm font-semibold text-slate-900 disabled:bg-slate-50"
-                  />
-                  {!readOnly && (
-                    <div className="mt-1.5 flex flex-wrap gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => setPrepaidAmount(0)}
-                        className="rounded-full border-2 border-slate-300 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 transition-colors hover:border-blue-400 hover:bg-brand-teal-tint"
-                      >
-                        Không trả (ghi nợ hết)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPrepaidAmount(netAmount)}
-                        className="rounded-full border-2 border-slate-300 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 transition-colors hover:border-blue-400 hover:bg-brand-teal-tint"
-                      >
-                        Trả hết {formatVnd(netAmount)}
-                      </button>
-                    </div>
-                  )}
-                  {prepaidExceedsPayable && <p className="mt-1.5 text-xs font-semibold text-rose-600">Số tiền trả ngay không được vượt quá tiền phải trả NCC.</p>}
+              {isSearchingDrug && (
+                <div className="mt-2 flex max-h-40 flex-col gap-1 overflow-y-auto scroll-hover">
+                  {searchResults.length === 0 && <p className="px-1 py-2 text-xs text-slate-400">Không tìm thấy thuốc/vật tư nào khớp.</p>}
+                  {searchResults.map((d) => (
+                    <button
+                      key={d.id}
+                      type="button"
+                      onClick={() => addLine(d)}
+                      className="flex items-center justify-between rounded-md border border-slate-200 bg-white px-3 py-2 text-left text-sm hover:border-blue-400 hover:bg-brand-teal-tint"
+                    >
+                      <span>
+                        <span className="font-bold text-slate-900">{d.name}</span>
+                        <span className="ml-1.5 text-slate-500">({d.code})</span>
+                      </span>
+                      <Plus size={15} weight="bold" className="text-blue-600" aria-hidden="true" />
+                    </button>
+                  ))}
                 </div>
-                <div>
-                  <label className="mb-1 block text-sm font-semibold text-slate-800">
-                    Phương thức {(prepaidAmount ?? 0) > 0 && <span className="text-rose-500">*</span>}
-                  </label>
-                  <Combobox
-                    id="receipt-prepaid-payment-method"
-                    value={prepaidPaymentMethodCode}
-                    onChange={setPrepaidPaymentMethodCode}
-                    disabled={readOnly}
-                    placeholder="— Chọn —"
-                    options={paymentMethods.map((m) => ({ value: m.code, label: m.name }))}
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-semibold text-slate-800">
-                    Quỹ chi {(prepaidAmount ?? 0) > 0 && <span className="text-rose-500">*</span>}
-                  </label>
-                  <Combobox
-                    id="receipt-prepaid-cash-account"
-                    value={prepaidCashAccountId}
-                    onChange={setPrepaidCashAccountId}
-                    disabled={readOnly}
-                    placeholder="— Chọn —"
-                    options={cashAccounts.map((a) => ({ value: a.id, label: a.name }))}
-                  />
-                </div>
-              </div>
-              <div className="mt-4 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm">
-                <div className="flex justify-between gap-3 font-semibold text-blue-900">
-                  <span>Ghi vào công nợ NCC</span>
-                  <span className="text-lg font-bold">{formatVnd(Math.max(remainingToDebt, 0))}</span>
-                </div>
-                <div className="mt-0.5 flex justify-between gap-3 text-xs font-medium text-blue-800">
-                  <span>Công nợ hiện tại {formatVnd(currentDebtBalance)} → sau khi Duyệt phiếu</span>
-                  <span className="font-bold">{formatVnd(currentDebtBalance + Math.max(remainingToDebt, 0))}</span>
-                </div>
-              </div>
-            </BoxedSection>
-          )}
-        </div>
-      )}
-
-      {!readOnly && (
-        <div className="flex-shrink-0 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
-          <div className="relative">
-            <MagnifyingGlass size={15} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-            <input
-              type="search"
-              value={drugQuery}
-              onChange={(e) => setDrugQuery(e.target.value)}
-              placeholder="Gõ tên/mã/mã vạch thuốc, vật tư để thêm dòng hàng..."
-              className="w-full rounded-md border border-slate-300 py-2 pl-8 pr-3 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-            />
-          </div>
-          {isSearchingDrug && (
-            <div className="mt-2 flex max-h-40 flex-col gap-1 overflow-y-auto scroll-hover">
-              {searchResults.length === 0 && <p className="px-1 py-2 text-xs text-slate-400">Không tìm thấy thuốc/vật tư nào khớp.</p>}
-              {searchResults.map((d) => (
-                <button
-                  key={d.id}
-                  type="button"
-                  onClick={() => addLine(d)}
-                  className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2 text-left text-sm hover:border-blue-400 hover:bg-brand-teal-tint"
-                >
-                  <span>
-                    <span className="font-bold text-slate-900">{d.name}</span>
-                    <span className="ml-1.5 text-slate-500">({d.code})</span>
-                  </span>
-                  <Plus size={15} weight="bold" className="text-blue-600" aria-hidden="true" />
-                </button>
-              ))}
+              )}
             </div>
           )}
-        </div>
-      )}
 
-      <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-        {lines.length === 0 ? (
-          <EmptyState icon={Warning} title="Chưa có dòng hàng nào" description={readOnly ? 'Phiếu này không có dòng hàng.' : 'Gõ tên thuốc/vật tư ở ô trên để thêm dòng hàng.'} />
-        ) : (
+          <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+            {lines.length === 0 ? (
+              <EmptyState icon={Warning} title="Chưa có dòng hàng nào" description={readOnly ? 'Phiếu này không có dòng hàng.' : 'Gõ tên thuốc/vật tư ở ô trên để thêm dòng hàng.'} />
+            ) : (
           <div role="table" aria-label="Dòng hàng" className="scroll-hover h-full overflow-x-auto">
-            <div className="flex h-full flex-col" style={{ minWidth: 900 }}>
+            {/* Không còn ép `minWidth` cố định (từng thử 900 rồi 1200 — cả hai đều ép bảng rộng hơn
+                mức cần thiết, đẩy cột phải/sidebar ra ngoài màn hình, phản hồi trực tiếp "bị lệch
+                phải cuộn"). `minmax(180px, 1.8fr)` ở `lineGridCols` đã tự đảm bảo cột tên không bị
+                bóp — bảng tự vừa khít khi đủ chỗ, CHỈ cuộn ngang khi khung thật sự hẹp hơn tổng độ
+                rộng tối thiểu của mọi cột cộng lại (CSS Grid tự tính, không cần khai tay ở đây). */}
+            <div className="flex h-full flex-col">
               <div
                 role="row"
                 style={{ gridTemplateColumns: lineGridCols }}
@@ -910,6 +792,147 @@ export function StockReceiptFormPage() {
           </div>
         )}
       </div>
+        </div>
+
+        {/* Cột PHẢI cố định 320px — Chiết khấu + Thanh toán xếp DỌC, LUÔN hiện (không cần bấm mở). */}
+        {receiptType === 'PURCHASE' && (
+          <div className="flex min-h-0 flex-col gap-5 overflow-y-auto overflow-x-hidden scroll-hover">
+            <div className="flex-shrink-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="mb-2 flex items-center gap-3">
+                <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Chiết khấu</span>
+                {!readOnly && <TwoOptionToggle options={DISCOUNT_MODE_OPTIONS} value={discountMode} onChange={setDiscountMode} />}
+                {readOnly && discountMode && <span className="text-xs font-semibold text-slate-600">{DISCOUNT_MODE_OPTIONS.find((o) => o.value === discountMode)?.label}</span>}
+              </div>
+              {discountMode === 'TOTAL' ? (
+                <div className="grid grid-cols-1 gap-3">
+                  <div>
+                    <label className="mb-1 block text-sm font-semibold text-slate-800">Cách tính</label>
+                    <TwoOptionToggle options={DISCOUNT_TYPE_OPTIONS} value={totalDiscountType} disabled={readOnly} onChange={(v) => v && setTotalDiscountType(v)} />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-semibold text-slate-800">Giá trị</label>
+                    {totalDiscountType === 'PERCENT' ? (
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        disabled={readOnly}
+                        value={totalDiscountValue ?? ''}
+                        onChange={(e) => setTotalDiscountValue(e.target.value ? Number(e.target.value) : undefined)}
+                        className="w-full rounded-md border border-slate-300 px-2.5 py-2 text-sm font-semibold text-slate-900 disabled:bg-slate-50"
+                      />
+                    ) : (
+                      <MoneyInput
+                        id="receipt-total-discount-value"
+                        value={totalDiscountValue}
+                        onChange={setTotalDiscountValue}
+                        disabled={readOnly}
+                        className="w-full rounded-md border border-slate-300 px-2.5 py-2 text-sm font-semibold text-slate-900 disabled:bg-slate-50"
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-semibold text-slate-800">
+                      Lý do <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={totalDiscountReason}
+                      disabled={readOnly}
+                      onChange={(e) => setTotalDiscountReason(e.target.value)}
+                      placeholder="Vd: chiết khấu đơn hàng lớn"
+                      className="w-full rounded-md border border-slate-300 px-2.5 py-2 text-sm font-semibold text-slate-900 disabled:bg-slate-50"
+                    />
+                  </div>
+                </div>
+              ) : discountMode === 'PER_LINE' ? (
+                <p className="text-xs text-slate-500">Nhập trực tiếp % chiết khấu ở cột "Chiết khấu" trong bảng mặt hàng bên dưới.</p>
+              ) : null}
+            </div>
+
+            {showPaymentSection && (
+              <BoxedSection badge="Thanh toán" className="flex-shrink-0">
+                <div className="grid grid-cols-1 gap-3">
+                  <div>
+                    <label className="mb-1 block text-sm font-semibold text-slate-800">Trả ngay cho NCC</label>
+                    <MoneyInput
+                      id="receipt-prepaid-amount"
+                      value={prepaidAmount}
+                      onChange={setPrepaidAmount}
+                      disabled={readOnly}
+                      className="w-full rounded-md border border-slate-300 px-2.5 py-2 text-sm font-semibold text-slate-900 disabled:bg-slate-50"
+                    />
+                    {!readOnly && (
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setPrepaidAmount(0)}
+                          className="rounded-full border-2 border-slate-300 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 transition-colors hover:border-blue-400 hover:bg-brand-teal-tint"
+                        >
+                          Không trả (ghi nợ hết)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPrepaidAmount(netAmount)}
+                          className="rounded-full border-2 border-slate-300 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 transition-colors hover:border-blue-400 hover:bg-brand-teal-tint"
+                        >
+                          Trả hết {formatVnd(netAmount)}
+                        </button>
+                      </div>
+                    )}
+                    {prepaidExceedsPayable && <p className="mt-1.5 text-xs font-semibold text-rose-600">Số tiền trả ngay không được vượt quá tiền phải trả NCC.</p>}
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-semibold text-slate-800">
+                      Phương thức {(prepaidAmount ?? 0) > 0 && <span className="text-rose-500">*</span>}
+                    </label>
+                    <Combobox
+                      id="receipt-prepaid-payment-method"
+                      value={prepaidPaymentMethodCode}
+                      onChange={setPrepaidPaymentMethodCode}
+                      disabled={readOnly}
+                      placeholder="— Chọn —"
+                      options={paymentMethods.map((m) => ({ value: m.code, label: m.name }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-semibold text-slate-800">
+                      Quỹ chi {(prepaidAmount ?? 0) > 0 && <span className="text-rose-500">*</span>}
+                    </label>
+                    <Combobox
+                      id="receipt-prepaid-cash-account"
+                      value={prepaidCashAccountId}
+                      onChange={setPrepaidCashAccountId}
+                      disabled={readOnly}
+                      placeholder="— Chọn —"
+                      options={cashAccounts.map((a) => ({ value: a.id, label: a.name }))}
+                    />
+                  </div>
+                </div>
+                <div className="mt-4 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm">
+                  <div className="flex items-baseline justify-between gap-3 font-semibold text-blue-900">
+                    <span>Ghi vào công nợ NCC</span>
+                    <span className="whitespace-nowrap text-lg font-bold">{formatVnd(Math.max(remainingToDebt, 0))}</span>
+                  </div>
+                  {/* 2 dòng riêng, mỗi dòng 1 cặp nhãn/giá trị ngắn (phản hồi trực tiếp) — thay câu
+                      dài "Công nợ hiện tại... → sau khi Duyệt phiếu" từng chạy chữ khi khung hẹp
+                      (380px) và số tiền lớn. */}
+                  <div className="mt-1.5 space-y-1 border-t border-blue-200 pt-1.5 text-xs font-medium text-blue-800">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span>Công nợ hiện tại</span>
+                      <span className="whitespace-nowrap font-bold">{formatVnd(currentDebtBalance)}</span>
+                    </div>
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span>Công nợ sau khi duyệt</span>
+                      <span className="whitespace-nowrap font-bold">{formatVnd(currentDebtBalance + Math.max(remainingToDebt, 0))}</span>
+                    </div>
+                  </div>
+                </div>
+              </BoxedSection>
+            )}
+          </div>
+        )}
+      </div>
 
       <div className="flex flex-shrink-0 items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
         {discountAmount > 0 ? (
@@ -961,6 +984,18 @@ export function StockReceiptFormPage() {
 
       {printing && receiptQuery.data && clinicQuery.data && (
         <StockReceiptPrintView receipt={receiptQuery.data} clinicHeader={clinicQuery.data} unitNameByCode={unitNameByCode} />
+      )}
+
+      {headerDialogOpen && (
+        <StockReceiptHeaderDialog
+          initial={{ receiptType, warehouseId, supplierId, supplierInvoiceNo, occurredAt, note }}
+          warehouseOptions={warehouseOptions}
+          supplierOptions={supplierOptions}
+          hasLines={lines.length > 0}
+          allowSimpleClose={isEdit || Boolean(warehouseId)}
+          onCancel={handleHeaderCancel}
+          onSave={handleHeaderSave}
+        />
       )}
     </div>
   );

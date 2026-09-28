@@ -2,6 +2,18 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-28 (4)
+
+### Redesign "Tạo/Sửa phiếu nhập kho" + "Phiếu xuất kho" — popup nhập header + bố cục 2 cột, đồng bộ ô tìm thuốc 4 màn hình Kho Thuốc
+
+Chuỗi phản hồi trực tiếp trên bản chạy thật: header (Loại phiếu/Kho/NCC/Ngày.../Lý do) chuyển từ khối ô nhập cố định sang **popup** (`StockReceiptHeaderDialog.tsx`/`StockIssueHeaderDialog.tsx`, mới) — mở tự động lúc tạo phiếu, trang chính chỉ còn dải tóm tắt (`SummaryField`, trích xuất dùng chung) + nút "Sửa". `StockReceiptFormPage.tsx` đổi sang bố cục 2 cột cố định khi `receiptType='PURCHASE'`: trái là ô tìm (style nổi bật, viền xanh) + bảng sản phẩm, phải (380px) là Chiết khấu + Thanh toán luôn hiện.
+
+**3 bug thật phát hiện + sửa trong lúc dựng bố cục mới** (đều chỉ lộ khi kiểm qua trình duyệt thật): tên sản phẩm bị cắt do cột co giãn thiếu sàn tối thiểu (sửa `minmax(180px, 1.8fr)`); cả trang bị lệch/cuộn sai cấp do CSS Grid `1fr` mặc định không co dưới nội dung tối thiểu (sửa `minmax(0,1fr)` — kinh điển "min-width:auto gotcha"); ô "Giá trị" chiết khấu (Số tiền) thiếu style do `MoneyInput` thiếu `className` (bug cũ có sẵn, không phải do redesign).
+
+Đồng bộ ô tìm thuốc "nổi bật" (nhãn đậm + viền xanh) cho cả 4 trang Kho Thuốc (Nhập/Xuất/Kiểm kê/Điều chuyển). Sửa thêm 1 bug ở component dùng chung `Combobox.tsx`: option nhãn dài tràn đè dòng kế bên do chiều cao cố định `h-9` → đổi `min-h-9`, tự áp dụng toàn app. Nhân tiện đầu phiên: pill "Loại thu chi" ở `CatalogAdminPage.tsx` thiếu nhánh render (bấm không hiện gì) — thêm đúng 1 dòng thiếu.
+
+**Đã xác minh thật**: `pnpm -w typecheck/lint/build` sạch toàn workspace, không có test tự động mới (thuần frontend, không đụng API/DB) — xác minh qua Playwright/Chrome thật nhiều vòng ở 1600px/1920px, 0 lỗi console. Chi tiết đầy đủ `docs/DECISIONS.md` #194.
+
 ## 2026-09-28 (3)
 
 ### "Kê thuốc tự do, không qua danh mục" — mở rộng Kho Thuốc GĐ5 + 3 lỗi giao diện "dính chữ" phát hiện qua phản hồi trực tiếp

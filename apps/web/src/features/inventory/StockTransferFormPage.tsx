@@ -437,23 +437,31 @@ export function StockTransferFormPage() {
         </div>
       )}
 
-      {/* ============ Search-and-pick (chỉ khi DRAFT) ============ */}
+      {/* ============ Search-and-pick (chỉ khi DRAFT) — style nổi bật đồng bộ với
+          `StockReceiptFormPage.tsx`/`StockIssueFormPage.tsx`/`StockCountFormPage.tsx` (phản hồi
+          trực tiếp: áp dụng cho mọi giao diện đang dùng kiểu ô tìm thuốc này). ============ */}
       {isDraftEditable && (
-        <div className="flex flex-shrink-0 items-center gap-2.5 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+        <div className="flex flex-shrink-0 items-end gap-2.5 rounded-lg border-2 border-blue-200 bg-blue-50 p-3 shadow-sm">
           <div className="relative flex-1">
-            <MagnifyingGlass size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-            <input
-              type="text"
-              value={drugQuery}
-              disabled={!fromWarehouseId}
-              onChange={(e) => {
-                setDrugQuery(e.target.value);
-                setHighlightedIndex(0);
-              }}
-              onKeyDown={onSearchKeyDown}
-              placeholder="Gõ tên/mã/mã vạch mặt hàng tại Kho nguồn — Enter/Tab để thêm nhanh..."
-              className="w-full rounded-md border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50"
-            />
+            <label htmlFor="transfer-drug-search" className="mb-1.5 block text-sm font-semibold text-slate-800">
+              Thêm thuốc / vật tư vào phiếu
+            </label>
+            <div className="relative">
+              <MagnifyingGlass size={16} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-blue-500" aria-hidden="true" />
+              <input
+                id="transfer-drug-search"
+                type="text"
+                value={drugQuery}
+                disabled={!fromWarehouseId}
+                onChange={(e) => {
+                  setDrugQuery(e.target.value);
+                  setHighlightedIndex(0);
+                }}
+                onKeyDown={onSearchKeyDown}
+                placeholder="Gõ tên/mã/mã vạch mặt hàng tại Kho nguồn — Enter/Tab để thêm nhanh..."
+                className="w-full rounded-md border border-blue-300 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50"
+              />
+            </div>
             {isSearchingDrug && (
               <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-64 overflow-y-auto rounded-md border border-slate-200 bg-white shadow-lg scroll-hover">
                 {searchResults.length === 0 && <p className="px-3 py-2 text-xs text-slate-400">Không tìm thấy, hoặc đã có sẵn trong phiếu.</p>}
@@ -471,7 +479,6 @@ export function StockTransferFormPage() {
               </div>
             )}
           </div>
-          <span className="text-xs text-slate-400">Chỉ hiện mặt hàng đang có tồn tại Kho nguồn</span>
         </div>
       )}
 
