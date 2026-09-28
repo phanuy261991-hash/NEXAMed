@@ -22,6 +22,7 @@ import type {
   DataScope,
   DispenseBatchOption,
   DispenseQueueItem,
+  FreeTextPrescriptionLine,
   GetPrescriptionDispenseStatusResponse,
   ListDispenseQueueQuery,
   ListDispenseQueueResponse,
@@ -910,7 +911,21 @@ export class StockIssueService {
 
       const drugCache = new Map<string, DrugWithDetails>();
       const lines: PrescriptionDispenseLine[] = [];
+      // "Kê thuốc tự do" (mở rộng Kho Thuốc GĐ5) — dòng không có `drugId` KHÔNG dispensable (không
+      // tồn kho/lô/giá), tách hẳn khỏi `lines` — hiện đọc-only kèm ghi chú ở `DispensePrescriptionDialog.tsx`.
+      const freeTextLines: FreeTextPrescriptionLine[] = [];
       for (const item of prescription.items) {
+        if (item.drugId === null) {
+          freeTextLines.push({
+            prescriptionItemId: item.id,
+            drugName: item.drugName,
+            prescribedQuantity: item.quantity,
+            dose: item.dose,
+            frequency: item.frequency,
+            instruction: item.instruction,
+          });
+          continue;
+        }
         let drug = drugCache.get(item.drugId);
         if (!drug) {
           const found = await this.drugRepository.findByIdWithDetails(tx, tenantId, item.drugId);
@@ -974,6 +989,7 @@ export class StockIssueService {
         signedByName: prescription.signedBy ? (signedByNames.get(prescription.signedBy) ?? null) : null,
         diagnosisLabel,
         lines,
+        freeTextLines,
       };
     });
   }

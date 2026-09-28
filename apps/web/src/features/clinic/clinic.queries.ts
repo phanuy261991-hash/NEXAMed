@@ -26,6 +26,7 @@ import {
   createExamStation,
   createFloor,
   createRoom,
+  getAllowFreeTextPrescriptionStatus,
   getAllowStaffSelfScheduleStatus,
   getBackupStatus,
   getSidebarAutoCollapseStatus,
@@ -164,6 +165,19 @@ export function usePharmacyStockTrackingEnabledQuery() {
   });
 }
 
+/**
+ * "Kê thuốc tự do, không qua danh mục" (mở rộng Kho Thuốc GĐ5) — `DrugPicker.tsx` dùng riêng hook
+ * này (KHÔNG dùng `useClinicSettingsQuery()`): bác sĩ cần biết công tắc này để hiện/ẩn đúng
+ * "+ Thêm ... ngoài danh mục", cùng lý do `usePharmacyStockTrackingEnabledQuery` ở trên.
+ */
+export function useAllowFreeTextPrescriptionEnabledQuery() {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'clinic', 'allow-free-text-prescription-enabled'),
+    queryFn: getAllowFreeTextPrescriptionStatus,
+  });
+}
+
 export function useUpdateClinicSettingsMutation() {
   const { tenantId } = useAppConfig();
   const queryClient = useQueryClient();
@@ -188,6 +202,8 @@ export function useUpdateClinicSettingsMutation() {
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'solo-clinic-workflow-enabled') });
       // "Có kho thuốc" (Kho Thuốc GĐ5) — PrescriptionPanel.tsx/DrugPicker.tsx đọc qua hook tự-phục vụ riêng, làm mới luôn.
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'pharmacy-stock-tracking-enabled') });
+      // "Kê thuốc tự do, không qua danh mục" — DrugPicker.tsx đọc qua hook tự-phục vụ riêng, làm mới luôn.
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'allow-free-text-prescription-enabled') });
     },
   });
 }

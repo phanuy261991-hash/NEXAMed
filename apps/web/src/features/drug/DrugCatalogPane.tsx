@@ -27,12 +27,11 @@ import { useCreateReferenceCatalogItemMutation, useReferenceCatalogQuery } from 
 import { appendSentence } from '../../shared/format/append-sentence';
 import { formatDobDisplay } from '../../shared/format/date';
 import { useCreateDrugMutation, useDrugsQuery, useUpdateDrugMutation } from './drug.queries';
+import { DrugItemTypeBadge, ITEM_TYPE_LABEL } from './drug-item-type';
 import { useUnitNameByCode } from './useUnitNameByCode';
 
 const inputClassName =
   'w-full rounded-lg border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
-
-const ITEM_TYPE_LABEL: Record<DrugItemType, string> = { MEDICINE: 'Thuốc', SUPPLY: 'Vật tư y tế' };
 
 /** Phân loại kiểm soát đặc biệt (Thông tư 20/2017/TT-BYT, docs/DECISIONS.md #151) — enum CỐ ĐỊNH,
  * KHÔNG dùng `reference_catalog` (tenant không tự thêm/sửa được). CHỈ có ý nghĩa với `itemType==='MEDICINE'`. */
@@ -372,7 +371,9 @@ export function DrugCatalogPane() {
                       </div>
                       {d.activeIngredient && <div className="truncate text-xs font-medium text-slate-500">{d.activeIngredient}</div>}
                     </td>
-                    <td className={`px-3 py-2.5 text-center text-xs font-semibold ${d.itemType === 'MEDICINE' ? 'text-blue-700' : 'text-slate-600'}`}>{ITEM_TYPE_LABEL[d.itemType]}</td>
+                    <td className="px-3 py-2.5 text-center">
+                      <DrugItemTypeBadge itemType={d.itemType} />
+                    </td>
                     <td className="px-3 py-2.5 text-center font-medium text-slate-700">{d.baseUnitCode ? (unitNameByCode.get(d.baseUnitCode) ?? d.baseUnitCode) : d.unit ?? '—'}</td>
                     <td className="px-3 py-2.5 text-center font-medium tabular-nums text-slate-900">
                       {d.defaultSellPrice !== null ? `${d.defaultSellPrice.toLocaleString('vi-VN')} đ` : '—'}

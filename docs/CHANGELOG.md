@@ -2,6 +2,26 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-28 (3)
+
+### "Kê thuốc tự do, không qua danh mục" — mở rộng Kho Thuốc GĐ5 + 3 lỗi giao diện "dính chữ" phát hiện qua phản hồi trực tiếp
+
+Bác sĩ giờ kê được thuốc **hoàn toàn không có trong danh mục** (đảo ngược 1 điểm của #190) khi phòng khám bật công tắc "Cho phép kê thuốc ngoài danh mục" (Cấu hình chung, mặc định TẮT) — dòng tự do không tính tiền/tồn kho, không phát được qua "Phát thuốc" (hiện đọc-only kèm ghi chú), in đơn y hệt dòng khác. Migration `prescription_item.drug_id` nullable + `free_text_drug_name`. Chi tiết đầy đủ `docs/DECISIONS.md` #192.
+
+Nhân tiện sửa 3 lỗi giao diện "dính chữ" (cột cố định thiếu `truncate`/`min-w-0`) ở "Phiếu thu/chi", "Tồn kho", "Báo cáo Nhập-Xuất-Tồn" — và đồng bộ lại nhãn "Vật tư y tế" (trước lệch nhau giữa 2 màn hình) qua component `DrugItemTypeBadge` dùng chung mới. Chi tiết `docs/DECISIONS.md` #193.
+
+**Đã xác minh thật**: `apps/api` 1021/1022 (1 flake đã biết), `packages/core` 232/232, `packages/shared` 25/25, `apps/web` 5/5, `pnpm -w typecheck/lint/build` sạch toàn workspace. Playwright qua Chrome thật cho cả tính năng mới lẫn 2 màn hình đã sửa giao diện.
+
+## 2026-09-28 (2)
+
+### Kho Thuốc GĐ5 — Verify Playwright hoàn tất, 3 bug thật phát hiện + sửa
+
+Tiếp nối việc treo duy nhất từ phiên trước — cảnh báo/badge tồn kho + trải nghiệm kê đơn giờ đã xác nhận đúng qua trình duyệt thật, không chỉ test HTTP.
+
+**3 bug thật** (đều chỉ lộ ra khi thao tác qua UI, không lộ ở test HTTP của phiên trước): (1) cảnh báo "Kê vượt tồn kho" biến mất ngay sau khi trang tự refetch lại `GET .../consultation` — route này chưa từng tính lại cảnh báo tồn kho (luôn truyền `onHandByDrugId=null`), khiến bác sĩ không bao giờ thấy được cảnh báo trong thực tế dù dữ liệu đúng ở response lưu; (2) badge tồn kho ẩn hẳn cho thuốc chưa từng nhập kho (khác thuốc đã bán hết) — `sumOnHandByDrugIds()` không điền `0` cho thuốc chưa có dòng `stock_balance`; (3) bấm "Ký đơn" khi bị chặn (422, "Chặn kê vượt tồn" đang bật) không hiện thông báo gì — `signMutation` chưa từng có `onError`.
+
+**Đã xác minh thật**: `apps/api` 1017/1018 (+2 test hồi quy mới, 1 flake đã biết pass riêng), `packages/core` 232/232, `packages/shared` 25/25, `apps/web` 5/5, `pnpm -w typecheck/lint/build` sạch toàn workspace. Playwright qua Chrome thật xác nhận đủ 9 mục checklist. Chi tiết đầy đủ `docs/DECISIONS.md` #191. **Kho Thuốc GĐ5 + redesign màn khám coi như hoàn tất 100%.**
+
 ## 2026-09-28
 
 ### Kho Thuốc GĐ5 "Trải nghiệm kê đơn" + redesign màn khám sang Tab thật — backend+frontend xong, CHƯA verify Playwright

@@ -7,14 +7,33 @@ import { z } from 'zod';
  * "chặn ký cứng" ở v1 (không có nguồn dữ liệu chống chỉ định/liều theo tuổi — PRE-06 hoãn P2 theo
  * `docs/DECISIONS.md` #072) — `warnings` dưới đây chỉ CẢNH BÁO MỀM.
  */
-const prescriptionItemInputSchema = z.object({
-  drugId: z.string().uuid(),
-  dose: z.string().min(1),
-  frequency: z.string().min(1),
-  durationDays: z.number().int().positive(),
-  quantity: z.number().int().positive(),
-  instruction: z.string().optional(),
-});
+/**
+ * "Kê thuốc tự do, không qua danh mục" (mở rộng Kho Thuốc GĐ5, đảo ngược 1 điểm của #190) — đúng
+ * 1 trong 2: `drugId` (thuốc thật trong danh mục) HOẶC `freeTextDrugName` (tên tự do, không tính
+ * tiền/tồn kho/không phát được qua "Phát thuốc"). CHECK DB (`prescription_item_drug_or_free_text_check`)
+ * là nguồn sự thật cuối cùng — validate ở đây chỉ để báo lỗi sớm/rõ ràng hơn cho client.
+ */
+const prescriptionItemInputSchema = z
+  .object({
+    drugId: z.string().uuid().optional(),
+    freeTextDrugName: z.string().min(1).max(200).optional(),
+    dose: z.string().min(1),
+    frequency: z.string().min(1),
+    durationDays: z.number().int().positive(),
+    quantity: z.number().int().positive(),
+    instruction: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    const hasDrug = data.drugId !== undefined;
+    const hasFreeText = data.freeTextDrugName !== undefined;
+    if (hasDrug === hasFreeText) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Mỗi dòng thuốc phải có đúng một trong hai: chọn thuốc trong danh mục HOẶC nhập tên thuốc tự do.',
+        path: ['drugId'],
+      });
+    }
+  });
 
 /** `PUT /encounters/:id/prescription-items` — thay thế TOÀN BỘ danh sách dòng thuốc của đơn nháp hiện tại (tạo đơn nháp nếu chưa có). Chỉ dùng được khi đơn CHƯA ký (`PrescriptionAlreadySignedError` nếu đã ký). */
 export const savePrescriptionItemsRequestSchema = z.object({
@@ -24,8 +43,12 @@ export type SavePrescriptionItemsRequest = z.infer<typeof savePrescriptionItemsR
 
 export const prescriptionItemSchema = z.object({
   id: z.string().uuid(),
-  drugId: z.string().uuid(),
+  /** `null` = dòng "kê thuốc tự do, không qua danh mục" — xem `freeTextDrugName`. */
+  drugId: z.string().uuid().nullable(),
+  /** Tên hiển thị — LUÔN có giá trị dù nguồn là thuốc thật hay tên tự do (server resolve sẵn). */
   drugName: z.string(),
+  /** Có giá trị CHỈ khi `drugId=null` (dòng tự do) — dùng để phân biệt hiển thị badge "Ngoài danh mục". */
+  freeTextDrugName: z.string().nullable(),
   activeIngredient: z.string().nullable(),
   dose: z.string(),
   frequency: z.string(),

@@ -26,7 +26,7 @@ import { TransferVoucherFormDialog } from './TransferVoucherFormDialog';
 
 /** Cột đầu (chọn dòng) để sẵn cho hành động hàng loạt sau này, chưa có hành động nào dùng tới —
  * đúng khuôn `InvoiceListPage.tsx` (`.claude/docs/ui-guidelines.md` mục 4.6). */
-const GRID_COLUMNS = '40px 150px 110px 1.2fr 1.6fr 150px 140px 130px';
+const GRID_COLUMNS = '40px 150px 110px 1.4fr 1.4fr 150px 140px 130px';
 const TABLE_MIN_WIDTH_PX = 1200;
 const ROW_HEIGHT_PX = 56;
 
@@ -256,22 +256,22 @@ export function CashVoucherListPage() {
                     </div>
                     <div role="cell" className="truncate text-center font-semibold text-slate-800">{item.voucherNo}</div>
                     <div role="cell" className="text-center text-slate-600">{formatDateShort(item.occurredAt)}</div>
-                    <div role="cell" className="min-w-0 text-center">
+                    <div role="cell" className="min-w-0 text-center" title={item.counterAccountId ? undefined : incomeExpenseTypeName(item.incomeExpenseTypeCode)}>
                       {item.counterAccountId ? (
-                        <span className="inline-flex items-center gap-1 truncate text-slate-700">
+                        <span className="flex w-full min-w-0 items-center justify-center gap-1 text-slate-700">
                           <ArrowsLeftRight size={13} weight="fill" className="flex-shrink-0 text-blue-600" aria-hidden="true" />
-                          <span className="truncate">
+                          <span className="min-w-0 truncate">
                             {cashAccountName(item.cashAccountId)} → {cashAccountName(item.counterAccountId)}
                           </span>
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 truncate">
+                        <span className="flex w-full min-w-0 items-center justify-center gap-1">
                           {item.direction === 'INCOME' ? (
                             <ArrowCircleDown size={13} weight="fill" className="flex-shrink-0 text-emerald-600" aria-hidden="true" />
                           ) : (
                             <ArrowCircleUp size={13} weight="fill" className="flex-shrink-0 text-rose-600" aria-hidden="true" />
                           )}
-                          <span className="truncate text-slate-700">{incomeExpenseTypeName(item.incomeExpenseTypeCode)}</span>
+                          <span className="min-w-0 truncate text-slate-700">{incomeExpenseTypeName(item.incomeExpenseTypeCode)}</span>
                         </span>
                       )}
                     </div>

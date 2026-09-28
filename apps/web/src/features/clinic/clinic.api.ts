@@ -1,4 +1,5 @@
 import type {
+  AllowFreeTextPrescriptionStatus,
   AllowStaffSelfScheduleStatus,
   BackupStatusResponse,
   SidebarAutoCollapseStatus,
@@ -77,6 +78,11 @@ export async function getSoloClinicWorkflowStatus(): Promise<SoloClinicWorkflowS
 /** "Có kho thuốc" (Kho Thuốc GĐ5) — tự-phục vụ, không cần `clinic_config.read` (đúng khuôn `getDeferredPaymentStatus`). */
 export async function getPharmacyStockTrackingStatus(): Promise<PharmacyStockTrackingStatus> {
   return unwrap(await getApiClient().GET('/api/v1/clinic-settings/pharmacy-stock-tracking-enabled')) as PharmacyStockTrackingStatus;
+}
+
+/** "Kê thuốc tự do, không qua danh mục" (mở rộng Kho Thuốc GĐ5) — tự-phục vụ, không cần `clinic_config.read` (đúng khuôn `getDeferredPaymentStatus`). */
+export async function getAllowFreeTextPrescriptionStatus(): Promise<AllowFreeTextPrescriptionStatus> {
+  return unwrap(await getApiClient().GET('/api/v1/clinic-settings/allow-free-text-prescription-enabled')) as AllowFreeTextPrescriptionStatus;
 }
 
 /** S6-01 (ADM-04) — chỉ `clinic_admin` gọi được (`clinic_config.read`), dùng cho banner cảnh báo toàn cục. */

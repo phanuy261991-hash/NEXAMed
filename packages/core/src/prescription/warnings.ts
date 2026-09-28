@@ -9,14 +9,17 @@ import { stripVietnameseDiacritics } from '../search/strip-vietnamese-diacritics
  */
 
 export interface PrescriptionDrugLine {
-  drugId: string;
+  /** `null` = dòng "kê thuốc tự do, không qua danh mục" (mở rộng Kho Thuốc GĐ5) — không có
+   * `activeIngredient` nên tự động bị PRE-02 bỏ qua, nhưng VẪN tham gia PRE-03 (so khớp dị ứng
+   * theo `drugName` tự do). */
+  drugId: string | null;
   drugName: string;
   activeIngredient: string | null;
 }
 
 export interface DuplicateActiveIngredientWarning {
   activeIngredient: string;
-  drugIds: string[];
+  drugIds: (string | null)[];
   drugNames: string[];
 }
 
@@ -26,7 +29,7 @@ export interface DuplicateActiveIngredientWarning {
  * về nhóm CÓ từ 2 thuốc khác nhau trở lên cùng hoạt chất.
  */
 export function findDuplicateActiveIngredients(lines: PrescriptionDrugLine[]): DuplicateActiveIngredientWarning[] {
-  const groups = new Map<string, { activeIngredient: string; drugIds: string[]; drugNames: string[] }>();
+  const groups = new Map<string, { activeIngredient: string; drugIds: (string | null)[]; drugNames: string[] }>();
   for (const line of lines) {
     const trimmed = line.activeIngredient?.trim();
     if (!trimmed) continue;
@@ -43,7 +46,7 @@ export function findDuplicateActiveIngredients(lines: PrescriptionDrugLine[]): D
 
 export interface AllergyWarning {
   allergenName: string;
-  drugIds: string[];
+  drugIds: (string | null)[];
   drugNames: string[];
 }
 

@@ -129,6 +129,9 @@ export function DispensePrescriptionDialog({ prescriptionId, onClose, onDispense
 
   // Dòng đã phát ĐỦ — chỉ đọc, tính thẳng từ query, không đưa vào draft (không bao giờ sửa được).
   const fullyDispensedLines = statusQuery.data?.lines.filter((l) => l.remainingQuantity === 0) ?? [];
+  // "Kê thuốc tự do, không qua danh mục" (mở rộng Kho Thuốc GĐ5) — chỉ đọc, KHÔNG dispensable
+  // (không có drugId để chọn lô/trừ kho), hiện kèm ghi chú để dược sĩ không nhầm tưởng thiếu dòng.
+  const freeTextLines = statusQuery.data?.freeTextLines ?? [];
 
   // Nạp draft từ response khi query load xong, và NẠP LẠI mỗi khi đổi kho (tồn/lô khác hẳn theo
   // từng kho — bug thật đã sửa 22/09/2026: trước đây chỉ nạp 1 lần bằng guard `lines===null`, đổi
@@ -399,7 +402,7 @@ export function DispensePrescriptionDialog({ prescriptionId, onClose, onDispense
                 )}
 
                 <div className="flex flex-col divide-y divide-slate-200 rounded-lg border border-slate-200">
-                  {lines.length === 0 && fullyDispensedLines.length === 0 && (
+                  {lines.length === 0 && fullyDispensedLines.length === 0 && freeTextLines.length === 0 && (
                     <p className="py-4 text-center text-sm text-slate-500">Đơn thuốc không có dòng nào cần phát.</p>
                   )}
                   {lines.map((line) => {
@@ -530,6 +533,20 @@ export function DispensePrescriptionDialog({ prescriptionId, onClose, onDispense
                           </p>
                         </div>
                         <StatusBadge tone="success">Đã phát đủ</StatusBadge>
+                      </div>
+                    </div>
+                  ))}
+
+                  {freeTextLines.map((line) => (
+                    <div key={line.prescriptionItemId} className="flex items-center gap-2.5 bg-slate-50 px-4 py-3">
+                      <div className="flex flex-1 items-center justify-between">
+                        <div>
+                          <p className="text-[15px] font-bold text-slate-500">{line.drugName}</p>
+                          <p className="mt-0.5 text-xs text-slate-400">
+                            {line.dose} · {line.frequency} · Đã kê đơn {line.prescribedQuantity}
+                          </p>
+                        </div>
+                        <StatusBadge tone="neutral">Ngoài danh mục — không xử lý ở đây</StatusBadge>
                       </div>
                     </div>
                   ))}

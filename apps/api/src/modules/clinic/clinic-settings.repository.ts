@@ -6,6 +6,7 @@ import {
   businessHoursSchema,
   type BusinessCodeType,
   DEFAULT_ALLOW_EMERGENCY_END_SHIFT,
+  DEFAULT_ALLOW_FREE_TEXT_PRESCRIPTION_ENABLED,
   DEFAULT_ALLOW_RECEPTIONIST_END_SHIFT,
   DEFAULT_ALLOW_STAFF_SELF_SCHEDULE_ENABLED,
   DEFAULT_BLOCK_BOOKING_OUTSIDE_WORK_SHIFT_ENABLED,
@@ -111,6 +112,10 @@ const pharmacyStockTrackingEnabledSchema = z.boolean();
 // Kho Thuốc GĐ5 — tắt theo mặc định (kê vượt tồn chỉ cảnh báo mềm) cho tenant chưa từng cấu hình.
 const PRESCRIPTION_STOCK_BLOCK_ENABLED_KEY = 'prescription_stock_block_enabled';
 const prescriptionStockBlockEnabledSchema = z.boolean();
+// "Kê thuốc tự do, không qua danh mục" (mở rộng Kho Thuốc GĐ5) — tắt theo mặc định cho tenant chưa
+// từng cấu hình, giữ nguyên ràng buộc `drugId` bắt buộc.
+const ALLOW_FREE_TEXT_PRESCRIPTION_ENABLED_KEY = 'allow_free_text_prescription_enabled';
+const allowFreeTextPrescriptionEnabledSchema = z.boolean();
 // "Cấu hình mẫu mã phát sinh" (docs/DECISIONS.md #114, 2026-09-03) — 1 object JSON duy nhất,
 // khoá theo loại mã (7 loại), chỉ chứa entry của loại mã ĐÃ được tenant chủ động sửa (loại chưa
 // đụng tới thì KHÔNG có key — service tự áp mặc định khớp hành vi cũ, xem `BusinessCodeService`).
@@ -401,6 +406,19 @@ export class ClinicSettingsRepository {
 
   upsertPrescriptionStockBlockEnabled(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
     return this.upsert(tx, tenantId, actorId, PRESCRIPTION_STOCK_BLOCK_ENABLED_KEY, value);
+  }
+
+  async getAllowFreeTextPrescriptionEnabled(tx: Prisma.TransactionClient, tenantId: string): Promise<boolean> {
+    const setting = await tx.tenantSetting.findFirst({ where: { tenantId, key: ALLOW_FREE_TEXT_PRESCRIPTION_ENABLED_KEY } });
+    if (!setting) {
+      return DEFAULT_ALLOW_FREE_TEXT_PRESCRIPTION_ENABLED;
+    }
+    const parsed = allowFreeTextPrescriptionEnabledSchema.safeParse(setting.valueJson);
+    return parsed.success ? parsed.data : DEFAULT_ALLOW_FREE_TEXT_PRESCRIPTION_ENABLED;
+  }
+
+  upsertAllowFreeTextPrescriptionEnabled(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
+    return this.upsert(tx, tenantId, actorId, ALLOW_FREE_TEXT_PRESCRIPTION_ENABLED_KEY, value);
   }
 
   /** Chỉ trả entry của loại mã tenant ĐÃ chủ động cấu hình — loại mã vắng mặt nghĩa là "dùng mặc

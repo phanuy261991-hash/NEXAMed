@@ -1,9 +1,9 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { MagnifyingGlass } from '@phosphor-icons/react';
+import { MagnifyingGlass, Plus } from '@phosphor-icons/react';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
-import { usePharmacyStockTrackingEnabledQuery } from '../clinic/clinic.queries';
+import { useAllowFreeTextPrescriptionEnabledQuery, usePharmacyStockTrackingEnabledQuery } from '../clinic/clinic.queries';
 import { useStockOnHandSummaryQuery } from '../inventory/inventory.queries';
 import { useDrugsQuery } from '../drug/drug.queries';
 
@@ -25,9 +25,13 @@ export interface DrugPickerHandle {
 
 export const DrugPicker = forwardRef<DrugPickerHandle, {
   /** Thuốc đã thêm vào đơn rồi — ẩn khỏi kết quả để không chọn trùng. */
-  excludeDrugIds: string[];
+  excludeDrugIds: (string | null)[];
   onSelect: (item: { drugId: string; drugName: string }) => void;
-}>(function DrugPicker({ excludeDrugIds, onSelect }, ref) {
+  /** "Kê thuốc tự do, không qua danh mục" (mở rộng Kho Thuốc GĐ5) — thêm 1 dòng có tên tự do (không
+   * `drugId`) vào đơn. Chỉ gọi được khi tenant bật `allowFreeTextPrescriptionEnabled` (component tự
+   * đọc công tắc, ẩn hẳn tuỳ chọn khi tắt). */
+  onAddFreeText: (name: string) => void;
+}>(function DrugPicker({ excludeDrugIds, onSelect, onAddFreeText }, ref) {
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -37,6 +41,12 @@ export const DrugPicker = forwardRef<DrugPickerHandle, {
   const searchQuery = useDrugsQuery({ q: debounced.trim() || undefined });
 
   const results = (searchQuery.data?.items ?? []).filter((item) => !excludeDrugIds.includes(item.id));
+
+  const allowFreeTextQuery = useAllowFreeTextPrescriptionEnabledQuery();
+  // "Tuỳ chọn ảo" cuối danh sách — dùng CHUNG cơ chế điều hướng bàn phím với kết quả thật
+  // (activeIndex === results.length nghĩa là đang chọn dòng này).
+  const canAddFreeText = (allowFreeTextQuery.data?.enabled ?? false) && debounced.trim() !== '';
+  const totalOptions = results.length + (canAddFreeText ? 1 : 0);
 
   // Kết quả đổi (gõ tiếp/xoá bớt) → luôn về đầu danh sách, tránh giữ activeIndex trỏ lệch thuốc.
   useEffect(() => {
@@ -58,11 +68,20 @@ export const DrugPicker = forwardRef<DrugPickerHandle, {
     inputRef.current?.focus();
   }
 
+  function handleSelectFreeText() {
+    const name = debounced.trim();
+    if (!name) return;
+    onAddFreeText(name);
+    setQuery('');
+    setActiveIndex(0);
+    inputRef.current?.focus();
+  }
+
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (!isSearching || results.length === 0) return;
+    if (!isSearching || totalOptions === 0) return;
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setActiveIndex((i) => Math.min(i + 1, results.length - 1));
+      setActiveIndex((i) => Math.min(i + 1, totalOptions - 1));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setActiveIndex((i) => Math.max(i - 1, 0));
@@ -70,8 +89,12 @@ export const DrugPicker = forwardRef<DrugPickerHandle, {
       // Không nằm trong <form> nào ở PrescriptionPanel.tsx, nhưng vẫn chặn nổi bọt để nhất quán
       // với Combobox/MultiSelectCombobox (mục 4.4 ui-guidelines.md).
       e.preventDefault();
-      const item = results[activeIndex];
-      if (item) handleSelect(item.id, item.name);
+      if (activeIndex < results.length) {
+        const item = results[activeIndex];
+        if (item) handleSelect(item.id, item.name);
+      } else if (canAddFreeText) {
+        handleSelectFreeText();
+      }
     } else if (e.key === 'Escape') {
       setQuery('');
     }
@@ -92,9 +115,16 @@ export const DrugPicker = forwardRef<DrugPickerHandle, {
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Gõ tên thuốc, mã, hoạt chất, mã vạch hoặc gõ tắt..."
+          maxLength={200}
           role="combobox"
           aria-expanded={isSearching}
-          aria-activedescendant={isSearching && results[activeIndex] ? `drug-picker-option-${results[activeIndex].id}` : undefined}
+          aria-activedescendant={
+            isSearching && results[activeIndex]
+              ? `drug-picker-option-${results[activeIndex].id}`
+              : isSearching && canAddFreeText && activeIndex === results.length
+                ? 'drug-picker-option-free-text'
+                : undefined
+          }
           className="w-full rounded-md border border-slate-300 py-2 pl-8 pr-3 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
         />
       </div>
@@ -115,7 +145,7 @@ export const DrugPicker = forwardRef<DrugPickerHandle, {
 
       {isSearching && searchQuery.isSuccess && (
         <div role="listbox" className="mt-2 flex max-h-48 flex-col gap-1.5 overflow-y-auto scroll-hover">
-          {results.length === 0 && <p className="px-1 py-2 text-xs text-slate-400">Không tìm thấy thuốc nào khớp trong danh mục.</p>}
+          {results.length === 0 && !canAddFreeText && <p className="px-1 py-2 text-xs text-slate-400">Không tìm thấy thuốc nào khớp trong danh mục.</p>}
           {results.map((item, index) => {
             const onHand = onHandByDrugId[item.id];
             const active = index === activeIndex;
@@ -156,7 +186,25 @@ export const DrugPicker = forwardRef<DrugPickerHandle, {
               </button>
             );
           })}
-          {results.length > 0 && (
+          {canAddFreeText && (
+            <button
+              id="drug-picker-option-free-text"
+              role="option"
+              aria-selected={activeIndex === results.length}
+              type="button"
+              onClick={handleSelectFreeText}
+              onMouseEnter={() => setActiveIndex(results.length)}
+              className={`flex items-center gap-2 rounded-md border border-dashed px-3 py-2 text-left ${
+                activeIndex === results.length ? 'border-brand-teal bg-brand-teal-tint' : 'border-slate-300 hover:border-blue-400 hover:bg-brand-teal-tint'
+              }`}
+            >
+              <Plus size={14} weight="bold" className="shrink-0 text-blue-600" aria-hidden="true" />
+              <span className="text-sm font-semibold text-slate-800">
+                Thêm &quot;{debounced.trim()}&quot; vào đơn <span className="font-normal text-slate-500">(ngoài danh mục)</span>
+              </span>
+            </button>
+          )}
+          {totalOptions > 0 && (
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-slate-100 px-1 pt-1.5 text-[11px] font-medium text-slate-500">
               <span>
                 <kbd className="rounded border border-slate-300 border-b-2 bg-white px-1.5 py-0.5 font-bold text-slate-700">↑</kbd>{' '}

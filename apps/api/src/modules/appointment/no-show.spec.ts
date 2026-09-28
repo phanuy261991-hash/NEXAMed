@@ -110,6 +110,7 @@ describe('markNoShowForAllTenants — S5-07, APP-05', () => {
       getPharmacySeparateInvoiceEnabled: () => Promise.reject(new Error('không dùng trong test này')),
       getPharmacyStockTrackingEnabled: () => Promise.reject(new Error('không dùng trong test này')),
       getPrescriptionStockBlockEnabled: () => Promise.reject(new Error('không dùng trong test này')),
+      getAllowFreeTextPrescriptionEnabled: () => Promise.reject(new Error('không dùng trong test này')),
     };
   }
 

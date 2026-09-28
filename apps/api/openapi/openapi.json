@@ -4861,6 +4861,9 @@
                         },
                         "prescriptionStockBlockEnabled": {
                           "type": "boolean"
+                        },
+                        "allowFreeTextPrescriptionEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -4886,7 +4889,8 @@
                         "expiryWarningDays",
                         "pharmacySeparateInvoiceEnabled",
                         "pharmacyStockTrackingEnabled",
-                        "prescriptionStockBlockEnabled"
+                        "prescriptionStockBlockEnabled",
+                        "allowFreeTextPrescriptionEnabled"
                       ]
                     },
                     "meta": {
@@ -10334,11 +10338,20 @@
                                     "format": "uuid"
                                   },
                                   "drugId": {
-                                    "type": "string",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
                                     "format": "uuid"
                                   },
                                   "drugName": {
                                     "type": "string"
+                                  },
+                                  "freeTextDrugName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
                                   },
                                   "activeIngredient": {
                                     "type": [
@@ -10369,6 +10382,7 @@
                                   "id",
                                   "drugId",
                                   "drugName",
+                                  "freeTextDrugName",
                                   "activeIngredient",
                                   "dose",
                                   "frequency",
@@ -12717,6 +12731,11 @@
                           "type": "string",
                           "format": "uuid"
                         },
+                        "freeTextDrugName": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
                         "dose": {
                           "type": "string",
                           "minLength": 1
@@ -12738,7 +12757,6 @@
                         }
                       },
                       "required": [
-                        "drugId",
                         "dose",
                         "frequency",
                         "durationDays",
@@ -12786,11 +12804,20 @@
                                 "format": "uuid"
                               },
                               "drugId": {
-                                "type": "string",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
                                 "format": "uuid"
                               },
                               "drugName": {
                                 "type": "string"
+                              },
+                              "freeTextDrugName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               },
                               "activeIngredient": {
                                 "type": [
@@ -12821,6 +12848,7 @@
                               "id",
                               "drugId",
                               "drugName",
+                              "freeTextDrugName",
                               "activeIngredient",
                               "dose",
                               "frequency",
@@ -13158,11 +13186,20 @@
                                 "format": "uuid"
                               },
                               "drugId": {
-                                "type": "string",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
                                 "format": "uuid"
                               },
                               "drugName": {
                                 "type": "string"
+                              },
+                              "freeTextDrugName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               },
                               "activeIngredient": {
                                 "type": [
@@ -13193,6 +13230,7 @@
                               "id",
                               "drugId",
                               "drugName",
+                              "freeTextDrugName",
                               "activeIngredient",
                               "dose",
                               "frequency",
@@ -13513,11 +13551,20 @@
                                 "format": "uuid"
                               },
                               "drugId": {
-                                "type": "string",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
                                 "format": "uuid"
                               },
                               "drugName": {
                                 "type": "string"
+                              },
+                              "freeTextDrugName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               },
                               "activeIngredient": {
                                 "type": [
@@ -13548,6 +13595,7 @@
                               "id",
                               "drugId",
                               "drugName",
+                              "freeTextDrugName",
                               "activeIngredient",
                               "dose",
                               "frequency",
@@ -13789,6 +13837,11 @@
                           "type": "string",
                           "format": "uuid"
                         },
+                        "freeTextDrugName": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
                         "dose": {
                           "type": "string",
                           "minLength": 1
@@ -13810,7 +13863,6 @@
                         }
                       },
                       "required": [
-                        "drugId",
                         "dose",
                         "frequency",
                         "durationDays",
@@ -13867,11 +13919,20 @@
                                 "format": "uuid"
                               },
                               "drugId": {
-                                "type": "string",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
                                 "format": "uuid"
                               },
                               "drugName": {
                                 "type": "string"
+                              },
+                              "freeTextDrugName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               },
                               "activeIngredient": {
                                 "type": [
@@ -13902,6 +13963,7 @@
                               "id",
                               "drugId",
                               "drugName",
+                              "freeTextDrugName",
                               "activeIngredient",
                               "dose",
                               "frequency",
@@ -31119,6 +31181,9 @@
                         },
                         "prescriptionStockBlockEnabled": {
                           "type": "boolean"
+                        },
+                        "allowFreeTextPrescriptionEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -31144,7 +31209,8 @@
                         "expiryWarningDays",
                         "pharmacySeparateInvoiceEnabled",
                         "pharmacyStockTrackingEnabled",
-                        "prescriptionStockBlockEnabled"
+                        "prescriptionStockBlockEnabled",
+                        "allowFreeTextPrescriptionEnabled"
                       ]
                     },
                     "meta": {
@@ -31469,6 +31535,9 @@
                   },
                   "prescriptionStockBlockEnabled": {
                     "type": "boolean"
+                  },
+                  "allowFreeTextPrescriptionEnabled": {
+                    "type": "boolean"
                   }
                 }
               }
@@ -31718,6 +31787,9 @@
                         },
                         "prescriptionStockBlockEnabled": {
                           "type": "boolean"
+                        },
+                        "allowFreeTextPrescriptionEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -31743,7 +31815,8 @@
                         "expiryWarningDays",
                         "pharmacySeparateInvoiceEnabled",
                         "pharmacyStockTrackingEnabled",
-                        "prescriptionStockBlockEnabled"
+                        "prescriptionStockBlockEnabled",
+                        "allowFreeTextPrescriptionEnabled"
                       ]
                     },
                     "meta": {
@@ -32449,6 +32522,83 @@
           "clinic"
         ],
         "summary": "\"Có kho thuốc\" (Kho Thuốc GĐ5) — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /clinic-settings/solo-clinic-workflow-enabled)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "enabled"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clinic-settings/allow-free-text-prescription-enabled": {
+      "get": {
+        "tags": [
+          "clinic"
+        ],
+        "summary": "\"Kê thuốc tự do, không qua danh mục\" (mở rộng Kho Thuốc GĐ5) — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /clinic-settings/pharmacy-stock-tracking-enabled)",
         "security": [
           {
             "bearerAuth": []
@@ -58423,6 +58573,44 @@
                               "warehouseStockOnHand"
                             ]
                           }
+                        },
+                        "freeTextLines": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "prescriptionItemId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "drugName": {
+                                "type": "string"
+                              },
+                              "prescribedQuantity": {
+                                "type": "integer"
+                              },
+                              "dose": {
+                                "type": "string"
+                              },
+                              "frequency": {
+                                "type": "string"
+                              },
+                              "instruction": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "prescriptionItemId",
+                              "drugName",
+                              "prescribedQuantity",
+                              "dose",
+                              "frequency",
+                              "instruction"
+                            ]
+                          }
                         }
                       },
                       "required": [
@@ -58434,7 +58622,8 @@
                         "prescriptionNo",
                         "signedByName",
                         "diagnosisLabel",
-                        "lines"
+                        "lines",
+                        "freeTextLines"
                       ]
                     },
                     "meta": {

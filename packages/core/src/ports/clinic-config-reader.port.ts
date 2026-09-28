@@ -148,6 +148,14 @@ export interface ClinicConfigReaderPort {
    * `getPharmacyStockTrackingEnabled=true`. Module `encounter` đọc qua port này, cùng lý do trên.
    */
   getPrescriptionStockBlockEnabled(tenantId: string): Promise<boolean>;
+
+  /**
+   * "Kê thuốc tự do, không qua danh mục" (mở rộng Kho Thuốc GĐ5, đảo ngược 1 điểm của #190) — tắt
+   * (mặc định) giữ nguyên ràng buộc `drugId` bắt buộc; bật thì bác sĩ thêm được dòng thuốc chỉ có
+   * tên tự do (không tính tiền/tồn kho, không phát được qua "Phát thuốc") — `tenant_setting` key
+   * `allow_free_text_prescription_enabled`. Module `encounter` đọc qua port này, cùng lý do trên.
+   */
+  getAllowFreeTextPrescriptionEnabled(tenantId: string): Promise<boolean>;
 }
 
 export const CLINIC_CONFIG_READER_PORT = Symbol('CLINIC_CONFIG_READER_PORT');

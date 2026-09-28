@@ -1962,6 +1962,7 @@ export interface paths {
                                 pharmacySeparateInvoiceEnabled: boolean;
                                 pharmacyStockTrackingEnabled: boolean;
                                 prescriptionStockBlockEnabled: boolean;
+                                allowFreeTextPrescriptionEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -4185,8 +4186,9 @@ export interface paths {
                                         /** Format: uuid */
                                         id: string;
                                         /** Format: uuid */
-                                        drugId: string;
+                                        drugId: string | null;
                                         drugName: string;
+                                        freeTextDrugName: string | null;
                                         activeIngredient: string | null;
                                         dose: string;
                                         frequency: string;
@@ -5106,7 +5108,8 @@ export interface paths {
                     "application/json": {
                         items: {
                             /** Format: uuid */
-                            drugId: string;
+                            drugId?: string;
+                            freeTextDrugName?: string;
                             dose: string;
                             frequency: string;
                             durationDays: number;
@@ -5133,8 +5136,9 @@ export interface paths {
                                     /** Format: uuid */
                                     id: string;
                                     /** Format: uuid */
-                                    drugId: string;
+                                    drugId: string | null;
                                     drugName: string;
+                                    freeTextDrugName: string | null;
                                     activeIngredient: string | null;
                                     dose: string;
                                     frequency: string;
@@ -5289,8 +5293,9 @@ export interface paths {
                                     /** Format: uuid */
                                     id: string;
                                     /** Format: uuid */
-                                    drugId: string;
+                                    drugId: string | null;
                                     drugName: string;
+                                    freeTextDrugName: string | null;
                                     activeIngredient: string | null;
                                     dose: string;
                                     frequency: string;
@@ -5438,8 +5443,9 @@ export interface paths {
                                     /** Format: uuid */
                                     id: string;
                                     /** Format: uuid */
-                                    drugId: string;
+                                    drugId: string | null;
                                     drugName: string;
+                                    freeTextDrugName: string | null;
                                     activeIngredient: string | null;
                                     dose: string;
                                     frequency: string;
@@ -5544,7 +5550,8 @@ export interface paths {
                     "application/json": {
                         items: {
                             /** Format: uuid */
-                            drugId: string;
+                            drugId?: string;
+                            freeTextDrugName?: string;
                             dose: string;
                             frequency: string;
                             durationDays: number;
@@ -5573,8 +5580,9 @@ export interface paths {
                                     /** Format: uuid */
                                     id: string;
                                     /** Format: uuid */
-                                    drugId: string;
+                                    drugId: string | null;
                                     drugName: string;
+                                    freeTextDrugName: string | null;
                                     activeIngredient: string | null;
                                     dose: string;
                                     frequency: string;
@@ -12348,6 +12356,7 @@ export interface paths {
                                 pharmacySeparateInvoiceEnabled: boolean;
                                 pharmacyStockTrackingEnabled: boolean;
                                 prescriptionStockBlockEnabled: boolean;
+                                allowFreeTextPrescriptionEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -12453,6 +12462,7 @@ export interface paths {
                         pharmacySeparateInvoiceEnabled?: boolean;
                         pharmacyStockTrackingEnabled?: boolean;
                         prescriptionStockBlockEnabled?: boolean;
+                        allowFreeTextPrescriptionEnabled?: boolean;
                     };
                 };
             };
@@ -12517,6 +12527,7 @@ export interface paths {
                                 pharmacySeparateInvoiceEnabled: boolean;
                                 pharmacyStockTrackingEnabled: boolean;
                                 prescriptionStockBlockEnabled: boolean;
+                                allowFreeTextPrescriptionEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -12979,6 +12990,62 @@ export interface paths {
             cookie?: never;
         };
         /** "Có kho thuốc" (Kho Thuốc GĐ5) — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /clinic-settings/solo-clinic-workflow-enabled) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                enabled: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinic-settings/allow-free-text-prescription-enabled": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** "Kê thuốc tự do, không qua danh mục" (mở rộng Kho Thuốc GĐ5) — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /clinic-settings/pharmacy-stock-tracking-enabled) */
         get: {
             parameters: {
                 query?: never;
@@ -23419,6 +23486,15 @@ export interface paths {
                                         unitCost: number;
                                     }[];
                                     warehouseStockOnHand: number;
+                                }[];
+                                freeTextLines: {
+                                    /** Format: uuid */
+                                    prescriptionItemId: string;
+                                    drugName: string;
+                                    prescribedQuantity: number;
+                                    dose: string;
+                                    frequency: string;
+                                    instruction: string | null;
                                 }[];
                             };
                             meta: Record<string, never>;

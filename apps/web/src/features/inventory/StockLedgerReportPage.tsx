@@ -122,7 +122,7 @@ export function StockLedgerReportPage() {
                         style={{ gridTemplateColumns: '110px 1.6fr 90px 180px 120px 120px 120px 120px', minHeight: 52 }}
                         className="grid items-center border-b border-slate-100 px-4 text-sm"
                       >
-                        <div role="cell" className="text-center font-semibold text-slate-800">{item.drugCode}</div>
+                        <div role="cell" className="min-w-0 truncate text-center font-semibold text-slate-800" title={item.drugCode}>{item.drugCode}</div>
                         <div role="cell" className="min-w-0 truncate text-left font-medium text-slate-900">{item.drugName}</div>
                         <div role="cell" className="text-center font-medium text-slate-600">{item.unitCode ?? '—'}</div>
                         <div role="cell" className="min-w-0 truncate text-left font-medium text-slate-600">{item.warehouseName}</div>

@@ -96,3 +96,17 @@ export class PrescriptionStockInsufficientError extends DomainError {
     this.details = shortages;
   }
 }
+
+/**
+ * "Kê thuốc tự do, không qua danh mục" (mở rộng Kho Thuốc GĐ5) — client gửi dòng
+ * `freeTextDrugName` trong khi tenant CHƯA bật `allowFreeTextPrescriptionEnabled`. Chặn bypass qua
+ * gọi API thẳng (không qua `DrugPicker.tsx`, nơi nút đã tự ẩn khi tắt). 422 mặc định — vi phạm quy
+ * tắc nghiệp vụ, không phải xung đột trạng thái đồng thời.
+ */
+export class PrescriptionFreeTextDisabledError extends DomainError {
+  readonly code = 'PRESCRIPTION_FREE_TEXT_DISABLED';
+
+  constructor() {
+    super('Phòng khám chưa bật "Kê thuốc tự do, không qua danh mục" — không thể thêm dòng thuốc ngoài danh mục.');
+  }
+}

@@ -12,6 +12,7 @@ import {
   PDF_RENDERER_PORT,
   PrescriptionAlreadySignedError,
   PrescriptionEmptyError,
+  PrescriptionFreeTextDisabledError,
   PrescriptionRequiresDiagnosisError,
   PrescriptionStockInsufficientError,
   renderPatientMedicalRecordHtml,
@@ -387,6 +388,28 @@ export class EncounterService {
    * kiểm `personal` phòng khi vai trò tuỳ biến gán scope hẹp hơn, cùng triết lý mọi method khác.
    */
   async getConsultationDetail(tenantId: string, actorId: string, dataScope: DataScope, id: string): Promise<ConsultationDetailResponse> {
+    // Kho Thuốc GĐ5 — đọc cấu hình + tồn kho TRƯỚC transaction chính, cùng nguyên tắc `signPrescription()`
+    // (`ClinicConfigReaderPort`/`StockAvailabilityPort` tự mở transaction riêng, không lồng được).
+    // Bug thật phát hiện lúc verify Playwright: thiếu đúng đoạn này khiến cảnh báo `stock_insufficient`
+    // trả về ĐÚNG ở response `PUT .../prescription-items` nhưng biến mất ngay sau khi trang tự
+    // `invalidateQueries` refetch lại `GET .../consultation` (route NÀY, trước đó gọi
+    // `toPrescriptionResponse()` không truyền `onHandByDrugId` nên luôn mặc định `null` = không tính
+    // cảnh báo tồn kho) — cảnh báo chỉ kịp hiện trong khoảnh khắc trước khi bị ghi đè bởi dữ liệu vừa
+    // refetch, coi như KHÔNG BAO GIỜ hiển thị được cho bác sĩ trong thực tế. Chỉ tính cho đơn CHƯA KÝ
+    // (đơn đã ký xem như "đã xong", giữ nguyên `null` — đúng khuôn PrescriptionPrintView/lịch sử).
+    const pharmacyStockTrackingEnabled = await this.clinicConfigReader.getPharmacyStockTrackingEnabled(tenantId);
+    let onHandByDrugId: Record<string, number> | null = null;
+    if (pharmacyStockTrackingEnabled) {
+      const draftPreview = await this.unitOfWork.runInTenantScope(tenantId, (previewTx) =>
+        this.prescriptionRepository.findActiveForEncounter(previewTx, tenantId, id),
+      );
+      if (draftPreview && draftPreview.signedAt === null && draftPreview.items.length > 0) {
+        // Dòng "kê thuốc tự do" (`drugId=null`) không có khái niệm tồn kho — lọc bỏ trước khi tra.
+        const realDrugIds = draftPreview.items.map((i) => i.drugId).filter((v): v is string => v !== null);
+        onHandByDrugId = await this.stockAvailability.getOnHandQuantities(tenantId, [...new Set(realDrugIds)]);
+      }
+    }
+
     const { history: historyWithDoctorId, ...rest } = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const encounter = await this.encounterRepository.findByIdWithConsultationContext(tx, tenantId, id);
       if (!encounter || (dataScope === 'personal' && encounter.doctorId !== actorId)) {
@@ -446,7 +469,7 @@ export class EncounterService {
         history,
         diagnoses,
         clinicalNote: this.toClinicalNoteResponse(noteRows),
-        prescription: prescriptionRow ? this.toPrescriptionResponse(prescriptionRow, allergenRows.map((a) => a.allergenName)) : null,
+        prescription: prescriptionRow ? this.toPrescriptionResponse(prescriptionRow, allergenRows.map((a) => a.allergenName), onHandByDrugId) : null,
       };
     });
 
@@ -903,10 +926,15 @@ export class EncounterService {
     // `DoctorDirectoryPort` ở `startConsultation()`). `dto.items` đã có sẵn `drugId` ngay trong
     // request, không cần đọc DB trước như `signPrescription()`.
     const pharmacyStockTrackingEnabled = await this.clinicConfigReader.getPharmacyStockTrackingEnabled(tenantId);
+    // "Kê thuốc tự do" — đọc TRƯỚC transaction chính, cùng lý do `pharmacyStockTrackingEnabled`.
+    const allowFreeTextPrescriptionEnabled = await this.clinicConfigReader.getAllowFreeTextPrescriptionEnabled(tenantId);
+    this.assertFreeTextAllowed(dto.items, allowFreeTextPrescriptionEnabled);
     // `null` = KHÔNG tính cảnh báo tồn kho (khác `{}` — nghĩa là "đã tra, xác nhận tồn = 0" cho MỌI
-    // thuốc, sẽ báo vượt tồn SAI cho mọi dòng khi tenant tắt tính năng này).
+    // thuốc, sẽ báo vượt tồn SAI cho mọi dòng khi tenant tắt tính năng này). Lọc bỏ dòng tự do
+    // (`drugId=undefined`) — không có khái niệm tồn kho.
+    const realDrugIds = [...new Set(dto.items.map((i) => i.drugId).filter((v): v is string => v !== undefined))];
     const onHandByDrugId: Record<string, number> | null = pharmacyStockTrackingEnabled
-      ? await this.stockAvailability.getOnHandQuantities(tenantId, [...new Set(dto.items.map((i) => i.drugId))])
+      ? await this.stockAvailability.getOnHandQuantities(tenantId, realDrugIds)
       : null;
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
@@ -988,7 +1016,9 @@ export class EncounterService {
         this.prescriptionRepository.findActiveForEncounter(previewTx, tenantId, id),
       );
       if (draftPreview) {
-        onHandByDrugId = await this.stockAvailability.getOnHandQuantities(tenantId, [...new Set(draftPreview.items.map((i) => i.drugId))]);
+        // Dòng "kê thuốc tự do" (`drugId=null`) không có khái niệm tồn kho — lọc bỏ trước khi tra.
+        const realDrugIds = draftPreview.items.map((i) => i.drugId).filter((v): v is string => v !== null);
+        onHandByDrugId = await this.stockAvailability.getOnHandQuantities(tenantId, [...new Set(realDrugIds)]);
       }
     }
     const prescriptionStockBlockEnabled = pharmacyStockTrackingEnabled && (await this.clinicConfigReader.getPrescriptionStockBlockEnabled(tenantId));
@@ -1013,7 +1043,9 @@ export class EncounterService {
 
       if (prescriptionStockBlockEnabled && onHandByDrugId !== null) {
         const shortages = findInsufficientStock(
-          active.items.map((i) => ({ drugId: i.drugId, drugName: i.drugName, quantity: i.quantity })),
+          active.items
+            .filter((i): i is PrescriptionWithItems['items'][number] & { drugId: string } => i.drugId !== null)
+            .map((i) => ({ drugId: i.drugId, drugName: i.drugName, quantity: i.quantity })),
           onHandByDrugId,
         );
         if (shortages.length > 0) {
@@ -1104,8 +1136,12 @@ export class EncounterService {
     // Kho Thuốc GĐ5 — cùng lý do đọc TRƯỚC transaction chính ở `savePrescriptionItems()`. `null` =
     // KHÔNG tính cảnh báo tồn kho (khác `{}` — xem comment ở `savePrescriptionItems`).
     const pharmacyStockTrackingEnabled = await this.clinicConfigReader.getPharmacyStockTrackingEnabled(tenantId);
+    // "Kê thuốc tự do" — cùng lý do đọc TRƯỚC transaction chính ở `savePrescriptionItems()`.
+    const allowFreeTextPrescriptionEnabled = await this.clinicConfigReader.getAllowFreeTextPrescriptionEnabled(tenantId);
+    this.assertFreeTextAllowed(dto.items, allowFreeTextPrescriptionEnabled);
+    const realDrugIds = [...new Set(dto.items.map((i) => i.drugId).filter((v): v is string => v !== undefined))];
     const onHandByDrugId: Record<string, number> | null = pharmacyStockTrackingEnabled
-      ? await this.stockAvailability.getOnHandQuantities(tenantId, [...new Set(dto.items.map((i) => i.drugId))])
+      ? await this.stockAvailability.getOnHandQuantities(tenantId, realDrugIds)
       : null;
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
@@ -1164,13 +1200,26 @@ export class EncounterService {
 
   private toCreateItemData(item: SavePrescriptionItemsRequest['items'][number]) {
     return {
-      drugId: item.drugId,
+      drugId: item.drugId ?? null,
+      freeTextDrugName: item.freeTextDrugName ?? null,
       dose: item.dose,
       frequency: item.frequency,
       durationDays: item.durationDays,
       quantity: item.quantity,
       instruction: item.instruction ?? null,
     };
+  }
+
+  /**
+   * "Kê thuốc tự do, không qua danh mục" (mở rộng Kho Thuốc GĐ5) — chặn bypass qua gọi API thẳng
+   * khi tenant CHƯA bật `allowFreeTextPrescriptionEnabled` (`DrugPicker.tsx` đã tự ẩn nút, đây là
+   * lớp phòng thủ thật ở server, cùng nguyên tắc mọi gate khác trong dự án không tin tưởng riêng
+   * frontend).
+   */
+  private assertFreeTextAllowed(items: SavePrescriptionItemsRequest['items'], allowed: boolean): void {
+    if (!allowed && items.some((i) => i.freeTextDrugName !== undefined)) {
+      throw new PrescriptionFreeTextDisabledError();
+    }
   }
 
   /**
@@ -1188,7 +1237,10 @@ export class EncounterService {
       (d): PrescriptionWarning => ({ kind: 'duplicate_active_ingredient', label: d.activeIngredient, drugNames: d.drugNames }),
     );
     const allergies = findAllergyMatches(lines, allergenNames).map((a): PrescriptionWarning => ({ kind: 'allergy', label: a.allergenName, drugNames: a.drugNames }));
-    const stockLines = items.map((i) => ({ drugId: i.drugId, drugName: i.drugName, quantity: i.quantity }));
+    // Dòng "kê thuốc tự do" không có khái niệm tồn kho — loại khỏi tính `stock_insufficient`.
+    const stockLines = items
+      .filter((i): i is PrescriptionWithItems['items'][number] & { drugId: string } => i.drugId !== null)
+      .map((i) => ({ drugId: i.drugId, drugName: i.drugName, quantity: i.quantity }));
     const shortages = onHandByDrugId === null
       ? []
       : findInsufficientStock(stockLines, onHandByDrugId).map(
@@ -1218,6 +1270,7 @@ export class EncounterService {
       id: item.id,
       drugId: item.drugId,
       drugName: item.drugName,
+      freeTextDrugName: item.freeTextDrugName,
       activeIngredient: item.activeIngredient,
       dose: item.dose,
       frequency: item.frequency,

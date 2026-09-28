@@ -312,6 +312,16 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
     expect(saveRes.body.data.warnings[0].label).toBe('Acetylcystein 200mg');
     expect(saveRes.body.data.warnings[0].drugNames).toEqual(['cần 15, còn 6']);
 
+    // Bug thật phát hiện lúc verify Playwright: response của `PUT .../prescription-items` có đúng
+    // warning, nhưng `GET .../consultation` (route trang màn khám gọi lại NGAY SAU MỖI lần lưu, do
+    // `useSavePrescriptionItemsMutation` tự `invalidateQueries`) trước đây KHÔNG tính lại cảnh báo
+    // tồn kho — khiến cảnh báo biến mất khỏi màn hình ngay khi trang refetch, không bao giờ hiển thị
+    // được cho bác sĩ trong thực tế dù dữ liệu vẫn đúng ở tầng lưu.
+    const consultationRes = await request(app.getHttpServer()).get(`/api/v1/encounters/${encounterId}/consultation`).set(authed(doctorAToken));
+    expect(consultationRes.body.data.prescription.warnings).toHaveLength(1);
+    expect(consultationRes.body.data.prescription.warnings[0].kind).toBe('stock_insufficient');
+    expect(consultationRes.body.data.prescription.warnings[0].drugNames).toEqual(['cần 15, còn 6']);
+
     // Mặc định `prescriptionStockBlockEnabled=false` — vẫn ký được dù còn cảnh báo.
     const signRes = await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/prescription/sign`).set(authed(doctorAToken)).send({ version: 1 });
     expect(signRes.status).toBe(200);
@@ -451,4 +461,74 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
     ).rejects.toThrow();
   });
 
+  describe('"Kê thuốc tự do, không qua danh mục" (mở rộng Kho Thuốc GĐ5, docs/DECISIONS.md #192)', () => {
+    it('tắt công tắc (mặc định) → gửi freeTextDrugName → 422 PRESCRIPTION_FREE_TEXT_DISABLED', async () => {
+      const { encounterId } = await prepareEncounterInConsultation(13);
+      const saveRes = await request(app.getHttpServer())
+        .put(`/api/v1/encounters/${encounterId}/prescription-items`)
+        .set(authed(doctorAToken))
+        .send({ items: [{ freeTextDrugName: 'Thuốc lạ ngoài danh mục', dose: '1 viên', frequency: '1 lần/ngày', durationDays: 3, quantity: 3 }] });
+      expect(saveRes.status).toBe(422);
+      expect(saveRes.body.error.code).toBe('PRESCRIPTION_FREE_TEXT_DISABLED');
+    });
+
+    it('bật công tắc → lưu/ký/xem lại đúng dòng tự do, không tính vào stock_insufficient, GET .../consultation thấy đúng drugId=null', async () => {
+      const enable = await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(clinicAdminToken)).send({ allowFreeTextPrescriptionEnabled: true });
+      expect(enable.status).toBe(200);
+
+      const { encounterId } = await prepareEncounterInConsultation(14);
+      const drugId = await createDrug(fixture.tenantA.id, 'Thuốc thật E', 'Hoạt chất E');
+      await seedSufficientStock(fixture.tenantA.id, drugId);
+
+      const saveRes = await request(app.getHttpServer())
+        .put(`/api/v1/encounters/${encounterId}/prescription-items`)
+        .set(authed(doctorAToken))
+        .send({
+          items: [
+            { drugId, dose: '1 viên', frequency: '2 lần/ngày', durationDays: 5, quantity: 2 },
+            { freeTextDrugName: 'Thuốc lạ ngoài danh mục', dose: '1 gói', frequency: '3 lần/ngày', durationDays: 5, quantity: 15 },
+          ],
+        });
+      expect(saveRes.status).toBe(200);
+      // Không có cảnh báo stock_insufficient nào cho dòng tự do (không có khái niệm tồn kho).
+      expect(saveRes.body.data.warnings).toHaveLength(0);
+      const freeTextItem = saveRes.body.data.items.find((i: { drugId: string | null }) => i.drugId === null);
+      expect(freeTextItem.drugName).toBe('Thuốc lạ ngoài danh mục');
+      expect(freeTextItem.freeTextDrugName).toBe('Thuốc lạ ngoài danh mục');
+
+      const signRes = await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/prescription/sign`).set(authed(doctorAToken)).send({ version: 1 });
+      expect(signRes.status).toBe(200);
+
+      const consultationRes = await request(app.getHttpServer()).get(`/api/v1/encounters/${encounterId}/consultation`).set(authed(doctorAToken));
+      const items = consultationRes.body.data.prescription.items as { drugId: string | null; drugName: string }[];
+      expect(items.some((i) => i.drugId === null && i.drugName === 'Thuốc lạ ngoài danh mục')).toBe(true);
+      expect(items.some((i) => i.drugId === drugId)).toBe(true);
+
+      await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(clinicAdminToken)).send({ allowFreeTextPrescriptionEnabled: false });
+    });
+
+    it('bật công tắc → dòng tự do vẫn tham gia PRE-03 (cảnh báo dị ứng) theo tên gõ tự do', async () => {
+      const enable = await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(clinicAdminToken)).send({ allowFreeTextPrescriptionEnabled: true });
+      expect(enable.status).toBe(200);
+
+      const { encounterId, patientId } = await prepareEncounterInConsultation(15);
+      const allergenId = await createAllergen(fixture.tenantA.id, 'Penicillin');
+      const patientRes = await request(app.getHttpServer()).get(`/api/v1/patients/${patientId}`).set(authed(doctorAToken));
+      await request(app.getHttpServer())
+        .patch(`/api/v1/patients/${patientId}`)
+        .set(authed(doctorAToken))
+        .send({ allergenIds: [allergenId], version: patientRes.body.data.version });
+
+      const saveRes = await request(app.getHttpServer())
+        .put(`/api/v1/encounters/${encounterId}/prescription-items`)
+        .set(authed(doctorAToken))
+        .send({ items: [{ freeTextDrugName: 'Penicillin V ngoài danh mục', dose: '1 viên', frequency: '2 lần/ngày', durationDays: 5, quantity: 10 }] });
+      expect(saveRes.status).toBe(200);
+      expect(saveRes.body.data.warnings).toHaveLength(1);
+      expect(saveRes.body.data.warnings[0].kind).toBe('allergy');
+      expect(saveRes.body.data.warnings[0].label).toBe('Penicillin');
+
+      await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(clinicAdminToken)).send({ allowFreeTextPrescriptionEnabled: false });
+    });
+  });
 });

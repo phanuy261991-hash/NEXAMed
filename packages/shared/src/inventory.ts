@@ -673,6 +673,22 @@ export type PrescriptionDispenseLine = z.infer<typeof prescriptionDispenseLineSc
 export const getPrescriptionDispenseStatusQuerySchema = z.object({ warehouseId: z.string().uuid().optional() });
 export type GetPrescriptionDispenseStatusQuery = z.infer<typeof getPrescriptionDispenseStatusQuerySchema>;
 
+/**
+ * "Kê thuốc tự do, không qua danh mục" (mở rộng Kho Thuốc GĐ5) — dòng KHÔNG dispensable (không
+ * `drugId`, không tồn kho/lô/giá) — hiện chỉ đọc kèm ghi chú "Ngoài danh mục — không xử lý ở đây"
+ * ở `DispensePrescriptionDialog.tsx`, tách hẳn khỏi `prescriptionDispenseLineSchema` (dòng đó LUÔN
+ * có `drugId` thật, dùng để chọn lô/trừ kho).
+ */
+export const freeTextPrescriptionLineSchema = z.object({
+  prescriptionItemId: z.string().uuid(),
+  drugName: z.string(),
+  prescribedQuantity: z.number().int(),
+  dose: z.string(),
+  frequency: z.string(),
+  instruction: z.string().nullable(),
+});
+export type FreeTextPrescriptionLine = z.infer<typeof freeTextPrescriptionLineSchema>;
+
 export const getPrescriptionDispenseStatusResponseSchema = z.object({
   prescriptionId: z.string().uuid(),
   encounterId: z.string().uuid(),
@@ -692,6 +708,9 @@ export const getPrescriptionDispenseStatusResponseSchema = z.object({
    * khám chưa có chẩn đoán nào (không xảy ra thực tế — bắt buộc ≥1 chẩn đoán chính trước khi ký đơn). */
   diagnosisLabel: z.string().nullable(),
   lines: z.array(prescriptionDispenseLineSchema),
+  /** "Kê thuốc tự do" — dòng đọc-only, KHÔNG được tính vào `lines` dispensable. Rỗng nếu tenant
+   * chưa từng bật công tắc này hoặc đơn không có dòng tự do nào. */
+  freeTextLines: z.array(freeTextPrescriptionLineSchema),
 });
 export type GetPrescriptionDispenseStatusResponse = z.infer<typeof getPrescriptionDispenseStatusResponseSchema>;
 

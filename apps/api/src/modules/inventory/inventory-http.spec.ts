@@ -359,6 +359,26 @@ describe('HTTP e2e — /api/v1/inventory (Phiếu nhập kho GĐ2)', () => {
     await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(clinicAdminToken)).send({ expiryWarningDays: 30 });
   });
 
+  it('GET /inventory/balances/on-hand-summary — thuốc CHƯA TỪNG nhập kho trả về 0, không thiếu key (Kho Thuốc GĐ5, docs/DECISIONS.md #190)', async () => {
+    // Bug thật phát hiện lúc verify Playwright: `sumOnHandByDrugIds()` (GROUP BY trên `stock_balance`)
+    // trước đây chỉ trả về đúng những `drugId` ĐÃ TỪNG có dòng `stock_balance` — thuốc mới tạo, chưa
+    // qua phiếu nhập nào, hoàn toàn vắng mặt khỏi kết quả (khác `0`), khiến badge tồn kho ở
+    // `DrugPicker.tsx`/`PrescriptionPanel.tsx` (kiểm `onHand !== undefined`) ẩn hẳn thay vì hiện
+    // đúng "Hết hàng".
+    const neverStockedDrugId = await createDrug(clinicAdminToken, { name: 'Thuốc chưa từng nhập kho' });
+    const stockedDrugId = await createDrug(clinicAdminToken, { name: 'Thuốc đã nhập kho' });
+    const created = await createReceipt(clinicAdminToken, { lines: [{ drugId: stockedDrugId, unitCode: 'VIEN', quantity: 7, unitCost: 100, batchNo: `OHS-${randomUUID().slice(0, 6)}`, expiryDate: '2027-01-01' }] });
+    await request(app.getHttpServer()).post(`/api/v1/inventory/receipts/${created.body.data.id}/approve`).set(authed(clinicAdminToken)).send({ version: created.body.data.version });
+
+    const res = await request(app.getHttpServer())
+      .get('/api/v1/inventory/balances/on-hand-summary')
+      .set(authed(clinicAdminToken))
+      .query({ drugIds: `${neverStockedDrugId},${stockedDrugId}` });
+    expect(res.status).toBe(200);
+    expect(res.body.data.onHandByDrugId[neverStockedDrugId]).toBe(0);
+    expect(res.body.data.onHandByDrugId[stockedDrugId]).toBe(7);
+  });
+
   it('quyền chỉ có stock_receipt.create không Duyệt/Từ chối/Huỷ được (403)', async () => {
     // Vai trò tuỳ biến: sao chép clinic_admin nhưng gỡ stock_receipt.approve — tạo qua API roles.
     const rolesRes = await request(app.getHttpServer()).get('/api/v1/roles').set(authed(clinicAdminToken));

@@ -3,8 +3,11 @@ import type { Prescription, Prisma } from '@prisma/client';
 
 export interface PrescriptionItemWithDrug {
   id: string;
-  drugId: string;
+  /** `null` = dòng "kê thuốc tự do, không qua danh mục" — xem `freeTextDrugName`. */
+  drugId: string | null;
   drugName: string;
+  /** Có giá trị CHỈ khi `drugId=null`. */
+  freeTextDrugName: string | null;
   activeIngredient: string | null;
   dose: string;
   frequency: string;
@@ -19,13 +22,14 @@ export interface PrescriptionWithItems extends Prescription {
 
 interface RawItemWithDrug {
   id: string;
-  drugId: string;
+  drugId: string | null;
+  freeTextDrugName: string | null;
   dose: string;
   frequency: string;
   durationDays: number;
   quantity: number;
   instruction: string | null;
-  drug: { name: string; activeIngredient: string | null };
+  drug: { name: string; activeIngredient: string | null } | null;
 }
 
 interface RawPrescriptionWithItems extends Prescription {
@@ -36,8 +40,9 @@ function mapItems(rows: RawItemWithDrug[]): PrescriptionItemWithDrug[] {
   return rows.map((row) => ({
     id: row.id,
     drugId: row.drugId,
-    drugName: row.drug.name,
-    activeIngredient: row.drug.activeIngredient,
+    freeTextDrugName: row.freeTextDrugName,
+    drugName: row.drug?.name ?? row.freeTextDrugName!,
+    activeIngredient: row.drug?.activeIngredient ?? null,
     dose: row.dose,
     frequency: row.frequency,
     durationDays: row.durationDays,
@@ -47,7 +52,8 @@ function mapItems(rows: RawItemWithDrug[]): PrescriptionItemWithDrug[] {
 }
 
 export interface CreatePrescriptionItemData {
-  drugId: string;
+  drugId: string | null;
+  freeTextDrugName: string | null;
   dose: string;
   frequency: string;
   durationDays: number;

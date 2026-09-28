@@ -2477,7 +2477,11 @@ model PrescriptionItem {
   id             String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
   tenantId       String  @map("tenant_id") @db.Uuid
   prescriptionId String  @map("prescription_id") @db.Uuid
-  drugId         String  @map("drug_id") @db.Uuid
+  // Nullable từ "Kê thuốc tự do" (mở rộng Kho Thuốc GĐ5, đảo ngược 1 điểm của #190) — đúng 1 trong 2
+  // với `freeTextDrugName` (CHECK ở migration, cùng khuôn `invoice_line_source_exactly_one_check`).
+  // Dòng tự do KHÔNG tính tiền/tồn kho/không phát được qua "Phát thuốc" — chỉ ghi bệnh án + in đơn.
+  drugId          String? @map("drug_id") @db.Uuid
+  freeTextDrugName String? @map("free_text_drug_name")
   dose           String
   frequency      String
   durationDays   Int     @map("duration_days") @db.SmallInt
@@ -2495,8 +2499,9 @@ model PrescriptionItem {
 
   tenant          Tenant           @relation(fields: [tenantId], references: [id])
   // Composite FK (tenant_id, prescription_id/drug_id) -> ...(tenant_id, id): chống trỏ chéo tenant.
+  // `drug_id` NULL (dòng tự do) tự bỏ qua ràng buộc FK composite (Postgres MATCH SIMPLE mặc định).
   prescription    Prescription     @relation(fields: [tenantId, prescriptionId], references: [tenantId, id])
-  drug            Drug             @relation(fields: [tenantId, drugId], references: [tenantId, id])
+  drug            Drug?            @relation(fields: [tenantId, drugId], references: [tenantId, id])
   // Kho Thuốc GĐ3 (#163) — "đã phát" tính từ SUM(stock_issue_line.quantity), không lưu cột luỹ kế ở đây.
   stockIssueLines StockIssueLine[]
 

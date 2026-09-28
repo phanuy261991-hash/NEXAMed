@@ -77,8 +77,12 @@ export class StockBalanceRepository {
 
   /** Kho Thuốc GĐ5 — tổng `quantityOnHand` GỘP MỌI KHO (khác `listAggregated` gộp theo từng kho
    * riêng) cho một danh sách thuốc, phục vụ `StockAvailabilityAdapter` (cảnh báo/chặn kê vượt tồn
-   * lúc ký đơn — "tổng tồn toàn phòng khám", đã chốt qua AskUserQuestion). Thuốc không có dòng nào
-   * không xuất hiện trong kết quả — caller tự coi thiếu key là `0`. */
+   * lúc ký đơn — "tổng tồn toàn phòng khám", đã chốt qua AskUserQuestion). Luôn trả đủ MỌI id trong
+   * `drugIds` (điền `0` cho thuốc chưa từng có dòng `stock_balance` nào — nhập kho lẫn xuất kho) —
+   * bug thật phát hiện lúc verify Playwright: thiếu điền `0` khiến `GET .../on-hand-summary` (tiêu
+   * thụ trực tiếp bởi `DrugPicker.tsx`/`PrescriptionPanel.tsx`, không đi qua `findInsufficientStock()`
+   * có `?? 0` phòng vệ sẵn) coi thuốc chưa từng nhập kho là "chưa tra được tồn" thay vì "Hết hàng",
+   * ẩn hẳn badge tồn kho thay vì hiện đúng cảnh báo. */
   async sumOnHandByDrugIds(tx: Prisma.TransactionClient, tenantId: string, drugIds: string[]): Promise<Record<string, number>> {
     if (drugIds.length === 0) return {};
     const rows = await tx.stockBalance.groupBy({
@@ -86,6 +90,10 @@ export class StockBalanceRepository {
       where: { tenantId, drugId: { in: drugIds }, deletedAt: null },
       _sum: { quantityOnHand: true },
     });
-    return Object.fromEntries(rows.map((r) => [r.drugId, r._sum.quantityOnHand ?? 0]));
+    const onHandByDrugId = Object.fromEntries(rows.map((r) => [r.drugId, r._sum.quantityOnHand ?? 0]));
+    for (const drugId of drugIds) {
+      if (!(drugId in onHandByDrugId)) onHandByDrugId[drugId] = 0;
+    }
+    return onHandByDrugId;
   }
 }

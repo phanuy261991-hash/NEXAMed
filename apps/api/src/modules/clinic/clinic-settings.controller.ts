@@ -108,6 +108,18 @@ export class ClinicSettingsController {
     return { enabled };
   }
 
+  /**
+   * "Kê thuốc tự do, không qua danh mục" (mở rộng Kho Thuốc GĐ5) — tự-phục vụ, KHÔNG gắn
+   * `@RequirePermission` (đúng khuôn `getPharmacyStockTrackingEnabled` ở trên): bác sĩ cần biết
+   * công tắc này để `DrugPicker.tsx` hiện/ẩn đúng "+ Thêm ... ngoài danh mục".
+   */
+  @Get('allow-free-text-prescription-enabled')
+  async getAllowFreeTextPrescriptionEnabled(@Req() req: Request) {
+    const { tenantId } = req.user!;
+    const enabled = await this.clinicSettingsService.getAllowFreeTextPrescriptionEnabled(tenantId);
+    return { enabled };
+  }
+
   @Patch()
   @RequirePermission('clinic_config', 'update')
   async update(@Body() body: unknown, @Req() req: Request) {

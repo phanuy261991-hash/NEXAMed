@@ -1124,4 +1124,45 @@ describe('HTTP e2e — /api/v1/inventory (Phiếu xuất kho GĐ3)', () => {
       expect(balanceAfter).toBe(200000); // Phần D — RETURN bị REVERSAL (+40000), chỉ còn lại PURCHASE gốc.
     });
   });
+
+  describe('"Kê thuốc tự do, không qua danh mục" ở "Phát thuốc" (mở rộng Kho Thuốc GĐ5, docs/DECISIONS.md #192)', () => {
+    it('GET dispense-status tách dòng tự do ra `freeTextLines`, KHÔNG lẫn vào `lines` dispensable', async () => {
+      const enable = await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(clinicAdminToken)).send({ allowFreeTextPrescriptionEnabled: true });
+      expect(enable.status).toBe(200);
+
+      const { encounterId } = await prepareEncounterInConsultation(16);
+      const drugId = await createDrug(clinicAdminToken, { name: 'Thuốc thật GĐ5 tự do', defaultSellPrice: 2000 });
+      await receiveStock(clinicAdminToken, drugId, 20, 1000);
+
+      const saveRes = await request(app.getHttpServer())
+        .put(`/api/v1/encounters/${encounterId}/prescription-items`)
+        .set(authed(doctorToken))
+        .send({
+          items: [
+            { drugId, dose: '1 viên', frequency: '2 lần/ngày', durationDays: 5, quantity: 5 },
+            { freeTextDrugName: 'Thuốc lạ GĐ5 ngoài danh mục', dose: '1 gói', frequency: '1 lần/ngày', durationDays: 5, quantity: 5 },
+          ],
+        });
+      expect(saveRes.status).toBe(200);
+      const signRes = await request(app.getHttpServer())
+        .post(`/api/v1/encounters/${encounterId}/prescription/sign`)
+        .set(authed(doctorToken))
+        .send({ version: saveRes.body.data.version });
+      expect(signRes.status).toBe(200);
+      const prescriptionId = signRes.body.data.id as string;
+
+      const statusRes = await request(app.getHttpServer())
+        .get(`/api/v1/inventory/prescriptions/${prescriptionId}/dispense-status`)
+        .set(authed(doctorToken))
+        .query({ warehouseId });
+      expect(statusRes.status).toBe(200);
+      expect(statusRes.body.data.lines).toHaveLength(1);
+      expect(statusRes.body.data.lines[0].drugId).toBe(drugId);
+      expect(statusRes.body.data.freeTextLines).toHaveLength(1);
+      expect(statusRes.body.data.freeTextLines[0].drugName).toBe('Thuốc lạ GĐ5 ngoài danh mục');
+      expect(statusRes.body.data.freeTextLines[0].prescribedQuantity).toBe(5);
+
+      await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(clinicAdminToken)).send({ allowFreeTextPrescriptionEnabled: false });
+    });
+  });
 });

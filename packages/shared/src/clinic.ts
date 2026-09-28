@@ -294,6 +294,13 @@ export const clinicSettingsSchema = z.object({
    * không cho ký đơn khi có dòng thuốc vượt tồn. Không có ý nghĩa khi `pharmacyStockTrackingEnabled=false`.
    */
   prescriptionStockBlockEnabled: z.boolean(),
+  /**
+   * "Kê thuốc tự do, không qua danh mục" (mở rộng Kho Thuốc GĐ5, đảo ngược 1 điểm của #190) — TẮT
+   * (mặc định, an toàn — giữ nguyên ràng buộc `drugId` bắt buộc). BẬT: bác sĩ thêm được dòng thuốc
+   * chỉ có tên tự do (không tính tiền/hoá đơn, không có khái niệm tồn kho, không phát được qua
+   * "Phát thuốc" — chỉ ghi bệnh án + in đơn y hệt các dòng khác).
+   */
+  allowFreeTextPrescriptionEnabled: z.boolean(),
 });
 export type ClinicSettings = z.infer<typeof clinicSettingsSchema>;
 
@@ -327,6 +334,7 @@ export const updateClinicSettingsRequestSchema = z.object({
   pharmacySeparateInvoiceEnabled: z.boolean().optional(),
   pharmacyStockTrackingEnabled: z.boolean().optional(),
   prescriptionStockBlockEnabled: z.boolean().optional(),
+  allowFreeTextPrescriptionEnabled: z.boolean().optional(),
 });
 export type UpdateClinicSettingsRequest = z.infer<typeof updateClinicSettingsRequestSchema>;
 
@@ -376,6 +384,9 @@ export const DEFAULT_PHARMACY_STOCK_TRACKING_ENABLED = true;
  * 03). Bật thì chặn CỨNG, không cho ký khi có dòng thuốc vượt tổng tồn kho toàn phòng khám. Chỉ có
  * ý nghĩa khi `pharmacyStockTrackingEnabled=true`. */
 export const DEFAULT_PRESCRIPTION_STOCK_BLOCK_ENABLED = false;
+/** Tắt theo mặc định (mở rộng Kho Thuốc GĐ5, đảo ngược 1 điểm của #190) — giữ nguyên ràng buộc
+ * `drugId` bắt buộc tới khi tenant chủ động bật "Kê thuốc tự do, không qua danh mục". */
+export const DEFAULT_ALLOW_FREE_TEXT_PRESCRIPTION_ENABLED = false;
 
 /**
  * `GET /clinic-settings/cashier-shift-blind-close-enabled` — chiếu tối thiểu tự-phục vụ, cùng lý
@@ -437,6 +448,14 @@ export type SoloClinicWorkflowStatus = z.infer<typeof soloClinicWorkflowStatusSc
  */
 export const pharmacyStockTrackingStatusSchema = z.object({ enabled: z.boolean() });
 export type PharmacyStockTrackingStatus = z.infer<typeof pharmacyStockTrackingStatusSchema>;
+
+/**
+ * `GET /clinic-settings/allow-free-text-prescription-enabled` — chiếu tối thiểu tự-phục vụ, cùng lý
+ * do `pharmacyStockTrackingStatusSchema` ở trên: bác sĩ cần biết công tắc "Kê thuốc tự do, không
+ * qua danh mục" để `DrugPicker.tsx` hiện/ẩn đúng "+ Thêm ... ngoài danh mục".
+ */
+export const allowFreeTextPrescriptionStatusSchema = z.object({ enabled: z.boolean() });
+export type AllowFreeTextPrescriptionStatus = z.infer<typeof allowFreeTextPrescriptionStatusSchema>;
 
 /**
  * "Nền tảng mạng xã hội" (mở rộng "Thông tin phòng khám" 2026-09-14) — enum cố định ở tầng Zod

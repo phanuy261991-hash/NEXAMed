@@ -43,6 +43,7 @@ export function PaymentConfigPane() {
   const pharmacySeparateInvoiceEnabled = settingsQuery.data?.pharmacySeparateInvoiceEnabled ?? false;
   const pharmacyStockTrackingEnabled = settingsQuery.data?.pharmacyStockTrackingEnabled ?? true;
   const prescriptionStockBlockEnabled = settingsQuery.data?.prescriptionStockBlockEnabled ?? false;
+  const allowFreeTextPrescriptionEnabled = settingsQuery.data?.allowFreeTextPrescriptionEnabled ?? false;
 
   return (
     <div className="space-y-8">
@@ -346,6 +347,30 @@ export function PaymentConfigPane() {
               disabled={updateMutation.isPending || !pharmacyStockTrackingEnabled}
               onChange={(e) => updateMutation.mutate({ prescriptionStockBlockEnabled: e.target.checked })}
               aria-label="Chặn kê vượt tồn"
+            />
+            <span className="absolute inset-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-brand-teal peer-disabled:opacity-60" />
+            <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
+          </label>
+        </div>
+
+        <div className="mt-6 flex items-start justify-between gap-5 border-t border-slate-100 pt-6">
+          <div>
+            <p className="text-[14.5px] font-bold text-slate-900">Cho phép kê thuốc ngoài danh mục</p>
+            <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
+              Tắt (mặc định): bác sĩ chỉ kê được thuốc có sẵn trong danh mục.
+              <br />
+              Bật: bác sĩ thêm được dòng thuốc chỉ có tên tự do (thuốc phòng khám không có/không bán) để lưu đúng
+              hồ sơ bệnh án — không tính tiền, không tính vào tồn kho, không phát được qua &quot;Phát thuốc&quot;.
+            </p>
+          </div>
+          <label className="relative mt-0.5 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center">
+            <input
+              type="checkbox"
+              className="peer sr-only"
+              checked={allowFreeTextPrescriptionEnabled}
+              disabled={updateMutation.isPending}
+              onChange={(e) => updateMutation.mutate({ allowFreeTextPrescriptionEnabled: e.target.checked })}
+              aria-label="Cho phép kê thuốc ngoài danh mục"
             />
             <span className="absolute inset-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-brand-teal peer-disabled:opacity-60" />
             <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />

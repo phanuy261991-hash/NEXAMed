@@ -52,6 +52,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         pharmacySeparateInvoiceEnabled,
         pharmacyStockTrackingEnabled,
         prescriptionStockBlockEnabled,
+        allowFreeTextPrescriptionEnabled,
       ] = await Promise.all([
         this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
         this.clinicSettingsRepository.getSlotDurationMinutes(tx, tenantId),
@@ -76,6 +77,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getPharmacySeparateInvoiceEnabled(tx, tenantId),
         this.clinicSettingsRepository.getPharmacyStockTrackingEnabled(tx, tenantId),
         this.clinicSettingsRepository.getPrescriptionStockBlockEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getAllowFreeTextPrescriptionEnabled(tx, tenantId),
       ]);
       return {
         businessHours,
@@ -101,6 +103,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         pharmacySeparateInvoiceEnabled,
         pharmacyStockTrackingEnabled,
         prescriptionStockBlockEnabled,
+        allowFreeTextPrescriptionEnabled,
       };
     });
   }
@@ -298,6 +301,9 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
       if (dto.prescriptionStockBlockEnabled !== undefined) {
         await this.clinicSettingsRepository.upsertPrescriptionStockBlockEnabled(tx, tenantId, actorId, dto.prescriptionStockBlockEnabled);
       }
+      if (dto.allowFreeTextPrescriptionEnabled !== undefined) {
+        await this.clinicSettingsRepository.upsertAllowFreeTextPrescriptionEnabled(tx, tenantId, actorId, dto.allowFreeTextPrescriptionEnabled);
+      }
 
       const hasChanges =
         dto.businessHours !== undefined ||
@@ -322,7 +328,8 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         dto.expiryWarningDays !== undefined ||
         dto.pharmacySeparateInvoiceEnabled !== undefined ||
         dto.pharmacyStockTrackingEnabled !== undefined ||
-        dto.prescriptionStockBlockEnabled !== undefined;
+        dto.prescriptionStockBlockEnabled !== undefined ||
+        dto.allowFreeTextPrescriptionEnabled !== undefined;
       if (hasChanges) {
         await writeAuditLog(tx, tenantId, {
           actorId,
@@ -359,6 +366,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         pharmacySeparateInvoiceEnabled,
         pharmacyStockTrackingEnabled,
         prescriptionStockBlockEnabled,
+        allowFreeTextPrescriptionEnabled,
       ] = await Promise.all([
         this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
         this.clinicSettingsRepository.getSlotDurationMinutes(tx, tenantId),
@@ -383,6 +391,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getPharmacySeparateInvoiceEnabled(tx, tenantId),
         this.clinicSettingsRepository.getPharmacyStockTrackingEnabled(tx, tenantId),
         this.clinicSettingsRepository.getPrescriptionStockBlockEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getAllowFreeTextPrescriptionEnabled(tx, tenantId),
       ]);
       return {
         businessHours,
@@ -408,6 +417,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         pharmacySeparateInvoiceEnabled,
         pharmacyStockTrackingEnabled,
         prescriptionStockBlockEnabled,
+        allowFreeTextPrescriptionEnabled,
       };
     });
   }
@@ -425,5 +435,10 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
   /** `ClinicConfigReaderPort` ("Chặn kê vượt tồn", Kho Thuốc GĐ5) — module `encounter` đọc qua port này, cùng lý do trên. */
   getPrescriptionStockBlockEnabled(tenantId: string): ReturnType<ClinicConfigReaderPort['getPrescriptionStockBlockEnabled']> {
     return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getPrescriptionStockBlockEnabled(tx, tenantId));
+  }
+
+  /** `GET /clinic-settings/allow-free-text-prescription-enabled` — chiếu tối thiểu tự-phục vụ (mọi vai trò lâm sàng cần biết để hiện/ẩn "+ Thêm ... ngoài danh mục"), đúng khuôn `getPharmacyStockTrackingEnabled`. */
+  getAllowFreeTextPrescriptionEnabled(tenantId: string): ReturnType<ClinicConfigReaderPort['getAllowFreeTextPrescriptionEnabled']> {
+    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getAllowFreeTextPrescriptionEnabled(tx, tenantId));
   }
 }
