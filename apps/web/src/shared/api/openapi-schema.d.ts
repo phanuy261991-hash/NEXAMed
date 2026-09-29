@@ -4190,10 +4190,13 @@ export interface paths {
                                         drugName: string;
                                         freeTextDrugName: string | null;
                                         activeIngredient: string | null;
-                                        dose: string;
-                                        frequency: string;
+                                        doseMorning: number;
+                                        doseNoon: number;
+                                        doseAfternoon: number;
+                                        doseEvening: number;
                                         durationDays: number;
                                         quantity: number;
+                                        unitCode: string | null;
                                         instruction: string | null;
                                     }[];
                                     warnings: {
@@ -5110,10 +5113,11 @@ export interface paths {
                             /** Format: uuid */
                             drugId?: string;
                             freeTextDrugName?: string;
-                            dose: string;
-                            frequency: string;
+                            doseMorning: number;
+                            doseNoon: number;
+                            doseAfternoon: number;
+                            doseEvening: number;
                             durationDays: number;
-                            quantity: number;
                             instruction?: string;
                         }[];
                     };
@@ -5140,10 +5144,13 @@ export interface paths {
                                     drugName: string;
                                     freeTextDrugName: string | null;
                                     activeIngredient: string | null;
-                                    dose: string;
-                                    frequency: string;
+                                    doseMorning: number;
+                                    doseNoon: number;
+                                    doseAfternoon: number;
+                                    doseEvening: number;
                                     durationDays: number;
                                     quantity: number;
+                                    unitCode: string | null;
                                     instruction: string | null;
                                 }[];
                                 warnings: {
@@ -5250,6 +5257,110 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/encounters/{id}/prescription/previous": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** "Sao chép đơn thuốc lần khám trước" — đơn ĐÃ KÝ gần nhất của cùng bệnh nhân, khác lượt khám này */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công (null nếu chưa từng có đơn nào trước đó) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    drugId: string | null;
+                                    drugName: string;
+                                    freeTextDrugName: string | null;
+                                    activeIngredient: string | null;
+                                    doseMorning: number;
+                                    doseNoon: number;
+                                    doseAfternoon: number;
+                                    doseEvening: number;
+                                    durationDays: number;
+                                    quantity: number;
+                                    unitCode: string | null;
+                                    instruction: string | null;
+                                }[];
+                            } | null;
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền prescription.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy lượt khám (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/encounters/{id}/prescription/sign": {
         parameters: {
             query?: never;
@@ -5297,10 +5408,13 @@ export interface paths {
                                     drugName: string;
                                     freeTextDrugName: string | null;
                                     activeIngredient: string | null;
-                                    dose: string;
-                                    frequency: string;
+                                    doseMorning: number;
+                                    doseNoon: number;
+                                    doseAfternoon: number;
+                                    doseEvening: number;
                                     durationDays: number;
                                     quantity: number;
+                                    unitCode: string | null;
                                     instruction: string | null;
                                 }[];
                                 warnings: {
@@ -5447,10 +5561,13 @@ export interface paths {
                                     drugName: string;
                                     freeTextDrugName: string | null;
                                     activeIngredient: string | null;
-                                    dose: string;
-                                    frequency: string;
+                                    doseMorning: number;
+                                    doseNoon: number;
+                                    doseAfternoon: number;
+                                    doseEvening: number;
                                     durationDays: number;
                                     quantity: number;
+                                    unitCode: string | null;
                                     instruction: string | null;
                                 }[];
                                 warnings: {
@@ -5552,10 +5669,11 @@ export interface paths {
                             /** Format: uuid */
                             drugId?: string;
                             freeTextDrugName?: string;
-                            dose: string;
-                            frequency: string;
+                            doseMorning: number;
+                            doseNoon: number;
+                            doseAfternoon: number;
+                            doseEvening: number;
                             durationDays: number;
-                            quantity: number;
                             instruction?: string;
                         }[];
                         amendmentReason: string;
@@ -5584,10 +5702,13 @@ export interface paths {
                                     drugName: string;
                                     freeTextDrugName: string | null;
                                     activeIngredient: string | null;
-                                    dose: string;
-                                    frequency: string;
+                                    doseMorning: number;
+                                    doseNoon: number;
+                                    doseAfternoon: number;
+                                    doseEvening: number;
                                     durationDays: number;
                                     quantity: number;
+                                    unitCode: string | null;
                                     instruction: string | null;
                                 }[];
                                 warnings: {
@@ -10650,7 +10771,9 @@ export interface paths {
         /** "Đơn thuốc mẫu" (Kho Thuốc GĐ5) — liệt kê mẫu đang hoạt động, dùng chung toàn tenant */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    includeInactive?: boolean | ("true" | "false");
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;
@@ -10672,14 +10795,17 @@ export interface paths {
                                     items: {
                                         /** Format: uuid */
                                         drugId: string;
-                                        dose: string;
-                                        frequency: string;
+                                        doseMorning: number;
+                                        doseNoon: number;
+                                        doseAfternoon: number;
+                                        doseEvening: number;
                                         durationDays: number;
-                                        quantity: number;
                                         instruction?: string;
                                         /** Format: uuid */
                                         id: string;
                                         drugName: string;
+                                        quantity: number;
+                                        unitCode: string | null;
                                     }[];
                                     isActive: boolean;
                                     version: number;
@@ -10737,10 +10863,11 @@ export interface paths {
                         items: {
                             /** Format: uuid */
                             drugId: string;
-                            dose: string;
-                            frequency: string;
+                            doseMorning: number;
+                            doseNoon: number;
+                            doseAfternoon: number;
+                            doseEvening: number;
                             durationDays: number;
-                            quantity: number;
                             instruction?: string;
                         }[];
                     };
@@ -10761,14 +10888,17 @@ export interface paths {
                                 items: {
                                     /** Format: uuid */
                                     drugId: string;
-                                    dose: string;
-                                    frequency: string;
+                                    doseMorning: number;
+                                    doseNoon: number;
+                                    doseAfternoon: number;
+                                    doseEvening: number;
                                     durationDays: number;
-                                    quantity: number;
                                     instruction?: string;
                                     /** Format: uuid */
                                     id: string;
                                     drugName: string;
+                                    quantity: number;
+                                    unitCode: string | null;
                                 }[];
                                 isActive: boolean;
                                 version: number;
@@ -10860,10 +10990,11 @@ export interface paths {
                         items?: {
                             /** Format: uuid */
                             drugId: string;
-                            dose: string;
-                            frequency: string;
+                            doseMorning: number;
+                            doseNoon: number;
+                            doseAfternoon: number;
+                            doseEvening: number;
                             durationDays: number;
-                            quantity: number;
                             instruction?: string;
                         }[];
                         isActive?: boolean;
@@ -10886,14 +11017,17 @@ export interface paths {
                                 items: {
                                     /** Format: uuid */
                                     drugId: string;
-                                    dose: string;
-                                    frequency: string;
+                                    doseMorning: number;
+                                    doseNoon: number;
+                                    doseAfternoon: number;
+                                    doseEvening: number;
                                     durationDays: number;
-                                    quantity: number;
                                     instruction?: string;
                                     /** Format: uuid */
                                     id: string;
                                     drugName: string;
+                                    quantity: number;
+                                    unitCode: string | null;
                                 }[];
                                 isActive: boolean;
                                 version: number;
@@ -20605,6 +20739,9 @@ export interface paths {
                                     prepaidCashAccountId: string | null;
                                     /** Format: uuid */
                                     prepaidVoucherId: string | null;
+                                    /** Format: uuid */
+                                    sourceIssueId: string | null;
+                                    sourceIssueNo: string | null;
                                     lineCount: number;
                                     createdByName: string;
                                     approvedByName: string | null;
@@ -20680,6 +20817,8 @@ export interface paths {
                         prepaidPaymentMethodCode?: string | null;
                         /** Format: uuid */
                         prepaidCashAccountId?: string | null;
+                        /** Format: uuid */
+                        sourceIssueId?: string | null;
                         lines: {
                             /** Format: uuid */
                             drugId: string;
@@ -20731,6 +20870,9 @@ export interface paths {
                                 prepaidCashAccountId: string | null;
                                 /** Format: uuid */
                                 prepaidVoucherId: string | null;
+                                /** Format: uuid */
+                                sourceIssueId: string | null;
+                                sourceIssueNo: string | null;
                                 lineCount: number;
                                 createdByName: string;
                                 approvedByName: string | null;
@@ -20887,6 +21029,9 @@ export interface paths {
                                 prepaidCashAccountId: string | null;
                                 /** Format: uuid */
                                 prepaidVoucherId: string | null;
+                                /** Format: uuid */
+                                sourceIssueId: string | null;
+                                sourceIssueNo: string | null;
                                 lineCount: number;
                                 createdByName: string;
                                 approvedByName: string | null;
@@ -21003,6 +21148,8 @@ export interface paths {
                         prepaidPaymentMethodCode?: string | null;
                         /** Format: uuid */
                         prepaidCashAccountId?: string | null;
+                        /** Format: uuid */
+                        sourceIssueId?: string | null;
                         lines: {
                             /** Format: uuid */
                             drugId: string;
@@ -21055,6 +21202,9 @@ export interface paths {
                                 prepaidCashAccountId: string | null;
                                 /** Format: uuid */
                                 prepaidVoucherId: string | null;
+                                /** Format: uuid */
+                                sourceIssueId: string | null;
+                                sourceIssueNo: string | null;
                                 lineCount: number;
                                 createdByName: string;
                                 approvedByName: string | null;
@@ -21215,6 +21365,9 @@ export interface paths {
                                 prepaidCashAccountId: string | null;
                                 /** Format: uuid */
                                 prepaidVoucherId: string | null;
+                                /** Format: uuid */
+                                sourceIssueId: string | null;
+                                sourceIssueNo: string | null;
                                 lineCount: number;
                                 createdByName: string;
                                 approvedByName: string | null;
@@ -21380,6 +21533,9 @@ export interface paths {
                                 prepaidCashAccountId: string | null;
                                 /** Format: uuid */
                                 prepaidVoucherId: string | null;
+                                /** Format: uuid */
+                                sourceIssueId: string | null;
+                                sourceIssueNo: string | null;
                                 lineCount: number;
                                 createdByName: string;
                                 approvedByName: string | null;
@@ -21545,6 +21701,9 @@ export interface paths {
                                 prepaidCashAccountId: string | null;
                                 /** Format: uuid */
                                 prepaidVoucherId: string | null;
+                                /** Format: uuid */
+                                sourceIssueId: string | null;
+                                sourceIssueNo: string | null;
                                 lineCount: number;
                                 createdByName: string;
                                 approvedByName: string | null;
@@ -23492,8 +23651,7 @@ export interface paths {
                                     prescriptionItemId: string;
                                     drugName: string;
                                     prescribedQuantity: number;
-                                    dose: string;
-                                    frequency: string;
+                                    doseSummary: string;
                                     instruction: string | null;
                                 }[];
                             };

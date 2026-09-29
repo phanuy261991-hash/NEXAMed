@@ -91,6 +91,14 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       // và trước `stock_issue`/`inventory_batch` chính nó); `stock_ledger` nay CŨNG tham chiếu
       // `stock_issue` (`source_issue_id`) nên phải xoá TRƯỚC `stock_issue`. `invoice_line` đã xoá
       // ở dòng ngay trên (tham chiếu `stock_issue_line`) nên an toàn xoá `stock_issue_line` ở đây.
+      // "Phiếu xuất gốc" TUỲ CHỌN cho RETURN_FROM_USE (docs/DECISIONS.md #195) — `stock_receipt.
+      // source_issue_id` trỏ TỚI `stock_issue` (FK RESTRICT), ngược chiều với `stock_issue.
+      // source_receipt_id` trỏ TỚI `stock_receipt` đã xử lý bằng thứ tự xoá (issue trước, receipt
+      // sau) — tạo vòng phụ thuộc CHÉO thật giữa 2 bảng, không thể xoá theo đúng thứ tự cho CẢ HAI
+      // chiều cùng lúc. Phá vòng bằng UPDATE gỡ liên kết này TRƯỚC khi xoá (không ảnh hưởng dữ liệu
+      // nghiệp vụ thật — chỉ chạy trong cleanup test), đúng tinh thần vòng lặp gỡ `reversalOfId` ở
+      // `supplierDebtEntry` phía trên, nhưng đơn giản hơn (1 lượt UPDATE đủ, không tự tham chiếu lặp).
+      await prisma.stockReceipt.updateMany({ where: { tenantId: { in: tenantIds } }, data: { sourceIssueId: null } });
       await prisma.stockIssueLine.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.stockBalance.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.stockLedger.deleteMany({ where: { tenantId: { in: tenantIds } } });

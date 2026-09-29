@@ -156,6 +156,9 @@ export function StockReceiptFormPage() {
   const [occurredAt, setOccurredAt] = useState(todayVn());
   const [note, setNote] = useState('');
   const [supplierInvoiceNo, setSupplierInvoiceNo] = useState('');
+  // Phiếu xuất gốc TUỲ CHỌN cho "Nhập hoàn trả từ bệnh nhân/khoa phòng" (docs/DECISIONS.md #195).
+  const [sourceIssueId, setSourceIssueId] = useState('');
+  const [sourceIssueLabel, setSourceIssueLabel] = useState('');
   const [lines, setLines] = useState<DraftLine[]>([]);
   const [drugQuery, setDrugQuery] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
@@ -194,6 +197,7 @@ export function StockReceiptFormPage() {
     setOccurredAt(r.occurredAt.slice(0, 10));
     setNote(r.note ?? '');
     setSupplierInvoiceNo(r.supplierInvoiceNo ?? '');
+    setSourceIssueId(r.sourceIssueId ?? '');
     setLines(
       r.lines.map((l: StockReceiptLine) => ({
         key: l.id,
@@ -371,6 +375,8 @@ export function StockReceiptFormPage() {
     setSupplierInvoiceNo(values.supplierInvoiceNo);
     setOccurredAt(values.occurredAt);
     setNote(values.note);
+    setSourceIssueId(values.sourceIssueId);
+    setSourceIssueLabel(values.sourceIssueLabel);
     setHeaderDialogOpen(false);
   }
 
@@ -446,6 +452,7 @@ export function StockReceiptFormPage() {
       discountType: useTotalDiscount && totalDiscountValue ? totalDiscountType : undefined,
       discountValue: useTotalDiscount && totalDiscountValue ? totalDiscountValue : undefined,
       discountReason: useTotalDiscount && totalDiscountValue ? totalDiscountReason.trim() : undefined,
+      sourceIssueId: receiptType === 'RETURN_FROM_USE' && sourceIssueId ? sourceIssueId : undefined,
       prepaidAmount: usePrepaid ? prepaidAmount : undefined,
       prepaidPaymentMethodCode: usePrepaid ? prepaidPaymentMethodCode : undefined,
       prepaidCashAccountId: usePrepaid ? prepaidCashAccountId : undefined,
@@ -553,6 +560,9 @@ export function StockReceiptFormPage() {
             <SummaryField label="Nhà cung cấp" value={suppliersQuery.data?.items.find((s) => s.id === supplierId)?.name ?? '—'} />
           )}
           {receiptType === 'PURCHASE' && supplierInvoiceNo && <SummaryField label="Mã hoá đơn NCC" value={supplierInvoiceNo} />}
+          {receiptType === 'RETURN_FROM_USE' && sourceIssueId && (
+            <SummaryField label="Phiếu xuất gốc" value={receiptQuery.data?.sourceIssueNo ?? sourceIssueLabel ?? sourceIssueId} />
+          )}
           <SummaryField label="Ngày nhập" value={occurredAt ? formatDobDisplay(occurredAt) : '—'} />
           {note && <SummaryField label="Ghi chú" value={note} />}
         </div>
@@ -988,7 +998,7 @@ export function StockReceiptFormPage() {
 
       {headerDialogOpen && (
         <StockReceiptHeaderDialog
-          initial={{ receiptType, warehouseId, supplierId, supplierInvoiceNo, occurredAt, note }}
+          initial={{ receiptType, warehouseId, supplierId, supplierInvoiceNo, occurredAt, note, sourceIssueId, sourceIssueLabel }}
           warehouseOptions={warehouseOptions}
           supplierOptions={supplierOptions}
           hasLines={lines.length > 0}

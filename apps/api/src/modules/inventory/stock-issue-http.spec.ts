@@ -172,7 +172,8 @@ describe('HTTP e2e — /api/v1/inventory (Phiếu xuất kho GĐ3)', () => {
     const saveRes = await request(app.getHttpServer())
       .put(`/api/v1/encounters/${encounterId}/prescription-items`)
       .set(authed(doctorToken))
-      .send({ items: lines.map((l) => ({ drugId: l.drugId, dose: '1 viên', frequency: '2 lần/ngày', durationDays: 5, quantity: l.quantity })) });
+      // `durationDays: 1` + `doseMorning: l.quantity` → quantity tính ra ĐÚNG bằng `l.quantity` mong muốn (docs/DECISIONS.md #196, quantity giờ LUÔN do backend tính).
+      .send({ items: lines.map((l) => ({ drugId: l.drugId, doseMorning: l.quantity, doseNoon: 0, doseAfternoon: 0, doseEvening: 0, durationDays: 1 })) });
     expect(saveRes.status).toBe(200);
     const signRes = await request(app.getHttpServer())
       .post(`/api/v1/encounters/${encounterId}/prescription/sign`)
@@ -1139,8 +1140,8 @@ describe('HTTP e2e — /api/v1/inventory (Phiếu xuất kho GĐ3)', () => {
         .set(authed(doctorToken))
         .send({
           items: [
-            { drugId, dose: '1 viên', frequency: '2 lần/ngày', durationDays: 5, quantity: 5 },
-            { freeTextDrugName: 'Thuốc lạ GĐ5 ngoài danh mục', dose: '1 gói', frequency: '1 lần/ngày', durationDays: 5, quantity: 5 },
+            { drugId, doseMorning: 1, doseNoon: 0, doseAfternoon: 0, doseEvening: 0, durationDays: 5 },
+            { freeTextDrugName: 'Thuốc lạ GĐ5 ngoài danh mục', doseMorning: 1, doseNoon: 0, doseAfternoon: 0, doseEvening: 0, durationDays: 5 },
           ],
         });
       expect(saveRes.status).toBe(200);

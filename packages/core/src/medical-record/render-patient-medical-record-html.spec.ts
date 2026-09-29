@@ -66,7 +66,7 @@ describe('renderPatientMedicalRecordHtml', () => {
             diagnoses: [{ icd10Code: 'R51', icd10Name: 'Đau đầu', type: 'PRIMARY', note: null }],
             clinicalNoteSections: [{ label: 'Lý do khám', content: 'Đau đầu 2 ngày' }],
             prescriptionItems: [
-              { drugName: 'Paracetamol 500mg', dose: '1 viên', frequency: '2 lần/ngày', durationDays: 5, quantity: 10, instruction: 'Sau ăn' },
+              { drugName: 'Paracetamol 500mg', doseSummary: 'Sáng 1 - Tối 1', durationDays: 5, quantity: 10, unitCode: 'VIEN', instruction: 'Sau ăn' },
             ],
             signedAt: '2026-09-10T02:00:00.000Z',
           },

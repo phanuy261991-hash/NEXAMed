@@ -22,6 +22,7 @@ import {
   Scales,
   SidebarSimple,
   SlidersHorizontal,
+  Stack,
   Stethoscope,
   Truck,
   UserPlus,
@@ -109,6 +110,7 @@ const ADMIN_GROUP_PATHS = [
   // "Danh mục kho" — chuyển từ nhóm "Quản lý kho" xuống đây theo yêu cầu chủ dự án (16/09/2026,
   // docs/DECISIONS.md #157), route/quyền giữ nguyên (`/admin/catalog-pharmacy` KHÔNG chuyển).
   '/admin/catalog-warehouse',
+  '/admin/prescription-templates',
   '/admin/system-config',
   '/admin/activity-log',
 ];
@@ -236,6 +238,9 @@ export function Sidebar() {
   const canSeeStockLedgerReport = useHasPermission('stock_receipt', 'report');
   const canSeeSystemConfig = useHasPermission('clinic_config', 'update');
   const canSeeActivityLog = useHasPermission('audit_log', 'read');
+  // "Đơn thuốc mẫu" (docs/DECISIONS.md #196) — `.read` mở cho mọi vai trò lâm sàng, đúng khuôn popup
+  // chọn mẫu lúc kê đơn; nút Thêm/Sửa/Ẩn tự ẩn trong `PrescriptionTemplatePane.tsx` nếu thiếu `.manage`.
+  const canSeePrescriptionTemplates = useHasPermission('prescription_template', 'read');
   const canSeePatients = useHasPermission('patient', 'read');
   const canSeeAppointments = useHasPermission('appointment', 'read');
   const canSeeReception = useHasPermission('encounter', 'read');
@@ -693,6 +698,7 @@ export function Sidebar() {
                   {/* "Danh mục kho" — chuyển từ nhóm "Quản lý kho" xuống đây theo yêu cầu chủ dự án
                       (16/09/2026, docs/DECISIONS.md #157), route/quyền giữ nguyên. */}
                   {canSeeCatalogPharmacy && <NavItem to="/admin/catalog-warehouse" label="Danh mục kho" icon={Warehouse} collapsed={false} indent />}
+                  {canSeePrescriptionTemplates && <NavItem to="/admin/prescription-templates" label="Đơn thuốc mẫu" icon={Stack} collapsed={false} indent />}
                   {canSeeSystemConfig && <NavItem to="/admin/system-config" label="Cấu hình hệ thống" icon={SlidersHorizontal} collapsed={false} indent />}
                   {canSeeActivityLog && <NavItem to="/admin/activity-log" label="Nhật ký hoạt động" icon={ClockCounterClockwise} collapsed={false} indent />}
                 </ul>

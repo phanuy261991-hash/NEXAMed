@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConcurrentModificationError } from '@nexamed/core';
+import { computePrescriptionQuantity } from '@nexamed/shared';
 import type {
   CreatePrescriptionTemplateRequest,
   ListPrescriptionTemplatesResponse,
@@ -26,9 +27,9 @@ export class PrescriptionTemplateService {
     private readonly drugRepository: DrugRepository,
   ) {}
 
-  async list(tenantId: string): Promise<ListPrescriptionTemplatesResponse> {
+  async list(tenantId: string, includeInactive = false): Promise<ListPrescriptionTemplatesResponse> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const rows = await this.templateRepository.list(tx, tenantId);
+      const rows = await this.templateRepository.list(tx, tenantId, includeInactive);
       return { items: rows.map((r) => this.toDto(r)) };
     });
   }
@@ -101,13 +102,17 @@ export class PrescriptionTemplateService {
     }
   }
 
+  /** `quantity` LUÔN do backend tính (docs/DECISIONS.md #196), đúng khuôn `EncounterService.
+   * toCreateItemData()`. */
   private toItemData(item: CreatePrescriptionTemplateRequest['items'][number]) {
     return {
       drugId: item.drugId,
-      dose: item.dose,
-      frequency: item.frequency,
+      doseMorning: item.doseMorning,
+      doseNoon: item.doseNoon,
+      doseAfternoon: item.doseAfternoon,
+      doseEvening: item.doseEvening,
       durationDays: item.durationDays,
-      quantity: item.quantity,
+      quantity: computePrescriptionQuantity(item, item.durationDays),
       instruction: item.instruction ?? null,
     };
   }
@@ -120,10 +125,13 @@ export class PrescriptionTemplateService {
         id: item.id,
         drugId: item.drugId,
         drugName: item.drugName,
-        dose: item.dose,
-        frequency: item.frequency,
+        doseMorning: item.doseMorning,
+        doseNoon: item.doseNoon,
+        doseAfternoon: item.doseAfternoon,
+        doseEvening: item.doseEvening,
         durationDays: item.durationDays,
         quantity: item.quantity,
+        unitCode: item.unitCode,
         instruction: item.instruction ?? undefined,
       })),
       isActive: row.isActive,

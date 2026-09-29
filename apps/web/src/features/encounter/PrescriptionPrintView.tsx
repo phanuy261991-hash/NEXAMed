@@ -1,4 +1,6 @@
 import type { PrescriptionItem } from '@nexamed/shared';
+import { formatDoseSummaryPreview as formatDoseSummary } from './prescription-dose-preview';
+import { useUnitNameByCode, unitLabel } from '../drug/useUnitNameByCode';
 
 function formatPrintDate(iso: string): string {
   const d = new Date(iso);
@@ -35,6 +37,7 @@ export function PrescriptionPrintView({
   items: PrescriptionItem[];
   signedAt: string;
 }) {
+  const unitNameByCode = useUnitNameByCode();
   return (
     <div className="print-area hidden bg-white p-10 text-slate-900 print:block">
       <div className="flex items-center gap-4 border-b-2 border-slate-800 pb-3">
@@ -68,10 +71,9 @@ export function PrescriptionPrintView({
           <tr className="border-b-2 border-slate-800 text-left">
             <th className="w-8 py-1.5">#</th>
             <th className="py-1.5">Tên thuốc</th>
-            <th className="py-1.5">Liều dùng</th>
-            <th className="py-1.5">Tần suất</th>
+            <th className="py-1.5">Liều dùng theo buổi</th>
             <th className="w-16 py-1.5 text-center">Số ngày</th>
-            <th className="w-16 py-1.5 text-center">SL</th>
+            <th className="w-20 py-1.5 text-center">SL</th>
             <th className="py-1.5">Hướng dẫn</th>
           </tr>
         </thead>
@@ -80,10 +82,11 @@ export function PrescriptionPrintView({
             <tr key={item.id} className="border-b border-slate-300 align-top">
               <td className="py-1.5">{i + 1}</td>
               <td className="py-1.5 font-semibold">{item.drugName}</td>
-              <td className="py-1.5">{item.dose}</td>
-              <td className="py-1.5">{item.frequency}</td>
+              <td className="py-1.5">{formatDoseSummary(item)}</td>
               <td className="py-1.5 text-center">{item.durationDays}</td>
-              <td className="py-1.5 text-center">{item.quantity}</td>
+              <td className="py-1.5 text-center">
+                {item.quantity} {item.unitCode ? unitLabel(unitNameByCode, item.unitCode) : ''}
+              </td>
               <td className="py-1.5">{item.instruction ?? '—'}</td>
             </tr>
           ))}

@@ -40,10 +40,13 @@ export interface MedicalRecordClinicalNoteSection {
 
 export interface MedicalRecordPrescriptionItem {
   drugName: string;
-  dose: string;
-  frequency: string;
+  /** Chuỗi "Sáng 1 - Chiều 1..." đã format sẵn (docs/DECISIONS.md #196) — resolve ở
+   * `EncounterService` bằng `formatDoseSummary()` (`@nexamed/shared`), `packages/core` không import
+   * `@nexamed/shared` để tránh phụ thuộc ngược không cần thiết. */
+  doseSummary: string;
   durationDays: number;
   quantity: number;
+  unitCode: string | null;
   instruction: string | null;
 }
 
@@ -137,10 +140,10 @@ function renderClinicalNote(sections: MedicalRecordClinicalNoteSection[]): strin
 
 function renderPrescription(items: MedicalRecordPrescriptionItem[]): string {
   if (items.length === 0) return '<p class="muted">Không kê đơn thuốc.</p>';
-  return `<table class="data-table"><thead><tr><th>Thuốc</th><th>Liều dùng</th><th>Tần suất</th><th>Số ngày</th><th>SL</th><th>Cách dùng</th></tr></thead><tbody>${items
+  return `<table class="data-table"><thead><tr><th>Thuốc</th><th>Liều dùng theo buổi</th><th>Số ngày</th><th>SL</th><th>Cách dùng</th></tr></thead><tbody>${items
     .map(
       (i) =>
-        `<tr><td>${escapeHtml(i.drugName)}</td><td>${escapeHtml(i.dose)}</td><td>${escapeHtml(i.frequency)}</td><td>${i.durationDays}</td><td>${i.quantity}</td><td>${i.instruction ? escapeHtml(i.instruction) : '—'}</td></tr>`,
+        `<tr><td>${escapeHtml(i.drugName)}</td><td>${escapeHtml(i.doseSummary)}</td><td>${i.durationDays}</td><td>${i.quantity}${i.unitCode ? ` ${escapeHtml(i.unitCode)}` : ''}</td><td>${i.instruction ? escapeHtml(i.instruction) : '—'}</td></tr>`,
     )
     .join('')}</tbody></table>`;
 }

@@ -61,6 +61,10 @@ const stockReceiptHeaderFieldsSchema = z.object({
   prepaidAmount: z.number().int().nonnegative().optional(),
   prepaidPaymentMethodCode: z.string().min(1).nullable().optional(),
   prepaidCashAccountId: z.string().uuid().nullable().optional(),
+  /** Phiếu xuất kho gốc — TUỲ CHỌN, chỉ có ý nghĩa khi `receiptType='RETURN_FROM_USE'` (Service chặn
+   * gửi kèm ở loại khác, cùng cách `discountType` xử lý). Chủ động KHÔNG bắt buộc (docs/DECISIONS.md
+   * #195, chủ dự án yêu cầu) — không tìm ra/không có phiếu xuất gốc vẫn phải lập được phiếu trả hàng. */
+  sourceIssueId: z.string().uuid().nullable().optional(),
   lines: z.array(stockReceiptLineInputSchema).min(1, 'Phải có ít nhất 1 dòng hàng.'),
 });
 
@@ -114,6 +118,9 @@ export const createStockReceiptRequestSchema = stockReceiptHeaderFieldsSchema.su
   if (v.receiptType !== 'PURCHASE' && v.supplierId) {
     ctx.addIssue({ code: 'custom', message: 'Loại phiếu này không có Nhà cung cấp.', path: ['supplierId'] });
   }
+  if (v.receiptType !== 'RETURN_FROM_USE' && v.sourceIssueId) {
+    ctx.addIssue({ code: 'custom', message: 'Loại phiếu này không có Phiếu xuất gốc.', path: ['sourceIssueId'] });
+  }
   checkStockReceiptDiscountRules(v, ctx);
   checkStockReceiptPrepaidRules(v, ctx);
 });
@@ -127,6 +134,9 @@ export const updateStockReceiptRequestSchema = stockReceiptHeaderFieldsSchema
     }
     if (v.receiptType !== 'PURCHASE' && v.supplierId) {
       ctx.addIssue({ code: 'custom', message: 'Loại phiếu này không có Nhà cung cấp.', path: ['supplierId'] });
+    }
+    if (v.receiptType !== 'RETURN_FROM_USE' && v.sourceIssueId) {
+      ctx.addIssue({ code: 'custom', message: 'Loại phiếu này không có Phiếu xuất gốc.', path: ['sourceIssueId'] });
     }
     checkStockReceiptDiscountRules(v, ctx);
     checkStockReceiptPrepaidRules(v, ctx);
@@ -199,6 +209,10 @@ export const stockReceiptSummarySchema = z.object({
   prepaidPaymentMethodCode: z.string().nullable(),
   prepaidCashAccountId: z.string().uuid().nullable(),
   prepaidVoucherId: z.string().uuid().nullable(),
+  /** Phiếu xuất kho gốc (docs/DECISIONS.md #195) — chỉ có giá trị khi `receiptType='RETURN_FROM_USE'`
+   * VÀ người lập có chọn (tuỳ chọn, không bắt buộc). */
+  sourceIssueId: z.string().uuid().nullable(),
+  sourceIssueNo: z.string().nullable(),
   lineCount: z.number().int(),
   createdByName: z.string(),
   approvedByName: z.string().nullable(),
@@ -683,8 +697,9 @@ export const freeTextPrescriptionLineSchema = z.object({
   prescriptionItemId: z.string().uuid(),
   drugName: z.string(),
   prescribedQuantity: z.number().int(),
-  dose: z.string(),
-  frequency: z.string(),
+  /** Chuỗi "Sáng 1 - Chiều 1..." (docs/DECISIONS.md #196) — resolve sẵn ở backend qua
+   * `formatDoseSummary()` (`@nexamed/shared/prescription`), tránh `apps/web` phải tự tính lại. */
+  doseSummary: z.string(),
   instruction: z.string().nullable(),
 });
 export type FreeTextPrescriptionLine = z.infer<typeof freeTextPrescriptionLineSchema>;

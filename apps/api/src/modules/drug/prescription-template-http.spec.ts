@@ -92,8 +92,8 @@ describe('HTTP e2e — /api/v1/prescription-templates', () => {
       .send({
         name: 'Phác đồ viêm hô hấp trên',
         items: [
-          { drugId: drugA, dose: '1 viên', frequency: '3 lần/ngày', durationDays: 5, quantity: 15 },
-          { drugId: drugB, dose: '1 viên', frequency: '2 lần/ngày', durationDays: 5, quantity: 10 },
+          { drugId: drugA, doseMorning: 1, doseNoon: 0, doseAfternoon: 0, doseEvening: 0, durationDays: 5 },
+          { drugId: drugB, doseMorning: 1, doseNoon: 0, doseAfternoon: 0, doseEvening: 0, durationDays: 5 },
         ],
       });
     expect(createRes.status).toBe(200);
@@ -102,12 +102,14 @@ describe('HTTP e2e — /api/v1/prescription-templates', () => {
     expect(createRes.body.data.items.map((i: { drugName: string }) => i.drugName).sort()).toEqual(['Amoxicilin 500mg', 'Paracetamol 500mg']);
     expect(createRes.body.data.isActive).toBe(true);
     expect(createRes.body.data.version).toBe(1);
+    // quantity LUÔN do backend tính (docs/DECISIONS.md #196) = (1+0+0+0) × 5.
+    expect(createRes.body.data.items.every((i: { quantity: number }) => i.quantity === 5)).toBe(true);
 
     const listRes = await request(app.getHttpServer()).get('/api/v1/prescription-templates').set(authed(nurseToken));
     expect(listRes.status).toBe(200);
     expect(listRes.body.data.items.some((t: { name: string }) => t.name === 'Phác đồ viêm hô hấp trên')).toBe(true);
 
-    const nurseCreateRes = await request(app.getHttpServer()).post('/api/v1/prescription-templates').set(authed(nurseToken)).send({ name: 'X', items: [{ drugId: drugA, dose: '1', frequency: '1', durationDays: 1, quantity: 1 }] });
+    const nurseCreateRes = await request(app.getHttpServer()).post('/api/v1/prescription-templates').set(authed(nurseToken)).send({ name: 'X', items: [{ drugId: drugA, doseMorning: 1, doseNoon: 0, doseAfternoon: 0, doseEvening: 0, durationDays: 1 }] });
     expect(nurseCreateRes.status).toBe(403);
 
     const receptionistListRes = await request(app.getHttpServer()).get('/api/v1/prescription-templates').set(authed(receptionistToken));
@@ -118,7 +120,7 @@ describe('HTTP e2e — /api/v1/prescription-templates', () => {
     const res = await request(app.getHttpServer())
       .post('/api/v1/prescription-templates')
       .set(authed(doctorToken))
-      .send({ name: 'Mẫu lỗi', items: [{ drugId: randomUUID(), dose: '1', frequency: '1', durationDays: 1, quantity: 1 }] });
+      .send({ name: 'Mẫu lỗi', items: [{ drugId: randomUUID(), doseMorning: 1, doseNoon: 0, doseAfternoon: 0, doseEvening: 0, durationDays: 1 }] });
     expect(res.status).toBe(400);
   });
 
@@ -128,13 +130,13 @@ describe('HTTP e2e — /api/v1/prescription-templates', () => {
     const createRes = await request(app.getHttpServer())
       .post('/api/v1/prescription-templates')
       .set(authed(doctorToken))
-      .send({ name: 'Mẫu sửa', items: [{ drugId: drugA, dose: '1 viên', frequency: '2 lần/ngày', durationDays: 5, quantity: 10 }] });
+      .send({ name: 'Mẫu sửa', items: [{ drugId: drugA, doseMorning: 1, doseNoon: 0, doseAfternoon: 0, doseEvening: 0, durationDays: 5 }] });
     const templateId = createRes.body.data.id as string;
 
     const updateRes = await request(app.getHttpServer())
       .patch(`/api/v1/prescription-templates/${templateId}`)
       .set(authed(doctorToken))
-      .send({ name: 'Mẫu sửa v2', items: [{ drugId: drugB, dose: '1 viên', frequency: '1 lần/ngày', durationDays: 5, quantity: 5 }], version: 1 });
+      .send({ name: 'Mẫu sửa v2', items: [{ drugId: drugB, doseMorning: 1, doseNoon: 0, doseAfternoon: 0, doseEvening: 0, durationDays: 5 }], version: 1 });
     expect(updateRes.status).toBe(200);
     expect(updateRes.body.data.name).toBe('Mẫu sửa v2');
     expect(updateRes.body.data.items).toHaveLength(1);
@@ -151,7 +153,7 @@ describe('HTTP e2e — /api/v1/prescription-templates', () => {
     const createRes = await request(app.getHttpServer())
       .post('/api/v1/prescription-templates')
       .set(authed(doctorToken))
-      .send({ name: 'Mẫu sẽ ẩn', items: [{ drugId: drugA, dose: '1 viên', frequency: '1 lần/ngày', durationDays: 3, quantity: 3 }] });
+      .send({ name: 'Mẫu sẽ ẩn', items: [{ drugId: drugA, doseMorning: 1, doseNoon: 0, doseAfternoon: 0, doseEvening: 0, durationDays: 3 }] });
     const templateId = createRes.body.data.id as string;
 
     const hideRes = await request(app.getHttpServer()).patch(`/api/v1/prescription-templates/${templateId}`).set(authed(doctorToken)).send({ isActive: false, version: 1 });
@@ -160,6 +162,12 @@ describe('HTTP e2e — /api/v1/prescription-templates', () => {
 
     const listRes = await request(app.getHttpServer()).get('/api/v1/prescription-templates').set(authed(doctorToken));
     expect(listRes.body.data.items.some((t: { id: string }) => t.id === templateId)).toBe(false);
+
+    // `includeInactive` (docs/DECISIONS.md #196) — trang quản lý "Đơn thuốc mẫu" trong Quản trị cần
+    // thấy cả mẫu đã ẩn để "Kích hoạt lại".
+    const includeInactiveRes = await request(app.getHttpServer()).get('/api/v1/prescription-templates?includeInactive=true').set(authed(doctorToken));
+    expect(includeInactiveRes.status).toBe(200);
+    expect(includeInactiveRes.body.data.items.some((t: { id: string }) => t.id === templateId)).toBe(true);
   });
 
   it('cách ly tenant — bác sĩ tenant B không thấy mẫu của tenant A', async () => {
@@ -167,7 +175,7 @@ describe('HTTP e2e — /api/v1/prescription-templates', () => {
     await request(app.getHttpServer())
       .post('/api/v1/prescription-templates')
       .set(authed(doctorToken))
-      .send({ name: 'Mẫu riêng tenant A', items: [{ drugId: drugA, dose: '1 viên', frequency: '1 lần/ngày', durationDays: 3, quantity: 3 }] });
+      .send({ name: 'Mẫu riêng tenant A', items: [{ drugId: drugA, doseMorning: 1, doseNoon: 0, doseAfternoon: 0, doseEvening: 0, durationDays: 3 }] });
 
     const listRes = await request(app.getHttpServer()).get('/api/v1/prescription-templates').set(authed(tenantBDoctorToken));
     expect(listRes.status).toBe(200);

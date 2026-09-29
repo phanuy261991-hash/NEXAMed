@@ -6,6 +6,7 @@ import type {
   CompleteConsultationRequest,
   ConsultationDetailResponse,
   EncounterSummary,
+  PreviousPrescriptionResponse,
   PrescriptionResponse,
   RecordVitalSignRequest,
   SaveClinicalNoteRequest,
@@ -86,4 +87,11 @@ export async function amendPrescription(id: string, body: AmendPrescriptionReque
   return unwrap(
     await getApiClient().POST('/api/v1/encounters/{id}/prescription/amend', { params: { path: { id } }, body }),
   ) as PrescriptionResponse;
+}
+
+/** "Sao chép đơn thuốc lần khám trước" (docs/DECISIONS.md #196) — `null` nếu bệnh nhân chưa từng có đơn nào trước đó. */
+export async function getPreviousPrescription(id: string): Promise<PreviousPrescriptionResponse> {
+  return unwrap(
+    await getApiClient().GET('/api/v1/encounters/{id}/prescription/previous', { params: { path: { id } } }),
+  ) as PreviousPrescriptionResponse;
 }

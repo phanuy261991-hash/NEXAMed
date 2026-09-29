@@ -38,6 +38,8 @@ export interface CreateStockReceiptData {
   /** Kho Thuốc GĐ4 (#170) — trỏ về `stock_transfer` khi phiếu này TỰ SINH từ Xác nhận nhận hàng
    * (`receiptType='TRANSFER_IN'`). `null` cho mọi phiếu nhập khác. */
   transferId: string | null;
+  /** Phiếu xuất gốc TUỲ CHỌN (docs/DECISIONS.md #195) — chỉ có ý nghĩa khi `receiptType='RETURN_FROM_USE'`. */
+  sourceIssueId: string | null;
 }
 
 export interface UpdateStockReceiptData {
@@ -55,6 +57,7 @@ export interface UpdateStockReceiptData {
   prepaidPaymentMethodCode: string | null;
   prepaidCashAccountId: string | null;
   lines: StockReceiptLineData[];
+  sourceIssueId: string | null;
 }
 
 const LINE_INCLUDE = {
@@ -65,11 +68,13 @@ const LINE_INCLUDE = {
 
 export type StockReceiptWithLines = StockReceipt & {
   lines: (Prisma.StockReceiptLineGetPayload<{ include: { drug: { select: { code: true; name: true } } } }>)[];
+  sourceIssue: { issueNo: string } | null;
 };
 
 export interface StockReceiptListRow extends StockReceipt {
   warehouse: { name: string };
   supplier: { name: string } | null;
+  sourceIssue: { issueNo: string } | null;
   _count: { lines: number };
 }
 
@@ -118,6 +123,7 @@ export class StockReceiptRepository {
         prepaidCashAccountId: data.prepaidCashAccountId,
         countId: data.countId,
         transferId: data.transferId,
+        sourceIssueId: data.sourceIssueId,
         createdBy: actorId,
         updatedBy: actorId,
       },
@@ -141,7 +147,10 @@ export class StockReceiptRepository {
         })),
       });
     }
-    const created = await tx.stockReceipt.findFirst({ where: { tenantId, id: header.id }, include: { lines: LINE_INCLUDE } });
+    const created = await tx.stockReceipt.findFirst({
+      where: { tenantId, id: header.id },
+      include: { lines: LINE_INCLUDE, sourceIssue: { select: { issueNo: true } } },
+    });
     return created as StockReceiptWithLines;
   }
 
@@ -164,6 +173,7 @@ export class StockReceiptRepository {
         prepaidAmount: data.prepaidAmount,
         prepaidPaymentMethodCode: data.prepaidPaymentMethodCode,
         prepaidCashAccountId: data.prepaidCashAccountId,
+        sourceIssueId: data.sourceIssueId,
         updatedBy: actorId,
         version: { increment: 1 },
       },
@@ -202,7 +212,10 @@ export class StockReceiptRepository {
 
   /** Dùng cho đường XEM (GET chi tiết) — KHÔNG lọc `deletedAt`, phiếu đã huỷ vẫn xem được (chỉ đọc). */
   findByIdAnyWithLines(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<StockReceiptWithLines | null> {
-    return tx.stockReceipt.findFirst({ where: { tenantId, id }, include: { lines: LINE_INCLUDE } }) as Promise<StockReceiptWithLines | null>;
+    return tx.stockReceipt.findFirst({
+      where: { tenantId, id },
+      include: { lines: LINE_INCLUDE, sourceIssue: { select: { issueNo: true } } },
+    }) as Promise<StockReceiptWithLines | null>;
   }
 
   async list(tx: Prisma.TransactionClient, tenantId: string, filter: ListStockReceiptsFilter): Promise<StockReceiptListRow[]> {
@@ -222,7 +235,12 @@ export class StockReceiptRepository {
     }
     const rows = await tx.stockReceipt.findMany({
       where,
-      include: { warehouse: { select: { name: true } }, supplier: { select: { name: true } }, _count: { select: { lines: { where: { deletedAt: null } } } } },
+      include: {
+        warehouse: { select: { name: true } },
+        supplier: { select: { name: true } },
+        sourceIssue: { select: { issueNo: true } },
+        _count: { select: { lines: { where: { deletedAt: null } } } },
+      },
       orderBy: { id: 'desc' },
       take: filter.take,
       ...(filter.cursor ? { cursor: { id: filter.cursor }, skip: 1 } : {}),

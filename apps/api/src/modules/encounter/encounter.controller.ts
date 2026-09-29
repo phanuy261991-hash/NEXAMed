@@ -178,6 +178,16 @@ export class EncounterController {
     return this.encounterService.savePrescriptionItems(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 
+  /** "Sao chép đơn thuốc lần khám trước" (docs/DECISIONS.md #196) — đơn ĐÃ KÝ gần nhất của cùng bệnh
+   * nhân, khác lượt khám này. Cùng quyền với sửa đơn nháp (`prescription.create`) — chỉ ai đang được
+   * kê đơn mới cần xem để chèn vào bản đang soạn. */
+  @Get(':id/prescription/previous')
+  @RequirePermission('prescription', 'create', { entityIdParam: 'id' })
+  async getPreviousPrescription(@Param('id') id: string, @Req() req: Request) {
+    const { userId, tenantId } = req.user!;
+    return this.encounterService.getPreviousPrescription(tenantId, userId, req.dataScope!, id);
+  }
+
   /** Ký đơn thuốc — sau khi ký đơn bất biến (trigger C8 chặn UPDATE), sửa = "Sửa đơn" (đính chính). */
   @Post(':id/prescription/sign')
   @RequirePermission('prescription', 'sign', { entityIdParam: 'id' })

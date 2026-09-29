@@ -1842,6 +1842,11 @@ model StockReceipt {
   prepaidPaymentMethodCode String?            @map("prepaid_payment_method_code")
   prepaidCashAccountId     String?            @map("prepaid_cash_account_id") @db.Uuid
   prepaidVoucherId         String?            @map("prepaid_voucher_id") @db.Uuid
+  // "Nhập hoàn trả từ bệnh nhân/khoa phòng" (docs/DECISIONS.md #195) — trỏ về "Phiếu xuất kho" gốc
+  // (bệnh nhân qua RETAIL_SALE, hoặc Khoa/Phòng qua INTERNAL_ALLOCATION), CHỈ có ý nghĩa khi
+  // receiptType='RETURN_FROM_USE' (CHECK ở migration chặn chiều ngược lại). TUỲ CHỌN theo yêu cầu
+  // chủ dự án — không tìm ra phiếu xuất gốc vẫn phải lập được phiếu trả hàng vào kho.
+  sourceIssueId            String?            @map("source_issue_id") @db.Uuid
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -1854,6 +1859,8 @@ model StockReceipt {
 
   tenant                  Tenant                   @relation(fields: [tenantId], references: [id])
   warehouse               Warehouse                @relation(fields: [tenantId, warehouseId], references: [tenantId, id])
+  // Composite FK (tenant_id, source_issue_id) -> stock_issue(tenant_id, id), NULLABLE.
+  sourceIssue              StockIssue?              @relation("StockReceiptSourceIssue", fields: [tenantId, sourceIssueId], references: [tenantId, id])
   // Composite FK (tenant_id, supplier_id) -> supplier(tenant_id, id), NULLABLE.
   supplier                Supplier?                @relation(fields: [tenantId, supplierId], references: [tenantId, id])
   // Composite FK (tenant_id, count_id) -> stock_count(tenant_id, id), NULLABLE (GĐ4).
@@ -1871,8 +1878,9 @@ model StockReceipt {
   // tham chiếu ngược về phiếu này.
   debtEntries             SupplierDebtEntry[]
   // "Công nợ nhà cung cấp" Phần C — phiếu xuất trả NCC (issueType=RETURN_TO_SUPPLIER) CHỌN phiếu
-  // nhập này làm "phiếu nhập gốc" (Q3, tuỳ chọn).
-  sourceReceiptIssues     StockIssue[]
+  // nhập này làm "phiếu nhập gốc" (Q3, tuỳ chọn). Đặt tên quan hệ riêng — từ #195, StockReceipt còn
+  // 1 quan hệ KHÁC (`sourceIssue`) trỏ tới StockIssue theo chiều ngược lại, Prisma cần tên để phân biệt.
+  sourceReceiptIssues     StockIssue[]             @relation("StockIssueSourceReceipt")
   // "Công nợ nhà cung cấp" Phần D — Phiếu điều chỉnh/Đề nghị huỷ THAM CHIẾU phiếu này (target_receipt_id).
   debtAdjustmentsAsTarget SupplierDebtAdjustment[]
 
@@ -2178,13 +2186,18 @@ model StockIssue {
   department              Department?              @relation(fields: [tenantId, departmentId], references: [tenantId, id])
   // Composite FK (tenant_id, supplier_id) -> supplier(tenant_id, id), NULLABLE ("Công nợ NCC" Phần C).
   supplier                Supplier?                @relation(fields: [tenantId, supplierId], references: [tenantId, id])
-  // Composite FK (tenant_id, source_receipt_id) -> stock_receipt(tenant_id, id), NULLABLE.
-  sourceReceipt           StockReceipt?            @relation(fields: [tenantId, sourceReceiptId], references: [tenantId, id])
+  // Composite FK (tenant_id, source_receipt_id) -> stock_receipt(tenant_id, id), NULLABLE. Đặt tên
+  // quan hệ riêng — từ #195, StockIssue còn 1 quan hệ KHÁC (`sourceIssueReceipts`) làm đích cho
+  // StockReceipt theo chiều ngược lại, Prisma cần tên để phân biệt.
+  sourceReceipt           StockReceipt?            @relation("StockIssueSourceReceipt", fields: [tenantId, sourceReceiptId], references: [tenantId, id])
   lines                   StockIssueLine[]
   ledgerEntries           StockLedger[]
   debtEntries             SupplierDebtEntry[]
   // "Công nợ nhà cung cấp" Phần D — Phiếu điều chỉnh/Đề nghị huỷ THAM CHIẾU phiếu này (target_issue_id).
   debtAdjustmentsAsTarget SupplierDebtAdjustment[]
+  // "Nhập hoàn trả từ bệnh nhân/khoa phòng" (docs/DECISIONS.md #195) — phiếu nhập trả hàng (tuỳ chọn)
+  // CHỌN phiếu xuất này làm "phiếu xuất gốc".
+  sourceIssueReceipts     StockReceipt[]           @relation("StockReceiptSourceIssue")
 
   @@unique([tenantId, id])
   @@unique([tenantId, issueNo])
@@ -2482,8 +2495,14 @@ model PrescriptionItem {
   // Dòng tự do KHÔNG tính tiền/tồn kho/không phát được qua "Phát thuốc" — chỉ ghi bệnh án + in đơn.
   drugId          String? @map("drug_id") @db.Uuid
   freeTextDrugName String? @map("free_text_drug_name")
-  dose           String
-  frequency      String
+  // Liều dùng theo buổi trong ngày (docs/DECISIONS.md #196, mockup đã duyệt) — thay hẳn 2 cột tự do
+  // `dose`/`frequency` cũ. Đơn vị luôn là đơn vị NHỎ NHẤT của thuốc (`drug.baseUnitCode`, resolve qua
+  // JOIN lúc đọc — KHÔNG snapshot cột riêng). `quantity` = tổng 4 cột này × `durationDays`, LUÔN do
+  // Service tính (`toCreateItemData()`), KHÔNG nhận trực tiếp từ client nữa.
+  doseMorning   Int @default(0) @map("dose_morning") @db.SmallInt
+  doseNoon      Int @default(0) @map("dose_noon") @db.SmallInt
+  doseAfternoon Int @default(0) @map("dose_afternoon") @db.SmallInt
+  doseEvening   Int @default(0) @map("dose_evening") @db.SmallInt
   durationDays   Int     @map("duration_days") @db.SmallInt
   quantity       Int
   instruction    String?
@@ -2540,8 +2559,11 @@ model PrescriptionTemplateItem {
   tenantId   String @map("tenant_id") @db.Uuid
   templateId String @map("template_id") @db.Uuid
   drugId     String @map("drug_id") @db.Uuid
-  dose         String
-  frequency    String
+  // Đúng khuôn `PrescriptionItem` (docs/DECISIONS.md #196) — thay hẳn dose/frequency tự do.
+  doseMorning   Int @default(0) @map("dose_morning") @db.SmallInt
+  doseNoon      Int @default(0) @map("dose_noon") @db.SmallInt
+  doseAfternoon Int @default(0) @map("dose_afternoon") @db.SmallInt
+  doseEvening   Int @default(0) @map("dose_evening") @db.SmallInt
   durationDays Int     @map("duration_days") @db.SmallInt
   quantity     Int
   instruction  String?

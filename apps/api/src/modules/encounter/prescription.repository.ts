@@ -9,10 +9,15 @@ export interface PrescriptionItemWithDrug {
   /** Có giá trị CHỈ khi `drugId=null`. */
   freeTextDrugName: string | null;
   activeIngredient: string | null;
-  dose: string;
-  frequency: string;
+  doseMorning: number;
+  doseNoon: number;
+  doseAfternoon: number;
+  doseEvening: number;
   durationDays: number;
   quantity: number;
+  /** Đơn vị nhỏ nhất của thuốc (`drug.baseUnitCode`) — CHỈ hiển thị, docs/DECISIONS.md #196. `null`
+   * cho dòng tự do hoặc thuốc chưa khai đơn vị cơ sở. */
+  unitCode: string | null;
   instruction: string | null;
 }
 
@@ -24,12 +29,14 @@ interface RawItemWithDrug {
   id: string;
   drugId: string | null;
   freeTextDrugName: string | null;
-  dose: string;
-  frequency: string;
+  doseMorning: number;
+  doseNoon: number;
+  doseAfternoon: number;
+  doseEvening: number;
   durationDays: number;
   quantity: number;
   instruction: string | null;
-  drug: { name: string; activeIngredient: string | null } | null;
+  drug: { name: string; activeIngredient: string | null; baseUnitCode: string | null } | null;
 }
 
 interface RawPrescriptionWithItems extends Prescription {
@@ -43,19 +50,30 @@ function mapItems(rows: RawItemWithDrug[]): PrescriptionItemWithDrug[] {
     freeTextDrugName: row.freeTextDrugName,
     drugName: row.drug?.name ?? row.freeTextDrugName!,
     activeIngredient: row.drug?.activeIngredient ?? null,
-    dose: row.dose,
-    frequency: row.frequency,
+    doseMorning: row.doseMorning,
+    doseNoon: row.doseNoon,
+    doseAfternoon: row.doseAfternoon,
+    doseEvening: row.doseEvening,
     durationDays: row.durationDays,
     quantity: row.quantity,
+    unitCode: row.drug?.baseUnitCode ?? null,
     instruction: row.instruction,
   }));
 }
 
+const ITEMS_INCLUDE = {
+  where: { deletedAt: null as null },
+  include: { drug: { select: { name: true, activeIngredient: true, baseUnitCode: true } } },
+  orderBy: { createdAt: 'asc' as const },
+};
+
 export interface CreatePrescriptionItemData {
   drugId: string | null;
   freeTextDrugName: string | null;
-  dose: string;
-  frequency: string;
+  doseMorning: number;
+  doseNoon: number;
+  doseAfternoon: number;
+  doseEvening: number;
   durationDays: number;
   quantity: number;
   instruction: string | null;
@@ -68,7 +86,7 @@ export class PrescriptionRepository {
   async findActiveForEncounter(tx: Prisma.TransactionClient, tenantId: string, encounterId: string): Promise<PrescriptionWithItems | null> {
     const row = (await tx.prescription.findFirst({
       where: { tenantId, encounterId, deletedAt: null },
-      include: { items: { where: { deletedAt: null }, include: { drug: { select: { name: true, activeIngredient: true } } }, orderBy: { createdAt: 'asc' } } },
+      include: { items: ITEMS_INCLUDE },
     })) as RawPrescriptionWithItems | null;
     if (!row) return null;
     return { ...row, items: mapItems(row.items) };
@@ -80,7 +98,7 @@ export class PrescriptionRepository {
     if (encounterIds.length === 0) return new Map();
     const rows = (await tx.prescription.findMany({
       where: { tenantId, encounterId: { in: encounterIds }, deletedAt: null },
-      include: { items: { where: { deletedAt: null }, include: { drug: { select: { name: true, activeIngredient: true } } }, orderBy: { createdAt: 'asc' } } },
+      include: { items: ITEMS_INCLUDE },
     })) as RawPrescriptionWithItems[];
     const result = new Map<string, PrescriptionWithItems>();
     for (const row of rows) {
@@ -92,7 +110,25 @@ export class PrescriptionRepository {
   async findById(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<PrescriptionWithItems | null> {
     const row = (await tx.prescription.findFirst({
       where: { tenantId, id, deletedAt: null },
-      include: { items: { where: { deletedAt: null }, include: { drug: { select: { name: true, activeIngredient: true } } }, orderBy: { createdAt: 'asc' } } },
+      include: { items: ITEMS_INCLUDE },
+    })) as RawPrescriptionWithItems | null;
+    if (!row) return null;
+    return { ...row, items: mapItems(row.items) };
+  }
+
+  /** "Sao chép đơn thuốc lần khám trước" (docs/DECISIONS.md #196, mockup đã duyệt) — đơn ĐÃ KÝ gần
+   * nhất của CÙNG bệnh nhân, ở lượt khám KHÁC `excludeEncounterId`. Lọc qua quan hệ `encounter.
+   * patientId` (không cần join thủ công) — `deletedAt: null` tự loại bản gốc đã bị đính chính. */
+  async findMostRecentSignedForPatient(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    patientId: string,
+    excludeEncounterId: string,
+  ): Promise<PrescriptionWithItems | null> {
+    const row = (await tx.prescription.findFirst({
+      where: { tenantId, deletedAt: null, signedAt: { not: null }, encounterId: { not: excludeEncounterId }, encounter: { patientId } },
+      orderBy: { signedAt: 'desc' },
+      include: { items: ITEMS_INCLUDE },
     })) as RawPrescriptionWithItems | null;
     if (!row) return null;
     return { ...row, items: mapItems(row.items) };

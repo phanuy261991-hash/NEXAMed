@@ -15,6 +15,7 @@ import {
   type ClinicConfigReaderPort,
   type DoctorDirectoryPort,
 } from '@nexamed/core';
+import { formatDoseSummary } from '@nexamed/shared';
 import type {
   ApproveStockIssueRequest,
   CreateManualStockIssueRequest,
@@ -920,8 +921,7 @@ export class StockIssueService {
             prescriptionItemId: item.id,
             drugName: item.drugName,
             prescribedQuantity: item.quantity,
-            dose: item.dose,
-            frequency: item.frequency,
+            doseSummary: formatDoseSummary(item),
             instruction: item.instruction,
           });
           continue;

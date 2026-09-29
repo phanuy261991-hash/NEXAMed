@@ -4,12 +4,14 @@ import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
 import { createPrescriptionTemplate, listPrescriptionTemplates, updatePrescriptionTemplate } from './prescription-template.api';
 
-/** "Đơn thuốc mẫu" (Kho Thuốc GĐ5) — dùng chung toàn tenant, không cần refetch thường xuyên như `drug`. */
-export function usePrescriptionTemplatesQuery() {
+/** "Đơn thuốc mẫu" (Kho Thuốc GĐ5) — dùng chung toàn tenant, không cần refetch thường xuyên như
+ * `drug`. `includeInactive` (docs/DECISIONS.md #196) — trang quản lý trong Quản trị cần thấy cả mẫu
+ * đã "Xoá" để "Kích hoạt lại"; popup chọn mẫu lúc kê đơn giữ mặc định `false`. */
+export function usePrescriptionTemplatesQuery(includeInactive = false) {
   const { tenantId } = useAppConfig();
   return useQuery({
-    queryKey: queryKey(tenantId, 'prescription-template'),
-    queryFn: () => listPrescriptionTemplates(),
+    queryKey: queryKey(tenantId, 'prescription-template', String(includeInactive)),
+    queryFn: () => listPrescriptionTemplates(includeInactive),
   });
 }
 

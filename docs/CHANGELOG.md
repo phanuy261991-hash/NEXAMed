@@ -2,6 +2,22 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-29 (2)
+
+### Redesign Kê đơn (liều theo buổi Sáng/Trưa/Chiều/Tối) + "Đơn thuốc mẫu" (trang riêng Quản trị) + "Sao chép đơn thuốc lần khám trước"
+
+3 việc chủ dự án yêu cầu, chốt qua `AskUserQuestion` + mockup Artifact đã duyệt trước khi code (`https://claude.ai/artifact/EnT8CJiQiyeJbzN35p4KZs`). Migration `20260929110000_prescription_dose_periods` thay hẳn 2 cột tự do `dose`/`frequency` bằng 4 cột `dose_morning`/`dose_noon`/`dose_afternoon`/`dose_evening` cho cả `prescription_item` lẫn `prescription_template_item` — dữ liệu cũ của đơn đã ký được gộp vào `instruction` trước khi xoá cột, không mất nội dung. `quantity` từ nay luôn do backend tính (tổng 4 buổi × số ngày), đơn vị luôn là đơn vị nhỏ nhất của thuốc (resolve qua JOIN, không snapshot cột riêng). Thêm endpoint `GET /encounters/:id/prescription/previous` ("Sao chép đơn lần trước") và trang mới "Đơn thuốc mẫu" (`/admin/prescription-templates`) quản lý đầy đủ (xem/sửa/ẩn/kích hoạt lại) ngoài lúc kê đơn.
+
+**Đã xác minh thật**: `packages/shared`/`packages/core` pass đủ, `apps/api` toàn bộ suite 1029/1029 pass (2 flake đã biết, không liên quan), `pnpm -w typecheck/lint/build` sạch. **Chưa verify Playwright**. Chi tiết đầy đủ `docs/DECISIONS.md` #196, việc kế tiếp xem `docs/handoffs/HANDOFF-KeDonRedesign-DonThuocMau-2026-09-29.md`.
+
+## 2026-09-29
+
+### "Phiếu xuất gốc" TUỲ CHỌN cho "Nhập hoàn trả từ bệnh nhân/khoa phòng"
+
+Chủ dự án hỏi kiểm tra: phiếu `RETURN_FROM_USE` không bắt chọn phiếu xuất/đơn thuốc gốc — xác nhận đúng, chốt giữ KHÔNG BẮT BUỘC (sợ không tìm ra phiếu gốc thì không trả được hàng). Thêm liên kết TUỲ CHỌN tới `stock_issue` (bao gồm cả `RETAIL_SALE` gắn đơn thuốc lẫn `INTERNAL_ALLOCATION` gắn Khoa/Phòng) để có dấu vết truy nguyên khi người dùng tìm thấy, không chặn lập phiếu khi không chọn. Migration `20260929100000_stock_receipt_return_from_use_source_issue` (`stock_receipt.source_issue_id`, FK composite → `stock_issue`). Web: Combobox "Phiếu xuất gốc (tuỳ chọn)" trong `StockReceiptHeaderDialog.tsx`.
+
+**Đã xác minh thật**: `inventory-http.spec.ts` +5 test (33/33 pass), `pnpm -w typecheck/lint/build` sạch. Chi tiết đầy đủ `docs/DECISIONS.md` #195.
+
 ## 2026-09-28 (4)
 
 ### Redesign "Tạo/Sửa phiếu nhập kho" + "Phiếu xuất kho" — popup nhập header + bố cục 2 cột, đồng bộ ô tìm thuốc 4 màn hình Kho Thuốc

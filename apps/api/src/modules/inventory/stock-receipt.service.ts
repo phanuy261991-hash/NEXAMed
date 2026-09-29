@@ -36,6 +36,7 @@ import { StockReceiptRepository, type StockReceiptWithLines, type StockReceiptLi
 import { InventoryBatchRepository } from './inventory-batch.repository';
 import { StockLedgerRepository } from './stock-ledger.repository';
 import { StockBalanceRepository } from './stock-balance.repository';
+import { StockIssueRepository } from './stock-issue.repository';
 
 /** "Phiếu nhập kho mở rộng" (Kho Thuốc GĐ4, docs/DECISIONS.md #170) mở khoá thêm `RETURN_FROM_USE`
  * (lập tay, Nháp→Duyệt đúng khuôn PURCHASE/OPENING_BALANCE — không cột đặc thù, "kiểm duyệt chặt
@@ -70,6 +71,7 @@ export class StockReceiptService {
     private readonly inventoryBatchRepository: InventoryBatchRepository,
     private readonly stockLedgerRepository: StockLedgerRepository,
     private readonly stockBalanceRepository: StockBalanceRepository,
+    private readonly stockIssueRepository: StockIssueRepository,
     private readonly businessCodeService: BusinessCodeService,
     // Phần D (docs/DECISIONS.md #180/#182) làm `supplier-debt ⇄ inventory` thành vòng phụ thuộc THẬT
     // ở mức Service (SupplierDebtService.approveAdjustment() giờ gọi ngược StockReceiptService.
@@ -93,6 +95,7 @@ export class StockReceiptService {
         const supplier = await this.supplierRepository.findById(tx, tenantId, dto.supplierId);
         if (!supplier) throw new NotFoundException();
       }
+      await this.validateSourceIssueRef(tx, tenantId, dto.sourceIssueId);
 
       const lines = await this.buildLineData(tx, tenantId, dto.lines);
       const totalAmount = lines.reduce((sum, l) => sum + l.lineAmount, 0n);
@@ -117,6 +120,7 @@ export class StockReceiptService {
         lines,
         countId: null,
         transferId: null,
+        sourceIssueId: dto.sourceIssueId ?? null,
       });
 
       await writeAuditLog(tx, tenantId, {
@@ -159,6 +163,7 @@ export class StockReceiptService {
         const supplier = await this.supplierRepository.findById(tx, tenantId, dto.supplierId);
         if (!supplier) throw new NotFoundException();
       }
+      await this.validateSourceIssueRef(tx, tenantId, dto.sourceIssueId);
 
       const lines = await this.buildLineData(tx, tenantId, dto.lines);
       const totalAmount = lines.reduce((sum, l) => sum + l.lineAmount, 0n);
@@ -179,6 +184,7 @@ export class StockReceiptService {
         prepaidPaymentMethodCode: dto.prepaidPaymentMethodCode ?? null,
         prepaidCashAccountId: dto.prepaidCashAccountId ?? null,
         lines,
+        sourceIssueId: dto.sourceIssueId ?? null,
       });
       if (count === 0) throw new ConcurrentModificationError();
 
@@ -340,6 +346,7 @@ export class StockReceiptService {
       lines: params.lines,
       countId: params.countId,
       transferId: null,
+      sourceIssueId: null,
     });
 
     // Chuyển thẳng DRAFT→POSTED (vừa tạo, version chắc chắn = 1, không tranh chấp ai khác trong
@@ -386,6 +393,7 @@ export class StockReceiptService {
       lines: params.lines,
       countId: null,
       transferId: params.transferId,
+      sourceIssueId: null,
     });
 
     const postedCount = await this.stockReceiptRepository.approve(tx, tenantId, created.id, created.version, actorId);
@@ -593,6 +601,18 @@ export class StockReceiptService {
 
   // ============ helpers ============
 
+  /** "Nhập hoàn trả từ bệnh nhân/khoa phòng" (docs/DECISIONS.md #195) — `sourceIssueId` (nếu có,
+   * TUỲ CHỌN) phải là phiếu xuất ĐÃ DUYỆT tồn tại trong đúng tenant. Không chọn (`undefined`) luôn
+   * hợp lệ — chủ dự án yêu cầu chủ động KHÔNG bắt buộc, không tìm ra phiếu xuất gốc vẫn phải lập
+   * được phiếu trả hàng vào kho. Cùng khuôn `validateReturnSupplierRefs()` của `StockIssueService`. */
+  private async validateSourceIssueRef(tx: Prisma.TransactionClient, tenantId: string, sourceIssueId: string | null | undefined): Promise<void> {
+    if (!sourceIssueId) return;
+    const issue = await this.stockIssueRepository.findById(tx, tenantId, sourceIssueId);
+    if (!issue || issue.status !== 'POSTED') {
+      throw new UnprocessableEntityException('Phiếu xuất gốc không hợp lệ — phải là phiếu xuất ĐÃ DUYỆT.');
+    }
+  }
+
   private async buildLineData(tx: Prisma.TransactionClient, tenantId: string, lines: CreateStockReceiptRequest['lines']): Promise<StockReceiptLineData[]> {
     const result: StockReceiptLineData[] = [];
     for (const line of lines) {
@@ -634,7 +654,13 @@ export class StockReceiptService {
     return { baseQuantity, baseUnitCost };
   }
 
-  private toSummaryDto(row: StockReceipt, warehouseName: string, supplierName: string | null, lineCount: number, names: Map<string, string>): StockReceiptSummary {
+  private toSummaryDto(
+    row: StockReceipt & { sourceIssue: { issueNo: string } | null },
+    warehouseName: string,
+    supplierName: string | null,
+    lineCount: number,
+    names: Map<string, string>,
+  ): StockReceiptSummary {
     return {
       id: row.id,
       receiptNo: row.receiptNo,
@@ -655,6 +681,8 @@ export class StockReceiptService {
       prepaidPaymentMethodCode: row.prepaidPaymentMethodCode,
       prepaidCashAccountId: row.prepaidCashAccountId,
       prepaidVoucherId: row.prepaidVoucherId,
+      sourceIssueId: row.sourceIssueId,
+      sourceIssueNo: row.sourceIssue?.issueNo ?? null,
       lineCount,
       createdByName: names.get(row.createdBy) ?? 'Không rõ',
       approvedByName: row.approvedBy ? (names.get(row.approvedBy) ?? 'Không rõ') : null,

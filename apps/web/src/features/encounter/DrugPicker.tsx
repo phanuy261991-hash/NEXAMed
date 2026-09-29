@@ -26,12 +26,16 @@ export interface DrugPickerHandle {
 export const DrugPicker = forwardRef<DrugPickerHandle, {
   /** Thuốc đã thêm vào đơn rồi — ẩn khỏi kết quả để không chọn trùng. */
   excludeDrugIds: (string | null)[];
-  onSelect: (item: { drugId: string; drugName: string }) => void;
+  onSelect: (item: { drugId: string; drugName: string; unitCode: string | null }) => void;
   /** "Kê thuốc tự do, không qua danh mục" (mở rộng Kho Thuốc GĐ5) — thêm 1 dòng có tên tự do (không
    * `drugId`) vào đơn. Chỉ gọi được khi tenant bật `allowFreeTextPrescriptionEnabled` (component tự
    * đọc công tắc, ẩn hẳn tuỳ chọn khi tắt). */
   onAddFreeText: (name: string) => void;
-}>(function DrugPicker({ excludeDrugIds, onSelect, onAddFreeText }, ref) {
+  /** "Đơn thuốc mẫu" (docs/DECISIONS.md #196) LUÔN yêu cầu `drugId` thật (schema
+   * `prescription_template_item` không có nhánh tự do) — ép ẩn tuỳ chọn "ngoài danh mục" ở đây dù
+   * tenant đang bật `allowFreeTextPrescriptionEnabled` cho việc kê đơn thường. */
+  disableFreeText?: boolean;
+}>(function DrugPicker({ excludeDrugIds, onSelect, onAddFreeText, disableFreeText = false }, ref) {
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -45,7 +49,7 @@ export const DrugPicker = forwardRef<DrugPickerHandle, {
   const allowFreeTextQuery = useAllowFreeTextPrescriptionEnabledQuery();
   // "Tuỳ chọn ảo" cuối danh sách — dùng CHUNG cơ chế điều hướng bàn phím với kết quả thật
   // (activeIndex === results.length nghĩa là đang chọn dòng này).
-  const canAddFreeText = (allowFreeTextQuery.data?.enabled ?? false) && debounced.trim() !== '';
+  const canAddFreeText = !disableFreeText && (allowFreeTextQuery.data?.enabled ?? false) && debounced.trim() !== '';
   const totalOptions = results.length + (canAddFreeText ? 1 : 0);
 
   // Kết quả đổi (gõ tiếp/xoá bớt) → luôn về đầu danh sách, tránh giữ activeIndex trỏ lệch thuốc.
@@ -61,8 +65,8 @@ export const DrugPicker = forwardRef<DrugPickerHandle, {
   );
   const onHandByDrugId = onHandQuery.data?.onHandByDrugId ?? {};
 
-  function handleSelect(id: string, name: string) {
-    onSelect({ drugId: id, drugName: name });
+  function handleSelect(id: string, name: string, unitCode: string | null) {
+    onSelect({ drugId: id, drugName: name, unitCode });
     setQuery('');
     setActiveIndex(0);
     inputRef.current?.focus();
@@ -91,7 +95,7 @@ export const DrugPicker = forwardRef<DrugPickerHandle, {
       e.preventDefault();
       if (activeIndex < results.length) {
         const item = results[activeIndex];
-        if (item) handleSelect(item.id, item.name);
+        if (item) handleSelect(item.id, item.name, item.baseUnitCode);
       } else if (canAddFreeText) {
         handleSelectFreeText();
       }
@@ -156,7 +160,7 @@ export const DrugPicker = forwardRef<DrugPickerHandle, {
                 role="option"
                 aria-selected={active}
                 type="button"
-                onClick={() => handleSelect(item.id, item.name)}
+                onClick={() => handleSelect(item.id, item.name, item.baseUnitCode)}
                 onMouseEnter={() => setActiveIndex(index)}
                 className={`flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-left ${
                   active ? 'border-brand-teal bg-brand-teal-tint' : 'border-slate-200 hover:border-blue-400 hover:bg-brand-teal-tint'

@@ -103,26 +103,31 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
     return allergen.id as string;
   }
 
-  /** Tạo appointment + patient + check-in + "Bắt đầu khám" + 1 chẩn đoán chính — sẵn sàng để kê đơn. */
-  async function prepareEncounterInConsultation(hour: number, doctorId = doctorAUserId) {
+  /** Tạo appointment + patient (hoặc dùng `existingPatientId` — "Sao chép đơn lần trước", docs/
+   * DECISIONS.md #196, cần 2 lượt khám CÙNG bệnh nhân) + check-in + "Bắt đầu khám" + 1 chẩn đoán
+   * chính — sẵn sàng để kê đơn. */
+  async function prepareEncounterInConsultation(hour: number, doctorId = doctorAUserId, existingPatientId?: string) {
     const appointmentRes = await request(app.getHttpServer())
       .post('/api/v1/appointments')
       .set(authed(receptionistToken))
       .send({ doctorId, fullName: 'Khách e2e kê đơn', phone: '0911222444', scheduledAt: new Date(Date.UTC(2026, 7, 28, hour, 0, 0)).toISOString(), source: 'phone' as const });
     const appointment = appointmentRes.body.data as { id: string; version: number };
 
-    const patientRes = await request(app.getHttpServer())
-      .post('/api/v1/patients')
-      .set(authed(receptionistToken))
-      .send({ fullName: 'Bệnh nhân e2e kê đơn', dob: '1990-01-01', gender: 'female', phone: '0933555666', nationalId: randomNationalId() });
-    const patient = patientRes.body.data as { id: string };
+    let patientId = existingPatientId;
+    if (!patientId) {
+      const patientRes = await request(app.getHttpServer())
+        .post('/api/v1/patients')
+        .set(authed(receptionistToken))
+        .send({ fullName: 'Bệnh nhân e2e kê đơn', dob: '1990-01-01', gender: 'female', phone: '0933555666', nationalId: randomNationalId() });
+      patientId = (patientRes.body.data as { id: string }).id;
+    }
 
     const checkInRes = await request(app.getHttpServer())
       .post('/api/v1/reception/check-in')
       .set(authed(receptionistToken))
       .send({
         appointmentId: appointment.id,
-        patientId: patient.id,
+        patientId,
         version: appointment.version,
         doctorId,
         services: [{ examTypeCode: 'KT', examTypeName: 'Khám thường', examTypePrice: 150_000, quantity: 1 }],
@@ -139,7 +144,7 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
       .set(authed(doctorAToken))
       .send({ diagnoses: [{ icd10Code: 'A00', type: 'PRIMARY' as const }] });
 
-    return { encounterId, patientId: patient.id };
+    return { encounterId, patientId };
   }
 
   beforeAll(async () => {
@@ -212,7 +217,7 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
     const res = await request(app.getHttpServer())
       .put(`/api/v1/encounters/${encounterId}/prescription-items`)
       .set(authed(doctorAToken))
-      .send({ items: [{ drugId, dose: '1 viên', frequency: '2 lần/ngày', durationDays: 5, quantity: 10 }] });
+      .send({ items: [{ drugId, doseMorning: 10, doseNoon: 0, doseAfternoon: 0, doseEvening: 0, durationDays: 1 }] });
 
     expect(res.status).toBe(422);
     expect(res.body.error.code).toBe('PRESCRIPTION_REQUIRES_DIAGNOSIS');
@@ -237,8 +242,8 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
       .set(authed(doctorAToken))
       .send({
         items: [
-          { drugId: drugA, dose: '1 viên', frequency: '2 lần/ngày', durationDays: 5, quantity: 10 },
-          { drugId: drugB, dose: '1 viên', frequency: '3 lần/ngày', durationDays: 3, quantity: 9 },
+          { drugId: drugA, doseMorning: 10, doseNoon: 0, doseAfternoon: 0, doseEvening: 0, durationDays: 1 },
+          { drugId: drugB, doseMorning: 9, doseNoon: 0, doseAfternoon: 0, doseEvening: 0, durationDays: 1 },
         ],
       });
     expect(saveRes.status).toBe(200);
@@ -259,7 +264,7 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
     const editAfterSign = await request(app.getHttpServer())
       .put(`/api/v1/encounters/${encounterId}/prescription-items`)
       .set(authed(doctorAToken))
-      .send({ items: [{ drugId: drugA, dose: '2 viên', frequency: '2 lần/ngày', durationDays: 5, quantity: 20 }] });
+      .send({ items: [{ drugId: drugA, doseMorning: 20, doseNoon: 0, doseAfternoon: 0, doseEvening: 0, durationDays: 1 }] });
     expect(editAfterSign.status).toBe(409);
     expect(editAfterSign.body.error.code).toBe('PRESCRIPTION_ALREADY_SIGNED');
   });
@@ -283,7 +288,7 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
     const saveRes = await request(app.getHttpServer())
       .put(`/api/v1/encounters/${encounterId}/prescription-items`)
       .set(authed(doctorAToken))
-      .send({ items: [{ drugId, dose: '1 viên', frequency: '2 lần/ngày', durationDays: 5, quantity: 10 }] });
+      .send({ items: [{ drugId, doseMorning: 10, doseNoon: 0, doseAfternoon: 0, doseEvening: 0, durationDays: 1 }] });
 
     expect(saveRes.status).toBe(200);
     expect(saveRes.body.data.warnings).toHaveLength(1);
@@ -305,7 +310,7 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
     const saveRes = await request(app.getHttpServer())
       .put(`/api/v1/encounters/${encounterId}/prescription-items`)
       .set(authed(doctorAToken))
-      .send({ items: [{ drugId, dose: '1 gói', frequency: '3 lần/ngày', durationDays: 5, quantity: 15 }] });
+      .send({ items: [{ drugId, doseMorning: 15, doseNoon: 0, doseAfternoon: 0, doseEvening: 0, durationDays: 1 }] });
     expect(saveRes.status).toBe(200);
     expect(saveRes.body.data.warnings).toHaveLength(1);
     expect(saveRes.body.data.warnings[0].kind).toBe('stock_insufficient');
@@ -336,7 +341,7 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
     await request(app.getHttpServer())
       .put(`/api/v1/encounters/${encounterId}/prescription-items`)
       .set(authed(doctorAToken))
-      .send({ items: [{ drugId, dose: '1 viên', frequency: '2 lần/ngày', durationDays: 5, quantity: 10 }] });
+      .send({ items: [{ drugId, doseMorning: 10, doseNoon: 0, doseAfternoon: 0, doseEvening: 0, durationDays: 1 }] });
 
     const enableBlock = await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(clinicAdminToken)).send({ prescriptionStockBlockEnabled: true });
     expect(enableBlock.status).toBe(200);
@@ -362,7 +367,7 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
     const saveRes = await request(app.getHttpServer())
       .put(`/api/v1/encounters/${encounterId}/prescription-items`)
       .set(authed(doctorAToken))
-      .send({ items: [{ drugId, dose: '1 viên', frequency: '2 lần/ngày', durationDays: 5, quantity: 10 }] });
+      .send({ items: [{ drugId, doseMorning: 10, doseNoon: 0, doseAfternoon: 0, doseEvening: 0, durationDays: 1 }] });
     expect(saveRes.body.data.warnings).toHaveLength(0);
 
     const signRes = await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/prescription/sign`).set(authed(doctorAToken)).send({ version: 1 });
@@ -379,7 +384,7 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
     await request(app.getHttpServer())
       .put(`/api/v1/encounters/${encounterId}/prescription-items`)
       .set(authed(doctorAToken))
-      .send({ items: [{ drugId, dose: '1 viên', frequency: '2 lần/ngày', durationDays: 5, quantity: 10 }] });
+      .send({ items: [{ drugId, doseMorning: 10, doseNoon: 0, doseAfternoon: 0, doseEvening: 0, durationDays: 1 }] });
     const signRes = await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/prescription/sign`).set(authed(doctorAToken)).send({ version: 1 });
     const originalPrescriptionId = signRes.body.data.id as string;
     const originalPrescriptionNo = signRes.body.data.prescriptionNo as string;
@@ -406,8 +411,8 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
         amendmentReason: 'Bổ sung Vitamin C theo yêu cầu bệnh nhân',
         version: versionAfterPrint,
         items: [
-          { drugId, dose: '2 viên', frequency: '2 lần/ngày', durationDays: 5, quantity: 20 },
-          { drugId: drugId2, dose: '1 viên', frequency: '1 lần/ngày', durationDays: 5, quantity: 5 },
+          { drugId, doseMorning: 20, doseNoon: 0, doseAfternoon: 0, doseEvening: 0, durationDays: 1 },
+          { drugId: drugId2, doseMorning: 5, doseNoon: 0, doseAfternoon: 0, doseEvening: 0, durationDays: 1 },
         ],
       });
     expect(amendRes.status).toBe(200);
@@ -431,7 +436,7 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
     const saveRes = await request(app.getHttpServer())
       .put(`/api/v1/encounters/${encounterId}/prescription-items`)
       .set(authed(doctorBToken))
-      .send({ items: [{ drugId, dose: '1 viên', frequency: '1 lần/ngày', durationDays: 3, quantity: 3 }] });
+      .send({ items: [{ drugId, doseMorning: 3, doseNoon: 0, doseAfternoon: 0, doseEvening: 0, durationDays: 1 }] });
     expect(saveRes.status).toBe(404);
   });
 
@@ -442,7 +447,7 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
     const saveRes = await request(app.getHttpServer())
       .put(`/api/v1/encounters/${encounterId}/prescription-items`)
       .set(authed(tenantBDoctorToken))
-      .send({ items: [{ drugId, dose: '1 viên', frequency: '1 lần/ngày', durationDays: 3, quantity: 3 }] });
+      .send({ items: [{ drugId, doseMorning: 3, doseNoon: 0, doseAfternoon: 0, doseEvening: 0, durationDays: 1 }] });
     expect(saveRes.status).toBe(404);
   });
 
@@ -452,7 +457,7 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
     await request(app.getHttpServer())
       .put(`/api/v1/encounters/${encounterId}/prescription-items`)
       .set(authed(doctorAToken))
-      .send({ items: [{ drugId, dose: '1 viên', frequency: '1 lần/ngày', durationDays: 3, quantity: 3 }] });
+      .send({ items: [{ drugId, doseMorning: 3, doseNoon: 0, doseAfternoon: 0, doseEvening: 0, durationDays: 1 }] });
     const signRes = await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/prescription/sign`).set(authed(doctorAToken)).send({ version: 1 });
     const prescriptionId = signRes.body.data.id as string;
 
@@ -467,7 +472,7 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
       const saveRes = await request(app.getHttpServer())
         .put(`/api/v1/encounters/${encounterId}/prescription-items`)
         .set(authed(doctorAToken))
-        .send({ items: [{ freeTextDrugName: 'Thuốc lạ ngoài danh mục', dose: '1 viên', frequency: '1 lần/ngày', durationDays: 3, quantity: 3 }] });
+        .send({ items: [{ freeTextDrugName: 'Thuốc lạ ngoài danh mục', doseMorning: 3, doseNoon: 0, doseAfternoon: 0, doseEvening: 0, durationDays: 1 }] });
       expect(saveRes.status).toBe(422);
       expect(saveRes.body.error.code).toBe('PRESCRIPTION_FREE_TEXT_DISABLED');
     });
@@ -485,8 +490,8 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
         .set(authed(doctorAToken))
         .send({
           items: [
-            { drugId, dose: '1 viên', frequency: '2 lần/ngày', durationDays: 5, quantity: 2 },
-            { freeTextDrugName: 'Thuốc lạ ngoài danh mục', dose: '1 gói', frequency: '3 lần/ngày', durationDays: 5, quantity: 15 },
+            { drugId, doseMorning: 2, doseNoon: 0, doseAfternoon: 0, doseEvening: 0, durationDays: 1 },
+            { freeTextDrugName: 'Thuốc lạ ngoài danh mục', doseMorning: 15, doseNoon: 0, doseAfternoon: 0, doseEvening: 0, durationDays: 1 },
           ],
         });
       expect(saveRes.status).toBe(200);
@@ -522,13 +527,106 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
       const saveRes = await request(app.getHttpServer())
         .put(`/api/v1/encounters/${encounterId}/prescription-items`)
         .set(authed(doctorAToken))
-        .send({ items: [{ freeTextDrugName: 'Penicillin V ngoài danh mục', dose: '1 viên', frequency: '2 lần/ngày', durationDays: 5, quantity: 10 }] });
+        .send({ items: [{ freeTextDrugName: 'Penicillin V ngoài danh mục', doseMorning: 10, doseNoon: 0, doseAfternoon: 0, doseEvening: 0, durationDays: 1 }] });
       expect(saveRes.status).toBe(200);
       expect(saveRes.body.data.warnings).toHaveLength(1);
       expect(saveRes.body.data.warnings[0].kind).toBe('allergy');
       expect(saveRes.body.data.warnings[0].label).toBe('Penicillin');
 
       await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(clinicAdminToken)).send({ allowFreeTextPrescriptionEnabled: false });
+    });
+  });
+
+  /** Cấu trúc liều theo buổi Sáng/Trưa/Chiều/Tối (docs/DECISIONS.md #196, mockup đã duyệt) — thay
+   * hẳn 2 ô tự do `dose`/`frequency` cũ. `quantity` LUÔN do backend tính, `unitCode` resolve qua
+   * JOIN từ `drug.baseUnitCode`, không nhận/lưu riêng. */
+  describe('Liều dùng theo buổi Sáng/Trưa/Chiều/Tối (docs/DECISIONS.md #196)', () => {
+    it('quantity = tổng 4 buổi × số ngày (backend tự tính, không nhận từ client) + unitCode = đơn vị nhỏ nhất của thuốc', async () => {
+      const { encounterId } = await prepareEncounterInConsultation(8);
+      const drugId = await createDrug(fixture.tenantA.id, 'Thuốc liều theo buổi', 'Hoạt chất F');
+      await privileged.drug.update({ where: { id: drugId }, data: { baseUnitCode: 'VIEN' } });
+      await seedSufficientStock(fixture.tenantA.id, drugId);
+
+      const saveRes = await request(app.getHttpServer())
+        .put(`/api/v1/encounters/${encounterId}/prescription-items`)
+        .set(authed(doctorAToken))
+        .send({ items: [{ drugId, doseMorning: 1, doseNoon: 0, doseAfternoon: 1, doseEvening: 1, durationDays: 5 }] });
+      expect(saveRes.status).toBe(200);
+      const item = saveRes.body.data.items[0];
+      expect(item.doseMorning).toBe(1);
+      expect(item.doseNoon).toBe(0);
+      expect(item.doseAfternoon).toBe(1);
+      expect(item.doseEvening).toBe(1);
+      expect(item.quantity).toBe(15); // (1+0+1+1) × 5
+      expect(item.unitCode).toBe('VIEN');
+    });
+
+    it('cả 4 buổi đều 0 → 400 (phải nhập liều dùng ít nhất 1 buổi trong ngày)', async () => {
+      const { encounterId } = await prepareEncounterInConsultation(9);
+      const drugId = await createDrug(fixture.tenantA.id, 'Thuốc không liều', 'Hoạt chất G');
+      const res = await request(app.getHttpServer())
+        .put(`/api/v1/encounters/${encounterId}/prescription-items`)
+        .set(authed(doctorAToken))
+        .send({ items: [{ drugId, doseMorning: 0, doseNoon: 0, doseAfternoon: 0, doseEvening: 0, durationDays: 5 }] });
+      expect(res.status).toBe(400);
+    });
+
+    it('dòng "kê thuốc tự do" (không drugId) → unitCode luôn null', async () => {
+      await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(clinicAdminToken)).send({ allowFreeTextPrescriptionEnabled: true });
+      const { encounterId } = await prepareEncounterInConsultation(10);
+      const saveRes = await request(app.getHttpServer())
+        .put(`/api/v1/encounters/${encounterId}/prescription-items`)
+        .set(authed(doctorAToken))
+        .send({ items: [{ freeTextDrugName: 'Siro ho ngoài danh mục', doseMorning: 0, doseNoon: 1, doseAfternoon: 0, doseEvening: 0, durationDays: 5 }] });
+      expect(saveRes.status).toBe(200);
+      expect(saveRes.body.data.items[0].unitCode).toBeNull();
+      expect(saveRes.body.data.items[0].quantity).toBe(5);
+      await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(clinicAdminToken)).send({ allowFreeTextPrescriptionEnabled: false });
+    });
+  });
+
+  /** "Sao chép đơn thuốc lần khám trước" (docs/DECISIONS.md #196, mockup đã duyệt). */
+  describe('GET .../prescription/previous — "Sao chép đơn thuốc lần khám trước" (docs/DECISIONS.md #196)', () => {
+    it('bệnh nhân chưa từng có đơn nào trước đó → null', async () => {
+      const { encounterId } = await prepareEncounterInConsultation(11);
+      const res = await request(app.getHttpServer()).get(`/api/v1/encounters/${encounterId}/prescription/previous`).set(authed(doctorAToken));
+      expect(res.status).toBe(200);
+      expect(res.body.data).toBeNull();
+    });
+
+    it('có đơn ĐÃ KÝ ở lượt khám khác CÙNG bệnh nhân → trả đúng danh sách dòng thuốc', async () => {
+      const drugId = await createDrug(fixture.tenantA.id, 'Thuốc lượt khám trước', 'Hoạt chất H');
+      await seedSufficientStock(fixture.tenantA.id, drugId);
+
+      const first = await prepareEncounterInConsultation(6);
+      await request(app.getHttpServer())
+        .put(`/api/v1/encounters/${first.encounterId}/prescription-items`)
+        .set(authed(doctorAToken))
+        .send({ items: [{ drugId, doseMorning: 1, doseNoon: 0, doseAfternoon: 0, doseEvening: 1, durationDays: 5 }] });
+      const signRes = await request(app.getHttpServer()).post(`/api/v1/encounters/${first.encounterId}/prescription/sign`).set(authed(doctorAToken)).send({ version: 1 });
+      expect(signRes.status).toBe(200);
+
+      // Lượt khám THỨ HAI, CÙNG bệnh nhân (`existingPatientId`) — chưa kê gì, gọi "Sao chép đơn lần trước".
+      const second = await prepareEncounterInConsultation(7, doctorAUserId, first.patientId);
+      const res = await request(app.getHttpServer()).get(`/api/v1/encounters/${second.encounterId}/prescription/previous`).set(authed(doctorAToken));
+      expect(res.status).toBe(200);
+      expect(res.body.data.items).toHaveLength(1);
+      expect(res.body.data.items[0].drugId).toBe(drugId);
+      expect(res.body.data.items[0].quantity).toBe(10); // (1+0+0+1) × 5
+    });
+
+    it('không có access token → 401; thiếu quyền prescription.create → 403', async () => {
+      const { encounterId } = await prepareEncounterInConsultation(12);
+      const noAuthRes = await request(app.getHttpServer()).get(`/api/v1/encounters/${encounterId}/prescription/previous`);
+      expect(noAuthRes.status).toBe(401);
+      const forbiddenRes = await request(app.getHttpServer()).get(`/api/v1/encounters/${encounterId}/prescription/previous`).set(authed(receptionistToken));
+      expect(forbiddenRes.status).toBe(403);
+    });
+
+    it('cách ly tenant — bác sĩ tenant B không xem được lượt khám tenant A → 404', async () => {
+      const { encounterId } = await prepareEncounterInConsultation(13);
+      const res = await request(app.getHttpServer()).get(`/api/v1/encounters/${encounterId}/prescription/previous`).set(authed(tenantBDoctorToken));
+      expect(res.status).toBe(404);
     });
   });
 });

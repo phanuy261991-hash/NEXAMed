@@ -5,10 +5,14 @@ export interface PrescriptionTemplateItemWithDrug {
   id: string;
   drugId: string;
   drugName: string;
-  dose: string;
-  frequency: string;
+  doseMorning: number;
+  doseNoon: number;
+  doseAfternoon: number;
+  doseEvening: number;
   durationDays: number;
   quantity: number;
+  /** Đơn vị nhỏ nhất của thuốc (`drug.baseUnitCode`) — CHỈ hiển thị, docs/DECISIONS.md #196. */
+  unitCode: string | null;
   instruction: string | null;
 }
 
@@ -19,12 +23,14 @@ export interface PrescriptionTemplateWithItems extends PrescriptionTemplate {
 interface RawItemWithDrug {
   id: string;
   drugId: string;
-  dose: string;
-  frequency: string;
+  doseMorning: number;
+  doseNoon: number;
+  doseAfternoon: number;
+  doseEvening: number;
   durationDays: number;
   quantity: number;
   instruction: string | null;
-  drug: { name: string };
+  drug: { name: string; baseUnitCode: string | null };
 }
 
 interface RawTemplateWithItems extends PrescriptionTemplate {
@@ -36,24 +42,29 @@ function mapItems(rows: RawItemWithDrug[]): PrescriptionTemplateItemWithDrug[] {
     id: row.id,
     drugId: row.drugId,
     drugName: row.drug.name,
-    dose: row.dose,
-    frequency: row.frequency,
+    doseMorning: row.doseMorning,
+    doseNoon: row.doseNoon,
+    doseAfternoon: row.doseAfternoon,
+    doseEvening: row.doseEvening,
     durationDays: row.durationDays,
     quantity: row.quantity,
+    unitCode: row.drug.baseUnitCode,
     instruction: row.instruction,
   }));
 }
 
 const ITEMS_INCLUDE = {
   where: { deletedAt: null as null },
-  include: { drug: { select: { name: true } } },
+  include: { drug: { select: { name: true, baseUnitCode: true } } },
   orderBy: { createdAt: 'asc' as const },
 };
 
 export interface CreatePrescriptionTemplateItemData {
   drugId: string;
-  dose: string;
-  frequency: string;
+  doseMorning: number;
+  doseNoon: number;
+  doseAfternoon: number;
+  doseEvening: number;
   durationDays: number;
   quantity: number;
   instruction: string | null;
@@ -64,9 +75,12 @@ export interface CreatePrescriptionTemplateItemData {
  * niệm ký/bất biến (mẫu sửa tự do, không soft-delete lịch sử phiên bản). */
 @Injectable()
 export class PrescriptionTemplateRepository {
-  async list(tx: Prisma.TransactionClient, tenantId: string): Promise<PrescriptionTemplateWithItems[]> {
+  /** `includeInactive` (docs/DECISIONS.md #196) — trang quản lý "Đơn thuốc mẫu" trong Quản trị cần
+   * thấy CẢ mẫu đã "Xoá" (`isActive=false`) để có thể "Kích hoạt lại"; popup chọn mẫu lúc kê đơn
+   * (`PrescriptionTemplateModal.tsx`) giữ nguyên mặc định chỉ thấy mẫu đang dùng. */
+  async list(tx: Prisma.TransactionClient, tenantId: string, includeInactive = false): Promise<PrescriptionTemplateWithItems[]> {
     const rows = (await tx.prescriptionTemplate.findMany({
-      where: { tenantId, deletedAt: null, isActive: true },
+      where: { tenantId, deletedAt: null, ...(includeInactive ? {} : { isActive: true }) },
       include: { items: ITEMS_INCLUDE },
       orderBy: { name: 'asc' },
     })) as RawTemplateWithItems[];

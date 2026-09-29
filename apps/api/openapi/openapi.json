@@ -10359,17 +10359,29 @@
                                       "null"
                                     ]
                                   },
-                                  "dose": {
-                                    "type": "string"
+                                  "doseMorning": {
+                                    "type": "integer"
                                   },
-                                  "frequency": {
-                                    "type": "string"
+                                  "doseNoon": {
+                                    "type": "integer"
+                                  },
+                                  "doseAfternoon": {
+                                    "type": "integer"
+                                  },
+                                  "doseEvening": {
+                                    "type": "integer"
                                   },
                                   "durationDays": {
                                     "type": "integer"
                                   },
                                   "quantity": {
                                     "type": "integer"
+                                  },
+                                  "unitCode": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
                                   },
                                   "instruction": {
                                     "type": [
@@ -10384,10 +10396,13 @@
                                   "drugName",
                                   "freeTextDrugName",
                                   "activeIngredient",
-                                  "dose",
-                                  "frequency",
+                                  "doseMorning",
+                                  "doseNoon",
+                                  "doseAfternoon",
+                                  "doseEvening",
                                   "durationDays",
                                   "quantity",
+                                  "unitCode",
                                   "instruction"
                                 ]
                               }
@@ -12736,19 +12751,23 @@
                           "minLength": 1,
                           "maxLength": 200
                         },
-                        "dose": {
-                          "type": "string",
-                          "minLength": 1
+                        "doseMorning": {
+                          "type": "integer",
+                          "minimum": 0
                         },
-                        "frequency": {
-                          "type": "string",
-                          "minLength": 1
+                        "doseNoon": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "doseAfternoon": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "doseEvening": {
+                          "type": "integer",
+                          "minimum": 0
                         },
                         "durationDays": {
-                          "type": "integer",
-                          "exclusiveMinimum": 0
-                        },
-                        "quantity": {
                           "type": "integer",
                           "exclusiveMinimum": 0
                         },
@@ -12757,10 +12776,11 @@
                         }
                       },
                       "required": [
-                        "dose",
-                        "frequency",
-                        "durationDays",
-                        "quantity"
+                        "doseMorning",
+                        "doseNoon",
+                        "doseAfternoon",
+                        "doseEvening",
+                        "durationDays"
                       ]
                     }
                   }
@@ -12825,17 +12845,29 @@
                                   "null"
                                 ]
                               },
-                              "dose": {
-                                "type": "string"
+                              "doseMorning": {
+                                "type": "integer"
                               },
-                              "frequency": {
-                                "type": "string"
+                              "doseNoon": {
+                                "type": "integer"
+                              },
+                              "doseAfternoon": {
+                                "type": "integer"
+                              },
+                              "doseEvening": {
+                                "type": "integer"
                               },
                               "durationDays": {
                                 "type": "integer"
                               },
                               "quantity": {
                                 "type": "integer"
+                              },
+                              "unitCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               },
                               "instruction": {
                                 "type": [
@@ -12850,10 +12882,13 @@
                               "drugName",
                               "freeTextDrugName",
                               "activeIngredient",
-                              "dose",
-                              "frequency",
+                              "doseMorning",
+                              "doseNoon",
+                              "doseAfternoon",
+                              "doseEvening",
                               "durationDays",
                               "quantity",
+                              "unitCode",
                               "instruction"
                             ]
                           }
@@ -13115,6 +13150,235 @@
         }
       }
     },
+    "/api/v1/encounters/{id}/prescription/previous": {
+      "get": {
+        "tags": [
+          "encounter"
+        ],
+        "summary": "\"Sao chép đơn thuốc lần khám trước\" — đơn ĐÃ KÝ gần nhất của cùng bệnh nhân, khác lượt khám này",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công (null nếu chưa từng có đơn nào trước đó)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "drugId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "drugName": {
+                                "type": "string"
+                              },
+                              "freeTextDrugName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "activeIngredient": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "doseMorning": {
+                                "type": "integer"
+                              },
+                              "doseNoon": {
+                                "type": "integer"
+                              },
+                              "doseAfternoon": {
+                                "type": "integer"
+                              },
+                              "doseEvening": {
+                                "type": "integer"
+                              },
+                              "durationDays": {
+                                "type": "integer"
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "unitCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "instruction": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "drugId",
+                              "drugName",
+                              "freeTextDrugName",
+                              "activeIngredient",
+                              "doseMorning",
+                              "doseNoon",
+                              "doseAfternoon",
+                              "doseEvening",
+                              "durationDays",
+                              "quantity",
+                              "unitCode",
+                              "instruction"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền prescription.create",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy lượt khám (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/encounters/{id}/prescription/sign": {
       "post": {
         "tags": [
@@ -13207,17 +13471,29 @@
                                   "null"
                                 ]
                               },
-                              "dose": {
-                                "type": "string"
+                              "doseMorning": {
+                                "type": "integer"
                               },
-                              "frequency": {
-                                "type": "string"
+                              "doseNoon": {
+                                "type": "integer"
+                              },
+                              "doseAfternoon": {
+                                "type": "integer"
+                              },
+                              "doseEvening": {
+                                "type": "integer"
                               },
                               "durationDays": {
                                 "type": "integer"
                               },
                               "quantity": {
                                 "type": "integer"
+                              },
+                              "unitCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               },
                               "instruction": {
                                 "type": [
@@ -13232,10 +13508,13 @@
                               "drugName",
                               "freeTextDrugName",
                               "activeIngredient",
-                              "dose",
-                              "frequency",
+                              "doseMorning",
+                              "doseNoon",
+                              "doseAfternoon",
+                              "doseEvening",
                               "durationDays",
                               "quantity",
+                              "unitCode",
                               "instruction"
                             ]
                           }
@@ -13572,17 +13851,29 @@
                                   "null"
                                 ]
                               },
-                              "dose": {
-                                "type": "string"
+                              "doseMorning": {
+                                "type": "integer"
                               },
-                              "frequency": {
-                                "type": "string"
+                              "doseNoon": {
+                                "type": "integer"
+                              },
+                              "doseAfternoon": {
+                                "type": "integer"
+                              },
+                              "doseEvening": {
+                                "type": "integer"
                               },
                               "durationDays": {
                                 "type": "integer"
                               },
                               "quantity": {
                                 "type": "integer"
+                              },
+                              "unitCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               },
                               "instruction": {
                                 "type": [
@@ -13597,10 +13888,13 @@
                               "drugName",
                               "freeTextDrugName",
                               "activeIngredient",
-                              "dose",
-                              "frequency",
+                              "doseMorning",
+                              "doseNoon",
+                              "doseAfternoon",
+                              "doseEvening",
                               "durationDays",
                               "quantity",
+                              "unitCode",
                               "instruction"
                             ]
                           }
@@ -13842,19 +14136,23 @@
                           "minLength": 1,
                           "maxLength": 200
                         },
-                        "dose": {
-                          "type": "string",
-                          "minLength": 1
+                        "doseMorning": {
+                          "type": "integer",
+                          "minimum": 0
                         },
-                        "frequency": {
-                          "type": "string",
-                          "minLength": 1
+                        "doseNoon": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "doseAfternoon": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "doseEvening": {
+                          "type": "integer",
+                          "minimum": 0
                         },
                         "durationDays": {
-                          "type": "integer",
-                          "exclusiveMinimum": 0
-                        },
-                        "quantity": {
                           "type": "integer",
                           "exclusiveMinimum": 0
                         },
@@ -13863,10 +14161,11 @@
                         }
                       },
                       "required": [
-                        "dose",
-                        "frequency",
-                        "durationDays",
-                        "quantity"
+                        "doseMorning",
+                        "doseNoon",
+                        "doseAfternoon",
+                        "doseEvening",
+                        "durationDays"
                       ]
                     }
                   },
@@ -13940,17 +14239,29 @@
                                   "null"
                                 ]
                               },
-                              "dose": {
-                                "type": "string"
+                              "doseMorning": {
+                                "type": "integer"
                               },
-                              "frequency": {
-                                "type": "string"
+                              "doseNoon": {
+                                "type": "integer"
+                              },
+                              "doseAfternoon": {
+                                "type": "integer"
+                              },
+                              "doseEvening": {
+                                "type": "integer"
                               },
                               "durationDays": {
                                 "type": "integer"
                               },
                               "quantity": {
                                 "type": "integer"
+                              },
+                              "unitCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               },
                               "instruction": {
                                 "type": [
@@ -13965,10 +14276,13 @@
                               "drugName",
                               "freeTextDrugName",
                               "activeIngredient",
-                              "dose",
-                              "frequency",
+                              "doseMorning",
+                              "doseNoon",
+                              "doseAfternoon",
+                              "doseEvening",
                               "durationDays",
                               "quantity",
+                              "unitCode",
                               "instruction"
                             ]
                           }
@@ -27565,6 +27879,28 @@
             "bearerAuth": []
           }
         ],
+        "parameters": [
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "true",
+                    "false"
+                  ]
+                }
+              ],
+              "default": false
+            },
+            "required": false,
+            "name": "includeInactive",
+            "in": "query"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Thành công",
@@ -27597,19 +27933,23 @@
                                       "type": "string",
                                       "format": "uuid"
                                     },
-                                    "dose": {
-                                      "type": "string",
-                                      "minLength": 1
+                                    "doseMorning": {
+                                      "type": "integer",
+                                      "minimum": 0
                                     },
-                                    "frequency": {
-                                      "type": "string",
-                                      "minLength": 1
+                                    "doseNoon": {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    "doseAfternoon": {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    "doseEvening": {
+                                      "type": "integer",
+                                      "minimum": 0
                                     },
                                     "durationDays": {
-                                      "type": "integer",
-                                      "exclusiveMinimum": 0
-                                    },
-                                    "quantity": {
                                       "type": "integer",
                                       "exclusiveMinimum": 0
                                     },
@@ -27622,16 +27962,28 @@
                                     },
                                     "drugName": {
                                       "type": "string"
+                                    },
+                                    "quantity": {
+                                      "type": "integer"
+                                    },
+                                    "unitCode": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
                                     }
                                   },
                                   "required": [
                                     "drugId",
-                                    "dose",
-                                    "frequency",
+                                    "doseMorning",
+                                    "doseNoon",
+                                    "doseAfternoon",
+                                    "doseEvening",
                                     "durationDays",
-                                    "quantity",
                                     "id",
-                                    "drugName"
+                                    "drugName",
+                                    "quantity",
+                                    "unitCode"
                                   ]
                                 }
                               },
@@ -27762,19 +28114,23 @@
                           "type": "string",
                           "format": "uuid"
                         },
-                        "dose": {
-                          "type": "string",
-                          "minLength": 1
+                        "doseMorning": {
+                          "type": "integer",
+                          "minimum": 0
                         },
-                        "frequency": {
-                          "type": "string",
-                          "minLength": 1
+                        "doseNoon": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "doseAfternoon": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "doseEvening": {
+                          "type": "integer",
+                          "minimum": 0
                         },
                         "durationDays": {
-                          "type": "integer",
-                          "exclusiveMinimum": 0
-                        },
-                        "quantity": {
                           "type": "integer",
                           "exclusiveMinimum": 0
                         },
@@ -27784,10 +28140,11 @@
                       },
                       "required": [
                         "drugId",
-                        "dose",
-                        "frequency",
-                        "durationDays",
-                        "quantity"
+                        "doseMorning",
+                        "doseNoon",
+                        "doseAfternoon",
+                        "doseEvening",
+                        "durationDays"
                       ]
                     },
                     "minItems": 1
@@ -27828,19 +28185,23 @@
                                 "type": "string",
                                 "format": "uuid"
                               },
-                              "dose": {
-                                "type": "string",
-                                "minLength": 1
+                              "doseMorning": {
+                                "type": "integer",
+                                "minimum": 0
                               },
-                              "frequency": {
-                                "type": "string",
-                                "minLength": 1
+                              "doseNoon": {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "doseAfternoon": {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "doseEvening": {
+                                "type": "integer",
+                                "minimum": 0
                               },
                               "durationDays": {
-                                "type": "integer",
-                                "exclusiveMinimum": 0
-                              },
-                              "quantity": {
                                 "type": "integer",
                                 "exclusiveMinimum": 0
                               },
@@ -27853,16 +28214,28 @@
                               },
                               "drugName": {
                                 "type": "string"
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "unitCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               }
                             },
                             "required": [
                               "drugId",
-                              "dose",
-                              "frequency",
+                              "doseMorning",
+                              "doseNoon",
+                              "doseAfternoon",
+                              "doseEvening",
                               "durationDays",
-                              "quantity",
                               "id",
-                              "drugName"
+                              "drugName",
+                              "quantity",
+                              "unitCode"
                             ]
                           }
                         },
@@ -28031,19 +28404,23 @@
                           "type": "string",
                           "format": "uuid"
                         },
-                        "dose": {
-                          "type": "string",
-                          "minLength": 1
+                        "doseMorning": {
+                          "type": "integer",
+                          "minimum": 0
                         },
-                        "frequency": {
-                          "type": "string",
-                          "minLength": 1
+                        "doseNoon": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "doseAfternoon": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "doseEvening": {
+                          "type": "integer",
+                          "minimum": 0
                         },
                         "durationDays": {
-                          "type": "integer",
-                          "exclusiveMinimum": 0
-                        },
-                        "quantity": {
                           "type": "integer",
                           "exclusiveMinimum": 0
                         },
@@ -28053,10 +28430,11 @@
                       },
                       "required": [
                         "drugId",
-                        "dose",
-                        "frequency",
-                        "durationDays",
-                        "quantity"
+                        "doseMorning",
+                        "doseNoon",
+                        "doseAfternoon",
+                        "doseEvening",
+                        "durationDays"
                       ]
                     },
                     "minItems": 1
@@ -28103,19 +28481,23 @@
                                 "type": "string",
                                 "format": "uuid"
                               },
-                              "dose": {
-                                "type": "string",
-                                "minLength": 1
+                              "doseMorning": {
+                                "type": "integer",
+                                "minimum": 0
                               },
-                              "frequency": {
-                                "type": "string",
-                                "minLength": 1
+                              "doseNoon": {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "doseAfternoon": {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "doseEvening": {
+                                "type": "integer",
+                                "minimum": 0
                               },
                               "durationDays": {
-                                "type": "integer",
-                                "exclusiveMinimum": 0
-                              },
-                              "quantity": {
                                 "type": "integer",
                                 "exclusiveMinimum": 0
                               },
@@ -28128,16 +28510,28 @@
                               },
                               "drugName": {
                                 "type": "string"
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "unitCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               }
                             },
                             "required": [
                               "drugId",
-                              "dose",
-                              "frequency",
+                              "doseMorning",
+                              "doseNoon",
+                              "doseAfternoon",
+                              "doseEvening",
                               "durationDays",
-                              "quantity",
                               "id",
-                              "drugName"
+                              "drugName",
+                              "quantity",
+                              "unitCode"
                             ]
                           }
                         },
@@ -50426,6 +50820,19 @@
                                 ],
                                 "format": "uuid"
                               },
+                              "sourceIssueId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "sourceIssueNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
                               "lineCount": {
                                 "type": "integer"
                               },
@@ -50477,6 +50884,8 @@
                               "prepaidPaymentMethodCode",
                               "prepaidCashAccountId",
                               "prepaidVoucherId",
+                              "sourceIssueId",
+                              "sourceIssueNo",
                               "lineCount",
                               "createdByName",
                               "approvedByName",
@@ -50660,6 +51069,13 @@
                     "minLength": 1
                   },
                   "prepaidCashAccountId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "uuid"
+                  },
+                  "sourceIssueId": {
                     "type": [
                       "string",
                       "null"
@@ -50857,6 +51273,19 @@
                           ],
                           "format": "uuid"
                         },
+                        "sourceIssueId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "sourceIssueNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "lineCount": {
                           "type": "integer"
                         },
@@ -51002,6 +51431,8 @@
                         "prepaidPaymentMethodCode",
                         "prepaidCashAccountId",
                         "prepaidVoucherId",
+                        "sourceIssueId",
+                        "sourceIssueNo",
                         "lineCount",
                         "createdByName",
                         "approvedByName",
@@ -51296,6 +51727,19 @@
                           ],
                           "format": "uuid"
                         },
+                        "sourceIssueId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "sourceIssueNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "lineCount": {
                           "type": "integer"
                         },
@@ -51441,6 +51885,8 @@
                         "prepaidPaymentMethodCode",
                         "prepaidCashAccountId",
                         "prepaidVoucherId",
+                        "sourceIssueId",
+                        "sourceIssueNo",
                         "lineCount",
                         "createdByName",
                         "approvedByName",
@@ -51663,6 +52109,13 @@
                     ],
                     "format": "uuid"
                   },
+                  "sourceIssueId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "uuid"
+                  },
                   "lines": {
                     "type": "array",
                     "items": {
@@ -51858,6 +52311,19 @@
                           ],
                           "format": "uuid"
                         },
+                        "sourceIssueId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "sourceIssueNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "lineCount": {
                           "type": "integer"
                         },
@@ -52003,6 +52469,8 @@
                         "prepaidPaymentMethodCode",
                         "prepaidCashAccountId",
                         "prepaidVoucherId",
+                        "sourceIssueId",
+                        "sourceIssueNo",
                         "lineCount",
                         "createdByName",
                         "approvedByName",
@@ -52314,6 +52782,19 @@
                           ],
                           "format": "uuid"
                         },
+                        "sourceIssueId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "sourceIssueNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "lineCount": {
                           "type": "integer"
                         },
@@ -52459,6 +52940,8 @@
                         "prepaidPaymentMethodCode",
                         "prepaidCashAccountId",
                         "prepaidVoucherId",
+                        "sourceIssueId",
+                        "sourceIssueNo",
                         "lineCount",
                         "createdByName",
                         "approvedByName",
@@ -52775,6 +53258,19 @@
                           ],
                           "format": "uuid"
                         },
+                        "sourceIssueId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "sourceIssueNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "lineCount": {
                           "type": "integer"
                         },
@@ -52920,6 +53416,8 @@
                         "prepaidPaymentMethodCode",
                         "prepaidCashAccountId",
                         "prepaidVoucherId",
+                        "sourceIssueId",
+                        "sourceIssueNo",
                         "lineCount",
                         "createdByName",
                         "approvedByName",
@@ -53236,6 +53734,19 @@
                           ],
                           "format": "uuid"
                         },
+                        "sourceIssueId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "sourceIssueNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "lineCount": {
                           "type": "integer"
                         },
@@ -53381,6 +53892,8 @@
                         "prepaidPaymentMethodCode",
                         "prepaidCashAccountId",
                         "prepaidVoucherId",
+                        "sourceIssueId",
+                        "sourceIssueNo",
                         "lineCount",
                         "createdByName",
                         "approvedByName",
@@ -58589,10 +59102,7 @@
                               "prescribedQuantity": {
                                 "type": "integer"
                               },
-                              "dose": {
-                                "type": "string"
-                              },
-                              "frequency": {
+                              "doseSummary": {
                                 "type": "string"
                               },
                               "instruction": {
@@ -58606,8 +59116,7 @@
                               "prescriptionItemId",
                               "drugName",
                               "prescribedQuantity",
-                              "dose",
-                              "frequency",
+                              "doseSummary",
                               "instruction"
                             ]
                           }

@@ -18,6 +18,7 @@ import {
   amendPrescription,
   completeConsultation,
   getConsultationDetail,
+  getPreviousPrescription,
   printPrescription,
   recordVitalSigns,
   saveClinicalNote,
@@ -129,6 +130,14 @@ export function useAmendPrescriptionMutation(id: string) {
   return useMutation({
     mutationFn: (body: AmendPrescriptionRequest) => amendPrescription(id, body),
     onSuccess: () => void invalidate(),
+  });
+}
+
+/** "Sao chép đơn thuốc lần khám trước" (docs/DECISIONS.md #196) — GET thuần đọc, dùng `useMutation`
+ * để có `isPending` cho nút bấm (không cần cache/refetch tự động như query render sẵn). */
+export function useGetPreviousPrescriptionMutation(id: string) {
+  return useMutation({
+    mutationFn: () => getPreviousPrescription(id),
   });
 }
 

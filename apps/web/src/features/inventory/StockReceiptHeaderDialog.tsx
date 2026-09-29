@@ -3,6 +3,7 @@ import type { StockReceiptType } from '@nexamed/shared';
 import { Button } from '../../shared/ui/Button';
 import { Combobox, type ComboboxOption } from '../../shared/ui/Combobox';
 import { DateInput } from '../../shared/ui/DateInput';
+import { useStockIssuesQuery } from './inventory.queries';
 
 export const RECEIPT_TYPE_OPTIONS: ComboboxOption[] = [
   { value: 'PURCHASE', label: 'Nhập nhà cung cấp' },
@@ -17,6 +18,13 @@ export interface StockReceiptHeaderValues {
   supplierInvoiceNo: string;
   occurredAt: string;
   note: string;
+  /** Phiếu xuất gốc — TUỲ CHỌN, chỉ có ý nghĩa khi `receiptType='RETURN_FROM_USE'` (docs/DECISIONS.md
+   * #195, chủ dự án yêu cầu KHÔNG bắt buộc — sợ không tìm ra phiếu xuất gốc thì không trả được hàng). */
+  sourceIssueId: string;
+  /** Nhãn hiển thị của `sourceIssueId` đã chọn (mã phiếu · ngày · bệnh nhân/Khoa) — THUẦN hiển thị ở
+   * dải tóm tắt trang cha lúc VỪA chọn xong (chưa lưu để có `sourceIssueNo` từ backend), không gửi
+   * lên API. Rỗng khi không chọn/khi sửa phiếu đã lưu (trang cha tự ưu tiên `sourceIssueNo` thật). */
+  sourceIssueLabel: string;
 }
 
 /**
@@ -57,7 +65,21 @@ export function StockReceiptHeaderDialog({
   const [supplierInvoiceNo, setSupplierInvoiceNo] = useState(initial.supplierInvoiceNo);
   const [occurredAt, setOccurredAt] = useState(initial.occurredAt);
   const [note, setNote] = useState(initial.note);
+  const [sourceIssueId, setSourceIssueId] = useState(initial.sourceIssueId);
   const [error, setError] = useState<string | null>(null);
+
+  // "Nhập hoàn trả từ bệnh nhân/khoa phòng" (docs/DECISIONS.md #195) — gợi ý "Phiếu xuất gốc" TUỲ
+  // CHỌN, thu hẹp theo Kho đang chọn (đa số trường hợp trả hàng về đúng kho đã xuất). Loại phiếu xuất
+  // RETAIL_SALE (phát thuốc cho bệnh nhân)/INTERNAL_ALLOCATION (cấp cho Khoa/Phòng) — đúng 2 nguồn
+  // "bệnh nhân"/"khoa phòng" nêu trong tên loại phiếu, lọc CLIENT-SIDE vì API chỉ lọc 1 issueType/lần.
+  const isReturnFromUse = receiptType === 'RETURN_FROM_USE';
+  const sourceIssuesQuery = useStockIssuesQuery({ warehouseId, status: 'POSTED', limit: 100 }, isReturnFromUse && warehouseId !== '');
+  const sourceIssueOptions: ComboboxOption[] = (sourceIssuesQuery.data?.items ?? [])
+    .filter((it) => it.issueType === 'RETAIL_SALE' || it.issueType === 'INTERNAL_ALLOCATION')
+    .map((it) => ({
+      value: it.id,
+      label: `${it.issueNo} · ${it.occurredAt.slice(0, 10).split('-').reverse().join('/')} · ${it.patientFullName ?? it.departmentName ?? '—'}`,
+    }));
 
   function handleSubmit() {
     if (!warehouseId) {
@@ -68,7 +90,16 @@ export function StockReceiptHeaderDialog({
       setError('Phiếu nhập nhà cung cấp phải chọn Nhà cung cấp.');
       return;
     }
-    onSave({ receiptType, warehouseId, supplierId: receiptType === 'PURCHASE' ? supplierId : '', supplierInvoiceNo, occurredAt, note });
+    onSave({
+      receiptType,
+      warehouseId,
+      supplierId: receiptType === 'PURCHASE' ? supplierId : '',
+      supplierInvoiceNo,
+      occurredAt,
+      note,
+      sourceIssueId: isReturnFromUse ? sourceIssueId : '',
+      sourceIssueLabel: isReturnFromUse ? (sourceIssueOptions.find((o) => o.value === sourceIssueId)?.label ?? '') : '',
+    });
   }
 
   return (
@@ -89,7 +120,16 @@ export function StockReceiptHeaderDialog({
             <label className="mb-1 block text-sm font-semibold text-slate-800">
               Kho <span className="text-rose-500">*</span>
             </label>
-            <Combobox id="receipt-warehouse" value={warehouseId} onChange={setWarehouseId} placeholder="— Chọn kho —" options={warehouseOptions} />
+            <Combobox
+              id="receipt-warehouse"
+              value={warehouseId}
+              onChange={(v) => {
+                setWarehouseId(v);
+                setSourceIssueId('');
+              }}
+              placeholder="— Chọn kho —"
+              options={warehouseOptions}
+            />
           </div>
           <div>
             <label className="mb-1 block text-sm font-semibold text-slate-800">
@@ -114,6 +154,20 @@ export function StockReceiptHeaderDialog({
                 onChange={(e) => setSupplierInvoiceNo(e.target.value)}
                 className="w-full rounded-md border border-slate-300 px-2.5 py-2 text-sm font-semibold text-slate-900"
               />
+            </div>
+          )}
+          {isReturnFromUse && (
+            <div>
+              <label className="mb-1 block text-sm font-semibold text-slate-800">Phiếu xuất gốc (tuỳ chọn)</label>
+              <Combobox
+                id="receipt-source-issue"
+                value={sourceIssueId}
+                disabled={!warehouseId}
+                onChange={setSourceIssueId}
+                placeholder={warehouseId ? '— Không chọn —' : '— Chọn Kho trước —'}
+                options={sourceIssueOptions}
+              />
+              <p className="mt-1 text-xs text-slate-400">Không tìm thấy/không có phiếu xuất gốc vẫn lập được phiếu trả hàng bình thường.</p>
             </div>
           )}
         </div>

@@ -33,7 +33,7 @@ import {
   type SignaturePort,
   type StockAvailabilityPort,
 } from '@nexamed/core';
-import { FAMILY_RELATION_LABELS, calculateAgeYears } from '@nexamed/shared';
+import { FAMILY_RELATION_LABELS, calculateAgeYears, computePrescriptionQuantity, formatDoseSummary } from '@nexamed/shared';
 import type {
   AmendClinicalNoteRequest,
   AmendDiagnosesRequest,
@@ -50,6 +50,7 @@ import type {
   PrescriptionItem as PrescriptionItemDto,
   PatientClinicalSummaryResponse,
   PatientVitalSignHistoryItem,
+  PreviousPrescriptionResponse,
   PrescriptionResponse,
   PrescriptionWarning,
   ReassignEncounterRequest,
@@ -565,10 +566,10 @@ export class EncounterService {
         clinicalNoteSections: CLINICAL_NOTE_SECTION_LABELS.map(([key, label]) => ({ label, content: noteResponse[key]?.content ?? '' })),
         prescriptionItems: (prescriptionRow?.items ?? []).map((i) => ({
           drugName: i.drugName,
-          dose: i.dose,
-          frequency: i.frequency,
+          doseSummary: formatDoseSummary(i),
           durationDays: i.durationDays,
           quantity: i.quantity,
+          unitCode: i.unitCode,
           instruction: i.instruction,
         })),
         signedAt: prescriptionRow?.signedAt ? prescriptionRow.signedAt.toISOString() : (noteRows[0]?.signedAt?.toISOString() ?? null),
@@ -1183,7 +1184,7 @@ export class EncounterService {
         action: 'prescription.amended',
         entityType: 'encounter',
         entityId: id,
-        beforeJson: active.items.map((i) => ({ drugId: i.drugId, dose: i.dose, quantity: i.quantity })) as unknown as Prisma.InputJsonValue,
+        beforeJson: active.items.map((i) => ({ drugId: i.drugId, doseSummary: formatDoseSummary(i), quantity: i.quantity })) as unknown as Prisma.InputJsonValue,
         afterJson: { amendmentReason: dto.amendmentReason, items: dto.items } as unknown as Prisma.InputJsonValue,
         ip: meta.ip,
         userAgent: meta.userAgent,
@@ -1198,14 +1199,36 @@ export class EncounterService {
     });
   }
 
+  /** "Sao chép đơn thuốc lần khám trước" (docs/DECISIONS.md #196, mockup đã duyệt) — đơn ĐÃ KÝ gần
+   * nhất của CÙNG bệnh nhân, ở lượt khám KHÁC lượt khám này. `null` nếu chưa từng có đơn nào trước
+   * đó. Web chèn cả cụm vào đơn đang kê rồi bác sĩ tự sửa/bấm "Lưu đơn nháp" — KHÔNG tự lưu ngay,
+   * đúng khuôn "Đơn thuốc mẫu". Không tính `warnings` (chỉ đọc để chèn, `computeWarnings()` sẽ tự
+   * chạy lại đúng lúc `savePrescriptionItems()` lưu thật).
+   */
+  async getPreviousPrescription(tenantId: string, actorId: string, dataScope: DataScope, id: string): Promise<PreviousPrescriptionResponse> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const existing = await this.encounterRepository.findById(tx, tenantId, id);
+      if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId)) {
+        throw new NotFoundException();
+      }
+      const previous = await this.prescriptionRepository.findMostRecentSignedForPatient(tx, tenantId, existing.patientId, id);
+      if (!previous) return null;
+      return { items: previous.items.map((item) => this.toPrescriptionItem(item)) };
+    });
+  }
+
+  /** `quantity` LUÔN do backend tính (docs/DECISIONS.md #196) — không nhận trực tiếp từ client nữa,
+   * đúng khuôn Sáng/Trưa/Chiều/Tối × Số ngày, theo đơn vị nhỏ nhất của thuốc. */
   private toCreateItemData(item: SavePrescriptionItemsRequest['items'][number]) {
     return {
       drugId: item.drugId ?? null,
       freeTextDrugName: item.freeTextDrugName ?? null,
-      dose: item.dose,
-      frequency: item.frequency,
+      doseMorning: item.doseMorning,
+      doseNoon: item.doseNoon,
+      doseAfternoon: item.doseAfternoon,
+      doseEvening: item.doseEvening,
       durationDays: item.durationDays,
-      quantity: item.quantity,
+      quantity: computePrescriptionQuantity(item, item.durationDays),
       instruction: item.instruction ?? null,
     };
   }
@@ -1272,10 +1295,13 @@ export class EncounterService {
       drugName: item.drugName,
       freeTextDrugName: item.freeTextDrugName,
       activeIngredient: item.activeIngredient,
-      dose: item.dose,
-      frequency: item.frequency,
+      doseMorning: item.doseMorning,
+      doseNoon: item.doseNoon,
+      doseAfternoon: item.doseAfternoon,
+      doseEvening: item.doseEvening,
       durationDays: item.durationDays,
       quantity: item.quantity,
+      unitCode: item.unitCode,
       instruction: item.instruction,
     };
   }

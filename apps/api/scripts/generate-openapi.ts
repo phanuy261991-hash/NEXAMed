@@ -54,6 +54,7 @@ import {
   listDrugsQuerySchema,
   listDrugsResponseSchema,
   prescriptionResponseSchema,
+  previousPrescriptionResponseSchema,
   savePrescriptionItemsRequestSchema,
   signPrescriptionRequestSchema,
   updateDrugRequestSchema,
@@ -69,6 +70,7 @@ import {
   updatePrescriptionTemplateRequestSchema,
   prescriptionTemplateSchema,
   listPrescriptionTemplatesResponseSchema,
+  listPrescriptionTemplatesQuerySchema,
   cashAccountSchema,
   createCashAccountRequestSchema,
   updateCashAccountRequestSchema,
@@ -1044,6 +1046,21 @@ registry.registerPath({
 });
 
 registry.registerPath({
+  method: 'get',
+  path: '/api/v1/encounters/{id}/prescription/previous',
+  tags: ['encounter'],
+  summary: '"Sao chép đơn thuốc lần khám trước" — đơn ĐÃ KÝ gần nhất của cùng bệnh nhân, khác lượt khám này',
+  security: [{ bearerAuth: [] }],
+  request: { params: encounterActionIdParams },
+  responses: {
+    200: jsonResponse('Thành công (null nếu chưa từng có đơn nào trước đó)', envelope(previousPrescriptionResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền prescription.create'),
+    404: errorResponse('Không tìm thấy lượt khám (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal)'),
+  },
+});
+
+registry.registerPath({
   method: 'post',
   path: '/api/v1/encounters/{id}/prescription/sign',
   tags: ['encounter'],
@@ -1754,6 +1771,7 @@ registry.registerPath({
   tags: ['drug'],
   summary: '"Đơn thuốc mẫu" (Kho Thuốc GĐ5) — liệt kê mẫu đang hoạt động, dùng chung toàn tenant',
   security: [{ bearerAuth: [] }],
+  request: { query: listPrescriptionTemplatesQuerySchema },
   responses: {
     200: jsonResponse('Thành công', envelope(listPrescriptionTemplatesResponseSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),

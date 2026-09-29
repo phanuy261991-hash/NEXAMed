@@ -195,11 +195,12 @@ export function useStockExpiryWarningsQuery(warehouseId?: string) {
 
 // ============ Kho Thuốc GĐ3 — "Phiếu xuất kho" / "Phát thuốc" (docs/DECISIONS.md #163) ============
 
-export function useStockIssuesQuery(query: ListStockIssuesQuery) {
+export function useStockIssuesQuery(query: ListStockIssuesQuery, enabled = true) {
   const { tenantId } = useAppConfig();
   return useQuery({
     queryKey: queryKey(tenantId, 'stock-issue', 'list', JSON.stringify(query)),
     queryFn: () => getStockIssues(query),
+    enabled,
   });
 }
 

@@ -357,7 +357,7 @@ describe('HTTP e2e — /api/v1/doctor-availability', () => {
       await request(app.getHttpServer())
         .put(`/api/v1/encounters/${encounter1}/prescription-items`)
         .set(authed(doctorCToken))
-        .send({ items: [{ drugId: drug.id, dose: '1 viên', frequency: '2 lần/ngày', durationDays: 5, quantity: 10 }] });
+        .send({ items: [{ drugId: drug.id, doseMorning: 2, doseNoon: 0, doseAfternoon: 0, doseEvening: 0, durationDays: 5 }] });
       await request(app.getHttpServer()).post(`/api/v1/encounters/${encounter1}/prescription/sign`).set(authed(doctorCToken)).send({ version: 1 });
       await request(app.getHttpServer()).post(`/api/v1/encounters/${encounter1}/complete`).set(authed(doctorCToken)).send({ version: 2 });
 

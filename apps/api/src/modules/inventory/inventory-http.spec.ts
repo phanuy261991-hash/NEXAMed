@@ -633,4 +633,112 @@ describe('HTTP e2e — /api/v1/inventory (Phiếu nhập kho GĐ2)', () => {
       expect(res.status).toBe(400);
     });
   });
+
+  /** "Phiếu xuất gốc" TUỲ CHỌN cho `RETURN_FROM_USE` (docs/DECISIONS.md #195) — chủ dự án hỏi có bắt
+   * chọn phiếu xuất/đơn thuốc gốc hay không, xác nhận muốn giữ KHÔNG BẮT BUỘC (sợ không tìm ra
+   * phiếu xuất gốc thì không trả được hàng vào kho). Cùng khuôn lỏng `stock_issue.sourceReceiptId`
+   * (RETURN_TO_SUPPLIER, #185) — chọn thì lưu để truy nguyên, không chọn vẫn lập phiếu bình thường. */
+  describe('"Phiếu xuất gốc" TUỲ CHỌN cho RETURN_FROM_USE (docs/DECISIONS.md #195)', () => {
+    let manualDeptId: string;
+
+    beforeAll(async () => {
+      const deptRes = await request(app.getHttpServer()).post('/api/v1/departments').set(authed(clinicAdminToken)).send({ name: `Khoa nhận trả hàng e2e ${randomUUID().slice(0, 6)}` });
+      manualDeptId = deptRes.body.data.id as string;
+    });
+
+    /** Tạo + Duyệt 1 phiếu xuất `INTERNAL_ALLOCATION` (đúng khuôn `stock-issue-http.spec.ts`) để
+     * dùng làm "Phiếu xuất gốc" hợp lệ — `drugId` phải có tồn sẵn (KHÔNG quản lý theo lô để đơn giản). */
+    async function createPostedInternalAllocationIssue(drugId: string, quantity: number) {
+      const created = await request(app.getHttpServer())
+        .post('/api/v1/inventory/issues/manual')
+        .set(authed(clinicAdminToken))
+        .send({ issueType: 'INTERNAL_ALLOCATION', warehouseId, departmentId: manualDeptId, note: 'Cấp cho Khoa test hoàn trả', lines: [{ drugId, quantity }] });
+      expect(created.status).toBe(200);
+      const approved = await request(app.getHttpServer())
+        .post(`/api/v1/inventory/issues/manual/${created.body.data.id}/approve`)
+        .set(authed(clinicAdminToken))
+        .send({ version: created.body.data.version });
+      expect(approved.status).toBe(200);
+      return approved.body.data.id as string;
+    }
+
+    it('KHÔNG chọn sourceIssueId — vẫn lập được phiếu trả hàng bình thường (không bắt buộc)', async () => {
+      const drugId = await createDrug(clinicAdminToken, { name: 'Thuốc trả hàng không rõ nguồn' });
+      const created = await createReceipt(clinicAdminToken, {
+        receiptType: 'RETURN_FROM_USE',
+        supplierId: undefined,
+        lines: [{ drugId, unitCode: 'VIEN', quantity: 5, unitCost: 400, batchNo: `NOISSUE-${randomUUID().slice(0, 6)}`, expiryDate: '2027-01-01' }],
+      });
+      expect(created.status).toBe(200);
+      expect(created.body.data.sourceIssueId).toBeNull();
+      expect(created.body.data.sourceIssueNo).toBeNull();
+    });
+
+    it('chọn sourceIssueId hợp lệ (phiếu xuất ĐÃ DUYỆT) — lưu đúng, hiện đúng sourceIssueNo ở list và detail', async () => {
+      const drugId = await createDrug(clinicAdminToken, { name: 'Thuốc trả hàng có nguồn', isBatchManaged: false });
+      const stockUp = await createReceipt(clinicAdminToken, { receiptType: 'OPENING_BALANCE', supplierId: undefined, lines: [{ drugId, unitCode: 'VIEN', quantity: 50, unitCost: 100 }] });
+      await request(app.getHttpServer()).post(`/api/v1/inventory/receipts/${stockUp.body.data.id}/approve`).set(authed(clinicAdminToken)).send({ version: stockUp.body.data.version });
+
+      const issueId = await createPostedInternalAllocationIssue(drugId, 10);
+
+      const created = await createReceipt(clinicAdminToken, {
+        receiptType: 'RETURN_FROM_USE',
+        supplierId: undefined,
+        sourceIssueId: issueId,
+        lines: [{ drugId, unitCode: 'VIEN', quantity: 5, unitCost: 100 }],
+      });
+      expect(created.status).toBe(200);
+      expect(created.body.data.sourceIssueId).toBe(issueId);
+      expect(created.body.data.sourceIssueNo).toMatch(/^PXK/);
+
+      const detailRes = await request(app.getHttpServer()).get(`/api/v1/inventory/receipts/${created.body.data.id}`).set(authed(clinicAdminToken));
+      expect(detailRes.body.data.sourceIssueId).toBe(issueId);
+      expect(detailRes.body.data.sourceIssueNo).toBe(created.body.data.sourceIssueNo);
+
+      const listRes = await request(app.getHttpServer()).get('/api/v1/inventory/receipts').set(authed(clinicAdminToken)).query({ warehouseId });
+      const listRow = listRes.body.data.items.find((i: { id: string }) => i.id === created.body.data.id);
+      expect(listRow.sourceIssueNo).toBe(created.body.data.sourceIssueNo);
+    });
+
+    it('sourceIssueId trên loại phiếu KHÁC RETURN_FROM_USE → 400 (Zod)', async () => {
+      const drugId = await createDrug(clinicAdminToken);
+      const res = await createReceipt(clinicAdminToken, {
+        receiptType: 'OPENING_BALANCE',
+        supplierId: undefined,
+        sourceIssueId: randomUUID(),
+        lines: [{ drugId, unitCode: 'VIEN', quantity: 5, unitCost: 100 }],
+      });
+      expect(res.status).toBe(400);
+    });
+
+    it('sourceIssueId không tồn tại → 422', async () => {
+      const drugId = await createDrug(clinicAdminToken);
+      const res = await createReceipt(clinicAdminToken, {
+        receiptType: 'RETURN_FROM_USE',
+        supplierId: undefined,
+        sourceIssueId: randomUUID(),
+        lines: [{ drugId, unitCode: 'VIEN', quantity: 5, unitCost: 100, batchNo: `BADID-${randomUUID().slice(0, 6)}`, expiryDate: '2027-01-01' }],
+      });
+      expect(res.status).toBe(422);
+    });
+
+    it('sourceIssueId là phiếu xuất CÒN Nháp (chưa Duyệt) → 422', async () => {
+      const drugId = await createDrug(clinicAdminToken, { isBatchManaged: false });
+      const stockUp = await createReceipt(clinicAdminToken, { receiptType: 'OPENING_BALANCE', supplierId: undefined, lines: [{ drugId, unitCode: 'VIEN', quantity: 20, unitCost: 100 }] });
+      await request(app.getHttpServer()).post(`/api/v1/inventory/receipts/${stockUp.body.data.id}/approve`).set(authed(clinicAdminToken)).send({ version: stockUp.body.data.version });
+      const draftIssue = await request(app.getHttpServer())
+        .post('/api/v1/inventory/issues/manual')
+        .set(authed(clinicAdminToken))
+        .send({ issueType: 'INTERNAL_ALLOCATION', warehouseId, departmentId: manualDeptId, note: 'Chưa duyệt', lines: [{ drugId, quantity: 5 }] });
+      expect(draftIssue.status).toBe(200);
+
+      const res = await createReceipt(clinicAdminToken, {
+        receiptType: 'RETURN_FROM_USE',
+        supplierId: undefined,
+        sourceIssueId: draftIssue.body.data.id,
+        lines: [{ drugId, unitCode: 'VIEN', quantity: 5, unitCost: 100 }],
+      });
+      expect(res.status).toBe(422);
+    });
+  });
 });

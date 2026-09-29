@@ -13,14 +13,26 @@ import { z } from 'zod';
  * tiền/tồn kho/không phát được qua "Phát thuốc"). CHECK DB (`prescription_item_drug_or_free_text_check`)
  * là nguồn sự thật cuối cùng — validate ở đây chỉ để báo lỗi sớm/rõ ràng hơn cho client.
  */
+/**
+ * Liều dùng theo buổi Sáng/Trưa/Chiều/Tối (docs/DECISIONS.md #196, mockup đã duyệt) — thay hẳn 2 ô
+ * tự do `dose`/`frequency` cũ. `quantity` KHÔNG còn nhận từ client — Service tự tính
+ * `computePrescriptionQuantity()` = tổng 4 buổi × `durationDays`, luôn theo đơn vị NHỎ NHẤT của
+ * thuốc (không có ô chọn đơn vị — xem `unitCode` ở `prescriptionItemSchema`, chỉ để HIỂN THỊ).
+ */
+export const prescriptionDosePeriodsSchema = z.object({
+  doseMorning: z.number().int().min(0),
+  doseNoon: z.number().int().min(0),
+  doseAfternoon: z.number().int().min(0),
+  doseEvening: z.number().int().min(0),
+});
+export type PrescriptionDosePeriods = z.infer<typeof prescriptionDosePeriodsSchema>;
+
 const prescriptionItemInputSchema = z
   .object({
     drugId: z.string().uuid().optional(),
     freeTextDrugName: z.string().min(1).max(200).optional(),
-    dose: z.string().min(1),
-    frequency: z.string().min(1),
+    ...prescriptionDosePeriodsSchema.shape,
     durationDays: z.number().int().positive(),
-    quantity: z.number().int().positive(),
     instruction: z.string().optional(),
   })
   .superRefine((data, ctx) => {
@@ -33,7 +45,34 @@ const prescriptionItemInputSchema = z
         path: ['drugId'],
       });
     }
+    if (data.doseMorning + data.doseNoon + data.doseAfternoon + data.doseEvening <= 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Phải nhập liều dùng ít nhất 1 buổi trong ngày (Sáng/Trưa/Chiều/Tối).',
+        path: ['doseMorning'],
+      });
+    }
   });
+
+/** Tổng số lượng (đơn vị nhỏ nhất của thuốc) — dùng ở CẢ backend (tính `quantity` lúc lưu) lẫn
+ * frontend (xem trước lúc còn đang gõ, trước khi lưu — `apps/web` không được import `@nexamed/core`,
+ * #073, nên hàm thuần này đặt ở đây thay vì `packages/core`). */
+export function computePrescriptionQuantity(periods: PrescriptionDosePeriods, durationDays: number): number {
+  return (periods.doseMorning + periods.doseNoon + periods.doseAfternoon + periods.doseEvening) * durationDays;
+}
+
+/** Chuỗi hiển thị "Sáng 1 - Chiều 1 - Tối 1" (bỏ buổi = 0) — dùng cho các nơi CHỈ ĐỌC không có 4 ô
+ * riêng để hiện (in đơn, "Phát thuốc", bệnh án PDF). `"—"` khi cả 4 buổi đều 0 (dữ liệu cũ trước
+ * #196, đã gộp nội dung gốc vào `instruction` lúc migrate — xem migration
+ * `20260929110000_prescription_dose_periods`). */
+export function formatDoseSummary(periods: PrescriptionDosePeriods): string {
+  const parts: string[] = [];
+  if (periods.doseMorning > 0) parts.push(`Sáng ${periods.doseMorning}`);
+  if (periods.doseNoon > 0) parts.push(`Trưa ${periods.doseNoon}`);
+  if (periods.doseAfternoon > 0) parts.push(`Chiều ${periods.doseAfternoon}`);
+  if (periods.doseEvening > 0) parts.push(`Tối ${periods.doseEvening}`);
+  return parts.length > 0 ? parts.join(' - ') : '—';
+}
 
 /** `PUT /encounters/:id/prescription-items` — thay thế TOÀN BỘ danh sách dòng thuốc của đơn nháp hiện tại (tạo đơn nháp nếu chưa có). Chỉ dùng được khi đơn CHƯA ký (`PrescriptionAlreadySignedError` nếu đã ký). */
 export const savePrescriptionItemsRequestSchema = z.object({
@@ -50,10 +89,15 @@ export const prescriptionItemSchema = z.object({
   /** Có giá trị CHỈ khi `drugId=null` (dòng tự do) — dùng để phân biệt hiển thị badge "Ngoài danh mục". */
   freeTextDrugName: z.string().nullable(),
   activeIngredient: z.string().nullable(),
-  dose: z.string(),
-  frequency: z.string(),
+  doseMorning: z.number().int(),
+  doseNoon: z.number().int(),
+  doseAfternoon: z.number().int(),
+  doseEvening: z.number().int(),
   durationDays: z.number().int(),
   quantity: z.number().int(),
+  /** Đơn vị nhỏ nhất của thuốc (`drug.baseUnitCode`), resolve qua JOIN — CHỈ hiển thị, không sửa
+   * được (docs/DECISIONS.md #196). `null` cho dòng "kê thuốc tự do" hoặc thuốc chưa khai đơn vị cơ sở. */
+  unitCode: z.string().nullable(),
   instruction: z.string().nullable(),
 });
 export type PrescriptionItem = z.infer<typeof prescriptionItemSchema>;
@@ -110,3 +154,12 @@ export const amendPrescriptionRequestSchema = savePrescriptionItemsRequestSchema
   version: z.number().int(),
 });
 export type AmendPrescriptionRequest = z.infer<typeof amendPrescriptionRequestSchema>;
+
+/**
+ * `GET /encounters/:id/prescription/previous` (docs/DECISIONS.md #196, mockup đã duyệt) — đơn ĐÃ
+ * KÝ gần nhất của CÙNG bệnh nhân, ở lượt khám KHÁC lượt khám này. `null` nếu bệnh nhân chưa từng có
+ * đơn thuốc nào trước đó. Web dùng để chèn cả cụm vào đơn đang kê ("Sao chép đơn lần trước") — CHƯA
+ * lưu ngay, bác sĩ sửa tiếp rồi tự bấm "Lưu đơn nháp", đúng khuôn "Đơn thuốc mẫu".
+ */
+export const previousPrescriptionResponseSchema = z.object({ items: z.array(prescriptionItemSchema) }).nullable();
+export type PreviousPrescriptionResponse = z.infer<typeof previousPrescriptionResponseSchema>;

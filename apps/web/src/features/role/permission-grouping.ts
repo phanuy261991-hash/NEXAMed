@@ -13,6 +13,10 @@ const MODULE_LABELS: Record<string, string> = {
   diagnosis: 'Chẩn đoán',
   clinical_note: 'Ghi chú SOAP',
   prescription: 'Đơn thuốc',
+  // Kho Thuốc GĐ5 (docs/DECISIONS.md #190, 2026-09-26) — module `prescription_template` ("Đơn thuốc
+  // mẫu") thêm permission nhưng quên thêm nhãn ở đây, đúng lỗ hổng lặp lại nhiều lần đã ghi chú ở
+  // dưới (#105/#122/#136/#158) — chủ dự án phát hiện lúc xem trang Vai trò & Phân quyền.
+  prescription_template: 'Đơn thuốc mẫu',
   clinic_config: 'Cấu hình phòng khám',
   user_account: 'Tài khoản người dùng',
   role_permission: 'Phân quyền',
@@ -66,7 +70,7 @@ const SECTIONS: { label: string; modules: string[] }[] = [
   { label: 'Quản lý bệnh nhân', modules: ['patient'] },
   { label: 'Đặt lịch hẹn', modules: ['appointment'] },
   { label: 'Tiếp nhận & Lượt khám', modules: ['encounter', 'vital_sign', 'diagnosis'] },
-  { label: 'Khám bệnh & Kê đơn', modules: ['clinical_note', 'prescription'] },
+  { label: 'Khám bệnh & Kê đơn', modules: ['clinical_note', 'prescription', 'prescription_template'] },
   { label: 'Cấu hình & Quản trị', modules: ['clinic_config', 'user_account', 'role_permission', 'audit_log'] },
   { label: 'Danh mục dùng chung', modules: ['reference_catalog'] },
 ];

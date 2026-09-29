@@ -1,8 +1,10 @@
 import type { CreatePrescriptionTemplateRequest, ListPrescriptionTemplatesResponse, PrescriptionTemplate, UpdatePrescriptionTemplateRequest } from '@nexamed/shared';
 import { getApiClient, unwrap } from '../../shared/api/client';
 
-export async function listPrescriptionTemplates(): Promise<ListPrescriptionTemplatesResponse> {
-  return unwrap(await getApiClient().GET('/api/v1/prescription-templates')) as ListPrescriptionTemplatesResponse;
+export async function listPrescriptionTemplates(includeInactive = false): Promise<ListPrescriptionTemplatesResponse> {
+  return unwrap(
+    await getApiClient().GET('/api/v1/prescription-templates', { params: { query: { includeInactive } } }),
+  ) as ListPrescriptionTemplatesResponse;
 }
 
 export async function createPrescriptionTemplate(body: CreatePrescriptionTemplateRequest): Promise<PrescriptionTemplate> {

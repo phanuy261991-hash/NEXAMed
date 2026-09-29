@@ -36,6 +36,11 @@ const SupplierManagementPage = lazy(() =>
 const SupplierDetailPage = lazy(() =>
   import('../features/supplier-debt/SupplierDetailPage').then((m) => ({ default: m.SupplierDetailPage })),
 );
+// "Đơn thuốc mẫu" — trang quản lý đầy đủ trong Quản trị (docs/DECISIONS.md #196), khác popup chọn
+// mẫu lúc kê đơn (`PrescriptionPanel.tsx`, không tách route).
+const PrescriptionTemplateCatalogPage = lazy(() =>
+  import('../features/drug/PrescriptionTemplateCatalogPage').then((m) => ({ default: m.PrescriptionTemplateCatalogPage })),
+);
 // "Công nợ nhà cung cấp" Phần B (docs/DECISIONS.md #180/#182) — tổng hợp mọi NCC + lịch sử thanh toán.
 const SupplierDebtListPage = lazy(() =>
   import('../features/supplier-debt/SupplierDebtListPage').then((m) => ({ default: m.SupplierDebtListPage })),
@@ -275,6 +280,10 @@ export const router = createBrowserRouter([
         ),
       },
       { path: 'admin/system-config', element: <RequirePermissionRoute module="clinic_config" action="update"><ClinicConfigPage /></RequirePermissionRoute> },
+      // "Đơn thuốc mẫu" (docs/DECISIONS.md #196) — gác bằng `.read` (mọi vai trò lâm sàng đều xem
+      // được, đúng khuôn popup chọn mẫu); nút Thêm/Sửa/Ẩn trong `PrescriptionTemplatePane.tsx` tự
+      // ẩn nếu thiếu `.manage`.
+      { path: 'admin/prescription-templates', element: <RequirePermissionRoute module="prescription_template" action="read"><PrescriptionTemplateCatalogPage /></RequirePermissionRoute> },
       // S5-05 (ADM-03) — "Nhật ký hoạt động", lọc theo bệnh nhân/người dùng/khoảng ngày.
       { path: 'admin/activity-log', element: <RequirePermissionRoute module="audit_log" action="read"><ActivityLogPage /></RequirePermissionRoute> },
       // Bắt mọi đường dẫn con không khớp — thay trang trắng 404 mặc định của react-router bằng

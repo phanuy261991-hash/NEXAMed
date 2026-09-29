@@ -543,7 +543,7 @@ export function DispensePrescriptionDialog({ prescriptionId, onClose, onDispense
                         <div>
                           <p className="text-[15px] font-bold text-slate-500">{line.drugName}</p>
                           <p className="mt-0.5 text-xs text-slate-400">
-                            {line.dose} · {line.frequency} · Đã kê đơn {line.prescribedQuantity}
+                            {line.doseSummary} · Đã kê đơn {line.prescribedQuantity}
                           </p>
                         </div>
                         <StatusBadge tone="neutral">Ngoài danh mục — không xử lý ở đây</StatusBadge>

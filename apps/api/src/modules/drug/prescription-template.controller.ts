@@ -1,6 +1,6 @@
-import { Body, Controller, Get, HttpCode, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
-import { createPrescriptionTemplateRequestSchema, updatePrescriptionTemplateRequestSchema } from '@nexamed/shared';
+import { createPrescriptionTemplateRequestSchema, listPrescriptionTemplatesQuerySchema, updatePrescriptionTemplateRequestSchema } from '@nexamed/shared';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
@@ -19,9 +19,10 @@ export class PrescriptionTemplateController {
 
   @Get()
   @RequirePermission('prescription_template', 'read')
-  async list(@Req() req: Request) {
+  async list(@Query() query: unknown, @Req() req: Request) {
+    const dto = listPrescriptionTemplatesQuerySchema.parse(query);
     const { tenantId } = req.user!;
-    return this.templateService.list(tenantId);
+    return this.templateService.list(tenantId, dto.includeInactive);
   }
 
   @Post()

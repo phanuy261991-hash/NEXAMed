@@ -255,7 +255,7 @@ Cân nặng/chiều cao lưu số nguyên (gram, mm) để tránh số thực; n
 
 ### prescription / prescription_item
 `prescription`: `encounter_id`, `signed_at`, `signed_by`, `signature_payload` (null ở v1), `printed_at`.
-`prescription_item`: `drug_id`, `dose`, `frequency`, `duration_days`, `quantity`, `instruction`.
+`prescription_item`: `drug_id` (nullable — "kê thuốc tự do" dùng `free_text_drug_name`, #192), `dose_morning`/`dose_noon`/`dose_afternoon`/`dose_evening` (SMALLINT, liều theo buổi, thay 2 cột tự do `dose`/`frequency` cũ, `docs/DECISIONS.md` #196), `duration_days`, `quantity` (LUÔN do backend tính = tổng 4 buổi × `duration_days`, không nhận trực tiếp từ client), `instruction`. Đơn vị hiển thị (`unitCode`) KHÔNG lưu cột riêng — resolve qua JOIN `drug.base_unit_code` lúc đọc.
 Vẫn không có cột giá/trừ kho trên chính bảng này ở GĐ1 Kho Thuốc — nguyên tắc đã chốt "đơn thuốc là y lệnh, chỉ Phiếu xuất kho (GĐ3, chưa xây) mới sinh tiền/trừ kho" (`docs/DECISIONS.md` #146), 1 đơn có thể ứng với N phiếu xuất kho sau này. `findDuplicateActiveIngredients`/PRE-02 vẫn so theo `active_ingredient` text cũ — CHƯA rewire sang `drug_ingredient` có cấu trúc (cố ý hoãn, xem #148).
 
 ### audit_log
