@@ -525,7 +525,7 @@ export function StockCountFormPage() {
                       onClick={() => void addDrug(d)}
                       className={`block w-full border-b border-slate-100 px-3 py-2 text-left text-sm last:border-b-0 disabled:opacity-60 ${idx === highlightedIndex ? 'bg-brand-teal-tint' : 'hover:bg-slate-50'}`}
                     >
-                      <span className="font-bold text-slate-900">{d.name}</span> <span className="text-xs font-semibold text-slate-400">({d.code})</span>
+                      <span className="font-medium text-slate-900">{d.name}</span> <span className="text-xs font-semibold text-slate-400">({d.code})</span>
                     </button>
                   ))}
                 </div>
@@ -620,7 +620,7 @@ export function StockCountFormPage() {
                   return (
                     <div key={head.drugId}>
                       <div role="row" style={{ gridTemplateColumns: columns, minHeight: 40 }} className="grid items-center border-b border-slate-100 bg-slate-50/70 px-4 text-sm">
-                        <div role="cell" className="flex min-w-0 items-center gap-1.5 truncate font-bold text-slate-900" title={head.drugName}>
+                        <div role="cell" className="flex min-w-0 items-center gap-1.5 truncate font-medium text-slate-900" title={head.drugName}>
                           {collapsible && (
                             <button
                               type="button"

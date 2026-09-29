@@ -153,7 +153,7 @@ export function PrescriptionTemplatePane() {
               <tbody>
                 {items.map((t) => (
                   <tr key={t.id} className={`border-b border-slate-200 last:border-0 ${t.isActive ? '' : 'opacity-50'}`}>
-                    <td className="px-4 py-2 text-left font-bold text-slate-900">{t.name}</td>
+                    <td className="px-4 py-2 text-left font-medium text-slate-900">{t.name}</td>
                     <td className="px-4 py-2 text-center text-slate-600">{t.items.length}</td>
                     <td className="px-4 py-2 text-center">
                       <StatusBadge tone={t.isActive ? 'success' : 'neutral'}>{t.isActive ? 'Đang dùng' : 'Đã ẩn'}</StatusBadge>
@@ -299,7 +299,7 @@ function PrescriptionTemplateFormDialog({
           {lines.map((line) => (
             <div key={line.key} className="rounded-md border border-slate-200 p-3">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-bold text-slate-900">{line.drugName}</p>
+                <p className="text-sm font-medium text-slate-900">{line.drugName}</p>
                 <button type="button" onClick={() => removeLine(line.key)} className="text-slate-400 hover:text-rose-600" aria-label={`Xoá ${line.drugName}`}>
                   <X size={15} weight="bold" aria-hidden="true" />
                 </button>

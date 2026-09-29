@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { CheckCircle, ClockCounterClockwise, PencilSimple, Pill, Plus, Printer, Stack, Warning, X } from '@phosphor-icons/react';
+import { ArrowRight, CheckCircle, ClockCounterClockwise, PencilSimple, Pill, Plus, Printer, Stack, Warning, X } from '@phosphor-icons/react';
 import type { PrescriptionItem, PrescriptionResponse, PrescriptionTemplate } from '@nexamed/shared';
 import { computePrescriptionQuantityPreview as computePrescriptionQuantity, formatDoseSummaryPreview as formatDoseSummary } from './prescription-dose-preview';
 import { ApiError } from '../../shared/api/client';
@@ -9,6 +9,7 @@ import { useHasPermission } from '../auth/usePermission';
 import { Button } from '../../shared/ui/Button';
 import { Combobox } from '../../shared/ui/Combobox';
 import { EmptyState } from '../../shared/ui/EmptyState';
+import { Skeleton } from '../../shared/ui/Skeleton';
 import { appendSentence } from '../../shared/format/append-sentence';
 import { useCreateReferenceCatalogItemMutation, useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { useUnitNameByCode, unitLabel } from '../drug/useUnitNameByCode';
@@ -16,6 +17,7 @@ import { DispensePrescriptionDialog } from '../inventory/DispensePrescriptionDia
 import { useStockOnHandSummaryQuery } from '../inventory/inventory.queries';
 import { useCreatePrescriptionTemplateMutation, usePrescriptionTemplatesQuery } from '../drug/prescription-template.queries';
 import { DrugPicker, type DrugPickerHandle } from './DrugPicker';
+import { ModalHeader } from '../../shared/ui/ModalHeader';
 import { PrescriptionPrintView } from './PrescriptionPrintView';
 import {
   useAmendPrescriptionMutation,
@@ -403,6 +405,26 @@ export function PrescriptionPanel({
         </div>
       ) : (
         <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          {canEdit && (
+            <div className="mb-4 flex-shrink-0 rounded-lg border-2 border-blue-200 bg-blue-50 p-3 shadow-sm">
+              <div className="mb-1.5 flex items-center justify-between gap-2">
+                <span className="text-sm font-semibold text-slate-800">Thêm thuốc vào đơn</span>
+                <div className="flex gap-2">
+                  <Button type="button" variant="secondary" onClick={handleCopyPrevious} loading={previousPrescriptionMutation.isPending}>
+                    <ClockCounterClockwise size={15} weight="bold" aria-hidden="true" />
+                    Sao chép đơn lần trước
+                  </Button>
+                  <Button type="button" variant="secondary" onClick={() => setTemplateModalOpen(true)}>
+                    <Stack size={15} weight="bold" aria-hidden="true" />
+                    Đơn mẫu
+                  </Button>
+                </div>
+              </div>
+              {copyPreviousError && <p className="mb-2 text-xs font-semibold text-amber-700">{copyPreviousError}</p>}
+              <p className="mb-2 text-xs text-slate-500">Tổng số lượng = (Sáng + Trưa + Chiều + Tối) × Số ngày — luôn theo đơn vị nhỏ nhất của thuốc, không đổi được.</p>
+              <DrugPicker ref={drugPickerRef} highlight excludeDrugIds={draftLines.map((l) => l.drugId)} onSelect={(drug) => handleAddDrug(drug)} onAddFreeText={handleAddFreeTextDrug} />
+            </div>
+          )}
           {draftLines.length === 0 ? (
             <p className="mb-3 text-sm text-slate-500">Chưa có dòng thuốc nào — tìm và thêm thuốc bên dưới.</p>
           ) : (
@@ -411,7 +433,7 @@ export function PrescriptionPanel({
                 <div key={line.key} className="grid grid-cols-[1fr_auto] gap-2 rounded-md border border-slate-200 p-3">
                   <div>
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-bold text-slate-900">{line.drugName}</p>
+                      <p className="text-sm font-medium text-slate-900">{line.drugName}</p>
                       {line.drugId === null && (
                         <span className="rounded-full border border-slate-300 bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-600">
                           Ngoài danh mục
@@ -499,33 +521,15 @@ export function PrescriptionPanel({
           )}
 
           {canEdit && (
-            <>
-              <div className="mb-1 flex items-center justify-between gap-2">
-                <span className="text-sm font-semibold text-slate-800">Thêm thuốc vào đơn</span>
-                <div className="flex gap-2">
-                  <Button type="button" variant="secondary" onClick={handleCopyPrevious} loading={previousPrescriptionMutation.isPending}>
-                    <ClockCounterClockwise size={15} weight="bold" aria-hidden="true" />
-                    Sao chép đơn lần trước
-                  </Button>
-                  <Button type="button" variant="secondary" onClick={() => setTemplateModalOpen(true)}>
-                    <Stack size={15} weight="bold" aria-hidden="true" />
-                    Đơn mẫu
-                  </Button>
-                </div>
-              </div>
-              {copyPreviousError && <p className="mb-2 text-xs font-semibold text-amber-700">{copyPreviousError}</p>}
-              <p className="mb-2 text-xs text-slate-400">Tổng số lượng = (Sáng + Trưa + Chiều + Tối) × Số ngày — luôn theo đơn vị nhỏ nhất của thuốc, không đổi được.</p>
-              <DrugPicker ref={drugPickerRef} excludeDrugIds={draftLines.map((l) => l.drugId)} onSelect={(drug) => handleAddDrug(drug)} onAddFreeText={handleAddFreeTextDrug} />
-              <div className="mt-4 flex justify-end gap-2">
-                <Button type="button" variant="secondary" onClick={() => persistDraft(draftLines)} loading={saveMutation.isPending}>
-                  <Plus size={15} weight="bold" aria-hidden="true" />
-                  Lưu đơn nháp
-                </Button>
-                <Button type="button" onClick={handleSign} loading={signMutation.isPending} disabled={!prescription || prescription.items.length === 0}>
-                  Ký đơn
-                </Button>
-              </div>
-            </>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button type="button" variant="secondary" onClick={() => persistDraft(draftLines)} loading={saveMutation.isPending}>
+                <Plus size={15} weight="bold" aria-hidden="true" />
+                Lưu đơn nháp
+              </Button>
+              <Button type="button" onClick={handleSign} loading={signMutation.isPending} disabled={!prescription || prescription.items.length === 0}>
+                Ký đơn
+              </Button>
+            </div>
           )}
         </div>
       )}
@@ -563,7 +567,7 @@ export function PrescriptionPanel({
               {amendLines.map((line) => (
                 <div key={line.key} className="rounded-md border border-slate-200 p-3">
                   <div className="flex items-center justify-between">
-                    <p className="flex items-center gap-2 text-sm font-bold text-slate-900">
+                    <p className="flex items-center gap-2 text-sm font-medium text-slate-900">
                       {line.drugName}
                       {line.drugId === null && (
                         <span className="rounded-full border border-slate-300 bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-600">
@@ -727,35 +731,57 @@ function PrescriptionTemplateModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
-      <div className="flex max-h-[80vh] w-full max-w-md flex-col rounded-lg bg-white p-5 shadow-xl">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="flex items-center gap-1.5 text-[15px] font-semibold text-slate-900">
-            <Stack size={17} weight="bold" className="text-blue-600" aria-hidden="true" />
-            Đơn thuốc mẫu
-          </h2>
-          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600" aria-label="Đóng">
-            <X size={16} weight="bold" aria-hidden="true" />
-          </button>
-        </div>
+      <div className="flex max-h-[80vh] w-full max-w-2xl flex-col rounded-lg bg-white p-5 shadow-xl">
+        <ModalHeader
+          icon={Stack}
+          title="Đơn thuốc mẫu"
+          subtitle={
+            mode === 'list'
+              ? templatesQuery.data
+                ? `${templatesQuery.data.items.length} mẫu đã lưu`
+                : undefined
+              : 'Tạo mẫu mới từ đơn đang kê'
+          }
+          onClose={onClose}
+        />
 
         {mode === 'list' ? (
           <>
-            <div className="scroll-hover flex-1 space-y-2 overflow-y-auto">
-              {templatesQuery.isLoading && <p className="text-sm text-slate-400">Đang tải...</p>}
-              {templatesQuery.isSuccess && templatesQuery.data.items.length === 0 && (
-                <p className="py-4 text-center text-sm text-slate-400">Chưa có đơn thuốc mẫu nào.</p>
-              )}
-              {templatesQuery.data?.items.map((t) => (
-                <div key={t.id} className="flex items-center justify-between gap-2 rounded-md border border-slate-200 p-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-bold text-slate-900">{t.name}</p>
-                    <p className="text-xs text-slate-500">{t.items.length} thuốc</p>
-                  </div>
-                  <Button type="button" variant="secondary" onClick={() => onApply(t)}>
-                    Dùng mẫu
-                  </Button>
+            <div className="scroll-hover flex-1 overflow-y-auto">
+              {templatesQuery.isLoading && (
+                <div className="grid grid-cols-2 gap-2.5">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <Skeleton key={i} className="h-[72px] w-full rounded-lg" />
+                  ))}
                 </div>
-              ))}
+              )}
+              {templatesQuery.isSuccess && templatesQuery.data.items.length === 0 && (
+                <EmptyState icon={Stack} title="Chưa có đơn thuốc mẫu nào" description="Lưu đơn đang kê thành mẫu để dùng lại nhanh cho lần sau." />
+              )}
+              <div className="grid grid-cols-2 gap-2.5">
+                {templatesQuery.data?.items.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => onApply(t)}
+                    className="group flex flex-col gap-2.5 rounded-lg border border-slate-200 bg-white p-3 text-left shadow-sm transition-colors hover:border-blue-300 hover:bg-blue-50/60 hover:shadow"
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <span className="flex h-9 w-9 flex-none items-center justify-center rounded-md bg-blue-50 text-blue-600 group-hover:bg-blue-100">
+                        <Stack size={16} weight="fill" aria-hidden="true" />
+                      </span>
+                      <p className="min-w-0 flex-1 truncate pt-1.5 text-sm font-bold text-slate-900">{t.name}</p>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">{t.items.length} thuốc</span>
+                      <span className="flex items-center gap-1 text-xs font-bold text-blue-600">
+                        Dùng mẫu
+                        <ArrowRight size={12} weight="bold" className="transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
             {canManage && (
               <button
@@ -763,7 +789,7 @@ function PrescriptionTemplateModal({
                 onClick={() => setMode('create')}
                 disabled={templatableLines.length === 0}
                 title={templatableLines.length === 0 ? 'Đơn đang kê phải có ít nhất 1 dòng thuốc trong danh mục' : undefined}
-                className="mt-3 flex items-center justify-center gap-1.5 rounded-md border border-dashed border-slate-300 py-2 text-sm font-semibold text-blue-600 hover:border-blue-400 hover:bg-brand-teal-tint disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:border-slate-300 disabled:hover:bg-transparent"
+                className="mt-3 flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-300 py-2.5 text-sm font-semibold text-blue-600 hover:border-blue-400 hover:bg-brand-teal-tint disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:border-slate-300 disabled:hover:bg-transparent"
               >
                 <Plus size={15} weight="bold" aria-hidden="true" />
                 Lưu đơn hiện tại thành mẫu mới
@@ -847,7 +873,7 @@ export function LineInput({
         onKeyDown={onKeyDown}
         className={
           isUnderline
-            ? `w-full border-0 border-b-2 border-slate-300 bg-transparent px-0 py-1 text-sm font-bold text-slate-900 focus:border-blue-500 focus:outline-none disabled:text-slate-400 ${dense ? 'text-center' : ''}`
+            ? `w-full border-0 border-b-2 border-slate-300 bg-transparent px-0 py-1 text-sm ${dense ? 'font-bold' : 'font-medium'} text-slate-900 focus:border-blue-500 focus:outline-none disabled:text-slate-400 ${dense ? 'text-center' : ''}`
             : 'rounded-md border border-slate-300 px-2 py-1.5 text-sm font-medium text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50'
         }
       />
@@ -874,7 +900,7 @@ export function PrescriptionItemsTable({ items }: { items: PrescriptionItem[] })
       <tbody>
         {items.map((item) => (
           <tr key={item.id} className="border-b border-slate-100 last:border-0">
-            <td className="py-2 font-semibold text-slate-900">
+            <td className="py-2 font-medium text-slate-900">
               {item.drugName}
               {item.drugId === null && (
                 <span className="ml-1.5 rounded-full border border-slate-300 bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-600">

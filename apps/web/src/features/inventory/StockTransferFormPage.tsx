@@ -473,7 +473,7 @@ export function StockTransferFormPage() {
                     onClick={() => void addDrug(d)}
                     className={`block w-full border-b border-slate-100 px-3 py-2 text-left text-sm last:border-b-0 disabled:opacity-60 ${idx === highlightedIndex ? 'bg-brand-teal-tint' : 'hover:bg-slate-50'}`}
                   >
-                    <span className="font-bold text-slate-900">{d.name}</span> <span className="text-xs font-semibold text-slate-400">({d.code})</span>
+                    <span className="font-medium text-slate-900">{d.name}</span> <span className="text-xs font-semibold text-slate-400">({d.code})</span>
                   </button>
                 ))}
               </div>
@@ -499,7 +499,7 @@ export function StockTransferFormPage() {
                 {lines.map((l) => (
                   <div key={l.key} role="row" style={{ gridTemplateColumns: '1.8fr 150px 150px 50px', minHeight: 52 }} className="grid items-center border-b border-slate-100 px-4 text-sm">
                     <div role="cell" className="min-w-0 truncate">
-                      <span className="font-bold text-slate-900">{l.drugName}</span> <span className="text-xs font-medium text-slate-400">({l.drugCode})</span>
+                      <span className="font-medium text-slate-900">{l.drugName}</span> <span className="text-xs font-medium text-slate-400">({l.drugCode})</span>
                       {l.isBatchManaged && (
                         <span className="ml-1 text-slate-500">
                           — Lô {l.batchNo} {l.expiryDate && <>· HSD {l.expiryDate.split('-').reverse().join('/')}</>}

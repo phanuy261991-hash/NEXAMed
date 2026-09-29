@@ -35,7 +35,10 @@ export const DrugPicker = forwardRef<DrugPickerHandle, {
    * `prescription_template_item` không có nhánh tự do) — ép ẩn tuỳ chọn "ngoài danh mục" ở đây dù
    * tenant đang bật `allowFreeTextPrescriptionEnabled` cho việc kê đơn thường. */
   disableFreeText?: boolean;
-}>(function DrugPicker({ excludeDrugIds, onSelect, onAddFreeText, disableFreeText = false }, ref) {
+  /** Khung/viền nổi bật (đúng khuôn 4 trang Kho Thuốc — Nhập/Xuất/Kiểm kê/Điều chuyển,
+   * `docs/DECISIONS.md` #194) — CHỈ đổi màu viền/icon, không đổi layout bên trong. */
+  highlight?: boolean;
+}>(function DrugPicker({ excludeDrugIds, onSelect, onAddFreeText, disableFreeText = false, highlight = false }, ref) {
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -109,7 +112,7 @@ export const DrugPicker = forwardRef<DrugPickerHandle, {
       <div className="relative">
         <MagnifyingGlass
           size={15}
-          className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+          className={`pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 ${highlight ? 'text-blue-500' : 'text-slate-400'}`}
           aria-hidden="true"
         />
         <input
@@ -129,7 +132,7 @@ export const DrugPicker = forwardRef<DrugPickerHandle, {
                 ? 'drug-picker-option-free-text'
                 : undefined
           }
-          className="w-full rounded-md border border-slate-300 py-2 pl-8 pr-3 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+          className={`w-full rounded-md border py-2 pl-8 pr-3 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${highlight ? 'border-blue-300 bg-white' : 'border-slate-300'}`}
         />
       </div>
 
@@ -168,7 +171,7 @@ export const DrugPicker = forwardRef<DrugPickerHandle, {
               >
                 <div className="min-w-0">
                   <div className="text-sm text-slate-900">
-                    <span className="font-bold">{item.name}</span>
+                    <span className="font-medium text-slate-900">{item.name}</span>
                     {item.concentration && <span className="text-slate-500"> · {item.concentration}</span>}
                   </div>
                   {item.activeIngredient && <div className="mt-0.5 text-xs text-slate-500">Hoạt chất: {item.activeIngredient}</div>}

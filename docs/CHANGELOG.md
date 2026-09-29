@@ -2,6 +2,18 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-29 (3)
+
+### Verify Playwright #195/#196 hoàn tất + giảm độ đậm tên thuốc toàn app + thêm ô "Mã gõ tắt" vào form Thuốc & Vật tư
+
+Verify Playwright cho "Phiếu xuất gốc" (#195) và Redesign Kê đơn/"Đơn thuốc mẫu"/"Sao chép đơn lần trước" (#196) — cả 5 mục checklist PASS đúng thiết kế. Chuỗi phản hồi trực tiếp phát sinh thêm: ô tìm thuốc ở Kê đơn dời lên đầu trang + style nổi bật (bỏ sót từ #194); popup "Đơn mẫu" redesign 2 vòng (lưới 2 cột, `ModalHeader` dùng chung, card bấm được); giảm `font-bold`→`font-medium` cho tên thuốc/vật tư ở TOÀN BỘ danh sách dòng hàng (4 trang Kho Thuốc, Kê đơn, Đơn thuốc mẫu, Phát thuốc — cả dropdown tìm kiếm lẫn dòng đã thêm vào phiếu). Phát hiện + vá lỗ hổng thật: form "Thêm/Sửa" ở "Thuốc & Vật tư" chưa từng có ô nhập "Mã gõ tắt" dù backend đã hỗ trợ đầy đủ từ Kho Thuốc GĐ5 — thêm ô nhập tự do, áp dụng cho cả Thuốc lẫn Vật tư y tế.
+
+**Đã xác minh thật**: `pnpm --filter @nexamed/web run typecheck` sạch qua mọi lần sửa (thuần `apps/web`, không đổi schema/API). Playwright qua Chrome thật xác nhận toàn bộ, gồm luồng đặt gõ tắt "ptm" cho 1 Vật tư y tế → tìm đúng ở Kê đơn. Chi tiết đầy đủ `docs/DECISIONS.md` #197/#198.
+
+### "Xem tất cả" cho Thẻ kho/Lịch sử giao dịch khi vượt 10 dòng
+
+Panel chi tiết thuốc (520px) chỉ hiện 10 dòng gần nhất, thêm nút "Xem tất cả N giao dịch" mở dialog riêng hiển thị đầy đủ khi dữ liệu nhiều hơn — đúng #159 nay đã lỗi thời khi dữ liệu tăng. Không đổi backend (param `limit` đã có sẵn). Đã xác minh qua Chrome thật trên mặt hàng có 11 giao dịch, cả tab "Thẻ kho" lẫn "Lịch sử giao dịch". Chi tiết `docs/DECISIONS.md` #199.
+
 ## 2026-09-29 (2)
 
 ### Redesign Kê đơn (liều theo buổi Sáng/Trưa/Chiều/Tối) + "Đơn thuốc mẫu" (trang riêng Quản trị) + "Sao chép đơn thuốc lần khám trước"

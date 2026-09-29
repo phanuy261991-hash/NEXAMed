@@ -614,7 +614,7 @@ export function StockReceiptFormPage() {
                       className="flex items-center justify-between rounded-md border border-slate-200 bg-white px-3 py-2 text-left text-sm hover:border-blue-400 hover:bg-brand-teal-tint"
                     >
                       <span>
-                        <span className="font-bold text-slate-900">{d.name}</span>
+                        <span className="font-medium text-slate-900">{d.name}</span>
                         <span className="ml-1.5 text-slate-500">({d.code})</span>
                       </span>
                       <Plus size={15} weight="bold" className="text-blue-600" aria-hidden="true" />
@@ -663,7 +663,7 @@ export function StockReceiptFormPage() {
                         style={{ gridTemplateColumns: lineGridCols, minHeight: 40 }}
                         className="grid items-center border-b border-slate-100 bg-slate-50/70 px-4 text-sm"
                       >
-                        <div role="cell" className="flex min-w-0 items-center gap-1.5 truncate font-bold text-slate-900" title={head.drugName}>
+                        <div role="cell" className="flex min-w-0 items-center gap-1.5 truncate font-medium text-slate-900" title={head.drugName}>
                           {collapsible && (
                             <button
                               type="button"

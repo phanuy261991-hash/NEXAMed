@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ArrowCounterClockwise, CaretDown, MagnifyingGlass, PencilSimple, Pill, Plus, Prohibit, Trash, Eye, FirstAidKit, X } from '@phosphor-icons/react';
-import type { DrugControlType, DrugIngredientInput, DrugItemType, DrugSummary, DrugUnitInput, ReferenceCatalogCategory } from '@nexamed/shared';
+import { ArrowCounterClockwise, CaretDown, ClockCounterClockwise, MagnifyingGlass, PencilSimple, Pill, Plus, Prohibit, Trash, Eye, FirstAidKit, X } from '@phosphor-icons/react';
+import type { DrugControlType, DrugIngredientInput, DrugItemType, DrugSummary, DrugUnitInput, ReferenceCatalogCategory, StockLedgerEntry } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useHasAnyPermission, useHasPermission } from '../auth/usePermission';
 import { useDrugBatchBalancesQuery, useDrugLedgerQuery } from '../inventory/inventory.queries';
@@ -676,11 +676,17 @@ function DrugBatchBalanceTab({ drugId }: { drugId: string }) {
   );
 }
 
+/** Ngưỡng hiển thị trong panel nhỏ (520px) trước khi phải bấm "Xem tất cả" — quá ngưỡng này thì
+ * cuộn trong khung nhỏ bất tiện (chốt qua phản hồi trực tiếp, đối chiếu quyết định #159 "hiện hết
+ * trong panel" đã lỗi thời khi dữ liệu tăng lên). */
+const LEDGER_PREVIEW_LIMIT = 10;
+
 /** "Thẻ kho"/"Lịch sử giao dịch" (panel chi tiết thuốc, Kho Thuốc GĐ2) — CÙNG dữ liệu GĐ2 (chỉ có
  * nguồn phiếu nhập kho), khác cách trình bày cột: `ledger` = Ngày/SL/Tồn sau, `history` = Ngày/Loại
  * chứng từ+Số phiếu/Người tạo. Sẽ tách API thật khi GĐ3 có thêm phiếu xuất kho (chứng từ khác). */
 function DrugLedgerTab({ drugId, mode }: { drugId: string; mode: 'ledger' | 'history' }) {
-  const query = useDrugLedgerQuery(drugId);
+  const [fullViewOpen, setFullViewOpen] = useState(false);
+  const query = useDrugLedgerQuery(drugId, { limit: LEDGER_PREVIEW_LIMIT });
   if (query.isPending) {
     return (
       <div className="scroll-hover min-h-0 flex-1 space-y-1.5 overflow-y-auto px-5 py-4">
@@ -698,6 +704,8 @@ function DrugLedgerTab({ drugId, mode }: { drugId: string; mode: 'ledger' | 'his
     );
   }
   const items = query.data?.items ?? [];
+  const totalCount = query.data?.totalCount ?? 0;
+  const hasMore = totalCount > items.length;
   if (items.length === 0) {
     return (
       <div className="px-5 py-4">
@@ -707,55 +715,113 @@ function DrugLedgerTab({ drugId, mode }: { drugId: string; mode: 'ledger' | 'his
   }
   return (
     <div className="scroll-hover min-h-0 flex-1 overflow-y-auto px-5 py-4">
-      <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-700">{mode === 'ledger' ? `Thẻ kho · ${items.length} giao dịch` : 'Lịch sử giao dịch (theo chứng từ)'}</p>
-      <div className="overflow-hidden rounded-lg border border-slate-200">
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr className="border-b-2 border-blue-600 bg-slate-100 text-[11px] font-bold uppercase text-slate-800">
-              <th className="px-2.5 py-2 text-center">Ngày</th>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="text-xs font-bold uppercase tracking-wide text-slate-700">
+          {mode === 'ledger' ? `Thẻ kho · ${totalCount} giao dịch` : `Lịch sử giao dịch (theo chứng từ) · ${totalCount}`}
+        </p>
+        {hasMore && (
+          <button type="button" onClick={() => setFullViewOpen(true)} className="text-xs font-bold text-blue-600 hover:underline">
+            Xem tất cả {totalCount} giao dịch
+          </button>
+        )}
+      </div>
+      <LedgerTable items={items} mode={mode} />
+      {hasMore && (
+        <button
+          type="button"
+          onClick={() => setFullViewOpen(true)}
+          className="mt-2 w-full rounded-md border border-dashed border-slate-300 py-2 text-xs font-semibold text-blue-600 hover:border-blue-400 hover:bg-brand-teal-tint"
+        >
+          Xem tất cả {totalCount} giao dịch
+        </button>
+      )}
+      {fullViewOpen && <DrugLedgerFullDialog drugId={drugId} mode={mode} onClose={() => setFullViewOpen(false)} />}
+    </div>
+  );
+}
+
+/** Bảng thẻ kho/lịch sử giao dịch DÙNG CHUNG cho panel preview (`DrugLedgerTab`) VÀ dialog "Xem tất
+ * cả" (`DrugLedgerFullDialog`) — tách ra khi có 2 nơi cần render cùng cấu trúc (đúng quy tắc "trùng
+ * lặp lần 2 mới trích xuất", CLAUDE.md). */
+function LedgerTable({ items, mode }: { items: StockLedgerEntry[]; mode: 'ledger' | 'history' }) {
+  return (
+    <div className="overflow-hidden rounded-lg border border-slate-200">
+      <table className="w-full border-collapse text-sm">
+        <thead>
+          <tr className="border-b-2 border-blue-600 bg-slate-100 text-[11px] font-bold uppercase text-slate-800">
+            <th className="px-2.5 py-2 text-center">Ngày</th>
+            {mode === 'ledger' ? (
+              <>
+                <th className="px-2.5 py-2 text-center">SL</th>
+                <th className="px-2.5 py-2 text-center">Tồn sau</th>
+              </>
+            ) : (
+              <>
+                <th className="px-2.5 py-2 text-left">Chứng từ</th>
+                <th className="px-2.5 py-2 text-left">Người tạo</th>
+              </>
+            )}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100">
+          {items.map((entry) => (
+            <tr key={entry.id}>
+              <td className="px-2.5 py-2 text-center">
+                <div className="font-medium text-slate-700">{entry.occurredAt.slice(0, 10)}</div>
+                {mode === 'ledger' && <div className="text-[11px] font-medium text-slate-400">{entry.sourceReceiptNo ?? entry.sourceIssueNo ?? LEDGER_REASON_LABEL[entry.reason]}</div>}
+              </td>
               {mode === 'ledger' ? (
                 <>
-                  <th className="px-2.5 py-2 text-center">SL</th>
-                  <th className="px-2.5 py-2 text-center">Tồn sau</th>
+                  <td className={`whitespace-nowrap px-2.5 py-2 text-center font-semibold tabular-nums ${entry.quantityChange >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                    {entry.quantityChange >= 0 ? '+' : ''}
+                    {entry.quantityChange}
+                  </td>
+                  <td className="px-2.5 py-2 text-center font-semibold tabular-nums text-slate-900">{entry.runningBalance}</td>
                 </>
               ) : (
                 <>
-                  <th className="px-2.5 py-2 text-left">Chứng từ</th>
-                  <th className="px-2.5 py-2 text-left">Người tạo</th>
+                  <td className="px-2.5 py-2 text-left">
+                    <div className="font-medium text-slate-700">{LEDGER_REASON_LABEL[entry.reason] ?? entry.reason}</div>
+                    {(entry.sourceReceiptNo ?? entry.sourceIssueNo) && (
+                      <div className="text-[11px] font-medium text-slate-400">{entry.sourceReceiptNo ?? entry.sourceIssueNo}</div>
+                    )}
+                  </td>
+                  <td className="px-2.5 py-2 text-left font-medium text-slate-600">{entry.createdByName}</td>
                 </>
               )}
             </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {items.map((entry) => (
-              <tr key={entry.id}>
-                <td className="px-2.5 py-2 text-center">
-                  <div className="font-medium text-slate-700">{entry.occurredAt.slice(0, 10)}</div>
-                  {mode === 'ledger' && <div className="text-[11px] font-medium text-slate-400">{entry.sourceReceiptNo ?? entry.sourceIssueNo ?? LEDGER_REASON_LABEL[entry.reason]}</div>}
-                </td>
-                {mode === 'ledger' ? (
-                  <>
-                    <td className={`whitespace-nowrap px-2.5 py-2 text-center font-semibold tabular-nums ${entry.quantityChange >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                      {entry.quantityChange >= 0 ? '+' : ''}
-                      {entry.quantityChange}
-                    </td>
-                    <td className="px-2.5 py-2 text-center font-semibold tabular-nums text-slate-900">{entry.runningBalance}</td>
-                  </>
-                ) : (
-                  <>
-                    <td className="px-2.5 py-2 text-left">
-                      <div className="font-medium text-slate-700">{LEDGER_REASON_LABEL[entry.reason] ?? entry.reason}</div>
-                      {(entry.sourceReceiptNo ?? entry.sourceIssueNo) && (
-                        <div className="text-[11px] font-medium text-slate-400">{entry.sourceReceiptNo ?? entry.sourceIssueNo}</div>
-                      )}
-                    </td>
-                    <td className="px-2.5 py-2 text-left font-medium text-slate-600">{entry.createdByName}</td>
-                  </>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** Dialog "Xem tất cả" — mở khi panel preview (`LEDGER_PREVIEW_LIMIT` dòng) không đủ. Gọi lại
+ * đúng endpoint KHÔNG truyền `limit` (backend trả toàn bộ, xem `stock-ledger.service.ts`). */
+function DrugLedgerFullDialog({ drugId, mode, onClose }: { drugId: string; mode: 'ledger' | 'history'; onClose: () => void }) {
+  const query = useDrugLedgerQuery(drugId);
+  const items = query.data?.items ?? [];
+  return (
+    <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/45 p-4">
+      <div className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-lg bg-white p-5 shadow-xl">
+        <ModalHeader
+          icon={ClockCounterClockwise}
+          title={mode === 'ledger' ? 'Thẻ kho — Xem tất cả' : 'Lịch sử giao dịch — Xem tất cả'}
+          subtitle={query.data ? `${query.data.totalCount} giao dịch` : undefined}
+          onClose={onClose}
+        />
+        <div className="scroll-hover min-h-0 flex-1 overflow-y-auto">
+          {query.isPending && (
+            <div className="space-y-1.5">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-8 w-full" />
+              ))}
+            </div>
+          )}
+          {query.isError && <ErrorBanner message="Không tải được đầy đủ dữ liệu." onRetry={() => void query.refetch()} />}
+          {query.isSuccess && <LedgerTable items={items} mode={mode} />}
+        </div>
       </div>
     </div>
   );
@@ -863,6 +929,7 @@ function DrugFormModal({
     storageLocation?: string;
     barcode?: string;
     packagingSpec?: string;
+    shortcutCode?: string;
     ingredients: DrugIngredientInput[];
     units: DrugUnitInput[];
   }) => Promise<void>;
@@ -895,6 +962,7 @@ function DrugFormModal({
   const [storageLocation, setStorageLocation] = useState(item?.storageLocation ?? '');
   const [barcode, setBarcode] = useState(item?.barcode ?? '');
   const [packagingSpec, setPackagingSpec] = useState(item?.packagingSpec ?? '');
+  const [shortcutCode, setShortcutCode] = useState(item?.shortcutCode ?? '');
   const [minStockAlert, setMinStockAlert] = useState(item?.minStockAlert !== null && item?.minStockAlert !== undefined ? String(item.minStockAlert) : '');
   const [maxStockAlert, setMaxStockAlert] = useState(item?.maxStockAlert !== null && item?.maxStockAlert !== undefined ? String(item.maxStockAlert) : '');
   const [ingredients, setIngredients] = useState<FormIngredientRow[]>(
@@ -966,6 +1034,9 @@ function DrugFormModal({
       // "Quy cách đóng gói" — KHÔNG giới hạn Thuốc như nhóm trường #151 phía trên (đảo ngược hoãn,
       // 17/09/2026), Vật tư y tế cũng đóng gói theo hộp/gói như thuốc.
       packagingSpec: packagingSpec.trim() || undefined,
+      // "Gõ tắt tìm thuốc" (docs/DECISIONS.md #190) — không giới hạn riêng Thuốc như nhóm trường #151
+      // phía trên, Vật tư y tế cũng tìm được qua ô tìm dùng chung ở Kê đơn/Phiếu nhập-xuất kho.
+      shortcutCode: shortcutCode.trim() || undefined,
       ingredients: isMedicine
         ? validIngredientRows.map((r) => ({
             activeIngredientCode: r.activeIngredientCode,
@@ -1071,6 +1142,19 @@ function DrugFormModal({
                     setPackagingSpec(e.target.value);
                   }}
                   placeholder="Tự ghép từ Bảng quy đổi bên dưới, sửa tự do nếu cần (vd: Hộp 1 lọ bột pha tiêm + 1 ống nước cất 5ml)"
+                  className={inputClassName}
+                />
+              </div>
+              <div>
+                <label htmlFor="drug-shortcut-code" className="mb-1.5 block text-sm font-semibold text-slate-800">
+                  Mã gõ tắt
+                </label>
+                <input
+                  id="drug-shortcut-code"
+                  value={shortcutCode}
+                  onChange={(e) => setShortcutCode(e.target.value)}
+                  placeholder="Vd: ptm — tìm nhanh lúc kê đơn/lập phiếu kho"
+                  maxLength={20}
                   className={inputClassName}
                 />
               </div>

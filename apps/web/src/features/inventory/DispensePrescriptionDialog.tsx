@@ -415,7 +415,7 @@ export function DispensePrescriptionDialog({ prescriptionId, onClose, onDispense
                           )}
                           <div className={`flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-3 gap-y-1 ${!line.selected ? 'opacity-50' : ''}`}>
                             <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
-                              <p className="truncate text-[15px] font-bold text-slate-900">{line.drugName}</p>
+                              <p className="truncate text-[15px] font-medium text-slate-900">{line.drugName}</p>
                               {line.isBatchManaged ? (
                                 <span className="shrink-0 rounded-full bg-indigo-50 px-2 py-0.5 text-[10.5px] font-semibold text-indigo-700">Theo lô</span>
                               ) : (
@@ -527,7 +527,7 @@ export function DispensePrescriptionDialog({ prescriptionId, onClose, onDispense
                       <CheckCircle size={18} weight="fill" className="shrink-0 text-emerald-500" aria-hidden="true" />
                       <div className="flex flex-1 items-center justify-between">
                         <div>
-                          <p className="text-[15px] font-bold text-slate-500">{line.drugName}</p>
+                          <p className="text-[15px] font-medium text-slate-500">{line.drugName}</p>
                           <p className="mt-0.5 text-xs text-slate-400">
                             Đã kê đơn {line.prescribedQuantity} · Đã phát {line.dispensedQuantity} · Còn lại 0
                           </p>
@@ -541,7 +541,7 @@ export function DispensePrescriptionDialog({ prescriptionId, onClose, onDispense
                     <div key={line.prescriptionItemId} className="flex items-center gap-2.5 bg-slate-50 px-4 py-3">
                       <div className="flex flex-1 items-center justify-between">
                         <div>
-                          <p className="text-[15px] font-bold text-slate-500">{line.drugName}</p>
+                          <p className="text-[15px] font-medium text-slate-500">{line.drugName}</p>
                           <p className="mt-0.5 text-xs text-slate-400">
                             {line.doseSummary} · Đã kê đơn {line.prescribedQuantity}
                           </p>
