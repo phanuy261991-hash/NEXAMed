@@ -175,6 +175,62 @@ export function ExamConfigPane() {
         </div>
       </div>
 
+      <div className={`mt-4 ${sectionBoxClassName}`}>
+        <span className={sectionBadgeClassName}>Gợi ý mã ICD-10</span>
+
+        <div className="flex items-start justify-between gap-5">
+          <div>
+            <p className="text-[14.5px] font-bold text-slate-900">Gợi ý mã ICD-10 từ ô Chẩn đoán</p>
+            <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
+              Tắt (mặc định): màn khám giữ nguyên, bác sĩ tự tìm mã ở ô ICD-10.
+              <br />
+              Bật: hệ thống tách từng cụm bệnh bác sĩ gõ ở ô &quot;Chẩn đoán&quot; và gợi ý tối đa 3 mã ICD-10 cho
+              mỗi cụm (từ danh mục Bộ Y tế, ưu tiên mã bác sĩ hay dùng, ẩn mã sai giới tính). Bác sĩ bấm từng mã mới
+              thêm — hệ thống không tự gán mã.
+            </p>
+          </div>
+          <label className="relative mt-0.5 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center">
+            <input
+              type="checkbox"
+              className="peer sr-only"
+              checked={query.data.icd10SuggestionEnabled}
+              disabled={mutation.isPending}
+              onChange={(e) => mutation.mutate({ icd10SuggestionEnabled: e.target.checked })}
+              aria-label="Gợi ý mã ICD-10 từ ô Chẩn đoán"
+            />
+            <span className="absolute inset-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-brand-teal peer-disabled:opacity-60" />
+            <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
+          </label>
+        </div>
+
+        <div className="mt-4 flex items-start justify-between gap-5 border-t border-slate-100 pt-4">
+          <div>
+            <p className={`text-[14.5px] font-bold ${query.data.icd10SuggestionEnabled ? 'text-slate-900' : 'text-slate-400'}`}>
+              Học từ lịch sử chọn mã
+            </p>
+            <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
+              Tắt (mặc định): gợi ý chỉ dựa vào tên bệnh và số lần bác sĩ đã dùng mỗi mã, không ghi thêm dữ liệu.
+              <br />
+              Bật: khi &quot;Hoàn tất khám&quot;, hệ thống ghi nhớ bác sĩ đã chọn mã nào cho cụm chẩn đoán nào (từ
+              các mã bấm ở khối gợi ý) để lần sau xếp mã đó lên đầu. Chỉ có ý nghĩa khi &quot;Gợi ý mã ICD-10&quot;
+              đang bật.
+            </p>
+          </div>
+          <label className="relative mt-0.5 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center">
+            <input
+              type="checkbox"
+              className="peer sr-only"
+              checked={query.data.icd10SuggestionLearningEnabled}
+              disabled={mutation.isPending || !query.data.icd10SuggestionEnabled}
+              onChange={(e) => mutation.mutate({ icd10SuggestionLearningEnabled: e.target.checked })}
+              aria-label="Học từ lịch sử chọn mã"
+            />
+            <span className="absolute inset-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-brand-teal peer-disabled:opacity-60" />
+            <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
+          </label>
+        </div>
+      </div>
+
       {savedNotice && (
         <div className="mt-4 flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
           <CheckCircle size={15} weight="fill" aria-hidden="true" />

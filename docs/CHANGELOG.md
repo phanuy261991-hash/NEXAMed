@@ -2,6 +2,14 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-29 (4)
+
+### Gợi ý mã ICD-10 từ ô "Chẩn đoán" (bật/tắt được) + "Học từ lịch sử chọn mã"
+
+Bác sĩ gõ chẩn đoán tự do → hệ thống tách từng cụm bệnh, mở rộng viết tắt (THA, ĐTĐ, SXH...), gợi ý tối đa 3 mã ICD-10/cụm ngay trong khối "Chẩn đoán bệnh (ICD-10)" (từ danh mục BYT, ưu tiên mã bác sĩ hay dùng, ẩn mã sai giới tính); bác sĩ bấm từng mã mới thêm, hệ thống không tự gán. 2 công tắc cấp phòng khám ở "Cấu hình khám", **mặc định TẮT** (pilot không đổi). Công tắc "Học từ lịch sử chọn mã" ghi cặp cụm từ↔mã lúc "Hoàn tất khám" để lần sau xếp mã đó lên đầu. Migration `20260929130000_icd10_suggestion` (bảng `icd10_phrase_usage` + partial index `diagnosis`). Khảo sát trước: ô tìm cũ trả kết quả sai với "ĐTĐ type 2"/"viêm dạ dày"/"đau bụng"/"THA".
+
+**Đã xác minh thật**: `packages/core` 249/249, `apps/api` 1065/1065 (+20 HTTP mới trên danh mục ICD thật), typecheck/lint sạch, Playwright qua Chrome thật (gợi ý, bàn phím, giới tính, học, 2 công tắc). Chi tiết `docs/DECISIONS.md` #200.
+
 ## 2026-09-29 (3)
 
 ### Verify Playwright #195/#196 hoàn tất + giảm độ đậm tên thuốc toàn app + thêm ô "Mã gõ tắt" vào form Thuốc & Vật tư

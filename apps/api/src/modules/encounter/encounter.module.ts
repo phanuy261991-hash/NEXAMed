@@ -10,6 +10,8 @@ import { EncounterRepository } from './encounter.repository';
 import { DiagnosisRepository } from './diagnosis.repository';
 import { ClinicalNoteRepository } from './clinical-note.repository';
 import { PrescriptionRepository } from './prescription.repository';
+import { DiagnosisSuggestionService } from './diagnosis-suggestion.service';
+import { Icd10SuggestionRepository } from './icd10-suggestion.repository';
 import { EncounterReaderAdapter } from '../../infrastructure/encounter/encounter-reader.adapter';
 
 /**
@@ -50,6 +52,8 @@ import { EncounterReaderAdapter } from '../../infrastructure/encounter/encounter
     DiagnosisRepository,
     ClinicalNoteRepository,
     PrescriptionRepository,
+    DiagnosisSuggestionService,
+    Icd10SuggestionRepository,
     { provide: ENCOUNTER_READER_PORT, useClass: EncounterReaderAdapter },
   ],
   exports: [EncounterRepository, PrescriptionRepository, DiagnosisRepository, ENCOUNTER_READER_PORT],

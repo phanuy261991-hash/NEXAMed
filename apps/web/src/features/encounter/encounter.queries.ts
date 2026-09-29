@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   AmendClinicalNoteRequest,
   AmendDiagnosesRequest,
@@ -18,6 +18,7 @@ import {
   amendPrescription,
   completeConsultation,
   getConsultationDetail,
+  getDiagnosisSuggestions,
   getPreviousPrescription,
   printPrescription,
   recordVitalSigns,
@@ -32,6 +33,24 @@ export function useConsultationDetailQuery(id: string) {
   return useQuery({
     queryKey: queryKey(tenantId, 'encounter', 'consultation', id),
     queryFn: () => getConsultationDetail(id),
+  });
+}
+
+/**
+ * "Gợi ý mã ICD-10 từ ô Chẩn đoán" — `text` là nội dung ô "Chẩn đoán" ĐÃ debounce (caller lo), `enabled`
+ * = công tắc cấu hình bật + còn sửa được nháp + ô không trống. `keepPreviousData` để khối gợi ý không
+ * nhấp nháy về skeleton mỗi lần gõ thêm chữ. `gcTime` ngắn — mỗi biến thể chữ gõ là 1 khoá cache riêng,
+ * không cần giữ lâu.
+ */
+export function useDiagnosisSuggestionsQuery(id: string, text: string, enabled: boolean) {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'encounter', 'diagnosis-suggestions', id, text),
+    queryFn: () => getDiagnosisSuggestions(id, text),
+    enabled,
+    placeholderData: keepPreviousData,
+    gcTime: 30_000,
+    staleTime: 30_000,
   });
 }
 

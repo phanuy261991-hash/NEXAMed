@@ -817,6 +817,29 @@ describe('HTTP e2e — /api/v1/encounters', () => {
       expect(primary.icd10Name).toEqual(expect.any(String));
     });
 
+    it('danh sách RỖNG → 200, xoá hết mã đã lưu (không "dính lại" mã cũ); Hoàn tất khám khi rỗng → 422', async () => {
+      const encounterId = await startedEncounter(24);
+      const saved = await request(app.getHttpServer())
+        .put(`/api/v1/encounters/${encounterId}/diagnoses`)
+        .set(authed(doctorAToken))
+        .send({ diagnoses: [{ icd10Code: 'A00.0', type: 'PRIMARY' as const }] });
+      expect(saved.status).toBe(200);
+
+      const cleared = await request(app.getHttpServer()).put(`/api/v1/encounters/${encounterId}/diagnoses`).set(authed(doctorAToken)).send({ diagnoses: [] });
+      expect(cleared.status).toBe(200);
+      expect(cleared.body.data.items).toEqual([]);
+
+      const detail = await request(app.getHttpServer()).get(`/api/v1/encounters/${encounterId}/consultation`).set(authed(doctorAToken));
+      expect(detail.body.data.diagnoses).toEqual([]);
+
+      const complete = await request(app.getHttpServer())
+        .post(`/api/v1/encounters/${encounterId}/complete`)
+        .set(authed(doctorAToken))
+        .send({ version: detail.body.data.encounter.version });
+      expect(complete.status).toBe(422);
+      expect(complete.body.error.code).toBe('DIAGNOSIS_PRIMARY_REQUIRED');
+    });
+
     it('không có PRIMARY → 400 VALIDATION_ERROR (Zod refine)', async () => {
       const encounterId = await startedEncounter(20);
 

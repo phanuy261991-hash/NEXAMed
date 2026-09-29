@@ -67,6 +67,7 @@ import type { ClinicalNote, Prisma, VitalSign } from '@prisma/client';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
 import type { RequestMeta } from '../../common/request-meta';
+import { DiagnosisSuggestionService } from './diagnosis-suggestion.service';
 import { EncounterRepository } from './encounter.repository';
 import { DiagnosisRepository, type DiagnosisWithIcd10Name } from './diagnosis.repository';
 import { ClinicalNoteRepository } from './clinical-note.repository';
@@ -127,6 +128,7 @@ export class EncounterService {
     @Inject(CLINIC_CONFIG_READER_PORT) private readonly clinicConfigReader: ClinicConfigReaderPort,
     @Inject(PDF_RENDERER_PORT) private readonly pdfRenderer: PdfRendererPort,
     @Inject(STOCK_AVAILABILITY_PORT) private readonly stockAvailability: StockAvailabilityPort,
+    private readonly diagnosisSuggestionService: DiagnosisSuggestionService,
   ) {}
 
   /**
@@ -657,8 +659,9 @@ export class EncounterService {
       if (existing.status !== 'IN_CONSULTATION') {
         throw new EncounterNotInConsultationError();
       }
+      // Danh sách rỗng hợp lệ ở bước nháp (bác sĩ gỡ hết mã) — "Hoàn tất khám" mới bắt buộc đúng 1 PRIMARY.
       const primaryCount = dto.diagnoses.filter((d) => d.type === 'PRIMARY').length;
-      if (primaryCount !== 1) {
+      if (dto.diagnoses.length > 0 && primaryCount !== 1) {
         throw new DiagnosisPrimaryRequiredError();
       }
 
@@ -867,6 +870,12 @@ export class EncounterService {
     dto: CompleteConsultationRequest,
     meta: RequestMeta,
   ): Promise<EncounterSummary> {
+    // "Học từ lịch sử chọn mã" — đọc cấu hình TRƯỚC khi mở transaction (`ClinicConfigReaderPort` tự mở transaction riêng). Chỉ đọc khi client gửi `learnedPairs`.
+    const learnedPairs = dto.learnedPairs ?? [];
+    const learningEnabled =
+      learnedPairs.length > 0 &&
+      (await this.clinicConfigReader.getIcd10SuggestionEnabled(tenantId)) &&
+      (await this.clinicConfigReader.getIcd10SuggestionLearningEnabled(tenantId));
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.encounterRepository.findById(tx, tenantId, id);
       if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId)) {
@@ -887,6 +896,17 @@ export class EncounterService {
       const signature = await this.signaturePort.sign(tenantId, actorId, { entityType: 'clinical_record', entityId: id });
       await this.diagnosisRepository.signAllForEncounter(tx, tenantId, id, actorId, signature.signedAt, signature.signedBy);
       await this.clinicalNoteRepository.signAllForEncounter(tx, tenantId, id, actorId, signature.signedAt, signature.signedBy);
+
+      if (learningEnabled) {
+        const finalDiagnoses = await this.diagnosisRepository.listForEncounter(tx, tenantId, id);
+        await this.diagnosisSuggestionService.recordLearnedPairs(
+          tx,
+          tenantId,
+          actorId,
+          finalDiagnoses.map((d) => d.icd10Code),
+          learnedPairs,
+        );
+      }
 
       await writeAuditLog(tx, tenantId, {
         actorId,

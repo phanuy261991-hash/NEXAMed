@@ -8,6 +8,7 @@ import {
   amendPrescriptionRequestSchema,
   cancelEncounterRequestSchema,
   completeConsultationRequestSchema,
+  diagnosisSuggestionRequestSchema,
   exportPatientMedicalRecordQuerySchema,
   exportPatientMedicalRecordRequestSchema,
   patientClinicalSummaryQuerySchema,
@@ -23,13 +24,17 @@ import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
 import { extractRequestMeta } from '../../common/request-meta';
+import { DiagnosisSuggestionService } from './diagnosis-suggestion.service';
 import { EncounterService } from './encounter.service';
 
 /** Transition endpoints của lượt khám (Sprint 3) — tạo encounter (check-in) thuộc `reception.controller.ts`, không phải đây. */
 @Controller('encounters')
 @UseGuards(JwtAuthGuard, PermissionGuard)
 export class EncounterController {
-  constructor(private readonly encounterService: EncounterService) {}
+  constructor(
+    private readonly encounterService: EncounterService,
+    private readonly diagnosisSuggestionService: DiagnosisSuggestionService,
+  ) {}
 
   /**
    * Trang "Hồ sơ bệnh nhân" (`apps/web/src/features/patient/`) — dải KPI + bảng "Sinh hiệu theo
@@ -129,6 +134,20 @@ export class EncounterController {
     const dto = saveDiagnosesRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
     return this.encounterService.saveDiagnoses(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+  }
+
+  /**
+   * "Gợi ý mã ICD-10 từ ô Chẩn đoán" — chỉ ĐỀ XUẤT, không ghi dữ liệu nào (POST để nội dung chẩn đoán
+   * không lọt vào URL/access log). Cùng quyền với lưu chẩn đoán (`diagnosis.create`): ai được chọn mã
+   * thì được nhận gợi ý mã. `HttpCode(200)` vì đây là truy vấn, không tạo tài nguyên.
+   */
+  @Post(':id/diagnosis-suggestions')
+  @RequirePermission('diagnosis', 'create', { entityIdParam: 'id' })
+  @HttpCode(200)
+  async suggestDiagnoses(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
+    const dto = diagnosisSuggestionRequestSchema.parse(body);
+    const { userId, tenantId } = req.user!;
+    return this.diagnosisSuggestionService.suggest(tenantId, userId, req.dataScope!, id, dto);
   }
 
   @Put(':id/clinical-note')

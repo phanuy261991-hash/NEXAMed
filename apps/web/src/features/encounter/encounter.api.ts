@@ -5,6 +5,7 @@ import type {
   ClinicalNoteResponse,
   CompleteConsultationRequest,
   ConsultationDetailResponse,
+  DiagnosisSuggestionResponse,
   EncounterSummary,
   PreviousPrescriptionResponse,
   PrescriptionResponse,
@@ -28,6 +29,13 @@ export async function saveDiagnoses(id: string, body: SaveDiagnosesRequest): Pro
   return unwrap(
     await getApiClient().PUT('/api/v1/encounters/{id}/diagnoses', { params: { path: { id } }, body }),
   ) as SaveDiagnosesResponse;
+}
+
+/** "Gợi ý mã ICD-10 từ ô Chẩn đoán" — POST (không GET) để nội dung chẩn đoán không lọt vào URL/access log. Chỉ đề xuất, không ghi dữ liệu. */
+export async function getDiagnosisSuggestions(id: string, text: string): Promise<DiagnosisSuggestionResponse> {
+  return unwrap(
+    await getApiClient().POST('/api/v1/encounters/{id}/diagnosis-suggestions', { params: { path: { id } }, body: { text } }),
+  ) as DiagnosisSuggestionResponse;
 }
 
 export async function saveClinicalNote(id: string, body: SaveClinicalNoteRequest): Promise<ClinicalNoteResponse> {

@@ -87,7 +87,7 @@ Chi tiết đầy đủ và edge case xem `.claude/docs/clinical-workflow.md`.
 
 ### Dữ liệu và bảo mật
 
-- Mã bệnh dùng chuẩn **ICD-10** (danh mục BYT, seed sẵn, read-only runtime). Không tự sinh, tự map, tự đoán mã; không cho nhập mã tự do.
+- Mã bệnh dùng chuẩn **ICD-10** (danh mục BYT, seed sẵn, read-only runtime). Không tự sinh, tự map, tự đoán mã; không cho nhập mã tự do. **Gợi ý là được, tự gán là không** (chốt 2026-09-29, `docs/DECISIONS.md` #200): chức năng "Gợi ý mã ICD-10" chỉ hiển thị mã CÓ TRONG danh mục BYT, bác sĩ phải bấm chọn từng mã.
 - **Không log PII/PHI** (họ tên, CCCD, số thẻ BHYT, chẩn đoán) ra console, file log hay hệ thống giám sát. Chỉ log ID dạng UUID.
 - Mã hiển thị (`patient_code`, `encounter_no`) sinh từ sequence DB theo tenant. Không sinh phía client, không dùng `Math.random()` hay timestamp.
 - **Chữ ký số chưa triển khai ở v1**: dùng chữ ký logic (`signed_at`, `signed_by`). Cột và port đã để sẵn — không tự ý cài đặt tích hợp CA.

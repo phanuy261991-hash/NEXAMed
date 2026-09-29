@@ -50,6 +50,8 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       // appointment/patient/user_account. diagnosis còn tham chiếu icd10_catalog (FK RESTRICT,
       // S3-05→07) nhưng icd10_catalog không thuộc phạm vi tenant nên không cần xoá ở đây.
       await prisma.vitalSign.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // icd10_phrase_usage ("Gợi ý mã ICD-10") chỉ tham chiếu tenant + icd10_catalog — xoá tự do.
+      await prisma.icd10PhraseUsage.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // wallet_transaction (Ví tạm ứng) tham chiếu CẢ invoice LẪN cash_voucher (FK RESTRICT, cả hai
       // nullable) — phải xoá TRƯỚC CẢ HAI, tức trước khối payment/invoice và cash_voucher ngay dưới đây.
       await prisma.walletTransaction.deleteMany({ where: { tenantId: { in: tenantIds } } });

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { MagnifyingGlass } from '@phosphor-icons/react';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { ErrorBanner } from './ErrorBanner';
@@ -11,6 +11,11 @@ const USAGE_LABEL: Record<string, string> = {
   not_primary: 'Không dùng làm bệnh chính',
 };
 
+export interface Icd10SearchPickerHandle {
+  /** Điền sẵn nội dung tìm + đưa focus vào ô — dùng khi nơi khác (khối gợi ý từ ô Chẩn đoán) muốn chuyển sang tìm thủ công. */
+  search: (text: string) => void;
+}
+
 /**
  * Ô tìm nhanh chọn mã ICD-10 — dùng chung (chuyển từ `features/encounter/Icd10DiagnosisPicker.tsx`
  * sang `shared/ui` khi có thêm 2 nơi dùng: chip "Tiền sử bản thân" + hàng ma trận "Tiền sử gia
@@ -19,17 +24,24 @@ const USAGE_LABEL: Record<string, string> = {
  * cross-feature) từ `catalog-clinical`, kết quả hiện thành danh sách bên dưới ô nhập (cùng mẫu
  * `PatientPicker.tsx`, không dùng dropdown overlay tuyệt đối — tránh phải tự xử lý click-outside).
  */
-export function Icd10SearchPicker({
-  excludeCodes,
-  onSelect,
-  placeholder = 'Gõ mã ICD-10 hoặc tên bệnh (VD: E11, Tăng huyết áp...)',
-}: {
+export const Icd10SearchPicker = forwardRef<Icd10SearchPickerHandle, {
   /** Mã đã chọn rồi — ẩn khỏi kết quả để không chọn trùng. */
   excludeCodes: string[];
   onSelect: (item: { icd10Code: string; icd10Name: string }) => void;
   placeholder?: string;
-}) {
+}>(function Icd10SearchPicker({ excludeCodes, onSelect, placeholder = 'Gõ mã ICD-10 hoặc tên bệnh (VD: E11, Tăng huyết áp...)' }, ref) {
   const [query, setQuery] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+  useImperativeHandle(
+    ref,
+    () => ({
+      search: (text: string) => {
+        setQuery(text);
+        inputRef.current?.focus();
+      },
+    }),
+    [],
+  );
   const debounced = useDebouncedValue(query, 300);
   const searchQuery = useIcd10SearchQuery(debounced.trim());
   const isSearching = debounced.trim() !== '';
@@ -50,6 +62,7 @@ export function Icd10SearchPicker({
           aria-hidden="true"
         />
         <input
+          ref={inputRef}
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -105,4 +118,4 @@ export function Icd10SearchPicker({
       )}
     </div>
   );
-}
+});

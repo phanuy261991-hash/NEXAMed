@@ -101,6 +101,9 @@ import {
   clinicSettingsSchema,
   clinicalNoteResponseSchema,
   completeConsultationRequestSchema,
+  diagnosisSuggestionRequestSchema,
+  diagnosisSuggestionResponseSchema,
+  icd10SuggestionStatusSchema,
   consultationDetailResponseSchema,
   createAppointmentRequestSchema,
   createExamStationRequestSchema,
@@ -944,6 +947,25 @@ registry.registerPath({
     404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal)'),
     409: errorResponse('Lượt khám không ở trạng thái đang khám (ENCOUNTER_NOT_IN_CONSULTATION), hoặc đã ký (CLINICAL_RECORD_ALREADY_SIGNED — dùng .../diagnoses/amend)'),
     422: errorResponse('Không đúng một chẩn đoán chính (DIAGNOSIS_PRIMARY_REQUIRED)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/encounters/{id}/diagnosis-suggestions',
+  tags: ['encounter'],
+  summary: 'Gợi ý mã ICD-10 từ nội dung ô "Chẩn đoán" — chỉ ĐỀ XUẤT (tối đa 3 mã/cụm bệnh, có trong danh mục BYT), không ghi dữ liệu. POST để nội dung chẩn đoán không lọt vào URL/access log. groups rỗng khi tenant chưa bật, ô trống, hoặc lượt khám không còn đang khám.',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: encounterActionIdParams,
+    body: { content: { 'application/json': { schema: diagnosisSuggestionRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Thành công', envelope(diagnosisSuggestionResponseSchema)),
+    400: errorResponse('Dữ liệu gửi lên không hợp lệ (text vượt 1000 ký tự)'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền diagnosis.create'),
+    404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal)'),
   },
 });
 
@@ -2164,6 +2186,18 @@ registry.registerPath({
   security: [{ bearerAuth: [] }],
   responses: {
     200: jsonResponse('Thành công', envelope(allowFreeTextPrescriptionStatusSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/clinic-settings/icd10-suggestion-enabled',
+  tags: ['clinic'],
+  summary: '"Gợi ý mã ICD-10 từ ô Chẩn đoán" — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /clinic-settings/allow-free-text-prescription-enabled)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(icd10SuggestionStatusSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
   },
 });

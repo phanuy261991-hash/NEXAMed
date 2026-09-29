@@ -120,6 +120,18 @@ export class ClinicSettingsController {
     return { enabled };
   }
 
+  /**
+   * "Gợi ý mã ICD-10 từ ô Chẩn đoán" — tự-phục vụ, KHÔNG gắn `@RequirePermission` (đúng khuôn
+   * `getAllowFreeTextPrescriptionEnabled` ở trên): bác sĩ cần biết công tắc này để màn khám hiện/ẩn
+   * đúng khối gợi ý mã ICD-10.
+   */
+  @Get('icd10-suggestion-enabled')
+  async getIcd10SuggestionEnabled(@Req() req: Request) {
+    const { tenantId } = req.user!;
+    const enabled = await this.clinicSettingsService.getIcd10SuggestionEnabled(tenantId);
+    return { enabled };
+  }
+
   @Patch()
   @RequirePermission('clinic_config', 'update')
   async update(@Body() body: unknown, @Req() req: Request) {

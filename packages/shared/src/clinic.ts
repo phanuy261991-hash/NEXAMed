@@ -301,6 +301,17 @@ export const clinicSettingsSchema = z.object({
    * "Phát thuốc" — chỉ ghi bệnh án + in đơn y hệt các dòng khác).
    */
   allowFreeTextPrescriptionEnabled: z.boolean(),
+  /**
+   * "Gợi ý mã ICD-10 từ ô Chẩn đoán" — TẮT (mặc định, giữ nguyên hành vi pilot đang chạy). BẬT: màn
+   * khám hiện khối gợi ý (tối đa 3 mã/cụm bệnh, từ danh mục BYT + lịch sử dùng mã của bác sĩ), bác sĩ
+   * bấm từng mã mới thêm — hệ thống không bao giờ tự gán mã.
+   */
+  icd10SuggestionEnabled: z.boolean(),
+  /**
+   * "Học từ lịch sử chọn mã" — TẮT (mặc định). Chỉ có ý nghĩa khi `icd10SuggestionEnabled=true`: bật
+   * thì "Hoàn tất khám" ghi thêm cặp "cụm từ bác sĩ gõ ↔ mã đã bấm chọn từ gợi ý" để xếp hạng lần sau.
+   */
+  icd10SuggestionLearningEnabled: z.boolean(),
 });
 export type ClinicSettings = z.infer<typeof clinicSettingsSchema>;
 
@@ -335,6 +346,8 @@ export const updateClinicSettingsRequestSchema = z.object({
   pharmacyStockTrackingEnabled: z.boolean().optional(),
   prescriptionStockBlockEnabled: z.boolean().optional(),
   allowFreeTextPrescriptionEnabled: z.boolean().optional(),
+  icd10SuggestionEnabled: z.boolean().optional(),
+  icd10SuggestionLearningEnabled: z.boolean().optional(),
 });
 export type UpdateClinicSettingsRequest = z.infer<typeof updateClinicSettingsRequestSchema>;
 
@@ -387,6 +400,10 @@ export const DEFAULT_PRESCRIPTION_STOCK_BLOCK_ENABLED = false;
 /** Tắt theo mặc định (mở rộng Kho Thuốc GĐ5, đảo ngược 1 điểm của #190) — giữ nguyên ràng buộc
  * `drugId` bắt buộc tới khi tenant chủ động bật "Kê thuốc tự do, không qua danh mục". */
 export const DEFAULT_ALLOW_FREE_TEXT_PRESCRIPTION_ENABLED = false;
+/** Tắt theo mặc định ("Gợi ý mã ICD-10") — không đổi gì với pilot đang chạy tới khi admin chủ động bật. */
+export const DEFAULT_ICD10_SUGGESTION_ENABLED = false;
+/** Tắt theo mặc định ("Học từ lịch sử chọn mã") — không ghi thêm dữ liệu nào tới khi chủ động bật. */
+export const DEFAULT_ICD10_SUGGESTION_LEARNING_ENABLED = false;
 
 /**
  * `GET /clinic-settings/cashier-shift-blind-close-enabled` — chiếu tối thiểu tự-phục vụ, cùng lý
@@ -456,6 +473,14 @@ export type PharmacyStockTrackingStatus = z.infer<typeof pharmacyStockTrackingSt
  */
 export const allowFreeTextPrescriptionStatusSchema = z.object({ enabled: z.boolean() });
 export type AllowFreeTextPrescriptionStatus = z.infer<typeof allowFreeTextPrescriptionStatusSchema>;
+
+/**
+ * `GET /clinic-settings/icd10-suggestion-enabled` — chiếu tối thiểu tự-phục vụ, cùng lý do
+ * `allowFreeTextPrescriptionStatusSchema` ở trên: bác sĩ cần biết công tắc để màn khám hiện/ẩn khối
+ * gợi ý mã ICD-10 (không có `clinic_config.read`).
+ */
+export const icd10SuggestionStatusSchema = z.object({ enabled: z.boolean() });
+export type Icd10SuggestionStatus = z.infer<typeof icd10SuggestionStatusSchema>;
 
 /**
  * "Nền tảng mạng xã hội" (mở rộng "Thông tin phòng khám" 2026-09-14) — enum cố định ở tầng Zod

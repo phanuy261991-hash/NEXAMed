@@ -11,6 +11,7 @@ import type {
   ClinicSettings,
   CreateExamStationRequest,
   DeferredPaymentStatus,
+  Icd10SuggestionStatus,
   CreateFloorRequest,
   CreateRoomRequest,
   DoctorAvailability,
@@ -83,6 +84,10 @@ export async function getPharmacyStockTrackingStatus(): Promise<PharmacyStockTra
 /** "Kê thuốc tự do, không qua danh mục" (mở rộng Kho Thuốc GĐ5) — tự-phục vụ, không cần `clinic_config.read` (đúng khuôn `getDeferredPaymentStatus`). */
 export async function getAllowFreeTextPrescriptionStatus(): Promise<AllowFreeTextPrescriptionStatus> {
   return unwrap(await getApiClient().GET('/api/v1/clinic-settings/allow-free-text-prescription-enabled')) as AllowFreeTextPrescriptionStatus;
+}
+
+export async function getIcd10SuggestionStatus(): Promise<Icd10SuggestionStatus> {
+  return unwrap(await getApiClient().GET('/api/v1/clinic-settings/icd10-suggestion-enabled')) as Icd10SuggestionStatus;
 }
 
 /** S6-01 (ADM-04) — chỉ `clinic_admin` gọi được (`clinic_config.read`), dùng cho banner cảnh báo toàn cục. */

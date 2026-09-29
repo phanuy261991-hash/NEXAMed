@@ -16,11 +16,21 @@ import {
   X,
   XCircle,
 } from '@phosphor-icons/react';
-import type { ClinicalNoteSection, ConsultationDetailResponse, DiagnosisType, EncounterHistoryItem, SaveClinicalNoteRequest } from '@nexamed/shared';
+import type {
+  ClinicalNoteSection,
+  ConsultationDetailResponse,
+  DiagnosisSuggestionGroup,
+  DiagnosisSuggestionItem,
+  DiagnosisType,
+  EncounterHistoryItem,
+  LearnedDiagnosisPair,
+  SaveClinicalNoteRequest,
+} from '@nexamed/shared';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { useAutoCollapseSidebar } from '../../shared/layout/sidebar.context';
 import { ApiError, isNetworkError } from '../../shared/api/client';
 import { clearOfflineDraft, readOfflineDraft, writeOfflineDraft } from '../../shared/offline-draft-storage';
+import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
 import { useOnlineRetry } from '../../shared/hooks/useOnlineRetry';
 import { formatClockTime } from '../../shared/format/time';
 import { ActionMenu } from '../../shared/ui/ActionMenu';
@@ -42,7 +52,9 @@ import { EncounterHistoryDetailDialog } from './EncounterHistoryDetailDialog';
 import type { PatientFormValues } from '../patient/PatientFormFields';
 import { formatDobDisplay } from '../../shared/format/date';
 import { useUpdatePatientMutation } from '../patient/patient.queries';
-import { Icd10SearchPicker } from '../../shared/ui/Icd10SearchPicker';
+import { Icd10SearchPicker, type Icd10SearchPickerHandle } from '../../shared/ui/Icd10SearchPicker';
+import { useIcd10SuggestionEnabledQuery } from '../clinic/clinic.queries';
+import { DiagnosisSuggestionPanel, type DiagnosisSuggestionPanelHandle } from './DiagnosisSuggestionPanel';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { PrescriptionPanel } from './PrescriptionPanel';
 import { VitalSignsDialog } from './VitalSignsDialog';
@@ -52,6 +64,7 @@ import {
   useAmendDiagnosesMutation,
   useCompleteConsultationMutation,
   useConsultationDetailQuery,
+  useDiagnosisSuggestionsQuery,
   useSaveClinicalNoteMutation,
   useSaveDiagnosesMutation,
 } from './encounter.queries';
@@ -218,6 +231,26 @@ export function EncounterConsultationPage() {
    * phải qua "Đính chính" (2 dialog riêng), không mở khoá input trực tiếp nữa.
    */
   const canEditDraft = !isCompleted;
+
+  /**
+   * "Gợi ý mã ICD-10 từ ô Chẩn đoán" — chỉ chạy khi tenant bật công tắc, hồ sơ còn nháp và ô "Chẩn đoán"
+   * có nội dung (đã debounce 0,6 giây, chưa tính ký tự phân cách). Lỗi mạng/lỗi API: ẩn khối gợi ý, ô
+   * tìm ICD-10 thủ công bên dưới vẫn dùng được như cũ.
+   */
+  const suggestionEnabledQuery = useIcd10SuggestionEnabledQuery();
+  const debouncedDiagnosisText = useDebouncedValue(clinical.preliminaryDiagnosis, 600).trim();
+  const suggestionsActive = (suggestionEnabledQuery.data?.enabled ?? false) && canEditDraft && debouncedDiagnosisText !== '';
+  const suggestionsQuery = useDiagnosisSuggestionsQuery(encounterId, debouncedDiagnosisText, suggestionsActive);
+  const suggestionGroups: DiagnosisSuggestionGroup[] = suggestionsActive && !suggestionsQuery.isError ? (suggestionsQuery.data?.groups ?? []) : [];
+  const suggestionCodeCount = suggestionGroups.reduce((sum, g) => sum + g.items.length, 0);
+  const suggestionPanelRef = useRef<DiagnosisSuggestionPanelHandle>(null);
+  const icd10PickerRef = useRef<Icd10SearchPickerHandle>(null);
+  /**
+   * Cặp "cụm từ ↔ mã" bác sĩ đã bấm chọn từ khối gợi ý — gửi kèm "Hoàn tất khám" để server học (chỉ khi
+   * tenant bật "Học từ lịch sử chọn mã", server tự bỏ qua nếu không). Chỉ giữ trong bộ nhớ trang này;
+   * server chỉ ghi cặp có mã VẪN còn trong chẩn đoán cuối cùng.
+   */
+  const learnedPairsRef = useRef<Map<string, LearnedDiagnosisPair>>(new Map());
 
   // Luôn giữ bản mới nhất trong ref — dùng cho autosave debounce/flush lúc rời trang (effect cleanup
   // đóng gói giá trị lúc effect được TẠO, không phải lúc effect CHẠY, nên phải đọc qua ref để luôn
@@ -507,10 +540,6 @@ export function EncounterConsultationPage() {
    */
   async function persistDiagnoses(next: DiagnosisDraft[]) {
     setFormError(null);
-    if (next.length === 0) {
-      setDiagnoses(next);
-      return;
-    }
     try {
       const result = await saveDiagnosesMutation.mutateAsync({
         diagnoses: next.map((d) => ({ icd10Code: d.icd10Code, type: d.type, note: d.note })),
@@ -534,6 +563,11 @@ export function EncounterConsultationPage() {
   function handleAddDiagnosis(item: { icd10Code: string; icd10Name: string }) {
     const type: DiagnosisType = diagnoses.length === 0 ? 'PRIMARY' : 'SECONDARY';
     void persistDiagnoses([...diagnoses, { icd10Code: item.icd10Code, icd10Name: item.icd10Name, type }]);
+  }
+
+  function handleAddSuggestion(item: DiagnosisSuggestionItem, group: DiagnosisSuggestionGroup) {
+    learnedPairsRef.current.set(`${group.phraseKey}|${item.icd10Code}`, { phraseKey: group.phraseKey, icd10Code: item.icd10Code });
+    handleAddDiagnosis({ icd10Code: item.icd10Code, icd10Name: item.icd10Name });
   }
 
   function handleSetPrimary(code: string) {
@@ -700,7 +734,8 @@ export function EncounterConsultationPage() {
       return;
     }
     try {
-      await completeMutation.mutateAsync({ version: query.data!.encounter.version });
+      const learnedPairs = [...learnedPairsRef.current.values()];
+      await completeMutation.mutateAsync({ version: query.data!.encounter.version, ...(learnedPairs.length > 0 ? { learnedPairs } : {}) });
       setShowCompleteSuccessDialog(true);
     } catch (err) {
       setFormError(err instanceof ApiError ? err.message : 'Không hoàn tất được lượt khám, vui lòng thử lại.');
@@ -1015,16 +1050,40 @@ export function EncounterConsultationPage() {
                     onChange={(e) => setField('illnessProgress', e.target.value)}
                     readOnly={!canEditDraft}
                   />
-                  <Textarea
-                    id="clinical-preliminary-diagnosis"
-                    label="Chẩn đoán"
-                    required
-                    dense
-                    rows={2}
-                    value={clinical.preliminaryDiagnosis}
-                    onChange={(e) => setField('preliminaryDiagnosis', e.target.value)}
-                    readOnly={!canEditDraft}
-                  />
+                  <div>
+                    <Textarea
+                      id="clinical-preliminary-diagnosis"
+                      label="Chẩn đoán"
+                      required
+                      dense
+                      rows={2}
+                      value={clinical.preliminaryDiagnosis}
+                      onChange={(e) => setField('preliminaryDiagnosis', e.target.value)}
+                      onKeyDown={(e) => {
+                        // Vào khối gợi ý mã ICD-10 bằng bàn phím (không chiếm Tab): Alt+↓, Ctrl+↓, hoặc ↓ khi con trỏ
+                        // đang ở CUỐI ô (dòng cuối). Nhiều bộ gõ/tiện ích Windows chiếm Alt+phím nên có 3 đường vào.
+                        if (e.key !== 'ArrowDown' && e.code !== 'ArrowDown') return;
+                        const el = e.currentTarget;
+                        const atEnd = el.selectionStart === el.value.length && el.selectionEnd === el.value.length;
+                        if ((e.altKey || e.ctrlKey || (atEnd && !e.shiftKey && !e.metaKey)) && suggestionPanelRef.current?.focusFirst()) {
+                          e.preventDefault();
+                        }
+                      }}
+                      readOnly={!canEditDraft}
+                    />
+                    {suggestionsActive && suggestionCodeCount > 0 && (
+                      <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-xs text-blue-700" aria-live="polite">
+                        {suggestionGroups.length} cụm · {suggestionCodeCount} mã gợi ý ở mục ICD-10 bên dưới
+                        <button
+                          type="button"
+                          onClick={() => suggestionPanelRef.current?.focusFirst()}
+                          className="font-semibold underline underline-offset-2 hover:text-blue-800"
+                        >
+                          Xem (↓ hoặc Alt+↓)
+                        </button>
+                      </p>
+                    )}
+                  </div>
                   <Textarea
                     id="clinical-general-exam"
                     label="Kết quả khám toàn thân"
@@ -1057,7 +1116,18 @@ export function EncounterConsultationPage() {
                   )}
                 </div>
                 {/* "Xem lại" một lượt khám đã hoàn tất (đã ký, Sprint 5) — sửa phải qua "Đính chính" ở trên, không mở lại ô thêm chẩn đoán trực tiếp. */}
-                {canEditDraft && <Icd10SearchPicker excludeCodes={diagnoses.map((d) => d.icd10Code)} onSelect={handleAddDiagnosis} />}
+                {suggestionsActive && !suggestionsQuery.isError && (
+                  <DiagnosisSuggestionPanel
+                    ref={suggestionPanelRef}
+                    groups={suggestionGroups}
+                    isLoading={suggestionsQuery.isPending || debouncedDiagnosisText !== clinical.preliminaryDiagnosis.trim()}
+                    chosenCodes={diagnoses.map((d) => d.icd10Code)}
+                    onAdd={handleAddSuggestion}
+                    onManualSearch={(text) => icd10PickerRef.current?.search(text)}
+                    onRequestInputFocus={() => document.getElementById('clinical-preliminary-diagnosis')?.focus()}
+                  />
+                )}
+                {canEditDraft && <Icd10SearchPicker ref={icd10PickerRef} excludeCodes={diagnoses.map((d) => d.icd10Code)} onSelect={handleAddDiagnosis} />}
 
                 <div className="mt-2.5 flex flex-col gap-1.5">
                   {diagnoses.length === 0 && <p className="text-xs text-slate-400">Chưa chọn chẩn đoán nào.</p>}

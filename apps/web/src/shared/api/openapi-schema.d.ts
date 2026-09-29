@@ -1963,6 +1963,8 @@ export interface paths {
                                 pharmacyStockTrackingEnabled: boolean;
                                 prescriptionStockBlockEnabled: boolean;
                                 allowFreeTextPrescriptionEnabled: boolean;
+                                icd10SuggestionEnabled: boolean;
+                                icd10SuggestionLearningEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -4434,6 +4436,127 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/encounters/{id}/diagnosis-suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Gợi ý mã ICD-10 từ nội dung ô "Chẩn đoán" — chỉ ĐỀ XUẤT (tối đa 3 mã/cụm bệnh, có trong danh mục BYT), không ghi dữ liệu. POST để nội dung chẩn đoán không lọt vào URL/access log. groups rỗng khi tenant chưa bật, ô trống, hoặc lượt khám không còn đang khám. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        text: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                groups: {
+                                    phrase: string;
+                                    phraseKey: string;
+                                    expandedText: string | null;
+                                    followUp: boolean;
+                                    items: {
+                                        icd10Code: string;
+                                        icd10Name: string;
+                                        /** @enum {string} */
+                                        reason: "PHRASE_HISTORY" | "HISTORY" | "MATCH";
+                                        usageCount: number | null;
+                                    }[];
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Dữ liệu gửi lên không hợp lệ (text vượt 1000 ký tự) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền diagnosis.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/encounters/{id}/clinical-note": {
         parameters: {
             query?: never;
@@ -4967,6 +5090,10 @@ export interface paths {
                 content: {
                     "application/json": {
                         version: number;
+                        learnedPairs?: {
+                            phraseKey: string;
+                            icd10Code: string;
+                        }[];
                     };
                 };
             };
@@ -12491,6 +12618,8 @@ export interface paths {
                                 pharmacyStockTrackingEnabled: boolean;
                                 prescriptionStockBlockEnabled: boolean;
                                 allowFreeTextPrescriptionEnabled: boolean;
+                                icd10SuggestionEnabled: boolean;
+                                icd10SuggestionLearningEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -12597,6 +12726,8 @@ export interface paths {
                         pharmacyStockTrackingEnabled?: boolean;
                         prescriptionStockBlockEnabled?: boolean;
                         allowFreeTextPrescriptionEnabled?: boolean;
+                        icd10SuggestionEnabled?: boolean;
+                        icd10SuggestionLearningEnabled?: boolean;
                     };
                 };
             };
@@ -12662,6 +12793,8 @@ export interface paths {
                                 pharmacyStockTrackingEnabled: boolean;
                                 prescriptionStockBlockEnabled: boolean;
                                 allowFreeTextPrescriptionEnabled: boolean;
+                                icd10SuggestionEnabled: boolean;
+                                icd10SuggestionLearningEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -13180,6 +13313,62 @@ export interface paths {
             cookie?: never;
         };
         /** "Kê thuốc tự do, không qua danh mục" (mở rộng Kho Thuốc GĐ5) — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /clinic-settings/pharmacy-stock-tracking-enabled) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                enabled: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinic-settings/icd10-suggestion-enabled": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** "Gợi ý mã ICD-10 từ ô Chẩn đoán" — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /clinic-settings/allow-free-text-prescription-enabled) */
         get: {
             parameters: {
                 query?: never;

@@ -4864,6 +4864,12 @@
                         },
                         "allowFreeTextPrescriptionEnabled": {
                           "type": "boolean"
+                        },
+                        "icd10SuggestionEnabled": {
+                          "type": "boolean"
+                        },
+                        "icd10SuggestionLearningEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -4890,7 +4896,9 @@
                         "pharmacySeparateInvoiceEnabled",
                         "pharmacyStockTrackingEnabled",
                         "prescriptionStockBlockEnabled",
-                        "allowFreeTextPrescriptionEnabled"
+                        "allowFreeTextPrescriptionEnabled",
+                        "icd10SuggestionEnabled",
+                        "icd10SuggestionLearningEnabled"
                       ]
                     },
                     "meta": {
@@ -10665,8 +10673,7 @@
                         "icd10Code",
                         "type"
                       ]
-                    },
-                    "minItems": 1
+                    }
                   }
                 },
                 "required": [
@@ -10934,6 +10941,266 @@
           },
           "422": {
             "description": "Không đúng một chẩn đoán chính (DIAGNOSIS_PRIMARY_REQUIRED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/encounters/{id}/diagnosis-suggestions": {
+      "post": {
+        "tags": [
+          "encounter"
+        ],
+        "summary": "Gợi ý mã ICD-10 từ nội dung ô \"Chẩn đoán\" — chỉ ĐỀ XUẤT (tối đa 3 mã/cụm bệnh, có trong danh mục BYT), không ghi dữ liệu. POST để nội dung chẩn đoán không lọt vào URL/access log. groups rỗng khi tenant chưa bật, ô trống, hoặc lượt khám không còn đang khám.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "maxLength": 1000
+                  }
+                },
+                "required": [
+                  "text"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "groups": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "phrase": {
+                                "type": "string"
+                              },
+                              "phraseKey": {
+                                "type": "string"
+                              },
+                              "expandedText": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "followUp": {
+                                "type": "boolean"
+                              },
+                              "items": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "icd10Code": {
+                                      "type": "string"
+                                    },
+                                    "icd10Name": {
+                                      "type": "string"
+                                    },
+                                    "reason": {
+                                      "type": "string",
+                                      "enum": [
+                                        "PHRASE_HISTORY",
+                                        "HISTORY",
+                                        "MATCH"
+                                      ]
+                                    },
+                                    "usageCount": {
+                                      "type": [
+                                        "integer",
+                                        "null"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "icd10Code",
+                                    "icd10Name",
+                                    "reason",
+                                    "usageCount"
+                                  ]
+                                }
+                              }
+                            },
+                            "required": [
+                              "phrase",
+                              "phraseKey",
+                              "expandedText",
+                              "followUp",
+                              "items"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "groups"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu gửi lên không hợp lệ (text vượt 1000 ký tự)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền diagnosis.create",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal)",
             "content": {
               "application/json": {
                 "schema": {
@@ -12420,6 +12687,28 @@
                 "properties": {
                   "version": {
                     "type": "integer"
+                  },
+                  "learnedPairs": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "phraseKey": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9 ]{1,120}$"
+                        },
+                        "icd10Code": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 10
+                        }
+                      },
+                      "required": [
+                        "phraseKey",
+                        "icd10Code"
+                      ]
+                    },
+                    "maxItems": 20
                   }
                 },
                 "required": [
@@ -31578,6 +31867,12 @@
                         },
                         "allowFreeTextPrescriptionEnabled": {
                           "type": "boolean"
+                        },
+                        "icd10SuggestionEnabled": {
+                          "type": "boolean"
+                        },
+                        "icd10SuggestionLearningEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -31604,7 +31899,9 @@
                         "pharmacySeparateInvoiceEnabled",
                         "pharmacyStockTrackingEnabled",
                         "prescriptionStockBlockEnabled",
-                        "allowFreeTextPrescriptionEnabled"
+                        "allowFreeTextPrescriptionEnabled",
+                        "icd10SuggestionEnabled",
+                        "icd10SuggestionLearningEnabled"
                       ]
                     },
                     "meta": {
@@ -31932,6 +32229,12 @@
                   },
                   "allowFreeTextPrescriptionEnabled": {
                     "type": "boolean"
+                  },
+                  "icd10SuggestionEnabled": {
+                    "type": "boolean"
+                  },
+                  "icd10SuggestionLearningEnabled": {
+                    "type": "boolean"
                   }
                 }
               }
@@ -32184,6 +32487,12 @@
                         },
                         "allowFreeTextPrescriptionEnabled": {
                           "type": "boolean"
+                        },
+                        "icd10SuggestionEnabled": {
+                          "type": "boolean"
+                        },
+                        "icd10SuggestionLearningEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -32210,7 +32519,9 @@
                         "pharmacySeparateInvoiceEnabled",
                         "pharmacyStockTrackingEnabled",
                         "prescriptionStockBlockEnabled",
-                        "allowFreeTextPrescriptionEnabled"
+                        "allowFreeTextPrescriptionEnabled",
+                        "icd10SuggestionEnabled",
+                        "icd10SuggestionLearningEnabled"
                       ]
                     },
                     "meta": {
@@ -32993,6 +33304,83 @@
           "clinic"
         ],
         "summary": "\"Kê thuốc tự do, không qua danh mục\" (mở rộng Kho Thuốc GĐ5) — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /clinic-settings/pharmacy-stock-tracking-enabled)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "enabled"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clinic-settings/icd10-suggestion-enabled": {
+      "get": {
+        "tags": [
+          "clinic"
+        ],
+        "summary": "\"Gợi ý mã ICD-10 từ ô Chẩn đoán\" — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /clinic-settings/allow-free-text-prescription-enabled)",
         "security": [
           {
             "bearerAuth": []

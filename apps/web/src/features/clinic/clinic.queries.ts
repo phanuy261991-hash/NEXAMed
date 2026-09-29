@@ -27,6 +27,7 @@ import {
   createFloor,
   createRoom,
   getAllowFreeTextPrescriptionStatus,
+  getIcd10SuggestionStatus,
   getAllowStaffSelfScheduleStatus,
   getBackupStatus,
   getSidebarAutoCollapseStatus,
@@ -178,6 +179,19 @@ export function useAllowFreeTextPrescriptionEnabledQuery() {
   });
 }
 
+/**
+ * "Gợi ý mã ICD-10 từ ô Chẩn đoán" — màn khám dùng riêng hook này (KHÔNG dùng `useClinicSettingsQuery()`,
+ * cần `clinic_config.read`): bác sĩ cần biết công tắc để hiện/ẩn khối gợi ý, cùng lý do
+ * `useAllowFreeTextPrescriptionEnabledQuery` ở trên.
+ */
+export function useIcd10SuggestionEnabledQuery() {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'clinic', 'icd10-suggestion-enabled'),
+    queryFn: getIcd10SuggestionStatus,
+  });
+}
+
 export function useUpdateClinicSettingsMutation() {
   const { tenantId } = useAppConfig();
   const queryClient = useQueryClient();
@@ -196,6 +210,8 @@ export function useUpdateClinicSettingsMutation() {
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'doctor-availability-policy') });
       // "Yêu cầu mở ca trước khi thu tiền" — Thu ngân đọc qua hook tự-phục vụ riêng, làm mới luôn.
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'cashier-shift-required-enabled') });
+      // "Gợi ý mã ICD-10" — màn khám đọc qua hook tự-phục vụ riêng (useIcd10SuggestionEnabledQuery), làm mới luôn.
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'icd10-suggestion-enabled') });
       // "Tự động thu gọn menu khi chuyển trang" — Sidebar.tsx đọc qua hook tự-phục vụ riêng, làm mới luôn.
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'sidebar-auto-collapse-enabled') });
       // "Chế độ phòng khám 1 người" — TopBar.tsx đọc qua hook tự-phục vụ riêng, làm mới luôn.

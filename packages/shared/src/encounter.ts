@@ -472,10 +472,12 @@ export const saveDiagnosesRequestSchema = z
           type: diagnosisTypeSchema,
           note: z.string().optional(),
         }),
-      )
-      .min(1, 'Phải có ít nhất một chẩn đoán.'),
+      ),
+      // Cho phép danh sách RỖNG (bác sĩ gỡ hết mã khi còn đang khám) — nếu không, mã cũ đã lưu ở server
+      // không bao giờ bị xoá và "dính lại" sau khi tải lại trang. "Hoàn tất khám" vẫn bắt buộc đúng 1
+      // PRIMARY (`DiagnosisPrimaryRequiredError`), nên không thể ký hồ sơ với danh sách rỗng.
   })
-  .refine((data) => data.diagnoses.filter((d) => d.type === 'PRIMARY').length === 1, {
+  .refine((data) => data.diagnoses.length === 0 || data.diagnoses.filter((d) => d.type === 'PRIMARY').length === 1, {
     message: 'Phải có đúng một chẩn đoán chính (PRIMARY).',
     path: ['diagnoses'],
   });
@@ -619,6 +621,64 @@ export const consultationDetailResponseSchema = z.object({
 });
 export type ConsultationDetailResponse = z.infer<typeof consultationDetailResponseSchema>;
 
-/** "Hoàn tất khám" — IN_CONSULTATION → COMPLETED. `version` là version của `encounter`. */
-export const completeConsultationRequestSchema = z.object({ version: z.number().int() });
+/**
+ * Cặp "cụm từ ↔ mã" bác sĩ đã bấm chọn từ khối gợi ý ICD-10 — chỉ dùng khi tenant bật "Học từ lịch
+ * sử chọn mã". `phraseKey` do SERVER sinh ra ở `DiagnosisSuggestionGroup` (không phải cụm gốc bác sĩ
+ * gõ); server chỉ ghi khi `icd10Code` vẫn nằm trong chẩn đoán cuối cùng của lượt khám.
+ */
+export const learnedDiagnosisPairSchema = z.object({
+  phraseKey: z.string().regex(/^[a-z0-9 ]{1,120}$/),
+  icd10Code: z.string().min(1).max(10),
+});
+export type LearnedDiagnosisPair = z.infer<typeof learnedDiagnosisPairSchema>;
+
+/**
+ * "Hoàn tất khám" — IN_CONSULTATION → COMPLETED. `version` là version của `encounter`.
+ * `learnedPairs` (tuỳ chọn, tối đa 20) — xem `learnedDiagnosisPairSchema`; server bỏ qua khi tenant
+ * chưa bật "Học từ lịch sử chọn mã".
+ */
+export const completeConsultationRequestSchema = z.object({
+  version: z.number().int(),
+  learnedPairs: z.array(learnedDiagnosisPairSchema).max(20).optional(),
+});
 export type CompleteConsultationRequest = z.infer<typeof completeConsultationRequestSchema>;
+
+/**
+ * `POST /encounters/:id/diagnosis-suggestions` — gợi ý mã ICD-10 từ nội dung ô "Chẩn đoán" (docs/
+ * DECISIONS.md — "Gợi ý mã ICD-10"). POST (không GET) để nội dung chẩn đoán KHÔNG lọt vào URL/access
+ * log. Không ghi dữ liệu, không audit. Chỉ đưa ra mã CÓ TRONG danh mục BYT — bác sĩ phải bấm chọn
+ * từng mã, hệ thống không tự gán.
+ */
+export const diagnosisSuggestionRequestSchema = z.object({ text: z.string().max(1000) });
+export type DiagnosisSuggestionRequest = z.infer<typeof diagnosisSuggestionRequestSchema>;
+
+/** `PHRASE_HISTORY` = bác sĩ hay chọn mã này cho đúng cụm từ; `HISTORY` = mã bác sĩ hay dùng nói chung; `MATCH` = chỉ khớp tên bệnh. */
+export const DIAGNOSIS_SUGGESTION_REASONS = ['PHRASE_HISTORY', 'HISTORY', 'MATCH'] as const;
+export const diagnosisSuggestionReasonSchema = z.enum(DIAGNOSIS_SUGGESTION_REASONS);
+export type DiagnosisSuggestionReason = z.infer<typeof diagnosisSuggestionReasonSchema>;
+
+export const diagnosisSuggestionItemSchema = z.object({
+  icd10Code: z.string(),
+  icd10Name: z.string(),
+  reason: diagnosisSuggestionReasonSchema,
+  /** Số lần dùng đi kèm `reason` (`PHRASE_HISTORY`/`HISTORY`); `null` khi `MATCH`. */
+  usageCount: z.number().int().nullable(),
+});
+export type DiagnosisSuggestionItem = z.infer<typeof diagnosisSuggestionItemSchema>;
+
+export const diagnosisSuggestionGroupSchema = z.object({
+  /** Cụm gốc bác sĩ gõ, dùng để hiển thị. */
+  phrase: z.string(),
+  /** Khoá không dấu của cụm (đã mở rộng viết tắt) — gửi lại ở `learnedPairs` khi hoàn tất khám. */
+  phraseKey: z.string(),
+  /** Cụm sau khi mở rộng viết tắt ("hiểu là: ..."), `null` nếu không có viết tắt nào được mở rộng. */
+  expandedText: z.string().nullable(),
+  /** Cụm có tiền tố "TD/Theo dõi/Nghi" — chỉ gắn nhãn, vẫn tra mã theo phần bệnh còn lại. */
+  followUp: z.boolean(),
+  items: z.array(diagnosisSuggestionItemSchema),
+});
+export type DiagnosisSuggestionGroup = z.infer<typeof diagnosisSuggestionGroupSchema>;
+
+/** `groups` rỗng khi tenant chưa bật tính năng, lượt khám không còn ở trạng thái đang khám, hoặc ô Chẩn đoán trống. */
+export const diagnosisSuggestionResponseSchema = z.object({ groups: z.array(diagnosisSuggestionGroupSchema) });
+export type DiagnosisSuggestionResponse = z.infer<typeof diagnosisSuggestionResponseSchema>;
