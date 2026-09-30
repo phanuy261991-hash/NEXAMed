@@ -4,6 +4,11 @@
 
 ## 2026-09-30
 
+### Tinh chỉnh giao diện: dialog hoàn tiền thuốc dạng bảng, "Đổi bác sĩ" rộng + chọn Khoa bằng thẻ, ô Chẩn đoán ICD-10 nổi bật
+
+Dialog "Hoàn tiền thuốc" thiết kế lại dạng bảng, "Nhập lại kho" mặc định bật. Dialog "Đổi bác sĩ phụ trách" nới rộng, chọn Khoa bằng thẻ hiện sẵn thay dropdown bị khung cuộn cắt mất. Ô "Chẩn đoán bệnh (ICD-10)" ở màn khám nổi bật bằng màu (khung xanh nhạt + vạch trái, ô tìm cỡ thường, dải hổ phách khi chưa chọn). Thuần web, không đổi API. Quy tắc chung ở `.claude/docs/ui-guidelines.md` mục 12. Chi tiết `docs/DECISIONS.md` #205.
+
+
 ### Xử lý các điểm hở còn lại của Hoàn tiền một phần
 
 "Phiếu trong ca của tôi" nay dựng từ chính dòng thu/hoàn tiền của ca (endpoint mới `GET /cashier-shifts/:id/invoice-payments`) nên hiện đủ hoàn tiền một phần, hoàn khác ngày, đúng giờ hoàn. Phiếu nhập hoàn trả lập tay có chọn phiếu xuất gốc không còn nhập vượt số đã xuất (422, thông báo nêu số còn nhập lại được). Popup "Mở ca" khi hoàn tiền mặt lúc chưa có ca đã verify UI. Tổng kết ngày ở Thu ngân giữ nguyên cách tính theo ngày tiếp nhận (chủ dự án chọn). **Đã xác minh thật**: cashier-shift 47/47, thêm test cận trên nhập hoàn trả, Chrome thật. Chi tiết `docs/DECISIONS.md` #204.

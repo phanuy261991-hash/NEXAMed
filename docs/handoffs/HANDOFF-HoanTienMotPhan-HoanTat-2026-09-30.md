@@ -39,3 +39,6 @@
 
 ## 6. Quy tắc làm việc của chủ dự án (nhắc lại)
 Hội thoại **tiếng Việt**; báo trước khi code và **chờ "duyệt" rõ ràng** với mockup/thiết kế mới; không mutate dữ liệu bằng role `nexamed` (BYPASSRLS) — dựng dữ liệu qua HTTP API bằng `dev.admin`; `config.json` giữ tenant test cố định; commit/push/gộp chỉ khi được bảo; dùng `Button` dùng chung, form bọc `<form>` (Enter-to-submit), không `font-extrabold` cho tên; giao diện phải đồng nhất token/component sẵn có (chủ dự án từng phản hồi "AI look" với thẻ lồng thẻ + khung tím — ưu tiên bảng có đường kẻ).
+
+## 7. Cập nhật cuối phiên (sau khi viết file này)
+Thêm các commit giao diện đã push lên `master`: dialog "Đổi bác sĩ phụ trách" (rộng hơn, chọn Khoa bằng thẻ), ô "Chẩn đoán bệnh (ICD-10)" nổi bật ở màn khám, cùng tài liệu `docs/DECISIONS.md` #205 + `.claude/docs/ui-guidelines.md` mục 12 (quy tắc: không thanh tiêu đề tô đặc, danh sách ngắn dùng thẻ chọn, dialog nhiều dòng dạng bảng). Dev server có thể vẫn đang chạy (3001/5173).

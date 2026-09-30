@@ -1104,8 +1104,13 @@ export function EncounterConsultationPage() {
                   />
                 </div>
 
-                <div className="mb-2 mt-4 flex items-center justify-between border-t border-dashed border-slate-200 pt-3">
-                  <h3 className="text-[11px] font-bold uppercase tracking-wide text-slate-700">
+                {/* Khối chẩn đoán làm NỔI BẬT bằng MÀU (trường bắt buộc chính của màn khám, phản hồi chủ dự án 30/09/2026):
+                    nền xanh nhạt + vạch xanh dày bên trái (cùng ngôn ngữ dòng "Bệnh chính" bên dưới), tiêu đề chữ xanh — KHÔNG tô
+                    thanh tiêu đề đặc (chủ dự án không thích). Ô tìm giữ cỡ vừa; trạng thái trống dùng hổ phách (còn thiếu). */}
+                <div className="mt-4 rounded-lg border border-l-4 border-blue-200 border-l-blue-600 bg-blue-50/70 p-3">
+                <div className="mb-2.5 flex items-center justify-between">
+                  <h3 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-blue-800">
+                    <Stethoscope size={16} weight="bold" className="text-blue-600" aria-hidden="true" />
                     Chẩn đoán bệnh (ICD-10) <span className="text-rose-500">*</span>
                   </h3>
                   {isCompleted && editingCompleted && (
@@ -1115,8 +1120,7 @@ export function EncounterConsultationPage() {
                     </button>
                   )}
                 </div>
-                {/* Khối chẩn đoán làm NỔI BẬT (trường bắt buộc chính của màn khám, phản hồi chủ dự án 30/09/2026): nền xanh nhạt + ô tìm lớn. */}
-                <div className="rounded-lg border border-blue-200 bg-blue-50/40 p-3">
+                <div>
                 {/* "Xem lại" một lượt khám đã hoàn tất (đã ký, Sprint 5) — sửa phải qua "Đính chính" ở trên, không mở lại ô thêm chẩn đoán trực tiếp. */}
                 {suggestionsActive && !suggestionsQuery.isError && (
                   <DiagnosisSuggestionPanel
@@ -1133,10 +1137,10 @@ export function EncounterConsultationPage() {
 
                 <div className="mt-2.5 flex flex-col gap-1.5">
                   {diagnoses.length === 0 && (
-                    <div className="flex items-center gap-2.5 rounded-lg border border-dashed border-blue-300 bg-white px-3 py-3">
-                      <ClipboardText size={22} weight="duotone" className="flex-shrink-0 text-blue-500" aria-hidden="true" />
-                      <p className="text-sm text-slate-600">
-                        <span className="font-semibold text-slate-800">Chưa chọn chẩn đoán nào.</span> Tìm và bấm chọn mã ICD-10 ở ô trên — cần đúng 1 chẩn đoán chính để hoàn tất khám.
+                    <div className="flex items-center gap-2.5 rounded-md border border-amber-300 bg-amber-50 px-3 py-2.5">
+                      <Warning size={18} weight="fill" className="flex-shrink-0 text-amber-500" aria-hidden="true" />
+                      <p className="text-sm text-amber-900">
+                        <span className="font-bold">Chưa chọn chẩn đoán nào.</span> Tìm và bấm chọn mã ICD-10 ở ô trên — cần đúng 1 chẩn đoán chính để hoàn tất khám.
                       </p>
                     </div>
                   )}
@@ -1181,6 +1185,7 @@ export function EncounterConsultationPage() {
                       )}
                     </div>
                   ))}
+                </div>
                 </div>
                 </div>
               </div>
