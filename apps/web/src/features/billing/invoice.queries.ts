@@ -3,6 +3,7 @@ import type {
   ApplyInvoiceDiscountRequest,
   MarkInvoicePaidRequest,
   PayInvoiceWithWalletRequest,
+  RefundInvoiceItemsRequest,
   RefundInvoiceRequest,
   RevertInvoicePaymentRequest,
   SaveInvoiceDraftRequest,
@@ -16,8 +17,10 @@ import {
   getBillingInvoiceList,
   markInvoicePaid,
   payInvoiceWithWallet,
+  printCombinedInvoices,
   printInvoice,
   refundInvoice,
+  refundInvoiceItems,
   revertInvoicePayment,
   saveInvoiceDraft,
   topUpAndPayInvoiceWithWallet,
@@ -122,6 +125,26 @@ export function useRefundInvoiceMutation(encounterId: string) {
   });
 }
 
+/** #203 — hoàn tiền MỘT PHẦN theo dòng thuốc. Nút chỉ hiện với vai trò có `invoice.refund_drug` (mặc
+ * định lễ tân + quản trị). Làm mới cả tổng kết ngày (refundedAmount trong 'invoice','list') và
+ * 'stock-balance'/'stock-receipt' (restock=true tự sinh phiếu nhập RETURN_FROM_USE). */
+export function useRefundInvoiceItemsMutation(encounterId: string) {
+  const { tenantId } = useAppConfig();
+  const queryClient = useQueryClient();
+  const invalidate = useInvalidateInvoice();
+  return useMutation({
+    mutationFn: (body: RefundInvoiceItemsRequest) => refundInvoiceItems(encounterId, body),
+    onSuccess: () => {
+      void invalidate();
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'invoice', 'list') });
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'stock-balance') });
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'stock-receipt') });
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'stock-ledger') });
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'wallet') });
+    },
+  });
+}
+
 /** Chiết khấu — thay đổi `dueAmount` nên phải làm mới cả tổng kết ngày ('invoice','list'), không chỉ chi tiết. */
 export function useApplyInvoiceDiscountMutation(encounterId: string) {
   const { tenantId } = useAppConfig();
@@ -144,10 +167,19 @@ export function useSaveInvoiceDraftMutation(encounterId: string) {
   });
 }
 
-export function usePrintInvoiceMutation(encounterId: string) {
+/** In gộp — server đánh dấu đã in cho MỌI phiếu trong bản in nên làm mới cả chi tiết lẫn danh sách. */
+export function usePrintCombinedInvoicesMutation(encounterId: string) {
   const invalidate = useInvalidateInvoice();
   return useMutation({
-    mutationFn: () => printInvoice(encounterId),
+    mutationFn: () => printCombinedInvoices(encounterId),
+    onSuccess: () => void invalidate(),
+  });
+}
+
+export function usePrintInvoiceMutation(encounterId: string, invoiceId?: string) {
+  const invalidate = useInvalidateInvoice();
+  return useMutation({
+    mutationFn: () => printInvoice(encounterId, invoiceId),
     onSuccess: () => void invalidate(),
   });
 }

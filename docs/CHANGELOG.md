@@ -2,6 +2,22 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-09-30
+
+### "Hoàn tiền thuốc" — hoàn MỘT PHẦN theo từng dòng thuốc (khách trả thuốc, lượt khám vẫn bình thường)
+
+Trước đây hoàn tiền chỉ TOÀN PHẦN và chỉ khi lượt khám đã huỷ. Nay lễ tân/quản trị (quyền riêng `invoice.refund_drug`) bấm "Hoàn tiền thuốc" ở Chi tiết thanh toán, chọn dòng thuốc + số lượng; số tiền hoàn server tự tính (đúng phần tiền thật sau chiết khấu, hoàn hết đúng từng đồng), hoàn về ví tạm ứng trước rồi mới tiền mặt/CK. Mỗi dòng tuỳ chọn "Nhập lại kho" → tự sinh phiếu nhập `RETURN_FROM_USE`. Hoá đơn vẫn "Đã thu" sau mỗi lần hoàn, đủ toàn bộ thì "Đã hoàn tiền"; đã hoàn thì không "Đánh dấu chưa thu" được. Danh sách Thu ngân, bản in lẻ và in gộp đều hiện phần đã hoàn. Migration `20260930100000_invoice_partial_refund` (2 bảng `invoice_refund`/`invoice_refund_line` + `payment.refund_id`). **Đã xác minh thật**: 16 test HTTP mới (đã kiểm đột biến), suite billing cũ không hồi quy, Chrome thật. Chi tiết `docs/DECISIONS.md` #203.
+
+### Sửa lỗi: hoá đơn thuốc riêng không thu được tiền — mọi thao tác ghi hoá đơn nhận `invoiceId`
+
+Hoá đơn tiền thuốc tách riêng (Kho Thuốc GĐ3) xem được nhưng nút "Thu tiền & In phiếu" ở trang của nó lại thao tác trên hoá đơn KHÁM: báo "đã thu" khi hoá đơn khám đã thu, và tệ hơn là đánh dấu nhầm hoá đơn khám khi hai hoá đơn trùng `version`. Thu tiền, trừ ví, nạp-và-trừ ví, lưu tạm, đánh dấu chưa thu, hoàn tiền, chiết khấu, in nay đều nhận `invoiceId` tuỳ chọn (bỏ trống = hoá đơn khám như cũ, không đổi luồng đang chạy); sai/khác lượt khám/khác tenant → 404. Nút "In gộp N phiếu" đổi sang nền xanh đặc. Không migration/permission mới. **Đã xác minh thật**: `billing-http.spec.ts` 68/68 (+11, đã kiểm đột biến), 293/293 trên 6 suite liên quan, typecheck/lint/build sạch, Chrome thật. Chi tiết `docs/DECISIONS.md` #202.
+
+### "Phiếu thu tổng hợp" — in gộp mọi phiếu thu của cùng lượt khám thành 1 tờ
+
+Khách vừa trả tiền khám vừa mua thuốc trước đây nhận 2 (hoặc N) tờ "Phiếu thu" tách rời (mỗi Phiếu xuất kho sinh 1 hoá đơn DRUG riêng, #163/#165). Thêm nút "In gộp N phiếu" trên trang Chi tiết thanh toán (chỉ hiện khi lượt khám có ≥2 phiếu chưa huỷ) — bản in gộp 1 tờ, mỗi hoá đơn là 1 nhóm dòng giữ nguyên số phiếu + trạng thái (ĐÃ THU/CHƯA THU/ĐÃ HOÀN TIỀN, phân biệt được cả khi in đen trắng), cuối tờ có Tổng cộng/Chiết khấu/Tổng đã thu/Còn phải thu. Không sinh bản ghi hoá đơn mới, tiêu đề vẫn là "PHIẾU THU" (không phải hoá đơn GTGT). Phiếu huỷ bị loại; phiếu hoàn tiền vẫn in kèm dòng trừ; bấm in đánh dấu `printedAt` + audit `invoice.printed` (`combined:true`) cho MỌI phiếu trong bản in. Không migration/permission mới (dùng `invoice.print`).
+
+**Đã xác minh thật**: `packages/core` `combined-invoice-totals.spec.ts` 5/5, `apps/api` `billing-http.spec.ts` 57/57 (+7 test HTTP: gộp/thứ tự/loại huỷ/tổng/chiết khấu/hoàn tiền/idempotent/401/404/cách ly tenant), `pnpm -w typecheck/lint/build` sạch. **Đã verify Chrome thật** (tenant test cố định, dữ liệu dựng qua HTTP API): nút hiện đúng ở cả trang phiếu khám lẫn phiếu thuốc, ẩn khi lượt khám chỉ có 1 phiếu; bản in gộp đúng số liệu (phiếu khám đã thu có chiết khấu 10% + phiếu thuốc chưa thu gồm 2 Phiếu xuất → Tổng cộng 458.900, Chiết khấu -35.000, Tổng đã thu 315.000, Còn phải thu 108.900); sau `afterprint` tự về bản in lẻ; nhãn "CHƯA THU" có `print-color-adjust: exact`; 0 lỗi console. Chưa xem được file PDF thật (thiếu poppler). Chi tiết `docs/DECISIONS.md` #201.
+
 ## 2026-09-29 (4)
 
 ### Gợi ý mã ICD-10 từ ô "Chẩn đoán" (bật/tắt được) + "Học từ lịch sử chọn mã"

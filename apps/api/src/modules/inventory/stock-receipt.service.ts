@@ -359,6 +359,102 @@ export class StockReceiptService {
   }
 
   /**
+   * Hoàn tiền MỘT PHẦN theo dòng thuốc (docs/DECISIONS.md #203) — thu ngân chọn "nhập lại kho" cho
+   * dòng thuốc khách trả: `InvoiceRefundService` gọi hàm này TRONG CÙNG transaction. Nhận danh sách
+   * (dòng phiếu xuất gốc, số lượng trả) rồi GOM THEO PHIẾU XUẤT GỐC — mỗi phiếu xuất sinh đúng 1 phiếu
+   * `RETURN_FROM_USE` đã `POSTED` NGAY (không qua Nháp→Duyệt như `create()` lập tay), gắn
+   * `sourceIssueId` = phiếu xuất đó, đúng kho đã xuất. Dùng lại `applyPostedLines()` cho phần cộng
+   * tồn/ghi thẻ kho.
+   *
+   * Dữ liệu kho (lô, hạn dùng, giá vốn, kho) tự tra từ chính dòng phiếu xuất — người gọi (module
+   * billing) không phải đọc bảng kho. Nhập lại ĐÚNG lô cũ (`applyPostedLines()` tra lô theo
+   * `batchNo`), đúng giá vốn lúc xuất, đơn vị CƠ SỞ (số lượng hoá đơn/phiếu xuất vốn đã ở đơn vị cơ sở).
+   *
+   * Như `createCountSurplusReceipt()`: KHÔNG kiểm quyền/Khoa-Phòng — thao tác hệ thống thay thu ngân
+   * (người hoàn không cần `stock_receipt.create`); người gọi chịu trách nhiệm kiểm quyền hoàn tiền.
+   *
+   * Trả về map `stockIssueLineId → id phiếu nhập hoàn trả` để lưu vết ở từng dòng hoàn.
+   */
+  async createReturnFromUseReceipts(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    actorId: string,
+    params: { occurredAt: Date; refundNo: string; lines: { stockIssueLineId: string; quantity: number }[] },
+  ): Promise<Map<string, string>> {
+    const issueLines = await this.stockIssueRepository.findLinesForReturn(tx, tenantId, params.lines.map((l) => l.stockIssueLineId));
+    const byId = new Map(issueLines.map((l) => [l.id, l]));
+
+    const groups = new Map<string, { warehouseId: string; lineIds: string[]; lines: { drugId: string; quantity: number; unitCost: bigint; batchNo: string | null; expiryDate: Date | null }[] }>();
+    for (const requested of params.lines) {
+      const issueLine = byId.get(requested.stockIssueLineId);
+      if (!issueLine) {
+        throw new UnprocessableEntityException('Dòng phiếu xuất gốc của thuốc cần nhập lại kho không tồn tại.');
+      }
+      if (issueLine.issue.status !== 'POSTED') {
+        throw new UnprocessableEntityException('Phiếu xuất gốc không còn hiệu lực — không nhập lại kho được.');
+      }
+      const group = groups.get(issueLine.issueId) ?? { warehouseId: issueLine.issue.warehouseId, lineIds: [], lines: [] };
+      group.lineIds.push(issueLine.id);
+      group.lines.push({
+        drugId: issueLine.drugId,
+        quantity: requested.quantity,
+        unitCost: issueLine.unitCost,
+        batchNo: issueLine.batch?.batchNo ?? null,
+        expiryDate: issueLine.batch?.expiryDate ?? null,
+      });
+      groups.set(issueLine.issueId, group);
+    }
+
+    const drugs = await this.drugRepository.findByIds(tx, tenantId, [...new Set(issueLines.map((l) => l.drugId))]);
+    const baseUnitByDrugId = new Map(drugs.map((d) => [d.id, d.baseUnitCode ?? '']));
+
+    const receiptIdByLineId = new Map<string, string>();
+    for (const [sourceIssueId, group] of groups) {
+      const lines: StockReceiptLineData[] = group.lines.map((l) => ({
+        drugId: l.drugId,
+        unitCode: baseUnitByDrugId.get(l.drugId) ?? '',
+        quantity: l.quantity,
+        unitCost: l.unitCost,
+        batchNo: l.batchNo,
+        expiryDate: l.expiryDate,
+        lineAmount: l.unitCost * BigInt(l.quantity),
+        discountType: null,
+        discountValue: null,
+      }));
+      const totalAmount = lines.reduce((sum, l) => sum + l.lineAmount, 0n);
+      const receiptNo = await this.businessCodeService.generate(tx, tenantId, actorId, 'STOCK_RECEIPT', params.occurredAt);
+
+      const created = await this.stockReceiptRepository.create(tx, tenantId, actorId, {
+        receiptNo,
+        warehouseId: group.warehouseId,
+        supplierId: null,
+        receiptType: 'RETURN_FROM_USE',
+        occurredAt: params.occurredAt,
+        note: `Tự sinh từ phiếu hoàn tiền ${params.refundNo}`,
+        supplierInvoiceNo: null,
+        totalAmount,
+        discountType: null,
+        discountValue: null,
+        discountReason: null,
+        prepaidAmount: 0n,
+        prepaidPaymentMethodCode: null,
+        prepaidCashAccountId: null,
+        lines,
+        countId: null,
+        transferId: null,
+        sourceIssueId,
+      });
+
+      const postedCount = await this.stockReceiptRepository.approve(tx, tenantId, created.id, created.version, actorId);
+      if (postedCount === 0) throw new ConcurrentModificationError();
+      await this.applyPostedLines(tx, tenantId, actorId, created);
+
+      for (const lineId of group.lineIds) receiptIdByLineId.set(lineId, created.id);
+    }
+    return receiptIdByLineId;
+  }
+
+  /**
    * Kho Thuốc GĐ4, phần "Điều chuyển kho" (docs/DECISIONS.md #170) — Xác nhận nhận hàng:
    * `StockTransferService.confirmReceive()` gọi hàm này TRONG CÙNG transaction để tự sinh 1
    * `StockReceipt` (`receiptType='TRANSFER_IN'`) đã ở trạng thái `POSTED` NGAY tại kho ĐÍCH, cộng

@@ -25,12 +25,15 @@ import {
   clinicPrintHeaderSchema,
   deferredPaymentStatusSchema,
   applyInvoiceDiscountRequestSchema,
+  combinedInvoicePrintResponseSchema,
   getBillingInvoiceQuerySchema,
   invoiceResponseSchema,
   listBillingInvoicesQuerySchema,
   listBillingInvoicesResponseSchema,
   markInvoicePaidRequestSchema,
   payInvoiceWithWalletRequestSchema,
+  printInvoiceRequestSchema,
+  refundInvoiceItemsRequestSchema,
   refundInvoiceRequestSchema,
   revertInvoicePaymentRequestSchema,
   saveInvoiceDraftRequestSchema,
@@ -1230,6 +1233,28 @@ registry.registerPath({
 
 registry.registerPath({
   method: 'post',
+  path: '/api/v1/billing/invoices/{encounterId}/refund-items',
+  tags: ['billing'],
+  summary:
+    '#203 Hoàn tiền MỘT PHẦN theo từng dòng thuốc (khách trả thuốc, lượt khám vẫn bình thường), quyền riêng invoice.refund_drug — số tiền hoàn server tự tính, hoàn về ví trước; tuỳ chọn nhập lại kho từng dòng',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: billingEncounterIdParams,
+    body: { content: { 'application/json': { schema: refundInvoiceItemsRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Thành công', envelope(invoiceResponseSchema)),
+    400: errorResponse('Thiếu lý do / không chọn dòng nào'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền invoice.refund_drug'),
+    404: errorResponse('Không có hoá đơn này thuộc lượt khám'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION), phiếu chưa thu (INVOICE_NOT_REFUNDABLE) hoặc đã đóng (INVOICE_CLOSED)'),
+    422: errorResponse('Dòng không phải thuốc (INVOICE_LINE_NOT_REFUNDABLE), vượt số lượng còn hoàn được (INVOICE_REFUND_QUANTITY_EXCEEDED), hoặc tổng hoàn 0đ (INVOICE_REFUND_ZERO_AMOUNT)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
   path: '/api/v1/billing/invoices/{encounterId}/save-draft',
   tags: ['billing'],
   summary: '"Lưu tạm" (F8) — lưu phương thức/tiền khách đưa đang nhập dở, chưa đánh dấu Đã thu',
@@ -1253,12 +1278,30 @@ registry.registerPath({
   tags: ['billing'],
   summary: 'In phiếu thu (BIL-02, dùng chung hạ tầng in với PRE-04) — ghi nhận printedAt, idempotent',
   security: [{ bearerAuth: [] }],
-  request: { params: billingEncounterIdParams },
+  request: {
+    params: billingEncounterIdParams,
+    body: { required: false, content: { 'application/json': { schema: printInvoiceRequestSchema } } },
+  },
   responses: {
     200: jsonResponse('Thành công', envelope(invoiceResponseSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền invoice.print'),
     404: errorResponse('Không có phiếu thu cho lượt khám này'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/billing/invoices/{encounterId}/print-combined',
+  tags: ['billing'],
+  summary: 'Phiếu thu tổng hợp — dữ liệu in gộp MỌI phiếu thu chưa huỷ của lượt khám, đồng thời ghi nhận printedAt cho từng phiếu',
+  security: [{ bearerAuth: [] }],
+  request: { params: billingEncounterIdParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(combinedInvoicePrintResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền invoice.print'),
+    404: errorResponse('Lượt khám không có phiếu thu nào còn hiệu lực'),
   },
 });
 

@@ -1,9 +1,11 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import {
+  allocateInvoiceDueToLines,
   canRefundInvoice,
   CASHIER_SHIFT_READER_PORT,
   CLINIC_CONFIG_READER_PORT,
+  computeCombinedInvoiceTotals,
   computeDailyBillingTotals,
   computeDiscountAmount,
   computeInvoiceDiscount,
@@ -12,6 +14,7 @@ import {
   InvoiceAlreadyPaidError,
   InvoiceClosedError,
   InvoiceDiscountNotAllowedError,
+  InvoiceHasRefundsError,
   InvoiceNotPaidError,
   InvoiceNotRefundableError,
   isInvoiceClosed,
@@ -25,6 +28,7 @@ import {
 } from '@nexamed/core';
 import type {
   ApplyInvoiceDiscountRequest,
+  CombinedInvoicePrintResponse,
   Invoice as InvoiceDto,
   ListBillingInvoicesResponse,
   MarkInvoicePaidRequest,
@@ -71,9 +75,28 @@ function toInvoiceSibling(row: OtherInvoiceRow): InvoiceDto['otherInvoices'][num
   };
 }
 
-function toInvoiceResponse(row: InvoiceWithLines, otherInvoices: OtherInvoiceRow[] = []): InvoiceDto {
+export function toInvoiceResponse(row: InvoiceWithLines, otherInvoices: OtherInvoiceRow[] = []): InvoiceDto {
   const encounterCancelled = row.encounter.status === 'CANCELLED';
   const discount = computeDue(row);
+  // Hoàn MỘT PHẦN (#203) — "net" của từng dòng (tổng khớp `dueAmount` từng đồng) + số lượng/tiền đã hoàn
+  // cộng theo `invoiceLineId` từ các lần hoàn một phần còn hiệu lực.
+  const lineNets = allocateInvoiceDueToLines({
+    totalAmount: Number(row.totalAmount),
+    discountType: row.discountType,
+    discountValue: row.discountValue !== null ? Number(row.discountValue) : null,
+    lines: row.lines.map((l) => ({
+      lineTotal: Number(l.lineTotal),
+      discountType: l.discountType,
+      discountValue: l.discountValue !== null ? Number(l.discountValue) : null,
+    })),
+  });
+  const refundedByLine = new Map<string, { quantity: number; amount: number }>();
+  for (const refund of row.refunds) {
+    for (const rl of refund.lines) {
+      const prev = refundedByLine.get(rl.invoiceLineId) ?? { quantity: 0, amount: 0 };
+      refundedByLine.set(rl.invoiceLineId, { quantity: prev.quantity + rl.quantity, amount: prev.amount + Number(rl.amount) });
+    }
+  }
   return {
     id: row.id,
     encounterId: row.encounterId,
@@ -94,7 +117,7 @@ function toInvoiceResponse(row: InvoiceWithLines, otherInvoices: OtherInvoiceRow
     patientCode: row.encounter.patient.patientCode,
     fullName: row.encounter.patient.fullName,
     departmentName: row.encounter.department.name,
-    lines: row.lines.map((line) => ({
+    lines: row.lines.map((line, index) => ({
       id: line.id,
       examTypeCode: line.examTypeCode,
       examTypeName: line.examTypeName,
@@ -109,6 +132,9 @@ function toInvoiceResponse(row: InvoiceWithLines, otherInvoices: OtherInvoiceRow
       // Kho Thuốc GĐ3 (#165) — nhóm hiển thị "Dịch vụ khám"/"Tiền thuốc" ở InvoiceDetailPage.tsx.
       lineSource: line.sourceServiceItemId !== null ? 'SERVICE' : 'DRUG',
       stockIssueNo: line.sourceStockIssueLine?.issue.issueNo ?? null,
+      netAmount: lineNets[index] ?? 0,
+      refundedQuantity: refundedByLine.get(line.id)?.quantity ?? 0,
+      refundedAmount: refundedByLine.get(line.id)?.amount ?? 0,
     })),
     printedAt: row.printedAt?.toISOString() ?? null,
     pendingPaymentMethod: row.pendingPaymentMethod,
@@ -121,6 +147,21 @@ function toInvoiceResponse(row: InvoiceWithLines, otherInvoices: OtherInvoiceRow
     needsRefund: computeNeedsRefund({ invoiceStatus: row.status, encounterCancelled }),
     refundedAt: row.refundPayment?.paidAt.toISOString() ?? null,
     refundReason: row.refundPayment?.reason ?? null,
+    refundedAmount: Number(row.refundedTotal),
+    refunds: row.refunds.map((refund) => ({
+      id: refund.id,
+      refundNo: refund.refundNo,
+      refundedAt: refund.refundedAt.toISOString(),
+      reason: refund.reason,
+      totalAmount: Number(refund.totalAmount),
+      lines: refund.lines.map((rl) => ({
+        invoiceLineId: rl.invoiceLineId,
+        itemName: rl.invoiceLine.examTypeName,
+        quantity: rl.quantity,
+        amount: Number(rl.amount),
+        restocked: rl.restocked,
+      })),
+    })),
     otherInvoices: otherInvoices.map(toInvoiceSibling),
     version: row.version,
   };
@@ -158,7 +199,7 @@ export class InvoiceService {
    * hoặc actor không có ca mở dùng két riêng). `null` cuối cùng nếu tenant chưa có quỹ tiền mặt mặc
    * định nào — KHÔNG chặn thu tiền.
    */
-  private async resolveCashAccountId(tx: Prisma.TransactionClient, tenantId: string, method: string, drawerAccountId: string | null): Promise<string | null> {
+  async resolveCashAccountId(tx: Prisma.TransactionClient, tenantId: string, method: string, drawerAccountId: string | null): Promise<string | null> {
     const meta = await this.referenceCatalogReader.listByCategory(tenantId, 'PAYMENT_METHOD');
     const isCash = meta.find((m) => m.code === method)?.countsAsCash ?? false;
     if (!isCash) {
@@ -171,17 +212,33 @@ export class InvoiceService {
     return account?.id ?? null;
   }
 
-  /** `invoiceId` tuỳ chọn (Kho Thuốc GĐ3, #165) — có thì mở ĐÚNG hoá đơn đó (phải khớp `encounterId`
-   * trên URL, không thì coi như không có — tránh lộ hoá đơn của lượt khám khác); không có thì giữ
-   * đúng hành vi cũ (luôn hoá đơn SERVICE). */
+  /**
+   * Hoá đơn ĐÍCH của một thao tác — nguồn DUY NHẤT cho cả đọc (`getByEncounterId`) lẫn MỌI thao tác
+   * ghi (thu tiền/trừ ví/lưu tạm/đánh dấu chưa thu/hoàn tiền/chiết khấu/in). `invoiceId` bỏ trống →
+   * hoá đơn `SERVICE` (hành vi cũ, mọi nơi gọi trước Kho Thuốc GĐ3 không đổi); có → đúng hoá đơn đó
+   * nhưng BẮT BUỘC thuộc `encounterId` (không thì `null` → 404, không lộ hoá đơn lượt khám khác).
+   *
+   * Trước #202 các thao tác ghi luôn tự lấy hoá đơn `SERVICE` trong khi web gửi `version` của hoá
+   * đơn ĐANG XEM — hoá đơn `DRUG` riêng vì thế không thu được tiền, tệ hơn là trùng `version` thì
+   * ghi nhầm sang hoá đơn khám. Mọi method ghi phải đi qua đây, kể cả lần đọc lại sau khi ghi (nếu
+   * không, response trả về hoá đơn SERVICE thay vì hoá đơn vừa tác động).
+   */
+  private async resolveTargetInvoice(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    encounterId: string,
+    invoiceId?: string,
+  ): Promise<InvoiceWithLines | null> {
+    if (invoiceId) {
+      const specific = await this.invoiceRepository.findByIdWithLines(tx, tenantId, invoiceId);
+      return specific && specific.encounterId === encounterId ? specific : null;
+    }
+    return this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
+  }
+
+  /** `invoiceId` tuỳ chọn (Kho Thuốc GĐ3, #165) — xem `resolveTargetInvoice()`. */
   async getByEncounterId(tenantId: string, encounterId: string, invoiceId?: string): Promise<InvoiceDto | null> {
-    const row = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      if (invoiceId) {
-        const specific = await this.invoiceRepository.findByIdWithLines(tx, tenantId, invoiceId);
-        return specific && specific.encounterId === encounterId ? specific : null;
-      }
-      return this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
-    });
+    const row = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.resolveTargetInvoice(tx, tenantId, encounterId, invoiceId));
     if (!row) return null;
     const otherInvoices = await this.unitOfWork.runInTenantScope(tenantId, (tx) =>
       this.invoiceRepository.findOtherInvoicesSummary(tx, tenantId, encounterId, row.id),
@@ -198,7 +255,9 @@ export class InvoiceService {
     // đây nữa (giữ đúng quy ước "REFUNDED vẫn tính vào paidTotalAmount rồi trừ ra ở netTotalAmount").
     // Chiết khấu — dùng `dueAmount` (số tiền THẬT thu/hoàn), KHÔNG dùng `totalAmount` (gross) — nếu
     // không tổng kết cuối ngày sẽ sai ngay khi có phiếu chiết khấu đầu tiên.
-    const totals = computeDailyBillingTotals(rows.map((row) => ({ status: row.status, dueAmount: computeDue(row).dueAmount })));
+    const totals = computeDailyBillingTotals(
+      rows.map((row) => ({ status: row.status, dueAmount: computeDue(row).dueAmount, refundedAmount: Number(row.refundedTotal) })),
+    );
 
     return {
       items: rows.map((row) => this.toBillingListItem(row)),
@@ -228,6 +287,7 @@ export class InvoiceService {
       paymentMethod: row.activePayment?.method ?? null,
       paidAt: row.activePayment?.paidAt.toISOString() ?? null,
       needsRefund: computeNeedsRefund({ invoiceStatus: row.status, encounterCancelled }),
+      refundedAmount: Number(row.refundedTotal),
     };
   }
 
@@ -241,7 +301,7 @@ export class InvoiceService {
       this.cashierShiftReader.getCashAccountIdForActor(tenantId, actorId),
     ]);
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const invoice = await this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
+      const invoice = await this.resolveTargetInvoice(tx, tenantId, encounterId, dto.invoiceId);
       if (!invoice) {
         throw new NotFoundException();
       }
@@ -249,7 +309,7 @@ export class InvoiceService {
       const paidAt = new Date();
       const count = await this.invoiceRepository.markPaid(tx, tenantId, invoice.id, dto.version, actorId);
       if (count === 0) {
-        const recheck = await this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
+        const recheck = await this.resolveTargetInvoice(tx, tenantId, encounterId, dto.invoiceId);
         if (recheck?.status === 'PAID') {
           throw new InvoiceAlreadyPaidError();
         }
@@ -275,7 +335,7 @@ export class InvoiceService {
         userAgent: meta.userAgent,
       });
 
-      const updated = await this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
+      const updated = await this.resolveTargetInvoice(tx, tenantId, encounterId, dto.invoiceId);
       return toInvoiceResponse(updated!);
     });
   }
@@ -293,13 +353,14 @@ export class InvoiceService {
     tenantId: string,
     actorId: string,
     encounterId: string,
+    invoiceId: string | undefined,
     expectedVersion: number,
     remainderPaymentMethodCode: string | undefined,
     cashierShiftId: string | null,
     drawerAccountId: string | null,
     meta: RequestMeta,
   ): Promise<InvoiceDto> {
-    const invoice = await this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
+    const invoice = await this.resolveTargetInvoice(tx, tenantId, encounterId, invoiceId);
     if (!invoice) {
       throw new NotFoundException();
     }
@@ -331,7 +392,7 @@ export class InvoiceService {
     const paidAt = new Date();
     const count = await this.invoiceRepository.markPaid(tx, tenantId, invoice.id, expectedVersion, actorId);
     if (count === 0) {
-      const recheck = await this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
+      const recheck = await this.resolveTargetInvoice(tx, tenantId, encounterId, invoiceId);
       if (recheck?.status === 'PAID') {
         throw new InvoiceAlreadyPaidError();
       }
@@ -362,7 +423,7 @@ export class InvoiceService {
       userAgent: meta.userAgent,
     });
 
-    const updated = await this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
+    const updated = await this.resolveTargetInvoice(tx, tenantId, encounterId, invoiceId);
     return toInvoiceResponse(updated!);
   }
 
@@ -373,7 +434,7 @@ export class InvoiceService {
       this.cashierShiftReader.getCashAccountIdForActor(tenantId, actorId),
     ]);
     return this.unitOfWork.runInTenantScope(tenantId, (tx) =>
-      this.payWithWalletCore(tx, tenantId, actorId, encounterId, dto.version, dto.remainderPaymentMethodCode, cashierShiftId, drawerAccountId, meta),
+      this.payWithWalletCore(tx, tenantId, actorId, encounterId, dto.invoiceId, dto.version, dto.remainderPaymentMethodCode, cashierShiftId, drawerAccountId, meta),
     );
   }
 
@@ -388,27 +449,33 @@ export class InvoiceService {
       this.cashierShiftReader.getCashAccountIdForActor(tenantId, actorId),
     ]);
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const invoice = await this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
+      const invoice = await this.resolveTargetInvoice(tx, tenantId, encounterId, dto.invoiceId);
       if (!invoice) {
         throw new NotFoundException();
       }
       const patientId = invoice.encounter.patient.id;
       await this.walletService.credit(tx, tenantId, actorId, patientId, BigInt(dto.topUpAmount), dto.topUpPaymentMethodCode, dto.cashAccountId, undefined, meta);
-      return this.payWithWalletCore(tx, tenantId, actorId, encounterId, dto.version, dto.remainderPaymentMethodCode, cashierShiftId, drawerAccountId, meta);
+      return this.payWithWalletCore(tx, tenantId, actorId, encounterId, dto.invoiceId, dto.version, dto.remainderPaymentMethodCode, cashierShiftId, drawerAccountId, meta);
     });
   }
 
   /** "Đánh dấu chưa thu" (huỷ nhầm) — lý do bắt buộc, ghi audit trước/sau. */
   async revertPayment(tenantId: string, actorId: string, encounterId: string, dto: RevertInvoicePaymentRequest, meta: RequestMeta): Promise<InvoiceDto> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const invoice = await this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
+      const invoice = await this.resolveTargetInvoice(tx, tenantId, encounterId, dto.invoiceId);
       if (!invoice) {
         throw new NotFoundException();
       }
 
+      // #203 — phiếu còn PAID nhưng đã có tiền hoàn một phần: tiền đã trả ra thật, không "đánh dấu chưa
+      // thu" được. Phiếu đã đóng (REFUNDED/CANCELLED) KHÔNG vào đây — vẫn báo `InvoiceClosedError` như #085.
+      if (invoice.status === 'PAID' && invoice.refundedTotal > 0n) {
+        throw new InvoiceHasRefundsError();
+      }
+
       const count = await this.invoiceRepository.revertPayment(tx, tenantId, invoice.id, dto.version, actorId);
       if (count === 0) {
-        const recheck = await this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
+        const recheck = await this.resolveTargetInvoice(tx, tenantId, encounterId, dto.invoiceId);
         if (recheck?.status === 'UNPAID') {
           throw new InvoiceNotPaidError();
         }
@@ -440,7 +507,7 @@ export class InvoiceService {
         userAgent: meta.userAgent,
       });
 
-      const updated = await this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
+      const updated = await this.resolveTargetInvoice(tx, tenantId, encounterId, dto.invoiceId);
       return toInvoiceResponse(updated!);
     });
   }
@@ -459,7 +526,7 @@ export class InvoiceService {
       this.cashierShiftReader.getCashAccountIdForActor(tenantId, actorId),
     ]);
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const invoice = await this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
+      const invoice = await this.resolveTargetInvoice(tx, tenantId, encounterId, dto.invoiceId);
       if (!invoice) {
         throw new NotFoundException();
       }
@@ -481,13 +548,29 @@ export class InvoiceService {
       // các dòng = số tiền THẬT đã thu tại thời điểm markPaid()/payWithWalletCore() (đã trừ chiết
       // khấu nếu có — KHÔNG phải invoice.totalAmount gross). Dòng nào là `WALLET` thì CỘNG LẠI vào
       // ví đúng phần tiền của dòng đó (không phải toàn bộ).
+      //
+      // #203 — nếu trước đó đã hoàn MỘT PHẦN theo dòng thuốc thì CHỈ hoàn PHẦN CÒN LẠI của từng phương
+      // thức (đã thu − đã hoàn), không hoàn lại số gốc (sẽ hoàn thừa).
       let refundedTotal = 0n;
       for (const p of invoice.activePayments) {
+        const refundedSameMethod = invoice.refundRows.filter((r) => r.method === p.method).reduce((sum, r) => sum + r.amount, 0n);
+        const paidSameMethod = invoice.activePayments.filter((x) => x.method === p.method).reduce((sum, x) => sum + x.amount, 0n);
+        // Nhiều dòng cùng phương thức (hiếm): trừ phần đã hoàn dần vào từng dòng theo thứ tự.
+        const paidBefore = invoice.activePayments
+          .slice(0, invoice.activePayments.indexOf(p))
+          .filter((x) => x.method === p.method)
+          .reduce((sum, x) => sum + x.amount, 0n);
+        const remainingForMethod = paidSameMethod - refundedSameMethod;
+        const share = remainingForMethod - paidBefore;
+        const amount = share <= 0n ? 0n : share < p.amount ? share : p.amount;
+        if (amount <= 0n) {
+          continue;
+        }
         const cashAccountId = await this.resolveCashAccountId(tx, tenantId, p.method, drawerAccountId);
-        await this.paymentRepository.createRefund(tx, tenantId, actorId, invoice.id, p.method, p.amount, refundedAt, dto.reason, cashierShiftId, cashAccountId);
-        refundedTotal += p.amount;
+        await this.paymentRepository.createRefund(tx, tenantId, actorId, invoice.id, p.method, amount, refundedAt, dto.reason, cashierShiftId, cashAccountId);
+        refundedTotal += amount;
         if (p.method === 'WALLET') {
-          await this.walletService.creditBack(tx, tenantId, actorId, invoice.encounter.patient.id, p.amount, invoice.id, 'Hoàn tiền do huỷ lượt khám', meta);
+          await this.walletService.creditBack(tx, tenantId, actorId, invoice.encounter.patient.id, amount, invoice.id, 'Hoàn tiền do huỷ lượt khám', meta);
         }
       }
 
@@ -502,7 +585,7 @@ export class InvoiceService {
         userAgent: meta.userAgent,
       });
 
-      const updated = await this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
+      const updated = await this.resolveTargetInvoice(tx, tenantId, encounterId, dto.invoiceId);
       return toInvoiceResponse(updated!);
     });
   }
@@ -510,7 +593,7 @@ export class InvoiceService {
   /** "Lưu tạm" (F8) — lễ tân đang nhập dở phương thức/tiền khách đưa, chưa "Thu tiền". */
   async saveDraft(tenantId: string, actorId: string, encounterId: string, dto: SaveInvoiceDraftRequest, meta: RequestMeta): Promise<InvoiceDto> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const invoice = await this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
+      const invoice = await this.resolveTargetInvoice(tx, tenantId, encounterId, dto.invoiceId);
       if (!invoice) {
         throw new NotFoundException();
       }
@@ -534,7 +617,7 @@ export class InvoiceService {
         ip: meta.ip,
         userAgent: meta.userAgent,
       });
-      const updated = await this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
+      const updated = await this.resolveTargetInvoice(tx, tenantId, encounterId, dto.invoiceId);
       return toInvoiceResponse(updated!);
     });
   }
@@ -549,7 +632,7 @@ export class InvoiceService {
    */
   async applyDiscount(tenantId: string, actorId: string, encounterId: string, dto: ApplyInvoiceDiscountRequest, meta: RequestMeta): Promise<InvoiceDto> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const invoice = await this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
+      const invoice = await this.resolveTargetInvoice(tx, tenantId, encounterId, dto.invoiceId);
       if (!invoice) {
         throw new NotFoundException();
       }
@@ -557,7 +640,7 @@ export class InvoiceService {
 
       const count = await this.invoiceRepository.applyDiscount(tx, tenantId, invoice.id, dto.version, actorId, dto);
       if (count === 0) {
-        const recheck = await this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
+        const recheck = await this.resolveTargetInvoice(tx, tenantId, encounterId, dto.invoiceId);
         if (recheck && recheck.status !== 'UNPAID') {
           throw new InvoiceDiscountNotAllowedError();
         }
@@ -575,15 +658,49 @@ export class InvoiceService {
         userAgent: meta.userAgent,
       });
 
-      const updated = await this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
+      const updated = await this.resolveTargetInvoice(tx, tenantId, encounterId, dto.invoiceId);
       return toInvoiceResponse(updated!);
     });
   }
 
-  /** In phiếu thu (BIL-02, dùng chung hạ tầng in với PRE-04) — idempotent, ghi audit lần in. */
-  async markPrinted(tenantId: string, actorId: string, encounterId: string, meta: RequestMeta): Promise<InvoiceDto> {
+  /**
+   * Phiếu thu tổng hợp — in gộp MỌI phiếu thu chưa huỷ của lượt khám. Đánh dấu `printedAt` + ghi
+   * audit `invoice.printed` (kèm `combined: true`) cho TỪNG phiếu có trong bản in, cùng 1
+   * transaction với việc đọc dữ liệu để bản in và vết audit không thể lệch nhau. 404 khi lượt khám
+   * không có phiếu thu nào còn hiệu lực.
+   */
+  async printCombined(tenantId: string, actorId: string, encounterId: string, meta: RequestMeta): Promise<CombinedInvoicePrintResponse> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const invoice = await this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
+      const before = await this.invoiceRepository.findAllForCombinedPrint(tx, tenantId, encounterId);
+      if (before.length === 0) {
+        throw new NotFoundException();
+      }
+      for (const row of before) {
+        await this.invoiceRepository.markPrintedIfNotYet(tx, tenantId, row.id, actorId);
+        await writeAuditLog(tx, tenantId, {
+          actorId,
+          action: 'invoice.printed',
+          entityType: 'invoice',
+          entityId: row.id,
+          afterJson: { combined: true, invoiceCount: before.length },
+          ip: meta.ip,
+          userAgent: meta.userAgent,
+        });
+      }
+      // Đọc lại sau khi đánh dấu để `printedAt`/`version` trong bản in phản ánh đúng trạng thái mới.
+      const rows = await this.invoiceRepository.findAllForCombinedPrint(tx, tenantId, encounterId);
+      const invoices = rows.map((row) => toInvoiceResponse(row));
+      return {
+        invoices,
+        totals: computeCombinedInvoiceTotals(invoices),
+      };
+    });
+  }
+
+  /** In phiếu thu (BIL-02, dùng chung hạ tầng in với PRE-04) — idempotent, ghi audit lần in. */
+  async markPrinted(tenantId: string, actorId: string, encounterId: string, invoiceId: string | undefined, meta: RequestMeta): Promise<InvoiceDto> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const invoice = await this.resolveTargetInvoice(tx, tenantId, encounterId, invoiceId);
       if (!invoice) {
         throw new NotFoundException();
       }
@@ -596,7 +713,7 @@ export class InvoiceService {
         ip: meta.ip,
         userAgent: meta.userAgent,
       });
-      const updated = await this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
+      const updated = await this.resolveTargetInvoice(tx, tenantId, encounterId, invoiceId);
       return toInvoiceResponse(updated!);
     });
   }

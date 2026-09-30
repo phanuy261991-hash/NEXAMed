@@ -11,6 +11,7 @@ const ENTITY_TYPE_LABELS: Record<string, string> = {
   patient: 'Bệnh nhân',
   encounter: 'Lượt khám',
   invoice: 'Phiếu thu',
+  invoice_refund: 'Phiếu hoàn tiền',
   tenant: 'Phòng khám',
   vital_sign: 'Sinh hiệu',
   user_account: 'Tài khoản người dùng',

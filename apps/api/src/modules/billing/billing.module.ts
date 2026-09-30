@@ -1,6 +1,8 @@
 import { forwardRef, Module } from '@nestjs/common';
 import { InvoiceController } from './invoice.controller';
 import { InvoiceService } from './invoice.service';
+import { InvoiceRefundService } from './invoice-refund.service';
+import { InvoiceRefundRepository } from './invoice-refund.repository';
 import { InvoiceRepository } from './invoice.repository';
 import { PaymentRepository } from './payment.repository';
 import { ClinicModule } from '../clinic/clinic.module';
@@ -8,6 +10,7 @@ import { CashierShiftModule } from '../cashier-shift/cashier-shift.module';
 import { CashBookModule } from '../cash-book/cash-book.module';
 import { ReferenceCatalogModule } from '../reference-catalog/reference-catalog.module';
 import { PatientWalletModule } from '../patient-wallet/patient-wallet.module';
+import { InventoryModule } from '../inventory/inventory.module';
 
 /**
  * Thu ngân cơ bản (Sprint 5/6, BIL-01→04) — sở hữu bảng `invoice`/`invoice_line`/`payment`.
@@ -31,11 +34,14 @@ import { PatientWalletModule } from '../patient-wallet/patient-wallet.module';
  * (1) hoàn tiền lại ví khi `refund()`/`revertPayment()` gặp dòng `payment.method='WALLET'`, (2)
  * trừ/nạp ví ở 2 endpoint mới `pay-with-wallet`/`topup-and-pay-with-wallet`. KHÔNG cần `forwardRef`
  * — `PatientWalletModule` không import ngược lại `BillingModule`.
+ * `imports: [forwardRef(() => InventoryModule)]` (#203, hoàn tiền một phần) — `InvoiceRefundService`
+ * dùng `StockReceiptService` để nhập lại kho thuốc khách trả; `forwardRef` bắt buộc vì
+ * `InventoryModule` đã `forwardRef(BillingModule)` sẵn (vòng phụ thuộc 2 chiều có thật).
  */
 @Module({
-  imports: [ClinicModule, forwardRef(() => CashierShiftModule), CashBookModule, ReferenceCatalogModule, PatientWalletModule],
+  imports: [ClinicModule, forwardRef(() => CashierShiftModule), CashBookModule, ReferenceCatalogModule, PatientWalletModule, forwardRef(() => InventoryModule)],
   controllers: [InvoiceController],
-  providers: [InvoiceService, InvoiceRepository, PaymentRepository],
+  providers: [InvoiceService, InvoiceRefundService, InvoiceRefundRepository, InvoiceRepository, PaymentRepository],
   exports: [InvoiceRepository, PaymentRepository],
 })
 export class BillingModule {}

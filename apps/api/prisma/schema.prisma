@@ -107,6 +107,8 @@ model Tenant {
   invoices                    Invoice[]
   invoiceLines                InvoiceLine[]
   payments                    Payment[]
+  invoiceRefunds              InvoiceRefund[]
+  invoiceRefundLines          InvoiceRefundLine[]
   cashierShifts               CashierShift[]
   cashAccounts                CashAccount[]
   cashVouchers                CashVoucher[]
@@ -1625,21 +1627,21 @@ model Drug {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant             Tenant              @relation(fields: [tenantId], references: [id])
-  prescriptionItems  PrescriptionItem[]
+  tenant                    Tenant                     @relation(fields: [tenantId], references: [id])
+  prescriptionItems         PrescriptionItem[]
   prescriptionTemplateItems PrescriptionTemplateItem[]
-  units              DrugUnit[]
-  ingredients        DrugIngredient[]
+  units                     DrugUnit[]
+  ingredients               DrugIngredient[]
   // Kho Thuốc GĐ2 — xem model StockReceiptLine/InventoryBatch/StockLedger/StockBalance.
-  stockReceiptLines  StockReceiptLine[]
-  inventoryBatches   InventoryBatch[]
-  stockLedgers       StockLedger[]
-  stockBalances      StockBalance[]
+  stockReceiptLines         StockReceiptLine[]
+  inventoryBatches          InventoryBatch[]
+  stockLedgers              StockLedger[]
+  stockBalances             StockBalance[]
   // Kho Thuốc GĐ3 (#163).
-  stockIssueLines    StockIssueLine[]
+  stockIssueLines           StockIssueLine[]
   // Kho Thuốc GĐ4 (docs/DECISIONS.md #170) — Kiểm kê + Điều chuyển kho.
-  stockCountLines    StockCountLine[]
-  stockTransferLines StockTransferLine[]
+  stockCountLines           StockCountLine[]
+  stockTransferLines        StockTransferLine[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, code])
@@ -1862,7 +1864,9 @@ model StockReceipt {
   tenant                  Tenant                   @relation(fields: [tenantId], references: [id])
   warehouse               Warehouse                @relation(fields: [tenantId, warehouseId], references: [tenantId, id])
   // Composite FK (tenant_id, source_issue_id) -> stock_issue(tenant_id, id), NULLABLE.
-  sourceIssue              StockIssue?              @relation("StockReceiptSourceIssue", fields: [tenantId, sourceIssueId], references: [tenantId, id])
+  sourceIssue             StockIssue?              @relation("StockReceiptSourceIssue", fields: [tenantId, sourceIssueId], references: [tenantId, id])
+  // Phiếu nhập hoàn trả tự sinh từ hoàn tiền một phần (#203) — dòng hoàn trỏ ngược về phiếu này.
+  invoiceRefundLines      InvoiceRefundLine[]
   // Composite FK (tenant_id, supplier_id) -> supplier(tenant_id, id), NULLABLE.
   supplier                Supplier?                @relation(fields: [tenantId, supplierId], references: [tenantId, id])
   // Composite FK (tenant_id, count_id) -> stock_count(tenant_id, id), NULLABLE (GĐ4).
@@ -2489,25 +2493,25 @@ model Prescription {
 }
 
 model PrescriptionItem {
-  id             String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId       String  @map("tenant_id") @db.Uuid
-  prescriptionId String  @map("prescription_id") @db.Uuid
+  id               String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String  @map("tenant_id") @db.Uuid
+  prescriptionId   String  @map("prescription_id") @db.Uuid
   // Nullable từ "Kê thuốc tự do" (mở rộng Kho Thuốc GĐ5, đảo ngược 1 điểm của #190) — đúng 1 trong 2
   // với `freeTextDrugName` (CHECK ở migration, cùng khuôn `invoice_line_source_exactly_one_check`).
   // Dòng tự do KHÔNG tính tiền/tồn kho/không phát được qua "Phát thuốc" — chỉ ghi bệnh án + in đơn.
-  drugId          String? @map("drug_id") @db.Uuid
+  drugId           String? @map("drug_id") @db.Uuid
   freeTextDrugName String? @map("free_text_drug_name")
   // Liều dùng theo buổi trong ngày (docs/DECISIONS.md #196, mockup đã duyệt) — thay hẳn 2 cột tự do
   // `dose`/`frequency` cũ. Đơn vị luôn là đơn vị NHỎ NHẤT của thuốc (`drug.baseUnitCode`, resolve qua
   // JOIN lúc đọc — KHÔNG snapshot cột riêng). `quantity` = tổng 4 cột này × `durationDays`, LUÔN do
   // Service tính (`toCreateItemData()`), KHÔNG nhận trực tiếp từ client nữa.
-  doseMorning   Int @default(0) @map("dose_morning") @db.SmallInt
-  doseNoon      Int @default(0) @map("dose_noon") @db.SmallInt
-  doseAfternoon Int @default(0) @map("dose_afternoon") @db.SmallInt
-  doseEvening   Int @default(0) @map("dose_evening") @db.SmallInt
-  durationDays   Int     @map("duration_days") @db.SmallInt
-  quantity       Int
-  instruction    String?
+  doseMorning      Int     @default(0) @map("dose_morning") @db.SmallInt
+  doseNoon         Int     @default(0) @map("dose_noon") @db.SmallInt
+  doseAfternoon    Int     @default(0) @map("dose_afternoon") @db.SmallInt
+  doseEvening      Int     @default(0) @map("dose_evening") @db.SmallInt
+  durationDays     Int     @map("duration_days") @db.SmallInt
+  quantity         Int
+  instruction      String?
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -2535,9 +2539,9 @@ model PrescriptionItem {
 // dùng `Prescription`/`PrescriptionItem` — mẫu không phải bệnh án, không gắn `encounter`, không có
 // khái niệm ký/bất biến.
 model PrescriptionTemplate {
-  id     String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId String @map("tenant_id") @db.Uuid
-  name   String
+  id       String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId String  @map("tenant_id") @db.Uuid
+  name     String
   isActive Boolean @default(true) @map("is_active")
 
   // 8 cột bắt buộc
@@ -2585,18 +2589,18 @@ model Icd10PhraseUsage {
 }
 
 model PrescriptionTemplateItem {
-  id         String @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId   String @map("tenant_id") @db.Uuid
-  templateId String @map("template_id") @db.Uuid
-  drugId     String @map("drug_id") @db.Uuid
+  id            String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String  @map("tenant_id") @db.Uuid
+  templateId    String  @map("template_id") @db.Uuid
+  drugId        String  @map("drug_id") @db.Uuid
   // Đúng khuôn `PrescriptionItem` (docs/DECISIONS.md #196) — thay hẳn dose/frequency tự do.
-  doseMorning   Int @default(0) @map("dose_morning") @db.SmallInt
-  doseNoon      Int @default(0) @map("dose_noon") @db.SmallInt
-  doseAfternoon Int @default(0) @map("dose_afternoon") @db.SmallInt
-  doseEvening   Int @default(0) @map("dose_evening") @db.SmallInt
-  durationDays Int     @map("duration_days") @db.SmallInt
-  quantity     Int
-  instruction  String?
+  doseMorning   Int     @default(0) @map("dose_morning") @db.SmallInt
+  doseNoon      Int     @default(0) @map("dose_noon") @db.SmallInt
+  doseAfternoon Int     @default(0) @map("dose_afternoon") @db.SmallInt
+  doseEvening   Int     @default(0) @map("dose_evening") @db.SmallInt
+  durationDays  Int     @map("duration_days") @db.SmallInt
+  quantity      Int
+  instruction   String?
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -2718,6 +2722,8 @@ model Invoice {
   encounter          Encounter           @relation(fields: [tenantId, encounterId], references: [tenantId, id])
   lines              InvoiceLine[]
   payments           Payment[]
+  // Hoàn tiền MỘT PHẦN theo dòng thuốc (#203) — mỗi lần hoàn là 1 InvoiceRefund.
+  refunds            InvoiceRefund[]
   // Ví tạm ứng — dòng DEDUCT/REFUND của `wallet_transaction` liên quan tới chính phiếu thu này.
   walletTransactions WalletTransaction[]
 
@@ -2779,6 +2785,8 @@ model InvoiceLine {
   // Composite FK (tenant_id, source_stock_issue_line_id) -> stock_issue_line(tenant_id, id) — Kho
   // Thuốc GĐ3 (#163), NULLABLE (dòng nguồn dịch vụ khám dùng sourceServiceItem ở trên thay vào đó).
   sourceStockIssueLine StockIssueLine?       @relation(fields: [tenantId, sourceStockIssueLineId], references: [tenantId, id])
+  // Hoàn tiền MỘT PHẦN (#203) — các lần hoàn đã áp lên dòng này (tổng quantity = số đã hoàn).
+  refundLines          InvoiceRefundLine[]
 
   @@unique([tenantId, id])
   @@map("invoice_line")
@@ -2815,6 +2823,76 @@ model Payment {
   // `countsAsCash` của `method` lúc thu/hoàn tiền (xem InvoiceService). NULL cho mọi dòng tạo
   // TRƯỚC tính năng này — không backfill, xem comment model CashAccount.
   cashAccountId  String?     @map("cash_account_id") @db.Uuid
+  // Hoàn tiền MỘT PHẦN (#203) — gom các dòng REFUND của cùng 1 lần hoàn (NULL cho dòng PAYMENT và
+  // dòng REFUND toàn phần từ #085).
+  refundId       String?     @map("refund_id") @db.Uuid
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant       Tenant         @relation(fields: [tenantId], references: [id])
+  // Composite FK (tenant_id, invoice_id) -> invoice(tenant_id, id): chống trỏ chéo tenant.
+  invoice      Invoice        @relation(fields: [tenantId, invoiceId], references: [tenantId, id])
+  // Composite FK (tenant_id, refund_id) -> invoice_refund(tenant_id, id), NULLABLE.
+  refund       InvoiceRefund? @relation(fields: [tenantId, refundId], references: [tenantId, id])
+  // Composite FK (tenant_id, cashier_shift_id) -> cashier_shift(tenant_id, id), NULLABLE.
+  cashierShift CashierShift?  @relation(fields: [tenantId, cashierShiftId], references: [tenantId, id])
+  // Composite FK (tenant_id, cash_account_id) -> cash_account(tenant_id, id), NULLABLE.
+  cashAccount  CashAccount?   @relation(fields: [tenantId, cashAccountId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@map("payment")
+}
+
+// Hoàn tiền MỘT PHẦN theo dòng thuốc (docs/DECISIONS.md #203) — một lần hoàn (sự kiện). Hoá đơn có
+// thể có N lần hoàn; "đã hoàn" của hoá đơn luôn suy ra từ tổng các dòng payment REFUND, KHÔNG lưu
+// cột dẫn xuất trên invoice. `totalAmount` là tổng tiền THẬT của lần hoàn (đã chia chiết khấu).
+model InvoiceRefund {
+  id          String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  invoiceId   String   @map("invoice_id") @db.Uuid
+  // Mã hiển thị sinh từ code_sequence qua BusinessCodeService codeType INVOICE_REFUND (prefix PHT).
+  refundNo    String   @map("refund_no")
+  reason      String
+  refundedAt  DateTime @map("refunded_at") @db.Timestamptz(6)
+  totalAmount BigInt   @map("total_amount")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant   Tenant              @relation(fields: [tenantId], references: [id])
+  invoice  Invoice             @relation(fields: [tenantId, invoiceId], references: [tenantId, id])
+  lines    InvoiceRefundLine[]
+  payments Payment[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, refundNo])
+  @@map("invoice_refund")
+}
+
+// Dòng của một lần hoàn (#203) — dòng hoá đơn thuốc nào, hoàn bao nhiêu (số lượng cơ sở), bao nhiêu
+// tiền, có nhập lại kho không (`restocked`) và phiếu nhập hoàn trả RETURN_FROM_USE đã sinh.
+model InvoiceRefundLine {
+  id             String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId       String  @map("tenant_id") @db.Uuid
+  refundId       String  @map("refund_id") @db.Uuid
+  invoiceLineId  String  @map("invoice_line_id") @db.Uuid
+  quantity       Int
+  amount         BigInt
+  restocked      Boolean @default(false)
+  stockReceiptId String? @map("stock_receipt_id") @db.Uuid
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -2826,15 +2904,12 @@ model Payment {
   updatedBy     String    @map("updated_by") @db.Uuid
 
   tenant       Tenant        @relation(fields: [tenantId], references: [id])
-  // Composite FK (tenant_id, invoice_id) -> invoice(tenant_id, id): chống trỏ chéo tenant.
-  invoice      Invoice       @relation(fields: [tenantId, invoiceId], references: [tenantId, id])
-  // Composite FK (tenant_id, cashier_shift_id) -> cashier_shift(tenant_id, id), NULLABLE.
-  cashierShift CashierShift? @relation(fields: [tenantId, cashierShiftId], references: [tenantId, id])
-  // Composite FK (tenant_id, cash_account_id) -> cash_account(tenant_id, id), NULLABLE.
-  cashAccount  CashAccount?  @relation(fields: [tenantId, cashAccountId], references: [tenantId, id])
+  refund       InvoiceRefund @relation(fields: [tenantId, refundId], references: [tenantId, id])
+  invoiceLine  InvoiceLine   @relation(fields: [tenantId, invoiceLineId], references: [tenantId, id])
+  stockReceipt StockReceipt? @relation(fields: [tenantId, stockReceiptId], references: [tenantId, id])
 
   @@unique([tenantId, id])
-  @@map("payment")
+  @@map("invoice_refund_line")
 }
 
 // "Quỹ" (Sổ quỹ & Thu chi GĐ1) — nơi giữ tiền THEO TENANT: quỹ tiền mặt hoặc tài khoản ngân hàng.

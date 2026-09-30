@@ -6,6 +6,8 @@ import {
   listBillingInvoicesQuerySchema,
   markInvoicePaidRequestSchema,
   payInvoiceWithWalletRequestSchema,
+  printInvoiceRequestSchema,
+  refundInvoiceItemsRequestSchema,
   refundInvoiceRequestSchema,
   revertInvoicePaymentRequestSchema,
   saveInvoiceDraftRequestSchema,
@@ -15,13 +17,17 @@ import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
 import { extractRequestMeta } from '../../common/request-meta';
+import { InvoiceRefundService } from './invoice-refund.service';
 import { InvoiceService } from './invoice.service';
 
 /** Thu ngân cơ bản (Sprint 5/6, BIL-01→04) — tạo phiếu thu (BIL-01) thuộc `reception.controller.ts` (tự động lúc tiếp nhận), không phải đây. */
 @Controller('billing/invoices')
 @UseGuards(JwtAuthGuard, PermissionGuard)
 export class InvoiceController {
-  constructor(private readonly invoiceService: InvoiceService) {}
+  constructor(
+    private readonly invoiceService: InvoiceService,
+    private readonly invoiceRefundService: InvoiceRefundService,
+  ) {}
 
   /** "Thu ngân" (danh sách trong ngày) + tổng kết cuối ngày (BIL-04) — cùng 1 response. */
   @Get()
@@ -75,6 +81,19 @@ export class InvoiceController {
   }
 
   /**
+   * #203 — HOÀN TIỀN MỘT PHẦN theo từng dòng thuốc (khách trả thuốc, lượt khám vẫn bình thường).
+   * Quyền RIÊNG `invoice.refund_drug` (khác `invoice.refund` hoàn toàn phần khi huỷ lượt khám).
+   */
+  @Post(':encounterId/refund-items')
+  @RequirePermission('invoice', 'refund_drug', { entityIdParam: 'encounterId' })
+  @HttpCode(200)
+  async refundItems(@Param('encounterId') encounterId: string, @Body() body: unknown, @Req() req: Request) {
+    const dto = refundInvoiceItemsRequestSchema.parse(body);
+    const { userId, tenantId } = req.user!;
+    return this.invoiceRefundService.refundItems(tenantId, userId, encounterId, dto, extractRequestMeta(req));
+  }
+
+  /**
    * Ví tạm ứng — trừ số dư ví HIỆN CÓ (không nạp thêm). Cùng quyền `invoice.update` như `pay` — về
    * bản chất đây cũng là "Thu tiền", chỉ khác nguồn tiền.
    */
@@ -125,12 +144,26 @@ export class InvoiceController {
     return this.invoiceService.applyDiscount(tenantId, userId, encounterId, dto, extractRequestMeta(req));
   }
 
+  /**
+   * Phiếu thu tổng hợp — trả dữ liệu để in gộp MỌI phiếu thu chưa huỷ của lượt khám VÀ ghi nhận
+   * `printedAt` cho từng phiếu. Cùng quyền `invoice.print` như `print` bên dưới.
+   */
+  @Post(':encounterId/print-combined')
+  @RequirePermission('invoice', 'print', { entityIdParam: 'encounterId' })
+  @HttpCode(200)
+  async printCombined(@Param('encounterId') encounterId: string, @Req() req: Request) {
+    const { userId, tenantId } = req.user!;
+    return this.invoiceService.printCombined(tenantId, userId, encounterId, extractRequestMeta(req));
+  }
+
   /** In phiếu thu (BIL-02) — ghi nhận `printedAt`, idempotent. Bố cục in nằm ở tầng web. */
   @Post(':encounterId/print')
   @RequirePermission('invoice', 'print', { entityIdParam: 'encounterId' })
   @HttpCode(200)
-  async print(@Param('encounterId') encounterId: string, @Req() req: Request) {
+  async print(@Param('encounterId') encounterId: string, @Body() body: unknown, @Req() req: Request) {
+    // Body tuỳ chọn (chỉ `invoiceId`) — client cũ không gửi gì vẫn hợp lệ (`undefined` → `{}`).
+    const dto = printInvoiceRequestSchema.parse(body ?? {});
     const { userId, tenantId } = req.user!;
-    return this.invoiceService.markPrinted(tenantId, userId, encounterId, extractRequestMeta(req));
+    return this.invoiceService.markPrinted(tenantId, userId, encounterId, dto.invoiceId, extractRequestMeta(req));
   }
 }

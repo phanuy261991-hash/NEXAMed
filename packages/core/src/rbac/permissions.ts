@@ -94,6 +94,10 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   // mức nhạy cảm khác hẳn nhau. Mặc định CHỈ `clinic_admin` có (lễ tân KHÔNG) — chủ phòng khám tự
   // cấp thêm cho lễ tân qua màn "Vai trò & Phân quyền" nếu tin tưởng/quy mô nhỏ.
   { module: 'invoice', action: 'refund', description: 'Hoàn tiền phiếu thu của lượt khám đã huỷ' },
+  // Hoàn tiền MỘT PHẦN theo dòng thuốc (docs/DECISIONS.md #203) — khách trả lại thuốc, lượt khám vẫn
+  // bình thường. Quyền RIÊNG (chủ dự án chốt): lễ tân/thu ngân có sẵn mặc định, KHÁC `invoice.refund`
+  // (hoàn toàn phần cho lượt khám đã huỷ, chỉ clinic_admin).
+  { module: 'invoice', action: 'refund_drug', description: 'Hoàn tiền từng dòng thuốc (khách trả thuốc)' },
   // "Tạm nghỉ / Đóng ca" của bác sĩ — RBAC chỉ gác "ai được PHÉP THỬ" (giống mọi permission khác);
   // bác sĩ tự thao tác cho chính mình luôn qua được (scope personal). Lễ tân/clinic_admin thao tác
   // hộ CÒN CẦN THÊM 2 công tắc `ClinicSettings.allowEmergencyEndShift`/`allowReceptionistEndShift`
@@ -244,6 +248,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'invoice.read': 'global',
     'invoice.update': 'global',
     'invoice.print': 'global',
+    'invoice.refund_drug': 'global',
     // "Tạm nghỉ / Đóng ca" hộ bác sĩ — chỉ thật sự dùng được khi phòng khám bật thêm
     // `allowReceptionistEndShift` (mặc định tắt), xem PERMISSIONS ở trên.
     'doctor_availability.update': 'global',
@@ -414,6 +419,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     // PERMISSION_CATALOG). Tenant đã cài sẵn tự được vá dòng này lúc API khởi động qua
     // `syncRolePermissionsForAllTenants()`, không cần thao tác tay.
     'invoice.refund': 'global',
+    'invoice.refund_drug': 'global',
     'doctor_availability.update': 'global',
     // Người quản lý — xem/tạo/xoá TOÀN BỘ lịch làm việc nhân viên, không giới hạn thời gian tự sửa
     // (khác `personal` của 4 vai trò còn lại). `create=global` (khác 4 vai trò kia) — bắt buộc để

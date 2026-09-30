@@ -58,7 +58,12 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       // payment/invoice_line/invoice (Thu ngân cơ bản, Sprint 5/6) — payment tham chiếu invoice,
       // invoice_line tham chiếu CẢ invoice LẪN encounter_service_item (FK RESTRICT) nên phải xoá cả
       // 3 bảng này TRƯỚC encounter_service_item/encounter ngay dưới đây.
+      // #203 — payment.refund_id → invoice_refund; invoice_refund_line → invoice_line (+ stock_receipt):
+      // xoá payment → invoice_refund_line → invoice_refund → invoice_line. Dòng hoàn tham chiếu
+      // stock_receipt nên xoá TRƯỚC nhóm stock_receipt ở dưới (đã nằm sau khối này).
       await prisma.payment.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await prisma.invoiceRefundLine.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await prisma.invoiceRefund.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.invoiceLine.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.invoice.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // "Công nợ nhà cung cấp" (docs/DECISIONS.md #180/#182) — `supplier_debt_entry` tham chiếu CẢ

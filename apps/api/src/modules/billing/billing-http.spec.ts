@@ -616,6 +616,306 @@ describe('HTTP e2e — /api/v1/billing/invoices', () => {
     });
   });
 
+  /**
+   * #202 — thao tác GHI trên hoá đơn THUỐC riêng qua `invoiceId`. Trước đây mọi thao tác ghi tự lấy hoá
+   * đơn KHÁM (SERVICE) dù web gửi `version` của hoá đơn đang xem: hoá đơn thuốc không thu được tiền, và
+   * khi 2 hoá đơn TRÙNG `version` (cả hai đều 1 — đúng như dựng ở đây) thì thu tiền thuốc lại đánh dấu
+   * nhầm hoá đơn khám là đã thu. Các test dưới đây khoá cả hai hướng.
+   */
+  describe('Hoá đơn THUỐC riêng — thao tác ghi theo invoiceId (#202)', () => {
+    async function makeDrugInvoice(encounterId: string, totalAmount = 40_000) {
+      return privileged.invoice.create({
+        data: {
+          tenantId: fixture.tenantA.id,
+          encounterId,
+          invoiceNo: `PT-DRG-${randomUUID().slice(0, 8)}`,
+          invoiceType: 'DRUG',
+          status: 'UNPAID',
+          totalAmount: BigInt(totalAmount),
+          createdBy: SYSTEM_TEST_ACTOR,
+          updatedBy: SYSTEM_TEST_ACTOR,
+        },
+      });
+    }
+
+    async function statusOf(invoiceId: string) {
+      return (await privileged.invoice.findUniqueOrThrow({ where: { id: invoiceId } })).status;
+    }
+
+    async function serviceInvoiceOf(encounterId: string) {
+      return privileged.invoice.findFirstOrThrow({ where: { tenantId: fixture.tenantA.id, encounterId, invoiceType: 'SERVICE' } });
+    }
+
+    const post = (path: string, token: string, body: Record<string, unknown> = {}) =>
+      request(app.getHttpServer()).post(`/api/v1/billing/invoices/${path}`).set(authed(token)).send(body);
+
+    it('thu tiền theo invoiceId: hoá đơn THUỐC thành PAID, hoá đơn KHÁM giữ nguyên UNPAID (2 hoá đơn cùng version=1)', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+      const drug = await makeDrugInvoice(encounter.id);
+      const service = await serviceInvoiceOf(encounter.id);
+      expect(service.version).toBe(drug.version); // đúng điều kiện gây ghi nhầm trước #202
+
+      const res = await post(`${encounter.id}/pay`, receptionistToken, { invoiceId: drug.id, method: 'CASH', version: drug.version });
+      expect(res.status).toBe(200);
+      expect(res.body.data.id).toBe(drug.id);
+      expect(res.body.data.invoiceType).toBe('DRUG');
+      expect(res.body.data.status).toBe('PAID');
+
+      expect(await statusOf(drug.id)).toBe('PAID');
+      expect(await statusOf(service.id)).toBe('UNPAID');
+      const drugPayments = await privileged.payment.findMany({ where: { invoiceId: drug.id, deletedAt: null } });
+      expect(drugPayments.map((p) => Number(p.amount))).toEqual([40_000]);
+      expect(await privileged.payment.count({ where: { invoiceId: service.id } })).toBe(0);
+    });
+
+    it('KHÔNG truyền invoiceId → vẫn thu hoá đơn KHÁM như cũ (tương thích ngược), hoá đơn thuốc không bị đụng', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+      const drug = await makeDrugInvoice(encounter.id);
+      const service = await serviceInvoiceOf(encounter.id);
+
+      const res = await post(`${encounter.id}/pay`, receptionistToken, { method: 'CASH', version: service.version });
+      expect(res.status).toBe(200);
+      expect(res.body.data.invoiceType).toBe('SERVICE');
+      expect(await statusOf(service.id)).toBe('PAID');
+      expect(await statusOf(drug.id)).toBe('UNPAID');
+    });
+
+    it('invoiceId thuộc lượt khám KHÁC → 404, không hoá đơn nào bị đổi', async () => {
+      const first = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+      const second = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+      const drugOfFirst = await makeDrugInvoice(first.id);
+      const serviceOfSecond = await serviceInvoiceOf(second.id);
+
+      const res = await post(`${second.id}/pay`, receptionistToken, { invoiceId: drugOfFirst.id, method: 'CASH', version: 1 });
+      expect(res.status).toBe(404);
+      expect(await statusOf(drugOfFirst.id)).toBe('UNPAID');
+      expect(await statusOf(serviceOfSecond.id)).toBe('UNPAID');
+    });
+
+    it('cách ly tenant: tenant B truyền invoiceId của tenant A → 404', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+      const drug = await makeDrugInvoice(encounter.id);
+      const res = await post(`${encounter.id}/pay`, tenantBReceptionistToken, { invoiceId: drug.id, method: 'CASH', version: 1 });
+      expect(res.status).toBe(404);
+      expect(await statusOf(drug.id)).toBe('UNPAID');
+    });
+
+    it('trừ ví tạm ứng theo invoiceId: chỉ hoá đơn THUỐC thành PAID (dòng WALLET), ví trừ đúng, hoá đơn khám không đụng', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+      const drug = await makeDrugInvoice(encounter.id);
+      const service = await serviceInvoiceOf(encounter.id);
+      await topUpWallet(receptionistToken, encounter.patientId, 500_000);
+
+      const res = await post(`${encounter.id}/pay-with-wallet`, receptionistToken, { invoiceId: drug.id, version: drug.version });
+      expect(res.status).toBe(200);
+      expect(res.body.data.id).toBe(drug.id);
+      expect(res.body.data.payments).toEqual([{ method: 'WALLET', amount: 40_000 }]);
+      expect(await statusOf(service.id)).toBe('UNPAID');
+
+      const wallet = await request(app.getHttpServer()).get('/api/v1/wallet').set(authed(receptionistToken)).query({ patientId: encounter.patientId });
+      expect(wallet.body.data.balance).toBe(460_000);
+    });
+
+    it('đánh dấu chưa thu theo invoiceId: hoá đơn THUỐC về UNPAID, hoá đơn khám đã thu vẫn PAID', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+      const drug = await makeDrugInvoice(encounter.id);
+      const service = await serviceInvoiceOf(encounter.id);
+      await post(`${encounter.id}/pay`, receptionistToken, { method: 'CASH', version: service.version }); // khám: PAID
+      const paid = await post(`${encounter.id}/pay`, receptionistToken, { invoiceId: drug.id, method: 'CASH', version: drug.version });
+      expect(paid.status).toBe(200);
+
+      const res = await post(`${encounter.id}/revert-payment`, receptionistToken, { invoiceId: drug.id, reason: 'Bấm nhầm', version: paid.body.data.version });
+      expect(res.status).toBe(200);
+      expect(res.body.data.id).toBe(drug.id);
+      expect(await statusOf(drug.id)).toBe('UNPAID');
+      expect(await statusOf(service.id)).toBe('PAID');
+    });
+
+    it('lưu tạm theo invoiceId: chỉ hoá đơn THUỐC nhận phương thức nháp', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+      const drug = await makeDrugInvoice(encounter.id);
+      const service = await serviceInvoiceOf(encounter.id);
+
+      const res = await post(`${encounter.id}/save-draft`, receptionistToken, {
+        invoiceId: drug.id,
+        pendingPaymentMethod: 'BANK_TRANSFER',
+        pendingCashReceivedAmount: null,
+        version: drug.version,
+      });
+      expect(res.status).toBe(200);
+      expect(res.body.data.id).toBe(drug.id);
+      expect(res.body.data.pendingPaymentMethod).toBe('BANK_TRANSFER');
+      expect((await serviceInvoiceOf(encounter.id)).pendingPaymentMethod).toBeNull();
+      expect(service.pendingPaymentMethod).toBeNull();
+    });
+
+    it('chiết khấu theo invoiceId: chỉ hoá đơn THUỐC được chiết khấu (10% của 40.000 = 4.000)', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+      const drug = await makeDrugInvoice(encounter.id);
+
+      const res = await post(`${encounter.id}/discount`, receptionistToken, {
+        mode: 'TOTAL',
+        invoiceId: drug.id,
+        discountType: 'PERCENT',
+        discountValue: 10,
+        reason: 'Khách quen',
+        version: drug.version,
+      });
+      expect(res.status).toBe(200);
+      expect(res.body.data.id).toBe(drug.id);
+      expect(res.body.data.discountAmount).toBe(4_000);
+      expect(res.body.data.dueAmount).toBe(36_000);
+
+      const service = await request(app.getHttpServer()).get(`/api/v1/billing/invoices/${encounter.id}`).set(authed(receptionistToken));
+      expect(service.body.data.discountAmount).toBe(0);
+    });
+
+    it('in theo invoiceId: chỉ hoá đơn THUỐC được đánh dấu đã in', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+      const drug = await makeDrugInvoice(encounter.id);
+      const service = await serviceInvoiceOf(encounter.id);
+
+      const res = await post(`${encounter.id}/print`, receptionistToken, { invoiceId: drug.id });
+      expect(res.status).toBe(200);
+      expect(res.body.data.id).toBe(drug.id);
+      expect(res.body.data.printedAt).not.toBeNull();
+      expect((await privileged.invoice.findUniqueOrThrow({ where: { id: service.id } })).printedAt).toBeNull();
+    });
+
+    it('in KHÔNG kèm body (client cũ) vẫn 200 và in hoá đơn khám', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+      const res = await request(app.getHttpServer()).post(`/api/v1/billing/invoices/${encounter.id}/print`).set(authed(receptionistToken));
+      expect(res.status).toBe(200);
+      expect(res.body.data.invoiceType).toBe('SERVICE');
+    });
+
+    it('hoàn tiền theo invoiceId: hoá đơn THUỐC đã thu của lượt khám đã huỷ → REFUNDED', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+      const drug = await makeDrugInvoice(encounter.id);
+      const paid = await post(`${encounter.id}/pay`, receptionistToken, { invoiceId: drug.id, method: 'CASH', version: drug.version });
+      expect(paid.status).toBe(200);
+      expect((await cancelEncounter(encounter.id, 1)).status).toBe(200);
+
+      const res = await post(`${encounter.id}/refund`, clinicAdminToken, { invoiceId: drug.id, reason: 'Khách trả thuốc', version: paid.body.data.version });
+      expect(res.status).toBe(200);
+      expect(res.body.data.id).toBe(drug.id);
+      expect(res.body.data.status).toBe('REFUNDED');
+      expect(await statusOf(drug.id)).toBe('REFUNDED');
+    });
+  });
+
+  describe('POST /api/v1/billing/invoices/:encounterId/print-combined (Phiếu thu tổng hợp)', () => {
+    /** Hoá đơn thuốc tối thiểu (không dòng) — đủ để kiểm gộp/thứ tự/tổng; luồng thật tạo qua Phiếu xuất kho. */
+    async function createDrugInvoice(encounterId: string, status: 'UNPAID' | 'PAID' | 'CANCELLED' | 'REFUNDED', totalAmount: number) {
+      return privileged.invoice.create({
+        data: {
+          tenantId: fixture.tenantA.id,
+          encounterId,
+          invoiceNo: `PT-COMB-${randomUUID().slice(0, 8)}`,
+          invoiceType: 'DRUG',
+          status,
+          totalAmount: BigInt(totalAmount),
+          createdBy: SYSTEM_TEST_ACTOR,
+          updatedBy: SYSTEM_TEST_ACTOR,
+        },
+      });
+    }
+
+    it('gộp phiếu khám + phiếu thuốc chưa huỷ: SERVICE đứng đầu, phiếu CANCELLED bị loại, tổng đúng, đánh dấu đã in cho MỌI phiếu trong bản in', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+      const paidDrug = await createDrugInvoice(encounter.id, 'PAID', 66_900);
+      const cancelledDrug = await createDrugInvoice(encounter.id, 'CANCELLED', 999_000);
+
+      const res = await request(app.getHttpServer()).post(`/api/v1/billing/invoices/${encounter.id}/print-combined`).set(authed(receptionistToken));
+      expect(res.status).toBe(200);
+
+      const invoices = res.body.data.invoices as { id: string; invoiceType: string; printedAt: string | null; otherInvoices: unknown[] }[];
+      expect(invoices).toHaveLength(2);
+      expect(invoices.map((i) => i.invoiceType)).toEqual(['SERVICE', 'DRUG']);
+      expect(invoices.map((i) => i.id)).not.toContain(cancelledDrug.id);
+      expect(invoices.every((i) => i.printedAt !== null)).toBe(true);
+      expect(invoices.every((i) => i.otherInvoices.length === 0)).toBe(true);
+
+      expect(res.body.data.totals).toEqual({
+        invoiceCount: 2,
+        grossAmount: 150_000 + 66_900,
+        discountAmount: 0,
+        paidAmount: 66_900,
+        refundedAmount: 0,
+        unpaidAmount: 150_000,
+      });
+
+      // DB: phiếu trong bản in đã có printedAt, phiếu CANCELLED KHÔNG bị đánh dấu.
+      const cancelledRow = await privileged.invoice.findUniqueOrThrow({ where: { id: cancelledDrug.id } });
+      expect(cancelledRow.printedAt).toBeNull();
+      const paidRow = await privileged.invoice.findUniqueOrThrow({ where: { id: paidDrug.id } });
+      expect(paidRow.printedAt).not.toBeNull();
+
+      // Audit: 1 dòng `invoice.printed` (combined) cho từng phiếu trong bản in.
+      const audits = await privileged.auditLog.findMany({
+        where: { tenantId: fixture.tenantA.id, action: 'invoice.printed', entityId: { in: invoices.map((i) => i.id) } },
+      });
+      expect(audits).toHaveLength(2);
+      expect(audits.every((a) => (a.afterJson as { combined?: boolean } | null)?.combined === true)).toBe(true);
+    });
+
+    it('chiết khấu + hoàn tiền được phản ánh đúng trong tổng (đã thu tính theo số tiền SAU chiết khấu; REFUNDED vẫn nằm trong đã thu)', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+      await privileged.invoice.updateMany({
+        where: { tenantId: fixture.tenantA.id, encounterId: encounter.id, invoiceType: 'SERVICE' },
+        data: { status: 'PAID', discountType: 'PERCENT', discountValue: 10n },
+      });
+      await createDrugInvoice(encounter.id, 'REFUNDED', 40_000);
+
+      const res = await request(app.getHttpServer()).post(`/api/v1/billing/invoices/${encounter.id}/print-combined`).set(authed(receptionistToken));
+      expect(res.status).toBe(200);
+      expect(res.body.data.totals).toEqual({
+        invoiceCount: 2,
+        grossAmount: 190_000,
+        discountAmount: 15_000,
+        paidAmount: 135_000 + 40_000,
+        refundedAmount: 40_000,
+        unpaidAmount: 0,
+      });
+    });
+
+    it('lượt khám chỉ có 1 phiếu → vẫn 200 với đúng 1 phiếu', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+      const res = await request(app.getHttpServer()).post(`/api/v1/billing/invoices/${encounter.id}/print-combined`).set(authed(receptionistToken));
+      expect(res.status).toBe(200);
+      expect(res.body.data.invoices).toHaveLength(1);
+      expect(res.body.data.totals.invoiceCount).toBe(1);
+    });
+
+    it('gọi lại lần 2 (idempotent) không đổi thời điểm in đầu tiên của từng phiếu', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+      await createDrugInvoice(encounter.id, 'UNPAID', 10_000);
+      const first = await request(app.getHttpServer()).post(`/api/v1/billing/invoices/${encounter.id}/print-combined`).set(authed(receptionistToken));
+      const second = await request(app.getHttpServer()).post(`/api/v1/billing/invoices/${encounter.id}/print-combined`).set(authed(receptionistToken));
+      const firstTimes = (first.body.data.invoices as { printedAt: string }[]).map((i) => i.printedAt);
+      const secondTimes = (second.body.data.invoices as { printedAt: string }[]).map((i) => i.printedAt);
+      expect(secondTimes).toEqual(firstTimes);
+    });
+
+    it('không có token → 401', async () => {
+      const res = await request(app.getHttpServer()).post(`/api/v1/billing/invoices/${randomUUID()}/print-combined`);
+      expect(res.status).toBe(401);
+    });
+
+    it('lượt khám không tồn tại → 404', async () => {
+      const res = await request(app.getHttpServer()).post(`/api/v1/billing/invoices/${randomUUID()}/print-combined`).set(authed(receptionistToken));
+      expect(res.status).toBe(404);
+    });
+
+    it('cách ly tenant: tenant B in gộp lượt khám của tenant A → 404, phiếu của A không bị đánh dấu đã in', async () => {
+      const encounter = await registerDirect(receptionistToken, doctorAUserId, pricedServices());
+      const res = await request(app.getHttpServer()).post(`/api/v1/billing/invoices/${encounter.id}/print-combined`).set(authed(tenantBReceptionistToken));
+      expect(res.status).toBe(404);
+      const row = await privileged.invoice.findFirstOrThrow({ where: { tenantId: fixture.tenantA.id, encounterId: encounter.id } });
+      expect(row.printedAt).toBeNull();
+    });
+  });
+
   describe('GET /api/v1/billing/invoices (Danh sách + tổng kết cuối ngày, BIL-04)', () => {
     it('trả đúng danh sách trong ngày + tổng đã thu/chưa thu', async () => {
       const day = isoAt(9, 0, 26);
