@@ -29,7 +29,13 @@ export const Icd10SearchPicker = forwardRef<Icd10SearchPickerHandle, {
   excludeCodes: string[];
   onSelect: (item: { icd10Code: string; icd10Name: string }) => void;
   placeholder?: string;
-}>(function Icd10SearchPicker({ excludeCodes, onSelect, placeholder = 'Gõ mã ICD-10 hoặc tên bệnh (VD: E11, Tăng huyết áp...)' }, ref) {
+  /**
+   * Ô NỔI BẬT cho trường bắt buộc chính của màn hình (ví dụ "Chẩn đoán bệnh" ở màn khám) — ô cao hơn, viền
+   * đậm màu thương hiệu, icon/chữ lớn hơn; danh sách kết quả giữ nguyên. Mặc định `false`: các nơi dùng
+   * phụ (chip "Tiền sử bản thân", ma trận "Tiền sử gia đình") giữ ô gọn như cũ.
+   */
+  prominent?: boolean;
+}>(function Icd10SearchPicker({ excludeCodes, onSelect, placeholder = 'Gõ mã ICD-10 hoặc tên bệnh (VD: E11, Tăng huyết áp...)', prominent = false }, ref) {
   const [query, setQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   useImperativeHandle(
@@ -57,8 +63,9 @@ export const Icd10SearchPicker = forwardRef<Icd10SearchPickerHandle, {
     <div>
       <div className="relative">
         <MagnifyingGlass
-          size={15}
-          className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+          size={prominent ? 20 : 15}
+          weight={prominent ? 'bold' : 'regular'}
+          className={`pointer-events-none absolute top-1/2 -translate-y-1/2 ${prominent ? 'left-3.5 text-blue-600' : 'left-2.5 text-slate-400'}`}
           aria-hidden="true"
         />
         <input
@@ -67,7 +74,11 @@ export const Icd10SearchPicker = forwardRef<Icd10SearchPickerHandle, {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={placeholder}
-          className="w-full rounded-md border border-slate-300 py-2 pl-8 pr-3 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+          className={
+            prominent
+              ? 'w-full rounded-lg border-2 border-blue-300 bg-white py-3 pl-11 pr-4 text-base font-medium text-slate-900 shadow-sm placeholder:font-normal placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-500/15'
+              : 'w-full rounded-md border border-slate-300 py-2 pl-8 pr-3 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20'
+          }
         />
       </div>
 

@@ -1115,6 +1115,8 @@ export function EncounterConsultationPage() {
                     </button>
                   )}
                 </div>
+                {/* Khối chẩn đoán làm NỔI BẬT (trường bắt buộc chính của màn khám, phản hồi chủ dự án 30/09/2026): nền xanh nhạt + ô tìm lớn. */}
+                <div className="rounded-lg border border-blue-200 bg-blue-50/40 p-3">
                 {/* "Xem lại" một lượt khám đã hoàn tất (đã ký, Sprint 5) — sửa phải qua "Đính chính" ở trên, không mở lại ô thêm chẩn đoán trực tiếp. */}
                 {suggestionsActive && !suggestionsQuery.isError && (
                   <DiagnosisSuggestionPanel
@@ -1127,15 +1129,22 @@ export function EncounterConsultationPage() {
                     onRequestInputFocus={() => document.getElementById('clinical-preliminary-diagnosis')?.focus()}
                   />
                 )}
-                {canEditDraft && <Icd10SearchPicker ref={icd10PickerRef} excludeCodes={diagnoses.map((d) => d.icd10Code)} onSelect={handleAddDiagnosis} />}
+                {canEditDraft && <Icd10SearchPicker ref={icd10PickerRef} prominent excludeCodes={diagnoses.map((d) => d.icd10Code)} onSelect={handleAddDiagnosis} />}
 
                 <div className="mt-2.5 flex flex-col gap-1.5">
-                  {diagnoses.length === 0 && <p className="text-xs text-slate-400">Chưa chọn chẩn đoán nào.</p>}
+                  {diagnoses.length === 0 && (
+                    <div className="flex items-center gap-2.5 rounded-lg border border-dashed border-blue-300 bg-white px-3 py-3">
+                      <ClipboardText size={22} weight="duotone" className="flex-shrink-0 text-blue-500" aria-hidden="true" />
+                      <p className="text-sm text-slate-600">
+                        <span className="font-semibold text-slate-800">Chưa chọn chẩn đoán nào.</span> Tìm và bấm chọn mã ICD-10 ở ô trên — cần đúng 1 chẩn đoán chính để hoàn tất khám.
+                      </p>
+                    </div>
+                  )}
                   {diagnoses.map((d) => (
                     <div
                       key={d.icd10Code}
                       className={`flex items-center justify-between rounded-md border px-3 py-2 ${
-                        d.type === 'PRIMARY' ? 'border-l-4 border-l-blue-600 border-y-slate-200 border-r-slate-200 bg-blue-50' : 'border-slate-200 bg-slate-50'
+                        d.type === 'PRIMARY' ? 'border-l-4 border-l-blue-600 border-y-slate-200 border-r-slate-200 bg-blue-50' : 'border-slate-200 bg-white'
                       }`}
                     >
                       <div className="text-sm text-slate-900">
@@ -1172,6 +1181,7 @@ export function EncounterConsultationPage() {
                       )}
                     </div>
                   ))}
+                </div>
                 </div>
               </div>
             </div>
