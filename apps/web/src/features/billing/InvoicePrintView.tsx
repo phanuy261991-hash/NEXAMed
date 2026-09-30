@@ -97,7 +97,24 @@ export function InvoicePrintView({
           </span>
         )}
         <span className="text-base font-bold">Cần thu: {formatVnd(invoice.dueAmount)}</span>
+        {/* #203 — hoàn tiền (một phần theo dòng thuốc, hoặc toàn phần khi huỷ lượt khám): in đủ để khách
+            đối chiếu số đã trả với số thực thu. */}
+        {invoice.refundedAmount > 0 && (
+          <>
+            <span>Đã hoàn tiền: -{formatVnd(invoice.refundedAmount)}</span>
+            <span className="text-base font-bold">Thực thu: {formatVnd(invoice.dueAmount - invoice.refundedAmount)}</span>
+          </>
+        )}
       </div>
+      {invoice.refunds.length > 0 && (
+        <div className="mt-2 text-xs">
+          {invoice.refunds.map((r) => (
+            <p key={r.id}>
+              {r.refundNo}: {r.lines.map((l) => `${l.itemName} × ${l.quantity}`).join(', ')} (-{formatVnd(r.totalAmount)})
+            </p>
+          ))}
+        </div>
+      )}
 
       <p className="mt-2 text-sm">Phương thức: <strong>{paymentMethodLabel}</strong></p>
 

@@ -33,6 +33,7 @@ import {
   markInvoicePaidRequestSchema,
   payInvoiceWithWalletRequestSchema,
   printInvoiceRequestSchema,
+  refundInvoiceItemsRequestSchema,
   refundInvoiceRequestSchema,
   revertInvoicePaymentRequestSchema,
   saveInvoiceDraftRequestSchema,
@@ -1227,6 +1228,28 @@ registry.registerPath({
     409: errorResponse(
       'version không khớp (CONCURRENT_MODIFICATION) hoặc chưa đủ điều kiện hoàn tiền — phiếu chưa PAID hoặc lượt khám chưa huỷ (INVOICE_NOT_REFUNDABLE)',
     ),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/billing/invoices/{encounterId}/refund-items',
+  tags: ['billing'],
+  summary:
+    '#203 Hoàn tiền MỘT PHẦN theo từng dòng thuốc (khách trả thuốc, lượt khám vẫn bình thường), quyền riêng invoice.refund_drug — số tiền hoàn server tự tính, hoàn về ví trước; tuỳ chọn nhập lại kho từng dòng',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: billingEncounterIdParams,
+    body: { content: { 'application/json': { schema: refundInvoiceItemsRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Thành công', envelope(invoiceResponseSchema)),
+    400: errorResponse('Thiếu lý do / không chọn dòng nào'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền invoice.refund_drug'),
+    404: errorResponse('Không có hoá đơn này thuộc lượt khám'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION), phiếu chưa thu (INVOICE_NOT_REFUNDABLE) hoặc đã đóng (INVOICE_CLOSED)'),
+    422: errorResponse('Dòng không phải thuốc (INVOICE_LINE_NOT_REFUNDABLE), vượt số lượng còn hoàn được (INVOICE_REFUND_QUANTITY_EXCEEDED), hoặc tổng hoàn 0đ (INVOICE_REFUND_ZERO_AMOUNT)'),
   },
 });
 

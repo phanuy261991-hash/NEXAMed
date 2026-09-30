@@ -7,6 +7,7 @@ import {
   markInvoicePaidRequestSchema,
   payInvoiceWithWalletRequestSchema,
   printInvoiceRequestSchema,
+  refundInvoiceItemsRequestSchema,
   refundInvoiceRequestSchema,
   revertInvoicePaymentRequestSchema,
   saveInvoiceDraftRequestSchema,
@@ -16,13 +17,17 @@ import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
 import { extractRequestMeta } from '../../common/request-meta';
+import { InvoiceRefundService } from './invoice-refund.service';
 import { InvoiceService } from './invoice.service';
 
 /** Thu ngân cơ bản (Sprint 5/6, BIL-01→04) — tạo phiếu thu (BIL-01) thuộc `reception.controller.ts` (tự động lúc tiếp nhận), không phải đây. */
 @Controller('billing/invoices')
 @UseGuards(JwtAuthGuard, PermissionGuard)
 export class InvoiceController {
-  constructor(private readonly invoiceService: InvoiceService) {}
+  constructor(
+    private readonly invoiceService: InvoiceService,
+    private readonly invoiceRefundService: InvoiceRefundService,
+  ) {}
 
   /** "Thu ngân" (danh sách trong ngày) + tổng kết cuối ngày (BIL-04) — cùng 1 response. */
   @Get()
@@ -73,6 +78,19 @@ export class InvoiceController {
     const dto = refundInvoiceRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
     return this.invoiceService.refund(tenantId, userId, encounterId, dto, extractRequestMeta(req));
+  }
+
+  /**
+   * #203 — HOÀN TIỀN MỘT PHẦN theo từng dòng thuốc (khách trả thuốc, lượt khám vẫn bình thường).
+   * Quyền RIÊNG `invoice.refund_drug` (khác `invoice.refund` hoàn toàn phần khi huỷ lượt khám).
+   */
+  @Post(':encounterId/refund-items')
+  @RequirePermission('invoice', 'refund_drug', { entityIdParam: 'encounterId' })
+  @HttpCode(200)
+  async refundItems(@Param('encounterId') encounterId: string, @Body() body: unknown, @Req() req: Request) {
+    const dto = refundInvoiceItemsRequestSchema.parse(body);
+    const { userId, tenantId } = req.user!;
+    return this.invoiceRefundService.refundItems(tenantId, userId, encounterId, dto, extractRequestMeta(req));
   }
 
   /**

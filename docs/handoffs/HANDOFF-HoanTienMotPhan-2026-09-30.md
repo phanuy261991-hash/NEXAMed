@@ -1,5 +1,7 @@
 # HANDOFF — Hoàn tiền MỘT PHẦN theo dòng thuốc (đang code dở) — 30/09/2026
 
+> **CẬP NHẬT: ĐÃ HOÀN THÀNH cùng ngày 30/09/2026** (mục 4 đã làm hết, xem `docs/DECISIONS.md` #203). File này chỉ còn giá trị lịch sử.
+
 > Đọc file này TRƯỚC khi làm tiếp. Phiên sau bắt đầu ở bước "Việc còn lại" (mục 4). Quyết định thiết kế đã được chủ dự án DUYỆT — không hỏi lại, không đổi.
 
 ## 0. Tình trạng nhánh git — QUAN TRỌNG

@@ -66,6 +66,8 @@ function InvoiceGroup({ invoice }: { invoice: Invoice }) {
           </>
         )}
         <span className="font-bold">Cộng nhóm: {formatVnd(invoice.dueAmount)}</span>
+        {/* #203 — phiếu còn "ĐÃ THU" nhưng đã hoàn MỘT PHẦN theo dòng thuốc (phiếu REFUNDED toàn phần đã có nhãn riêng). */}
+        {invoice.status === 'PAID' && invoice.refundedAmount > 0 && <span>Đã hoàn tiền thuốc: -{formatVnd(invoice.refundedAmount)}</span>}
       </div>
     </div>
   );

@@ -4,6 +4,10 @@
 
 ## 2026-09-30
 
+### "Hoàn tiền thuốc" — hoàn MỘT PHẦN theo từng dòng thuốc (khách trả thuốc, lượt khám vẫn bình thường)
+
+Trước đây hoàn tiền chỉ TOÀN PHẦN và chỉ khi lượt khám đã huỷ. Nay lễ tân/quản trị (quyền riêng `invoice.refund_drug`) bấm "Hoàn tiền thuốc" ở Chi tiết thanh toán, chọn dòng thuốc + số lượng; số tiền hoàn server tự tính (đúng phần tiền thật sau chiết khấu, hoàn hết đúng từng đồng), hoàn về ví tạm ứng trước rồi mới tiền mặt/CK. Mỗi dòng tuỳ chọn "Nhập lại kho" → tự sinh phiếu nhập `RETURN_FROM_USE`. Hoá đơn vẫn "Đã thu" sau mỗi lần hoàn, đủ toàn bộ thì "Đã hoàn tiền"; đã hoàn thì không "Đánh dấu chưa thu" được. Danh sách Thu ngân, bản in lẻ và in gộp đều hiện phần đã hoàn. Migration `20260930100000_invoice_partial_refund` (2 bảng `invoice_refund`/`invoice_refund_line` + `payment.refund_id`). **Đã xác minh thật**: 16 test HTTP mới (đã kiểm đột biến), suite billing cũ không hồi quy, Chrome thật. Chi tiết `docs/DECISIONS.md` #203.
+
 ### Sửa lỗi: hoá đơn thuốc riêng không thu được tiền — mọi thao tác ghi hoá đơn nhận `invoiceId`
 
 Hoá đơn tiền thuốc tách riêng (Kho Thuốc GĐ3) xem được nhưng nút "Thu tiền & In phiếu" ở trang của nó lại thao tác trên hoá đơn KHÁM: báo "đã thu" khi hoá đơn khám đã thu, và tệ hơn là đánh dấu nhầm hoá đơn khám khi hai hoá đơn trùng `version`. Thu tiền, trừ ví, nạp-và-trừ ví, lưu tạm, đánh dấu chưa thu, hoàn tiền, chiết khấu, in nay đều nhận `invoiceId` tuỳ chọn (bỏ trống = hoá đơn khám như cũ, không đổi luồng đang chạy); sai/khác lượt khám/khác tenant → 404. Nút "In gộp N phiếu" đổi sang nền xanh đặc. Không migration/permission mới. **Đã xác minh thật**: `billing-http.spec.ts` 68/68 (+11, đã kiểm đột biến), 293/293 trên 6 suite liên quan, typecheck/lint/build sạch, Chrome thật. Chi tiết `docs/DECISIONS.md` #202.

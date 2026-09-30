@@ -6,6 +6,7 @@ import type {
   ListBillingInvoicesResponse,
   MarkInvoicePaidRequest,
   PayInvoiceWithWalletRequest,
+  RefundInvoiceItemsRequest,
   RefundInvoiceRequest,
   RevertInvoicePaymentRequest,
   SaveInvoiceDraftRequest,
@@ -53,6 +54,13 @@ export async function revertInvoicePayment(encounterId: string, body: RevertInvo
 export async function refundInvoice(encounterId: string, body: RefundInvoiceRequest): Promise<Invoice> {
   return unwrap(
     await getApiClient().POST('/api/v1/billing/invoices/{encounterId}/refund', { params: { path: { encounterId } }, body }),
+  ) as Invoice;
+}
+
+/** #203 — HOÀN TIỀN MỘT PHẦN theo từng dòng thuốc, quyền riêng `invoice.refund_drug`. */
+export async function refundInvoiceItems(encounterId: string, body: RefundInvoiceItemsRequest): Promise<Invoice> {
+  return unwrap(
+    await getApiClient().POST('/api/v1/billing/invoices/{encounterId}/refund-items', { params: { path: { encounterId } }, body }),
   ) as Invoice;
 }
 

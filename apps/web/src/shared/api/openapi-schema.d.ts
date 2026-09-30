@@ -5993,6 +5993,7 @@ export interface paths {
                                     paymentMethod: string | null;
                                     paidAt: string | null;
                                     needsRefund: boolean;
+                                    refundedAmount: number;
                                 }[];
                                 paidCount: number;
                                 paidTotalAmount: number;
@@ -6102,6 +6103,9 @@ export interface paths {
                                     /** @enum {string} */
                                     lineSource: "SERVICE" | "DRUG";
                                     stockIssueNo: string | null;
+                                    netAmount: number;
+                                    refundedQuantity: number;
+                                    refundedAmount: number;
                                 }[];
                                 /** @enum {string} */
                                 discountMode: "NONE" | "TOTAL" | "PER_LINE";
@@ -6141,6 +6145,23 @@ export interface paths {
                                     /** @enum {string} */
                                     status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                     dueAmount: number;
+                                }[];
+                                refundedAmount: number;
+                                refunds: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    refundNo: string;
+                                    refundedAt: string;
+                                    reason: string;
+                                    totalAmount: number;
+                                    lines: {
+                                        /** Format: uuid */
+                                        invoiceLineId: string;
+                                        itemName: string;
+                                        quantity: number;
+                                        amount: number;
+                                        restocked: boolean;
+                                    }[];
                                 }[];
                                 version: number;
                             } | null;
@@ -6253,6 +6274,9 @@ export interface paths {
                                     /** @enum {string} */
                                     lineSource: "SERVICE" | "DRUG";
                                     stockIssueNo: string | null;
+                                    netAmount: number;
+                                    refundedQuantity: number;
+                                    refundedAmount: number;
                                 }[];
                                 /** @enum {string} */
                                 discountMode: "NONE" | "TOTAL" | "PER_LINE";
@@ -6292,6 +6316,23 @@ export interface paths {
                                     /** @enum {string} */
                                     status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                     dueAmount: number;
+                                }[];
+                                refundedAmount: number;
+                                refunds: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    refundNo: string;
+                                    refundedAt: string;
+                                    reason: string;
+                                    totalAmount: number;
+                                    lines: {
+                                        /** Format: uuid */
+                                        invoiceLineId: string;
+                                        itemName: string;
+                                        quantity: number;
+                                        amount: number;
+                                        restocked: boolean;
+                                    }[];
                                 }[];
                                 version: number;
                             } | null;
@@ -6432,6 +6473,9 @@ export interface paths {
                                     /** @enum {string} */
                                     lineSource: "SERVICE" | "DRUG";
                                     stockIssueNo: string | null;
+                                    netAmount: number;
+                                    refundedQuantity: number;
+                                    refundedAmount: number;
                                 }[];
                                 /** @enum {string} */
                                 discountMode: "NONE" | "TOTAL" | "PER_LINE";
@@ -6471,6 +6515,23 @@ export interface paths {
                                     /** @enum {string} */
                                     status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                     dueAmount: number;
+                                }[];
+                                refundedAmount: number;
+                                refunds: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    refundNo: string;
+                                    refundedAt: string;
+                                    reason: string;
+                                    totalAmount: number;
+                                    lines: {
+                                        /** Format: uuid */
+                                        invoiceLineId: string;
+                                        itemName: string;
+                                        quantity: number;
+                                        amount: number;
+                                        restocked: boolean;
+                                    }[];
                                 }[];
                                 version: number;
                             } | null;
@@ -6626,6 +6687,9 @@ export interface paths {
                                     /** @enum {string} */
                                     lineSource: "SERVICE" | "DRUG";
                                     stockIssueNo: string | null;
+                                    netAmount: number;
+                                    refundedQuantity: number;
+                                    refundedAmount: number;
                                 }[];
                                 /** @enum {string} */
                                 discountMode: "NONE" | "TOTAL" | "PER_LINE";
@@ -6665,6 +6729,23 @@ export interface paths {
                                     /** @enum {string} */
                                     status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                     dueAmount: number;
+                                }[];
+                                refundedAmount: number;
+                                refunds: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    refundNo: string;
+                                    refundedAt: string;
+                                    reason: string;
+                                    totalAmount: number;
+                                    lines: {
+                                        /** Format: uuid */
+                                        invoiceLineId: string;
+                                        itemName: string;
+                                        quantity: number;
+                                        amount: number;
+                                        restocked: boolean;
+                                    }[];
                                 }[];
                                 version: number;
                             } | null;
@@ -6755,6 +6836,241 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/billing/invoices/{encounterId}/refund-items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** #203 Hoàn tiền MỘT PHẦN theo từng dòng thuốc (khách trả thuốc, lượt khám vẫn bình thường), quyền riêng invoice.refund_drug — số tiền hoàn server tự tính, hoàn về ví trước; tuỳ chọn nhập lại kho từng dòng */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    encounterId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        invoiceId: string;
+                        reason: string;
+                        version: number;
+                        lines: {
+                            /** Format: uuid */
+                            invoiceLineId: string;
+                            quantity: number;
+                            restock: boolean;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                encounterId: string;
+                                invoiceNo: string;
+                                /** @enum {string} */
+                                invoiceType: "SERVICE" | "DRUG";
+                                /** @enum {string} */
+                                status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
+                                totalAmount: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    examTypeCode: string;
+                                    examTypeName: string;
+                                    priceTypeCode: string | null;
+                                    unitCode: string | null;
+                                    unitPrice: number;
+                                    quantity: number;
+                                    lineTotal: number;
+                                    /** @enum {string|null} */
+                                    discountType: "PERCENT" | "AMOUNT" | null;
+                                    discountValue: number | null;
+                                    discountAmount: number;
+                                    /** @enum {string} */
+                                    lineSource: "SERVICE" | "DRUG";
+                                    stockIssueNo: string | null;
+                                    netAmount: number;
+                                    refundedQuantity: number;
+                                    refundedAmount: number;
+                                }[];
+                                /** @enum {string} */
+                                discountMode: "NONE" | "TOTAL" | "PER_LINE";
+                                /** @enum {string|null} */
+                                discountType: "PERCENT" | "AMOUNT" | null;
+                                discountValue: number | null;
+                                discountReason: string | null;
+                                discountAmount: number;
+                                dueAmount: number;
+                                encounterNo: string;
+                                checkedInAt: string;
+                                /** Format: uuid */
+                                patientId: string;
+                                patientCode: string;
+                                fullName: string;
+                                departmentName: string;
+                                encounterVersion: number;
+                                printedAt: string | null;
+                                pendingPaymentMethod: string | null;
+                                pendingCashReceivedAmount: number | null;
+                                paymentMethod: string | null;
+                                paidAt: string | null;
+                                payments: {
+                                    method: string;
+                                    amount: number;
+                                }[];
+                                encounterCancelled: boolean;
+                                needsRefund: boolean;
+                                refundedAt: string | null;
+                                refundReason: string | null;
+                                otherInvoices: {
+                                    /** Format: uuid */
+                                    invoiceId: string;
+                                    invoiceNo: string;
+                                    /** @enum {string} */
+                                    invoiceType: "SERVICE" | "DRUG";
+                                    /** @enum {string} */
+                                    status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
+                                    dueAmount: number;
+                                }[];
+                                refundedAmount: number;
+                                refunds: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    refundNo: string;
+                                    refundedAt: string;
+                                    reason: string;
+                                    totalAmount: number;
+                                    lines: {
+                                        /** Format: uuid */
+                                        invoiceLineId: string;
+                                        itemName: string;
+                                        quantity: number;
+                                        amount: number;
+                                        restocked: boolean;
+                                    }[];
+                                }[];
+                                version: number;
+                            } | null;
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu lý do / không chọn dòng nào */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền invoice.refund_drug */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có hoá đơn này thuộc lượt khám */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION), phiếu chưa thu (INVOICE_NOT_REFUNDABLE) hoặc đã đóng (INVOICE_CLOSED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Dòng không phải thuốc (INVOICE_LINE_NOT_REFUNDABLE), vượt số lượng còn hoàn được (INVOICE_REFUND_QUANTITY_EXCEEDED), hoặc tổng hoàn 0đ (INVOICE_REFUND_ZERO_AMOUNT) */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/billing/invoices/{encounterId}/save-draft": {
         parameters: {
             query?: never;
@@ -6821,6 +7137,9 @@ export interface paths {
                                     /** @enum {string} */
                                     lineSource: "SERVICE" | "DRUG";
                                     stockIssueNo: string | null;
+                                    netAmount: number;
+                                    refundedQuantity: number;
+                                    refundedAmount: number;
                                 }[];
                                 /** @enum {string} */
                                 discountMode: "NONE" | "TOTAL" | "PER_LINE";
@@ -6860,6 +7179,23 @@ export interface paths {
                                     /** @enum {string} */
                                     status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                     dueAmount: number;
+                                }[];
+                                refundedAmount: number;
+                                refunds: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    refundNo: string;
+                                    refundedAt: string;
+                                    reason: string;
+                                    totalAmount: number;
+                                    lines: {
+                                        /** Format: uuid */
+                                        invoiceLineId: string;
+                                        itemName: string;
+                                        quantity: number;
+                                        amount: number;
+                                        restocked: boolean;
+                                    }[];
                                 }[];
                                 version: number;
                             } | null;
@@ -6998,6 +7334,9 @@ export interface paths {
                                     /** @enum {string} */
                                     lineSource: "SERVICE" | "DRUG";
                                     stockIssueNo: string | null;
+                                    netAmount: number;
+                                    refundedQuantity: number;
+                                    refundedAmount: number;
                                 }[];
                                 /** @enum {string} */
                                 discountMode: "NONE" | "TOTAL" | "PER_LINE";
@@ -7037,6 +7376,23 @@ export interface paths {
                                     /** @enum {string} */
                                     status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                     dueAmount: number;
+                                }[];
+                                refundedAmount: number;
+                                refunds: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    refundNo: string;
+                                    refundedAt: string;
+                                    reason: string;
+                                    totalAmount: number;
+                                    lines: {
+                                        /** Format: uuid */
+                                        invoiceLineId: string;
+                                        itemName: string;
+                                        quantity: number;
+                                        amount: number;
+                                        restocked: boolean;
+                                    }[];
                                 }[];
                                 version: number;
                             } | null;
@@ -7154,6 +7510,9 @@ export interface paths {
                                         /** @enum {string} */
                                         lineSource: "SERVICE" | "DRUG";
                                         stockIssueNo: string | null;
+                                        netAmount: number;
+                                        refundedQuantity: number;
+                                        refundedAmount: number;
                                     }[];
                                     /** @enum {string} */
                                     discountMode: "NONE" | "TOTAL" | "PER_LINE";
@@ -7193,6 +7552,23 @@ export interface paths {
                                         /** @enum {string} */
                                         status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                         dueAmount: number;
+                                    }[];
+                                    refundedAmount: number;
+                                    refunds: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        refundNo: string;
+                                        refundedAt: string;
+                                        reason: string;
+                                        totalAmount: number;
+                                        lines: {
+                                            /** Format: uuid */
+                                            invoiceLineId: string;
+                                            itemName: string;
+                                            quantity: number;
+                                            amount: number;
+                                            restocked: boolean;
+                                        }[];
                                     }[];
                                     version: number;
                                 }[];
@@ -7327,6 +7703,9 @@ export interface paths {
                                     /** @enum {string} */
                                     lineSource: "SERVICE" | "DRUG";
                                     stockIssueNo: string | null;
+                                    netAmount: number;
+                                    refundedQuantity: number;
+                                    refundedAmount: number;
                                 }[];
                                 /** @enum {string} */
                                 discountMode: "NONE" | "TOTAL" | "PER_LINE";
@@ -7366,6 +7745,23 @@ export interface paths {
                                     /** @enum {string} */
                                     status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                     dueAmount: number;
+                                }[];
+                                refundedAmount: number;
+                                refunds: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    refundNo: string;
+                                    refundedAt: string;
+                                    reason: string;
+                                    totalAmount: number;
+                                    lines: {
+                                        /** Format: uuid */
+                                        invoiceLineId: string;
+                                        itemName: string;
+                                        quantity: number;
+                                        amount: number;
+                                        restocked: boolean;
+                                    }[];
                                 }[];
                                 version: number;
                             } | null;
@@ -7525,6 +7921,9 @@ export interface paths {
                                     /** @enum {string} */
                                     lineSource: "SERVICE" | "DRUG";
                                     stockIssueNo: string | null;
+                                    netAmount: number;
+                                    refundedQuantity: number;
+                                    refundedAmount: number;
                                 }[];
                                 /** @enum {string} */
                                 discountMode: "NONE" | "TOTAL" | "PER_LINE";
@@ -7564,6 +7963,23 @@ export interface paths {
                                     /** @enum {string} */
                                     status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                     dueAmount: number;
+                                }[];
+                                refundedAmount: number;
+                                refunds: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    refundNo: string;
+                                    refundedAt: string;
+                                    reason: string;
+                                    totalAmount: number;
+                                    lines: {
+                                        /** Format: uuid */
+                                        invoiceLineId: string;
+                                        itemName: string;
+                                        quantity: number;
+                                        amount: number;
+                                        restocked: boolean;
+                                    }[];
                                 }[];
                                 version: number;
                             } | null;
@@ -7745,6 +8161,9 @@ export interface paths {
                                     /** @enum {string} */
                                     lineSource: "SERVICE" | "DRUG";
                                     stockIssueNo: string | null;
+                                    netAmount: number;
+                                    refundedQuantity: number;
+                                    refundedAmount: number;
                                 }[];
                                 /** @enum {string} */
                                 discountMode: "NONE" | "TOTAL" | "PER_LINE";
@@ -7784,6 +8203,23 @@ export interface paths {
                                     /** @enum {string} */
                                     status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                     dueAmount: number;
+                                }[];
+                                refundedAmount: number;
+                                refunds: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    refundNo: string;
+                                    refundedAt: string;
+                                    reason: string;
+                                    totalAmount: number;
+                                    lines: {
+                                        /** Format: uuid */
+                                        invoiceLineId: string;
+                                        itemName: string;
+                                        quantity: number;
+                                        amount: number;
+                                        restocked: boolean;
+                                    }[];
                                 }[];
                                 version: number;
                             } | null;
@@ -13634,7 +14070,7 @@ export interface paths {
                             data: {
                                 items: {
                                     /** @enum {string} */
-                                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION";
+                                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION" | "INVOICE_REFUND";
                                     label: string;
                                     prefix: string;
                                     template: string;
@@ -13707,7 +14143,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION";
+                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION" | "INVOICE_REFUND";
                 };
                 cookie?: never;
             };
@@ -13730,7 +14166,7 @@ export interface paths {
                         "application/json": {
                             data: {
                                 /** @enum {string} */
-                                codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION";
+                                codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION" | "INVOICE_REFUND";
                                 label: string;
                                 prefix: string;
                                 template: string;

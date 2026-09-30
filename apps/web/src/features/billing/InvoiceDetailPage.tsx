@@ -24,6 +24,7 @@ import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog
 import { useWalletQuery } from '../patient-wallet/patient-wallet.queries';
 import { InvoiceCombinedPrintView } from './InvoiceCombinedPrintView';
 import { InvoicePrintView } from './InvoicePrintView';
+import { RefundDrugItemsDialog } from './RefundDrugItemsDialog';
 import {
   useApplyInvoiceDiscountMutation,
   useBillingInvoiceQuery,
@@ -88,6 +89,8 @@ export function InvoiceDetailPage() {
   const currentUser = useAuthStore((s) => s.user);
   const collectedByName = currentUser?.displayName ?? currentUser?.fullName ?? '';
   const canRefund = useHasPermission('invoice', 'refund');
+  // #203 — quyền RIÊNG hoàn tiền từng dòng thuốc (mặc định lễ tân + quản trị), khác `invoice.refund` ở trên.
+  const canRefundDrug = useHasPermission('invoice', 'refund_drug');
   const canPrint = useHasPermission('invoice', 'print');
   // Phiếu thu tổng hợp — dữ liệu bản in gộp; có giá trị thì `InvoiceCombinedPrintView` được render
   // THAY `InvoicePrintView` (CSS in chỉ chịu 1 `.print-area` tại 1 thời điểm), in xong tự xoá.
@@ -107,6 +110,9 @@ export function InvoiceDetailPage() {
   const openShift = currentShiftQuery.data?.openShift ?? null;
   const shiftFeatureUnavailable = currentShiftQuery.isError && currentShiftQuery.error instanceof ApiError && currentShiftQuery.error.code === 'PERMISSION_DENIED';
   const [openShiftDialogVisible, setOpenShiftDialogVisible] = useState(false);
+  // Hành động đang chờ mở ca xong: thu tiền (mặc định, hành vi cũ) hoặc mở dialog hoàn tiền thuốc (#203).
+  const [afterOpenShift, setAfterOpenShift] = useState<'pay' | 'refund-drug'>('pay');
+  const [refundDrugOpen, setRefundDrugOpen] = useState(false);
   const invoice = invoiceQuery.data ?? null;
   const paymentMethods = useMemo(() => paymentMethodQuery.data?.items.filter((i) => i.isActive) ?? [], [paymentMethodQuery.data]);
   const paymentMethodName = (code: PaymentMethod | null) => paymentMethods.find((i) => i.code === code)?.name ?? code ?? '—';
@@ -259,6 +265,7 @@ export function InvoiceDetailPage() {
     // thu tiền này (không bắt bấm "Thu tiền" lại lần 2). Bỏ hẳn khi tenant đã tắt "Yêu cầu mở ca
     // trước khi thu tiền" (phòng khám nhỏ 1 người kiêm tiếp nhận/thu ngân/khám).
     if (shiftRequired && !shiftFeatureUnavailable && !openShift) {
+      setAfterOpenShift('pay');
       setOpenShiftDialogVisible(true);
       return;
     }
@@ -277,6 +284,7 @@ export function InvoiceDetailPage() {
   async function handlePayWithWallet(topUpAmount?: number): Promise<boolean> {
     if (!invoice) return false;
     if (shiftRequired && !shiftFeatureUnavailable && !openShift) {
+      setAfterOpenShift('pay');
       setOpenShiftDialogVisible(true);
       return false;
     }
@@ -300,6 +308,16 @@ export function InvoiceDetailPage() {
       setError(err instanceof ApiError ? err.message : 'Có lỗi xảy ra, vui lòng thử lại.');
       return false;
     }
+  }
+
+  /** #203 — hoàn tiền thuốc có thể chi tiền mặt ra khỏi két, nên cùng cổng "phải có ca đang mở" như thu tiền. */
+  function handleOpenRefundDrug() {
+    if (shiftRequired && !shiftFeatureUnavailable && !openShift) {
+      setAfterOpenShift('refund-drug');
+      setOpenShiftDialogVisible(true);
+      return;
+    }
+    setRefundDrugOpen(true);
   }
 
   async function handleSaveDraft() {
@@ -896,6 +914,32 @@ export function InvoiceDetailPage() {
                     {invoice.paidAt && <> · {formatDateTime(invoice.paidAt)}</>}
                   </p>
                   {/* #085 — REFUNDED: hiện thêm vết hoàn tiền, KHÔNG còn "Đánh dấu chưa thu" (đã đóng sổ). */}
+                  {/* #203 — hoàn MỘT PHẦN theo dòng thuốc: liệt kê từng lần hoàn (phiếu vẫn PAID). */}
+                  {invoice.status === 'PAID' && invoice.refunds.length > 0 && (
+                    <div className="flex flex-col gap-1.5 rounded-md border border-violet-200 bg-violet-50 px-3 py-2.5 text-[13px] text-violet-800">
+                      <div className="flex items-baseline justify-between font-bold">
+                        <span>Đã hoàn một phần</span>
+                        <span className="tabular-nums">-{formatVnd(invoice.refundedAmount)}</span>
+                      </div>
+                      {invoice.refunds.map((r) => (
+                        <div key={r.id} className="border-t border-violet-200 pt-1.5">
+                          <div className="flex items-baseline justify-between gap-2 text-xs font-semibold">
+                            <span>
+                              {r.refundNo} · {formatDateTime(r.refundedAt)}
+                            </span>
+                            <span className="tabular-nums">-{formatVnd(r.totalAmount)}</span>
+                          </div>
+                          {r.lines.map((l) => (
+                            <p key={l.invoiceLineId} className="text-xs text-violet-700">
+                              {l.itemName} × {l.quantity}
+                              {l.restocked ? ' · đã nhập lại kho' : ''}
+                            </p>
+                          ))}
+                          <p className="text-xs text-violet-700">Lý do: {r.reason}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   {invoice.status === 'REFUNDED' && (
                     <p className="rounded-md border border-violet-200 bg-violet-50 px-3 py-2.5 text-[13px] text-violet-800">
                       Đã hoàn {formatVnd(invoice.dueAmount)}
@@ -919,7 +963,16 @@ export function InvoiceDetailPage() {
                       Hoàn tiền
                     </Button>
                   )}
-                  {invoice.status === 'PAID' && !invoice.encounterCancelled && (
+                  {/* #203 — "Hoàn tiền thuốc": khách trả thuốc, lượt khám vẫn bình thường. Chỉ khi PAID,
+                      còn dòng thuốc hoàn được, và vai trò có `invoice.refund_drug`. */}
+                  {invoice.status === 'PAID' && canRefundDrug && invoice.lines.some((l) => l.lineSource === 'DRUG' && l.quantity - l.refundedQuantity > 0) && (
+                    <Button type="button" variant="dangerGhost" onClick={handleOpenRefundDrug}>
+                      <ArrowCounterClockwise size={16} weight="bold" aria-hidden="true" />
+                      Hoàn tiền thuốc
+                    </Button>
+                  )}
+                  {/* Đã hoàn một phần thì KHÔNG "đánh dấu chưa thu" được (server cũng chặn — INVOICE_HAS_REFUNDS). */}
+                  {invoice.status === 'PAID' && !invoice.encounterCancelled && invoice.refundedAmount === 0 && (
                     <button type="button" onClick={() => setRevertOpen(true)} className="text-xs font-semibold text-slate-500 underline hover:text-rose-600">
                       Đánh dấu chưa thu
                     </button>
@@ -1087,10 +1140,16 @@ export function InvoiceDetailPage() {
           onCancel={() => setOpenShiftDialogVisible(false)}
           onSuccess={() => {
             setOpenShiftDialogVisible(false);
-            void handlePay();
+            if (afterOpenShift === 'refund-drug') {
+              setRefundDrugOpen(true);
+            } else {
+              void handlePay();
+            }
           }}
         />
       )}
+
+      {refundDrugOpen && invoice && <RefundDrugItemsDialog invoice={invoice} onClose={() => setRefundDrugOpen(false)} />}
     </div>
   );
 }

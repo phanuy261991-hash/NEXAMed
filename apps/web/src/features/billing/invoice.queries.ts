@@ -3,6 +3,7 @@ import type {
   ApplyInvoiceDiscountRequest,
   MarkInvoicePaidRequest,
   PayInvoiceWithWalletRequest,
+  RefundInvoiceItemsRequest,
   RefundInvoiceRequest,
   RevertInvoicePaymentRequest,
   SaveInvoiceDraftRequest,
@@ -19,6 +20,7 @@ import {
   printCombinedInvoices,
   printInvoice,
   refundInvoice,
+  refundInvoiceItems,
   revertInvoicePayment,
   saveInvoiceDraft,
   topUpAndPayInvoiceWithWallet,
@@ -119,6 +121,26 @@ export function useRefundInvoiceMutation(encounterId: string) {
       void invalidate();
       // Tổng kết cuối ngày đổi (paidTotalAmount/refundedTotalAmount/netTotalAmount) — làm mới luôn.
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'invoice', 'list') });
+    },
+  });
+}
+
+/** #203 — hoàn tiền MỘT PHẦN theo dòng thuốc. Nút chỉ hiện với vai trò có `invoice.refund_drug` (mặc
+ * định lễ tân + quản trị). Làm mới cả tổng kết ngày (refundedAmount trong 'invoice','list') và
+ * 'stock-balance'/'stock-receipt' (restock=true tự sinh phiếu nhập RETURN_FROM_USE). */
+export function useRefundInvoiceItemsMutation(encounterId: string) {
+  const { tenantId } = useAppConfig();
+  const queryClient = useQueryClient();
+  const invalidate = useInvalidateInvoice();
+  return useMutation({
+    mutationFn: (body: RefundInvoiceItemsRequest) => refundInvoiceItems(encounterId, body),
+    onSuccess: () => {
+      void invalidate();
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'invoice', 'list') });
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'stock-balance') });
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'stock-receipt') });
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'stock-ledger') });
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'wallet') });
     },
   });
 }

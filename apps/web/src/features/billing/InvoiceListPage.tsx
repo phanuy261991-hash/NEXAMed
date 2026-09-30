@@ -333,10 +333,10 @@ export function InvoiceListPage() {
                     {/* Chiết khấu — hiện đúng số tiền THẬT thu/hoàn (`dueAmount`, sau chiết khấu),
                         KHÔNG phải `totalAmount` (gross, trước chiết khấu). */}
                     <div role="cell" className="text-center font-bold tabular-nums text-slate-900">{formatVnd(item.dueAmount)}</div>
-                    {/* Refund luôn TOÀN PHẦN (#085, không hoàn một phần) — số tiền đã hoàn của dòng
-                        REFUNDED chính là `dueAmount` của dòng đó, không cần trường riêng. */}
+                    {/* #203 — `refundedAmount` (tổng dòng payment REFUND) đúng cho cả hoàn TOÀN PHẦN
+                        (#085, REFUNDED) lẫn hoàn MỘT PHẦN theo dòng thuốc (phiếu vẫn PAID). */}
                     <div role="cell" className="text-center font-bold tabular-nums text-violet-700">
-                      {item.status === 'REFUNDED' ? `-${formatVnd(item.dueAmount)}` : <span className="text-slate-300">—</span>}
+                      {item.refundedAmount > 0 ? `-${formatVnd(item.refundedAmount)}` : <span className="text-slate-300">—</span>}
                     </div>
                     <div role="cell" className="flex flex-col items-center gap-1 text-center">
                       <StatusBadge tone={INVOICE_STATUS_META[item.status].tone}>{INVOICE_STATUS_META[item.status].label}</StatusBadge>
