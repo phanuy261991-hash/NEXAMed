@@ -45,6 +45,30 @@ export const cashierShiftSummarySchema = z.object({
 });
 export type CashierShiftSummary = z.infer<typeof cashierShiftSummarySchema>;
 
+/**
+ * "Phiếu trong ca của tôi" — từng SỰ KIỆN thu/hoàn tiền khám của ca (gộp các dòng payment cùng hoá
+ * đơn + cùng loại + cùng thời điểm, ví dụ trả hỗn hợp ví + tiền mặt thành 1 dòng). Khác việc dựng từ
+ * danh sách Thu ngân (lọc theo ngày tiếp nhận): nguồn ở đây là chính các dòng `payment` như "Tổng kết
+ * hệ thống"/Sổ quỹ nên hoàn tiền một phần (#203), hoàn tiền sau vài ngày, thu tiền hôm sau đều hiện đúng.
+ */
+export const cashierShiftInvoicePaymentSchema = z.object({
+  invoiceId: z.string().uuid(),
+  encounterId: z.string().uuid(),
+  invoiceNo: z.string(),
+  encounterNo: z.string(),
+  patientCode: z.string(),
+  fullName: z.string(),
+  type: z.enum(['PAYMENT', 'REFUND']),
+  /** Tổng tiền của sự kiện (đã cộng các dòng payment cùng lúc). */
+  amount: z.number().int(),
+  paidAt: z.string(),
+  /** Lý do — chỉ có với dòng hoàn tiền. */
+  reason: z.string().nullable(),
+});
+export type CashierShiftInvoicePayment = z.infer<typeof cashierShiftInvoicePaymentSchema>;
+export const cashierShiftInvoicePaymentsResponseSchema = z.object({ items: z.array(cashierShiftInvoicePaymentSchema) });
+export type CashierShiftInvoicePaymentsResponse = z.infer<typeof cashierShiftInvoicePaymentsResponseSchema>;
+
 export const cashierShiftDetailSchema = z.object({
   id: z.string().uuid(),
   shiftNo: z.string(),

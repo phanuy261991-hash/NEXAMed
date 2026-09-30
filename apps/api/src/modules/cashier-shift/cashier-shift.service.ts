@@ -22,6 +22,7 @@ import {
 } from '@nexamed/core';
 import type {
   CashierShiftDetail,
+  CashierShiftInvoicePaymentsResponse,
   CashierShiftSummary,
   CloseCashierShiftRequest,
   CurrentCashierShiftResponse,
@@ -299,6 +300,46 @@ export class CashierShiftService implements CashierShiftReaderPort {
 
     const names = await this.doctorDirectory.getUserFullNames(tenantId, this.collectActorIds(closed!));
     return this.toDetail(closed!, names);
+  }
+
+  /**
+   * "Phiếu trong ca của tôi" — sự kiện thu/hoàn tiền khám của ca, nguồn CÙNG với `computeTotals()`
+   * (rẽ nhánh theo công tắc "Đa thu ngân") để danh sách luôn khớp "Tổng kết hệ thống". Gộp các dòng
+   * payment cùng hoá đơn + loại + thời điểm thành 1 sự kiện (trả hỗn hợp ví + tiền mặt = 1 dòng).
+   * Cùng quy tắc xem như `getDetail()`: scope `personal` chỉ xem ca của chính mình (404 nếu không).
+   */
+  async listInvoicePayments(tenantId: string, actorId: string, dataScope: DataScope, id: string): Promise<CashierShiftInvoicePaymentsResponse> {
+    const multiCashierEnabled = await this.clinicConfigReader.getCashierShiftMultiCashierEnabled(tenantId);
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const row = await this.cashierShiftRepository.findById(tx, tenantId, id);
+      if (!row || (dataScope === 'personal' && row.cashierId !== actorId)) {
+        throw new NotFoundException();
+      }
+      const endAt = row.closedAt ?? new Date();
+      const payments = await this.paymentRepository.listActivityForShift(tx, tenantId, multiCashierEnabled ? { cashierShiftId: row.id } : { startAt: row.openedAt, endAt });
+      const events = new Map<string, CashierShiftInvoicePaymentsResponse['items'][number]>();
+      for (const p of payments) {
+        const key = `${p.invoiceId}|${p.type}|${p.paidAt.getTime()}`;
+        const existing = events.get(key);
+        if (existing) {
+          existing.amount += Number(p.amount);
+          continue;
+        }
+        events.set(key, {
+          invoiceId: p.invoiceId,
+          encounterId: p.invoice.encounter.id,
+          invoiceNo: p.invoice.invoiceNo,
+          encounterNo: p.invoice.encounter.encounterNo,
+          patientCode: p.invoice.encounter.patient.patientCode,
+          fullName: p.invoice.encounter.patient.fullName,
+          type: p.type,
+          amount: Number(p.amount),
+          paidAt: p.paidAt.toISOString(),
+          reason: p.type === 'REFUND' ? p.reason : null,
+        });
+      }
+      return { items: [...events.values()] };
+    });
   }
 
   async getDetail(tenantId: string, actorId: string, dataScope: DataScope, id: string): Promise<CashierShiftDetail> {

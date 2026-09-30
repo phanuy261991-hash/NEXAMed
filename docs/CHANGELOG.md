@@ -4,6 +4,10 @@
 
 ## 2026-09-30
 
+### Xử lý các điểm hở còn lại của Hoàn tiền một phần
+
+"Phiếu trong ca của tôi" nay dựng từ chính dòng thu/hoàn tiền của ca (endpoint mới `GET /cashier-shifts/:id/invoice-payments`) nên hiện đủ hoàn tiền một phần, hoàn khác ngày, đúng giờ hoàn. Phiếu nhập hoàn trả lập tay có chọn phiếu xuất gốc không còn nhập vượt số đã xuất (422, thông báo nêu số còn nhập lại được). Popup "Mở ca" khi hoàn tiền mặt lúc chưa có ca đã verify UI. Tổng kết ngày ở Thu ngân giữ nguyên cách tính theo ngày tiếp nhận (chủ dự án chọn). **Đã xác minh thật**: cashier-shift 47/47, thêm test cận trên nhập hoàn trả, Chrome thật. Chi tiết `docs/DECISIONS.md` #204.
+
 ### "Hoàn tiền thuốc" — hoàn MỘT PHẦN theo từng dòng thuốc (khách trả thuốc, lượt khám vẫn bình thường)
 
 Trước đây hoàn tiền chỉ TOÀN PHẦN và chỉ khi lượt khám đã huỷ. Nay lễ tân/quản trị (quyền riêng `invoice.refund_drug`) bấm "Hoàn tiền thuốc" ở Chi tiết thanh toán, chọn dòng thuốc + số lượng; số tiền hoàn server tự tính (đúng phần tiền thật sau chiết khấu, hoàn hết đúng từng đồng), hoàn về ví tạm ứng trước rồi mới tiền mặt/CK. Mỗi dòng tuỳ chọn "Nhập lại kho" → tự sinh phiếu nhập `RETURN_FROM_USE`. Hoá đơn vẫn "Đã thu" sau mỗi lần hoàn, đủ toàn bộ thì "Đã hoàn tiền"; đã hoàn thì không "Đánh dấu chưa thu" được. Danh sách Thu ngân, bản in lẻ và in gộp đều hiện phần đã hoàn. Migration `20260930100000_invoice_partial_refund` (2 bảng `invoice_refund`/`invoice_refund_line` + `payment.refund_id`). **Đã xác minh thật**: 16 test HTTP mới (đã kiểm đột biến), suite billing cũ không hồi quy, Chrome thật. Chi tiết `docs/DECISIONS.md` #203.

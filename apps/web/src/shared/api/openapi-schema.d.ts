@@ -18594,6 +18594,108 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/cashier-shifts/{id}/invoice-payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** "Phiếu trong ca của tôi" — từng sự kiện thu/hoàn tiền khám của ca, cùng nguồn payment với Tổng kết hệ thống (đúng cả hoàn một phần, thu/hoàn khác ngày tiếp nhận) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    invoiceId: string;
+                                    /** Format: uuid */
+                                    encounterId: string;
+                                    invoiceNo: string;
+                                    encounterNo: string;
+                                    patientCode: string;
+                                    fullName: string;
+                                    /** @enum {string} */
+                                    type: "PAYMENT" | "REFUND";
+                                    amount: number;
+                                    paidAt: string;
+                                    reason: string | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền cashier_shift.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ca của người khác với scope personal) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/cashier-shifts/{id}": {
         parameters: {
             query?: never;

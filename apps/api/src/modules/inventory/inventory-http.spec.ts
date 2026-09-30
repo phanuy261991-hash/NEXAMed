@@ -674,6 +674,29 @@ describe('HTTP e2e — /api/v1/inventory (Phiếu nhập kho GĐ2)', () => {
       expect(created.body.data.sourceIssueNo).toBeNull();
     });
 
+    it('nhập lại vượt số đã xuất theo phiếu xuất gốc → 422 (cộng dồn cả các phiếu hoàn trả Nháp khác); thuốc không có trên phiếu xuất gốc → 422; không chọn phiếu gốc thì không đối chiếu', async () => {
+      const drugId = await createDrug(clinicAdminToken, { name: 'Thuốc trả hàng có cận trên', isBatchManaged: false });
+      const otherDrugId = await createDrug(clinicAdminToken, { name: 'Thuốc khác không thuộc phiếu gốc', isBatchManaged: false });
+      const stockUp = await createReceipt(clinicAdminToken, { receiptType: 'OPENING_BALANCE', supplierId: undefined, lines: [{ drugId, unitCode: 'VIEN', quantity: 50, unitCost: 100 }] });
+      await request(app.getHttpServer()).post(`/api/v1/inventory/receipts/${stockUp.body.data.id}/approve`).set(authed(clinicAdminToken)).send({ version: stockUp.body.data.version });
+      const issueId = await createPostedInternalAllocationIssue(drugId, 10);
+      const ret = (quantity: number, id = drugId) =>
+        createReceipt(clinicAdminToken, { receiptType: 'RETURN_FROM_USE', supplierId: undefined, sourceIssueId: issueId, lines: [{ drugId: id, unitCode: 'VIEN', quantity, unitCost: 100 }] });
+
+      expect((await ret(11)).status).toBe(422); // vượt 10 ngay từ đầu
+      expect((await ret(6)).status).toBe(200); // còn lại 4
+      const over = await ret(5); // 6 (nháp trước) + 5 > 10
+      expect(over.status).toBe(422);
+      expect(over.body.error.message).toContain('còn nhập lại được 4');
+      expect((await ret(4)).status).toBe(200); // đủ đúng 10
+      expect((await ret(1)).status).toBe(422); // hết
+      expect((await ret(1, otherDrugId)).status).toBe(422); // thuốc không có trên phiếu gốc
+
+      // Không chọn phiếu xuất gốc → không đối chiếu được, vẫn lập bình thường (#195: không bắt buộc).
+      const free = await createReceipt(clinicAdminToken, { receiptType: 'RETURN_FROM_USE', supplierId: undefined, lines: [{ drugId, unitCode: 'VIEN', quantity: 99, unitCost: 100 }] });
+      expect(free.status).toBe(200);
+    });
+
     it('chọn sourceIssueId hợp lệ (phiếu xuất ĐÃ DUYỆT) — lưu đúng, hiện đúng sourceIssueNo ở list và detail', async () => {
       const drugId = await createDrug(clinicAdminToken, { name: 'Thuốc trả hàng có nguồn', isBatchManaged: false });
       const stockUp = await createReceipt(clinicAdminToken, { receiptType: 'OPENING_BALANCE', supplierId: undefined, lines: [{ drugId, unitCode: 'VIEN', quantity: 50, unitCost: 100 }] });

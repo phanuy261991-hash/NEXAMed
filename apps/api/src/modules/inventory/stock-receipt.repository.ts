@@ -98,6 +98,22 @@ export interface ListStockReceiptsFilter {
 /** Chỗ DUY NHẤT gọi Prisma cho bảng `stock_receipt`/`stock_receipt_line` (Kho Thuốc GĐ2). */
 @Injectable()
 export class StockReceiptRepository {
+  /**
+   * Các dòng của phiếu nhập hoàn trả (`RETURN_FROM_USE`) ĐÃ gắn phiếu xuất gốc này — Nháp + Đã duyệt
+   * (Nháp cũng tính để 2 phiếu nháp không cùng "xin" hết số đã xuất), trừ chính phiếu đang sửa
+   * (`excludeReceiptId`). Đơn vị theo `unitCode` của dòng — người gọi tự quy đổi về đơn vị cơ sở.
+   */
+  listReturnLinesForSourceIssue(tx: Prisma.TransactionClient, tenantId: string, sourceIssueId: string, excludeReceiptId?: string) {
+    return tx.stockReceiptLine.findMany({
+      where: {
+        tenantId,
+        deletedAt: null,
+        receipt: { sourceIssueId, receiptType: 'RETURN_FROM_USE', deletedAt: null, status: { in: ['DRAFT', 'POSTED'] }, ...(excludeReceiptId ? { id: { not: excludeReceiptId } } : {}) },
+      },
+      select: { drugId: true, unitCode: true, quantity: true },
+    });
+  }
+
   /** Tạo header rồi `createMany` dòng hàng RIÊNG (2 lệnh, không dùng Prisma nested `lines: {create}`)
    * — `stock_receipt_line` có 2 composite FK cùng chia sẻ `tenantId` (`(tenantId,receiptId)`→
    * `stock_receipt`, `(tenantId,drugId)`→`drug`), Prisma loại hẳn `tenantId` khỏi kiểu nested-create

@@ -116,6 +116,36 @@ export class PaymentRepository {
   }
 
   /**
+   * "Phiếu trong ca của tôi" — cùng phạm vi chọn dòng với `listForWindow()`/`listForShift()` (để danh
+   * sách khớp đúng con số "Tổng kết hệ thống"), nhưng kèm hoá đơn/lượt khám/bệnh nhân để hiển thị.
+   * `cashierShiftId` có giá trị → lọc theo FK (chế độ "Đa thu ngân"); không → theo khoảng thời gian.
+   */
+  listActivityForShift(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    scope: { cashierShiftId: string } | { startAt: Date; endAt: Date },
+  ) {
+    return tx.payment.findMany({
+      where: { tenantId, deletedAt: null, ...('cashierShiftId' in scope ? { cashierShiftId: scope.cashierShiftId } : { paidAt: { gte: scope.startAt, lt: scope.endAt } }) },
+      select: {
+        id: true,
+        invoiceId: true,
+        type: true,
+        amount: true,
+        paidAt: true,
+        reason: true,
+        invoice: {
+          select: {
+            invoiceNo: true,
+            encounter: { select: { id: true, encounterNo: true, patient: { select: { patientCode: true, fullName: true } } } },
+          },
+        },
+      },
+      orderBy: { paidAt: 'desc' },
+    });
+  }
+
+  /**
    * "Sổ quỹ" (GĐ2) — mọi dòng thu/hoàn tiền khám ĐÃ GẮN quỹ `cashAccountId` này
    * (`payment.cashAccountId`, chỉ có giá trị từ GĐ1 trở đi — dòng cũ hơn NULL, tự loại khỏi kết
    * quả, đúng thiết kế "không backfill"). Sắp CŨ→MỚI, cùng lý do `CashVoucherRepository.

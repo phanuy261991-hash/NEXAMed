@@ -678,4 +678,66 @@ describe('HTTP e2e — /api/v1/cashier-shifts', () => {
       expect(closeB.body.data.cashInAmount).toBe(222_000);
     });
   });
+
+  describe('GET /cashier-shifts/:id/invoice-payments — "Phiếu trong ca của tôi" (nguồn = dòng payment)', () => {
+    let shiftId: string;
+    let chargedEncounterId: string;
+    let openingFloat = 0;
+
+    it('mở ca, thu 150.000đ rồi hoàn tiền (lượt khám huỷ) → 2 sự kiện: hoàn tiền (mới nhất) + thu tiền, đúng số/lý do/bệnh nhân', async () => {
+      // Vốn đầu ca phải khớp số ca trước giữ lại (lệch thì đòi lý do chênh lệch) — lấy đúng số đó.
+      const before = await request(app.getHttpServer()).get('/api/v1/cashier-shifts/current').set(authed(cashierAToken));
+      openingFloat = before.body.data.previousClosedShift?.keepForNextAmount ?? 0;
+      const open = await request(app.getHttpServer()).post('/api/v1/cashier-shifts/open').set(authed(cashierAToken)).send({ openingFloatActual: openingFloat });
+      expect(open.status).toBe(200);
+      shiftId = open.body.data.id as string;
+
+      chargedEncounterId = await chargeCash(cashierAToken, doctorUserId, 150_000);
+      const cancelRes = await request(app.getHttpServer())
+        .post(`/api/v1/encounters/${chargedEncounterId}/cancel`)
+        .set(authed(cashierAToken))
+        .send({ cancelReason: 'Khách bỏ về', version: 1 });
+      expect(cancelRes.status).toBe(200);
+      const invoice = await request(app.getHttpServer()).get(`/api/v1/billing/invoices/${chargedEncounterId}`).set(authed(clinicAdminToken));
+      const refundRes = await request(app.getHttpServer())
+        .post(`/api/v1/billing/invoices/${chargedEncounterId}/refund`)
+        .set(authed(clinicAdminToken))
+        .send({ reason: 'Hoàn theo yêu cầu khách', version: invoice.body.data.version });
+      expect(refundRes.status).toBe(200);
+
+      const res = await request(app.getHttpServer()).get(`/api/v1/cashier-shifts/${shiftId}/invoice-payments`).set(authed(cashierAToken));
+      expect(res.status).toBe(200);
+      const items = res.body.data.items as { type: string; amount: number; reason: string | null; invoiceId: string; fullName: string; encounterId: string }[];
+      expect(items).toHaveLength(2);
+      expect(items.map((i) => i.type).sort()).toEqual(['PAYMENT', 'REFUND']);
+      const refund = items.find((i) => i.type === 'REFUND')!;
+      expect(refund).toMatchObject({ amount: 150_000, reason: 'Hoàn theo yêu cầu khách', encounterId: chargedEncounterId, fullName: 'Bệnh nhân e2e chốt ca' });
+      expect(items.find((i) => i.type === 'PAYMENT')!.reason).toBeNull();
+    });
+
+    it('khớp đúng "Tổng kết hệ thống": cashInAmount/cashOutAmount = tổng các sự kiện', async () => {
+      const summary = await request(app.getHttpServer()).get(`/api/v1/cashier-shifts/${shiftId}/summary`).set(authed(cashierAToken));
+      expect(summary.body.data.cashInAmount).toBe(150_000);
+      expect(summary.body.data.cashOutAmount).toBe(150_000);
+    });
+
+    it('quyền: không token → 401; bác sĩ → 403; thu ngân KHÁC (scope personal) → 404; quản trị → 200; tenant khác → 404', async () => {
+      const url = `/api/v1/cashier-shifts/${shiftId}/invoice-payments`;
+      expect((await request(app.getHttpServer()).get(url)).status).toBe(401);
+      expect((await request(app.getHttpServer()).get(url).set(authed(doctorToken))).status).toBe(403);
+      expect((await request(app.getHttpServer()).get(url).set(authed(cashierA2Token))).status).toBe(404);
+      expect((await request(app.getHttpServer()).get(url).set(authed(clinicAdminToken))).status).toBe(200);
+      expect((await request(app.getHttpServer()).get(url).set(authed(tenantBClinicAdminToken))).status).toBe(404);
+    });
+
+    it('dọn: chốt ca để không ảnh hưởng test khác', async () => {
+      const cur = await request(app.getHttpServer()).get('/api/v1/cashier-shifts/current').set(authed(cashierAToken));
+      const shift = cur.body.data.openShift;
+      const close = await request(app.getHttpServer())
+        .post(`/api/v1/cashier-shifts/${shift.id}/close`)
+        .set(authed(cashierAToken))
+        .send({ countedCashAmount: openingFloat, keepForNextAmount: openingFloat, version: shift.version });
+      expect(close.status).toBe(200);
+    });
+  });
 });

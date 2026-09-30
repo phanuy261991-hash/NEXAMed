@@ -1,6 +1,7 @@
 import type {
   ApproveCashierShiftRequest,
   CashierShiftDetail,
+  CashierShiftInvoicePaymentsResponse,
   CashierShiftSummary,
   CloseCashierShiftRequest,
   CurrentCashierShiftResponse,
@@ -22,6 +23,11 @@ export async function openCashierShift(body: OpenCashierShiftRequest): Promise<C
 
 export async function getCashierShiftSummary(id: string): Promise<CashierShiftSummary> {
   return unwrap(await getApiClient().GET('/api/v1/cashier-shifts/{id}/summary', { params: { path: { id } } })) as CashierShiftSummary;
+}
+
+/** "Phiếu trong ca của tôi" — sự kiện thu/hoàn tiền khám của ca (nguồn = dòng payment, khớp Tổng kết hệ thống). */
+export async function getCashierShiftInvoicePayments(id: string): Promise<CashierShiftInvoicePaymentsResponse> {
+  return unwrap(await getApiClient().GET('/api/v1/cashier-shifts/{id}/invoice-payments', { params: { path: { id } } })) as CashierShiftInvoicePaymentsResponse;
 }
 
 export async function closeCashierShift(id: string, body: CloseCashierShiftRequest): Promise<CashierShiftDetail> {
