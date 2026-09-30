@@ -39,9 +39,10 @@ export class PaymentRepository {
     reason: string,
     cashierShiftId: string | null = null,
     cashAccountId: string | null = null,
+    refundId: string | null = null,
   ): Promise<Payment> {
     return tx.payment.create({
-      data: { tenantId, invoiceId, method, amount, paidAt: refundedAt, type: 'REFUND', reason, cashierShiftId, cashAccountId, createdBy: actorId, updatedBy: actorId },
+      data: { tenantId, invoiceId, method, amount, paidAt: refundedAt, type: 'REFUND', reason, cashierShiftId, cashAccountId, refundId, createdBy: actorId, updatedBy: actorId },
     });
   }
 
@@ -76,10 +77,14 @@ export class PaymentRepository {
     });
   }
 
-  /** "Đánh dấu chưa thu" (huỷ nhầm) — soft-delete dòng payment hiệu lực, `reason` bắt buộc (CLAUDE.md: không xoá cứng). */
+  /**
+   * "Đánh dấu chưa thu" (huỷ nhầm) — soft-delete dòng payment hiệu lực, `reason` bắt buộc (CLAUDE.md:
+   * không xoá cứng). CHỈ dòng `PAYMENT` (#203): dòng `REFUND` là tiền đã trả ra thật, không được xoá vết
+   * — `InvoiceService.revertPayment()` cũng đã chặn phiếu có hoàn, đây là lớp phòng thủ thứ hai.
+   */
   voidActive(tx: Prisma.TransactionClient, tenantId: string, invoiceId: string, actorId: string, reason: string): Promise<Prisma.BatchPayload> {
     return tx.payment.updateMany({
-      where: { tenantId, invoiceId, deletedAt: null },
+      where: { tenantId, invoiceId, deletedAt: null, type: 'PAYMENT' },
       data: { deletedAt: new Date(), deletedReason: reason, updatedBy: actorId },
     });
   }

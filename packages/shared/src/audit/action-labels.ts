@@ -37,6 +37,7 @@ const ACTION_LABELS: Record<string, string> = {
   'invoice.paid': 'Đánh dấu đã thu',
   'invoice.payment_reverted': 'Đánh dấu chưa thu',
   'invoice.refunded': 'Hoàn tiền',
+  'invoice.partial_refunded': 'Hoàn tiền một phần (trả thuốc)',
   'invoice.draft_saved': 'Lưu nháp phiếu thu',
   'invoice.printed': 'In phiếu thu',
   'invoice.cancelled': 'Huỷ phiếu thu',

@@ -16,6 +16,7 @@ import {
   getBillingInvoiceList,
   markInvoicePaid,
   payInvoiceWithWallet,
+  printCombinedInvoices,
   printInvoice,
   refundInvoice,
   revertInvoicePayment,
@@ -144,10 +145,19 @@ export function useSaveInvoiceDraftMutation(encounterId: string) {
   });
 }
 
-export function usePrintInvoiceMutation(encounterId: string) {
+/** In gộp — server đánh dấu đã in cho MỌI phiếu trong bản in nên làm mới cả chi tiết lẫn danh sách. */
+export function usePrintCombinedInvoicesMutation(encounterId: string) {
   const invalidate = useInvalidateInvoice();
   return useMutation({
-    mutationFn: () => printInvoice(encounterId),
+    mutationFn: () => printCombinedInvoices(encounterId),
+    onSuccess: () => void invalidate(),
+  });
+}
+
+export function usePrintInvoiceMutation(encounterId: string, invoiceId?: string) {
+  const invalidate = useInvalidateInvoice();
+  return useMutation({
+    mutationFn: () => printInvoice(encounterId, invoiceId),
     onSuccess: () => void invalidate(),
   });
 }

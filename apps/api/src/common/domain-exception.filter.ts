@@ -81,6 +81,8 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   // thu/lượt khám không cho phép thao tác này", không phải lỗi input.
   INVOICE_CLOSED: HttpStatus.CONFLICT,
   INVOICE_NOT_REFUNDABLE: HttpStatus.CONFLICT,
+  // Hoàn tiền MỘT PHẦN (#203) — đã có hoàn thì không "Đánh dấu chưa thu" được (xung đột trạng thái). 3 lỗi input còn lại (dòng không hoàn được / vượt số lượng / 0đ) để mặc định 422.
+  INVOICE_HAS_REFUNDS: HttpStatus.CONFLICT,
   // Chiết khấu — chỉ sửa được khi phiếu còn UNPAID, cùng nhóm CONFLICT ở trên.
   INVOICE_DISCOUNT_NOT_ALLOWED: HttpStatus.CONFLICT,
   // "Tạm nghỉ / Đóng ca" — thao tác bị cấu hình phòng khám chặn (không phải thiếu permission RBAC,

@@ -15554,6 +15554,10 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "invoiceId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
                   "method": {
                     "type": "string",
                     "minLength": 1
@@ -16075,6 +16079,10 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "invoiceId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
                   "reason": {
                     "type": "string",
                     "minLength": 1
@@ -16627,6 +16635,10 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "invoiceId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
                   "reason": {
                     "type": "string",
                     "minLength": 1
@@ -17179,6 +17191,10 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "invoiceId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
                   "pendingPaymentMethod": {
                     "type": [
                       "string",
@@ -17705,6 +17721,22 @@
             "in": "path"
           }
         ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "invoiceId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Thành công",
@@ -18151,6 +18183,514 @@
         }
       }
     },
+    "/api/v1/billing/invoices/{encounterId}/print-combined": {
+      "post": {
+        "tags": [
+          "billing"
+        ],
+        "summary": "Phiếu thu tổng hợp — dữ liệu in gộp MỌI phiếu thu chưa huỷ của lượt khám, đồng thời ghi nhận printedAt cho từng phiếu",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "encounterId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "invoices": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "encounterId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "invoiceNo": {
+                                "type": "string"
+                              },
+                              "invoiceType": {
+                                "type": "string",
+                                "enum": [
+                                  "SERVICE",
+                                  "DRUG"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "UNPAID",
+                                  "PAID",
+                                  "CANCELLED",
+                                  "REFUNDED"
+                                ]
+                              },
+                              "totalAmount": {
+                                "type": "integer"
+                              },
+                              "lines": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "format": "uuid"
+                                    },
+                                    "examTypeCode": {
+                                      "type": "string"
+                                    },
+                                    "examTypeName": {
+                                      "type": "string"
+                                    },
+                                    "priceTypeCode": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "unitCode": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "unitPrice": {
+                                      "type": "integer"
+                                    },
+                                    "quantity": {
+                                      "type": "integer"
+                                    },
+                                    "lineTotal": {
+                                      "type": "integer"
+                                    },
+                                    "discountType": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ],
+                                      "enum": [
+                                        "PERCENT",
+                                        "AMOUNT"
+                                      ]
+                                    },
+                                    "discountValue": {
+                                      "type": [
+                                        "integer",
+                                        "null"
+                                      ]
+                                    },
+                                    "discountAmount": {
+                                      "type": "integer"
+                                    },
+                                    "lineSource": {
+                                      "type": "string",
+                                      "enum": [
+                                        "SERVICE",
+                                        "DRUG"
+                                      ]
+                                    },
+                                    "stockIssueNo": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "examTypeCode",
+                                    "examTypeName",
+                                    "priceTypeCode",
+                                    "unitCode",
+                                    "unitPrice",
+                                    "quantity",
+                                    "lineTotal",
+                                    "discountType",
+                                    "discountValue",
+                                    "discountAmount",
+                                    "lineSource",
+                                    "stockIssueNo"
+                                  ]
+                                }
+                              },
+                              "discountMode": {
+                                "type": "string",
+                                "enum": [
+                                  "NONE",
+                                  "TOTAL",
+                                  "PER_LINE"
+                                ]
+                              },
+                              "discountType": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "PERCENT",
+                                  "AMOUNT"
+                                ]
+                              },
+                              "discountValue": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "discountReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "discountAmount": {
+                                "type": "integer"
+                              },
+                              "dueAmount": {
+                                "type": "integer"
+                              },
+                              "encounterNo": {
+                                "type": "string"
+                              },
+                              "checkedInAt": {
+                                "type": "string"
+                              },
+                              "patientId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "patientCode": {
+                                "type": "string"
+                              },
+                              "fullName": {
+                                "type": "string"
+                              },
+                              "departmentName": {
+                                "type": "string"
+                              },
+                              "encounterVersion": {
+                                "type": "integer"
+                              },
+                              "printedAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "pendingPaymentMethod": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "minLength": 1
+                              },
+                              "pendingCashReceivedAmount": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "paymentMethod": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "minLength": 1
+                              },
+                              "paidAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "payments": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "method": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "amount": {
+                                      "type": "integer"
+                                    }
+                                  },
+                                  "required": [
+                                    "method",
+                                    "amount"
+                                  ]
+                                }
+                              },
+                              "encounterCancelled": {
+                                "type": "boolean"
+                              },
+                              "needsRefund": {
+                                "type": "boolean"
+                              },
+                              "refundedAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "refundReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "otherInvoices": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "invoiceId": {
+                                      "type": "string",
+                                      "format": "uuid"
+                                    },
+                                    "invoiceNo": {
+                                      "type": "string"
+                                    },
+                                    "invoiceType": {
+                                      "type": "string",
+                                      "enum": [
+                                        "SERVICE",
+                                        "DRUG"
+                                      ]
+                                    },
+                                    "status": {
+                                      "type": "string",
+                                      "enum": [
+                                        "UNPAID",
+                                        "PAID",
+                                        "CANCELLED",
+                                        "REFUNDED"
+                                      ]
+                                    },
+                                    "dueAmount": {
+                                      "type": "integer"
+                                    }
+                                  },
+                                  "required": [
+                                    "invoiceId",
+                                    "invoiceNo",
+                                    "invoiceType",
+                                    "status",
+                                    "dueAmount"
+                                  ]
+                                }
+                              },
+                              "version": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "encounterId",
+                              "invoiceNo",
+                              "invoiceType",
+                              "status",
+                              "totalAmount",
+                              "lines",
+                              "discountMode",
+                              "discountType",
+                              "discountValue",
+                              "discountReason",
+                              "discountAmount",
+                              "dueAmount",
+                              "encounterNo",
+                              "checkedInAt",
+                              "patientId",
+                              "patientCode",
+                              "fullName",
+                              "departmentName",
+                              "encounterVersion",
+                              "printedAt",
+                              "pendingPaymentMethod",
+                              "pendingCashReceivedAmount",
+                              "paymentMethod",
+                              "paidAt",
+                              "payments",
+                              "encounterCancelled",
+                              "needsRefund",
+                              "refundedAt",
+                              "refundReason",
+                              "otherInvoices",
+                              "version"
+                            ]
+                          }
+                        },
+                        "totals": {
+                          "type": "object",
+                          "properties": {
+                            "invoiceCount": {
+                              "type": "integer"
+                            },
+                            "grossAmount": {
+                              "type": "integer"
+                            },
+                            "discountAmount": {
+                              "type": "integer"
+                            },
+                            "paidAmount": {
+                              "type": "integer"
+                            },
+                            "refundedAmount": {
+                              "type": "integer"
+                            },
+                            "unpaidAmount": {
+                              "type": "integer"
+                            }
+                          },
+                          "required": [
+                            "invoiceCount",
+                            "grossAmount",
+                            "discountAmount",
+                            "paidAmount",
+                            "refundedAmount",
+                            "unpaidAmount"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "invoices",
+                        "totals"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền invoice.print",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Lượt khám không có phiếu thu nào còn hiệu lực",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/billing/invoices/{encounterId}/pay-with-wallet": {
       "post": {
         "tags": [
@@ -18179,6 +18719,10 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "invoiceId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
                   "remainderPaymentMethodCode": {
                     "type": "string",
                     "minLength": 1
@@ -18730,6 +19274,10 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "invoiceId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
                   "topUpAmount": {
                     "type": "integer",
                     "exclusiveMinimum": 0
@@ -19303,6 +19851,10 @@
                           "NONE"
                         ]
                       },
+                      "invoiceId": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
                       "reason": {
                         "type": "string",
                         "minLength": 1
@@ -19325,6 +19877,10 @@
                         "enum": [
                           "TOTAL"
                         ]
+                      },
+                      "invoiceId": {
+                        "type": "string",
+                        "format": "uuid"
                       },
                       "discountType": {
                         "type": "string",
@@ -19361,6 +19917,10 @@
                         "enum": [
                           "PER_LINE"
                         ]
+                      },
+                      "invoiceId": {
+                        "type": "string",
+                        "format": "uuid"
                       },
                       "lines": {
                         "type": "array",

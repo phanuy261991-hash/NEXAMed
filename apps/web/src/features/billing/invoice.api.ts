@@ -1,5 +1,6 @@
 import type {
   ApplyInvoiceDiscountRequest,
+  CombinedInvoicePrintResponse,
   Invoice,
   InvoiceResponse,
   ListBillingInvoicesResponse,
@@ -61,10 +62,18 @@ export async function saveInvoiceDraft(encounterId: string, body: SaveInvoiceDra
   ) as Invoice;
 }
 
-export async function printInvoice(encounterId: string): Promise<Invoice> {
+/** `invoiceId` tuỳ chọn — bỏ trống = hoá đơn khám (SERVICE), có = đúng hoá đơn đó (hoá đơn thuốc riêng, #202). */
+export async function printInvoice(encounterId: string, invoiceId?: string): Promise<Invoice> {
   return unwrap(
-    await getApiClient().POST('/api/v1/billing/invoices/{encounterId}/print', { params: { path: { encounterId } } }),
+    await getApiClient().POST('/api/v1/billing/invoices/{encounterId}/print', { params: { path: { encounterId } }, body: { invoiceId } }),
   ) as Invoice;
+}
+
+/** Phiếu thu tổng hợp — dữ liệu in gộp mọi phiếu chưa huỷ của lượt khám, đồng thời ghi nhận đã in cho từng phiếu. */
+export async function printCombinedInvoices(encounterId: string): Promise<CombinedInvoicePrintResponse> {
+  return unwrap(
+    await getApiClient().POST('/api/v1/billing/invoices/{encounterId}/print-combined', { params: { path: { encounterId } } }),
+  ) as CombinedInvoicePrintResponse;
 }
 
 /** Chiết khấu (Toàn hoá đơn/Từng dịch vụ) — chỉ khi phiếu còn UNPAID, bắt buộc lý do. */

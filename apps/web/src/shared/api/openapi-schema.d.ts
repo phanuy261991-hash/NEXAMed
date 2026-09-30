@@ -6210,6 +6210,8 @@ export interface paths {
             requestBody?: {
                 content: {
                     "application/json": {
+                        /** Format: uuid */
+                        invoiceId?: string;
                         method: string;
                         version: number;
                     };
@@ -6387,6 +6389,8 @@ export interface paths {
             requestBody?: {
                 content: {
                     "application/json": {
+                        /** Format: uuid */
+                        invoiceId?: string;
                         reason: string;
                         version: number;
                     };
@@ -6579,6 +6583,8 @@ export interface paths {
             requestBody?: {
                 content: {
                     "application/json": {
+                        /** Format: uuid */
+                        invoiceId?: string;
                         reason: string;
                         version: number;
                     };
@@ -6771,6 +6777,8 @@ export interface paths {
             requestBody?: {
                 content: {
                     "application/json": {
+                        /** Format: uuid */
+                        invoiceId?: string;
                         pendingPaymentMethod: string | null;
                         pendingCashReceivedAmount: number | null;
                         version: number;
@@ -6946,7 +6954,14 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        invoiceId?: string;
+                    };
+                };
+            };
             responses: {
                 /** @description Thành công */
                 200: {
@@ -7082,6 +7097,171 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/billing/invoices/{encounterId}/print-combined": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Phiếu thu tổng hợp — dữ liệu in gộp MỌI phiếu thu chưa huỷ của lượt khám, đồng thời ghi nhận printedAt cho từng phiếu */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    encounterId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                invoices: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    encounterId: string;
+                                    invoiceNo: string;
+                                    /** @enum {string} */
+                                    invoiceType: "SERVICE" | "DRUG";
+                                    /** @enum {string} */
+                                    status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
+                                    totalAmount: number;
+                                    lines: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        examTypeCode: string;
+                                        examTypeName: string;
+                                        priceTypeCode: string | null;
+                                        unitCode: string | null;
+                                        unitPrice: number;
+                                        quantity: number;
+                                        lineTotal: number;
+                                        /** @enum {string|null} */
+                                        discountType: "PERCENT" | "AMOUNT" | null;
+                                        discountValue: number | null;
+                                        discountAmount: number;
+                                        /** @enum {string} */
+                                        lineSource: "SERVICE" | "DRUG";
+                                        stockIssueNo: string | null;
+                                    }[];
+                                    /** @enum {string} */
+                                    discountMode: "NONE" | "TOTAL" | "PER_LINE";
+                                    /** @enum {string|null} */
+                                    discountType: "PERCENT" | "AMOUNT" | null;
+                                    discountValue: number | null;
+                                    discountReason: string | null;
+                                    discountAmount: number;
+                                    dueAmount: number;
+                                    encounterNo: string;
+                                    checkedInAt: string;
+                                    /** Format: uuid */
+                                    patientId: string;
+                                    patientCode: string;
+                                    fullName: string;
+                                    departmentName: string;
+                                    encounterVersion: number;
+                                    printedAt: string | null;
+                                    pendingPaymentMethod: string | null;
+                                    pendingCashReceivedAmount: number | null;
+                                    paymentMethod: string | null;
+                                    paidAt: string | null;
+                                    payments: {
+                                        method: string;
+                                        amount: number;
+                                    }[];
+                                    encounterCancelled: boolean;
+                                    needsRefund: boolean;
+                                    refundedAt: string | null;
+                                    refundReason: string | null;
+                                    otherInvoices: {
+                                        /** Format: uuid */
+                                        invoiceId: string;
+                                        invoiceNo: string;
+                                        /** @enum {string} */
+                                        invoiceType: "SERVICE" | "DRUG";
+                                        /** @enum {string} */
+                                        status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
+                                        dueAmount: number;
+                                    }[];
+                                    version: number;
+                                }[];
+                                totals: {
+                                    invoiceCount: number;
+                                    grossAmount: number;
+                                    discountAmount: number;
+                                    paidAmount: number;
+                                    refundedAmount: number;
+                                    unpaidAmount: number;
+                                };
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền invoice.print */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Lượt khám không có phiếu thu nào còn hiệu lực */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/billing/invoices/{encounterId}/pay-with-wallet": {
         parameters: {
             query?: never;
@@ -7104,6 +7284,8 @@ export interface paths {
             requestBody?: {
                 content: {
                     "application/json": {
+                        /** Format: uuid */
+                        invoiceId?: string;
                         remainderPaymentMethodCode?: string;
                         version: number;
                     };
@@ -7296,6 +7478,8 @@ export interface paths {
             requestBody?: {
                 content: {
                     "application/json": {
+                        /** Format: uuid */
+                        invoiceId?: string;
                         topUpAmount: number;
                         topUpPaymentMethodCode: string;
                         /** Format: uuid */
@@ -7494,11 +7678,15 @@ export interface paths {
                     "application/json": {
                         /** @enum {string} */
                         mode: "NONE";
+                        /** Format: uuid */
+                        invoiceId?: string;
                         reason: string;
                         version: number;
                     } | {
                         /** @enum {string} */
                         mode: "TOTAL";
+                        /** Format: uuid */
+                        invoiceId?: string;
                         /** @enum {string} */
                         discountType: "PERCENT" | "AMOUNT";
                         discountValue: number;
@@ -7507,6 +7695,8 @@ export interface paths {
                     } | {
                         /** @enum {string} */
                         mode: "PER_LINE";
+                        /** Format: uuid */
+                        invoiceId?: string;
                         lines: {
                             /** Format: uuid */
                             lineId: string;

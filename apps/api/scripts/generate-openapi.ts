@@ -25,12 +25,14 @@ import {
   clinicPrintHeaderSchema,
   deferredPaymentStatusSchema,
   applyInvoiceDiscountRequestSchema,
+  combinedInvoicePrintResponseSchema,
   getBillingInvoiceQuerySchema,
   invoiceResponseSchema,
   listBillingInvoicesQuerySchema,
   listBillingInvoicesResponseSchema,
   markInvoicePaidRequestSchema,
   payInvoiceWithWalletRequestSchema,
+  printInvoiceRequestSchema,
   refundInvoiceRequestSchema,
   revertInvoicePaymentRequestSchema,
   saveInvoiceDraftRequestSchema,
@@ -1253,12 +1255,30 @@ registry.registerPath({
   tags: ['billing'],
   summary: 'In phiếu thu (BIL-02, dùng chung hạ tầng in với PRE-04) — ghi nhận printedAt, idempotent',
   security: [{ bearerAuth: [] }],
-  request: { params: billingEncounterIdParams },
+  request: {
+    params: billingEncounterIdParams,
+    body: { required: false, content: { 'application/json': { schema: printInvoiceRequestSchema } } },
+  },
   responses: {
     200: jsonResponse('Thành công', envelope(invoiceResponseSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền invoice.print'),
     404: errorResponse('Không có phiếu thu cho lượt khám này'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/billing/invoices/{encounterId}/print-combined',
+  tags: ['billing'],
+  summary: 'Phiếu thu tổng hợp — dữ liệu in gộp MỌI phiếu thu chưa huỷ của lượt khám, đồng thời ghi nhận printedAt cho từng phiếu',
+  security: [{ bearerAuth: [] }],
+  request: { params: billingEncounterIdParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(combinedInvoicePrintResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền invoice.print'),
+    404: errorResponse('Lượt khám không có phiếu thu nào còn hiệu lực'),
   },
 });
 

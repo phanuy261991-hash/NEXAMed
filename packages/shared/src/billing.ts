@@ -69,8 +69,38 @@ export const invoiceLineSchema = z.object({
   /** Mã Phiếu xuất kho nguồn — chỉ có giá trị khi `lineSource==='DRUG'`, dùng làm nhãn nhóm "Tiền
    * thuốc — Phiếu xuất {stockIssueNo}" (không có mã đơn thuốc hiển thị — `prescription` chỉ có `id`). */
   stockIssueNo: z.string().nullable(),
+  /**
+   * Hoàn tiền MỘT PHẦN theo dòng thuốc (#203) — số tiền THẬT của dòng sau khi chia chiết khấu (tổng
+   * các dòng luôn khớp `dueAmount` từng đồng, `allocateInvoiceDueToLines()` ở `@nexamed/core`), số
+   * lượng/tiền đã hoàn của riêng dòng này. Số lượng còn hoàn được = `quantity - refundedQuantity`.
+   */
+  netAmount: z.number().int(),
+  refundedQuantity: z.number().int(),
+  refundedAmount: z.number().int(),
 });
 export type InvoiceLine = z.infer<typeof invoiceLineSchema>;
+
+/** Một dòng của một lần hoàn tiền một phần (#203). */
+export const invoiceRefundLineSchema = z.object({
+  invoiceLineId: z.string().uuid(),
+  itemName: z.string(),
+  quantity: z.number().int(),
+  amount: z.number().int(),
+  /** Đã nhập lại kho (phiếu nhập hoàn trả RETURN_FROM_USE tự sinh). */
+  restocked: z.boolean(),
+});
+export type InvoiceRefundLine = z.infer<typeof invoiceRefundLineSchema>;
+
+/** Một lần hoàn tiền một phần (#203) — hoá đơn có thể có nhiều lần, mới nhất ở cuối. */
+export const invoiceRefundSchema = z.object({
+  id: z.string().uuid(),
+  refundNo: z.string(),
+  refundedAt: z.string(),
+  reason: z.string(),
+  totalAmount: z.number().int(),
+  lines: z.array(invoiceRefundLineSchema),
+});
+export type InvoiceRefund = z.infer<typeof invoiceRefundSchema>;
 
 /**
  * Chi tiết 1 phiếu thu (`GET /billing/invoices/:encounterId`). `null` khi lượt khám đó không có
@@ -140,6 +170,13 @@ export const invoiceSchema = z.object({
   /** Kho Thuốc GĐ3 (#165) — mọi hoá đơn KHÁC của cùng lượt khám (rỗng ở đa số trường hợp — chỉ có
    * khi tenant bật tách hoá đơn thuốc hoặc hoá đơn khám đã đóng lúc phát thuốc, xem #163 điểm 5). */
   otherInvoices: z.array(invoiceSiblingSchema),
+  /**
+   * Hoàn tiền MỘT PHẦN (#203) — tổng tiền đã hoàn của phiếu (tổng các dòng payment REFUND, cả hoàn
+   * một phần lẫn hoàn toàn phần #085), 0 khi chưa hoàn. Phiếu còn `PAID` mà `refundedAmount>0` là
+   * đã hoàn một phần; `REFUNDED` là đã hoàn đủ. `refunds` liệt kê từng lần hoàn một phần.
+   */
+  refundedAmount: z.number().int(),
+  refunds: z.array(invoiceRefundSchema),
   version: z.number().int(),
 });
 export type Invoice = z.infer<typeof invoiceSchema>;
@@ -147,8 +184,48 @@ export type Invoice = z.infer<typeof invoiceSchema>;
 export const invoiceResponseSchema = invoiceSchema.nullable();
 export type InvoiceResponse = z.infer<typeof invoiceResponseSchema>;
 
+/**
+ * `POST /billing/invoices/:encounterId/print-combined` — Phiếu thu tổng hợp: in gộp MỌI phiếu thu
+ * chưa huỷ của cùng 1 lượt khám thành 1 bản in (không sinh bản ghi hoá đơn mới, chỉ là cách trình
+ * bày lúc in). Mỗi phần tử `invoices` là 1 phiếu đầy đủ (`invoiceSchema`, SERVICE trước rồi DRUG theo
+ * thứ tự tạo; `otherInvoices` luôn rỗng vì đã gộp cả vào mảng này). `totals` tính sẵn server-side
+ * (`computeCombinedInvoiceTotals()` ở `@nexamed/core`) để web không cộng lại.
+ */
+export const combinedInvoiceTotalsSchema = z.object({
+  invoiceCount: z.number().int(),
+  /** Tổng gross trước chiết khấu. */
+  grossAmount: z.number().int(),
+  discountAmount: z.number().int(),
+  /** Tổng đã thu — gồm cả phiếu sau đó bị hoàn. */
+  paidAmount: z.number().int(),
+  refundedAmount: z.number().int(),
+  /** Còn phải thu — tổng các phiếu `UNPAID`. */
+  unpaidAmount: z.number().int(),
+});
+export type CombinedInvoiceTotals = z.infer<typeof combinedInvoiceTotalsSchema>;
+
+export const combinedInvoicePrintResponseSchema = z.object({
+  invoices: z.array(invoiceSchema),
+  totals: combinedInvoiceTotalsSchema,
+});
+export type CombinedInvoicePrintResponse = z.infer<typeof combinedInvoicePrintResponseSchema>;
+
+/**
+ * Hoá đơn ĐÍCH của mọi thao tác ghi (thu tiền/lưu tạm/đánh dấu chưa thu/hoàn tiền/chiết khấu/in).
+ * Bỏ trống = hoá đơn `SERVICE` của lượt khám (hành vi cũ, mọi nơi gọi trước Kho Thuốc GĐ3 không
+ * phải sửa gì). Có giá trị = đúng hoá đơn đó, BẮT BUỘC thuộc `:encounterId` trên URL (không thì
+ * 404 — không lộ hoá đơn của lượt khám khác), dùng cho hoá đơn `DRUG` riêng.
+ *
+ * **Lý do bắt buộc phải có**: trước đây mọi thao tác ghi đều tự lấy hoá đơn `SERVICE` trong khi web
+ * gửi lên `version` của hoá đơn ĐANG XEM — trùng version thì ghi nhầm sang hoá đơn khám (thu tiền
+ * thuốc lại đánh dấu tiền khám đã thu), lệch version thì báo lỗi khó hiểu; cả hai đều khiến hoá đơn
+ * tiền thuốc riêng KHÔNG thu được. Xem `docs/DECISIONS.md` #202.
+ */
+const targetInvoiceIdSchema = z.string().uuid().optional();
+
 /** `POST /billing/invoices/:encounterId/save-draft` ("Lưu tạm", F8) — không đổi `status`. */
 export const saveInvoiceDraftRequestSchema = z.object({
+  invoiceId: targetInvoiceIdSchema,
   pendingPaymentMethod: paymentMethodSchema.nullable(),
   pendingCashReceivedAmount: z.number().int().nonnegative().nullable(),
   version: z.number().int(),
@@ -157,13 +234,21 @@ export type SaveInvoiceDraftRequest = z.infer<typeof saveInvoiceDraftRequestSche
 
 /** `POST /billing/invoices/:encounterId/pay` — đánh dấu "Đã thu" (BIL-03). */
 export const markInvoicePaidRequestSchema = z.object({
+  invoiceId: targetInvoiceIdSchema,
   method: paymentMethodSchema,
   version: z.number().int(),
 });
 export type MarkInvoicePaidRequest = z.infer<typeof markInvoicePaidRequestSchema>;
 
+/** `POST /billing/invoices/:encounterId/print` — ghi nhận `printedAt`. Body tuỳ chọn (chỉ `invoiceId`). */
+export const printInvoiceRequestSchema = z.object({
+  invoiceId: targetInvoiceIdSchema,
+});
+export type PrintInvoiceRequest = z.infer<typeof printInvoiceRequestSchema>;
+
 /** `POST /billing/invoices/:encounterId/revert-payment` — "Đánh dấu chưa thu" (huỷ nhầm), lý do bắt buộc. */
 export const revertInvoicePaymentRequestSchema = z.object({
+  invoiceId: targetInvoiceIdSchema,
   reason: z.string().min(1, 'Phải nhập lý do đánh dấu chưa thu.'),
   version: z.number().int(),
 });
@@ -180,10 +265,36 @@ export type RevertInvoicePaymentRequest = z.infer<typeof revertInvoicePaymentReq
  * đây, cột `payment.amount` đã lưu số thật sẵn.
  */
 export const refundInvoiceRequestSchema = z.object({
+  invoiceId: targetInvoiceIdSchema,
   reason: z.string().min(1, 'Phải nhập lý do hoàn tiền.'),
   version: z.number().int(),
 });
 export type RefundInvoiceRequest = z.infer<typeof refundInvoiceRequestSchema>;
+
+/**
+ * `POST /billing/invoices/:encounterId/refund-items` — hoàn tiền MỘT PHẦN theo từng dòng thuốc (#203),
+ * lượt khám vẫn bình thường. Quyền riêng `invoice.refund_drug`. KHÁC `refund` ở trên (hoàn TOÀN PHẦN
+ * cho lượt khám đã huỷ): số tiền hoàn KHÔNG nhận từ client — server tự tính từ `quantity` × phần
+ * tiền thật của dòng (đã chia chiết khấu), và tự chọn phương thức hoàn (ví trước). `restock` = thuốc
+ * còn dùng được, tự nhập lại kho bằng phiếu RETURN_FROM_USE. `invoiceId` BẮT BUỘC ở đây (khác các
+ * thao tác khác): hoàn từng dòng luôn nhắm một hoá đơn cụ thể, không có "mặc định".
+ */
+export const refundInvoiceItemsRequestSchema = z.object({
+  invoiceId: z.string().uuid(),
+  reason: z.string().trim().min(1, 'Phải nhập lý do hoàn tiền.'),
+  version: z.number().int(),
+  lines: z
+    .array(
+      z.object({
+        invoiceLineId: z.string().uuid(),
+        quantity: z.number().int().positive('Số lượng hoàn phải lớn hơn 0.'),
+        restock: z.boolean(),
+      }),
+    )
+    .min(1, 'Chọn ít nhất một dòng thuốc để hoàn.')
+    .refine((lines) => new Set(lines.map((l) => l.invoiceLineId)).size === lines.length, 'Mỗi dòng thuốc chỉ được chọn một lần.'),
+});
+export type RefundInvoiceItemsRequest = z.infer<typeof refundInvoiceItemsRequestSchema>;
 
 /**
  * `POST /billing/invoices/:encounterId/pay-with-wallet` — Ví tạm ứng. Trừ số dư ví hiện có; nếu
@@ -193,6 +304,7 @@ export type RefundInvoiceRequest = z.infer<typeof refundInvoiceRequestSchema>;
  * `WALLET_INSUFFICIENT_BALANCE` (kèm `details.shortfall`), dùng `topup-and-pay-with-wallet` bên dưới.
  */
 export const payInvoiceWithWalletRequestSchema = z.object({
+  invoiceId: targetInvoiceIdSchema,
   remainderPaymentMethodCode: paymentMethodSchema.optional(),
   version: z.number().int(),
 });
@@ -205,6 +317,7 @@ export type PayInvoiceWithWalletRequest = z.infer<typeof payInvoiceWithWalletReq
  * chỉ trừ ví có sẵn).
  */
 export const topUpAndPayInvoiceWithWalletRequestSchema = z.object({
+  invoiceId: targetInvoiceIdSchema,
   topUpAmount: z.number().int().positive('Số tiền nạp phải lớn hơn 0.'),
   topUpPaymentMethodCode: paymentMethodSchema,
   cashAccountId: z.string().uuid().optional(),
@@ -222,12 +335,14 @@ export type TopUpAndPayInvoiceWithWalletRequest = z.infer<typeof topUpAndPayInvo
  */
 const applyInvoiceDiscountNoneSchema = z.object({
   mode: z.literal('NONE'),
+  invoiceId: targetInvoiceIdSchema,
   reason: z.string().min(1, 'Phải nhập lý do.'),
   version: z.number().int(),
 });
 
 const applyInvoiceDiscountTotalSchema = z.object({
   mode: z.literal('TOTAL'),
+  invoiceId: targetInvoiceIdSchema,
   discountType: discountTypeSchema,
   discountValue: z.number().int().positive('Chiết khấu phải lớn hơn 0.'),
   reason: z.string().min(1, 'Phải nhập lý do chiết khấu.'),
@@ -236,6 +351,7 @@ const applyInvoiceDiscountTotalSchema = z.object({
 
 const applyInvoiceDiscountPerLineSchema = z.object({
   mode: z.literal('PER_LINE'),
+  invoiceId: targetInvoiceIdSchema,
   /** `discountType: null` = dòng đó KHÔNG chiết khấu (cho phép chiết khấu một phần dịch vụ). */
   lines: z
     .array(
@@ -315,6 +431,8 @@ export const billingListItemSchema = z.object({
   paidAt: z.string().nullable(),
   /** #085 — nguồn cho badge "Cần hoàn tiền" ở danh sách Thu ngân (xem `needsRefund()` ở `@nexamed/core`). */
   needsRefund: z.boolean(),
+  /** #203 — tổng đã hoàn (tổng dòng payment REFUND); 0 khi chưa hoàn. Cột "Đã hoàn" đọc field này. */
+  refundedAmount: z.number().int(),
 });
 export type BillingListItem = z.infer<typeof billingListItemSchema>;
 

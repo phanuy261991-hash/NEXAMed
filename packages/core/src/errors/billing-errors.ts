@@ -60,3 +60,45 @@ export class InvoiceDiscountNotAllowedError extends DomainError {
     super('Chỉ chỉnh chiết khấu khi phiếu đang ở trạng thái chờ thu.');
   }
 }
+
+/**
+ * Hoàn tiền một phần theo dòng thuốc (#203) — dòng không hoàn được: không phải dòng thuốc (dịch vụ
+ * khám chỉ hoàn toàn phần khi huỷ lượt khám), hoặc không thuộc hoá đơn này.
+ */
+export class InvoiceLineNotRefundableError extends DomainError {
+  readonly code = 'INVOICE_LINE_NOT_REFUNDABLE';
+
+  constructor() {
+    super('Chỉ hoàn tiền được từng dòng THUỐC của hoá đơn đã thu.');
+  }
+}
+
+/** Hoàn tiền một phần (#203) — số lượng hoàn vượt số còn hoàn được của dòng (đã bán − đã hoàn). */
+export class InvoiceRefundQuantityExceededError extends DomainError {
+  readonly code = 'INVOICE_REFUND_QUANTITY_EXCEEDED';
+
+  constructor() {
+    super('Số lượng hoàn vượt quá số lượng còn hoàn được của dòng thuốc.');
+  }
+}
+
+/** Hoàn tiền một phần (#203) — tổng tiền hoàn bằng 0đ (ví dụ dòng chiết khấu 100%): không có tiền để hoàn. */
+export class InvoiceRefundZeroAmountError extends DomainError {
+  readonly code = 'INVOICE_REFUND_ZERO_AMOUNT';
+
+  constructor() {
+    super('Các dòng đã chọn không có tiền để hoàn (số tiền hoàn bằng 0).');
+  }
+}
+
+/**
+ * "Đánh dấu chưa thu" trên phiếu ĐÃ CÓ hoàn tiền một phần (#203) — sẽ xoá cả dòng hoàn và cộng ví
+ * thừa; sai trái với bản chất "sửa thao tác bấm nhầm". Tiền đã hoàn ra khỏi két thì không đảo được.
+ */
+export class InvoiceHasRefundsError extends DomainError {
+  readonly code = 'INVOICE_HAS_REFUNDS';
+
+  constructor() {
+    super('Phiếu thu này đã hoàn tiền một phần — không thể "Đánh dấu chưa thu".');
+  }
+}

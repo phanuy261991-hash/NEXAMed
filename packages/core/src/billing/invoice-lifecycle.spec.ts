@@ -111,3 +111,28 @@ describe('computeDailyBillingTotals', () => {
     });
   });
 });
+describe('computeDailyBillingTotals — hoàn MỘT PHẦN (#203)', () => {
+  it('phiếu PAID đã hoàn một phần: vẫn tính đã thu đủ, phần hoàn vào cột đã hoàn, thực thu = đã thu − đã hoàn', () => {
+    const totals = computeDailyBillingTotals([
+      { status: 'PAID', dueAmount: 100_000, refundedAmount: 30_000 },
+      { status: 'PAID', dueAmount: 50_000 },
+    ]);
+    expect(totals.paidTotalAmount).toBe(150_000);
+    expect(totals.refundedCount).toBe(1);
+    expect(totals.refundedTotalAmount).toBe(30_000);
+    expect(totals.netTotalAmount).toBe(120_000);
+  });
+
+  it('phiếu REFUNDED giữ nguyên quy ước cũ: hoàn đúng dueAmount, KHÔNG cộng thêm refundedAmount', () => {
+    const totals = computeDailyBillingTotals([{ status: 'REFUNDED', dueAmount: 80_000, refundedAmount: 80_000 }]);
+    expect(totals.refundedTotalAmount).toBe(80_000);
+    expect(totals.refundedCount).toBe(1);
+    expect(totals.netTotalAmount).toBe(0);
+  });
+
+  it('refundedAmount bằng 0/bỏ trống không tạo phiếu "đã hoàn"', () => {
+    const totals = computeDailyBillingTotals([{ status: 'PAID', dueAmount: 10_000, refundedAmount: 0 }, { status: 'PAID', dueAmount: 10_000 }]);
+    expect(totals.refundedCount).toBe(0);
+    expect(totals.refundedTotalAmount).toBe(0);
+  });
+});

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { EncounterServiceItem, EncounterStatus, Invoice, InvoiceLine, Payment, Prisma } from '@prisma/client';
+import type { EncounterServiceItem, EncounterStatus, Invoice, InvoiceLine, InvoiceRefund, InvoiceRefundLine, Payment, Prisma } from '@prisma/client';
 import { computeInvoiceFromServiceItems, type ServiceItemForInvoice } from '@nexamed/core';
 import type { ApplyInvoiceDiscountRequest } from '@nexamed/shared';
 import { BusinessCodeService } from '../clinic/business-code.service';
@@ -27,6 +27,17 @@ interface PaymentSides {
    * này thay vì giả định đúng 1 dòng. */
   activePayments: { id: string; method: string; amount: bigint; paidAt: Date; cashAccountId: string | null }[];
   refundPayment: { paidAt: Date; reason: string | null } | null;
+  /** Hoàn MỘT PHẦN (#203) — TỔNG mọi dòng payment REFUND còn hiệu lực (cả hoàn toàn phần #085 lẫn từng
+   * lần hoàn một phần); 0n khi chưa hoàn. Nguồn duy nhất của "đã hoàn" — không lưu cột trên invoice. */
+  refundedTotal: bigint;
+  /** Từng dòng payment REFUND còn hiệu lực (method + amount) — `refund()` toàn phần và hoàn một phần dùng
+   * để tính "còn hoàn được" theo TỪNG phương thức (= đã thu − đã hoàn), tránh hoàn thừa. */
+  refundRows: { method: string; amount: bigint }[];
+}
+
+/** Một lần hoàn một phần kèm dòng (#203) — tên thuốc lấy từ chính `InvoiceLine` để hiển thị lịch sử. */
+export interface InvoiceRefundWithLines extends InvoiceRefund {
+  lines: (InvoiceRefundLine & { invoiceLine: { examTypeName: string } })[];
 }
 
 /** Kho Thuốc GĐ3 (#163) — mỗi dòng hoá đơn kèm theo `issueNo` của Phiếu xuất kho nguồn (chỉ có ý
@@ -40,6 +51,8 @@ interface InvoiceLineWithIssue extends InvoiceLine {
 export interface InvoiceWithLines extends Invoice, PaymentSides {
   lines: InvoiceLineWithIssue[];
   encounter: EncounterContext;
+  /** Các lần hoàn tiền MỘT PHẦN (#203), cũ → mới. */
+  refunds: InvoiceRefundWithLines[];
 }
 
 /** Tóm tắt hoá đơn KHÁC của CÙNG lượt khám — cho khối tham chiếu chéo khi 1 lượt khám có >1 hoá
@@ -104,6 +117,17 @@ const LINE_WITH_ISSUE_INCLUDE = {
   },
 } satisfies Prisma.InvoiceInclude;
 
+/** Hoàn MỘT PHẦN (#203) — lịch sử các lần hoàn + dòng của từng lần, dùng cho DTO chi tiết/in gộp. */
+const REFUND_HISTORY_INCLUDE = {
+  refunds: {
+    where: { deletedAt: null },
+    orderBy: { createdAt: 'asc' as const },
+    include: {
+      lines: { where: { deletedAt: null }, orderBy: { createdAt: 'asc' as const }, include: { invoiceLine: { select: { examTypeName: true } } } },
+    },
+  },
+} satisfies Prisma.InvoiceInclude;
+
 /** Bối cảnh lượt khám/bệnh nhân — dùng chung cho cả chi tiết 1 phiếu thu lẫn danh sách trong ngày. */
 const ENCOUNTER_CONTEXT_INCLUDE = {
   encounter: {
@@ -123,10 +147,13 @@ const ENCOUNTER_CONTEXT_INCLUDE = {
 function toPaymentSides(payments: Payment[]): PaymentSides {
   const paymentRows = payments.filter((p) => p.type === 'PAYMENT');
   const refund = payments.find((p) => p.type === 'REFUND') ?? null;
+  const refundedTotal = payments.filter((p) => p.type === 'REFUND').reduce((sum, p) => sum + p.amount, 0n);
   return {
     activePayment: paymentRows[0] ? { method: paymentRows[0].method, paidAt: paymentRows[0].paidAt } : null,
     activePayments: paymentRows.map((p) => ({ id: p.id, method: p.method, amount: p.amount, paidAt: p.paidAt, cashAccountId: p.cashAccountId })),
     refundPayment: refund ? { paidAt: refund.paidAt, reason: refund.reason } : null,
+    refundedTotal,
+    refundRows: payments.filter((p) => p.type === 'REFUND').map((p) => ({ method: p.method, amount: p.amount })),
   };
 }
 
@@ -209,7 +236,7 @@ export class InvoiceRepository {
     return tx.invoice
       .findFirst({
         where: { tenantId, encounterId, invoiceType: 'SERVICE', deletedAt: null },
-        include: { ...LINE_WITH_ISSUE_INCLUDE, ...ENCOUNTER_CONTEXT_INCLUDE, ...ACTIVE_PAYMENT_INCLUDE },
+        include: { ...LINE_WITH_ISSUE_INCLUDE, ...ENCOUNTER_CONTEXT_INCLUDE, ...ACTIVE_PAYMENT_INCLUDE, ...REFUND_HISTORY_INCLUDE },
       })
       .then((row) => (row ? { ...row, ...toPaymentSides(row.payments) } : null));
   }
@@ -221,9 +248,22 @@ export class InvoiceRepository {
     return tx.invoice
       .findFirst({
         where: { tenantId, id, deletedAt: null },
-        include: { ...LINE_WITH_ISSUE_INCLUDE, ...ENCOUNTER_CONTEXT_INCLUDE, ...ACTIVE_PAYMENT_INCLUDE },
+        include: { ...LINE_WITH_ISSUE_INCLUDE, ...ENCOUNTER_CONTEXT_INCLUDE, ...ACTIVE_PAYMENT_INCLUDE, ...REFUND_HISTORY_INCLUDE },
       })
       .then((row) => (row ? { ...row, ...toPaymentSides(row.payments) } : null));
+  }
+
+  /** Phiếu thu tổng hợp — MỌI hoá đơn chưa huỷ của lượt khám, đủ dòng/thanh toán/bối cảnh để in.
+   * `CANCELLED` bị loại (chứng từ đã vô hiệu không đưa cho khách). SERVICE luôn đứng trước rồi tới
+   * các hoá đơn DRUG theo thứ tự tạo — sắp ở JS (không tin thứ tự enum Postgres cho `invoiceType`). */
+  async findAllForCombinedPrint(tx: Prisma.TransactionClient, tenantId: string, encounterId: string): Promise<InvoiceWithLines[]> {
+    const rows = await tx.invoice.findMany({
+      where: { tenantId, encounterId, deletedAt: null, status: { not: 'CANCELLED' } },
+      include: { ...LINE_WITH_ISSUE_INCLUDE, ...ENCOUNTER_CONTEXT_INCLUDE, ...ACTIVE_PAYMENT_INCLUDE, ...REFUND_HISTORY_INCLUDE },
+      orderBy: { createdAt: 'asc' },
+    });
+    const withSides = rows.map((row) => ({ ...row, ...toPaymentSides(row.payments) }));
+    return [...withSides.filter((r) => r.invoiceType === 'SERVICE'), ...withSides.filter((r) => r.invoiceType !== 'SERVICE')];
   }
 
   /** Kho Thuốc GĐ3 (#165) — tóm tắt mọi hoá đơn KHÁC của CÙNG lượt khám (không phải `excludeId`) —
@@ -510,6 +550,20 @@ export class InvoiceRepository {
     }
 
     return count;
+  }
+
+  /**
+   * Hoàn MỘT PHẦN (#203) — hoá đơn VẪN `PAID`, chỉ khoá phiên bản: `WHERE version=? AND status='PAID'` +
+   * tăng `version`. Đây là chốt chặn DUY NHẤT chống 2 người hoàn cùng dòng cùng lúc (không có CHECK
+   * ở DB cho "tổng hoàn ≤ tổng thu"): người thứ hai đọc cùng `version`, `count===0` → 409.
+   */
+  touchForPartialRefund(tx: Prisma.TransactionClient, tenantId: string, id: string, expectedVersion: number, actorId: string): Promise<number> {
+    return tx.invoice
+      .updateMany({
+        where: { tenantId, id, version: expectedVersion, deletedAt: null, status: 'PAID' },
+        data: { updatedBy: actorId, version: { increment: 1 } },
+      })
+      .then((r) => r.count);
   }
 
   /** Idempotent — chỉ set lần đầu (`WHERE printed_at IS NULL`), cùng khuôn `PrescriptionRepository.markPrintedIfNotYet()`. */

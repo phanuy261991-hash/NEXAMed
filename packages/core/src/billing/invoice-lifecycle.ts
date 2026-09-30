@@ -58,6 +58,12 @@ export interface DailyBillingTotalsInput {
   /** Số tiền THẬT thu/hoàn/còn chờ thu — SAU chiết khấu (`computeInvoiceDiscount().dueAmount` ở
    * `billing/invoice-discount.ts`), KHÔNG phải `invoice.totalAmount` (gross, trước chiết khấu). */
   dueAmount: number;
+  /**
+   * Hoàn MỘT PHẦN (#203) — tổng tiền đã hoàn của phiếu còn `PAID` (tổng các dòng payment REFUND).
+   * Bỏ trống/0 = chưa hoàn phần nào. Phiếu `REFUNDED` KHÔNG dùng field này: luôn tính hoàn đúng
+   * `dueAmount` (giữ nguyên quy ước từ #085).
+   */
+  refundedAmount?: number;
 }
 
 export interface DailyBillingTotals {
@@ -96,6 +102,10 @@ export function computeDailyBillingTotals(invoices: readonly DailyBillingTotalsI
       case 'PAID':
         totals.paidCount += 1;
         totals.paidTotalAmount += invoice.dueAmount;
+        if ((invoice.refundedAmount ?? 0) > 0) {
+          totals.refundedCount += 1;
+          totals.refundedTotalAmount += invoice.refundedAmount ?? 0;
+        }
         break;
       case 'REFUNDED':
         totals.paidCount += 1;

@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowCounterClockwise, ArrowLeft, Bank, CheckCircle, CreditCard, Money, Printer, Receipt, Wallet, Warning, XCircle } from '@phosphor-icons/react';
-import type { DiscountType, PaymentMethod } from '@nexamed/shared';
+import type { CombinedInvoicePrintResponse, DiscountType, PaymentMethod } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
@@ -22,12 +22,14 @@ import { useCurrentCashierShiftQuery } from '../cashier-shift/cashier-shift.quer
 import { useCashierShiftRequiredEnabledQuery } from '../clinic/clinic.queries';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { useWalletQuery } from '../patient-wallet/patient-wallet.queries';
+import { InvoiceCombinedPrintView } from './InvoiceCombinedPrintView';
 import { InvoicePrintView } from './InvoicePrintView';
 import {
   useApplyInvoiceDiscountMutation,
   useBillingInvoiceQuery,
   useMarkInvoicePaidMutation,
   usePayInvoiceWithWalletMutation,
+  usePrintCombinedInvoicesMutation,
   usePrintInvoiceMutation,
   useRefundInvoiceMutation,
   useRevertInvoicePaymentMutation,
@@ -86,6 +88,10 @@ export function InvoiceDetailPage() {
   const currentUser = useAuthStore((s) => s.user);
   const collectedByName = currentUser?.displayName ?? currentUser?.fullName ?? '';
   const canRefund = useHasPermission('invoice', 'refund');
+  const canPrint = useHasPermission('invoice', 'print');
+  // Phiếu thu tổng hợp — dữ liệu bản in gộp; có giá trị thì `InvoiceCombinedPrintView` được render
+  // THAY `InvoicePrintView` (CSS in chỉ chịu 1 `.print-area` tại 1 thời điểm), in xong tự xoá.
+  const [combinedPrint, setCombinedPrint] = useState<CombinedInvoicePrintResponse | null>(null);
 
   const invoiceQuery = useBillingInvoiceQuery(encounterId, invoiceIdParam);
   const clinicQuery = useClinicPrintHeaderQuery();
@@ -184,7 +190,8 @@ export function InvoiceDetailPage() {
   const topUpAndPayMutation = useTopUpAndPayInvoiceWithWalletMutation(encounterId);
   const revertMutation = useRevertInvoicePaymentMutation(encounterId);
   const draftMutation = useSaveInvoiceDraftMutation(encounterId);
-  const printMutation = usePrintInvoiceMutation(encounterId);
+  const printMutation = usePrintInvoiceMutation(encounterId, invoice?.id);
+  const printCombinedMutation = usePrintCombinedInvoicesMutation(encounterId);
   const refundMutation = useRefundInvoiceMutation(encounterId);
   const discountMutation = useApplyInvoiceDiscountMutation(encounterId);
 
@@ -209,9 +216,9 @@ export function InvoiceDetailPage() {
     if (reason === null) return;
     try {
       if (!hasValue) {
-        await discountMutation.mutateAsync({ mode: 'NONE', reason, version: invoice.version });
+        await discountMutation.mutateAsync({ mode: 'NONE', invoiceId: invoice.id, reason, version: invoice.version });
       } else {
-        await discountMutation.mutateAsync({ mode: 'TOTAL', discountType: totalDiscountType, discountValue: totalDiscountValue!, reason, version: invoice.version });
+        await discountMutation.mutateAsync({ mode: 'TOTAL', invoiceId: invoice.id, discountType: totalDiscountType, discountValue: totalDiscountValue!, reason, version: invoice.version });
       }
     } catch (err) {
       setDiscountError(err instanceof ApiError ? err.message : 'Có lỗi xảy ra, vui lòng thử lại.');
@@ -231,9 +238,9 @@ export function InvoiceDetailPage() {
     if (reason === null) return;
     try {
       if (!hasAny) {
-        await discountMutation.mutateAsync({ mode: 'NONE', reason, version: invoice.version });
+        await discountMutation.mutateAsync({ mode: 'NONE', invoiceId: invoice.id, reason, version: invoice.version });
       } else {
-        await discountMutation.mutateAsync({ mode: 'PER_LINE', lines, reason, version: invoice.version });
+        await discountMutation.mutateAsync({ mode: 'PER_LINE', invoiceId: invoice.id, lines, reason, version: invoice.version });
       }
     } catch (err) {
       setDiscountError(err instanceof ApiError ? err.message : 'Có lỗi xảy ra, vui lòng thử lại.');
@@ -257,7 +264,7 @@ export function InvoiceDetailPage() {
     }
     setError(null);
     try {
-      await payMutation.mutateAsync({ method, version: invoice.version });
+      await payMutation.mutateAsync({ invoiceId: invoice.id, method, version: invoice.version });
       setTimeout(() => window.print(), 100);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Có lỗi xảy ra, vui lòng thử lại.');
@@ -278,13 +285,14 @@ export function InvoiceDetailPage() {
       const remainderPaymentMethodCode = useHybrid && hybridRemainderMethod ? hybridRemainderMethod : undefined;
       if (topUpAmount) {
         await topUpAndPayMutation.mutateAsync({
+          invoiceId: invoice.id,
           version: invoice.version,
           topUpAmount,
           topUpPaymentMethodCode: 'CASH',
           remainderPaymentMethodCode,
         });
       } else {
-        await payWithWalletMutation.mutateAsync({ version: invoice.version, remainderPaymentMethodCode });
+        await payWithWalletMutation.mutateAsync({ invoiceId: invoice.id, version: invoice.version, remainderPaymentMethodCode });
       }
       setTimeout(() => window.print(), 100);
       return true;
@@ -298,7 +306,7 @@ export function InvoiceDetailPage() {
     if (!invoice) return;
     setError(null);
     try {
-      await draftMutation.mutateAsync({ pendingPaymentMethod: method, pendingCashReceivedAmount: cashReceived ?? null, version: invoice.version });
+      await draftMutation.mutateAsync({ invoiceId: invoice.id, pendingPaymentMethod: method, pendingCashReceivedAmount: cashReceived ?? null, version: invoice.version });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Có lỗi xảy ra, vui lòng thử lại.');
     }
@@ -310,11 +318,33 @@ export function InvoiceDetailPage() {
     setTimeout(() => window.print(), 100);
   }
 
+  // Phiếu thu tổng hợp — số phiếu THỰC SỰ có trong bản in (phiếu huỷ bị loại). Chỉ hiện nút khi ≥2.
+  const combinedInvoiceCount = invoice ? [invoice.status, ...invoice.otherInvoices.map((o) => o.status)].filter((s) => s !== 'CANCELLED').length : 0;
+  const showCombinedPrint = canPrint && combinedInvoiceCount >= 2;
+
+  async function handlePrintCombined() {
+    setError(null);
+    try {
+      setCombinedPrint(await printCombinedMutation.mutateAsync());
+      setTimeout(() => window.print(), 100);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Có lỗi xảy ra, vui lòng thử lại.');
+    }
+  }
+
+  // In xong (hoặc huỷ hộp thoại in) trình duyệt bắn `afterprint` — trả về bản in lẻ mặc định.
+  useEffect(() => {
+    if (!combinedPrint) return;
+    const handleAfterPrint = () => setCombinedPrint(null);
+    window.addEventListener('afterprint', handleAfterPrint, { once: true });
+    return () => window.removeEventListener('afterprint', handleAfterPrint);
+  }, [combinedPrint]);
+
   async function handleRevert() {
     if (!invoice || revertReason.trim() === '') return;
     setError(null);
     try {
-      await revertMutation.mutateAsync({ reason: revertReason.trim(), version: invoice.version });
+      await revertMutation.mutateAsync({ invoiceId: invoice.id, reason: revertReason.trim(), version: invoice.version });
       setRevertOpen(false);
       setRevertReason('');
     } catch (err) {
@@ -327,7 +357,7 @@ export function InvoiceDetailPage() {
     if (!invoice || refundReason.trim() === '') return;
     setError(null);
     try {
-      await refundMutation.mutateAsync({ reason: refundReason.trim(), version: invoice.version });
+      await refundMutation.mutateAsync({ invoiceId: invoice.id, reason: refundReason.trim(), version: invoice.version });
       setRefundOpen(false);
       setRefundReason('');
     } catch (err) {
@@ -446,11 +476,21 @@ export function InvoiceDetailPage() {
             )}
             {/* #085 — "Hủy lượt khám" ngay tại đây, dùng chung dialog. Ẩn khi lượt khám đã huỷ rồi
                 (encounterCancelled) — không huỷ lại lần 2. */}
-            {!invoice.encounterCancelled && (
-              <Button type="button" variant="danger" className="ml-auto px-2.5 py-1 text-xs" onClick={() => setCancelOpen(true)}>
-                <XCircle size={13} weight="bold" aria-hidden="true" />
-                Hủy lượt khám
-              </Button>
+            {(showCombinedPrint || !invoice.encounterCancelled) && (
+              <div className="ml-auto flex items-center gap-2">
+                {showCombinedPrint && (
+                  <Button type="button" onClick={() => void handlePrintCombined()} loading={printCombinedMutation.isPending}>
+                    <Printer size={16} weight="bold" aria-hidden="true" />
+                    In gộp {combinedInvoiceCount} phiếu
+                  </Button>
+                )}
+                {!invoice.encounterCancelled && (
+                  <Button type="button" variant="danger" className="px-2.5 py-1 text-xs" onClick={() => setCancelOpen(true)}>
+                    <XCircle size={13} weight="bold" aria-hidden="true" />
+                    Hủy lượt khám
+                  </Button>
+                )}
+              </div>
             )}
           </div>
 
@@ -889,15 +929,27 @@ export function InvoiceDetailPage() {
             </div>
           </div>
 
-          <InvoicePrintView
-            clinicName={clinicQuery.data?.name ?? ''}
-            clinicAddress={clinicQuery.data?.address ?? null}
-            clinicPhone={clinicQuery.data?.phone ?? null}
-            printLogoUrl={clinicQuery.data?.printLogoUrl ?? null}
-            collectedByName={collectedByName}
-            paymentMethodLabel={paymentMethodName(invoice.paymentMethod)}
-            invoice={invoice}
-          />
+          {combinedPrint ? (
+            <InvoiceCombinedPrintView
+              clinicName={clinicQuery.data?.name ?? ''}
+              clinicAddress={clinicQuery.data?.address ?? null}
+              clinicPhone={clinicQuery.data?.phone ?? null}
+              printLogoUrl={clinicQuery.data?.printLogoUrl ?? null}
+              collectedByName={collectedByName}
+              paymentMethodName={paymentMethodName}
+              data={combinedPrint}
+            />
+          ) : (
+            <InvoicePrintView
+              clinicName={clinicQuery.data?.name ?? ''}
+              clinicAddress={clinicQuery.data?.address ?? null}
+              clinicPhone={clinicQuery.data?.phone ?? null}
+              printLogoUrl={clinicQuery.data?.printLogoUrl ?? null}
+              collectedByName={collectedByName}
+              paymentMethodLabel={paymentMethodName(invoice.paymentMethod)}
+              invoice={invoice}
+            />
+          )}
         </>
       )}
 

@@ -6,6 +6,7 @@ import {
   listBillingInvoicesQuerySchema,
   markInvoicePaidRequestSchema,
   payInvoiceWithWalletRequestSchema,
+  printInvoiceRequestSchema,
   refundInvoiceRequestSchema,
   revertInvoicePaymentRequestSchema,
   saveInvoiceDraftRequestSchema,
@@ -125,12 +126,26 @@ export class InvoiceController {
     return this.invoiceService.applyDiscount(tenantId, userId, encounterId, dto, extractRequestMeta(req));
   }
 
+  /**
+   * Phiếu thu tổng hợp — trả dữ liệu để in gộp MỌI phiếu thu chưa huỷ của lượt khám VÀ ghi nhận
+   * `printedAt` cho từng phiếu. Cùng quyền `invoice.print` như `print` bên dưới.
+   */
+  @Post(':encounterId/print-combined')
+  @RequirePermission('invoice', 'print', { entityIdParam: 'encounterId' })
+  @HttpCode(200)
+  async printCombined(@Param('encounterId') encounterId: string, @Req() req: Request) {
+    const { userId, tenantId } = req.user!;
+    return this.invoiceService.printCombined(tenantId, userId, encounterId, extractRequestMeta(req));
+  }
+
   /** In phiếu thu (BIL-02) — ghi nhận `printedAt`, idempotent. Bố cục in nằm ở tầng web. */
   @Post(':encounterId/print')
   @RequirePermission('invoice', 'print', { entityIdParam: 'encounterId' })
   @HttpCode(200)
-  async print(@Param('encounterId') encounterId: string, @Req() req: Request) {
+  async print(@Param('encounterId') encounterId: string, @Body() body: unknown, @Req() req: Request) {
+    // Body tuỳ chọn (chỉ `invoiceId`) — client cũ không gửi gì vẫn hợp lệ (`undefined` → `{}`).
+    const dto = printInvoiceRequestSchema.parse(body ?? {});
     const { userId, tenantId } = req.user!;
-    return this.invoiceService.markPrinted(tenantId, userId, encounterId, extractRequestMeta(req));
+    return this.invoiceService.markPrinted(tenantId, userId, encounterId, dto.invoiceId, extractRequestMeta(req));
   }
 }

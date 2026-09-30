@@ -153,6 +153,17 @@ export class StockIssueRepository {
     return tx.stockIssue.findFirst({ where: { tenantId, id, deletedAt: null } });
   }
 
+  /**
+   * Hoàn tiền MỘT PHẦN (#203) — các dòng phiếu xuất cần nhập lại kho: kèm phiếu xuất (kho, trạng thái) và
+   * lô (số lô, hạn dùng) để `StockReceiptService.createReturnFromUseReceipts()` dựng phiếu nhập hoàn trả.
+   */
+  findLinesForReturn(tx: Prisma.TransactionClient, tenantId: string, ids: string[]) {
+    return tx.stockIssueLine.findMany({
+      where: { tenantId, id: { in: ids }, deletedAt: null },
+      include: { issue: { select: { warehouseId: true, status: true } }, batch: { select: { batchNo: true, expiryDate: true } } },
+    });
+  }
+
   /** Dùng cho đường XEM (GET chi tiết) — KHÔNG lọc `deletedAt`, phiếu đã huỷ vẫn xem được (chỉ đọc). */
   findByIdAnyWithContext(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<StockIssueWithContext | null> {
     return tx.stockIssue.findFirst({ where: { tenantId, id }, include: CONTEXT_INCLUDE }) as Promise<StockIssueWithContext | null>;
