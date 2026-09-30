@@ -55,6 +55,14 @@ export class CashierShiftController {
     return this.cashierShiftService.getSummary(tenantId, id);
   }
 
+  /** "Phiếu trong ca của tôi" — từng sự kiện thu/hoàn tiền khám của ca (nguồn = dòng `payment`). */
+  @Get(':id/invoice-payments')
+  @RequirePermission('cashier_shift', 'read', { entityIdParam: 'id' })
+  async invoicePayments(@Param('id') id: string, @Req() req: Request) {
+    const { tenantId, userId } = req.user!;
+    return this.cashierShiftService.listInvoicePayments(tenantId, userId, req.dataScope!, id);
+  }
+
   @Get(':id')
   @RequirePermission('cashier_shift', 'read', { entityIdParam: 'id' })
   async get(@Param('id') id: string, @Req() req: Request) {

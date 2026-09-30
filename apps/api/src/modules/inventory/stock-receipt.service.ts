@@ -98,6 +98,7 @@ export class StockReceiptService {
       await this.validateSourceIssueRef(tx, tenantId, dto.sourceIssueId);
 
       const lines = await this.buildLineData(tx, tenantId, dto.lines);
+      await this.assertReturnWithinIssued(tx, tenantId, dto.receiptType, dto.sourceIssueId, lines);
       const totalAmount = lines.reduce((sum, l) => sum + l.lineAmount, 0n);
       const occurredAt = dto.occurredAt ? new Date(dto.occurredAt) : new Date();
       const receiptNo = await this.businessCodeService.generate(tx, tenantId, actorId, 'STOCK_RECEIPT', occurredAt);
@@ -166,6 +167,7 @@ export class StockReceiptService {
       await this.validateSourceIssueRef(tx, tenantId, dto.sourceIssueId);
 
       const lines = await this.buildLineData(tx, tenantId, dto.lines);
+      await this.assertReturnWithinIssued(tx, tenantId, dto.receiptType, dto.sourceIssueId, lines, id);
       const totalAmount = lines.reduce((sum, l) => sum + l.lineAmount, 0n);
       const occurredAt = dto.occurredAt ? new Date(dto.occurredAt) : existing.occurredAt;
 
@@ -706,6 +708,57 @@ export class StockReceiptService {
     const issue = await this.stockIssueRepository.findById(tx, tenantId, sourceIssueId);
     if (!issue || issue.status !== 'POSTED') {
       throw new UnprocessableEntityException('Phiếu xuất gốc không hợp lệ — phải là phiếu xuất ĐÃ DUYỆT.');
+    }
+  }
+
+  /**
+   * Phiếu nhập hoàn trả lập TAY có chọn "Phiếu xuất gốc" (#195) — tổng số lượng nhập lại từng thuốc (kể cả các
+   * phiếu hoàn trả Nháp/Đã duyệt khác cùng phiếu xuất gốc, kể cả phiếu tự sinh từ "Hoàn tiền thuốc" #203) KHÔNG
+   * được vượt số đã xuất của thuốc đó trên phiếu xuất gốc, thuốc không có trên phiếu xuất gốc cũng bị chặn.
+   * Không chọn phiếu xuất gốc → không có gì để đối chiếu (giữ nguyên quyết định #195: không bắt buộc). So sánh
+   * ở đơn vị CƠ SỞ (phiếu xuất luôn lưu đơn vị cơ sở, dòng nhập có thể đơn vị đóng gói). `excludeReceiptId` = phiếu
+   * đang sửa (không tự cộng dồn với chính mình).
+   */
+  private async assertReturnWithinIssued(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    receiptType: string,
+    sourceIssueId: string | null | undefined,
+    lines: StockReceiptLineData[],
+    excludeReceiptId?: string,
+  ): Promise<void> {
+    if (receiptType !== 'RETURN_FROM_USE' || !sourceIssueId) return;
+    const issued = await this.stockIssueRepository.sumIssuedQuantityByDrug(tx, tenantId, sourceIssueId);
+    const prior = await this.stockReceiptRepository.listReturnLinesForSourceIssue(tx, tenantId, sourceIssueId, excludeReceiptId);
+
+    const drugCache = new Map<string, DrugWithDetails>();
+    const toBase = async (drugId: string, unitCode: string, quantity: number): Promise<number> => {
+      const cached = drugCache.get(drugId);
+      const drug = cached ?? (await this.drugRepository.findByIdWithDetails(tx, tenantId, drugId));
+      if (!drug) throw new NotFoundException();
+      drugCache.set(drugId, drug);
+      return this.convertLineToBaseUnit(drug, unitCode, quantity, 0n).baseQuantity;
+    };
+
+    const returnedBefore = new Map<string, number>();
+    for (const p of prior) {
+      returnedBefore.set(p.drugId, (returnedBefore.get(p.drugId) ?? 0) + (await toBase(p.drugId, p.unitCode, p.quantity)));
+    }
+    const returningNow = new Map<string, number>();
+    for (const l of lines) {
+      returningNow.set(l.drugId, (returningNow.get(l.drugId) ?? 0) + (await toBase(l.drugId, l.unitCode, l.quantity)));
+    }
+    for (const [drugId, quantity] of returningNow) {
+      const issuedQty = issued.get(drugId) ?? 0;
+      const before = returnedBefore.get(drugId) ?? 0;
+      if (quantity + before > issuedQty) {
+        const name = drugCache.get(drugId)?.name ?? '';
+        throw new UnprocessableEntityException(
+          issuedQty === 0
+            ? `"${name}" không có trên phiếu xuất gốc đã chọn.`
+            : `Số lượng nhập lại "${name}" vượt số đã xuất theo phiếu xuất gốc (đã xuất ${issuedQty}, đã nhập lại trước đó ${before}, còn nhập lại được ${Math.max(0, issuedQty - before)}).`,
+        );
+      }
     }
   }
 

@@ -8,8 +8,7 @@ import { RowActionButton } from '../../shared/ui/RowActionButton';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { StatusBadge, type StatusBadgeTone } from '../../shared/ui/StatusBadge';
 import { formatVnd } from '../../shared/format/currency';
-import { isoToVietnamDateString } from '../appointment/schedule-grid.utils';
-import { useBillingInvoiceListQuery } from '../billing/invoice.queries';
+import { useCashierShiftInvoicePaymentsQuery } from '../cashier-shift/cashier-shift.queries';
 import { CashVoucherDetailDialog } from './CashVoucherDetailDialog';
 import { useCashVouchersQuery } from './cash-voucher.queries';
 
@@ -17,6 +16,9 @@ interface ActivityRow {
   id: string;
   timeIso: string;
   kind: 'invoice' | 'voucher';
+  /** Chỉ có với `kind==='invoice'` — để bấm "Xem" mở đúng hoá đơn. */
+  encounterId?: string;
+  invoiceId?: string;
   kindLabel: string;
   label: string;
   subLabel: string;
@@ -26,7 +28,7 @@ interface ActivityRow {
   statusTone: StatusBadgeTone;
 }
 
-const GRID_COLUMNS = '90px 170px 1.6fr 160px 140px 90px';
+const GRID_COLUMNS = '70px 160px 2fr 140px 130px 70px';
 
 function formatTime(iso: string): string {
   const d = new Date(iso);
@@ -42,42 +44,37 @@ function formatTime(iso: string): string {
  * ngoài khám (`cash_voucher`) đang gắn với ca đang mở, xem LẠI thuần tuý — KHÔNG tính tổng/chênh
  * lệch gì (đã hỏi và chốt: chỉ cần danh sách, không cần con số tổng hợp).
  *
- * **Giới hạn đã biết, chấp nhận có chủ đích để giữ đơn giản (không sửa backend)**: phần tiền khám
- * dùng lại `GET /billing/invoices?date=` — endpoint này lọc theo NGÀY TIẾP NHẬN (`checkedInAt`),
- * không phải ngày thu tiền, rồi lọc lại ở client theo `paidAt` nằm trong khung giờ ca. Trường hợp
- * hiếm: bệnh nhân tiếp nhận hôm trước, thu tiền hôm sau trong ca đang xem — sẽ không thấy trong
- * danh sách này (vẫn thấy đủ trong "Danh sách cần thu" ngày tiếp nhận). Phiếu thu/chi ngoài khám
- * KHÔNG có giới hạn này (lọc thẳng theo `cashierShiftId` chính xác ở backend).
+ * Phần tiền khám lấy từ `GET /cashier-shifts/:id/invoice-payments` — từng SỰ KIỆN thu/hoàn tiền dựng từ
+ * chính các dòng `payment` của ca (cùng nguồn với "Tổng kết hệ thống"/Sổ quỹ), nên hiện đúng cả thu
+ * tiền hôm sau ngày tiếp nhận, hoàn tiền một phần (#203) và hoàn tiền nhiều ngày sau. (Trước #203 dựng
+ * từ danh sách Thu ngân theo ngày tiếp nhận — sót các trường hợp đó, và phiếu hoàn hiện giờ THU sai.)
+ * Phiếu thu/chi ngoài khám lọc thẳng theo `cashierShiftId` ở backend.
  */
 export function MyShiftVouchersDialog({ shift, onClose }: { shift: CashierShiftDetail; onClose: () => void }) {
   const navigate = useNavigate();
   const [voucherDetailId, setVoucherDetailId] = useState<string | null>(null);
 
-  const invoiceQuery = useBillingInvoiceListQuery(isoToVietnamDateString(shift.openedAt));
+  const invoiceQuery = useCashierShiftInvoicePaymentsQuery(shift.id);
   const voucherQuery = useCashVouchersQuery({ cashierShiftId: shift.id });
 
-  const openedAtMs = new Date(shift.openedAt).getTime();
-  const closedAtMs = shift.closedAt ? new Date(shift.closedAt).getTime() : Date.now();
-
   const rows: ActivityRow[] = useMemo(() => {
-    const invoiceRows: ActivityRow[] = (invoiceQuery.data?.items ?? [])
-      .filter((item) => item.paidAt !== null)
-      .filter((item) => {
-        const t = new Date(item.paidAt!).getTime();
-        return t >= openedAtMs && t < closedAtMs;
-      })
-      .map((item) => ({
-        id: `invoice-${item.invoiceId}`,
-        timeIso: item.paidAt!,
+    const invoiceRows: ActivityRow[] = (invoiceQuery.data?.items ?? []).map((item) => {
+      const isRefund = item.type === 'REFUND';
+      return {
+        id: `invoice-${item.invoiceId}-${item.type}-${item.paidAt}`,
+        timeIso: item.paidAt,
         kind: 'invoice' as const,
-        kindLabel: 'Khám bệnh',
+        encounterId: item.encounterId,
+        invoiceId: item.invoiceId,
+        kindLabel: isRefund ? 'Hoàn tiền khám' : 'Thu tiền khám',
         label: item.fullName,
-        subLabel: `${item.patientCode} · ${item.encounterNo}`,
-        amount: item.dueAmount,
-        positive: item.status !== 'REFUNDED',
-        statusLabel: item.status === 'REFUNDED' ? 'Đã hoàn tiền' : 'Đã thu',
-        statusTone: item.status === 'REFUNDED' ? 'accent' : 'success',
-      }));
+        subLabel: `${item.patientCode} · ${item.encounterNo} · ${item.invoiceNo}${isRefund && item.reason ? ` · ${item.reason}` : ''}`,
+        amount: item.amount,
+        positive: !isRefund,
+        statusLabel: isRefund ? 'Đã hoàn tiền' : 'Đã thu',
+        statusTone: isRefund ? ('accent' as const) : ('success' as const),
+      };
+    });
 
     const voucherRows: ActivityRow[] = (voucherQuery.data?.items ?? []).map((item) => ({
       id: `voucher-${item.id}`,
@@ -93,24 +90,22 @@ export function MyShiftVouchersDialog({ shift, onClose }: { shift: CashierShiftD
     }));
 
     return [...invoiceRows, ...voucherRows].sort((a, b) => new Date(b.timeIso).getTime() - new Date(a.timeIso).getTime());
-  }, [invoiceQuery.data, voucherQuery.data, openedAtMs, closedAtMs]);
+  }, [invoiceQuery.data, voucherQuery.data]);
 
   const isLoading = invoiceQuery.isPending || voucherQuery.isPending;
 
-  function handleRowClick(row: ActivityRow, invoiceItem?: { encounterId: string }) {
-    if (row.kind === 'invoice' && invoiceItem) {
-      navigate(`/billing/${invoiceItem.encounterId}`);
+  function handleRowClick(row: ActivityRow) {
+    if (row.kind === 'invoice' && row.encounterId) {
+      navigate(`/billing/${row.encounterId}?invoiceId=${row.invoiceId}`);
       onClose();
     } else if (row.kind === 'voucher') {
       setVoucherDetailId(row.id.replace('voucher-', ''));
     }
   }
 
-  const invoiceByRowId = new Map((invoiceQuery.data?.items ?? []).map((item) => [`invoice-${item.invoiceId}`, item]));
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
-      <div className="flex max-h-[85vh] w-full max-w-4xl flex-col rounded-lg bg-white p-6 shadow-xl">
+      <div className="flex max-h-[85vh] w-full max-w-6xl flex-col rounded-lg bg-white p-6 shadow-xl">
         <ModalHeader
           icon={ClockCounterClockwise}
           title="Phiếu trong ca của tôi"
@@ -140,7 +135,7 @@ export function MyShiftVouchersDialog({ shift, onClose }: { shift: CashierShiftD
             cố định cho flex item, không cần qua `height:100%`. */}
         {!isLoading && rows.length > 0 && (
           <div className="scroll-hover min-h-0 flex-1 overflow-y-auto rounded-lg border border-slate-200">
-              <div style={{ minWidth: 760 }}>
+              <div style={{ minWidth: 900 }}>
                 <div
                   role="row"
                   style={{ gridTemplateColumns: GRID_COLUMNS }}
@@ -184,7 +179,7 @@ export function MyShiftVouchersDialog({ shift, onClose }: { shift: CashierShiftD
                       <StatusBadge tone={row.statusTone}>{row.statusLabel}</StatusBadge>
                     </div>
                     <div role="cell" className="flex items-center justify-center">
-                      <RowActionButton icon={Eye} label="Xem" tone="neutral" onClick={() => handleRowClick(row, invoiceByRowId.get(row.id))} />
+                      <RowActionButton icon={Eye} label="Xem" tone="neutral" onClick={() => handleRowClick(row)} />
                     </div>
                   </div>
                 ))}

@@ -17,6 +17,7 @@ import {
   getCashierShiftDetail,
   getCashierShiftList,
   getCashierShiftResyncPreview,
+  getCashierShiftInvoicePayments,
   getCashierShiftSummary,
   getCurrentCashierShift,
   openCashierShift,
@@ -53,6 +54,21 @@ export function useCashierShiftSummaryQuery(id: string, enabled = true) {
     enabled: enabled && id !== '',
     // Sát bước 1 wizard Chốt ca — số liệu đổi theo phiếu thu phát sinh trong ca, làm mới đều đặn.
     refetchInterval: 15_000,
+  });
+}
+
+/**
+ * "Phiếu trong ca của tôi" — CỐ Ý đặt khoá cache dưới domain 'invoice' (không phải 'cashier-shift'): thu
+ * tiền/hoàn tiền/in phiếu đều gọi `invalidateQueries(['invoice'])` nên danh sách tự làm mới, không cần
+ * thêm điểm invalidate ở từng mutation billing.
+ */
+export function useCashierShiftInvoicePaymentsQuery(id: string, enabled = true) {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'invoice', 'shift-payments', id),
+    queryFn: () => getCashierShiftInvoicePayments(id),
+    enabled: enabled && id !== '',
+    refetchInterval: 30_000,
   });
 }
 

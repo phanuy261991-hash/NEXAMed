@@ -153,6 +153,12 @@ export class StockIssueRepository {
     return tx.stockIssue.findFirst({ where: { tenantId, id, deletedAt: null } });
   }
 
+  /** Số lượng đã xuất theo TỪNG thuốc của 1 phiếu xuất (đơn vị CƠ SỞ) — cận trên cho phiếu nhập hoàn trả gắn phiếu này. */
+  async sumIssuedQuantityByDrug(tx: Prisma.TransactionClient, tenantId: string, issueId: string): Promise<Map<string, number>> {
+    const rows = await tx.stockIssueLine.groupBy({ by: ['drugId'], where: { tenantId, issueId, deletedAt: null }, _sum: { quantity: true } });
+    return new Map(rows.map((r) => [r.drugId, r._sum.quantity ?? 0]));
+  }
+
   /**
    * Hoàn tiền MỘT PHẦN (#203) — các dòng phiếu xuất cần nhập lại kho: kèm phiếu xuất (kho, trạng thái) và
    * lô (số lô, hạn dùng) để `StockReceiptService.createReturnFromUseReceipts()` dựng phiếu nhập hoàn trả.

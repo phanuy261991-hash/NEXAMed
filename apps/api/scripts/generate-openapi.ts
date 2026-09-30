@@ -235,6 +235,7 @@ import {
   cashierShiftBlindCloseStatusSchema,
   cashierShiftRequiredStatusSchema,
   cashierShiftDetailSchema,
+  cashierShiftInvoicePaymentsResponseSchema,
   cashierShiftSummarySchema,
   closeCashierShiftRequestSchema,
   currentCashierShiftResponseSchema,
@@ -2985,6 +2986,21 @@ registry.registerPath({
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền cashier_shift.read'),
     404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/cashier-shifts/{id}/invoice-payments',
+  tags: ['cashier-shift'],
+  summary: '"Phiếu trong ca của tôi" — từng sự kiện thu/hoàn tiền khám của ca, cùng nguồn payment với Tổng kết hệ thống (đúng cả hoàn một phần, thu/hoàn khác ngày tiếp nhận)',
+  security: [{ bearerAuth: [] }],
+  request: { params: cashierShiftIdParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(cashierShiftInvoicePaymentsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền cashier_shift.read'),
+    404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ca của người khác với scope personal)'),
   },
 });
 
