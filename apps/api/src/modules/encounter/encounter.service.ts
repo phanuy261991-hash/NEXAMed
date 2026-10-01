@@ -701,6 +701,12 @@ export class EncounterService {
     dto: AmendDiagnosesRequest,
     meta: RequestMeta,
   ): Promise<SaveDiagnosesResponse> {
+    // "Học từ lịch sử chọn mã" (#206) — đọc cấu hình TRƯỚC khi mở transaction (`ClinicConfigReaderPort` tự mở transaction riêng), cùng khuôn `completeConsultation()`.
+    const learnedPairs = dto.learnedPairs ?? [];
+    const learningEnabled =
+      learnedPairs.length > 0 &&
+      (await this.clinicConfigReader.getIcd10SuggestionEnabled(tenantId)) &&
+      (await this.clinicConfigReader.getIcd10SuggestionLearningEnabled(tenantId));
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.encounterRepository.findById(tx, tenantId, id);
       if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId) || existing.status !== 'COMPLETED') {
@@ -720,6 +726,16 @@ export class EncounterService {
         dto.amendmentReason,
       );
       const rows = await this.diagnosisRepository.listForEncounter(tx, tenantId, id);
+
+      if (learningEnabled) {
+        await this.diagnosisSuggestionService.recordLearnedPairs(
+          tx,
+          tenantId,
+          actorId,
+          dto.diagnoses.map((d) => d.icd10Code),
+          learnedPairs,
+        );
+      }
 
       await writeAuditLog(tx, tenantId, {
         actorId,

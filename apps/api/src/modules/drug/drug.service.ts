@@ -133,6 +133,16 @@ export class DrugService {
     });
   }
 
+  async getById(tenantId: string, id: string): Promise<DrugSummary> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const row = await this.drugRepository.findByIdWithDetails(tx, tenantId, id);
+      if (!row) {
+        throw new NotFoundException();
+      }
+      return this.toSummary(row);
+    });
+  }
+
   async update(tenantId: string, actorId: string, id: string, dto: UpdateDrugRequest, meta: RequestMeta): Promise<DrugSummary> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.drugRepository.findById(tx, tenantId, id);

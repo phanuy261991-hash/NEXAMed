@@ -287,6 +287,42 @@ describe('HTTP e2e — /api/v1/drugs', () => {
       .set(authed(tenantBAdminToken))
       .send({ name: 'Sửa từ tenant khác', version: 1 });
     expect(patchRes.status).toBe(404);
+    expect((await request(app.getHttpServer()).get(`/api/v1/drugs/${drugId}`).set(authed(tenantBAdminToken))).status).toBe(404);
+  });
+
+  it('GET /drugs/:id trả đúng 1 mặt hàng đủ chi tiết kèm version mới nhất; không đăng nhập → 401; id lạ → 404', async () => {
+    const created = await createDrug(clinicAdminToken, { name: 'Thuốc lấy theo id' });
+    const drugId = created.body.data.id as string;
+    const patched = await request(app.getHttpServer())
+      .patch(`/api/v1/drugs/${drugId}`)
+      .set(authed(clinicAdminToken))
+      .send({ name: 'Thuốc lấy theo id (đã sửa)', version: 1 });
+    expect(patched.status).toBe(200);
+
+    const one = await request(app.getHttpServer()).get(`/api/v1/drugs/${drugId}`).set(authed(doctorToken));
+    expect(one.status).toBe(200);
+    expect(one.body.data).toMatchObject({ id: drugId, name: 'Thuốc lấy theo id (đã sửa)', version: 2 });
+    expect(Array.isArray(one.body.data.ingredients)).toBe(true);
+
+    expect((await request(app.getHttpServer()).get(`/api/v1/drugs/${drugId}`)).status).toBe(401);
+    expect((await request(app.getHttpServer()).get('/api/v1/drugs/00000000-0000-0000-0000-000000000000').set(authed(clinicAdminToken))).status).toBe(404);
+  });
+
+  it('2 người bấm Lưu ĐỒNG THỜI cùng 1 thuốc (cùng version) → đúng 1 thành công, người kia 409 CONCURRENT_MODIFICATION, dữ liệu không bị ghi đè lẫn nhau', async () => {
+    const created = await createDrug(clinicAdminToken, { name: 'Thuốc 2 người lưu cùng lúc' });
+    const drugId = created.body.data.id as string;
+    const save = (name: string) =>
+      request(app.getHttpServer()).patch(`/api/v1/drugs/${drugId}`).set(authed(clinicAdminToken)).send({ name, version: 1 });
+
+    const [a, b] = await Promise.all([save('Bản của máy A'), save('Bản của máy B')]);
+    expect([a.status, b.status].sort()).toEqual([200, 409]);
+    const loser = a.status === 409 ? a : b;
+    expect(loser.body.error.code).toBe('CONCURRENT_MODIFICATION');
+
+    // Bản cuối cùng là của người THẮNG (version 2), không phải trộn/ghi đè.
+    const winnerName = a.status === 200 ? 'Bản của máy A' : 'Bản của máy B';
+    const final = await request(app.getHttpServer()).get(`/api/v1/drugs/${drugId}`).set(authed(clinicAdminToken));
+    expect(final.body.data).toMatchObject({ name: winnerName, version: 2 });
   });
 
   // Kho Thuốc & Vật tư y tế GĐ1 (docs/DECISIONS.md #146).

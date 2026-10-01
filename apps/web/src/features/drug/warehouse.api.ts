@@ -12,3 +12,8 @@ export async function createWarehouse(body: CreateWarehouseRequest): Promise<War
 export async function updateWarehouse(id: string, body: UpdateWarehouseRequest): Promise<WarehouseSummary> {
   return unwrap(await getApiClient().PATCH('/api/v1/warehouses/{id}', { params: { path: { id } }, body })) as WarehouseSummary;
 }
+
+/** Một kho theo id — dùng cho `useEditedRecordGuard`. */
+export async function getWarehouse(id: string): Promise<WarehouseSummary> {
+  return unwrap(await getApiClient().GET('/api/v1/warehouses/{id}', { params: { path: { id } } })) as WarehouseSummary;
+}

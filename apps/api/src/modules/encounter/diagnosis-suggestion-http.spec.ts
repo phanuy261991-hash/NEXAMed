@@ -65,7 +65,9 @@ describe('HTTP e2e — Gợi ý mã ICD-10 (/api/v1/encounters/:id/diagnosis-sug
   }
 
   /** Tạo lịch + bệnh nhân (giới tính tuỳ chọn) + check-in + trả tiền + "Bắt đầu khám" + 1 chẩn đoán chính. Trả cả `version` encounter (để gọi complete). */
-  async function prepareEncounter(options: { gender?: 'male' | 'female'; diagnosisCode?: string; doctorId?: string; doctorToken?: string } = {}) {
+  async function prepareEncounter(
+    options: { gender?: 'male' | 'female'; diagnosisCode?: string; doctorId?: string; doctorToken?: string; startConsultation?: boolean } = {},
+  ) {
     const doctorId = options.doctorId ?? doctorAUserId;
     const doctorToken = options.doctorToken ?? doctorAToken;
     hourCounter += 1;
@@ -108,7 +110,12 @@ describe('HTTP e2e — Gợi ý mã ICD-10 (/api/v1/encounters/:id/diagnosis-sug
     const encounterId = checkInRes.body.data.id as string;
     await request(app.getHttpServer()).post(`/api/v1/billing/invoices/${encounterId}/pay`).set(authed(receptionistToken)).send({ method: 'CASH', version: 1 });
 
-    const start = await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/start`).set(authed(doctorToken)).send({ version: 1 });
+    // Dừng ở CHECKED_IN (chưa "Bắt đầu khám") — dùng cho test "không ở IN_CONSULTATION/COMPLETED thì không gợi ý".
+    if (options.startConsultation === false) {
+      return { encounterId, version: 1 };
+    }
+
+    const start =await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/start`).set(authed(doctorToken)).send({ version: 1 });
     const version = (start.body.data as { version: number }).version;
 
     await request(app.getHttpServer())
@@ -292,10 +299,19 @@ describe('HTTP e2e — Gợi ý mã ICD-10 (/api/v1/encounters/:id/diagnosis-sug
       expect(items.some((i) => i.reason === 'HISTORY')).toBe(false);
     });
 
-    it('lượt khám đã hoàn tất (đã ký) → groups rỗng', async () => {
+    it('lượt khám đã hoàn tất (đã ký) → VẪN gợi ý (cho dialog "Đính chính chẩn đoán", #206)', async () => {
       const enc = await prepareEncounter();
       expect((await complete(enc.encounterId, enc.version)).status).toBe(200);
-      expect((await suggest(enc.encounterId, 'sốt')).body.data).toEqual({ groups: [] });
+      const res = await suggest(enc.encounterId, 'sốt');
+      expect(res.status).toBe(200);
+      expect((res.body.data.groups as SuggestionGroup[])[0]!.items[0]!.icd10Code).toBe('R50.9');
+    });
+
+    it('lượt khám chưa bắt đầu khám (CHECKED_IN) → groups rỗng', async () => {
+      const enc = await prepareEncounter({ startConsultation: false });
+      const res = await suggest(enc.encounterId, 'sốt');
+      expect(res.status).toBe(200);
+      expect(res.body.data).toEqual({ groups: [] });
     });
 
     it('cách ly: bác sĩ tenant khác → 404; bác sĩ khác cùng tenant (scope personal) → 404', async () => {
@@ -307,6 +323,82 @@ describe('HTTP e2e — Gợi ý mã ICD-10 (/api/v1/encounters/:id/diagnosis-sug
     it('lễ tân (không có diagnosis.create) → 403', async () => {
       const { encounterId } = await prepareEncounter();
       expect((await suggest(encounterId, 'sốt', receptionistToken)).status).toBe(403);
+    });
+  });
+
+  describe('từ điển viết tắt quản lý được (reference_catalog ICD10_ABBREVIATION, #206)', () => {
+    beforeAll(async () => {
+      await setSettings({ icd10SuggestionEnabled: true, icd10SuggestionLearningEnabled: false });
+    });
+    afterAll(async () => {
+      await setSettings({ icd10SuggestionEnabled: false, icd10SuggestionLearningEnabled: false });
+    });
+
+    // Chữ + số ngẫu nhiên (một từ hợp lệ) — bảng dùng chung toàn hệ thống, mục test chỉ ẩn (soft) chứ không xoá được.
+    const uniqueWord = (prefix: string) => `${prefix}${randomUUID().replace(/-/g, '').slice(0, 8)}`;
+
+    async function createAbbreviation(token: string, code: string, name: string) {
+      return request(app.getHttpServer())
+        .post('/api/v1/reference-catalog')
+        .set(authed(token))
+        .send({ category: 'ICD10_ABBREVIATION', code, name });
+    }
+
+    it('11 mục mặc định đã seed bằng migration — "THA" vẫn mở rộng đúng như danh sách tĩnh cũ', async () => {
+      const list = await request(app.getHttpServer()).get('/api/v1/reference-catalog/ICD10_ABBREVIATION').set(authed(doctorAToken));
+      expect(list.status).toBe(200);
+      const codes = (list.body.data.items as { code: string }[]).map((i) => i.code);
+      expect(codes).toEqual(expect.arrayContaining(['tha', 'đtđ', 'dtd', 'type', 'tip', 'sxh', 'vpq', 'rlth', 'nktn', 'gerd', 'cảm']));
+    });
+
+    it('clinic_admin thêm viết tắt mới (lưu chữ thường) → gợi ý mở rộng ngay; sửa/ẩn có hiệu lực ngay', async () => {
+      const word = uniqueWord('Zq');
+      const created = await createAbbreviation(clinicAdminToken, word, 'viêm dạ dày');
+      expect(created.status).toBe(200);
+      expect(created.body.data.code).toBe(word.toLowerCase());
+      const id = created.body.data.id as string;
+
+      const { encounterId } = await prepareEncounter();
+      let group = ((await suggest(encounterId, word.toUpperCase())).body.data.groups as SuggestionGroup[])[0]!;
+      expect(group.expandedText).toBe('viêm dạ dày');
+      expect(group.items.every((i) => i.icd10Code.startsWith('K29'))).toBe(true);
+
+      const patched = await request(app.getHttpServer()).patch(`/api/v1/reference-catalog/${id}`).set(authed(clinicAdminToken)).send({ name: 'đái tháo đường' });
+      expect(patched.status).toBe(200);
+      group = ((await suggest(encounterId, word)).body.data.groups as SuggestionGroup[])[0]!;
+      expect(group.expandedText).toBe('đái tháo đường');
+
+      const hidden = await request(app.getHttpServer()).delete(`/api/v1/reference-catalog/${id}`).set(authed(clinicAdminToken));
+      expect(hidden.status).toBe(200);
+      group = ((await suggest(encounterId, word)).body.data.groups as SuggestionGroup[])[0]!;
+      expect(group.expandedText).toBeNull();
+    });
+
+    it('code không phải MỘT từ chữ/số → 422 REFERENCE_CATALOG_INVALID_ABBREVIATION; thiếu code → cũng 422', async () => {
+      for (const bad of ['t.h.a', 'tăng HA', 'a-b', '  ']) {
+        const res = await createAbbreviation(clinicAdminToken, bad, 'gì đó');
+        expect(res.status, `code "${bad}"`).toBe(422);
+        expect(res.body.error.code).toBe('REFERENCE_CATALOG_INVALID_ABBREVIATION');
+      }
+      const noCode = await request(app.getHttpServer())
+        .post('/api/v1/reference-catalog')
+        .set(authed(clinicAdminToken))
+        .send({ category: 'ICD10_ABBREVIATION', name: 'gì đó' });
+      expect(noCode.status).toBe(422);
+    });
+
+    it('trùng sau chuẩn hoá ("THA" ≡ "tha" đã seed) → 409; sửa code sang giá trị không hợp lệ → 422', async () => {
+      expect((await createAbbreviation(clinicAdminToken, 'THA', 'tăng huyết áp')).status).toBe(409);
+
+      const created = await createAbbreviation(clinicAdminToken, uniqueWord('Yq'), 'sốt');
+      const id = created.body.data.id as string;
+      const bad = await request(app.getHttpServer()).patch(`/api/v1/reference-catalog/${id}`).set(authed(clinicAdminToken)).send({ code: 'hai từ' });
+      expect(bad.status).toBe(422);
+      await request(app.getHttpServer()).delete(`/api/v1/reference-catalog/${id}`).set(authed(clinicAdminToken));
+    });
+
+    it('bác sĩ (chỉ reference_catalog.read) không thêm được → 403', async () => {
+      expect((await createAbbreviation(doctorAToken, uniqueWord('Xq'), 'sốt')).status).toBe(403);
     });
   });
 
@@ -362,6 +454,54 @@ describe('HTTP e2e — Gợi ý mã ICD-10 (/api/v1/encounters/:id/diagnosis-sug
       const enc = await prepareEncounter({ diagnosisCode: 'J02.0' });
       const res = await complete(enc.encounterId, enc.version, [{ phraseKey: "Viêm họng'; DROP TABLE", icd10Code: 'J02.0' }]);
       expect(res.status).toBe(400);
+    });
+
+    describe('Đính chính chẩn đoán (#206) — học ngay lúc lưu bản đính chính', () => {
+      async function amend(encounterId: string, diagnosisCode: string, learnedPairs?: { phraseKey: string; icd10Code: string }[]) {
+        return request(app.getHttpServer())
+          .post(`/api/v1/encounters/${encounterId}/diagnoses/amend`)
+          .set(authed(doctorAToken))
+          .send({
+            amendmentReason: 'Đính chính theo gợi ý',
+            diagnoses: [{ icd10Code: diagnosisCode, type: 'PRIMARY' as const }],
+            ...(learnedPairs ? { learnedPairs } : {}),
+          });
+      }
+
+      it('học TẮT → đính chính vẫn thành công nhưng không ghi gì', async () => {
+        await setSettings({ icd10SuggestionEnabled: true, icd10SuggestionLearningEnabled: false });
+        const enc = await prepareEncounter({ diagnosisCode: 'A00' });
+        expect((await complete(enc.encounterId, enc.version)).status).toBe(200);
+        const before = (await usageRows()).length;
+        expect((await amend(enc.encounterId, 'J02.8', [{ phraseKey: 'dau hong amend tat', icd10Code: 'J02.8' }])).status).toBe(200);
+        expect(await usageRows()).toHaveLength(before);
+      });
+
+      it('học BẬT → chỉ ghi cặp có mã nằm trong chẩn đoán SAU đính chính; cộng dồn khi đính chính lần nữa', async () => {
+        await setSettings({ icd10SuggestionEnabled: true, icd10SuggestionLearningEnabled: true });
+        const enc = await prepareEncounter({ diagnosisCode: 'A00' });
+        expect((await complete(enc.encounterId, enc.version)).status).toBe(200);
+
+        const res = await amend(enc.encounterId, 'J02.8', [
+          { phraseKey: 'dau hong amend bat', icd10Code: 'J02.8' },
+          { phraseKey: 'dau hong amend bat', icd10Code: 'J02.8' }, // trùng lặp → chỉ tính 1
+          { phraseKey: 'dau hong amend bat', icd10Code: 'J03.9' }, // không nằm trong chẩn đoán sau đính chính → bỏ qua
+        ]);
+        expect(res.status).toBe(200);
+        let rows = (await usageRows()).filter((r) => r.phraseKey === 'dau hong amend bat');
+        expect(rows).toHaveLength(1);
+        expect(rows[0]).toMatchObject({ icd10Code: 'J02.8', usageCount: 1 });
+
+        expect((await amend(enc.encounterId, 'J02.8', [{ phraseKey: 'dau hong amend bat', icd10Code: 'J02.8' }])).status).toBe(200);
+        rows = (await usageRows()).filter((r) => r.phraseKey === 'dau hong amend bat');
+        expect(rows[0]).toMatchObject({ usageCount: 2 });
+      });
+
+      it('phraseKey sai định dạng ở đính chính → 400', async () => {
+        const enc = await prepareEncounter({ diagnosisCode: 'A00' });
+        expect((await complete(enc.encounterId, enc.version)).status).toBe(200);
+        expect((await amend(enc.encounterId, 'J02.8', [{ phraseKey: "x'; DROP TABLE", icd10Code: 'J02.8' }])).status).toBe(400);
+      });
     });
 
     it('cách ly tenant: dòng đã học của tenant A không hiện ở tenant B (RLS)', async () => {

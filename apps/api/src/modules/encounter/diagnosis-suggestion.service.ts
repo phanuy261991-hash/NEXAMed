@@ -1,6 +1,7 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import {
+  buildAbbreviationLookup,
   CLINIC_CONFIG_READER_PORT,
   rankIcd10Candidates,
   splitDiagnosisPhrases,
@@ -29,9 +30,10 @@ export class DiagnosisSuggestionService {
   ) {}
 
   /**
-   * `groups` rỗng (không lỗi) khi: tenant chưa bật tính năng, ô Chẩn đoán trống, hoặc lượt khám không
-   * còn `IN_CONSULTATION` (đã ký/đã huỷ — không gợi ý nữa, xem "Đính chính" tách luồng riêng). 404 nếu
-   * không có lượt khám hoặc ngoài phạm vi `personal` của bác sĩ (cùng triết lý các endpoint khác).
+   * `groups` rỗng (không lỗi) khi: tenant chưa bật tính năng, ô Chẩn đoán trống, hoặc lượt khám không ở
+   * `IN_CONSULTATION` (đang khám — chọn mã ở màn khám) / `COMPLETED` (đã ký — chọn mã trong dialog
+   * "Đính chính chẩn đoán", #206); đã huỷ/chưa khám thì không gợi ý. 404 nếu không có lượt khám hoặc
+   * ngoài phạm vi `personal` của bác sĩ (cùng triết lý các endpoint khác).
    */
   async suggest(
     tenantId: string,
@@ -53,10 +55,11 @@ export class DiagnosisSuggestionService {
       if (!encounter || (dataScope === 'personal' && encounter.doctorId !== actorId)) {
         throw new NotFoundException();
       }
-      if (!enabled || encounter.status !== 'IN_CONSULTATION') {
+      if (!enabled || (encounter.status !== 'IN_CONSULTATION' && encounter.status !== 'COMPLETED')) {
         return { groups: [] };
       }
-      const phrases = splitDiagnosisPhrases(dto.text);
+      const lookupAbbreviation = buildAbbreviationLookup(await this.suggestionRepository.listActiveAbbreviations(tx));
+      const phrases = splitDiagnosisPhrases(dto.text, lookupAbbreviation);
       if (phrases.length === 0) {
         return { groups: [] };
       }
@@ -108,7 +111,9 @@ export class DiagnosisSuggestionService {
   }
 
   /**
-   * Ghi "học cụm từ → mã" lúc "Hoàn tất khám" — gọi TRONG transaction của `completeConsultation()`.
+   * Ghi "học cụm từ → mã" lúc "Hoàn tất khám" — gọi TRONG transaction của `completeConsultation()`,
+   * và lúc lưu "Đính chính chẩn đoán" (`amendDiagnoses()`, #206 — đính chính xảy ra SAU hoàn tất nên
+   * không còn bước "Hoàn tất khám" để gửi kèm).
    * Chỉ ghi cặp mà mã VẪN nằm trong chẩn đoán cuối cùng của lượt khám (bác sĩ bấm gợi ý rồi gỡ mã đi
    * thì không tính), khử trùng lặp. `learningEnabled` do caller đọc trước khi mở transaction.
    */

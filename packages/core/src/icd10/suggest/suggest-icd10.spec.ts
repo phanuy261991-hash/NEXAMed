@@ -1,7 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { lookupClinicalAbbreviation } from './clinical-abbreviations';
+import { buildAbbreviationLookup, type AbbreviationEntry } from './clinical-abbreviations';
 import { rankIcd10Candidates, type Icd10SuggestionCandidate } from './rank-icd10-candidates';
-import { canonicalizeToneMarks, splitDiagnosisPhrases } from './split-diagnosis-phrases';
+import { canonicalizeToneMarks, splitDiagnosisPhrases as splitPhrases } from './split-diagnosis-phrases';
+
+// 11 mục mặc định seed ở migration `seed_icd10_abbreviation_catalog` — dữ liệu thật nằm ở DB (#206), hàm thuần chỉ nhận danh sách đã đọc sẵn.
+const DEFAULT_ABBREVIATIONS: AbbreviationEntry[] = [
+  { abbreviation: 'tha', expansion: 'tăng huyết áp' },
+  { abbreviation: 'đtđ', expansion: 'đái tháo đường' },
+  { abbreviation: 'dtd', expansion: 'đái tháo đường' },
+  { abbreviation: 'type', expansion: 'típ' },
+  { abbreviation: 'tip', expansion: 'típ' },
+  { abbreviation: 'sxh', expansion: 'sốt xuất huyết' },
+  { abbreviation: 'vpq', expansion: 'viêm phế quản' },
+  { abbreviation: 'rlth', expansion: 'rối loạn tiêu hóa' },
+  { abbreviation: 'nktn', expansion: 'nhiễm trùng tiết niệu' },
+  { abbreviation: 'gerd', expansion: 'trào ngược dạ dày thực quản' },
+  { abbreviation: 'cảm', expansion: 'viêm mũi họng cấp tính' },
+];
+const lookupAbbreviation = buildAbbreviationLookup(DEFAULT_ABBREVIATIONS);
+const splitDiagnosisPhrases = (text: string) => splitPhrases(text, lookupAbbreviation);
 
 function c(code: string, nameVi: string, genderRestriction: 'male' | 'female' | null = null, isBillable = true): Icd10SuggestionCandidate {
   return { code, nameVi, genderRestriction, isBillable };
@@ -31,13 +48,31 @@ function codes(text: string, patientGender: string | null, extra: Partial<Parame
   return rankIcd10Candidates(phrase.tokens, CATALOG, { patientGender, ...extra }).map((r) => r.candidate.code);
 }
 
-describe('lookupClinicalAbbreviation', () => {
+describe('buildAbbreviationLookup', () => {
   it('mở rộng đúng viết tắt, không tự bỏ dấu để khớp', () => {
-    expect(lookupClinicalAbbreviation('tha')).toBe('tăng huyết áp');
-    expect(lookupClinicalAbbreviation('đtđ')).toBe('đái tháo đường');
-    expect(lookupClinicalAbbreviation('dtd')).toBe('đái tháo đường');
-    expect(lookupClinicalAbbreviation('cam')).toBeNull();
-    expect(lookupClinicalAbbreviation('constructor')).toBeNull();
+    expect(lookupAbbreviation('tha')).toBe('tăng huyết áp');
+    expect(lookupAbbreviation('đtđ')).toBe('đái tháo đường');
+    expect(lookupAbbreviation('dtd')).toBe('đái tháo đường');
+    expect(lookupAbbreviation('cam')).toBeNull();
+    expect(lookupAbbreviation('constructor')).toBeNull();
+  });
+
+  it('chuẩn hoá khoá (hoa/thường, khoảng trắng, NFD) và bỏ mục rỗng', () => {
+    const lookup = buildAbbreviationLookup([
+      { abbreviation: '  THA ', expansion: ' tăng huyết áp ' },
+      { abbreviation: 'đtđ'.normalize('NFD'), expansion: 'đái tháo đường' },
+      { abbreviation: '', expansion: 'bị bỏ' },
+      { abbreviation: 'xyz', expansion: '   ' },
+    ]);
+    expect(lookup('tha')).toBe('tăng huyết áp');
+    expect(lookup('đtđ')).toBe('đái tháo đường');
+    expect(lookup('xyz')).toBeNull();
+  });
+
+  it('danh sách rỗng (chưa có mục nào / đã ẩn hết) thì không mở rộng gì', () => {
+    const phrase = splitPhrases('THA', buildAbbreviationLookup([]))[0]!;
+    expect(phrase.expandedText).toBeNull();
+    expect(phrase.phraseKey).toBe('tha');
   });
 });
 

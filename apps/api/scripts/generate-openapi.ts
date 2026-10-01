@@ -1813,6 +1813,21 @@ registry.registerPath({
 const drugIdParams = z.object({ id: z.string().uuid() });
 
 registry.registerPath({
+  method: 'get',
+  path: '/api/v1/drugs/{id}',
+  tags: ['drug'],
+  summary: 'Lấy MỘT mặt hàng (thuốc/vật tư) theo id — nhẹ hơn tải cả danh sách (phát hiện bản ghi bị người khác sửa lúc form Sửa đang mở)',
+  security: [{ bearerAuth: [] }],
+  request: { params: drugIdParams },
+  responses: {
+    200: jsonResponse('Bản ghi hiện tại (kèm version mới nhất)', envelope(drugSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền drug.read'),
+    404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
+  },
+});
+
+registry.registerPath({
   method: 'patch',
   path: '/api/v1/drugs/{id}',
   tags: ['drug'],
@@ -1915,6 +1930,21 @@ registry.registerPath({
 const supplierIdParams = z.object({ id: z.string().uuid() });
 
 registry.registerPath({
+  method: 'get',
+  path: '/api/v1/suppliers/{id}',
+  tags: ['drug'],
+  summary: 'Lấy MỘT nhà cung cấp theo id — nhẹ hơn tải cả danh sách (phát hiện bản ghi bị người khác sửa lúc form Sửa đang mở)',
+  security: [{ bearerAuth: [] }],
+  request: { params: supplierIdParams },
+  responses: {
+    200: jsonResponse('Bản ghi hiện tại (kèm version mới nhất)', envelope(supplierSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền drug.read'),
+    404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
+  },
+});
+
+registry.registerPath({
   method: 'patch',
   path: '/api/v1/suppliers/{id}',
   tags: ['drug'],
@@ -1961,6 +1991,21 @@ registry.registerPath({
 });
 
 const warehouseIdParams = z.object({ id: z.string().uuid() });
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/warehouses/{id}',
+  tags: ['drug'],
+  summary: 'Lấy MỘT kho theo id — nhẹ hơn tải cả danh sách (phát hiện bản ghi bị người khác sửa lúc form Sửa đang mở)',
+  security: [{ bearerAuth: [] }],
+  request: { params: warehouseIdParams },
+  responses: {
+    200: jsonResponse('Bản ghi hiện tại (kèm version mới nhất)', envelope(warehouseSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền drug.read'),
+    404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
+  },
+});
 
 registry.registerPath({
   method: 'patch',

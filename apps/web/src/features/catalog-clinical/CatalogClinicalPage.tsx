@@ -10,11 +10,14 @@ import { ReferenceCatalogPane } from '../reference-catalog/ReferenceCatalogPane'
  * phần. Pill "ICD-10"/"Dị nguyên" (docs/DECISIONS.md #069) — chừa chỗ mở rộng danh mục chuyên môn
  * khác sau (không dựng pill "Sắp có" cho tính năng chưa xây, đúng .claude/docs/ui-guidelines.md
  * mục 10). Pill "Dịch vụ khám" (category `EXAM_TYPE`) chuyển từ "Danh mục hành chính" sang đây,
- * đổi nhãn từ "Loại khám" — thuộc chuyên môn (giá dịch vụ khám), không phải hành chính. Dùng
- * `ConfigScreenShell` chế độ pill phẳng (không `items`), đúng khuôn `CatalogAdminPage.tsx`.
+ * đổi nhãn từ "Loại khám" — thuộc chuyên môn (giá dịch vụ khám), không phải hành chính. Pill "Từ viết
+ * tắt chẩn đoán" (category `ICD10_ABBREVIATION`, docs/DECISIONS.md #206) — từ điển viết tắt cho "Gợi ý mã
+ * ICD-10", đặt cạnh ICD-10 (cùng chủ đề lâm sàng). Dùng `ConfigScreenShell` chế độ pill phẳng (không
+ * `items`), đúng khuôn `CatalogAdminPage.tsx`.
  */
 const PILLS: ConfigScreenPill[] = [
   { key: 'icd10', label: 'ICD-10' },
+  { key: 'icd10-abbreviation', label: 'Từ viết tắt chẩn đoán' },
   { key: 'allergen', label: 'Dị nguyên' },
   { key: 'exam-type', label: 'Dịch vụ khám' },
 ];
@@ -33,6 +36,7 @@ export function CatalogClinicalPage() {
   return (
     <ConfigScreenShell pageLabel="Danh mục Chuyên môn" pills={PILLS} activePillKey={activePillKey} onSelectPill={setActivePillKey}>
       {activePillKey === 'icd10' && <Icd10Pane />}
+      {activePillKey === 'icd10-abbreviation' && <ReferenceCatalogPane category="ICD10_ABBREVIATION" categoryLabel="Từ viết tắt chẩn đoán" />}
       {activePillKey === 'allergen' && <AllergenPane />}
       {activePillKey === 'exam-type' && <ReferenceCatalogPane category="EXAM_TYPE" categoryLabel="Dịch vụ khám" />}
     </ConfigScreenShell>

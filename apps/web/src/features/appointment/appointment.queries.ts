@@ -2,6 +2,7 @@ import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClie
 import type { CancelAppointmentRequest, CreateAppointmentRequest, EditAppointmentRequest, MarkNoShowRequest, RescheduleAppointmentRequest } from '@nexamed/shared';
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
+import { STALE_OPTIONS_MS, STALE_REFERENCE_MS } from '../../shared/api/stale-time';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
 import {
   cancelAppointment,
@@ -57,6 +58,7 @@ export function useDoctorsQuery() {
   return useQuery({
     queryKey: queryKey(tenantId, 'appointment', 'doctors'),
     queryFn: () => listDoctors(),
+    staleTime: STALE_OPTIONS_MS,
   });
 }
 
@@ -65,6 +67,7 @@ export function useScheduleConfigQuery() {
   return useQuery({
     queryKey: queryKey(tenantId, 'appointment', 'schedule-config'),
     queryFn: () => getScheduleConfig(),
+    staleTime: STALE_REFERENCE_MS,
   });
 }
 

@@ -695,6 +695,11 @@ enum ReferenceCatalogCategory {
   // dùng" (M01-M99) vì ~80% trùng lặp với DRUG_ROUTE/DOSAGE_FORM đã có. Không thêm cột nào trên
   // `drug`/`prescription_item` — chỉ dùng làm gợi ý ghép câu cho ô text tự do có sẵn.
   DRUG_USAGE_TIMING
+  // Từ điển viết tắt chẩn đoán cho "Gợi ý mã ICD-10" (docs/DECISIONS.md #206) — `code` = từ viết tắt
+  // (nhập tay, 1 từ chữ/số), `name` = cách viết đầy đủ. Seed 11 mục mặc định ở migration kế tiếp
+  // (Postgres không cho dùng giá trị enum mới ngay trong cùng transaction với `ADD VALUE`), quản lý
+  // thêm/sửa/ẩn qua UI "Danh mục Chuyên môn".
+  ICD10_ABBREVIATION
 
   @@map("reference_catalog_category")
 }

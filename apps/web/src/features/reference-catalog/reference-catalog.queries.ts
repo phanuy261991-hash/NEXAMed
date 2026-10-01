@@ -6,6 +6,7 @@ import type {
 } from '@nexamed/shared';
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
+import { STALE_REFERENCE_MS } from '../../shared/api/stale-time';
 import {
   createReferenceCatalogItem,
   deactivateReferenceCatalogItem,
@@ -15,11 +16,13 @@ import {
 } from './reference-catalog.api';
 
 /** Dữ liệu do `clinic_admin` sửa qua UI quản lý — không `staleTime: Infinity`, invalidate sau mỗi mutation. */
-export function useReferenceCatalogQuery(category: ReferenceCatalogCategory, includeInactive?: boolean) {
+export function useReferenceCatalogQuery(category: ReferenceCatalogCategory, includeInactive?: boolean, options?: { fresh?: boolean }) {
   const { tenantId } = useAppConfig();
   return useQuery({
     queryKey: queryKey(tenantId, 'reference-catalog', category, includeInactive ? 'all' : 'active'),
     queryFn: () => listReferenceCatalog(category, includeInactive),
+    // `fresh`: màn QUẢN TRỊ danh mục luôn lấy bản mới nhất khi mở/focus (người khác có thể vừa sửa); nơi chỉ dùng làm tuỳ chọn thì cache.
+    staleTime: options?.fresh ? 0 : STALE_REFERENCE_MS,
   });
 }
 

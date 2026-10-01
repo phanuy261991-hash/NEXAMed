@@ -1,5 +1,5 @@
 import { stripVietnameseDiacritics } from '../../search/strip-vietnamese-diacritics';
-import { lookupClinicalAbbreviation } from './clinical-abbreviations';
+import type { AbbreviationLookup } from './clinical-abbreviations';
 
 /** Tối đa bao nhiêu cụm bệnh được xử lý từ 1 ô "Chẩn đoán" — chặn tải khi bác sĩ dán cả đoạn dài. */
 export const MAX_DIAGNOSIS_PHRASES = 5;
@@ -50,10 +50,10 @@ const FOLLOW_UP_PREFIX = /^(?:(?:td|theo dõi|nghi ngờ|nghi)\s+|\?\s*)/i;
 
 /**
  * Tách câu "Chẩn đoán" tự do thành từng cụm bệnh: cắt theo dấu phẩy/chấm phẩy/xuống dòng/"+"/"/"/" và ",
- * bỏ tiền tố theo dõi, mở rộng viết tắt (`lookupClinicalAbbreviation`). KHÔNG tách theo "kèm" — tên ICD
- * dùng chính từ đó ("...kèm biến chứng thận"). Hàm thuần, không I/O.
+ * bỏ tiền tố theo dõi, mở rộng viết tắt (`lookupAbbreviation`, dựng từ `buildAbbreviationLookup`).
+ * KHÔNG tách theo "kèm" — tên ICD dùng chính từ đó ("...kèm biến chứng thận"). Hàm thuần, không I/O.
  */
-export function splitDiagnosisPhrases(text: string): DiagnosisPhrase[] {
+export function splitDiagnosisPhrases(text: string, lookupAbbreviation: AbbreviationLookup): DiagnosisPhrase[] {
   const phrases: DiagnosisPhrase[] = [];
   for (const piece of text.split(PHRASE_SEPARATOR)) {
     const raw = piece.trim();
@@ -64,7 +64,7 @@ export function splitDiagnosisPhrases(text: string): DiagnosisPhrase[] {
     const followUp = core.length !== raw.length;
     let didExpand = false;
     const displayWords = tokenizeVietnamese(core).map((word) => {
-      const expansion = lookupClinicalAbbreviation(word);
+      const expansion = lookupAbbreviation(word);
       if (expansion === null) {
         return word;
       }

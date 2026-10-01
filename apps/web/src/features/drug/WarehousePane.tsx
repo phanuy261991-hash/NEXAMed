@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { ArrowCounterClockwise, PencilSimple, Plus, Prohibit, Warehouse as WarehouseIcon } from '@phosphor-icons/react';
 import type { WarehouseSummary } from '@nexamed/shared';
-import { ApiError } from '../../shared/api/client';
+import { ACTION_CONFLICT_MESSAGE, describeSaveError, isConflictError } from '../../shared/api/save-error';
 import { useHasAnyPermission } from '../auth/usePermission';
 import { DRUG_MANAGE_PERMISSIONS } from '../auth/admin-permissions';
 import { Button } from '../../shared/ui/Button';
@@ -17,8 +17,12 @@ import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
 import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
 import { useRowSelection } from '../../shared/hooks/useRowSelection';
 import { useSaveFlash } from '../../shared/hooks/useSaveFlash';
+import { useSaveAttempt } from '../../shared/hooks/useSaveAttempt';
+import { useEditedRecordGuard } from '../../shared/hooks/useStaleRecordWatch';
+import { RecordFormNotice } from '../../shared/ui/RecordFormNotice';
 import { useDepartmentOptionsQuery } from '../department/department.queries';
 import { useCreateWarehouseMutation, useUpdateWarehouseMutation, useWarehousesQuery } from './warehouse.queries';
+import { getWarehouse } from './warehouse.api';
 
 const inputClassName =
   'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
@@ -39,7 +43,7 @@ export function WarehousePane() {
   const [deactivateTarget, setDeactivateTarget] = useState<WarehouseSummary | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  const query = useWarehousesQuery();
+  const query = useWarehousesQuery({ fresh: true });
   const departmentOptionsQuery = useDepartmentOptionsQuery();
   const createMutation = useCreateWarehouseMutation();
   const updateMutation = useUpdateWarehouseMutation();
@@ -48,9 +52,22 @@ export function WarehousePane() {
   const departments = departmentOptionsQuery.data?.items ?? [];
   const itemIds = items.map((w) => w.id);
   const rowSelection = useRowSelection(itemIds);
+  const guard = useEditedRecordGuard({
+    editing: modal?.mode === 'edit' ? modal.item : undefined,
+    watchKey: 'warehouse',
+    fetchLatest: getWarehouse,
+    onFresh: (fresh) => setModal(fresh ? { mode: 'edit', item: fresh } : null),
+    onReloaded: () => void query.refetch(),
+  });
 
-  function errorMessage(err: unknown): string {
-    return err instanceof ApiError ? err.message : 'Có lỗi xảy ra, vui lòng thử lại.';
+  /** Lỗi thao tác nhanh ở danh sách: xung đột phiên bản → báo rõ + tải lại danh sách; lỗi khác dùng câu thống nhất. */
+  function handleActionError(err: unknown) {
+    if (isConflictError(err)) {
+      setActionError(ACTION_CONFLICT_MESSAGE);
+      void query.refetch();
+      return;
+    }
+    setActionError(describeSaveError(err));
   }
 
   /** Nút "Ngưng sử dụng" nhanh ở danh sách — bắt xác nhận vì kho sẽ hết chọn được khi lập phiếu nhập/xuất mới. */
@@ -58,14 +75,14 @@ export function WarehousePane() {
     setActionError(null);
     updateMutation.mutate(
       { id: item.id, body: { isActive: false, version: item.version } },
-      { onSuccess: () => setDeactivateTarget(null), onError: (err) => setActionError(errorMessage(err)) },
+      { onSuccess: () => setDeactivateTarget(null), onError: handleActionError },
     );
   }
 
   /** "Kích hoạt lại" — trực tiếp không cần xác nhận (cùng cách `ReferenceCatalogPane`/`UserAccountPane` xử lý). */
   function handleReactivate(item: WarehouseSummary) {
     setActionError(null);
-    updateMutation.mutate({ id: item.id, body: { isActive: true, version: item.version } }, { onError: (err) => setActionError(errorMessage(err)) });
+    updateMutation.mutate({ id: item.id, body: { isActive: true, version: item.version } }, { onError: handleActionError });
   }
 
   return (
@@ -153,6 +170,9 @@ export function WarehousePane() {
 
       {modal && (
         <WarehouseFormModal
+          key={modal.item ? `${modal.item.id}:${modal.item.version}` : 'new'}
+          stale={guard.stale}
+          onReload={guard.reload}
           mode={modal.mode}
           item={modal.item}
           departments={departments}
@@ -193,6 +213,8 @@ function WarehouseFormModal({
   item,
   departments,
   submitting,
+  stale,
+  onReload,
   onCancel,
   onSubmit,
 }: {
@@ -200,6 +222,9 @@ function WarehouseFormModal({
   item?: WarehouseSummary;
   departments: { id: string; name: string }[];
   submitting: boolean;
+  /** Người khác vừa lưu bản mới của bản ghi này (phát hiện lúc form đang mở) — khoá nút Lưu tới khi tải lại. */
+  stale: boolean;
+  onReload: () => void | Promise<void>;
   onCancel: () => void;
   onSubmit: (dto: { name: string; departmentId?: string; isDefault?: boolean }) => Promise<void>;
 }) {
@@ -208,7 +233,8 @@ function WarehouseFormModal({
   const [departmentId, setDepartmentId] = useState(item?.departmentId ?? NO_DEPARTMENT_VALUE);
   const [isDefault, setIsDefault] = useState(item?.isDefault ?? false);
   const { flashVisible, triggerFlash } = useSaveFlash();
-  const isInvalid = name.trim() === '';
+  const { saveError, run } = useSaveAttempt();
+  const isInvalid = name.trim() === '' || stale;
 
   const departmentOptions = [{ value: NO_DEPARTMENT_VALUE, label: 'Không gắn Khoa/Phòng nào' }, ...departments.map((d) => ({ value: d.id, label: d.name }))];
 
@@ -219,13 +245,12 @@ function WarehouseFormModal({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (isInvalid) return;
-    await onSubmit(buildDto());
-    onCancel();
+    if (await run(() => onSubmit(buildDto()))) onCancel();
   }
 
   async function handleSaveAndContinue() {
     if (isInvalid) return;
-    await onSubmit(buildDto());
+    if (!(await run(() => onSubmit(buildDto())))) return;
     setName('');
     setIsDefault(false);
     nameInputRef.current?.focus();
@@ -259,6 +284,8 @@ function WarehouseFormModal({
             Đặt làm kho mặc định (thay thế kho mặc định hiện có, nếu có)
           </label>
         </div>
+
+        <RecordFormNotice stale={stale} saveError={saveError} onReload={mode === 'edit' ? onReload : undefined} />
 
         <div className="mt-4 flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onCancel}>

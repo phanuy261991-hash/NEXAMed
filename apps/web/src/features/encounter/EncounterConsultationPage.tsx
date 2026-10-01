@@ -54,6 +54,7 @@ import { formatDobDisplay } from '../../shared/format/date';
 import { useUpdatePatientMutation } from '../patient/patient.queries';
 import { Icd10SearchPicker, type Icd10SearchPickerHandle } from '../../shared/ui/Icd10SearchPicker';
 import { useIcd10SuggestionEnabledQuery } from '../clinic/clinic.queries';
+import { DiagnosisAmendDialog } from './DiagnosisAmendDialog';
 import { DiagnosisSuggestionPanel, type DiagnosisSuggestionPanelHandle } from './DiagnosisSuggestionPanel';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { PrescriptionPanel } from './PrescriptionPanel';
@@ -192,8 +193,8 @@ export function EncounterConsultationPage() {
    * (`buildClinicalNoteAmendSections`), tránh tạo lịch sử đính chính vô ích cho mục không đổi.
    */
   const [diagnosisAmendOpen, setDiagnosisAmendOpen] = useState(false);
+  /** Danh sách chẩn đoán lúc MỞ dialog (bản đã ký) — dialog tự giữ state chỉnh sửa của nó (`DiagnosisAmendDialog.tsx`). */
   const [diagnosisAmendItems, setDiagnosisAmendItems] = useState<DiagnosisDraft[]>([]);
-  const [diagnosisAmendReason, setDiagnosisAmendReason] = useState('');
   const [clinicalAmendOpen, setClinicalAmendOpen] = useState(false);
   const [clinicalAmendDraft, setClinicalAmendDraft] = useState<ClinicalDraft>(EMPTY_CLINICAL_DRAFT);
   const [clinicalAmendReason, setClinicalAmendReason] = useState('');
@@ -586,43 +587,24 @@ export function EncounterConsultationPage() {
   /** "Đính chính chẩn đoán" (Sprint 5, S5-02/03) — chỉ mở được sau khi đã ký (`isCompleted`). */
   function openDiagnosisAmend() {
     setDiagnosisAmendItems(diagnoses);
-    setDiagnosisAmendReason('');
     setDiagnosisAmendOpen(true);
   }
 
-  function handleAddAmendDiagnosis(item: { icd10Code: string; icd10Name: string }) {
-    const type: DiagnosisType = diagnosisAmendItems.length === 0 ? 'PRIMARY' : 'SECONDARY';
-    setDiagnosisAmendItems((prev) => [...prev, { icd10Code: item.icd10Code, icd10Name: item.icd10Name, type }]);
-  }
-
-  function handleSetAmendPrimary(code: string) {
-    setDiagnosisAmendItems((prev) => prev.map((d) => ({ ...d, type: d.icd10Code === code ? 'PRIMARY' : 'SECONDARY' })));
-  }
-
-  function handleRemoveAmendDiagnosis(code: string) {
-    setDiagnosisAmendItems((prev) => {
-      const removed = prev.find((d) => d.icd10Code === code);
-      const remaining = prev.filter((d) => d.icd10Code !== code);
-      if (removed?.type === 'PRIMARY' && remaining.length > 0 && !remaining.some((d) => d.type === 'PRIMARY')) {
-        remaining[0] = { ...remaining[0]!, type: 'PRIMARY' };
-      }
-      return remaining;
-    });
-  }
-
-  async function handleDiagnosisAmendSubmit() {
-    if (diagnosisAmendReason.trim() === '' || diagnosisAmendItems.length === 0) return;
+  async function handleDiagnosisAmendSubmit(items: DiagnosisDraft[], reason: string, learnedPairs: LearnedDiagnosisPair[]) {
+    if (reason === '' || items.length === 0) return;
     try {
       const result = await amendDiagnosesMutation.mutateAsync({
-        diagnoses: diagnosisAmendItems.map((d) => ({ icd10Code: d.icd10Code, type: d.type, note: d.note })),
-        amendmentReason: diagnosisAmendReason.trim(),
+        diagnoses: items.map((d) => ({ icd10Code: d.icd10Code, type: d.type, note: d.note })),
+        amendmentReason: reason,
+        // Học "cụm từ ↔ mã" từ gợi ý bấm trong dialog (#206) — server tự bỏ qua khi phòng khám chưa bật "Học từ lịch sử chọn mã".
+        ...(learnedPairs.length > 0 ? { learnedPairs } : {}),
       });
       // Đồng bộ NGAY state cục bộ từ bản đính chính vừa lưu — cùng khuôn `persistDiagnoses()`, vì
       // `diagnoses` không tự đồng bộ lại từ `query.data` sau lần nạp đầu (xem `loadedForId`).
       setDiagnoses(result.items.map((d) => ({ icd10Code: d.icd10Code, icd10Name: d.icd10Name, type: d.type, note: d.note ?? undefined, amendmentReason: d.amendmentReason })));
       setDiagnosisAmendOpen(false);
     } catch (err) {
-      handleSaveError(err, 'diagnosis', () => void handleDiagnosisAmendSubmit(), 'Không lưu được bản đính chính, vui lòng thử lại.');
+      handleSaveError(err, 'diagnosis', () => void handleDiagnosisAmendSubmit(items, reason, learnedPairs), 'Không lưu được bản đính chính, vui lòng thử lại.');
     }
   }
 
@@ -1374,71 +1356,15 @@ export function EncounterConsultationPage() {
         />
       )}
 
-      {/* "Đính chính chẩn đoán" (Sprint 5, S5-02/03) — cùng UX dialog "Sửa đơn" của `PrescriptionPanel.tsx`. */}
+      {/* "Đính chính chẩn đoán" (Sprint 5, S5-02/03; gợi ý ICD-10 #206) — tách thành component riêng (`DiagnosisAmendDialog.tsx`). */}
       {diagnosisAmendOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
-          <div className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-lg bg-white p-5 shadow-xl">
-            <h2 className="text-[15px] font-semibold text-slate-900">Đính chính chẩn đoán</h2>
-            <p className="mt-1 text-xs text-slate-500">Tạo bản chẩn đoán mới thay thế bản đã ký — bản cũ vẫn lưu lại trong lịch sử, không mất.</p>
-
-            <div className="scroll-hover mt-3 flex-1 space-y-1.5 overflow-y-auto">
-              {diagnosisAmendItems.length === 0 && <p className="text-xs text-slate-400">Chưa chọn chẩn đoán nào.</p>}
-              {diagnosisAmendItems.map((d) => (
-                <div
-                  key={d.icd10Code}
-                  className={`flex items-center justify-between rounded-md border px-3 py-2 ${
-                    d.type === 'PRIMARY' ? 'border-l-4 border-l-blue-600 border-y-slate-200 border-r-slate-200 bg-blue-50' : 'border-slate-200 bg-slate-50'
-                  }`}
-                >
-                  <div className="text-sm text-slate-900">
-                    <span className={`mr-2 rounded-full px-2 py-0.5 text-[11px] font-semibold ${d.type === 'PRIMARY' ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-600'}`}>
-                      {DIAGNOSIS_TYPE_LABEL[d.type]}
-                    </span>
-                    <strong>{d.icd10Code}</strong> — {d.icd10Name}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {d.type !== 'PRIMARY' && (
-                      <button type="button" onClick={() => handleSetAmendPrimary(d.icd10Code)} className="text-xs font-semibold text-blue-600 hover:text-blue-700">
-                        Đặt làm bệnh chính
-                      </button>
-                    )}
-                    <button type="button" onClick={() => handleRemoveAmendDiagnosis(d.icd10Code)} className="text-slate-400 hover:text-rose-600" aria-label={`Bỏ chẩn đoán ${d.icd10Code}`}>
-                      <X size={15} weight="bold" aria-hidden="true" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-              <Icd10SearchPicker excludeCodes={diagnosisAmendItems.map((d) => d.icd10Code)} onSelect={handleAddAmendDiagnosis} />
-            </div>
-
-            <div className="mt-3 flex flex-col gap-1.5">
-              <label htmlFor="diagnosis-amend-reason" className="text-sm font-semibold text-slate-800">
-                Lý do đính chính
-              </label>
-              <textarea
-                id="diagnosis-amend-reason"
-                rows={2}
-                value={diagnosisAmendReason}
-                onChange={(e) => setDiagnosisAmendReason(e.target.value)}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              />
-            </div>
-
-            <div className="mt-4 flex justify-end gap-2">
-              <Button type="button" variant="secondary" onClick={() => setDiagnosisAmendOpen(false)}>
-                Huỷ
-              </Button>
-              <Button
-                type="button"
-                onClick={() => void handleDiagnosisAmendSubmit()}
-                loading={amendDiagnosesMutation.isPending}
-                disabled={diagnosisAmendReason.trim() === '' || diagnosisAmendItems.length === 0}
-              >
-                Lưu bản đính chính
-              </Button>
-            </div>
-          </div>
-        </div>
+        <DiagnosisAmendDialog
+          encounterId={encounterId}
+          initialItems={diagnosisAmendItems}
+          submitting={amendDiagnosesMutation.isPending}
+          onSubmit={({ items, reason, learnedPairs }) => void handleDiagnosisAmendSubmit(items, reason, learnedPairs)}
+          onClose={() => setDiagnosisAmendOpen(false)}
+        />
       )}
 
       {/* "Đính chính ghi chú khám" (Sprint 5, S5-02/03) — 1 dialog gộp cả 6 mục, chỉ mục THỰC SỰ đổi nội dung mới gửi lên (`handleClinicalAmendSubmit`). */}

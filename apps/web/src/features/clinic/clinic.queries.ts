@@ -22,6 +22,7 @@ import { useAppConfig } from '../../app/AppConfigProvider';
 import { useAuthStore } from '../auth/auth.store';
 import { DOCTOR_ONLY_ROLES } from '../auth/workflow-roles';
 import { queryKey } from '../../shared/api/query-keys';
+import { STALE_REFERENCE_MS } from '../../shared/api/stale-time';
 import {
   createExamStation,
   createFloor,
@@ -324,6 +325,7 @@ export function useRoomOptionsQuery() {
     queryKey: queryKey(tenantId, 'clinic', 'room-options'),
     queryFn: getRoomOptions,
     enabled: isDoctor,
+    staleTime: STALE_REFERENCE_MS,
   });
 }
 

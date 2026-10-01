@@ -432,10 +432,25 @@ export const diagnosisItemSchema = z.object({
 export type DiagnosisItem = z.infer<typeof diagnosisItemSchema>;
 
 /**
+ * Cặp "cụm từ ↔ mã" bác sĩ đã bấm chọn từ khối gợi ý ICD-10 — chỉ dùng khi tenant bật "Học từ lịch
+ * sử chọn mã". `phraseKey` do SERVER sinh ra ở `DiagnosisSuggestionGroup` (không phải cụm gốc bác sĩ
+ * gõ); server chỉ ghi khi `icd10Code` vẫn nằm trong chẩn đoán cuối cùng của lượt khám. Gửi kèm "Hoàn
+ * tất khám" (`completeConsultationRequestSchema`) hoặc "Đính chính chẩn đoán"
+ * (`amendDiagnosesRequestSchema`) — đặt TRƯỚC 2 schema đó vì chúng dùng ngay lúc khai báo.
+ */
+export const learnedDiagnosisPairSchema = z.object({
+  phraseKey: z.string().regex(/^[a-z0-9 ]{1,120}$/),
+  icd10Code: z.string().min(1).max(10),
+});
+export type LearnedDiagnosisPair = z.infer<typeof learnedDiagnosisPairSchema>;
+
+/**
  * "Đính chính chẩn đoán" (`POST /encounters/:id/diagnoses/amend`, Sprint 5, S5-02/03) — CHỈ gọi
  * được khi `encounter.status=COMPLETED` (tức đã ký). Thay thế TOÀN BỘ danh sách (cùng khuôn
  * `saveDiagnosesRequestSchema`) — `supersedesId` từng dòng do server tự ghép theo `(icd10Code,
  * type)` không đổi (xem `pairDiagnosisAmendment`, `packages/core`), không nhận từ client.
+ * `learnedPairs` (tuỳ chọn, tối đa 20, #206) — như ở "Hoàn tất khám": mã bác sĩ bấm từ gợi ý ngay
+ * trong dialog Đính chính; server bỏ qua khi tenant chưa bật "Học từ lịch sử chọn mã".
  */
 export const amendDiagnosesRequestSchema = z
   .object({
@@ -449,6 +464,7 @@ export const amendDiagnosesRequestSchema = z
       )
       .min(1, 'Phải có ít nhất một chẩn đoán.'),
     amendmentReason: z.string().min(1, 'Phải nhập lý do đính chính.'),
+    learnedPairs: z.array(learnedDiagnosisPairSchema).max(20).optional(),
   })
   .refine((data) => data.diagnoses.filter((d) => d.type === 'PRIMARY').length === 1, {
     message: 'Phải có đúng một chẩn đoán chính (PRIMARY).',
@@ -620,17 +636,6 @@ export const consultationDetailResponseSchema = z.object({
   prescription: prescriptionResponseSchema,
 });
 export type ConsultationDetailResponse = z.infer<typeof consultationDetailResponseSchema>;
-
-/**
- * Cặp "cụm từ ↔ mã" bác sĩ đã bấm chọn từ khối gợi ý ICD-10 — chỉ dùng khi tenant bật "Học từ lịch
- * sử chọn mã". `phraseKey` do SERVER sinh ra ở `DiagnosisSuggestionGroup` (không phải cụm gốc bác sĩ
- * gõ); server chỉ ghi khi `icd10Code` vẫn nằm trong chẩn đoán cuối cùng của lượt khám.
- */
-export const learnedDiagnosisPairSchema = z.object({
-  phraseKey: z.string().regex(/^[a-z0-9 ]{1,120}$/),
-  icd10Code: z.string().min(1).max(10),
-});
-export type LearnedDiagnosisPair = z.infer<typeof learnedDiagnosisPairSchema>;
 
 /**
  * "Hoàn tất khám" — IN_CONSULTATION → COMPLETED. `version` là version của `encounter`.

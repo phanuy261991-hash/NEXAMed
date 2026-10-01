@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { ArrowCounterClockwise, MagnifyingGlass, PencilSimple, Plus, Prohibit } from '@phosphor-icons/react';
 import type { UserAccountSummary } from '@nexamed/shared';
-import { ApiError } from '../../shared/api/client';
+import { ACTION_CONFLICT_MESSAGE, describeSaveError, isConflictError } from '../../shared/api/save-error';
+import { useEditedRecordGuard } from '../../shared/hooks/useStaleRecordWatch';
 import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { RowActionButton } from '../../shared/ui/RowActionButton';
@@ -23,12 +24,13 @@ import {
   useUpdateUserAccountMutation,
   useUserAccountsQuery,
 } from './user-account.queries';
+import { getUserAccount } from './user-account.api';
 
 const inputClassName =
   'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 
 function errorMessage(err: unknown): string {
-  return err instanceof ApiError ? err.message : 'Có lỗi xảy ra, vui lòng thử lại.';
+  return isConflictError(err) ? ACTION_CONFLICT_MESSAGE : describeSaveError(err);
 }
 
 /** `undefined`/`''` → `null` (xoá trên server), chuỗi có nội dung → giữ nguyên — dùng cho mọi trường text tuỳ chọn lúc PATCH. */
@@ -96,6 +98,13 @@ export function UserAccountPane() {
 
   const itemIds = useMemo(() => items.map((u) => u.id), [items]);
   const rowSelection = useRowSelection(itemIds);
+  const guard = useEditedRecordGuard({
+    editing: modal?.mode === 'edit' ? modal.item : undefined,
+    watchKey: 'user',
+    fetchLatest: getUserAccount,
+    onFresh: (fresh) => setModal(fresh ? { mode: 'edit', item: fresh } : null),
+    onReloaded: () => void accountsQuery.refetch(),
+  });
 
   function currentRoleIdsFor(item: UserAccountSummary): string[] {
     return item.roleNames.map((name) => roleIdByName.get(name)).filter((id): id is string => id !== undefined);
@@ -166,7 +175,8 @@ export function UserAccountPane() {
         });
       }
     } catch (err) {
-      setActionError(errorMessage(err));
+      // Lỗi lưu từ form Thêm/Sửa hiện NGAY TRONG form (`UserAccountFormDialog` bắt lại bằng `useSaveAttempt`) — không đẩy ra banner trang phía sau lớp phủ.
+      if (isConflictError(err)) void accountsQuery.refetch();
       throw err;
     }
   }
@@ -298,6 +308,9 @@ export function UserAccountPane() {
 
       {modal && (
         <UserAccountFormDialog
+          key={modal.item ? `${modal.item.id}:${modal.item.version}` : 'new'}
+          stale={guard.stale}
+          onReload={guard.reload}
           mode={modal.mode}
           item={modal.item}
           currentRoleIds={modal.item ? currentRoleIdsFor(modal.item) : []}

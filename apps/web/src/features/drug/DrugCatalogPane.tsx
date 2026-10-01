@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ArrowCounterClockwise, CaretDown, ClockCounterClockwise, MagnifyingGlass, PencilSimple, Pill, Plus, Prohibit, Trash, Eye, FirstAidKit, X } from '@phosphor-icons/react';
 import type { DrugControlType, DrugIngredientInput, DrugItemType, DrugSummary, DrugUnitInput, ReferenceCatalogCategory, StockLedgerEntry } from '@nexamed/shared';
-import { ApiError } from '../../shared/api/client';
+import { ACTION_CONFLICT_MESSAGE, describeSaveError, isConflictError } from '../../shared/api/save-error';
 import { useHasAnyPermission, useHasPermission } from '../auth/usePermission';
 import { useDrugBatchBalancesQuery, useDrugLedgerQuery } from '../inventory/inventory.queries';
 import { DRUG_MANAGE_PERMISSIONS } from '../auth/admin-permissions';
@@ -23,10 +23,14 @@ import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
 import { useRowSelection } from '../../shared/hooks/useRowSelection';
 import { useSaveFlash } from '../../shared/hooks/useSaveFlash';
+import { useSaveAttempt } from '../../shared/hooks/useSaveAttempt';
+import { useEditedRecordGuard } from '../../shared/hooks/useStaleRecordWatch';
+import { RecordFormNotice } from '../../shared/ui/RecordFormNotice';
 import { useCreateReferenceCatalogItemMutation, useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { appendSentence } from '../../shared/format/append-sentence';
 import { formatDobDisplay } from '../../shared/format/date';
 import { useCreateDrugMutation, useDrugsQuery, useUpdateDrugMutation } from './drug.queries';
+import { getDrug } from './drug.api';
 import { DrugItemTypeBadge, ITEM_TYPE_LABEL } from './drug-item-type';
 import { useUnitNameByCode } from './useUnitNameByCode';
 
@@ -201,6 +205,13 @@ export function DrugCatalogPane() {
   const items = query.data?.items ?? [];
   const itemIds = items.map((d) => d.id);
   const rowSelection = useRowSelection(itemIds);
+  const guard = useEditedRecordGuard({
+    editing: modal?.mode === 'edit' ? modal.item : undefined,
+    watchKey: 'drug',
+    fetchLatest: getDrug,
+    onFresh: (fresh) => setModal((prev) => (fresh && prev ? { ...prev, mode: 'edit', item: fresh } : null)),
+    onReloaded: () => void query.refetch(),
+  });
   const selectedItem = items.find((d) => d.id === selectedId) ?? null;
 
   // Mở thẳng panel chi tiết + đúng tab khi điều hướng từ nơi khác (ví dụ "Tồn kho" bấm tên thuốc
@@ -219,8 +230,14 @@ export function DrugCatalogPane() {
     if (tab === 'batches' || tab === 'ledger' || tab === 'history') setDetailTab(tab);
   }, [items, searchParams]);
 
-  function errorMessage(err: unknown): string {
-    return err instanceof ApiError ? err.message : 'Có lỗi xảy ra, vui lòng thử lại.';
+  /** Lỗi thao tác nhanh ở danh sách: xung đột phiên bản → báo rõ + tải lại danh sách; lỗi khác dùng câu thống nhất. */
+  function handleActionError(err: unknown) {
+    if (isConflictError(err)) {
+      setActionError(ACTION_CONFLICT_MESSAGE);
+      void query.refetch();
+      return;
+    }
+    setActionError(describeSaveError(err));
   }
 
   /** Nút "Ẩn" nhanh ở danh sách (không cần mở form Sửa) — bắt xác nhận vì mặt hàng sẽ hết chọn
@@ -229,14 +246,14 @@ export function DrugCatalogPane() {
     setActionError(null);
     updateMutation.mutate(
       { id: item.id, body: { isActive: false, version: item.version } },
-      { onSuccess: () => setDeactivateTarget(null), onError: (err) => setActionError(errorMessage(err)) },
+      { onSuccess: () => setDeactivateTarget(null), onError: handleActionError },
     );
   }
 
   /** "Kích hoạt lại" — trực tiếp không cần xác nhận (cùng cách `ReferenceCatalogPane`/`UserAccountPane` xử lý). */
   function handleReactivate(item: DrugSummary) {
     setActionError(null);
-    updateMutation.mutate({ id: item.id, body: { isActive: true, version: item.version } }, { onError: (err) => setActionError(errorMessage(err)) });
+    updateMutation.mutate({ id: item.id, body: { isActive: true, version: item.version } }, { onError: handleActionError });
   }
 
   return (
@@ -542,6 +559,9 @@ export function DrugCatalogPane() {
 
       {modal && (
         <DrugFormModal
+          key={modal.item ? `${modal.item.id}:${modal.item.version}` : 'new'}
+          stale={guard.stale}
+          onReload={guard.reload}
           mode={modal.mode}
           itemType={modal.itemType}
           item={modal.item}
@@ -883,6 +903,8 @@ function DrugFormModal({
   usageTimingSentenceByCode,
   onCreateUsageTimingOption,
   submitting,
+  stale,
+  onReload,
   onCancel,
   onSubmit,
 }: {
@@ -902,6 +924,9 @@ function DrugFormModal({
   usageTimingSentenceByCode: Map<string, string>;
   onCreateUsageTimingOption: (name: string) => Promise<ComboboxOption>;
   submitting: boolean;
+  /** Người khác vừa lưu bản mới của mặt hàng này (phát hiện lúc form đang mở) — khoá nút Lưu tới khi tải lại. */
+  stale: boolean;
+  onReload: () => void | Promise<void>;
   onCancel: () => void;
   onSubmit: (dto: {
     code: string;
@@ -992,7 +1017,9 @@ function DrugFormModal({
       registrationNumber.trim() === '' ||
       dosageForm.trim() === '' ||
       countryOfOrigin.trim() === '');
+  const { saveError, run } = useSaveAttempt();
   const isInvalid =
+    stale ||
     code.trim() === '' ||
     name.trim() === '' ||
     baseUnitCode.trim() === '' ||
@@ -1056,13 +1083,12 @@ function DrugFormModal({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (isInvalid) return;
-    await onSubmit(buildDto());
-    onCancel();
+    if (await run(() => onSubmit(buildDto()))) onCancel();
   }
 
   async function handleSaveAndContinue() {
     if (isInvalid) return;
-    await onSubmit(buildDto());
+    if (!(await run(() => onSubmit(buildDto())))) return;
     setCode('');
     setName('');
     setIngredients([]);
@@ -1534,6 +1560,11 @@ function DrugFormModal({
           )}
         </div>
 
+        {(stale || saveError) && (
+          <div className="flex-shrink-0 border-t border-slate-200 bg-white px-5 pt-3">
+            <RecordFormNotice stale={stale} saveError={saveError} onReload={mode === 'edit' ? onReload : undefined} />
+          </div>
+        )}
         <div className="flex flex-shrink-0 items-center justify-end gap-2 border-t border-slate-200 bg-slate-50 px-5 py-3">
           <Button type="button" variant="secondary" onClick={onCancel}>
             Huỷ

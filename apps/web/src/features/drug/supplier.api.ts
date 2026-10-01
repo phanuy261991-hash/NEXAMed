@@ -14,3 +14,8 @@ export async function createSupplier(body: CreateSupplierRequest): Promise<Suppl
 export async function updateSupplier(id: string, body: UpdateSupplierRequest): Promise<SupplierSummary> {
   return unwrap(await getApiClient().PATCH('/api/v1/suppliers/{id}', { params: { path: { id } }, body })) as SupplierSummary;
 }
+
+/** Một nhà cung cấp theo id — dùng cho `useEditedRecordGuard`. */
+export async function getSupplier(id: string): Promise<SupplierSummary> {
+  return unwrap(await getApiClient().GET('/api/v1/suppliers/{id}', { params: { path: { id } } })) as SupplierSummary;
+}

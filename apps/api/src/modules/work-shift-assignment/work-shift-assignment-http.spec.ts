@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import cookieParser from 'cookie-parser';
@@ -46,11 +46,19 @@ describe('HTTP e2e — /api/v1/work-shift-assignments', () => {
     return { userId: user.id, token: login.body.data.accessToken as string };
   }
 
+  /** `created_at` do DB gán theo giờ THẬT, còn `Date` của app đã ghim (xem beforeAll) — kéo về cùng 'hôm nay' đã ghim để 'ca đăng ký TRONG hôm nay' (canEdit/tự xoá) đúng như lúc viết test. */
+  async function alignCreatedAtToPinnedToday(id: string) {
+    await privileged.workShiftAssignment.update({ where: { id }, data: { createdAt: new Date() } });
+  }
+
   function authed(token: string) {
     return { Authorization: `Bearer ${token}` };
   }
 
   beforeAll(async () => {
+    // Ghim đồng hồ (chỉ `Date`) về cuối tháng 9/2026: mọi test dùng ngày cố định trong tháng 9 và 'Khoá bảng ca' (#110)
+    // so ngày hôm nay với tháng của ca — không ghim thì sang tháng 10 là toàn bộ tháng 9 bị khoá (WORK_SHIFT_ASSIGNMENT_MONTH_LOCKED).
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-09-26T03:00:00Z') });
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication();
     app.setGlobalPrefix('api/v1');
@@ -91,6 +99,7 @@ describe('HTTP e2e — /api/v1/work-shift-assignments', () => {
   });
 
   afterAll(async () => {
+    vi.useRealTimers();
     await fixture.cleanup();
     await privileged.$disconnect();
     await app.close();
@@ -110,7 +119,13 @@ describe('HTTP e2e — /api/v1/work-shift-assignments', () => {
     expect(res.body.data.userId).toBe(doctorAUserId);
     expect(res.body.data.workDate).toBe('2026-09-10');
     expect(res.body.data.workShiftName).toBe('Ca Sáng');
-    expect(res.body.data.canEdit).toBe(true);
+
+    await alignCreatedAtToPinnedToday(res.body.data.id as string);
+    const list = await request(app.getHttpServer())
+      .get('/api/v1/work-shift-assignments')
+      .query({ from: '2026-09-01', to: '2026-09-30' })
+      .set(authed(doctorAToken));
+    expect((list.body.data.items as { id: string; canEdit: boolean }[]).find((i) => i.id === res.body.data.id)?.canEdit).toBe(true);
   });
 
   it('bác sĩ gửi kèm userId của người khác (scope personal) — vẫn bị ép tạo cho chính mình', async () => {
@@ -183,6 +198,7 @@ describe('HTTP e2e — /api/v1/work-shift-assignments', () => {
       .set(authed(doctorAToken))
       .send({ workShiftId: shiftAfternoonId, workDate: '2026-09-20' });
     const id = created.body.data.id as string;
+    await alignCreatedAtToPinnedToday(id);
 
     const removed = await request(app.getHttpServer())
       .delete(`/api/v1/work-shift-assignments/${id}`)

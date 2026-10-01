@@ -27,6 +27,14 @@ export class DrugController {
     return this.drugService.list(tenantId, dto);
   }
 
+  /** Một bản ghi theo id — nhẹ hơn tải cả danh sách; web dùng để phát hiện bản ghi bị người khác sửa lúc form Sửa đang mở (`useEditedRecordGuard`). 404 nếu không có/khác tenant. */
+  @Get(':id')
+  @RequirePermission('drug', 'read')
+  async getById(@Param('id') id: string, @Req() req: Request) {
+    const { tenantId } = req.user!;
+    return this.drugService.getById(tenantId, id);
+  }
+
   @Post()
   @RequirePermission('drug', 'create')
   @HttpCode(200)

@@ -2,13 +2,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CreateWarehouseRequest, UpdateWarehouseRequest } from '@nexamed/shared';
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
+import { STALE_REFERENCE_MS } from '../../shared/api/stale-time';
 import { createWarehouse, listWarehouses, updateWarehouse } from './warehouse.api';
 
-export function useWarehousesQuery() {
+export function useWarehousesQuery(options?: { fresh?: boolean }) {
   const { tenantId } = useAppConfig();
   return useQuery({
     queryKey: queryKey(tenantId, 'warehouse'),
     queryFn: () => listWarehouses(),
+    staleTime: options?.fresh ? 0 : STALE_REFERENCE_MS, // `fresh`: màn quản trị kho luôn lấy bản mới nhất
   });
 }
 

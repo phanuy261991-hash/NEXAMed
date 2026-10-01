@@ -66,8 +66,23 @@ export const referenceCatalogCategorySchema = z.enum([
   // `drug.usageInstruction`/`prescriptionItem.instruction` có sẵn, KHÔNG thêm cột mới nào. "Cách
   // dùng" (M01-M99) trong file gốc bị bỏ hẳn vì ~80% trùng lặp với DRUG_ROUTE/DOSAGE_FORM.
   'DRUG_USAGE_TIMING',
+  // Từ điển viết tắt chẩn đoán cho "Gợi ý mã ICD-10" (docs/DECISIONS.md #206) — `code` = từ viết tắt
+  // (MỘT từ, chữ/số, server chuẩn hoá chữ thường), `name` = cách viết đầy đủ. CHỈ đổi chữ thành
+  // chữ, không map ra mã ICD. Nhập tay `code` (không tự sinh), seed sẵn 11 mục bằng migration.
+  'ICD10_ABBREVIATION',
 ]);
 export type ReferenceCatalogCategory = z.infer<typeof referenceCatalogCategorySchema>;
+
+/**
+ * `code` của category `ICD10_ABBREVIATION` phải là ĐÚNG MỘT từ (chữ/số, không khoảng trắng/dấu câu) —
+ * bộ tách cụm của "Gợi ý mã ICD-10" khớp NGUYÊN TỪ nên "t.h.a" hay "tăng HA" không bao giờ khớp được.
+ */
+export const ICD10_ABBREVIATION_CODE_PATTERN = /^[\p{L}\p{N}]+$/u;
+
+/** Dạng lưu/so khớp của từ viết tắt: viết thường + NFC (cùng cách `tokenizeVietnamese` ở `packages/core` chuẩn hoá từng từ). */
+export function normalizeIcd10AbbreviationCode(raw: string): string {
+  return raw.trim().toLowerCase().normalize('NFC');
+}
 
 /**
  * "Loại" của một mục `INCOME_EXPENSE_TYPE` — CHỈ 2 giá trị cố định, không quản lý/mở rộng được qua

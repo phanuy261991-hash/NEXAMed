@@ -54,6 +54,16 @@ export class SupplierService {
     });
   }
 
+  async getById(tenantId: string, id: string): Promise<SupplierSummary> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const row = await this.supplierRepository.findById(tx, tenantId, id);
+      if (!row) {
+        throw new NotFoundException();
+      }
+      return this.toSummary(row);
+    });
+  }
+
   async update(tenantId: string, actorId: string, id: string, dto: UpdateSupplierRequest, meta: RequestMeta): Promise<SupplierSummary> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.supplierRepository.findById(tx, tenantId, id);

@@ -23,3 +23,8 @@ export async function createDrug(body: CreateDrugRequest): Promise<DrugSummary> 
 export async function updateDrug(id: string, body: UpdateDrugRequest): Promise<DrugSummary> {
   return unwrap(await getApiClient().PATCH('/api/v1/drugs/{id}', { params: { path: { id } }, body })) as DrugSummary;
 }
+
+/** Một mặt hàng theo id — nhẹ hơn tải cả danh sách; dùng cho `useEditedRecordGuard` (phát hiện bản ghi bị người khác sửa lúc form Sửa đang mở). */
+export async function getDrug(id: string): Promise<DrugSummary> {
+  return unwrap(await getApiClient().GET('/api/v1/drugs/{id}', { params: { path: { id } } })) as DrugSummary;
+}

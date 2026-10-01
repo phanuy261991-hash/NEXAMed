@@ -6,16 +6,19 @@ import {
   generateReferenceCatalogCode,
   REFERENCE_CATALOG_SHORT_CODE_PREFIXES,
   ReferenceCatalogDuplicateCodeError,
+  ReferenceCatalogInvalidAbbreviationError,
 } from '@nexamed/core';
 import { GlobalCodeSequenceRepository } from '../../infrastructure/persistence/global-code-sequence.repository';
-import type {
-  CreateReferenceCatalogRequest,
-  ExamTypePriceInput,
-  ExamTypePriceItem,
-  ListReferenceCatalogResponse,
-  ReferenceCatalogCategory,
-  ReferenceCatalogItem,
-  UpdateReferenceCatalogRequest,
+import {
+  ICD10_ABBREVIATION_CODE_PATTERN,
+  normalizeIcd10AbbreviationCode,
+  type CreateReferenceCatalogRequest,
+  type ExamTypePriceInput,
+  type ExamTypePriceItem,
+  type ListReferenceCatalogResponse,
+  type ReferenceCatalogCategory,
+  type ReferenceCatalogItem,
+  type UpdateReferenceCatalogRequest,
 } from '@nexamed/shared';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
@@ -71,6 +74,22 @@ export class ReferenceCatalogService {
     return generateReferenceCatalogCode(category);
   }
 
+  /**
+   * `ICD10_ABBREVIATION` (#206): `code` là TỪ viết tắt do người dùng nhập — lưu dạng chuẩn hoá (chữ
+   * thường + NFC, nên "THA" và "tha" là cùng 1 mục, bị chặn trùng như mọi mã khác) và phải đúng MỘT
+   * từ chữ/số. Category khác trả nguyên `code` (có thể `undefined` → tự sinh mã như cũ).
+   */
+  private normalizeCodeForCategory(category: ReferenceCatalogCategory, code: string | undefined): string | undefined {
+    if (category !== 'ICD10_ABBREVIATION' || code === undefined) {
+      return code;
+    }
+    const normalized = normalizeIcd10AbbreviationCode(code);
+    if (!ICD10_ABBREVIATION_CODE_PATTERN.test(normalized)) {
+      throw new ReferenceCatalogInvalidAbbreviationError();
+    }
+    return normalized;
+  }
+
   async listByCategory(
     tenantId: string,
     category: ReferenceCatalogCategory,
@@ -96,7 +115,11 @@ export class ReferenceCatalogService {
       // 6 category không có nguồn dữ liệu chính thức, backend không hardcode danh sách category,
       // chỉ tự sinh khi thiếu `code`. Mã ngắn tuần tự cấp atomic (docs/DECISIONS.md #113) nên
       // không cần retry khi trùng — chỉ mã client TỰ NHẬP mới có thể trùng thật.
-      const code = dto.code ?? (await this.generateCode(tx, dto.category));
+      const providedCode = this.normalizeCodeForCategory(dto.category, dto.code);
+      if (dto.category === 'ICD10_ABBREVIATION' && providedCode === undefined) {
+        throw new ReferenceCatalogInvalidAbbreviationError();
+      }
+      const code = providedCode ?? (await this.generateCode(tx, dto.category));
       let created: ReferenceCatalog;
       try {
         created = await this.referenceCatalogRepository.create(tx, {
@@ -199,6 +222,7 @@ export class ReferenceCatalogService {
       if (!existing) {
         throw new NotFoundException();
       }
+      const nextCode = this.normalizeCodeForCategory(existing.category, dto.code);
 
       // `examTypePrices` là PATCH riêng cho bảng con `exam_type_price`, không phải cột nào của
       // `reference_catalog` — bỏ nó ra trước khi xét "có gì để sửa ở bảng cha không". Một PATCH
@@ -224,7 +248,7 @@ export class ReferenceCatalogService {
         let count: number;
         try {
           count = await this.referenceCatalogRepository.update(tx, id, {
-            code: dto.code,
+            code: nextCode,
             name: dto.name,
             sortOrder: dto.sortOrder,
             price: dto.price !== undefined ? BigInt(dto.price) : undefined,

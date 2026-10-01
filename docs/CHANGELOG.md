@@ -2,6 +2,24 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-10-01
+
+### Xử lý xung đột khi nhiều máy cùng sửa một bản ghi (nhà cung cấp, thuốc, kho, tài khoản, hồ sơ bệnh nhân)
+
+Trước đây form Sửa chỉ biết bản ghi đã bị người khác sửa lúc bấm Lưu (409), lỗi bị nuốt/im lặng ở nhiều form, form bệnh nhân tự đóng. Nay: (1) form Sửa đang mở tự kiểm tra bản mới mỗi 15 giây (và khi focus lại cửa sổ) — thấy bản mới hơn thì hiện banner + khoá nút Lưu; (2) mọi lỗi lưu hiện NGAY TRONG form bằng một banner thống nhất (`SaveErrorBanner`/`RecordFormNotice`), xung đột phiên bản có câu riêng + nút "Tải lại dữ liệu mới" (nạp lại form với bản mới nhất); Ẩn/Kích hoạt lại nhanh ở danh sách cũng báo rõ và tự tải lại danh sách; (3) màn quản trị danh mục/kho luôn lấy dữ liệu mới khi mở (không dùng cache 5 phút). Thành phần dùng chung: `shared/api/save-error.ts`, `useSaveAttempt`, `useStaleRecordWatch`/`useEditedRecordGuard`, `RecordFormNotice`. Chưa áp: Phòng/Tầng, Khoa/Phòng, Quỹ tiền mặt, Ca làm việc, Vai trò, Đơn thuốc mẫu (cùng mẫu, áp dần). Việc phát hiện bản mới dùng 1 request nhẹ theo từng bản ghi (không tải cả danh sách): thêm `GET /drugs/:id`, `GET /suppliers/:id`, `GET /warehouses/:id` (quyền `drug.read`, additive; tài khoản/bệnh nhân đã có sẵn). Thêm test HTTP, kể cả 2 yêu cầu lưu ĐỒNG THỜI cùng 1 thuốc → đúng 1 thành công, 1 bị 409, dữ liệu không bị trộn. Đã verify Chrome thật 2 phiên: lưu khi bị sửa trước → banner + tải lại + lưu được; form đang mở tự phát hiện + khoá Lưu.
+
+### Giảm request lặp khi chuyển trang: cache danh mục/tuỳ chọn ít đổi
+
+TanStack Query mặc định `staleTime: 0` nên mỗi lần mở lại trang đều tải lại danh mục (đơn vị tính, kho, bác sĩ, phòng, Khoa, cấu hình lịch). Thêm `shared/api/stale-time.ts` và áp `staleTime` CHỈ cho 6 truy vấn ít đổi mà mọi mutation đều invalidate đúng khoá: danh mục dùng chung, kho, cấu hình lịch, phòng (5 phút), bác sĩ, Khoa/Phòng (1 phút). Dữ liệu nghiệp vụ (bệnh nhân/lịch hẹn/hoá đơn/tồn kho) và các truy vấn polling giữ nguyên. Đo trên bản build: quay lại Tồn kho 4→2 request, Lịch hẹn 4→2, Hàng đợi khám 5→2; thêm/ẩn mục danh mục vẫn hiện ngay. Thuần web, không đổi API.
+
+### Sửa test phụ thuộc ngày: `work-shift-assignment-http.spec.ts`
+
+11 test fail từ khi sang tháng 10 (`WORK_SHIFT_ASSIGNMENT_MONTH_LOCKED`) vì dùng ngày cố định tháng 9/2026 trong khi "Khoá bảng ca" (#110) so với ngày hôm nay. Ghim đồng hồ (chỉ `Date`, `vi.useFakeTimers`) về 26/09/2026 trong spec và kéo `created_at` của 2 ca "đúng hôm nay" về cùng ngày ghim (DB gán giờ thật). Chỉ sửa test, không đổi code chạy thật. 18/18 pass.
+
+### "Gợi ý mã ICD-10": màn quản trị từ điển viết tắt + gợi ý ngay trong dialog "Đính chính chẩn đoán"
+
+Làm nốt 2 mục #200 đã cố ý để dành. **Từ điển viết tắt** (THA, ĐTĐ, SXH...) không còn là danh sách tĩnh trong code: lưu ở `reference_catalog` category mới `ICD10_ABBREVIATION` (dùng chung toàn hệ thống, 11 mục mặc định seed bằng migration), `clinic_admin` thêm/sửa/ẩn qua pill mới "Từ viết tắt chẩn đoán" trong "Danh mục Chuyên môn" — có hiệu lực ngay ở lần gợi ý kế tiếp. Từ viết tắt phải là MỘT từ chữ/số, lưu chữ thường ("THA" ≡ "tha"). **Dialog "Đính chính chẩn đoán"** tách thành component riêng và (khi phòng khám bật gợi ý) có ô "Chẩn đoán" gõ tự do chỉ để tìm mã — bác sĩ bấm từng mã gợi ý, hệ thống không tự gán; cặp "cụm từ ↔ mã" đã bấm được học ngay lúc lưu bản đính chính (`amendDiagnosesRequestSchema.learnedPairs`, cần bật "Học từ lịch sử chọn mã"). `POST /encounters/:id/diagnosis-suggestions` nay gợi ý cả với lượt khám đã hoàn tất. Form Thêm/Sửa danh mục dùng chung nay hiện lỗi lưu inline (trước đây im lặng). Migration `20261001090000` + `20261001090100`. **Đã xác minh thật**: `packages/core` 276/276, `diagnosis-suggestion-http.spec.ts` 29/29, Chrome thật (cả 2 luồng + học xong gợi ý mang nhãn `PHRASE_HISTORY`). Chi tiết `docs/DECISIONS.md` #206.
+
 ## 2026-09-30
 
 ### Tinh chỉnh giao diện: dialog hoàn tiền thuốc dạng bảng, "Đổi bác sĩ" rộng + chọn Khoa bằng thẻ, ô Chẩn đoán ICD-10 nổi bật

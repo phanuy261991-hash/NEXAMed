@@ -8,6 +8,8 @@ import { PasswordInput } from '../../shared/ui/PasswordInput';
 import { Button } from '../../shared/ui/Button';
 import { SaveFlashBanner } from '../../shared/ui/SaveFlashBanner';
 import { useSaveFlash } from '../../shared/hooks/useSaveFlash';
+import { useSaveAttempt } from '../../shared/hooks/useSaveAttempt';
+import { RecordFormNotice } from '../../shared/ui/RecordFormNotice';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { useDepartmentsQuery, useCreateDepartmentMutation } from '../department/department.queries';
 import { useRoomsQuery } from '../clinic/clinic.queries';
@@ -120,6 +122,8 @@ export function UserAccountFormDialog({
   item,
   currentRoleIds,
   submitting,
+  stale,
+  onReload,
   onCancel,
   onSubmit,
   onResetPassword,
@@ -129,6 +133,9 @@ export function UserAccountFormDialog({
   /** Vai trò hiện tại của tài khoản (edit) — `userAccountSummarySchema` chỉ trả `roleNames`, không có id, nên truyền riêng từ nơi đã tra được. */
   currentRoleIds: string[];
   submitting: boolean;
+  /** Người khác vừa lưu bản mới của tài khoản này (phát hiện lúc form đang mở) — khoá nút Lưu tới khi tải lại. */
+  stale: boolean;
+  onReload: () => void | Promise<void>;
   onCancel: () => void;
   /** Trả `Promise` — `handleSubmit`/`handleSaveAndContinue` await để biết lưu xong mới đóng modal
    * hoặc làm trống form (`.claude/docs/ui-guidelines.md` mục 4.7). */
@@ -238,7 +245,9 @@ export function UserAccountFormDialog({
   // SĐT/Tên hiển thị chỉ bắt buộc lúc TẠO MỚI — tài khoản cũ (tạo trước khi 2 trường này tồn
   // tại) có thể chưa có sẵn, không được khoá nút "Lưu thay đổi" của MỌI sửa đổi khác chỉ vì thiếu
   // 2 trường này (bug thật: mở Sửa tài khoản demo cũ, nút Lưu bị mờ dù chỉ đổi Vai trò).
+  const { saveError, run } = useSaveAttempt();
   const canSubmit =
+    !stale &&
     values.fullName.trim() !== '' &&
     (mode === 'edit' || values.phone.trim() !== '') &&
     (mode === 'edit' || values.displayName.trim() !== '') &&
@@ -252,15 +261,14 @@ export function UserAccountFormDialog({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!canSubmit) return;
-    await onSubmit(values);
-    onCancel();
+    if (await run(() => onSubmit(values))) onCancel();
   }
 
   // "Lưu và nhập tiếp" (mục 4.7) — nút `type="button"` riêng, không đụng nút submit mặc định. Chỉ
   // áp dụng lúc TẠO tài khoản mới (mode === 'create', nút chỉ hiện ở đó).
   async function handleSaveAndContinue() {
     if (!canSubmit) return;
-    await onSubmit(values);
+    if (!(await run(() => onSubmit(values)))) return;
     setValues({ ...toFormValues(undefined), roleIds: [] });
     setDisplayNameTouched(false);
     setActiveTab('general');
@@ -624,6 +632,11 @@ export function UserAccountFormDialog({
           </div>
         </div>
 
+        {(stale || saveError) && (
+          <div className="flex-shrink-0 border-t border-slate-200 px-6 pt-4">
+            <RecordFormNotice stale={stale} saveError={saveError} onReload={mode === 'edit' ? onReload : undefined} />
+          </div>
+        )}
         <div className="flex flex-shrink-0 items-center justify-end gap-2 border-t border-slate-200 px-6 py-4">
           <div className="mr-auto">
             <SaveFlashBanner visible={flashVisible} />

@@ -13,6 +13,19 @@ const CANDIDATE_LIMIT = 80;
 @Injectable()
 export class Icd10SuggestionRepository {
   /**
+   * Từ điển viết tắt đang dùng (`reference_catalog` category `ICD10_ABBREVIATION`, #206) — chỉ mục còn
+   * hiệu lực. Bảng dùng chung toàn hệ thống (không `tenant_id`), cùng loại dữ liệu nền với `icd10_catalog`
+   * ở các hàm bên dưới. Vài chục dòng, đọc mỗi lần gợi ý (không cache) để admin sửa là có hiệu lực ngay.
+   */
+  async listActiveAbbreviations(tx: Prisma.TransactionClient): Promise<{ abbreviation: string; expansion: string }[]> {
+    const rows = await tx.referenceCatalog.findMany({
+      where: { category: 'ICD10_ABBREVIATION', isActive: true },
+      select: { code: true, name: true },
+    });
+    return rows.map((r) => ({ abbreviation: r.code, expansion: r.name }));
+  }
+
+  /**
    * Ứng viên cho 1 cụm bệnh: khớp NGUYÊN TỪ (biên từ `\m..\M`, không khớp giữa từ — "tha" không khớp
    * "thai") trên `search_key` (tên đã bỏ dấu, GIN trigram hỗ trợ regex). ≥ 4 từ thì cho phép thiếu tối
    * đa 1 từ (đúng `allowedMisses` của ranker). Chỉ lấy mã dùng được (`is_billable`), lọc giới tính ở

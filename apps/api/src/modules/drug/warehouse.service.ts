@@ -57,6 +57,16 @@ export class WarehouseService {
     });
   }
 
+  async getWarehouse(tenantId: string, id: string): Promise<WarehouseSummary> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const row = await this.warehouseRepository.findById(tx, tenantId, id);
+      if (!row) {
+        throw new NotFoundException();
+      }
+      return this.toSummary(row);
+    });
+  }
+
   async updateWarehouse(tenantId: string, actorId: string, id: string, dto: UpdateWarehouseRequest, meta: RequestMeta): Promise<WarehouseSummary> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.warehouseRepository.findById(tx, tenantId, id);

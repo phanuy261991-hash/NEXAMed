@@ -147,5 +147,29 @@ describe('HTTP e2e — /api/v1/suppliers, /api/v1/warehouses', () => {
       .set(authed(tenantBAdminToken))
       .send({ name: 'Sửa từ tenant khác', version: 1 });
     expect(patchWarehouseB.status).toBe(404);
+
+    // GET theo id (dùng để phát hiện bản ghi bị sửa lúc form Sửa đang mở): cùng tenant 200, tenant khác 404, không đăng nhập 401.
+    expect((await request(app.getHttpServer()).get(`/api/v1/suppliers/${supplierId}`).set(authed(tenantBAdminToken))).status).toBe(404);
+    expect((await request(app.getHttpServer()).get(`/api/v1/warehouses/${warehouseId}`).set(authed(tenantBAdminToken))).status).toBe(404);
+  });
+
+  it('GET /suppliers/:id và /warehouses/:id trả đúng 1 bản ghi kèm version mới nhất (receptionist có drug.read cũng xem được)', async () => {
+    const created = await request(app.getHttpServer()).post('/api/v1/suppliers').set(authed(clinicAdminToken)).send({ name: 'NCC lấy theo id' });
+    const id = created.body.data.id as string;
+    const patched = await request(app.getHttpServer()).patch(`/api/v1/suppliers/${id}`).set(authed(clinicAdminToken)).send({ name: 'NCC lấy theo id (đã sửa)', version: 1 });
+    expect(patched.status).toBe(200);
+
+    const one = await request(app.getHttpServer()).get(`/api/v1/suppliers/${id}`).set(authed(receptionistToken));
+    expect(one.status).toBe(200);
+    expect(one.body.data).toMatchObject({ id, name: 'NCC lấy theo id (đã sửa)', version: 2 });
+
+    const warehouses = await request(app.getHttpServer()).get('/api/v1/warehouses').set(authed(clinicAdminToken));
+    const wh = warehouses.body.data.items[0] as { id: string; version: number };
+    const oneWh = await request(app.getHttpServer()).get(`/api/v1/warehouses/${wh.id}`).set(authed(clinicAdminToken));
+    expect(oneWh.status).toBe(200);
+    expect(oneWh.body.data).toMatchObject({ id: wh.id, version: wh.version });
+
+    expect((await request(app.getHttpServer()).get(`/api/v1/suppliers/${id}`)).status).toBe(401);
+    expect((await request(app.getHttpServer()).get('/api/v1/suppliers/00000000-0000-0000-0000-000000000000').set(authed(clinicAdminToken))).status).toBe(404);
   });
 });

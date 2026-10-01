@@ -43,3 +43,8 @@ export async function uploadUserAccountSignature(id: string, file: File, version
   formData.append('version', String(version));
   return uploadFile<UserAccountSummary>(`/api/v1/users/${id}/signature`, formData);
 }
+
+/** Một tài khoản theo id — dùng cho `useEditedRecordGuard`. */
+export async function getUserAccount(id: string): Promise<UserAccountSummary> {
+  return unwrap(await getApiClient().GET('/api/v1/users/{id}', { params: { path: { id } } })) as UserAccountSummary;
+}

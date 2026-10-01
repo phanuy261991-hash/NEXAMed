@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { UserCircle } from '@phosphor-icons/react';
 import type { PatientDetail } from '@nexamed/shared';
-import { ApiError } from '../../shared/api/client';
 import { Button } from '../../shared/ui/Button';
 import { ModalHeader } from '../../shared/ui/ModalHeader';
+import { RecordFormNotice } from '../../shared/ui/RecordFormNotice';
+import { useSaveAttempt } from '../../shared/hooks/useSaveAttempt';
+import { useStaleRecordWatch } from '../../shared/hooks/useStaleRecordWatch';
 import { PatientFormFields, type PatientFormValues } from './PatientFormFields';
 import { patientDetailToFormValues, toUpdatePatientRequest } from './patient-form.utils';
-import { useUpdatePatientMutation } from './patient.queries';
+import { usePatientQuery, useUpdatePatientMutation } from './patient.queries';
 
 /**
  * "Sửa hồ sơ" — dialog riêng (đổi từ sửa-tại-chỗ cũ của `PatientDetailPage.tsx`, đã hỏi và chốt lúc
@@ -15,23 +17,29 @@ import { useUpdatePatientMutation } from './patient.queries';
  */
 export function PatientEditDialog({ patient, onClose }: { patient: PatientDetail; onClose: () => void }) {
   const updateMutation = useUpdatePatientMutation(patient.id);
+  const patientQuery = usePatientQuery(patient.id);
   const [formValues, setFormValues] = useState<PatientFormValues>(() => patientDetailToFormValues(patient));
-  const [apiError, setApiError] = useState<string | null>(null);
+  // Phiên bản hồ sơ lúc form này được mở/tải lại — bản trên server mới hơn nghĩa là người khác vừa lưu.
+  const [baseVersion, setBaseVersion] = useState(patient.version);
+  const { saveError, run } = useSaveAttempt();
+  const stale = useStaleRecordWatch({
+    enabled: true,
+    currentVersion: baseVersion,
+    latestVersion: patientQuery.data?.version ?? patient.version,
+    refetch: patientQuery.refetch,
+  });
 
   async function save() {
-    setApiError(null);
-    try {
-      await updateMutation.mutateAsync(toUpdatePatientRequest(formValues, patient.version));
-      onClose();
-    } catch (err) {
-      // Version cũ (đã bị sửa nơi khác) — hồ sơ dưới trang đã tự cập nhật qua cache, đóng dialog
-      // luôn thay vì để bác sĩ/lễ tân sửa đè lên bản đã lỗi thời.
-      if (err instanceof ApiError && err.code === 'CONCURRENT_MODIFICATION') {
-        onClose();
-        return;
-      }
-      setApiError(err instanceof ApiError ? err.message : 'Có lỗi xảy ra, vui lòng thử lại.');
-    }
+    if (stale) return;
+    if (await run(() => updateMutation.mutateAsync(toUpdatePatientRequest(formValues, baseVersion)))) onClose();
+  }
+
+  /** Tải bản mới nhất từ server và nạp lại form (mất các chỉnh sửa chưa lưu — đúng như thông báo cho người dùng). */
+  async function reload() {
+    const fresh = (await patientQuery.refetch()).data;
+    if (!fresh) return;
+    setFormValues(patientDetailToFormValues(fresh));
+    setBaseVersion(fresh.version);
   }
 
   return (
@@ -47,11 +55,7 @@ export function PatientEditDialog({ patient, onClose }: { patient: PatientDetail
         </div>
 
         <div className="scroll-hover flex-1 overflow-y-auto px-6">
-          {apiError && (
-            <p role="alert" className="mb-4 rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">
-              {apiError}
-            </p>
-          )}
+          <RecordFormNotice stale={stale} saveError={saveError} onReload={reload} />
           <PatientFormFields
             values={formValues}
             onChange={setFormValues}
@@ -66,7 +70,7 @@ export function PatientEditDialog({ patient, onClose }: { patient: PatientDetail
           <Button type="button" variant="secondary" onClick={onClose}>
             Huỷ
           </Button>
-          <Button type="button" loading={updateMutation.isPending} onClick={() => void save()}>
+          <Button type="button" loading={updateMutation.isPending} disabled={stale} onClick={() => void save()}>
             Lưu
           </Button>
         </div>

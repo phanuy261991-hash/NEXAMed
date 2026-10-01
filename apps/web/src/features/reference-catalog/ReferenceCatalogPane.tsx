@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { ArrowCounterClockwise, ListBullets, MagnifyingGlass, PencilSimple, Plus, Trash } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, ListBullets, MagnifyingGlass, PencilSimple, Plus, Trash, Warning } from '@phosphor-icons/react';
 import type { ReferenceCatalogCategory, ReferenceCatalogDirection, ReferenceCatalogItem } from '@nexamed/shared';
 import { useHasPermission } from '../auth/usePermission';
 import { Button } from '../../shared/ui/Button';
@@ -107,6 +107,14 @@ const BYT_TAXONOMY_DESCRIPTION_CATEGORIES: ReferenceCatalogCategory[] = [
  */
 const MANUAL_TAXONOMY_CATEGORIES: ReferenceCatalogCategory[] = ['ACTIVE_INGREDIENT'];
 
+/**
+ * `ICD10_ABBREVIATION` (docs/DECISIONS.md #206): `code` = từ viết tắt phải là ĐÚNG MỘT từ chữ/số. Bản
+ * sao CHỦ ĐÍCH của `ICD10_ABBREVIATION_CODE_PATTERN` (`packages/shared`) — web chỉ `import type` từ
+ * `@nexamed/shared` (hằng số giá trị thuần không bundle được qua `vite build`, xem #032); server vẫn là
+ * nguồn kiểm tra chính thức (422 `REFERENCE_CATALOG_INVALID_ABBREVIATION`), ở đây chỉ để báo sớm.
+ */
+const ABBREVIATION_CODE_PATTERN = /^[\p{L}\p{N}]+$/u;
+
 const inputClassName =
   'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 
@@ -143,7 +151,7 @@ export function ReferenceCatalogPane({
   const [modal, setModal] = useState<ModalState | null>(null);
   const [deactivateTarget, setDeactivateTarget] = useState<ReferenceCatalogItem | null>(null);
 
-  const query = useReferenceCatalogQuery(category, includeInactive);
+  const query = useReferenceCatalogQuery(category, includeInactive, { fresh: true });
   const createMutation = useCreateReferenceCatalogItemMutation(category);
   const updateMutation = useUpdateReferenceCatalogItemMutation(category);
   const deactivateMutation = useDeactivateReferenceCatalogItemMutation(category);
@@ -153,7 +161,20 @@ export function ReferenceCatalogPane({
   // validate tầng client) — modal chung `ItemFormModal` chưa có chỗ hiện lỗi submit từ trước, giữ
   // nguyên hành vi cũ, không mở rộng ở đây.
   const mutationError = createMutation.error ?? updateMutation.error;
-  const mutationErrorMessage = mutationError instanceof ApiError ? mutationError.message : undefined;
+  const isAbbreviation = category === 'ICD10_ABBREVIATION';
+  const mutationErrorMessage =
+    mutationError instanceof ApiError
+      ? isAbbreviation && mutationError.code === 'REFERENCE_CATALOG_DUPLICATE_CODE'
+        ? 'Từ viết tắt này đã có (có thể đang bị ẩn — bật "Hiện cả mục đã ẩn" để khôi phục).'
+        : mutationError.message
+      : undefined;
+
+  /** Mở modal Thêm/Sửa — xoá lỗi lưu cũ trước (React Query giữ `mutation.error` tới lần mutate kế), tránh hiện lại lỗi của lần thao tác trước. */
+  function openModal(next: ModalState) {
+    createMutation.reset();
+    updateMutation.reset();
+    setModal(next);
+  }
 
   const items = useMemo(() => {
     const all = query.data?.items ?? [];
@@ -167,6 +188,12 @@ export function ReferenceCatalogPane({
 
   return (
     <div className="flex h-full flex-col">
+      {isAbbreviation && (
+        <p className="mb-3 text-sm text-slate-600">
+          Từ điển dùng khi bác sĩ gõ ô &quot;Chẩn đoán&quot; ở màn khám để gợi ý mã ICD-10: mỗi từ viết tắt được đổi thành cách viết đầy đủ trước khi
+          tra mã. Chỉ đổi chữ thành chữ — mã vẫn lấy từ danh mục Bộ Y tế và bác sĩ tự bấm chọn, hệ thống không tự gán mã.
+        </p>
+      )}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="relative w-64">
@@ -175,7 +202,7 @@ export function ReferenceCatalogPane({
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Tìm theo mã hoặc tên..."
+              placeholder={isAbbreviation ? 'Tìm theo từ viết tắt hoặc nội dung...' : 'Tìm theo mã hoặc tên...'}
               className={`${inputClassName} pl-8`}
             />
           </div>
@@ -187,7 +214,7 @@ export function ReferenceCatalogPane({
           )}
         </div>
         {canManage && (
-          <Button type="button" onClick={() => setModal({ mode: 'create' })}>
+          <Button type="button" onClick={() => openModal({ mode: 'create' })}>
             <Plus size={16} weight="bold" aria-hidden="true" />
             Thêm mới
           </Button>
@@ -226,9 +253,9 @@ export function ReferenceCatalogPane({
                       ariaLabel="Chọn tất cả"
                     />
                   </th>
-                  <th className="w-24 px-4 py-2.5 text-center">Mã</th>
+                  <th className={`${isAbbreviation ? 'w-36' : 'w-24'} px-4 py-2.5 text-center`}>{isAbbreviation ? 'Từ viết tắt' : 'Mã'}</th>
                   {showBytColumns && <th className="w-24 px-4 py-2.5 text-center">Mã BYT</th>}
-                  <th className="px-4 py-2.5 text-left">Tên hiển thị</th>
+                  <th className="px-4 py-2.5 text-left">{isAbbreviation ? 'Viết đầy đủ' : 'Tên hiển thị'}</th>
                   {showBytColumns && <th className="px-4 py-2.5 text-left">Tên đầy đủ chuẩn</th>}
                   {category === 'EXAM_TYPE' && <th className="w-32 px-4 py-2.5 text-center">Đơn giá</th>}
                   {category === 'INCOME_EXPENSE_TYPE' && <th className="w-28 px-4 py-2.5 text-center">Loại</th>}
@@ -291,7 +318,7 @@ export function ReferenceCatalogPane({
                       <td className="px-4 py-2 text-center">
                         {item.isActive ? (
                           <div className="flex items-center justify-center gap-1.5">
-                            <RowActionButton icon={PencilSimple} label="Sửa" tone="primary" onClick={() => setModal({ mode: 'edit', item })} />
+                            <RowActionButton icon={PencilSimple} label="Sửa" tone="primary" onClick={() => openModal({ mode: 'edit', item })} />
                             <RowActionButton icon={Trash} label="Xoá" tone="danger" onClick={() => setDeactivateTarget(item)} />
                           </div>
                         ) : (
@@ -339,6 +366,7 @@ export function ReferenceCatalogPane({
           mode={modal.mode}
           item={modal.item}
           submitting={createMutation.isPending || updateMutation.isPending}
+          submitError={mutationErrorMessage}
           onCancel={() => setModal(null)}
           onSubmit={async (dto) => {
             if (modal.mode === 'create') {
@@ -385,6 +413,7 @@ function ItemFormModal({
   mode,
   item,
   submitting,
+  submitError,
   onCancel,
   onSubmit,
 }: {
@@ -395,6 +424,9 @@ function ItemFormModal({
   mode: 'create' | 'edit';
   item?: ReferenceCatalogItem;
   submitting: boolean;
+  /** Lỗi server trả về lần lưu gần nhất (trùng mã, sai định dạng...) — hiện inline ngay trong form
+   * (`.claude/docs/ui-guidelines.md` mục 4.3), trước đây modal này lỗi là im lặng không báo gì. */
+  submitError?: string;
   onCancel: () => void;
   /** Trả `Promise` — `handleSubmit`/`handleSaveAndContinue` await để biết lưu xong mới đóng modal
    * hoặc làm trống form (`.claude/docs/ui-guidelines.md` mục 4.7). */
@@ -441,7 +473,10 @@ function ItemFormModal({
   // nhập/sửa 3 trường này TỰ DO cả lúc Tạo mới lẫn Sửa, không giới hạn theo `mode` như trên.
   const isManualTaxonomy = MANUAL_TAXONOMY_CATEGORIES.includes(category);
   const showBytFields = isBytTaxonomyCreate || isManualTaxonomy;
-  const isInvalid = (!hideCode && code.trim() === '') || name.trim() === '';
+  // "Từ viết tắt chẩn đoán" (#206) — `code` là TỪ viết tắt, bắt buộc đúng MỘT từ chữ/số.
+  const isAbbreviation = category === 'ICD10_ABBREVIATION';
+  const abbreviationFormatInvalid = isAbbreviation && code.trim() !== '' && !ABBREVIATION_CODE_PATTERN.test(code.trim());
+  const isInvalid = (!hideCode && code.trim() === '') || name.trim() === '' || abbreviationFormatInvalid;
 
   function buildDto() {
     return {
@@ -480,7 +515,11 @@ function ItemFormModal({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (isInvalid) return;
-    await onSubmit(buildDto());
+    try {
+      await onSubmit(buildDto());
+    } catch {
+      return; // lỗi đã hiện ở khối `submitError` bên dưới, giữ nguyên modal để sửa lại
+    }
     onCancel();
   }
 
@@ -489,7 +528,11 @@ function ItemFormModal({
   // vi Enter giữ nguyên như trước — chỉ chuột mới bấm được nút này).
   async function handleSaveAndContinue() {
     if (isInvalid) return;
-    await onSubmit(buildDto());
+    try {
+      await onSubmit(buildDto());
+    } catch {
+      return; // lỗi đã hiện ở khối `submitError` bên dưới
+    }
     resetForNextEntry();
     triggerFlash();
   }
@@ -512,17 +555,36 @@ function ItemFormModal({
           {!hideCode && (
             <div className="flex flex-col gap-1.5">
               <label htmlFor="rc-code" className="text-sm font-semibold text-slate-800">
-                Mã <span className="text-rose-500">*</span>
+                {isAbbreviation ? 'Từ viết tắt' : 'Mã'} <span className="text-rose-500">*</span>
               </label>
-              <input id="rc-code" value={code} onChange={(e) => setCode(e.target.value)} className={inputClassName} />
+              <input
+                id="rc-code"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder={isAbbreviation ? 'VD: THA' : undefined}
+                aria-invalid={abbreviationFormatInvalid}
+                className={inputClassName}
+              />
+              {isAbbreviation && (
+                <p className={`text-xs ${abbreviationFormatInvalid ? 'font-semibold text-rose-700' : 'text-slate-500'}`}>
+                  Một từ, chỉ chữ hoặc số (không khoảng trắng, dấu chấm, gạch nối). Không phân biệt hoa/thường.
+                </p>
+              )}
             </div>
           )}
 
           <div className="flex flex-col gap-1.5">
             <label htmlFor="rc-name" className="text-sm font-semibold text-slate-800">
-              {isUnit ? 'Tên đơn vị' : 'Tên hiển thị'} <span className="text-rose-500">*</span>
+              {isUnit ? 'Tên đơn vị' : isAbbreviation ? 'Viết đầy đủ' : 'Tên hiển thị'} <span className="text-rose-500">*</span>
             </label>
-            <input id="rc-name" ref={nameInputRef} value={name} onChange={(e) => setName(e.target.value)} className={inputClassName} />
+            <input
+              id="rc-name"
+              ref={nameInputRef}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={isAbbreviation ? 'VD: tăng huyết áp' : undefined}
+              className={inputClassName}
+            />
           </div>
 
           {isIncomeExpenseType && (
@@ -633,6 +695,13 @@ function ItemFormModal({
             </label>
           )}
         </div>
+
+        {submitError && (
+          <div className="mb-4 flex items-center gap-2 rounded-md border border-rose-300 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700" role="alert">
+            <Warning size={18} weight="fill" className="flex-none" aria-hidden="true" />
+            {submitError}
+          </div>
+        )}
 
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onCancel}>

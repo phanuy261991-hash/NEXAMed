@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CreateDepartmentRequest, UpdateDepartmentRequest } from '@nexamed/shared';
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
+import { STALE_OPTIONS_MS } from '../../shared/api/stale-time';
 import { createDepartment, listDepartmentOptions, listDepartments, updateDepartment } from './department.api';
 
 /** Chỉ đủ cho Combobox "Khoa/Phòng" trong form tài khoản (mở rộng ADM-01) — không phân trang. Yêu cầu `user_account.read` (chỉ clinic_admin/system_admin). */
@@ -21,6 +22,7 @@ export function useDepartmentOptionsQuery(queueOnly = false) {
   return useQuery({
     queryKey: queryKey(tenantId, 'departments', 'options', String(queueOnly)),
     queryFn: () => listDepartmentOptions(queueOnly),
+    staleTime: STALE_OPTIONS_MS,
   });
 }
 
