@@ -45359,6 +45359,484 @@
         }
       }
     },
+    "/api/v1/drugs/import/preview": {
+      "post": {
+        "tags": [
+          "drug"
+        ],
+        "summary": "Nhập Excel \"Thuốc & Vật tư\" — bước 1: đọc + đối chiếu file, KHÔNG ghi gì (hợp lệ/đã có sẵn/lỗi/danh mục sẽ tạo mới)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "validRows": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "rowNumber": {
+                                "type": "integer"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "itemType": {
+                                "type": "string",
+                                "enum": [
+                                  "MEDICINE",
+                                  "SUPPLY"
+                                ]
+                              },
+                              "ingredientCount": {
+                                "type": "integer"
+                              },
+                              "unitCount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "rowNumber",
+                              "code",
+                              "name",
+                              "itemType",
+                              "ingredientCount",
+                              "unitCount"
+                            ]
+                          }
+                        },
+                        "duplicateRows": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "rowNumber": {
+                                "type": "integer"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "itemType": {
+                                "type": "string",
+                                "enum": [
+                                  "MEDICINE",
+                                  "SUPPLY"
+                                ]
+                              },
+                              "ingredientCount": {
+                                "type": "integer"
+                              },
+                              "unitCount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "rowNumber",
+                              "code",
+                              "name",
+                              "itemType",
+                              "ingredientCount",
+                              "unitCount"
+                            ]
+                          }
+                        },
+                        "errorRows": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "sheet": {
+                                "type": "string"
+                              },
+                              "rowNumber": {
+                                "type": "integer"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "reason": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "sheet",
+                              "rowNumber",
+                              "code",
+                              "reason"
+                            ]
+                          }
+                        },
+                        "newCatalogItems": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "category": {
+                                "type": "string",
+                                "enum": [
+                                  "ETHNICITY",
+                                  "NATIONALITY",
+                                  "PATIENT_SOURCE",
+                                  "EXAM_TYPE",
+                                  "RECEPTION_TYPE",
+                                  "EXAM_FORM",
+                                  "PRIORITY_REASON",
+                                  "PRICE_TYPE",
+                                  "OCCUPATION",
+                                  "ACADEMIC_TITLE",
+                                  "STAFF_POSITION",
+                                  "EMPLOYMENT_STATUS",
+                                  "EMPLOYMENT_TYPE",
+                                  "UNIT",
+                                  "PAYMENT_METHOD",
+                                  "INCOME_EXPENSE_TYPE",
+                                  "ACTIVE_INGREDIENT",
+                                  "DRUG_GROUP",
+                                  "DRUG_ROUTE",
+                                  "DOSAGE_FORM",
+                                  "STORAGE_CONDITION",
+                                  "MANUFACTURER",
+                                  "COUNTRY_OF_ORIGIN",
+                                  "STORAGE_LOCATION",
+                                  "DRUG_USAGE_TIMING",
+                                  "ICD10_ABBREVIATION"
+                                ]
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "category",
+                              "name"
+                            ]
+                          }
+                        },
+                        "exampleRowCount": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "validRows",
+                        "duplicateRows",
+                        "errorRows",
+                        "newCatalogItems",
+                        "exampleRowCount"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Thiếu file / file không đúng mẫu / quá 2.000 mặt hàng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền drug.create",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/drugs/import/commit": {
+      "post": {
+        "tags": [
+          "drug"
+        ],
+        "summary": "Nhập Excel \"Thuốc & Vật tư\" — bước 2: đọc lại đúng file đã xem trước rồi ghi mặt hàng hợp lệ + danh mục mới trong MỘT transaction",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "createdCount": {
+                          "type": "integer"
+                        },
+                        "duplicateCount": {
+                          "type": "integer"
+                        },
+                        "errorCount": {
+                          "type": "integer"
+                        },
+                        "newCatalogItemCount": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "createdCount",
+                        "duplicateCount",
+                        "errorCount",
+                        "newCatalogItemCount"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Thiếu file / file không đúng mẫu / quá 2.000 mặt hàng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền drug.create",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/work-shift-assignments/import/commit": {
       "post": {
         "tags": [

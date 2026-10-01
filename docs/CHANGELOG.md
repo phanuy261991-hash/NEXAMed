@@ -4,6 +4,10 @@
 
 ## 2026-10-01
 
+### Nhập/Xuất Excel Thuốc & Vật tư (giúp phòng khám mới đưa danh sách có sẵn vào hệ thống)
+
+Nút "Nhập Excel" và "Xuất Excel" cạnh "Thêm mặt hàng" ở Danh mục Thuốc & Vật tư. File Excel 3 sheet liên kết theo Mã thuốc (Thuốc & Vật tư / Hoạt chất / Quy đổi đơn vị); **file mẫu tải về có sẵn 3 mặt hàng ví dụ (Paracetamol, thuốc 2 hoạt chất có quy đổi Hộp-Vỉ-Viên, vật tư) + sheet Hướng dẫn từng cột + sheet Danh mục hiện có** — dòng ví dụ (mã `VD-`) tự bị bỏ qua nên quên xoá cũng không sao. Nhập theo 2 bước (xem trước 4 nhóm Hợp lệ / Đã có sẵn / Lỗi / Danh mục mới → Xác nhận): trong file điền TÊN Đơn vị/Hãng/Nhóm thuốc/Hoạt chất…, tên chưa có trong danh mục sẽ được tạo mới (cần quyền quản lý danh mục dùng chung); mã đã có thì bỏ qua, không ghi đè; cả lần nhập nằm trong một transaction. Tối đa 2.000 mặt hàng/lần. File xuất cùng định dạng nên nhập lại được. Chỉ nhập danh mục, không nhập tồn kho. Không migration. Chi tiết `docs/DECISIONS.md` #210. Đã xác minh: 18 test HTTP mới + kiểm đột biến, Chrome thật (tải mẫu, nhập, lỗi, xuất).
+
 ### Điều dưỡng được quyền xem lịch hẹn (`appointment.read`) + verify Chrome nốt 2 form xung đột
 
 Chốt phương án từ danh sách khoảng trống quyền đọc phụ (#208): chỉ cấp cho điều dưỡng quyền ĐỌC lịch hẹn (global) để "Bệnh nhân trong ngày" có bộ lọc bác sĩ; 4 khoảng trống còn lại cố ý giữ nguyên vì cấp sẽ lộ dữ liệu nhân sự/quỹ. Điều dưỡng thấy thêm menu "Lịch hẹn", tenant cũ tự được vá lúc API khởi động. Đảo 2 test cũ "nurse → 403" thành 200. Chi tiết `docs/DECISIONS.md` #209. Đã verify Chrome thật nốt Đơn thuốc mẫu + Bàn khám/Ghế (xung đột nhiều máy) — không phát hiện bug.

@@ -117,6 +117,8 @@ const ACTION_LABELS: Record<string, string> = {
   // drug
   'drug.created': 'Thêm thuốc',
   'drug.updated': 'Sửa thuốc',
+  'drug.imported': 'Nhập thuốc & vật tư từ Excel',
+  'drug.exported': 'Xuất thuốc & vật tư ra Excel',
 
   // doctor-room-session / break-glass
   'doctor_room_session.set': 'Chọn phòng làm việc',

@@ -17,17 +17,25 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 export class UnitOfWorkService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * `options.timeoutMs` — chỉ truyền cho tác vụ GHI HÀNG LOẠT hợp lệ chạy lâu (ví dụ "Nhập Excel Thuốc & Vật
+   * tư", docs/DECISIONS.md #210); mặc định giữ timeout 5 giây của Prisma cho mọi nơi khác.
+   */
   async runInTenantScope<T>(
     tenantId: string,
     work: (tx: Prisma.TransactionClient) => Promise<T>,
+    options?: { timeoutMs?: number },
   ): Promise<T> {
     if (!UUID_PATTERN.test(tenantId)) {
       throw new Error(`tenantId không hợp lệ: "${tenantId}"`);
     }
 
-    return this.prisma.$transaction(async (tx) => {
-      await tx.$executeRawUnsafe(`SET LOCAL app.current_tenant_id = '${tenantId}'`);
-      return work(tx);
-    });
+    return this.prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRawUnsafe(`SET LOCAL app.current_tenant_id = '${tenantId}'`);
+        return work(tx);
+      },
+      options?.timeoutMs ? { timeout: options.timeoutMs } : undefined,
+    );
   }
 }

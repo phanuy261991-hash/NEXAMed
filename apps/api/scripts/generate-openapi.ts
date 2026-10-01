@@ -227,6 +227,8 @@ import {
   workShiftAssignmentBulkResultSchema,
   workShiftAssignmentItemSchema,
   importWorkShiftAssignmentsPreviewResponseSchema,
+  drugImportPreviewResponseSchema,
+  drugImportCommitResponseSchema,
   importWorkShiftAssignmentsCommitResponseSchema,
   workShiftAssignmentMonthSchema,
   workShiftAssignmentMonthLockStatusQuerySchema,
@@ -2939,6 +2941,37 @@ registry.registerPath({
     400: errorResponse('Thiếu file Excel'),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền work_shift_assignment.create, hoặc không phải scope global'),
+  },
+});
+
+// Nhập Excel "Thuốc & Vật tư" (#210) — `import-template`/`export` (binary qua @Res()) KHÔNG đăng ký, web tải bằng `downloadFile()`.
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/drugs/import/preview',
+  tags: ['drug'],
+  summary: 'Nhập Excel "Thuốc & Vật tư" — bước 1: đọc + đối chiếu file, KHÔNG ghi gì (hợp lệ/đã có sẵn/lỗi/danh mục sẽ tạo mới)',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'multipart/form-data': { schema: z.object({ file: z.string().openapi({ format: 'binary' }) }) } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(drugImportPreviewResponseSchema)),
+    400: errorResponse('Thiếu file / file không đúng mẫu / quá 2.000 mặt hàng'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền drug.create'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/drugs/import/commit',
+  tags: ['drug'],
+  summary: 'Nhập Excel "Thuốc & Vật tư" — bước 2: đọc lại đúng file đã xem trước rồi ghi mặt hàng hợp lệ + danh mục mới trong MỘT transaction',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'multipart/form-data': { schema: z.object({ file: z.string().openapi({ format: 'binary' }) }) } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(drugImportCommitResponseSchema)),
+    400: errorResponse('Thiếu file / file không đúng mẫu / quá 2.000 mặt hàng'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền drug.create'),
   },
 });
 

@@ -1,6 +1,9 @@
 import { forwardRef, Module } from '@nestjs/common';
 import { InventoryModule } from '../inventory/inventory.module';
+import { ReferenceCatalogModule } from '../reference-catalog/reference-catalog.module';
 import { DrugController } from './drug.controller';
+import { DrugImportController } from './drug-import.controller';
+import { DrugImportService } from './drug-import.service';
 import { DrugService } from './drug.service';
 import { DrugRepository } from './drug.repository';
 import { DrugIngredientRepository } from './drug-ingredient.repository';
@@ -32,12 +35,17 @@ import { PrescriptionTemplateRepository } from './prescription-template.reposito
  * mẫu", CÙNG module (không tách riêng, đúng chỗ vì `.claude/docs/architecture.md` ghi rõ GĐ5 mở
  * rộng module `drug`). Dùng chung `DrugRepository` sẵn có trong module để validate `drugId` tồn
  * tại, không cần thêm `imports` nào.
+ *
+ * `DrugImportController/Service` (#210) — Nhập/Xuất Excel Thuốc & Vật tư. `imports: [ReferenceCatalogModule]`
+ * (một chiều, không vòng) để tra tên → mã danh mục hàng loạt + tạo mục mới trong cùng transaction. Controller
+ * khai báo TRƯỚC `DrugController` (route tĩnh `drugs/export`/`drugs/import-template` phải khớp trước `drugs/:id`).
  */
 @Module({
-  imports: [forwardRef(() => InventoryModule)],
-  controllers: [DrugController, SupplierController, WarehouseController, PrescriptionTemplateController],
+  imports: [forwardRef(() => InventoryModule), ReferenceCatalogModule],
+  controllers: [DrugImportController, DrugController, SupplierController, WarehouseController, PrescriptionTemplateController],
   providers: [
     DrugService,
+    DrugImportService,
     DrugRepository,
     DrugIngredientRepository,
     DrugUnitRepository,

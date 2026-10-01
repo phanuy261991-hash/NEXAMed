@@ -19,6 +19,7 @@ export * from './icd10';
 export * from './currency';
 export * from './timezone';
 export * from './drug';
+export * from './drug-import';
 export * from './prescription';
 export * from './prescription-template';
 export * from './billing';

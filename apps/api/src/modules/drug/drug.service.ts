@@ -47,78 +47,88 @@ export class DrugService {
   ) {}
 
   async create(tenantId: string, actorId: string, dto: CreateDrugRequest, meta: RequestMeta): Promise<DrugSummary> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const id = await this.createInTx(tx, tenantId, actorId, dto, meta);
+      const withDetails = await this.drugRepository.findByIdWithDetails(tx, tenantId, id);
+      return this.toSummary(withDetails!);
+    });
+  }
+
+  /**
+   * Tạo 1 mặt hàng TRONG transaction của người gọi (không mở transaction riêng) — dùng chung cho
+   * `create()` và "Nhập Excel Thuốc & Vật tư" (#210, nhiều mặt hàng cùng 1 transaction: hỏng giữa chừng
+   * thì rollback tất cả). Trả `id` mặt hàng vừa tạo.
+   */
+  async createInTx(tx: Prisma.TransactionClient, tenantId: string, actorId: string, dto: CreateDrugRequest, meta: RequestMeta): Promise<string> {
     // Vật tư y tế KHÔNG có hoạt chất/hàm lượng (yêu cầu chủ dự án) — Zod không biết được itemType
     // trước khi validate xong nên kiểm ở đây, không ở packages/shared.
     if (dto.itemType === 'SUPPLY' && dto.ingredients.length > 0) {
       throw new BadRequestException('Vật tư y tế không có hoạt chất/hàm lượng.');
     }
 
-    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const shortcutCode = normalizeShortcutCode(dto.shortcutCode);
-      await this.assertShortcutCodeAvailable(tx, tenantId, shortcutCode, null);
+    const shortcutCode = normalizeShortcutCode(dto.shortcutCode);
+    await this.assertShortcutCodeAvailable(tx, tenantId, shortcutCode, null);
 
-      let created;
-      try {
-        created = await this.drugRepository.create(tx, tenantId, actorId, {
-          code: dto.code,
-          name: dto.name,
-          itemType: dto.itemType,
-          isBatchManaged: dto.isBatchManaged,
-          baseUnitCode: dto.baseUnitCode,
-          defaultSellPrice: dto.defaultSellPrice !== undefined ? BigInt(dto.defaultSellPrice) : null,
-          unitPricingEnabled: dto.unitPricingEnabled,
-          drugGroupCode: dto.drugGroupCode ?? null,
-          routeCode: dto.routeCode ?? null,
-          nationalCode: dto.nationalCode ?? null,
-          // Cột cũ (S4-03) — không còn ghi từ form mới (mở rộng #151 chuyển sang manufacturerCode),
-          // vẫn nhận nếu client gửi (tương thích ngược, ví dụ script/API cũ).
-          manufacturer: dto.manufacturer ?? null,
-          // Bắt buộc cho CẢ 2 loại — KHÔNG ép theo itemType (khác 8 field MEDICINE-only dưới đây).
-          manufacturerCode: dto.manufacturerCode,
-          minStockAlert: dto.minStockAlert ?? null,
-          maxStockAlert: dto.maxStockAlert ?? null,
-          // CHỈ có ý nghĩa với MEDICINE — ép giá trị trung tính cho SUPPLY dù Zod có default an toàn,
-          // tránh phụ thuộc vào việc frontend luôn ẩn field đúng (docs/DECISIONS.md #151).
-          controlType: dto.itemType === 'MEDICINE' ? dto.controlType : 'NORMAL',
-          isPrescriptionOnly: dto.itemType === 'MEDICINE' ? dto.isPrescriptionOnly : true,
-          registrationNumber: dto.itemType === 'MEDICINE' ? (dto.registrationNumber ?? null) : null,
-          dosageForm: dto.itemType === 'MEDICINE' ? (dto.dosageForm ?? null) : null,
-          countryOfOrigin: dto.itemType === 'MEDICINE' ? (dto.countryOfOrigin ?? null) : null,
-          defaultDosage: dto.itemType === 'MEDICINE' ? (dto.defaultDosage ?? null) : null,
-          usageInstruction: dto.itemType === 'MEDICINE' ? (dto.usageInstruction ?? null) : null,
-          contraindications: dto.itemType === 'MEDICINE' ? (dto.contraindications ?? null) : null,
-          storageConditions: dto.itemType === 'MEDICINE' ? (dto.storageConditions ?? null) : null,
-          storageLocation: dto.itemType === 'MEDICINE' ? (dto.storageLocation ?? null) : null,
-          barcode: dto.itemType === 'MEDICINE' ? (dto.barcode ?? null) : null,
-          // "Quy cách đóng gói" — KHÔNG giới hạn MEDICINE như nhóm trường trên (đảo ngược hoãn #151):
-          // vật tư y tế cũng đóng gói theo hộp/gói/thùng như thuốc, cùng phạm vi với Bảng quy đổi
-          // đơn vị (`units`) vốn cũng không giới hạn itemType.
-          packagingSpec: dto.packagingSpec ?? null,
-          activeIngredient: dto.activeIngredient ?? null,
-          unit: dto.unit ?? null,
-          concentration: dto.concentration ?? null,
-          shortcutCode,
-        });
-      } catch (err) {
-        if (isDuplicateCodeViolation(err)) throw new DrugDuplicateCodeError();
-        throw err;
-      }
-
-      await this.drugIngredientRepository.replaceForDrug(tx, tenantId, created.id, actorId, dto.ingredients);
-      await this.drugUnitRepository.replaceForDrug(tx, tenantId, created.id, actorId, dto.units);
-
-      await writeAuditLog(tx, tenantId, {
-        actorId,
-        action: 'drug.created',
-        entityType: 'drug',
-        entityId: created.id,
-        ip: meta.ip,
-        userAgent: meta.userAgent,
+    let created;
+    try {
+      created = await this.drugRepository.create(tx, tenantId, actorId, {
+        code: dto.code,
+        name: dto.name,
+        itemType: dto.itemType,
+        isBatchManaged: dto.isBatchManaged,
+        baseUnitCode: dto.baseUnitCode,
+        defaultSellPrice: dto.defaultSellPrice !== undefined ? BigInt(dto.defaultSellPrice) : null,
+        unitPricingEnabled: dto.unitPricingEnabled,
+        drugGroupCode: dto.drugGroupCode ?? null,
+        routeCode: dto.routeCode ?? null,
+        nationalCode: dto.nationalCode ?? null,
+        // Cột cũ (S4-03) — không còn ghi từ form mới (mở rộng #151 chuyển sang manufacturerCode),
+        // vẫn nhận nếu client gửi (tương thích ngược, ví dụ script/API cũ).
+        manufacturer: dto.manufacturer ?? null,
+        // Bắt buộc cho CẢ 2 loại — KHÔNG ép theo itemType (khác 8 field MEDICINE-only dưới đây).
+        manufacturerCode: dto.manufacturerCode,
+        minStockAlert: dto.minStockAlert ?? null,
+        maxStockAlert: dto.maxStockAlert ?? null,
+        // CHỈ có ý nghĩa với MEDICINE — ép giá trị trung tính cho SUPPLY dù Zod có default an toàn,
+        // tránh phụ thuộc vào việc frontend luôn ẩn field đúng (docs/DECISIONS.md #151).
+        controlType: dto.itemType === 'MEDICINE' ? dto.controlType : 'NORMAL',
+        isPrescriptionOnly: dto.itemType === 'MEDICINE' ? dto.isPrescriptionOnly : true,
+        registrationNumber: dto.itemType === 'MEDICINE' ? (dto.registrationNumber ?? null) : null,
+        dosageForm: dto.itemType === 'MEDICINE' ? (dto.dosageForm ?? null) : null,
+        countryOfOrigin: dto.itemType === 'MEDICINE' ? (dto.countryOfOrigin ?? null) : null,
+        defaultDosage: dto.itemType === 'MEDICINE' ? (dto.defaultDosage ?? null) : null,
+        usageInstruction: dto.itemType === 'MEDICINE' ? (dto.usageInstruction ?? null) : null,
+        contraindications: dto.itemType === 'MEDICINE' ? (dto.contraindications ?? null) : null,
+        storageConditions: dto.itemType === 'MEDICINE' ? (dto.storageConditions ?? null) : null,
+        storageLocation: dto.itemType === 'MEDICINE' ? (dto.storageLocation ?? null) : null,
+        barcode: dto.itemType === 'MEDICINE' ? (dto.barcode ?? null) : null,
+        // "Quy cách đóng gói" — KHÔNG giới hạn MEDICINE như nhóm trường trên (đảo ngược hoãn #151):
+        // vật tư y tế cũng đóng gói theo hộp/gói/thùng như thuốc, cùng phạm vi với Bảng quy đổi
+        // đơn vị (`units`) vốn cũng không giới hạn itemType.
+        packagingSpec: dto.packagingSpec ?? null,
+        activeIngredient: dto.activeIngredient ?? null,
+        unit: dto.unit ?? null,
+        concentration: dto.concentration ?? null,
+        shortcutCode,
       });
+    } catch (err) {
+      if (isDuplicateCodeViolation(err)) throw new DrugDuplicateCodeError();
+      throw err;
+    }
 
-      const withDetails = await this.drugRepository.findByIdWithDetails(tx, tenantId, created.id);
-      return this.toSummary(withDetails!);
+    await this.drugIngredientRepository.replaceForDrug(tx, tenantId, created.id, actorId, dto.ingredients);
+    await this.drugUnitRepository.replaceForDrug(tx, tenantId, created.id, actorId, dto.units);
+
+    await writeAuditLog(tx, tenantId, {
+      actorId,
+      action: 'drug.created',
+      entityType: 'drug',
+      entityId: created.id,
+      ip: meta.ip,
+      userAgent: meta.userAgent,
     });
+
+    return created.id;
   }
 
   async list(tenantId: string, query: ListDrugsQuery): Promise<ListDrugsResponse> {
