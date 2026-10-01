@@ -280,6 +280,9 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     // thật sự cho phép truy cập gì (luôn rỗng). Phòng khám 1-3 bác sĩ, điều dưỡng phục vụ mọi bác
     // sĩ — cùng lý do doctor.encounter.read=global đã chốt trước đó.
     'encounter.read': 'global',
+    // Chốt 2026-10-01 (docs/DECISIONS.md #209): "Bệnh nhân trong ngày" lấy danh sách bác sĩ/ngưỡng chờ lâu từ API lịch hẹn,
+    // thiếu quyền này bộ lọc bác sĩ trống. Chỉ ĐỌC (không create/update/cancel); global vì điều dưỡng phục vụ mọi bác sĩ.
+    'appointment.read': 'global',
     'vital_sign.create': 'global',
     'reference_catalog.read': 'global',
     'allergen_catalog.read': 'global',

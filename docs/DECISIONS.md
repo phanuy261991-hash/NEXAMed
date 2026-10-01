@@ -3594,3 +3594,13 @@ Web: `DiagnosisSuggestionPanel.tsx` (thuần trình bày, `forwardRef` `focusFir
 **Bảo trì**: thêm trang/endpoint mới gọi API của module khác → cập nhật `PERMISSION_COMPANIONS` (test chỉ kiểm tính hợp lệ: khoá/quyền đi kèm có trong danh mục, không tự tham chiếu, chỉ quyền ĐỌC, không trùng).
 
 **Đã xác minh thật**: `packages/core` `permission-companions.spec.ts` 7/7, `apps/web` `companion-hints.spec.ts` 3/3, `role-http.spec.ts` thêm test `companions`, `clinic-http.spec.ts` 56/56 (+ test chiếu mới: lễ tân GET /clinic-settings → 403 nhưng chiếu tự-phục vụ → 200 và phản ánh đúng sau khi admin bật), `pnpm -w typecheck` sạch. Chrome thật: chọn "Phiếu nhập kho – Thêm" → khung hiện ngay (3 quyền Xem, ghi rõ "cần cho"), "Cấp kèm" đặt 3 ô, server chưa đổi tới khi Lưu, lưu → 4 quyền đúng; bỏ lại 1 ô → khung báo thiếu 1 nhưng vẫn lưu được; `clinic_admin` không có khung; `Điều dưỡng` hiện đúng 3 khoảng trống đã biết.
+
+## 209 — Điều dưỡng được quyền `appointment.read` (01/10/2026, sau #208)
+
+**Ngày**: 01/10/2026. Từ danh sách "khoảng trống quyền đọc phụ của 5 vai trò mặc định" (#208, `KNOWN_DEFAULT_ROLE_GAPS`), chủ dự án chốt phương án: chỉ cấp 1 mục có ảnh hưởng thật, giữ nguyên 4 mục còn lại.
+
+**Đã chốt**: `nurse.appointment.read = global` (chỉ ĐỌC; vẫn không tạo/sửa/huỷ lịch). Lý do: màn "Bệnh nhân trong ngày" lấy danh sách bác sĩ/ngưỡng chờ lâu từ `GET /appointments/doctors|schedule-config`, thiếu quyền này bộ lọc bác sĩ của điều dưỡng bị trống; điều dưỡng đã có `patient.read` toàn cục nên mức lộ thêm thấp. Hệ quả: điều dưỡng thấy thêm mục menu "Lịch hẹn"; tenant đã cài tự được vá lúc API khởi động qua `syncRolePermissionsForAllTenants()`. Đảo ngược 2 test cũ khẳng định "nurse → 403" ở `appointment-http.spec.ts` (`/doctors`, `/lookup`) thành "→ 200"; các test 403 cho create/cancel của nurse giữ nguyên.
+
+**Cố ý KHÔNG cấp (giữ trong `KNOWN_DEFAULT_ROLE_GAPS`, đã có lý do)**: `user_account.read` cho lễ tân/điều dưỡng/bác sĩ (chỉ trang scope global dùng; cấp sẽ lộ SĐT/email nhân viên), `stock_receipt.read` cho lễ tân (không có quyền tạo phiếu xuất), `cash_account.read` cho điều dưỡng/bác sĩ (lộ tên/số dư quỹ).
+
+**Đã xác minh**: `packages/core` rbac 7/7, `appointment-http.spec.ts` 62/62, `permission-matrix-enforcement-http.spec.ts` 7/7, `role-http.spec.ts` 21/21, `sync-role-permissions.spec.ts` 4/4, `pnpm -w typecheck` sạch. Chrome thật với tài khoản điều dưỡng (tạo qua API, đã vô hiệu hoá sau khi kiểm): thấy menu "Lịch hẹn", "Bệnh nhân trong ngày" gọi `/appointments/doctors` → 200 (không còn 403) và panel "Tải theo Bác sĩ" hiện đủ 3/3 bác sĩ, mở được `/appointments`, vẫn không tạo được lịch (POST → 403). Bảng ma trận ở `.claude/docs/security-audit.md` đã cập nhật.

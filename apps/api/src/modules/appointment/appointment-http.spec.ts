@@ -328,10 +328,11 @@ describe('HTTP e2e — /api/v1/appointments', () => {
       expect(res.status).toBe(200);
     });
 
-    it('nurse (không có appointment.read) → 403 PERMISSION_DENIED', async () => {
+    it('nurse (có appointment.read, chốt #209) gọi được /doctors → 200 — để "Bệnh nhân trong ngày" có bộ lọc bác sĩ', async () => {
       const res = await request(app.getHttpServer()).get('/api/v1/appointments/doctors').set(authed(nurseToken));
-      expect(res.status).toBe(403);
-      expect(res.body.error.code).toBe('PERMISSION_DENIED');
+      expect(res.status).toBe(200);
+      const ids = res.body.data.items.map((d: { id: string }) => d.id);
+      expect(ids).toEqual(expect.arrayContaining([doctorAUserId, doctorBUserId]));
     });
 
     it('receptionist gọi được /schedule-config dù không có clinic_config.read → 200, đúng shape clinicSettings', async () => {
@@ -402,9 +403,9 @@ describe('HTTP e2e — /api/v1/appointments', () => {
       expect(res.body.data.cancelledCount).toBe(5);
     });
 
-    it('nurse (không có appointment.read) → 403 PERMISSION_DENIED', async () => {
+    it('nurse (có appointment.read, chốt #209) tra cứu được → 200; vẫn KHÔNG tạo/huỷ được lịch (xem các test 403 create/cancel)', async () => {
       const res = await request(app.getHttpServer()).get('/api/v1/appointments/lookup').set(authed(nurseToken)).query({ phone: '0987000333' });
-      expect(res.status).toBe(403);
+      expect(res.status).toBe(200);
     });
 
     it('cách ly tenant (S2-10): tenant B tra cứu đúng SĐT đã đặt ở tenant A → không lộ tên/lịch sử, trả như chưa từng đặt', async () => {
