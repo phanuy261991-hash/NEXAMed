@@ -759,6 +759,9 @@ model ReferenceCatalog {
   // DRUG_ROUTE/DOSAGE_FORM, cùng bản chất bytCode. `name` (cột chính, hiện ở Combobox/danh sách)
   // giữ "Tên ngắn UI" gọn cho UI; cột này lưu tên đầy đủ theo chuẩn ngành để không mất dữ liệu.
   fullName           String?                    @map("full_name")
+  // Khoá lạc quan (docs/DECISIONS.md #207) — sửa/ẩn/khôi phục kèm `WHERE version = ?`, tăng 1 mỗi lần.
+  // Chỉ thêm `version` (bảng toàn hệ thống vẫn không có tenant_id/updated_at... như ghi ở trên).
+  version            Int                        @default(1)
 
   @@unique([category, code])
   @@map("reference_catalog")

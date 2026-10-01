@@ -422,6 +422,15 @@ export const cashierShiftRequiredStatusSchema = z.object({ enabled: z.boolean() 
 export type CashierShiftRequiredStatus = z.infer<typeof cashierShiftRequiredStatusSchema>;
 
 /**
+ * `GET /clinic-settings/wallet-mixed-payment-enabled` — chiếu tối thiểu tự-phục vụ, cùng lý do các schema
+ * ngay trên: `InvoiceDetailPage.tsx` cần biết công tắc "Trả hỗn hợp (ví + tiền mặt/CK)" để hiện tuỳ chọn, nhưng
+ * lễ tân/thu ngân không có `clinic_config.read` — trước đây trang gọi `GET /clinic-settings` (403) nên tuỳ chọn
+ * luôn tắt dù quản trị đã bật (docs/DECISIONS.md #208).
+ */
+export const walletMixedPaymentStatusSchema = z.object({ enabled: z.boolean() });
+export type WalletMixedPaymentStatus = z.infer<typeof walletMixedPaymentStatusSchema>;
+
+/**
  * `GET /clinic-settings/deferred-payment-enabled` — chiếu tối thiểu tự-phục vụ (Thu ngân cơ bản,
  * Sprint 5/6), đúng khuôn `GET /appointments/doctors`/`roomOptionSchema` (docs/DECISIONS.md #030):
  * lễ tân (`ReceptionIntakeForm.tsx`) cần biết tính năng "Thanh toán sau" đã bật hay chưa để hiện/ẩn

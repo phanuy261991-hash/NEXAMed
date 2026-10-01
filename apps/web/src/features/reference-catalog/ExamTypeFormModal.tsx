@@ -8,6 +8,8 @@ import { Textarea } from '../../shared/ui/Textarea';
 import { Button } from '../../shared/ui/Button';
 import { SaveFlashBanner } from '../../shared/ui/SaveFlashBanner';
 import { useSaveFlash } from '../../shared/hooks/useSaveFlash';
+import { useSaveAttempt } from '../../shared/hooks/useSaveAttempt';
+import { RecordFormNotice } from '../../shared/ui/RecordFormNotice';
 import { formatVnd } from '../../shared/format/currency';
 import { makeDraftId } from '../../shared/make-draft-id';
 import { useReferenceCatalogQuery } from './reference-catalog.queries';
@@ -43,14 +45,17 @@ export function ExamTypeFormModal({
   mode,
   item,
   submitting,
-  submitError,
+  stale,
+  onReload,
   onCancel,
   onSubmit,
 }: {
   mode: 'create' | 'edit';
   item?: ReferenceCatalogItem;
   submitting: boolean;
-  submitError?: string;
+  /** Người khác vừa lưu bản mới của mục này (phát hiện lúc form đang mở) — khoá nút Lưu tới khi tải lại. */
+  stale: boolean;
+  onReload: () => void | Promise<void>;
   onCancel: () => void;
   /** Trả `Promise` — `handleSubmit`/`handleSaveAndContinue` await để biết lưu xong mới đóng modal
    * hoặc làm trống form (`.claude/docs/ui-guidelines.md` mục 4.7). */
@@ -63,6 +68,7 @@ export function ExamTypeFormModal({
   const [sortOrder, setSortOrder] = useState(item?.sortOrder ?? 0);
   const [rows, setRows] = useState<PriceDraftRow[]>((item?.prices ?? []).map((p) => ({ ...p, draftId: makeDraftId() })));
   const { flashVisible, triggerFlash } = useSaveFlash();
+  const { saveError, run } = useSaveAttempt();
 
   // Hàng nhập "thêm dòng đơn giá mới" — tách khỏi state của các dòng đã thêm ở trên.
   const [draftPriceType, setDraftPriceType] = useState('');
@@ -82,7 +88,7 @@ export function ExamTypeFormModal({
   const priceTypeLabel = useMemo(() => new Map(priceTypeOptions.map((o) => [o.value, o.label])), [priceTypeOptions]);
   const unitLabel = useMemo(() => new Map(unitOptions.map((o) => [o.value, o.label])), [unitOptions]);
 
-  const isNameInvalid = name.trim() === '';
+  const isNameInvalid = name.trim() === '' || stale;
 
   function resetDraftRowInputs() {
     setDraftPriceType('');
@@ -150,15 +156,14 @@ export function ExamTypeFormModal({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (isNameInvalid) return;
-    await onSubmit(buildDto());
-    onCancel();
+    if (await run(() => onSubmit(buildDto()))) onCancel();
   }
 
   // "Lưu và nhập tiếp" (mục 4.7) — nút `type="button"` riêng, không đụng nút submit mặc định
   // (Enter vẫn kích hoạt "Lưu" như trước).
   async function handleSaveAndContinue() {
     if (isNameInvalid) return;
-    await onSubmit(buildDto());
+    if (!(await run(() => onSubmit(buildDto())))) return;
     resetForNextEntry();
     triggerFlash();
   }
@@ -345,12 +350,7 @@ export function ExamTypeFormModal({
             </div>
           </div>
 
-          {submitError && (
-            <div className="flex items-center gap-2 rounded-md border border-rose-300 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
-              <Warning size={18} weight="fill" className="flex-none" aria-hidden="true" />
-              {submitError}
-            </div>
-          )}
+          <RecordFormNotice stale={stale} saveError={saveError} onReload={mode === 'edit' ? onReload : undefined} />
         </div>
 
         <div className="flex justify-end gap-2 border-t border-slate-200 bg-slate-50 px-6 py-4">

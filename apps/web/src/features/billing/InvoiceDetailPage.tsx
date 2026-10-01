@@ -16,7 +16,7 @@ import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { formatVnd } from '../../shared/format/currency';
 import { useAuthStore } from '../auth/auth.store';
 import { useHasPermission } from '../auth/usePermission';
-import { useClinicPrintHeaderQuery, useClinicSettingsQuery } from '../clinic/clinic.queries';
+import { useClinicPrintHeaderQuery, useWalletMixedPaymentEnabledQuery } from '../clinic/clinic.queries';
 import { OpenShiftDialog } from '../cashier-shift/OpenShiftDialog';
 import { useCurrentCashierShiftQuery } from '../cashier-shift/cashier-shift.queries';
 import { useCashierShiftRequiredEnabledQuery } from '../clinic/clinic.queries';
@@ -123,8 +123,9 @@ export function InvoiceDetailPage() {
   const walletQuery = useWalletQuery(invoice?.patientId ?? '');
   const wallet = walletQuery.data ?? null;
   const walletActive = wallet?.status === 'ACTIVE';
-  const clinicSettingsQuery = useClinicSettingsQuery();
-  const mixedPaymentEnabled = clinicSettingsQuery.data?.walletMixedPaymentEnabled ?? false;
+  // Dùng chiếu tự-phục vụ (KHÔNG `useClinicSettingsQuery` — lễ tân/thu ngân không có `clinic_config.read`, docs/DECISIONS.md #208).
+  const walletMixedQuery = useWalletMixedPaymentEnabledQuery();
+  const mixedPaymentEnabled = walletMixedQuery.data?.enabled ?? false;
 
   useBreadcrumb([{ label: 'Thu ngân', to: '/billing' }, { label: invoice?.invoiceNo ?? 'Chi tiết thanh toán' }]);
 

@@ -139,6 +139,11 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
     return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getCashierShiftRequiredEnabled(tx, tenantId));
   }
 
+  /** `GET /clinic-settings/wallet-mixed-payment-enabled` — chiếu tối thiểu tự-phục vụ, xem comment ở `packages/shared/src/clinic.ts`. */
+  getWalletMixedPaymentEnabledStatus(tenantId: string): Promise<boolean> {
+    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getWalletMixedPaymentEnabled(tx, tenantId));
+  }
+
   /** `ClinicConfigReaderPort` ("Đa thu ngân") — module `cashier-shift` đọc qua port này (không có endpoint tự-phục vụ, chỉ backend rẽ nhánh). */
   getCashierShiftMultiCashierEnabled(tenantId: string): ReturnType<ClinicConfigReaderPort['getCashierShiftMultiCashierEnabled']> {
     return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getCashierShiftMultiCashierEnabled(tx, tenantId));

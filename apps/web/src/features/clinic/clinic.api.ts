@@ -6,6 +6,7 @@ import type {
   BusinessCodeTemplateItem,
   BusinessCodeType,
   CashierShiftRequiredStatus,
+  WalletMixedPaymentStatus,
   ClinicPrintHeader,
   ClinicProfile,
   ClinicSettings,
@@ -64,6 +65,11 @@ export async function getAllowStaffSelfScheduleStatus(): Promise<AllowStaffSelfS
 /** "Yêu cầu mở ca trước khi thu tiền" (2026-09-04) — tự-phục vụ, không cần `clinic_config.read` (đúng khuôn `getDeferredPaymentStatus`). */
 export async function getCashierShiftRequiredStatus(): Promise<CashierShiftRequiredStatus> {
   return unwrap(await getApiClient().GET('/api/v1/clinic-settings/cashier-shift-required-enabled')) as CashierShiftRequiredStatus;
+}
+
+/** "Trả hỗn hợp ví + tiền mặt/CK" (docs/DECISIONS.md #208) — tự-phục vụ, không cần `clinic_config.read`. */
+export async function getWalletMixedPaymentStatus(): Promise<WalletMixedPaymentStatus> {
+  return unwrap(await getApiClient().GET('/api/v1/clinic-settings/wallet-mixed-payment-enabled')) as WalletMixedPaymentStatus;
 }
 
 /** "Tự động thu gọn menu khi chuyển trang" (2026-09-07) — tự-phục vụ, không cần `clinic_config.read` (đúng khuôn `getDeferredPaymentStatus`). */

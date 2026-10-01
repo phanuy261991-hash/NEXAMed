@@ -3,6 +3,7 @@ import type { Request } from 'express';
 import {
   createReferenceCatalogRequestSchema,
   referenceCatalogCategorySchema,
+  referenceCatalogVersionQuerySchema,
   updateReferenceCatalogRequestSchema,
 } from '@nexamed/shared';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
@@ -57,16 +58,18 @@ export class ReferenceCatalogController {
   @Delete(':id')
   @RequirePermission('reference_catalog', 'manage')
   @HttpCode(200)
-  async deactivate(@Param('id') id: string, @Req() req: Request) {
+  async deactivate(@Param('id') id: string, @Query() query: unknown, @Req() req: Request) {
+    const { version } = referenceCatalogVersionQuerySchema.parse(query);
     const { userId, tenantId } = req.user!;
-    return this.referenceCatalogService.setActive(tenantId, userId, id, false, extractRequestMeta(req));
+    return this.referenceCatalogService.setActive(tenantId, userId, id, false, version, extractRequestMeta(req));
   }
 
   @Post(':id/reactivate')
   @RequirePermission('reference_catalog', 'manage')
   @HttpCode(200)
-  async reactivate(@Param('id') id: string, @Req() req: Request) {
+  async reactivate(@Param('id') id: string, @Query() query: unknown, @Req() req: Request) {
+    const { version } = referenceCatalogVersionQuerySchema.parse(query);
     const { userId, tenantId } = req.user!;
-    return this.referenceCatalogService.setActive(tenantId, userId, id, true, extractRequestMeta(req));
+    return this.referenceCatalogService.setActive(tenantId, userId, id, true, version, extractRequestMeta(req));
   }
 }

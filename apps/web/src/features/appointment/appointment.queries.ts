@@ -62,12 +62,14 @@ export function useDoctorsQuery() {
   });
 }
 
-export function useScheduleConfigQuery() {
+/** `enabled=false` → không gọi API (caller biết chắc không cần, ví dụ nhắc đóng ca chỉ dành cho bác sĩ — tránh 403 vô ích ở vai trò không có `appointment.read`). */
+export function useScheduleConfigQuery(options?: { enabled?: boolean }) {
   const { tenantId } = useAppConfig();
   return useQuery({
     queryKey: queryKey(tenantId, 'appointment', 'schedule-config'),
     queryFn: () => getScheduleConfig(),
     staleTime: STALE_REFERENCE_MS,
+    enabled: options?.enabled ?? true,
   });
 }
 

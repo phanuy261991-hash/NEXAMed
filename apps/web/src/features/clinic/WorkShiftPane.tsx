@@ -11,7 +11,10 @@ import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
 import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
 import { useRowSelection } from '../../shared/hooks/useRowSelection';
-import { ApiError } from '../../shared/api/client';
+import { ACTION_CONFLICT_MESSAGE, describeSaveError, isConflictError } from '../../shared/api/save-error';
+import { fetchOneFromList } from '../../shared/api/fetch-one-from-list';
+import { useEditedRecordGuard } from '../../shared/hooks/useStaleRecordWatch';
+import { listWorkShifts } from './clinic.api';
 import { useCreateWorkShiftMutation, useUpdateWorkShiftMutation, useWorkShiftsQuery } from './clinic.queries';
 import { WORK_SHIFT_COLOR_HEX, WorkShiftFormModal, type WorkShiftSubmitDto } from './WorkShiftFormModal';
 
@@ -40,8 +43,24 @@ export function WorkShiftPane() {
   const createMutation = useCreateWorkShiftMutation();
   const updateMutation = useUpdateWorkShiftMutation();
 
-  const mutationError = createMutation.error ?? updateMutation.error;
-  const mutationErrorMessage = mutationError instanceof ApiError ? mutationError.message : undefined;
+  const [actionError, setActionError] = useState<string | null>(null);
+  const guard = useEditedRecordGuard({
+    editing: modal?.mode === 'edit' ? modal.item : undefined,
+    watchKey: 'work-shift',
+    fetchLatest: (id) => fetchOneFromList(listWorkShifts, id),
+    onFresh: (fresh) => setModal(fresh ? { mode: 'edit', item: fresh } : null),
+    onReloaded: () => void query.refetch(),
+  });
+
+  /** Lỗi thao tác nhanh ở danh sách (Xoá/Khôi phục): xung đột phiên bản → báo rõ + tải lại danh sách; lỗi khác dùng câu thống nhất. */
+  function handleActionError(err: unknown) {
+    if (isConflictError(err)) {
+      setActionError(ACTION_CONFLICT_MESSAGE);
+      void query.refetch();
+      return;
+    }
+    setActionError(describeSaveError(err));
+  }
 
   const items = useMemo(() => {
     const all = query.data?.items ?? [];
@@ -89,6 +108,7 @@ export function WorkShiftPane() {
         )}
       </div>
 
+      {actionError && <ErrorBanner message={actionError} />}
       {query.isError && <ErrorBanner message="Không tải được danh mục ca làm việc." onRetry={() => query.refetch()} />}
 
       {query.isLoading && (
@@ -155,7 +175,10 @@ export function WorkShiftPane() {
                               icon={ArrowCounterClockwise}
                               label="Khôi phục"
                               tone="primary"
-                              onClick={() => updateMutation.mutate({ id: item.id, body: { isActive: true, version: item.version } })}
+                              onClick={() => {
+                                setActionError(null);
+                                updateMutation.mutate({ id: item.id, body: { isActive: true, version: item.version } }, { onError: handleActionError });
+                              }}
                             />
                           </div>
                         )}
@@ -173,10 +196,12 @@ export function WorkShiftPane() {
 
       {modal && (
         <WorkShiftFormModal
+          key={modal.item ? `${modal.item.id}:${modal.item.version}` : 'new'}
+          stale={guard.stale}
+          onReload={guard.reload}
           mode={modal.mode}
           item={modal.item}
           submitting={createMutation.isPending || updateMutation.isPending}
-          submitError={mutationErrorMessage}
           onCancel={() => setModal(null)}
           onSubmit={handleSubmit}
         />
@@ -195,12 +220,19 @@ export function WorkShiftPane() {
                 type="button"
                 variant="danger"
                 loading={updateMutation.isPending}
-                onClick={() =>
+                onClick={() => {
+                  setActionError(null);
                   updateMutation.mutate(
                     { id: deactivateTarget.id, body: { isActive: false, version: deactivateTarget.version } },
-                    { onSuccess: () => setDeactivateTarget(null) },
-                  )
-                }
+                    {
+                      onSuccess: () => setDeactivateTarget(null),
+                      onError: (err) => {
+                        handleActionError(err);
+                        setDeactivateTarget(null);
+                      },
+                    },
+                  );
+                }}
               >
                 Xoá
               </Button>

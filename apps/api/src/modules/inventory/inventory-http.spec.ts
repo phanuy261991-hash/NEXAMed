@@ -389,7 +389,7 @@ describe('HTTP e2e — /api/v1/inventory (Phiếu nhập kho GĐ2)', () => {
     const entries = (matrixRes.body.data.permissions as { permissionId: string; module: string; action: string; dataScope: string }[])
       .filter((e) => e.dataScope !== 'none' && !(e.module === 'stock_receipt' && e.action === 'approve'))
       .map((e) => ({ permissionId: e.permissionId, dataScope: e.dataScope }));
-    await request(app.getHttpServer()).put(`/api/v1/roles/${newRole.body.data.id}/permissions`).set(authed(clinicAdminToken)).send({ entries });
+    await request(app.getHttpServer()).put(`/api/v1/roles/${newRole.body.data.id}/permissions`).set(authed(clinicAdminToken)).send({ entries, version: newRole.body.data.version });
 
     const username = `e2e-inv-limited-${randomUUID()}`;
     const passwordHash = await argon2.hash(password, { type: argon2.argon2id });
@@ -451,7 +451,7 @@ describe('HTTP e2e — /api/v1/inventory (Phiếu nhập kho GĐ2)', () => {
       const entries = (matrixRes.body.data.permissions as { permissionId: string; module: string; action: string; dataScope: string }[])
         .filter((e) => e.dataScope !== 'none')
         .map((e) => ({ permissionId: e.permissionId, dataScope: e.module === 'stock_receipt' ? 'department' : e.dataScope }));
-      await request(app.getHttpServer()).put(`/api/v1/roles/${newRole.body.data.id}/permissions`).set(authed(clinicAdminToken)).send({ entries });
+      await request(app.getHttpServer()).put(`/api/v1/roles/${newRole.body.data.id}/permissions`).set(authed(clinicAdminToken)).send({ entries, version: newRole.body.data.version });
 
       const username = `e2e-inv-deptA-${randomUUID()}`;
       const passwordHash = await argon2.hash(password, { type: argon2.argon2id });

@@ -26531,6 +26531,12 @@
                                   "department",
                                   "global"
                                 ]
+                              },
+                              "companions": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
                               }
                             },
                             "required": [
@@ -26538,7 +26544,8 @@
                               "module",
                               "action",
                               "description",
-                              "dataScope"
+                              "dataScope",
+                              "companions"
                             ]
                           }
                         }
@@ -26683,6 +26690,10 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
                   "entries": {
                     "type": "array",
                     "items": {
@@ -26710,6 +26721,7 @@
                   }
                 },
                 "required": [
+                  "version",
                   "entries"
                 ]
               }
@@ -26777,6 +26789,12 @@
                                   "department",
                                   "global"
                                 ]
+                              },
+                              "companions": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
                               }
                             },
                             "required": [
@@ -26784,7 +26802,8 @@
                               "module",
                               "action",
                               "description",
-                              "dataScope"
+                              "dataScope",
+                              "companions"
                             ]
                           }
                         }
@@ -26871,6 +26890,37 @@
           },
           "404": {
             "description": "Không tìm thấy (không tồn tại hoặc thuộc tenant khác)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Vai trò vừa được người khác cập nhật (version lệch)",
             "content": {
               "application/json": {
                 "schema": {
@@ -35909,6 +35959,83 @@
         }
       }
     },
+    "/api/v1/clinic-settings/wallet-mixed-payment-enabled": {
+      "get": {
+        "tags": [
+          "clinic"
+        ],
+        "summary": "\"Trả hỗn hợp ví + tiền mặt/CK\" — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "enabled"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/clinic-settings/cashier-shift-required-enabled": {
       "get": {
         "tags": [
@@ -38543,6 +38670,10 @@
                                   "string",
                                   "null"
                                 ]
+                              },
+                              "version": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0
                               }
                             },
                             "required": [
@@ -38559,7 +38690,8 @@
                               "countsAsCash",
                               "direction",
                               "bytCode",
-                              "fullName"
+                              "fullName",
+                              "version"
                             ]
                           }
                         }
@@ -38970,6 +39102,10 @@
                             "string",
                             "null"
                           ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0
                         }
                       },
                       "required": [
@@ -38986,7 +39122,8 @@
                         "countsAsCash",
                         "direction",
                         "bytCode",
-                        "fullName"
+                        "fullName",
+                        "version"
                       ]
                     },
                     "meta": {
@@ -39126,6 +39263,10 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
                   "code": {
                     "type": "string",
                     "minLength": 1
@@ -39207,7 +39348,10 @@
                       ]
                     }
                   }
-                }
+                },
+                "required": [
+                  "version"
+                ]
               }
             }
           }
@@ -39366,6 +39510,10 @@
                             "string",
                             "null"
                           ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0
                         }
                       },
                       "required": [
@@ -39382,7 +39530,8 @@
                         "countsAsCash",
                         "direction",
                         "bytCode",
-                        "fullName"
+                        "fullName",
+                        "version"
                       ]
                     },
                     "meta": {
@@ -39492,7 +39641,7 @@
             }
           },
           "409": {
-            "description": "Trùng mã (code) với mục khác trong cùng danh mục",
+            "description": "Trùng mã (code) với mục khác trong cùng danh mục, hoặc mục vừa được người khác cập nhật (version lệch)",
             "content": {
               "application/json": {
                 "schema": {
@@ -39528,7 +39677,7 @@
         "tags": [
           "reference-catalog"
         ],
-        "summary": "Ẩn một mục (soft — role DB không có quyền DELETE thật)",
+        "summary": "Ẩn một mục (soft — role DB không có quyền DELETE thật) — kèm query version (khoá lạc quan)",
         "security": [
           {
             "bearerAuth": []
@@ -39543,6 +39692,15 @@
             "required": true,
             "name": "id",
             "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0
+            },
+            "required": true,
+            "name": "version",
+            "in": "query"
           }
         ],
         "responses": {
@@ -39699,6 +39857,10 @@
                             "string",
                             "null"
                           ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0
                         }
                       },
                       "required": [
@@ -39715,7 +39877,8 @@
                         "countsAsCash",
                         "direction",
                         "bytCode",
-                        "fullName"
+                        "fullName",
+                        "version"
                       ]
                     },
                     "meta": {
@@ -39823,6 +39986,37 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "Mục vừa được người khác cập nhật (version lệch)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -39832,7 +40026,7 @@
         "tags": [
           "reference-catalog"
         ],
-        "summary": "Khôi phục một mục đã ẩn",
+        "summary": "Khôi phục một mục đã ẩn — kèm query version (khoá lạc quan)",
         "security": [
           {
             "bearerAuth": []
@@ -39847,6 +40041,15 @@
             "required": true,
             "name": "id",
             "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0
+            },
+            "required": true,
+            "name": "version",
+            "in": "query"
           }
         ],
         "responses": {
@@ -40003,6 +40206,10 @@
                             "string",
                             "null"
                           ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0
                         }
                       },
                       "required": [
@@ -40019,7 +40226,8 @@
                         "countsAsCash",
                         "direction",
                         "bytCode",
-                        "fullName"
+                        "fullName",
+                        "version"
                       ]
                     },
                     "meta": {
@@ -40099,6 +40307,37 @@
           },
           "404": {
             "description": "Không tìm thấy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Mục vừa được người khác cập nhật (version lệch)",
             "content": {
               "application/json": {
                 "schema": {

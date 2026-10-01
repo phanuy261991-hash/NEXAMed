@@ -363,12 +363,12 @@ describe('HTTP e2e — Gợi ý mã ICD-10 (/api/v1/encounters/:id/diagnosis-sug
       expect(group.expandedText).toBe('viêm dạ dày');
       expect(group.items.every((i) => i.icd10Code.startsWith('K29'))).toBe(true);
 
-      const patched = await request(app.getHttpServer()).patch(`/api/v1/reference-catalog/${id}`).set(authed(clinicAdminToken)).send({ name: 'đái tháo đường' });
+      const patched = await request(app.getHttpServer()).patch(`/api/v1/reference-catalog/${id}`).set(authed(clinicAdminToken)).send({ name: 'đái tháo đường', version: created.body.data.version });
       expect(patched.status).toBe(200);
       group = ((await suggest(encounterId, word)).body.data.groups as SuggestionGroup[])[0]!;
       expect(group.expandedText).toBe('đái tháo đường');
 
-      const hidden = await request(app.getHttpServer()).delete(`/api/v1/reference-catalog/${id}`).set(authed(clinicAdminToken));
+      const hidden = await request(app.getHttpServer()).delete(`/api/v1/reference-catalog/${id}?version=${patched.body.data.version}`).set(authed(clinicAdminToken));
       expect(hidden.status).toBe(200);
       group = ((await suggest(encounterId, word)).body.data.groups as SuggestionGroup[])[0]!;
       expect(group.expandedText).toBeNull();
@@ -392,9 +392,9 @@ describe('HTTP e2e — Gợi ý mã ICD-10 (/api/v1/encounters/:id/diagnosis-sug
 
       const created = await createAbbreviation(clinicAdminToken, uniqueWord('Yq'), 'sốt');
       const id = created.body.data.id as string;
-      const bad = await request(app.getHttpServer()).patch(`/api/v1/reference-catalog/${id}`).set(authed(clinicAdminToken)).send({ code: 'hai từ' });
+      const bad = await request(app.getHttpServer()).patch(`/api/v1/reference-catalog/${id}`).set(authed(clinicAdminToken)).send({ code: 'hai từ', version: created.body.data.version });
       expect(bad.status).toBe(422);
-      await request(app.getHttpServer()).delete(`/api/v1/reference-catalog/${id}`).set(authed(clinicAdminToken));
+      await request(app.getHttpServer()).delete(`/api/v1/reference-catalog/${id}?version=${created.body.data.version}`).set(authed(clinicAdminToken));
     });
 
     it('bác sĩ (chỉ reference_catalog.read) không thêm được → 403', async () => {

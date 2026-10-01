@@ -629,6 +629,33 @@ describe('HTTP e2e — /api/v1/rooms và /api/v1/clinic-settings', () => {
     });
   });
 
+  describe('/api/v1/clinic-settings/wallet-mixed-payment-enabled ("Trả hỗn hợp ví + tiền mặt/CK", docs/DECISIONS.md #208)', () => {
+    it('không có access token → 401', async () => {
+      const res = await request(app.getHttpServer()).get('/api/v1/clinic-settings/wallet-mixed-payment-enabled');
+      expect(res.status).toBe(401);
+    });
+
+    it('lễ tân/thu ngân (KHÔNG có clinic_config.read) → 200, mặc định false; admin bật → lễ tân thấy true ngay', async () => {
+      // Trước đây trang Thu tiền gọi GET /clinic-settings (403 với lễ tân) nên tuỳ chọn luôn tắt dù admin đã bật.
+      const full = await request(app.getHttpServer()).get('/api/v1/clinic-settings').set(authed(receptionistToken));
+      expect(full.status).toBe(403);
+
+      const before = await request(app.getHttpServer()).get('/api/v1/clinic-settings/wallet-mixed-payment-enabled').set(authed(receptionistToken));
+      expect(before.status).toBe(200);
+      expect(before.body.data.enabled).toBe(false);
+
+      const patch = await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(clinicAdminToken)).send({ walletMixedPaymentEnabled: true });
+      expect(patch.status).toBe(200);
+
+      const after = await request(app.getHttpServer()).get('/api/v1/clinic-settings/wallet-mixed-payment-enabled').set(authed(receptionistToken));
+      expect(after.body.data.enabled).toBe(true);
+
+      // tenant B độc lập
+      const other = await request(app.getHttpServer()).get('/api/v1/clinic-settings/wallet-mixed-payment-enabled').set(authed(tenantBAdminToken));
+      expect(other.body.data.enabled).toBe(false);
+    });
+  });
+
   describe('/api/v1/clinic-settings/sidebar-auto-collapse-enabled ("Tự động thu gọn menu khi chuyển trang")', () => {
     it('không có access token → 401', async () => {
       const res = await request(app.getHttpServer()).get('/api/v1/clinic-settings/sidebar-auto-collapse-enabled');

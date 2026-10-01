@@ -1,6 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, type Role } from '@prisma/client';
-import { ConcurrentModificationError, RoleDuplicateNameError, RoleImmutableError, RoleInUseError } from '@nexamed/core';
+import {
+  ConcurrentModificationError,
+  getPermissionCompanions,
+  permissionKey,
+  RoleDuplicateNameError,
+  RoleImmutableError,
+  RoleInUseError,
+} from '@nexamed/core';
 import type {
   CreateRoleRequest,
   HideRoleRequest,
@@ -151,17 +158,7 @@ export class RoleService {
         this.rolePermissionRepository.listCatalog(tx),
         this.rolePermissionRepository.listForRole(tx, tenantId, id),
       ]);
-      const scopeByPermissionId = new Map(granted.map((rp) => [rp.permissionId, rp.dataScope]));
-
-      const permissions: RolePermissionEntry[] = catalog.map((p) => ({
-        permissionId: p.id,
-        module: p.module,
-        action: p.action,
-        description: p.description,
-        dataScope: scopeByPermissionId.get(p.id) ?? 'none',
-      }));
-
-      return { role: this.toSummary(role), permissions };
+      return { role: this.toSummary(role), permissions: this.toEntries(catalog, granted) };
     });
   }
 
@@ -176,6 +173,12 @@ export class RoleService {
       const role = await this.roleRepository.findById(tx, tenantId, id);
       if (!role) {
         throw new NotFoundException();
+      }
+
+      // Khoá lạc quan: người khác vừa lưu ma trận/đổi tên vai trò này thì `version` đã tăng → 409, không ghi đè âm thầm.
+      const touched = await this.roleRepository.touchIfVersionMatches(tx, tenantId, id, dto.version, actorId);
+      if (touched === 0) {
+        throw new ConcurrentModificationError();
       }
 
       await this.rolePermissionRepository.replaceMatrix(tx, tenantId, id, actorId, dto.entries);
@@ -194,17 +197,27 @@ export class RoleService {
         this.rolePermissionRepository.listCatalog(tx),
         this.rolePermissionRepository.listForRole(tx, tenantId, id),
       ]);
-      const scopeByPermissionId = new Map(granted.map((rp) => [rp.permissionId, rp.dataScope]));
-      const permissions: RolePermissionEntry[] = catalog.map((p) => ({
-        permissionId: p.id,
-        module: p.module,
-        action: p.action,
-        description: p.description,
-        dataScope: scopeByPermissionId.get(p.id) ?? 'none',
-      }));
+      const permissions = this.toEntries(catalog, granted);
 
-      return { role: this.toSummary(role), permissions };
+      const updatedRole = await this.roleRepository.findById(tx, tenantId, id);
+      return { role: this.toSummary(updatedRole ?? role), permissions };
     });
+  }
+
+  /** Ma trận đầy đủ: mọi quyền trong danh mục (quyền chưa cấp → "none") kèm quyền đi kèm gợi ý (`PERMISSION_COMPANIONS`). */
+  private toEntries(
+    catalog: readonly { id: string; module: string; action: string; description: string }[],
+    granted: readonly { permissionId: string; dataScope: RolePermissionEntry['dataScope'] }[],
+  ): RolePermissionEntry[] {
+    const scopeByPermissionId = new Map(granted.map((rp) => [rp.permissionId, rp.dataScope]));
+    return catalog.map((p) => ({
+      permissionId: p.id,
+      module: p.module,
+      action: p.action,
+      description: p.description,
+      dataScope: scopeByPermissionId.get(p.id) ?? 'none',
+      companions: [...getPermissionCompanions(permissionKey(p))],
+    }));
   }
 
   private toSummary(role: Role): RoleSummary {

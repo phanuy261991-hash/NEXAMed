@@ -15,6 +15,12 @@ import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
 import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
 import { useRowSelection } from '../../shared/hooks/useRowSelection';
 import { useSaveFlash } from '../../shared/hooks/useSaveFlash';
+import { useSaveAttempt } from '../../shared/hooks/useSaveAttempt';
+import { useEditedRecordGuard } from '../../shared/hooks/useStaleRecordWatch';
+import { RecordFormNotice } from '../../shared/ui/RecordFormNotice';
+import { fetchOneFromList } from '../../shared/api/fetch-one-from-list';
+import { listDepartments } from './department.api';
+import { listDepartmentTypes } from './department-type.api';
 import { useCreateDepartmentMutation, useDepartmentsQuery, useUpdateDepartmentMutation } from './department.queries';
 import { useCreateDepartmentTypeMutation, useDepartmentTypesQuery, useUpdateDepartmentTypeMutation } from './department-type.queries';
 
@@ -46,6 +52,22 @@ export function DepartmentPane() {
 
   const types = typesQuery.data?.items ?? [];
   const hasTypes = types.length > 0;
+
+  // Phát hiện người khác vừa sửa Loại/Khoa-Phòng đang mở form Sửa (mẫu `useEditedRecordGuard`; danh sách nhỏ nên tải lại danh sách).
+  const typeGuard = useEditedRecordGuard({
+    editing: typeModal?.mode === 'edit' ? typeModal.type : undefined,
+    watchKey: 'department-type',
+    fetchLatest: (id) => fetchOneFromList(listDepartmentTypes, id),
+    onFresh: (fresh) => setTypeModal(fresh ? { mode: 'edit', type: fresh } : null),
+    onReloaded: () => void typesQuery.refetch(),
+  });
+  const departmentGuard = useEditedRecordGuard({
+    editing: modal?.mode === 'edit' ? modal.department : undefined,
+    watchKey: 'department',
+    fetchLatest: (id) => fetchOneFromList(listDepartments, id),
+    onFresh: (fresh) => setModal(fresh ? { mode: 'edit', department: fresh } : null),
+    onReloaded: () => void query.refetch(),
+  });
 
   const visibleTypes = useMemo(() => {
     const q = typeSearch.trim().toLowerCase();
@@ -240,6 +262,9 @@ export function DepartmentPane() {
 
       {typeModal && (
         <DepartmentTypeFormModal
+          key={typeModal.type ? `${typeModal.type.id}:${typeModal.type.version}` : 'new'}
+          stale={typeGuard.stale}
+          onReload={typeGuard.reload}
           mode={typeModal.mode}
           type={typeModal.type}
           submitting={createTypeMutation.isPending || updateTypeMutation.isPending}
@@ -258,6 +283,9 @@ export function DepartmentPane() {
 
       {modal && (
         <DepartmentFormModal
+          key={modal.department ? `${modal.department.id}:${modal.department.version}` : 'new'}
+          stale={departmentGuard.stale}
+          onReload={departmentGuard.reload}
           mode={modal.mode}
           department={modal.department}
           types={types}
@@ -289,12 +317,17 @@ function DepartmentTypeFormModal({
   mode,
   type,
   submitting,
+  stale,
+  onReload,
   onCancel,
   onSubmit,
 }: {
   mode: 'create' | 'edit';
   type?: DepartmentTypeSummary;
   submitting: boolean;
+  /** Người khác vừa lưu bản mới của bản ghi này (phát hiện lúc form đang mở) — khoá nút Lưu tới khi tải lại. */
+  stale: boolean;
+  onReload: () => void | Promise<void>;
   onCancel: () => void;
   /** Trả `Promise` — `handleSubmit`/`handleSaveAndContinue` await để biết lưu xong mới đóng modal
    * hoặc làm trống form (`.claude/docs/ui-guidelines.md` mục 4.7). */
@@ -304,21 +337,21 @@ function DepartmentTypeFormModal({
   const [name, setName] = useState(type?.name ?? '');
   const [isActive, setIsActive] = useState(type?.isActive ?? true);
   const { flashVisible, triggerFlash } = useSaveFlash();
-  const isInvalid = name.trim() === '';
+  const { saveError, run } = useSaveAttempt();
+  const isInvalid = name.trim() === '' || stale;
 
   async function handleSubmit(e: React.FormEvent) {
     // Bọc `<form>` để Enter trong ô nhập tự submit — bắt buộc cho mọi form Thêm/Sửa (`.claude/docs/
     // ui-guidelines.md` mục 4.4).
     e.preventDefault();
     if (isInvalid) return;
-    await onSubmit({ name: name.trim(), isActive });
-    onCancel();
+    if (await run(() => onSubmit({ name: name.trim(), isActive }))) onCancel();
   }
 
   // "Lưu và nhập tiếp" (mục 4.7) — nút `type="button"` riêng, không đụng nút submit mặc định.
   async function handleSaveAndContinue() {
     if (isInvalid) return;
-    await onSubmit({ name: name.trim(), isActive });
+    if (!(await run(() => onSubmit({ name: name.trim(), isActive })))) return;
     setName('');
     nameInputRef.current?.focus();
     triggerFlash();
@@ -355,6 +388,8 @@ function DepartmentTypeFormModal({
           )}
         </div>
 
+        <RecordFormNotice stale={stale} saveError={saveError} onReload={mode === 'edit' ? onReload : undefined} />
+
         <div className="mt-4 flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onCancel}>
             Huỷ
@@ -378,6 +413,8 @@ function DepartmentFormModal({
   department,
   types,
   submitting,
+  stale,
+  onReload,
   onCancel,
   onSubmit,
 }: {
@@ -385,6 +422,9 @@ function DepartmentFormModal({
   department?: DepartmentSummary;
   types: DepartmentTypeSummary[];
   submitting: boolean;
+  /** Người khác vừa lưu bản mới của bản ghi này (phát hiện lúc form đang mở) — khoá nút Lưu tới khi tải lại. */
+  stale: boolean;
+  onReload: () => void | Promise<void>;
   onCancel: () => void;
   /** Trả `Promise` — `handleSubmit`/`handleSaveAndContinue` await để biết lưu xong mới đóng modal
    * hoặc làm trống form (`.claude/docs/ui-guidelines.md` mục 4.7). */
@@ -396,9 +436,10 @@ function DepartmentFormModal({
   const [participatesInQueue, setParticipatesInQueue] = useState(department?.participatesInQueue ?? true);
   const [isActive, setIsActive] = useState(department?.isActive ?? true);
   const { flashVisible, triggerFlash } = useSaveFlash();
+  const { saveError, run } = useSaveAttempt();
 
   const typeOptions = [{ value: NO_TYPE_VALUE, label: 'Không phân loại' }, ...types.filter((t) => t.isActive).map((t) => ({ value: t.id, label: t.name }))];
-  const isInvalid = name.trim() === '';
+  const isInvalid = name.trim() === '' || stale;
 
   function buildDto() {
     return {
@@ -412,14 +453,13 @@ function DepartmentFormModal({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (isInvalid) return;
-    await onSubmit(buildDto());
-    onCancel();
+    if (await run(() => onSubmit(buildDto()))) onCancel();
   }
 
   // "Lưu và nhập tiếp" (mục 4.7) — nút `type="button"` riêng, không đụng nút submit mặc định.
   async function handleSaveAndContinue() {
     if (isInvalid) return;
-    await onSubmit(buildDto());
+    if (!(await run(() => onSubmit(buildDto())))) return;
     setName('');
     setDepartmentTypeId(NO_TYPE_VALUE);
     setParticipatesInQueue(true);
@@ -467,6 +507,8 @@ function DepartmentFormModal({
             </label>
           )}
         </div>
+
+        <RecordFormNotice stale={stale} saveError={saveError} onReload={mode === 'edit' ? onReload : undefined} />
 
         <div className="mt-4 flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onCancel}>

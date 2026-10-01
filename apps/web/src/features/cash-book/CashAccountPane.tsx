@@ -16,7 +16,12 @@ import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
 import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
 import { useRowSelection } from '../../shared/hooks/useRowSelection';
 import { useSaveFlash } from '../../shared/hooks/useSaveFlash';
+import { useSaveAttempt } from '../../shared/hooks/useSaveAttempt';
+import { useEditedRecordGuard } from '../../shared/hooks/useStaleRecordWatch';
+import { RecordFormNotice } from '../../shared/ui/RecordFormNotice';
+import { fetchOneFromList } from '../../shared/api/fetch-one-from-list';
 import { formatVnd } from '../../shared/format/currency';
+import { getCashAccounts } from './cash-account.api';
 import { useCashAccountsQuery, useCreateCashAccountMutation, useUpdateCashAccountMutation } from './cash-account.queries';
 
 const inputClassName =
@@ -57,35 +62,40 @@ function CashAccountFormModal({
   mode,
   item,
   submitting,
+  stale,
+  onReload,
   onCancel,
   onSubmit,
 }: {
   mode: 'create' | 'edit';
   item?: CashAccount;
   submitting: boolean;
+  /** Người khác vừa lưu bản mới của bản ghi này (phát hiện lúc form đang mở) — khoá nút Lưu tới khi tải lại. */
+  stale: boolean;
+  onReload: () => void | Promise<void>;
   onCancel: () => void;
   onSubmit: (dto: FormValues) => Promise<void>;
 }) {
   const nameInputRef = useRef<HTMLInputElement>(null);
   const [values, setValues] = useState<FormValues>(() => toFormValues(item));
   const { flashVisible, triggerFlash } = useSaveFlash();
+  const { saveError, run } = useSaveAttempt();
 
   function set<K extends keyof FormValues>(key: K, value: FormValues[K]) {
     setValues((v) => ({ ...v, [key]: value }));
   }
 
-  const isValid = values.name.trim() !== '' && (values.type === 'CASH' || values.bankAccountNo.trim() !== '');
+  const isValid = values.name.trim() !== '' && (values.type === 'CASH' || values.bankAccountNo.trim() !== '') && !stale;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!isValid) return;
-    await onSubmit(values);
-    onCancel();
+    if (await run(() => onSubmit(values))) onCancel();
   }
 
   async function handleSaveAndContinue() {
     if (!isValid) return;
-    await onSubmit(values);
+    if (!(await run(() => onSubmit(values)))) return;
     setValues(toFormValues(undefined));
     nameInputRef.current?.focus();
     triggerFlash();
@@ -197,6 +207,10 @@ function CashAccountFormModal({
           )}
         </div>
 
+        <div className="mt-4">
+          <RecordFormNotice stale={stale} saveError={saveError} onReload={mode === 'edit' ? onReload : undefined} />
+        </div>
+
         <div className="mt-6 flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onCancel} disabled={submitting}>
             Huỷ
@@ -232,6 +246,13 @@ export function CashAccountPane() {
   const items = useMemo(() => query.data?.items ?? [], [query.data]);
   const itemIds = useMemo(() => items.map((i) => i.id), [items]);
   const rowSelection = useRowSelection(itemIds);
+  const guard = useEditedRecordGuard({
+    editing: modal?.mode === 'edit' ? modal.item : undefined,
+    watchKey: 'cash-account',
+    fetchLatest: (id) => fetchOneFromList(getCashAccounts, id),
+    onFresh: (fresh) => setModal(fresh ? { mode: 'edit', item: fresh } : null),
+    onReloaded: () => void query.refetch(),
+  });
 
   async function handleSubmit(dto: FormValues) {
     if (modal?.mode === 'edit' && modal.item) {
@@ -357,6 +378,9 @@ export function CashAccountPane() {
 
       {modal && (
         <CashAccountFormModal
+          key={modal.item ? `${modal.item.id}:${modal.item.version}` : 'new'}
+          stale={guard.stale}
+          onReload={guard.reload}
           mode={modal.mode}
           item={modal.item}
           submitting={createMutation.isPending || updateMutation.isPending}

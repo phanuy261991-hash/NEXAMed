@@ -19,10 +19,12 @@ export class RolePermissionRepository {
   }
 
   /**
-   * Ghi đè toàn bộ ma trận của một vai trò trong MỘT transaction: `dataScope='none'` thì
-   * soft-delete dòng đang có (nếu có); ngược lại upsert (tạo mới nếu chưa có, cập nhật scope nếu
-   * đã có và khác giá trị cũ). Không dùng optimistic lock theo `version` từng dòng — xem
-   * `updateRolePermissionsRequestSchema` (packages/shared/src/role.ts) về lý do đơn giản hoá này.
+   * Ghi đè toàn bộ ma trận của một vai trò trong MỘT transaction: `dataScope='none'` thì soft-delete dòng
+   * đang hiệu lực (nếu có); ngược lại cấp/đổi scope. Unique `(tenant_id, role_id, permission_id)` KHÔNG
+   * phải partial nên dòng đã thu hồi (soft-delete) vẫn chiếm khoá — cấp LẠI một quyền từng thu hồi phải
+   * HỒI SINH dòng cũ (`deleted_at = NULL`) chứ không `create` dòng mới (trước đây vỡ unique → 500
+   * INTERNAL_ERROR, phát hiện qua test quét toàn bộ ma trận, docs/DECISIONS.md #207). Không dùng optimistic
+   * lock theo `version` từng dòng — khoá lạc quan nằm ở `role.version` (xem `RoleService.updateRoleMatrix`).
    */
   async replaceMatrix(
     tx: Prisma.TransactionClient,
@@ -31,14 +33,15 @@ export class RolePermissionRepository {
     actorId: string,
     entries: readonly { permissionId: string; dataScope: DataScope }[],
   ): Promise<void> {
-    const existing = await this.listForRole(tx, tenantId, roleId);
+    // Lấy CẢ dòng đã soft-delete (khác `listForRole`) để biết dòng nào đang chiếm khoá unique.
+    const existing = await tx.rolePermission.findMany({ where: { tenantId, roleId } });
     const existingByPermissionId = new Map(existing.map((rp) => [rp.permissionId, rp]));
 
     for (const entry of entries) {
       const current = existingByPermissionId.get(entry.permissionId);
 
       if (entry.dataScope === 'none') {
-        if (current) {
+        if (current && current.deletedAt === null) {
           await tx.rolePermission.update({
             where: { id: current.id },
             data: { deletedAt: new Date(), deletedReason: 'matrix_updated', updatedBy: actorId, version: { increment: 1 } },
@@ -48,7 +51,13 @@ export class RolePermissionRepository {
       }
 
       if (current) {
-        if (current.dataScope !== entry.dataScope) {
+        if (current.deletedAt !== null) {
+          // Hồi sinh dòng đã thu hồi trước đó.
+          await tx.rolePermission.update({
+            where: { id: current.id },
+            data: { dataScope: entry.dataScope, deletedAt: null, deletedReason: null, updatedBy: actorId, version: { increment: 1 } },
+          });
+        } else if (current.dataScope !== entry.dataScope) {
           await tx.rolePermission.update({
             where: { id: current.id },
             data: { dataScope: entry.dataScope, updatedBy: actorId, version: { increment: 1 } },

@@ -182,6 +182,7 @@ import {
   recordVitalSignRequestSchema,
   referenceCatalogCategorySchema,
   referenceCatalogItemSchema,
+  referenceCatalogVersionQuerySchema,
   registerReceptionRequestSchema,
   refreshResponseSchema,
   renameRoleRequestSchema,
@@ -234,6 +235,7 @@ import {
   approveCashierShiftRequestSchema,
   cashierShiftBlindCloseStatusSchema,
   cashierShiftRequiredStatusSchema,
+  walletMixedPaymentStatusSchema,
   cashierShiftDetailSchema,
   cashierShiftInvoicePaymentsResponseSchema,
   cashierShiftSummarySchema,
@@ -1680,6 +1682,7 @@ registry.registerPath({
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền role_permission.manage'),
     404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
+    409: errorResponse('Vai trò vừa được người khác cập nhật (version lệch)'),
   },
 });
 
@@ -2221,6 +2224,18 @@ registry.registerPath({
 
 registry.registerPath({
   method: 'get',
+  path: '/api/v1/clinic-settings/wallet-mixed-payment-enabled',
+  tags: ['clinic'],
+  summary: '"Trả hỗn hợp ví + tiền mặt/CK" — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(walletMixedPaymentStatusSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
   path: '/api/v1/clinic-settings/cashier-shift-required-enabled',
   tags: ['clinic'],
   summary: '"Yêu cầu mở ca trước khi thu tiền" — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /clinic-settings/deferred-payment-enabled)',
@@ -2471,7 +2486,7 @@ registry.registerPath({
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền reference_catalog.manage'),
     404: errorResponse('Không tìm thấy'),
-    409: errorResponse('Trùng mã (code) với mục khác trong cùng danh mục'),
+    409: errorResponse('Trùng mã (code) với mục khác trong cùng danh mục, hoặc mục vừa được người khác cập nhật (version lệch)'),
   },
 });
 
@@ -2479,14 +2494,15 @@ registry.registerPath({
   method: 'delete',
   path: '/api/v1/reference-catalog/{id}',
   tags: ['reference-catalog'],
-  summary: 'Ẩn một mục (soft — role DB không có quyền DELETE thật)',
+  summary: 'Ẩn một mục (soft — role DB không có quyền DELETE thật) — kèm query version (khoá lạc quan)',
   security: [{ bearerAuth: [] }],
-  request: { params: referenceCatalogIdParams },
+  request: { params: referenceCatalogIdParams, query: referenceCatalogVersionQuerySchema },
   responses: {
     200: jsonResponse('Đã ẩn', envelope(referenceCatalogItemSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền reference_catalog.manage'),
     404: errorResponse('Không tìm thấy'),
+    409: errorResponse('Mục vừa được người khác cập nhật (version lệch)'),
   },
 });
 
@@ -2494,14 +2510,15 @@ registry.registerPath({
   method: 'post',
   path: '/api/v1/reference-catalog/{id}/reactivate',
   tags: ['reference-catalog'],
-  summary: 'Khôi phục một mục đã ẩn',
+  summary: 'Khôi phục một mục đã ẩn — kèm query version (khoá lạc quan)',
   security: [{ bearerAuth: [] }],
-  request: { params: referenceCatalogIdParams },
+  request: { params: referenceCatalogIdParams, query: referenceCatalogVersionQuerySchema },
   responses: {
     200: jsonResponse('Đã khôi phục', envelope(referenceCatalogItemSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền reference_catalog.manage'),
     404: errorResponse('Không tìm thấy'),
+    409: errorResponse('Mục vừa được người khác cập nhật (version lệch)'),
   },
 });
 

@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, type ExamTypePrice, type ReferenceCatalog } from '@prisma/client';
 import {
+  ConcurrentModificationError,
   ExamTypePriceOverlapError,
   formatShortSequentialCode,
   generateReferenceCatalogCode,
@@ -224,52 +225,33 @@ export class ReferenceCatalogService {
       }
       const nextCode = this.normalizeCodeForCategory(existing.category, dto.code);
 
-      // `examTypePrices` là PATCH riêng cho bảng con `exam_type_price`, không phải cột nào của
-      // `reference_catalog` — bỏ nó ra trước khi xét "có gì để sửa ở bảng cha không". Một PATCH
-      // CHỈ gửi `examTypePrices` (không đụng tên/trạng thái/mô tả...) là hợp lệ và phổ biến (chỉ
-      // thêm/sửa đơn giá) — gọi `updateMany` với `data` toàn `undefined` sẽ là no-op không sinh
-      // câu UPDATE nào (Prisma bỏ hết field `undefined`), trả `count: 0` dù bản ghi vẫn tồn tại —
-      // phát hiện thật qua test PATCH chỉ gửi `examTypePrices`, không phải đoán từ tài liệu Prisma.
-      const hasCatalogFieldChanges =
-        dto.code !== undefined ||
-        dto.name !== undefined ||
-        dto.sortOrder !== undefined ||
-        dto.price !== undefined ||
-        dto.unit !== undefined ||
-        dto.deactivatesAccount !== undefined ||
-        dto.countsAsCash !== undefined ||
-        dto.description !== undefined ||
-        dto.bytCode !== undefined ||
-        dto.fullName !== undefined ||
-        dto.direction !== undefined ||
-        dto.isActive !== undefined;
-
-      if (hasCatalogFieldChanges) {
-        let count: number;
-        try {
-          count = await this.referenceCatalogRepository.update(tx, id, {
-            code: nextCode,
-            name: dto.name,
-            sortOrder: dto.sortOrder,
-            price: dto.price !== undefined ? BigInt(dto.price) : undefined,
-            unit: dto.unit,
-            deactivatesAccount: dto.deactivatesAccount,
-            countsAsCash: dto.countsAsCash,
-            description: dto.description,
-            bytCode: dto.bytCode,
-            fullName: dto.fullName,
-            direction: dto.direction,
-            isActive: dto.isActive,
-          });
-        } catch (err) {
-          if (isDuplicateCodeViolation(err)) {
-            throw new ReferenceCatalogDuplicateCodeError();
-          }
-          throw err;
+      // Luôn gọi `update` kể cả khi PATCH chỉ gửi `examTypePrices` (bảng con): `data` rỗng vẫn tăng
+      // `version` của bản ghi cha, nên khoá lạc quan (docs/DECISIONS.md #207) áp cho MỌI lần sửa. Lệch
+      // version (`count=0` trong khi bản ghi còn tồn tại — đã kiểm `findById` ở trên) → 409.
+      let count: number;
+      try {
+        count = await this.referenceCatalogRepository.update(tx, id, dto.version, {
+          code: nextCode,
+          name: dto.name,
+          sortOrder: dto.sortOrder,
+          price: dto.price !== undefined ? BigInt(dto.price) : undefined,
+          unit: dto.unit,
+          deactivatesAccount: dto.deactivatesAccount,
+          countsAsCash: dto.countsAsCash,
+          description: dto.description,
+          bytCode: dto.bytCode,
+          fullName: dto.fullName,
+          direction: dto.direction,
+          isActive: dto.isActive,
+        });
+      } catch (err) {
+        if (isDuplicateCodeViolation(err)) {
+          throw new ReferenceCatalogDuplicateCodeError();
         }
-        if (count === 0) {
-          throw new NotFoundException();
-        }
+        throw err;
+      }
+      if (count === 0) {
+        throw new ConcurrentModificationError();
       }
 
       if (existing.category === 'EXAM_TYPE' && dto.examTypePrices !== undefined) {
@@ -304,6 +286,7 @@ export class ReferenceCatalogService {
     actorId: string,
     id: string,
     isActive: boolean,
+    expectedVersion: number,
     meta: RequestMeta,
   ): Promise<ReferenceCatalogItem> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
@@ -312,9 +295,9 @@ export class ReferenceCatalogService {
         throw new NotFoundException();
       }
 
-      const count = await this.referenceCatalogRepository.setActive(tx, id, isActive);
+      const count = await this.referenceCatalogRepository.setActive(tx, id, expectedVersion, isActive);
       if (count === 0) {
-        throw new NotFoundException();
+        throw new ConcurrentModificationError();
       }
 
       await writeAuditLog(tx, tenantId, {
@@ -352,6 +335,7 @@ export class ReferenceCatalogService {
       direction: row.direction,
       bytCode: row.bytCode,
       fullName: row.fullName,
+      version: row.version,
       // Category khác luôn `undefined` (field không áp dụng). EXAM_TYPE luôn là MẢNG thật (kể cả
       // rỗng — ví dụ tenant khác chưa tạo đơn giá cho mục dùng chung này) chứ không phải
       // `undefined`, để frontend không phải phân biệt 2 trạng thái "chưa tải"/"không có dòng nào".

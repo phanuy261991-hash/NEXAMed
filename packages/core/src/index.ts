@@ -12,6 +12,7 @@ export * from './icd10/suggest/clinical-abbreviations';
 export * from './icd10/suggest/split-diagnosis-phrases';
 export * from './icd10/suggest/rank-icd10-candidates';
 export * from './rbac/data-scope';
+export * from './rbac/permission-companions';
 export * from './errors';
 export * from './iam/lockout';
 export * from './iam/constants';

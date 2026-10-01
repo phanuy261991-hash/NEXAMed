@@ -43,6 +43,11 @@ export const rolePermissionEntrySchema = z.object({
   action: z.string(),
   description: z.string(),
   dataScope: dataScopeSchema,
+  /**
+   * Quyền ĐI KÈM gợi ý (khoá `<module>.<action>`) — trang cần các quyền ĐỌC này để hiển thị đủ ô chọn/bảng, xem
+   * `PERMISSION_COMPANIONS` ở `packages/core`. Chỉ để hiển thị gợi ý ở màn "Vai trò & Phân quyền", không ép buộc.
+   */
+  companions: z.array(z.string()),
 });
 export type RolePermissionEntry = z.infer<typeof rolePermissionEntrySchema>;
 
@@ -58,11 +63,12 @@ export const roleWithMatrixResponseSchema = z.object({
 export type RoleWithMatrixResponse = z.infer<typeof roleWithMatrixResponseSchema>;
 
 /**
- * Ghi đè toàn bộ ma trận của một vai trò trong một lần gọi — không có `version` optimistic lock
- * ở mức từng dòng `role_permission` (chỉ một `clinic_admin` chỉnh màn hình này tại một thời điểm
- * trong thực tế vận hành v1, đơn giản hoá có chủ đích thay vì khoá lạc quan từng ô).
+ * Ghi đè toàn bộ ma trận của một vai trò trong một lần gọi. `version` là version của VAI TRÒ lúc màn hình
+ * tải ma trận — lệch với DB (người khác vừa sửa ma trận/đổi tên vai trò) → 409 `CONCURRENT_MODIFICATION`
+ * thay vì ghi đè âm thầm (docs/DECISIONS.md #207). Mỗi lần lưu ma trận tăng `role.version` lên 1.
  */
 export const updateRolePermissionsRequestSchema = z.object({
+  version: z.number().int().positive(),
   entries: z.array(z.object({ permissionId: z.string().uuid(), dataScope: dataScopeSchema })),
 });
 export type UpdateRolePermissionsRequest = z.infer<typeof updateRolePermissionsRequestSchema>;

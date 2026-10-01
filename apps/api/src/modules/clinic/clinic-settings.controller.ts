@@ -73,6 +73,18 @@ export class ClinicSettingsController {
   }
 
   /**
+   * "Trả hỗn hợp ví + tiền mặt/CK" (docs/DECISIONS.md #208) — tự-phục vụ, KHÔNG gắn `@RequirePermission` (đúng khuôn
+   * `getCashierShiftRequiredEnabled` ở trên): `InvoiceDetailPage.tsx` cần biết công tắc này, lễ tân/thu ngân không có
+   * `clinic_config.read`.
+   */
+  @Get('wallet-mixed-payment-enabled')
+  async getWalletMixedPaymentEnabled(@Req() req: Request) {
+    const { tenantId } = req.user!;
+    const enabled = await this.clinicSettingsService.getWalletMixedPaymentEnabledStatus(tenantId);
+    return { enabled };
+  }
+
+  /**
    * "Tự động thu gọn menu khi chuyển trang" (2026-09-07) — tự-phục vụ, KHÔNG gắn `@RequirePermission`
    * (đúng khuôn `getAllowStaffSelfScheduleEnabled` ở trên): MỌI nhân viên (không chỉ `clinic_admin`)
    * cần biết công tắc này để `Sidebar.tsx` tự thu gọn đúng theo cấu hình.

@@ -31,14 +31,15 @@ export async function updateReferenceCatalogItem(
   ) as ReferenceCatalogItem;
 }
 
-export async function deactivateReferenceCatalogItem(id: string): Promise<ReferenceCatalogItem> {
+/** `version` (khoá lạc quan, docs/DECISIONS.md #207) — lệch với DB → 409 `CONCURRENT_MODIFICATION`. */
+export async function deactivateReferenceCatalogItem(id: string, version: number): Promise<ReferenceCatalogItem> {
   return unwrap(
-    await getApiClient().DELETE('/api/v1/reference-catalog/{id}', { params: { path: { id } } }),
+    await getApiClient().DELETE('/api/v1/reference-catalog/{id}', { params: { path: { id }, query: { version } } }),
   ) as ReferenceCatalogItem;
 }
 
-export async function reactivateReferenceCatalogItem(id: string): Promise<ReferenceCatalogItem> {
+export async function reactivateReferenceCatalogItem(id: string, version: number): Promise<ReferenceCatalogItem> {
   return unwrap(
-    await getApiClient().POST('/api/v1/reference-catalog/{id}/reactivate', { params: { path: { id } } }),
+    await getApiClient().POST('/api/v1/reference-catalog/{id}/reactivate', { params: { path: { id }, query: { version } } }),
   ) as ReferenceCatalogItem;
 }

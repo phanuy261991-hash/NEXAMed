@@ -50,6 +50,15 @@ export class RoleRepository {
     return result.count;
   }
 
+  /** Lưu ma trận quyền = sửa vai trò: khoá lạc quan + tăng `version` (docs/DECISIONS.md #207). */
+  async touchIfVersionMatches(tx: Prisma.TransactionClient, tenantId: string, id: string, expectedVersion: number, actorId: string): Promise<number> {
+    const result = await tx.role.updateMany({
+      where: { tenantId, id, version: expectedVersion, deletedAt: null },
+      data: { updatedBy: actorId, version: { increment: 1 } },
+    });
+    return result.count;
+  }
+
   async hideIfVersionMatches(
     tx: Prisma.TransactionClient,
     tenantId: string,

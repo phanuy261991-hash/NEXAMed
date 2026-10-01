@@ -157,6 +157,8 @@ export const referenceCatalogItemSchema = z.object({
    * với category khác. `name` giữ "Tên ngắn UI" gọn cho Combobox, cột này lưu tên đầy đủ theo
    * chuẩn ngành để không mất dữ liệu nguồn. */
   fullName: z.string().nullable(),
+  /** Khoá lạc quan (docs/DECISIONS.md #207) — gửi lại khi sửa/ẩn/khôi phục để server phát hiện người khác vừa lưu bản mới. */
+  version: z.number().int().positive(),
 });
 export type ReferenceCatalogItem = z.infer<typeof referenceCatalogItemSchema>;
 
@@ -209,6 +211,8 @@ export const createReferenceCatalogRequestSchema = z.object({
 export type CreateReferenceCatalogRequest = z.infer<typeof createReferenceCatalogRequestSchema>;
 
 export const updateReferenceCatalogRequestSchema = z.object({
+  /** BẮT BUỘC — `version` của bản ghi lúc form được mở; lệch với DB → 409 `CONCURRENT_MODIFICATION` (docs/DECISIONS.md #207). */
+  version: z.number().int().positive(),
   code: z.string().min(1).optional(),
   name: z.string().min(1).optional(),
   sortOrder: z.number().int().optional(),
@@ -233,3 +237,7 @@ export const updateReferenceCatalogRequestSchema = z.object({
   examTypePrices: z.array(examTypePriceInputSchema).optional(),
 });
 export type UpdateReferenceCatalogRequest = z.infer<typeof updateReferenceCatalogRequestSchema>;
+
+/** Query của `DELETE /reference-catalog/:id` (ẩn) và `POST /reference-catalog/:id/reactivate` — cùng khoá lạc quan như PATCH. */
+export const referenceCatalogVersionQuerySchema = z.object({ version: z.coerce.number().int().positive() });
+export type ReferenceCatalogVersionQuery = z.infer<typeof referenceCatalogVersionQuerySchema>;

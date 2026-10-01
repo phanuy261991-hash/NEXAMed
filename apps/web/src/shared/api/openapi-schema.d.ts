@@ -10231,6 +10231,7 @@ export interface paths {
                                     description: string;
                                     /** @enum {string} */
                                     dataScope: "none" | "personal" | "department" | "global";
+                                    companions: string[];
                                 }[];
                             };
                             meta: Record<string, never>;
@@ -10297,6 +10298,7 @@ export interface paths {
             requestBody?: {
                 content: {
                     "application/json": {
+                        version: number;
                         entries: {
                             /** Format: uuid */
                             permissionId: string;
@@ -10330,6 +10332,7 @@ export interface paths {
                                     description: string;
                                     /** @enum {string} */
                                     dataScope: "none" | "personal" | "department" | "global";
+                                    companions: string[];
                                 }[];
                             };
                             meta: Record<string, never>;
@@ -10368,6 +10371,21 @@ export interface paths {
                 };
                 /** @description Không tìm thấy (không tồn tại hoặc thuộc tenant khác) */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Vai trò vừa được người khác cập nhật (version lệch) */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -13999,6 +14017,62 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/clinic-settings/wallet-mixed-payment-enabled": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** "Trả hỗn hợp ví + tiền mặt/CK" — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                enabled: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/clinic-settings/cashier-shift-required-enabled": {
         parameters: {
             query?: never;
@@ -15136,6 +15210,7 @@ export interface paths {
                                     direction: "EXPENSE" | "INCOME" | null;
                                     bytCode: string | null;
                                     fullName: string | null;
+                                    version: number;
                                 }[];
                             };
                             meta: Record<string, never>;
@@ -15279,6 +15354,7 @@ export interface paths {
                                 direction: "EXPENSE" | "INCOME" | null;
                                 bytCode: string | null;
                                 fullName: string | null;
+                                version: number;
                             };
                             meta: Record<string, never>;
                         };
@@ -15347,10 +15423,12 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Ẩn một mục (soft — role DB không có quyền DELETE thật) */
+        /** Ẩn một mục (soft — role DB không có quyền DELETE thật) — kèm query version (khoá lạc quan) */
         delete: {
             parameters: {
-                query?: never;
+                query: {
+                    version: number;
+                };
                 header?: never;
                 path: {
                     id: string;
@@ -15394,6 +15472,7 @@ export interface paths {
                                 direction: "EXPENSE" | "INCOME" | null;
                                 bytCode: string | null;
                                 fullName: string | null;
+                                version: number;
                             };
                             meta: Record<string, never>;
                         };
@@ -15444,6 +15523,21 @@ export interface paths {
                         };
                     };
                 };
+                /** @description Mục vừa được người khác cập nhật (version lệch) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
             };
         };
         options?: never;
@@ -15461,6 +15555,7 @@ export interface paths {
             requestBody?: {
                 content: {
                     "application/json": {
+                        version: number;
                         code?: string;
                         name?: string;
                         sortOrder?: number;
@@ -15520,6 +15615,7 @@ export interface paths {
                                 direction: "EXPENSE" | "INCOME" | null;
                                 bytCode: string | null;
                                 fullName: string | null;
+                                version: number;
                             };
                             meta: Record<string, never>;
                         };
@@ -15570,7 +15666,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Trùng mã (code) với mục khác trong cùng danh mục */
+                /** @description Trùng mã (code) với mục khác trong cùng danh mục, hoặc mục vừa được người khác cập nhật (version lệch) */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -15598,10 +15694,12 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Khôi phục một mục đã ẩn */
+        /** Khôi phục một mục đã ẩn — kèm query version (khoá lạc quan) */
         post: {
             parameters: {
-                query?: never;
+                query: {
+                    version: number;
+                };
                 header?: never;
                 path: {
                     id: string;
@@ -15645,6 +15743,7 @@ export interface paths {
                                 direction: "EXPENSE" | "INCOME" | null;
                                 bytCode: string | null;
                                 fullName: string | null;
+                                version: number;
                             };
                             meta: Record<string, never>;
                         };
@@ -15682,6 +15781,21 @@ export interface paths {
                 };
                 /** @description Không tìm thấy */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Mục vừa được người khác cập nhật (version lệch) */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };

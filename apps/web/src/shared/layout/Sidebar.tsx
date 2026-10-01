@@ -244,6 +244,10 @@ export function Sidebar() {
   const canSeePatients = useHasPermission('patient', 'read');
   const canSeeAppointments = useHasPermission('appointment', 'read');
   const canSeeReception = useHasPermission('encounter', 'read');
+  // Mỗi mục menu phải khớp ĐÚNG quyền của route guard tương ứng (`router.tsx`) — không mượn quyền của mục
+  // cùng nhóm (docs/DECISIONS.md #207: quét 80 quyền phát hiện vai trò tuỳ biến thấy mục menu mà bấm vào bị chặn).
+  const canCreateReception = useHasPermission('encounter', 'create');
+  const canSeeCashierShifts = useHasPermission('cashier_shift', 'read');
   // "Hàng đợi khám" — quyết định workflow (không phải quyền), giữ theo tên vai trò, xem DOCTOR_QUEUE_ROLES.
   const canSeeDoctorQueue = user?.roles.some((role) => DOCTOR_QUEUE_ROLES.includes(role)) ?? false;
   const canSeeBilling = useHasPermission('invoice', 'read');
@@ -253,7 +257,8 @@ export function Sidebar() {
   const canSeeCashFlowReport = useHasPermission('cash_voucher', 'report');
   // "Ví tạm ứng" tổng hợp toàn phòng khám — chỉ ai tất toán được (clinic_admin) mới cần xem trang này.
   const canSeeWallets = useHasPermission('patient_wallet', 'settle');
-  const canSeeWorkSchedule = useHasPermission('work_shift_assignment', 'create');
+  // Route "Lịch làm việc của tôi"/"nhân viên" đều guard theo `.read` (không phải `.create`) — menu theo đúng quyền đó.
+  const canSeeWorkSchedule = useHasPermission('work_shift_assignment', 'read');
   // "Lịch làm việc nhân viên" — chỉ actor có scope GLOBAL (quản lý toàn phòng khám) mới thấy mục
   // này, khác canSeeWorkSchedule (personal cũng đủ để thấy "Lịch làm việc của tôi").
   const canSeeStaffSchedule = useDataScope('work_shift_assignment', 'read') === 'global';
@@ -320,7 +325,7 @@ export function Sidebar() {
               {receptionGroupExpanded && (
                 <ul className="mt-0.5 flex flex-col gap-0.5 border-l border-slate-800 pl-3.5">
                   {canSeeAppointments && <NavItem to="/appointments" label="Lịch hẹn" icon={CalendarBlank} collapsed={false} indent />}
-                  {canSeeReception && <NavItem to="/reception/new" label="Tiếp nhận bệnh nhân" icon={UserPlus} collapsed={false} indent />}
+                  {canCreateReception && <NavItem to="/reception/new" label="Tiếp nhận bệnh nhân" icon={UserPlus} collapsed={false} indent />}
                   {canSeeReception && <NavItem to="/reception" label="Bệnh nhân trong ngày" icon={ClipboardText} end collapsed={false} indent />}
                 </ul>
               )}
@@ -412,7 +417,7 @@ export function Sidebar() {
             </li>
           )}
 
-          {canSeeBilling && (
+          {(canSeeBilling || canSeeCashierShifts) && (
             <li>
               <button
                 type="button"
@@ -447,8 +452,8 @@ export function Sidebar() {
               </button>
               {billingGroupExpanded && (
                 <ul className="mt-0.5 flex flex-col gap-0.5 border-l border-slate-800 pl-3.5">
-                  <NavItem to="/billing" label="Danh sách cần thu" icon={Receipt} end collapsed={false} indent />
-                  <NavItem to="/billing/cashier-shifts" label="Phiếu chốt ca" icon={FileText} collapsed={false} indent />
+                  {canSeeBilling && <NavItem to="/billing" label="Danh sách cần thu" icon={Receipt} end collapsed={false} indent />}
+                  {canSeeCashierShifts && <NavItem to="/billing/cashier-shifts" label="Phiếu chốt ca" icon={FileText} collapsed={false} indent />}
                 </ul>
               )}
             </li>
@@ -490,8 +495,8 @@ export function Sidebar() {
               </button>
               {cashBookGroupExpanded && (
                 <ul className="mt-0.5 flex flex-col gap-0.5 border-l border-slate-800 pl-3.5">
-                  <NavItem to="/cash-book/vouchers" label="Phiếu thu / Phiếu chi" icon={Vault} end collapsed={false} indent />
-                  <NavItem to="/cash-book/ledger" label="Sổ quỹ" icon={BookOpen} collapsed={false} indent />
+                  {canSeeCashBook && <NavItem to="/cash-book/vouchers" label="Phiếu thu / Phiếu chi" icon={Vault} end collapsed={false} indent />}
+                  {canSeeCashBook && <NavItem to="/cash-book/ledger" label="Sổ quỹ" icon={BookOpen} collapsed={false} indent />}
                   {canSeeCashFlowReport && <NavItem to="/cash-book/report" label="Báo cáo dòng tiền" icon={ChartLine} collapsed={false} indent />}
                   {canSeeWallets && <NavItem to="/cash-book/wallets" label="Ví tạm ứng" icon={Wallet} collapsed={false} indent />}
                 </ul>

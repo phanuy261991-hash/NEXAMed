@@ -1,11 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import { EyeSlash, PencilSimple, Plus } from '@phosphor-icons/react';
 import type { DataScope, RoleSummary } from '@nexamed/shared';
-import { ApiError } from '../../shared/api/client';
+import { ACTION_CONFLICT_MESSAGE, describeSaveError, isConflictError } from '../../shared/api/save-error';
+import { fetchOneFromList } from '../../shared/api/fetch-one-from-list';
+import { useSaveAttempt } from '../../shared/hooks/useSaveAttempt';
+import { useEditedRecordGuard } from '../../shared/hooks/useStaleRecordWatch';
 import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
+import { RecordFormNotice } from '../../shared/ui/RecordFormNotice';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { RoleMatrixTable } from './RoleMatrixTable';
+import { CompanionHint } from './CompanionHint';
+import { findMissingCompanions } from './companion-hints';
+import { listRoles } from './role.api';
 import { roleLabel } from './role-labels';
 import {
   useCreateRoleMutation,
@@ -15,10 +22,6 @@ import {
   useRolesQuery,
   useUpdateRoleMatrixMutation,
 } from './role.queries';
-
-function errorMessage(err: unknown): string {
-  return err instanceof ApiError ? err.message : 'Có lỗi xảy ra, vui lòng thử lại.';
-}
 
 /** Chữ cái đầu tối đa 2 từ đầu tiên (cùng quy tắc avatar ở TopBar.tsx) — "Bác sĩ" → "BS". */
 function roleInitials(label: string): string {
@@ -46,6 +49,25 @@ export function RolePermissionPane() {
 
   const roles = rolesQuery.data?.items ?? [];
 
+  // Phát hiện người khác vừa đổi tên/ẩn vai trò đang mở form "Đổi tên" (mẫu `useEditedRecordGuard`).
+  const renameGuard = useEditedRecordGuard({
+    editing: renameTarget ?? undefined,
+    watchKey: 'role',
+    fetchLatest: (id) => fetchOneFromList(listRoles, id),
+    onFresh: (fresh) => setRenameTarget(fresh ?? null),
+    onReloaded: () => void rolesQuery.refetch(),
+  });
+
+  /** Lỗi thao tác nhanh (Ẩn vai trò, Lưu ma trận): xung đột phiên bản → báo rõ + tải lại danh sách; lỗi khác dùng câu thống nhất. */
+  function handleActionError(err: unknown) {
+    if (isConflictError(err)) {
+      setActionError(ACTION_CONFLICT_MESSAGE);
+      void rolesQuery.refetch();
+      return;
+    }
+    setActionError(describeSaveError(err));
+  }
+
   useEffect(() => {
     if (activeRoleId === null && roles.length > 0) {
       setActiveRoleId(roles[0]!.id);
@@ -66,6 +88,13 @@ export function RolePermissionPane() {
   }, [matrixQuery.data, pending]);
 
   const dirty = Object.keys(pending).length > 0;
+  // Quyền đi kèm còn thiếu của ma trận ĐÃ gộp thay đổi chờ lưu (docs/DECISIONS.md #208) — cập nhật ngay khi bấm chọn ô.
+  const missingCompanions = useMemo(() => findMissingCompanions(displayPermissions), [displayPermissions]);
+
+  /** "Cấp kèm": đặt mọi quyền đi kèm còn thiếu về "Toàn bộ" TRONG thay đổi chờ lưu (chưa ghi gì tới khi bấm "Lưu thay đổi"). */
+  function handleGrantCompanions() {
+    for (const m of missingCompanions) handleScopeChange(m.permissionId, 'global');
+  }
 
   function selectRole(id: string) {
     setActiveRoleId(id);
@@ -91,8 +120,20 @@ export function RolePermissionPane() {
     setActionError(null);
     const entries = Object.entries(pending).map(([permissionId, dataScope]) => ({ permissionId, dataScope }));
     updateMatrixMutation.mutate(
-      { id: activeRole.id, body: { entries } },
-      { onSuccess: () => setPending({}), onError: (err) => setActionError(errorMessage(err)) },
+      { id: activeRole.id, body: { entries, version: activeRole.version } },
+      {
+        onSuccess: () => setPending({}),
+        onError: (err) => {
+          if (isConflictError(err)) {
+            // Ma trận đã đổi (hoặc vai trò vừa bị đổi tên) bởi người khác: bỏ thay đổi đang chờ (dựa trên bản cũ) và tải lại ma trận mới để bấm lại, KHÔNG tự ghi đè.
+            setPending({});
+            setActionError('Vai trò này vừa được người khác cập nhật nên chưa lưu được. Ma trận quyền đã được tải lại — kiểm tra rồi áp dụng lại thay đổi của bạn.');
+            void rolesQuery.refetch();
+            return;
+          }
+          handleActionError(err);
+        },
+      },
     );
   }
 
@@ -202,6 +243,7 @@ export function RolePermissionPane() {
                     onScopeChange={handleScopeChange}
                   />
                 </div>
+                <CompanionHint missing={missingCompanions} disabled={updateMatrixMutation.isPending} onGrant={handleGrantCompanions} />
                 {dirty && (
                   <div className="flex flex-shrink-0 items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-4 py-2.5">
                     <span className="text-xs font-semibold text-amber-600">● Có thay đổi chưa lưu</span>
@@ -228,38 +270,27 @@ export function RolePermissionPane() {
           hint='Vai trò mới bắt đầu với mọi quyền ở mức "Không" — chọn vai trò vừa tạo để cấp quyền.'
           submitting={createMutation.isPending}
           onCancel={() => setCreateOpen(false)}
-          onSubmit={(name) => {
+          onSubmit={async (name) => {
             setActionError(null);
-            createMutation.mutate(
-              { name },
-              {
-                onSuccess: (role) => {
-                  setCreateOpen(false);
-                  selectRole(role.id);
-                },
-                onError: (err) => setActionError(errorMessage(err)),
-              },
-            );
+            const role = await createMutation.mutateAsync({ name });
+            selectRole(role.id);
           }}
         />
       )}
 
       {renameTarget && (
         <RoleNameDialog
+          key={`${renameTarget.id}:${renameTarget.version}`}
           title="Đổi tên vai trò"
           submitLabel="Lưu"
           initialName={renameTarget.name}
           submitting={renameMutation.isPending}
+          stale={renameGuard.stale}
+          onReload={renameGuard.reload}
           onCancel={() => setRenameTarget(null)}
-          onSubmit={(name) => {
+          onSubmit={async (name) => {
             setActionError(null);
-            renameMutation.mutate(
-              { id: renameTarget.id, body: { name, version: renameTarget.version } },
-              {
-                onSuccess: () => setRenameTarget(null),
-                onError: (err) => setActionError(errorMessage(err)),
-              },
-            );
+            await renameMutation.mutateAsync({ id: renameTarget.id, body: { name, version: renameTarget.version } });
           }}
         />
       )}
@@ -288,7 +319,7 @@ export function RolePermissionPane() {
                         if (activeRoleId === hideTarget.id) setActiveRoleId(null);
                       },
                       onError: (err) => {
-                        setActionError(errorMessage(err));
+                        handleActionError(err);
                         setHideTarget(null);
                       },
                     },
@@ -311,6 +342,8 @@ function RoleNameDialog({
   hint,
   initialName = '',
   submitting,
+  stale = false,
+  onReload,
   onCancel,
   onSubmit,
 }: {
@@ -319,18 +352,23 @@ function RoleNameDialog({
   hint?: string;
   initialName?: string;
   submitting: boolean;
+  /** Người khác vừa lưu bản mới của vai trò này (chỉ khi đổi tên) — khoá nút Lưu tới khi tải lại. */
+  stale?: boolean;
+  onReload?: () => void | Promise<void>;
   onCancel: () => void;
-  onSubmit: (name: string) => void;
+  /** Trả `Promise` — lỗi được hiện NGAY TRONG dialog (`RecordFormNotice`), chỉ đóng khi lưu thành công. */
+  onSubmit: (name: string) => Promise<void>;
 }) {
   const [name, setName] = useState(initialName);
-  const isInvalid = name.trim() === '';
+  const { saveError, run } = useSaveAttempt();
+  const isInvalid = name.trim() === '' || stale;
 
   // Bọc `<form>` để Enter trong ô nhập tự submit — bắt buộc cho mọi form Thêm/Sửa (`.claude/docs/
   // ui-guidelines.md` mục 4.4).
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (isInvalid) return;
-    onSubmit(name.trim());
+    if (await run(() => onSubmit(name.trim()))) onCancel();
   }
 
   return (
@@ -350,6 +388,9 @@ function RoleNameDialog({
             className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
           />
           {hint && <p className="text-xs text-slate-400" dangerouslySetInnerHTML={{ __html: hint }} />}
+        </div>
+        <div className="mt-3">
+          <RecordFormNotice stale={stale} saveError={saveError} onReload={onReload} />
         </div>
         <div className="mt-4 flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onCancel}>

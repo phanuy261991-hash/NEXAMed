@@ -5,6 +5,7 @@ import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
+import { ACTION_CONFLICT_MESSAGE, describeSaveError, isConflictError } from '../../shared/api/save-error';
 import { useHasPermission } from '../auth/usePermission';
 import { useCreateExamStationMutation, useExamStationsQuery, useUpdateExamStationMutation } from './clinic.queries';
 
@@ -26,6 +27,18 @@ export function ExamStationDialog({ room, onClose }: { room: RoomSummary; onClos
   const updateMutation = useUpdateExamStationMutation();
 
   const stations = query.data?.items ?? [];
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  /** Lỗi lưu một dòng bàn khám: xung đột phiên bản (người khác vừa sửa) → báo rõ + tải lại danh sách để dòng hiện bản mới; lỗi khác dùng câu thống nhất. */
+  function handleSaveError(err: unknown) {
+    if (isConflictError(err)) {
+      setSaveError(ACTION_CONFLICT_MESSAGE);
+      setEditing(null);
+      void query.refetch();
+      return;
+    }
+    setSaveError(describeSaveError(err));
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 p-4" role="dialog" aria-modal="true" aria-labelledby="exam-station-title">
@@ -46,6 +59,7 @@ export function ExamStationDialog({ room, onClose }: { room: RoomSummary; onClos
           <p className="mt-1 text-[13px] text-slate-500">Phòng: {room.name}</p>
 
           {query.isError && <ErrorBanner message="Không tải được danh sách." onRetry={() => query.refetch()} />}
+          {saveError && <ErrorBanner message={saveError} />}
 
           {query.isLoading && (
             <div className="mt-4 space-y-2">
@@ -71,12 +85,13 @@ export function ExamStationDialog({ room, onClose }: { room: RoomSummary; onClos
                     showActiveToggle
                     submitting={updateMutation.isPending}
                     onCancel={() => setEditing(null)}
-                    onSubmit={(dto) =>
+                    onSubmit={(dto) => {
+                      setSaveError(null);
                       updateMutation.mutate(
                         { id: station.id, body: { name: dto.name, isActive: dto.isActive, version: station.version } },
-                        { onSuccess: () => setEditing(null) },
-                      )
-                    }
+                        { onSuccess: () => setEditing(null), onError: handleSaveError },
+                      );
+                    }}
                   />
                 ) : (
                   <li
@@ -106,7 +121,10 @@ export function ExamStationDialog({ room, onClose }: { room: RoomSummary; onClos
                   initialName=""
                   submitting={createMutation.isPending}
                   onCancel={() => setEditing(null)}
-                  onSubmit={(dto) => createMutation.mutate({ roomId: room.id, name: dto.name }, { onSuccess: () => setEditing(null) })}
+                  onSubmit={(dto) => {
+                    setSaveError(null);
+                    createMutation.mutate({ roomId: room.id, name: dto.name }, { onSuccess: () => setEditing(null), onError: handleSaveError });
+                  }}
                 />
               )}
             </ul>

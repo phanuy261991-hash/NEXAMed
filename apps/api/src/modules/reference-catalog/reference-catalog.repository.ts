@@ -46,8 +46,9 @@ export interface UpdateReferenceCatalogData {
 
 /**
  * Chỗ DUY NHẤT gọi Prisma cho bảng `reference_catalog` — theo .claude/docs/coding-standards.md.
- * Không tenant_id/version (bảng toàn hệ thống, xem .claude/docs/data-model.md) nên các thao tác
- * "sửa theo điều kiện" chỉ khoá bằng `id`, không có `WHERE version = ?` như bảng nghiệp vụ khác.
+ * Không tenant_id (bảng toàn hệ thống, xem .claude/docs/data-model.md) nhưng CÓ `version` từ
+ * docs/DECISIONS.md #207 — sửa/ẩn/khôi phục khoá lạc quan bằng `WHERE id = ? AND version = ?` rồi tăng 1;
+ * trả `count` (0 = lệch version hoặc không còn bản ghi — service phân biệt qua `findById`).
  */
 @Injectable()
 export class ReferenceCatalogRepository {
@@ -79,13 +80,17 @@ export class ReferenceCatalogRepository {
     });
   }
 
-  async update(tx: Prisma.TransactionClient, id: string, data: UpdateReferenceCatalogData): Promise<number> {
-    const result = await tx.referenceCatalog.updateMany({ where: { id }, data });
+  /** `data` có thể rỗng (PATCH chỉ đổi đơn giá bảng con) — vẫn tăng `version` để khoá lạc quan có hiệu lực. */
+  async update(tx: Prisma.TransactionClient, id: string, expectedVersion: number, data: UpdateReferenceCatalogData): Promise<number> {
+    const result = await tx.referenceCatalog.updateMany({ where: { id, version: expectedVersion }, data: { ...data, version: { increment: 1 } } });
     return result.count;
   }
 
-  async setActive(tx: Prisma.TransactionClient, id: string, isActive: boolean): Promise<number> {
-    const result = await tx.referenceCatalog.updateMany({ where: { id }, data: { isActive } });
+  async setActive(tx: Prisma.TransactionClient, id: string, expectedVersion: number, isActive: boolean): Promise<number> {
+    const result = await tx.referenceCatalog.updateMany({
+      where: { id, version: expectedVersion },
+      data: { isActive, version: { increment: 1 } },
+    });
     return result.count;
   }
 }

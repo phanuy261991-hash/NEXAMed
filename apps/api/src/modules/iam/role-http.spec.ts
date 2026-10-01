@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import cookieParser from 'cookie-parser';
@@ -154,6 +154,13 @@ describe('HTTP e2e — /api/v1/roles', () => {
     let customRoleVersion: number;
     const roleName = `Lễ tân trưởng ${randomUUID().slice(0, 8)}`;
 
+    // Lưu ma trận cũng tăng `role.version` (docs/DECISIONS.md #207) → làm mới version trước mỗi test (trừ test tạo vai trò đầu tiên).
+    beforeEach(async () => {
+      if (!customRoleId) return;
+      const res = await request(app.getHttpServer()).get(`/api/v1/roles/${customRoleId}/permissions`).set(authed(clinicAdminToken));
+      if (res.status === 200) customRoleVersion = res.body.data.role.version;
+    });
+
     it('tạo vai trò tuỳ biến → 200, isSystemDefault=false, ma trận toàn "none"', async () => {
       const res = await request(app.getHttpServer()).post('/api/v1/roles').set(authed(clinicAdminToken)).send({ name: roleName });
       expect(res.status).toBe(200);
@@ -185,6 +192,7 @@ describe('HTTP e2e — /api/v1/roles', () => {
         .put(`/api/v1/roles/${customRoleId}/permissions`)
         .set(authed(clinicAdminToken))
         .send({
+          version: catalog.body.data.role.version,
           entries: [
             { permissionId: patientRead.permissionId, dataScope: 'global' },
             { permissionId: patientCreate.permissionId, dataScope: 'personal' },
@@ -208,11 +216,85 @@ describe('HTTP e2e — /api/v1/roles', () => {
       const res = await request(app.getHttpServer())
         .put(`/api/v1/roles/${customRoleId}/permissions`)
         .set(authed(clinicAdminToken))
-        .send({ entries: [{ permissionId: patientRead.permissionId, dataScope: 'none' }] });
+        .send({ version: catalog.body.data.role.version, entries: [{ permissionId: patientRead.permissionId, dataScope: 'none' }] });
       expect(res.status).toBe(200);
 
       const back = res.body.data.permissions.find((p: { module: string; action: string }) => p.module === 'patient' && p.action === 'read');
       expect(back.dataScope).toBe('none');
+    });
+
+    it('GET/PUT ma trận trả `companions` (quyền đi kèm gợi ý, docs/DECISIONS.md #208) — quyền có phụ thuộc có danh sách, quyền khác rỗng', async () => {
+      const res = await request(app.getHttpServer()).get(`/api/v1/roles/${customRoleId}/permissions`).set(authed(clinicAdminToken));
+      const perm = (m: string, a: string) => res.body.data.permissions.find((p: { module: string; action: string }) => p.module === m && p.action === a);
+      expect([...perm('stock_receipt', 'create').companions].sort()).toEqual(['cash_account.read', 'drug.read', 'reference_catalog.read']);
+      expect(perm('patient', 'read').companions).toEqual([]);
+      // Mọi companion trả về đều là quyền có thật trong danh mục (không gợi ý quyền không tồn tại).
+      const keys = new Set(res.body.data.permissions.map((p: { module: string; action: string }) => `${p.module}.${p.action}`));
+      for (const p of res.body.data.permissions as { companions: string[] }[]) for (const c of p.companions) expect(keys.has(c)).toBe(true);
+
+      const put = await request(app.getHttpServer())
+        .put(`/api/v1/roles/${customRoleId}/permissions`)
+        .set(authed(clinicAdminToken))
+        .send({ version: res.body.data.role.version, entries: [] });
+      expect(put.status).toBe(200);
+      expect(put.body.data.permissions.find((p: { module: string; action: string }) => p.module === 'stock_receipt' && p.action === 'create').companions.length).toBe(3);
+    });
+
+    it('cấp LẠI một quyền từng thu hồi (cấp → thu hồi → cấp lại) → 200, hiệu lực đúng — không vỡ unique (docs/DECISIONS.md #207)', async () => {
+      const read = async () => {
+        const res = await request(app.getHttpServer()).get(`/api/v1/roles/${customRoleId}/permissions`).set(authed(clinicAdminToken));
+        return { version: res.body.data.role.version as number, perm: res.body.data.permissions.find((p: { module: string; action: string }) => p.module === 'patient' && p.action === 'read') };
+      };
+      const put = async (dataScope: string) => {
+        const { version, perm } = await read();
+        return request(app.getHttpServer())
+          .put(`/api/v1/roles/${customRoleId}/permissions`)
+          .set(authed(clinicAdminToken))
+          .send({ version, entries: [{ permissionId: perm.permissionId, dataScope }] });
+      };
+      expect((await put('global')).status).toBe(200);
+      expect((await put('none')).status).toBe(200);
+      const again = await put('personal');
+      expect(again.status).toBe(200);
+      expect((await read()).perm.dataScope).toBe('personal');
+    });
+
+    it('khoá lạc quan ma trận (docs/DECISIONS.md #207): lưu với version cũ → 409, ma trận không bị ghi đè; mỗi lần lưu tăng role.version; thiếu version → 400', async () => {
+      const before = await request(app.getHttpServer()).get(`/api/v1/roles/${customRoleId}/permissions`).set(authed(clinicAdminToken));
+      const version = before.body.data.role.version as number;
+      const patientUpdate = before.body.data.permissions.find((p: { module: string; action: string }) => p.module === 'patient' && p.action === 'update');
+      expect(patientUpdate.dataScope).toBe('none');
+
+      // Người A lưu trước → role.version tăng 1.
+      const first = await request(app.getHttpServer())
+        .put(`/api/v1/roles/${customRoleId}/permissions`)
+        .set(authed(clinicAdminToken))
+        .send({ version, entries: [{ permissionId: patientUpdate.permissionId, dataScope: 'global' }] });
+      expect(first.status).toBe(200);
+      expect(first.body.data.role.version).toBe(version + 1);
+
+      // Người B còn cầm version cũ, muốn ghi đè về "none" → 409, KHÔNG ghi.
+      const stale = await request(app.getHttpServer())
+        .put(`/api/v1/roles/${customRoleId}/permissions`)
+        .set(authed(clinicAdminToken))
+        .send({ version, entries: [{ permissionId: patientUpdate.permissionId, dataScope: 'none' }] });
+      expect(stale.status).toBe(409);
+      expect(stale.body.error.code).toBe('CONCURRENT_MODIFICATION');
+      const after = await request(app.getHttpServer()).get(`/api/v1/roles/${customRoleId}/permissions`).set(authed(clinicAdminToken));
+      expect(after.body.data.permissions.find((p: { module: string; action: string }) => p.module === 'patient' && p.action === 'update').dataScope).toBe('global');
+
+      // Đổi tên bằng version cũ (trước lần lưu ma trận của A) cũng bị 409 — vai trò đã bị cập nhật.
+      const staleRename = await request(app.getHttpServer())
+        .patch(`/api/v1/roles/${customRoleId}`)
+        .set(authed(clinicAdminToken))
+        .send({ name: `Đổi tên cũ ${randomUUID().slice(0, 6)}`, version });
+      expect(staleRename.status).toBe(409);
+
+      const noVersion = await request(app.getHttpServer())
+        .put(`/api/v1/roles/${customRoleId}/permissions`)
+        .set(authed(clinicAdminToken))
+        .send({ entries: [{ permissionId: patientUpdate.permissionId, dataScope: 'none' }] });
+      expect(noVersion.status).toBe(400);
     });
 
     it('gán vai trò tuỳ biến này cho một tài khoản rồi ẩn → 409 ROLE_IN_USE', async () => {

@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { ArrowCounterClockwise, ListBullets, MagnifyingGlass, PencilSimple, Plus, Trash, Warning } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, ListBullets, MagnifyingGlass, PencilSimple, Plus, Trash } from '@phosphor-icons/react';
 import type { ReferenceCatalogCategory, ReferenceCatalogDirection, ReferenceCatalogItem } from '@nexamed/shared';
 import { useHasPermission } from '../auth/usePermission';
 import { Button } from '../../shared/ui/Button';
@@ -15,7 +15,12 @@ import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
 import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
 import { useRowSelection } from '../../shared/hooks/useRowSelection';
 import { useSaveFlash } from '../../shared/hooks/useSaveFlash';
-import { ApiError } from '../../shared/api/client';
+import { ACTION_CONFLICT_MESSAGE, describeSaveError, isConflictError } from '../../shared/api/save-error';
+import { fetchOneFromList } from '../../shared/api/fetch-one-from-list';
+import { useSaveAttempt } from '../../shared/hooks/useSaveAttempt';
+import { useEditedRecordGuard } from '../../shared/hooks/useStaleRecordWatch';
+import { RecordFormNotice } from '../../shared/ui/RecordFormNotice';
+import { listReferenceCatalog } from './reference-catalog.api';
 import {
   useCreateReferenceCatalogItemMutation,
   useDeactivateReferenceCatalogItemMutation,
@@ -157,23 +162,26 @@ export function ReferenceCatalogPane({
   const deactivateMutation = useDeactivateReferenceCatalogItemMutation(category);
   const reactivateMutation = useReactivateReferenceCatalogItemMutation(category);
 
-  // Chỉ `ExamTypeFormModal` hiện lỗi này (ví dụ EXAM_TYPE_PRICE_OVERLAP nếu race điều kiện lọt qua
-  // validate tầng client) — modal chung `ItemFormModal` chưa có chỗ hiện lỗi submit từ trước, giữ
-  // nguyên hành vi cũ, không mở rộng ở đây.
-  const mutationError = createMutation.error ?? updateMutation.error;
   const isAbbreviation = category === 'ICD10_ABBREVIATION';
-  const mutationErrorMessage =
-    mutationError instanceof ApiError
-      ? isAbbreviation && mutationError.code === 'REFERENCE_CATALOG_DUPLICATE_CODE'
-        ? 'Từ viết tắt này đã có (có thể đang bị ẩn — bật "Hiện cả mục đã ẩn" để khôi phục).'
-        : mutationError.message
-      : undefined;
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  /** Mở modal Thêm/Sửa — xoá lỗi lưu cũ trước (React Query giữ `mutation.error` tới lần mutate kế), tránh hiện lại lỗi của lần thao tác trước. */
-  function openModal(next: ModalState) {
-    createMutation.reset();
-    updateMutation.reset();
-    setModal(next);
+  // Phát hiện người khác vừa sửa mục đang mở form Sửa (mẫu `useEditedRecordGuard`; lấy cả mục đã ẩn để tìm đúng bản ghi).
+  const guard = useEditedRecordGuard({
+    editing: modal?.mode === 'edit' ? modal.item : undefined,
+    watchKey: `reference-catalog:${category}`,
+    fetchLatest: (id) => fetchOneFromList(() => listReferenceCatalog(category, true), id),
+    onFresh: (fresh) => setModal(fresh ? { mode: 'edit', item: fresh } : null),
+    onReloaded: () => void query.refetch(),
+  });
+
+  /** Lỗi thao tác nhanh ở danh sách (Xoá/Khôi phục): xung đột phiên bản → báo rõ + tải lại danh sách; lỗi khác dùng câu thống nhất. */
+  function handleActionError(err: unknown) {
+    if (isConflictError(err)) {
+      setActionError(ACTION_CONFLICT_MESSAGE);
+      void query.refetch();
+      return;
+    }
+    setActionError(describeSaveError(err));
   }
 
   const items = useMemo(() => {
@@ -214,13 +222,14 @@ export function ReferenceCatalogPane({
           )}
         </div>
         {canManage && (
-          <Button type="button" onClick={() => openModal({ mode: 'create' })}>
+          <Button type="button" onClick={() => setModal({ mode: 'create' })}>
             <Plus size={16} weight="bold" aria-hidden="true" />
             Thêm mới
           </Button>
         )}
       </div>
 
+      {actionError && <ErrorBanner message={actionError} />}
       {query.isError && <ErrorBanner message="Không tải được danh mục." onRetry={() => query.refetch()} />}
 
       {query.isLoading && (
@@ -318,12 +327,16 @@ export function ReferenceCatalogPane({
                       <td className="px-4 py-2 text-center">
                         {item.isActive ? (
                           <div className="flex items-center justify-center gap-1.5">
-                            <RowActionButton icon={PencilSimple} label="Sửa" tone="primary" onClick={() => openModal({ mode: 'edit', item })} />
+                            <RowActionButton icon={PencilSimple} label="Sửa" tone="primary" onClick={() => setModal({ mode: 'edit', item })} />
                             <RowActionButton icon={Trash} label="Xoá" tone="danger" onClick={() => setDeactivateTarget(item)} />
                           </div>
                         ) : (
                           <div className="flex items-center justify-center">
-                            <RowActionButton icon={ArrowCounterClockwise} label="Khôi phục" tone="primary" onClick={() => reactivateMutation.mutate(item.id)} />
+                            <RowActionButton icon={ArrowCounterClockwise} label="Khôi phục" tone="primary" onClick={() => {
+                                setActionError(null);
+                                reactivateMutation.mutate({ id: item.id, version: item.version }, { onError: handleActionError });
+                              }}
+                            />
                           </div>
                         )}
                       </td>
@@ -340,10 +353,12 @@ export function ReferenceCatalogPane({
 
       {modal && category === 'EXAM_TYPE' && (
         <ExamTypeFormModal
+          key={modal.item ? `${modal.item.id}:${modal.item.version}` : 'new'}
+          stale={guard.stale}
+          onReload={guard.reload}
           mode={modal.mode}
           item={modal.item}
           submitting={createMutation.isPending || updateMutation.isPending}
-          submitError={mutationErrorMessage}
           onCancel={() => setModal(null)}
           onSubmit={async (dto) => {
             // "Lưu và nhập tiếp" (.claude/docs/ui-guidelines.md mục 4.7) — quyết định đóng modal
@@ -352,7 +367,7 @@ export function ReferenceCatalogPane({
             if (modal.mode === 'create') {
               await createMutation.mutateAsync({ category, ...dto });
             } else if (modal.item) {
-              await updateMutation.mutateAsync({ id: modal.item.id, body: dto });
+              await updateMutation.mutateAsync({ id: modal.item.id, body: { ...dto, version: modal.item.version } });
             }
           }}
         />
@@ -360,19 +375,21 @@ export function ReferenceCatalogPane({
 
       {modal && category !== 'EXAM_TYPE' && (
         <ItemFormModal
+          key={modal.item ? `${modal.item.id}:${modal.item.version}` : 'new'}
+          stale={guard.stale}
+          onReload={guard.reload}
           category={category}
           categoryLabel={categoryLabel}
           hideCode={hideCode}
           mode={modal.mode}
           item={modal.item}
           submitting={createMutation.isPending || updateMutation.isPending}
-          submitError={mutationErrorMessage}
           onCancel={() => setModal(null)}
           onSubmit={async (dto) => {
             if (modal.mode === 'create') {
               await createMutation.mutateAsync({ category, ...dto });
             } else if (modal.item) {
-              await updateMutation.mutateAsync({ id: modal.item.id, body: dto });
+              await updateMutation.mutateAsync({ id: modal.item.id, body: { ...dto, version: modal.item.version } });
             }
           }}
         />
@@ -394,7 +411,19 @@ export function ReferenceCatalogPane({
                 type="button"
                 variant="danger"
                 loading={deactivateMutation.isPending}
-                onClick={() => deactivateMutation.mutate(deactivateTarget.id, { onSuccess: () => setDeactivateTarget(null) })}
+                onClick={() => {
+                  setActionError(null);
+                  deactivateMutation.mutate(
+                    { id: deactivateTarget.id, version: deactivateTarget.version },
+                    {
+                      onSuccess: () => setDeactivateTarget(null),
+                      onError: (err) => {
+                        handleActionError(err);
+                        setDeactivateTarget(null);
+                      },
+                    },
+                  );
+                }}
               >
                 Xoá
               </Button>
@@ -413,7 +442,8 @@ function ItemFormModal({
   mode,
   item,
   submitting,
-  submitError,
+  stale,
+  onReload,
   onCancel,
   onSubmit,
 }: {
@@ -424,9 +454,9 @@ function ItemFormModal({
   mode: 'create' | 'edit';
   item?: ReferenceCatalogItem;
   submitting: boolean;
-  /** Lỗi server trả về lần lưu gần nhất (trùng mã, sai định dạng...) — hiện inline ngay trong form
-   * (`.claude/docs/ui-guidelines.md` mục 4.3), trước đây modal này lỗi là im lặng không báo gì. */
-  submitError?: string;
+  /** Người khác vừa lưu bản mới của mục này (phát hiện lúc form đang mở) — khoá nút Lưu tới khi tải lại. */
+  stale: boolean;
+  onReload: () => void | Promise<void>;
   onCancel: () => void;
   /** Trả `Promise` — `handleSubmit`/`handleSaveAndContinue` await để biết lưu xong mới đóng modal
    * hoặc làm trống form (`.claude/docs/ui-guidelines.md` mục 4.7). */
@@ -455,6 +485,8 @@ function ItemFormModal({
   const [direction, setDirection] = useState<ReferenceCatalogDirection>(item?.direction ?? 'EXPENSE');
   const [isActive, setIsActive] = useState(item?.isActive ?? true);
   const { flashVisible, triggerFlash } = useSaveFlash();
+  // Lỗi lưu hiện inline trong form (trùng mã, sai định dạng, xung đột phiên bản...) qua `RecordFormNotice`.
+  const { saveError: rawSaveError, run } = useSaveAttempt();
   // Mở rộng ADM-01 — chỉ EMPLOYMENT_STATUS có ý nghĩa với deactivatesAccount.
   const isEmploymentStatus = category === 'EMPLOYMENT_STATUS';
   // "Chốt ca" (2026-09-03) — chỉ PAYMENT_METHOD có ý nghĩa với countsAsCash.
@@ -476,7 +508,12 @@ function ItemFormModal({
   // "Từ viết tắt chẩn đoán" (#206) — `code` là TỪ viết tắt, bắt buộc đúng MỘT từ chữ/số.
   const isAbbreviation = category === 'ICD10_ABBREVIATION';
   const abbreviationFormatInvalid = isAbbreviation && code.trim() !== '' && !ABBREVIATION_CODE_PATTERN.test(code.trim());
-  const isInvalid = (!hideCode && code.trim() === '') || name.trim() === '' || abbreviationFormatInvalid;
+  const isInvalid = (!hideCode && code.trim() === '') || name.trim() === '' || abbreviationFormatInvalid || stale;
+  // Từ viết tắt trùng mã có câu riêng (mục có thể đang bị ẩn) thay câu chung của server.
+  const saveError =
+    rawSaveError && isAbbreviation && rawSaveError.code === 'REFERENCE_CATALOG_DUPLICATE_CODE'
+      ? { ...rawSaveError, message: 'Từ viết tắt này đã có (có thể đang bị ẩn — bật "Hiện cả mục đã ẩn" để khôi phục).' }
+      : rawSaveError;
 
   function buildDto() {
     return {
@@ -515,12 +552,7 @@ function ItemFormModal({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (isInvalid) return;
-    try {
-      await onSubmit(buildDto());
-    } catch {
-      return; // lỗi đã hiện ở khối `submitError` bên dưới, giữ nguyên modal để sửa lại
-    }
-    onCancel();
+    if (await run(() => onSubmit(buildDto()))) onCancel();
   }
 
   // "Lưu và nhập tiếp" (mục 4.7) — nút `type="button"` RIÊNG, không phải submit thứ hai của cùng
@@ -528,11 +560,7 @@ function ItemFormModal({
   // vi Enter giữ nguyên như trước — chỉ chuột mới bấm được nút này).
   async function handleSaveAndContinue() {
     if (isInvalid) return;
-    try {
-      await onSubmit(buildDto());
-    } catch {
-      return; // lỗi đã hiện ở khối `submitError` bên dưới
-    }
+    if (!(await run(() => onSubmit(buildDto())))) return;
     resetForNextEntry();
     triggerFlash();
   }
@@ -696,12 +724,9 @@ function ItemFormModal({
           )}
         </div>
 
-        {submitError && (
-          <div className="mb-4 flex items-center gap-2 rounded-md border border-rose-300 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700" role="alert">
-            <Warning size={18} weight="fill" className="flex-none" aria-hidden="true" />
-            {submitError}
-          </div>
-        )}
+        <div className="mb-4">
+          <RecordFormNotice stale={stale} saveError={saveError} onReload={mode === 'edit' ? onReload : undefined} />
+        </div>
 
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onCancel}>

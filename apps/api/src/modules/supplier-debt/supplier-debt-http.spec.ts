@@ -693,7 +693,7 @@ describe('HTTP e2e — /api/v1/supplier-debt (Công nợ nhà cung cấp, Phần
           const key = `${e.module}.${e.action}`;
           return { permissionId: e.permissionId, dataScope: key in overrides ? overrides[key] : e.dataScope };
         });
-      await request(app.getHttpServer()).put(`/api/v1/roles/${newRole.body.data.id}/permissions`).set(authed(clinicAdminToken)).send({ entries });
+      await request(app.getHttpServer()).put(`/api/v1/roles/${newRole.body.data.id}/permissions`).set(authed(clinicAdminToken)).send({ entries, version: newRole.body.data.version });
 
       const username = `e2e-sd-${roleLabel}-${randomUUID()}`;
       const passwordHash = await argon2.hash(password, { type: argon2.argon2id });

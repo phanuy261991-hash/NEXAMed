@@ -1,10 +1,13 @@
 import { useCallback, useState } from 'react';
+import { ApiError } from '../api/client';
 import { describeSaveError, isConflictError } from '../api/save-error';
 
 export interface SaveFailure {
   message: string;
   /** `true` = xung đột phiên bản (người khác vừa sửa) — UI hiện nút "Tải lại dữ liệu mới". */
   conflict: boolean;
+  /** Mã lỗi nghiệp vụ của server (`ApiError.code`) — để form tự thay câu riêng cho một vài mã (ví dụ trùng mã). */
+  code?: string;
 }
 
 /**
@@ -20,7 +23,7 @@ export function useSaveAttempt() {
       await action();
       return true;
     } catch (err) {
-      setSaveError({ message: describeSaveError(err), conflict: isConflictError(err) });
+      setSaveError({ message: describeSaveError(err), conflict: isConflictError(err), code: err instanceof ApiError ? err.code : undefined });
       return false;
     }
   }, []);

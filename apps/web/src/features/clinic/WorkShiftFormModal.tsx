@@ -7,6 +7,8 @@ import { ModalHeader } from '../../shared/ui/ModalHeader';
 import { BoxedSection } from '../../shared/ui/BoxedSection';
 import { SaveFlashBanner } from '../../shared/ui/SaveFlashBanner';
 import { useSaveFlash } from '../../shared/hooks/useSaveFlash';
+import { useSaveAttempt } from '../../shared/hooks/useSaveAttempt';
+import { RecordFormNotice } from '../../shared/ui/RecordFormNotice';
 
 const inputClassName =
   'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
@@ -79,14 +81,17 @@ export function WorkShiftFormModal({
   mode,
   item,
   submitting,
-  submitError,
+  stale,
+  onReload,
   onCancel,
   onSubmit,
 }: {
   mode: 'create' | 'edit';
   item?: WorkShiftItem;
   submitting: boolean;
-  submitError?: string;
+  /** Người khác vừa lưu bản mới của bản ghi này (phát hiện lúc form đang mở) — khoá nút Lưu tới khi tải lại. */
+  stale: boolean;
+  onReload: () => void | Promise<void>;
   onCancel: () => void;
   /** Trả `Promise` — `handleSubmit`/`handleSaveAndContinue` await để biết lưu xong mới đóng modal
    * hoặc làm trống form (`.claude/docs/ui-guidelines.md` mục 4.7). */
@@ -95,12 +100,13 @@ export function WorkShiftFormModal({
   const nameInputRef = useRef<HTMLInputElement>(null);
   const [values, setValues] = useState<WorkShiftFormValues>(() => toFormValues(item));
   const { flashVisible, triggerFlash } = useSaveFlash();
+  const { saveError, run } = useSaveAttempt();
 
   function set<K extends keyof WorkShiftFormValues>(key: K, value: WorkShiftFormValues[K]) {
     setValues((v) => ({ ...v, [key]: value }));
   }
 
-  const isValid = values.name.trim() !== '' && values.startTime !== '' && values.endTime !== '';
+  const isValid = values.name.trim() !== '' && values.startTime !== '' && values.endTime !== '' && !stale;
 
   function buildDto(): WorkShiftSubmitDto {
     const restTotalNum = values.restTotal.trim() === '' ? null : Number(values.restTotal);
@@ -122,14 +128,13 @@ export function WorkShiftFormModal({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!isValid) return;
-    await onSubmit(buildDto());
-    onCancel();
+    if (await run(() => onSubmit(buildDto()))) onCancel();
   }
 
   // "Lưu và nhập tiếp" (mục 4.7) — nút `type="button"` riêng, không đụng nút submit mặc định.
   async function handleSaveAndContinue() {
     if (!isValid) return;
-    await onSubmit(buildDto());
+    if (!(await run(() => onSubmit(buildDto())))) return;
     setValues(toFormValues(undefined));
     nameInputRef.current?.focus();
     triggerFlash();
@@ -301,7 +306,9 @@ export function WorkShiftFormModal({
           </div>
         </div>
 
-        {submitError && <p className="mt-4 text-xs font-medium text-rose-600">{submitError}</p>}
+        <div className="mt-4">
+          <RecordFormNotice stale={stale} saveError={saveError} onReload={mode === 'edit' ? onReload : undefined} />
+        </div>
 
         <div className="mt-6 flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onCancel} disabled={submitting}>

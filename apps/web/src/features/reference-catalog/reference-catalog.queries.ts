@@ -53,7 +53,7 @@ export function useUpdateReferenceCatalogItemMutation(category: ReferenceCatalog
 export function useDeactivateReferenceCatalogItemMutation(category: ReferenceCatalogCategory) {
   const invalidate = useInvalidateReferenceCatalog(category);
   return useMutation({
-    mutationFn: (id: string) => deactivateReferenceCatalogItem(id),
+    mutationFn: ({ id, version }: { id: string; version: number }) => deactivateReferenceCatalogItem(id, version),
     onSuccess: invalidate,
   });
 }
@@ -61,7 +61,7 @@ export function useDeactivateReferenceCatalogItemMutation(category: ReferenceCat
 export function useReactivateReferenceCatalogItemMutation(category: ReferenceCatalogCategory) {
   const invalidate = useInvalidateReferenceCatalog(category);
   return useMutation({
-    mutationFn: (id: string) => reactivateReferenceCatalogItem(id),
+    mutationFn: ({ id, version }: { id: string; version: number }) => reactivateReferenceCatalogItem(id, version),
     onSuccess: invalidate,
   });
 }

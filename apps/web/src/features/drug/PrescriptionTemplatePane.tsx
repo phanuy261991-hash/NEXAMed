@@ -2,7 +2,11 @@ import { useState } from 'react';
 import { ArrowCounterClockwise, MagnifyingGlass, PencilSimple, Plus, Prohibit, Stack, X } from '@phosphor-icons/react';
 import type { PrescriptionTemplate, PrescriptionTemplateItem } from '@nexamed/shared';
 import { computePrescriptionQuantityPreview as computePrescriptionQuantity } from '../encounter/prescription-dose-preview';
-import { ApiError } from '../../shared/api/client';
+import { ACTION_CONFLICT_MESSAGE, describeSaveError, isConflictError } from '../../shared/api/save-error';
+import { fetchOneFromList } from '../../shared/api/fetch-one-from-list';
+import { useSaveAttempt } from '../../shared/hooks/useSaveAttempt';
+import { useEditedRecordGuard } from '../../shared/hooks/useStaleRecordWatch';
+import { RecordFormNotice } from '../../shared/ui/RecordFormNotice';
 import { useHasPermission } from '../auth/usePermission';
 import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
@@ -15,6 +19,7 @@ import { useUnitNameByCode, unitLabel } from './useUnitNameByCode';
 import { DrugPicker } from '../encounter/DrugPicker';
 import { LineInput } from '../encounter/PrescriptionPanel';
 import { useCreatePrescriptionTemplateMutation, usePrescriptionTemplatesQuery, useUpdatePrescriptionTemplateMutation } from './prescription-template.queries';
+import { listPrescriptionTemplates } from './prescription-template.api';
 
 interface TemplateDraftLine {
   key: string;
@@ -79,21 +84,42 @@ export function PrescriptionTemplatePane() {
   const q = search.trim().toLowerCase();
   const items = (query.data?.items ?? []).filter((t) => !q || t.name.toLowerCase().includes(q));
 
-  function errorMessage(err: unknown): string {
-    return err instanceof ApiError ? err.message : 'Có lỗi xảy ra, vui lòng thử lại.';
+  // Phát hiện người khác vừa sửa/ẩn mẫu đang mở form Sửa (mẫu `useEditedRecordGuard`; lấy cả mẫu đã ẩn để tìm đúng bản ghi).
+  const guard = useEditedRecordGuard({
+    editing: modal?.mode === 'edit' ? modal.item : undefined,
+    watchKey: 'prescription-template',
+    fetchLatest: (id) => fetchOneFromList(() => listPrescriptionTemplates(true), id),
+    onFresh: (fresh) => setModal(fresh ? { mode: 'edit', item: fresh } : null),
+    onReloaded: () => void query.refetch(),
+  });
+
+  /** Lỗi thao tác nhanh (Ẩn/Kích hoạt lại): xung đột phiên bản → báo rõ + tải lại danh sách; lỗi khác dùng câu thống nhất. */
+  function handleActionError(err: unknown) {
+    if (isConflictError(err)) {
+      setActionError(ACTION_CONFLICT_MESSAGE);
+      void query.refetch();
+      return;
+    }
+    setActionError(describeSaveError(err));
   }
 
   function handleDeactivate(item: PrescriptionTemplate) {
     setActionError(null);
     updateMutation.mutate(
       { id: item.id, body: { isActive: false, version: item.version } },
-      { onSuccess: () => setDeactivateTarget(null), onError: (err) => setActionError(errorMessage(err)) },
+      {
+        onSuccess: () => setDeactivateTarget(null),
+        onError: (err) => {
+          handleActionError(err);
+          setDeactivateTarget(null);
+        },
+      },
     );
   }
 
   function handleReactivate(item: PrescriptionTemplate) {
     setActionError(null);
-    updateMutation.mutate({ id: item.id, body: { isActive: true, version: item.version } }, { onError: (err) => setActionError(errorMessage(err)) });
+    updateMutation.mutate({ id: item.id, body: { isActive: true, version: item.version } }, { onError: handleActionError });
   }
 
   return (
@@ -180,6 +206,9 @@ export function PrescriptionTemplatePane() {
 
       {modal && (
         <PrescriptionTemplateFormDialog
+          key={modal.item ? `${modal.item.id}:${modal.item.version}` : 'new'}
+          stale={guard.stale}
+          onReload={guard.reload}
           mode={modal.mode}
           template={modal.item}
           submitting={createMutation.isPending || updateMutation.isPending}
@@ -218,12 +247,17 @@ function PrescriptionTemplateFormDialog({
   mode,
   template,
   submitting,
+  stale,
+  onReload,
   onCancel,
   onSubmit,
 }: {
   mode: 'create' | 'edit';
   template?: PrescriptionTemplate;
   submitting: boolean;
+  /** Người khác vừa lưu bản mới của mẫu này (phát hiện lúc form đang mở) — khoá nút Lưu tới khi tải lại. */
+  stale: boolean;
+  onReload: () => void | Promise<void>;
   onCancel: () => void;
   onSubmit: (dto: {
     name: string;
@@ -234,6 +268,7 @@ function PrescriptionTemplateFormDialog({
   const [name, setName] = useState(template?.name ?? '');
   const [lines, setLines] = useState<TemplateDraftLine[]>((template?.items ?? []).map(itemToDraft));
   const [formError, setFormError] = useState<string | null>(null);
+  const { saveError, run } = useSaveAttempt();
 
   function updateLine(key: string, patch: Partial<TemplateDraftLine>) {
     setLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)));
@@ -261,19 +296,21 @@ function PrescriptionTemplateFormDialog({
       }
     }
     setFormError(null);
-    await onSubmit({
-      name: name.trim(),
-      items: lines.map((l) => ({
-        drugId: l.drugId,
-        doseMorning: Number(l.doseMorning) || 0,
-        doseNoon: Number(l.doseNoon) || 0,
-        doseAfternoon: Number(l.doseAfternoon) || 0,
-        doseEvening: Number(l.doseEvening) || 0,
-        durationDays: Math.max(1, Number(l.durationDays) || 1),
-        instruction: l.instruction.trim() || undefined,
-      })),
-    });
-    onCancel();
+    const saved = await run(() =>
+      onSubmit({
+        name: name.trim(),
+        items: lines.map((l) => ({
+          drugId: l.drugId,
+          doseMorning: Number(l.doseMorning) || 0,
+          doseNoon: Number(l.doseNoon) || 0,
+          doseAfternoon: Number(l.doseAfternoon) || 0,
+          doseEvening: Number(l.doseEvening) || 0,
+          durationDays: Math.max(1, Number(l.durationDays) || 1),
+          instruction: l.instruction.trim() || undefined,
+        })),
+      }),
+    );
+    if (saved) onCancel();
   }
 
   return (
@@ -349,11 +386,15 @@ function PrescriptionTemplateFormDialog({
 
         {formError && <p className="mt-3 text-sm font-medium text-rose-600">{formError}</p>}
 
+        <div className="mt-3">
+          <RecordFormNotice stale={stale} saveError={saveError} onReload={mode === 'edit' ? onReload : undefined} />
+        </div>
+
         <div className="mt-4 flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onCancel}>
             Huỷ
           </Button>
-          <Button type="submit" loading={submitting}>
+          <Button type="submit" loading={submitting} disabled={stale}>
             Lưu
           </Button>
         </div>

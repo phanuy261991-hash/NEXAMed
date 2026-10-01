@@ -34,6 +34,7 @@ import {
   getSidebarAutoCollapseStatus,
   getSoloClinicWorkflowStatus,
   getCashierShiftRequiredStatus,
+  getWalletMixedPaymentStatus,
   getClinicPrintHeader,
   getClinicProfile,
   getClinicSettings,
@@ -128,6 +129,18 @@ export function useCashierShiftRequiredEnabledQuery() {
 }
 
 /**
+ * "Trả hỗn hợp ví + tiền mặt/CK" — `InvoiceDetailPage.tsx` dùng riêng hook này (KHÔNG dùng `useClinicSettingsQuery()`):
+ * lễ tân/thu ngân không có `clinic_config.read`, cùng lý do `useCashierShiftRequiredEnabledQuery` ở trên.
+ */
+export function useWalletMixedPaymentEnabledQuery() {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'clinic', 'wallet-mixed-payment-enabled'),
+    queryFn: getWalletMixedPaymentStatus,
+  });
+}
+
+/**
  * "Tự động thu gọn menu khi chuyển trang" — `Sidebar.tsx` dùng riêng hook này (KHÔNG dùng
  * `useClinicSettingsQuery()`): MỌI nhân viên (không chỉ `clinic_admin`) cần biết công tắc này,
  * cùng lý do `useDeferredPaymentEnabledQuery` ở trên.
@@ -211,6 +224,7 @@ export function useUpdateClinicSettingsMutation() {
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'doctor-availability-policy') });
       // "Yêu cầu mở ca trước khi thu tiền" — Thu ngân đọc qua hook tự-phục vụ riêng, làm mới luôn.
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'cashier-shift-required-enabled') });
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'wallet-mixed-payment-enabled') });
       // "Gợi ý mã ICD-10" — màn khám đọc qua hook tự-phục vụ riêng (useIcd10SuggestionEnabledQuery), làm mới luôn.
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'icd10-suggestion-enabled') });
       // "Tự động thu gọn menu khi chuyển trang" — Sidebar.tsx đọc qua hook tự-phục vụ riêng, làm mới luôn.

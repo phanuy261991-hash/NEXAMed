@@ -15,6 +15,11 @@ import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
 import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
 import { useRowSelection } from '../../shared/hooks/useRowSelection';
 import { useSaveFlash } from '../../shared/hooks/useSaveFlash';
+import { useSaveAttempt } from '../../shared/hooks/useSaveAttempt';
+import { useEditedRecordGuard } from '../../shared/hooks/useStaleRecordWatch';
+import { RecordFormNotice } from '../../shared/ui/RecordFormNotice';
+import { fetchOneFromList } from '../../shared/api/fetch-one-from-list';
+import { listFloors, listRooms } from './clinic.api';
 import { ExamStationDialog } from './ExamStationDialog';
 import {
   useCreateFloorMutation,
@@ -60,6 +65,22 @@ export function RoomPane() {
 
   const floors = floorsQuery.data?.items ?? [];
   const hasFloors = floors.length > 0;
+
+  // Phát hiện người khác vừa sửa Tầng/Phòng đang mở form Sửa (mẫu `useEditedRecordGuard`; danh sách nhỏ nên tải lại danh sách).
+  const floorGuard = useEditedRecordGuard({
+    editing: floorModal?.mode === 'edit' ? floorModal.floor : undefined,
+    watchKey: 'floor',
+    fetchLatest: (id) => fetchOneFromList(listFloors, id),
+    onFresh: (fresh) => setFloorModal(fresh ? { mode: 'edit', floor: fresh } : null),
+    onReloaded: () => void floorsQuery.refetch(),
+  });
+  const roomGuard = useEditedRecordGuard({
+    editing: roomModal?.mode === 'edit' ? roomModal.room : undefined,
+    watchKey: 'room',
+    fetchLatest: (id) => fetchOneFromList(listRooms, id),
+    onFresh: (fresh) => setRoomModal(fresh ? { mode: 'edit', room: fresh } : null),
+    onReloaded: () => void roomsQuery.refetch(),
+  });
 
   const visibleFloors = useMemo(() => {
     const q = floorSearch.trim().toLowerCase();
@@ -260,6 +281,9 @@ export function RoomPane() {
 
       {floorModal && (
         <FloorFormModal
+          key={floorModal.floor ? `${floorModal.floor.id}:${floorModal.floor.version}` : 'new'}
+          stale={floorGuard.stale}
+          onReload={floorGuard.reload}
           mode={floorModal.mode}
           floor={floorModal.floor}
           submitting={createFloorMutation.isPending || updateFloorMutation.isPending}
@@ -278,6 +302,9 @@ export function RoomPane() {
 
       {roomModal && (
         <RoomFormModal
+          key={roomModal.room ? `${roomModal.room.id}:${roomModal.room.version}` : 'new'}
+          stale={roomGuard.stale}
+          onReload={roomGuard.reload}
           mode={roomModal.mode}
           room={roomModal.room}
           floors={floors}
@@ -305,12 +332,17 @@ function FloorFormModal({
   mode,
   floor,
   submitting,
+  stale,
+  onReload,
   onCancel,
   onSubmit,
 }: {
   mode: 'create' | 'edit';
   floor?: FloorSummary;
   submitting: boolean;
+  /** Người khác vừa lưu bản mới của bản ghi này (phát hiện lúc form đang mở) — khoá nút Lưu tới khi tải lại. */
+  stale: boolean;
+  onReload: () => void | Promise<void>;
   onCancel: () => void;
   /** Trả `Promise` — `handleSubmit`/`handleSaveAndContinue` await để biết lưu xong mới đóng modal
    * hoặc làm trống form (`.claude/docs/ui-guidelines.md` mục 4.7). */
@@ -320,21 +352,21 @@ function FloorFormModal({
   const [name, setName] = useState(floor?.name ?? '');
   const [isActive, setIsActive] = useState(floor?.isActive ?? true);
   const { flashVisible, triggerFlash } = useSaveFlash();
-  const isInvalid = name.trim() === '';
+  const { saveError, run } = useSaveAttempt();
+  const isInvalid = name.trim() === '' || stale;
 
   async function handleSubmit(e: React.FormEvent) {
     // Bọc `<form>` để Enter trong ô nhập tự submit — bắt buộc cho mọi form Thêm/Sửa (`.claude/docs/
     // ui-guidelines.md` mục 4.4).
     e.preventDefault();
     if (isInvalid) return;
-    await onSubmit({ name: name.trim(), isActive });
-    onCancel();
+    if (await run(() => onSubmit({ name: name.trim(), isActive }))) onCancel();
   }
 
   // "Lưu và nhập tiếp" (mục 4.7) — nút `type="button"` riêng, không đụng nút submit mặc định.
   async function handleSaveAndContinue() {
     if (isInvalid) return;
-    await onSubmit({ name: name.trim(), isActive });
+    if (!(await run(() => onSubmit({ name: name.trim(), isActive })))) return;
     setName('');
     nameInputRef.current?.focus();
     triggerFlash();
@@ -364,6 +396,8 @@ function FloorFormModal({
           )}
         </div>
 
+        <RecordFormNotice stale={stale} saveError={saveError} onReload={mode === 'edit' ? onReload : undefined} />
+
         <div className="mt-4 flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onCancel}>
             Huỷ
@@ -387,6 +421,8 @@ function RoomFormModal({
   room,
   floors,
   submitting,
+  stale,
+  onReload,
   onCancel,
   onSubmit,
 }: {
@@ -394,6 +430,9 @@ function RoomFormModal({
   room?: RoomSummary;
   floors: FloorSummary[];
   submitting: boolean;
+  /** Người khác vừa lưu bản mới của bản ghi này (phát hiện lúc form đang mở) — khoá nút Lưu tới khi tải lại. */
+  stale: boolean;
+  onReload: () => void | Promise<void>;
   onCancel: () => void;
   /** Trả `Promise` — `handleSubmit`/`handleSaveAndContinue` await để biết lưu xong mới đóng modal
    * hoặc làm trống form (`.claude/docs/ui-guidelines.md` mục 4.7). */
@@ -404,9 +443,10 @@ function RoomFormModal({
   const [floorId, setFloorId] = useState(room?.floorId ?? NO_FLOOR_VALUE);
   const [isActive, setIsActive] = useState(room?.isActive ?? true);
   const { flashVisible, triggerFlash } = useSaveFlash();
+  const { saveError, run } = useSaveAttempt();
 
   const floorOptions = [{ value: NO_FLOOR_VALUE, label: 'Không thuộc tầng nào' }, ...floors.map((f) => ({ value: f.id, label: f.name }))];
-  const isInvalid = name.trim() === '';
+  const isInvalid = name.trim() === '' || stale;
 
   function buildDto() {
     return { name: name.trim(), floorId: floorId === NO_FLOOR_VALUE ? null : floorId, isActive };
@@ -415,14 +455,13 @@ function RoomFormModal({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (isInvalid) return;
-    await onSubmit(buildDto());
-    onCancel();
+    if (await run(() => onSubmit(buildDto()))) onCancel();
   }
 
   // "Lưu và nhập tiếp" (mục 4.7) — nút `type="button"` riêng, không đụng nút submit mặc định.
   async function handleSaveAndContinue() {
     if (isInvalid) return;
-    await onSubmit(buildDto());
+    if (!(await run(() => onSubmit(buildDto())))) return;
     setName('');
     nameInputRef.current?.focus();
     triggerFlash();
@@ -467,6 +506,8 @@ function RoomFormModal({
             </label>
           )}
         </div>
+
+        <RecordFormNotice stale={stale} saveError={saveError} onReload={mode === 'edit' ? onReload : undefined} />
 
         <div className="mt-4 flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onCancel}>

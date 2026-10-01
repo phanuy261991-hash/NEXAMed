@@ -155,15 +155,57 @@ describe('HTTP e2e — /api/v1/reference-catalog', () => {
     const patch = await request(app.getHttpServer())
       .patch(`/api/v1/reference-catalog/${id}`)
       .set(authed(clinicAdminToken))
-      .send({ name: 'Sau khi sửa' });
+      .send({ name: 'Sau khi sửa', version: created.body.data.version });
     expect(patch.status).toBe(200);
     expect(patch.body.data.name).toBe('Sau khi sửa');
+    expect(patch.body.data.version).toBe(created.body.data.version + 1);
 
     const notFound = await request(app.getHttpServer())
       .patch(`/api/v1/reference-catalog/${randomUUID()}`)
       .set(authed(clinicAdminToken))
-      .send({ name: 'X' });
+      .send({ name: 'X', version: 1 });
     expect(notFound.status).toBe(404);
+  });
+
+  it('khoá lạc quan (docs/DECISIONS.md #207): PATCH/DELETE/reactivate với version cũ → 409 CONCURRENT_MODIFICATION, dữ liệu không bị ghi đè; thiếu version → 400', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/api/v1/reference-catalog')
+      .set(authed(clinicAdminToken))
+      .send({ category: 'NATIONALITY', code: `TEST-${randomUUID().slice(0, 8)}`, name: 'Bản gốc', sortOrder: 1001 });
+    const id = created.body.data.id as string;
+    expect(created.body.data.version).toBe(1);
+
+    // Người A lưu trước (version 1 → 2), người B còn cầm version 1.
+    const first = await request(app.getHttpServer()).patch(`/api/v1/reference-catalog/${id}`).set(authed(clinicAdminToken)).send({ name: 'A sửa', version: 1 });
+    expect(first.status).toBe(200);
+    expect(first.body.data.version).toBe(2);
+
+    const stalePatch = await request(app.getHttpServer()).patch(`/api/v1/reference-catalog/${id}`).set(authed(clinicAdminToken)).send({ name: 'B ghi đè', version: 1 });
+    expect(stalePatch.status).toBe(409);
+    expect(stalePatch.body.error.code).toBe('CONCURRENT_MODIFICATION');
+
+    const staleDelete = await request(app.getHttpServer()).delete(`/api/v1/reference-catalog/${id}?version=1`).set(authed(clinicAdminToken));
+    expect(staleDelete.status).toBe(409);
+    const staleReactivate = await request(app.getHttpServer()).post(`/api/v1/reference-catalog/${id}/reactivate?version=1`).set(authed(clinicAdminToken));
+    expect(staleReactivate.status).toBe(409);
+
+    // Dữ liệu còn nguyên bản của A, vẫn đang hoạt động, version không đổi sau các lần bị từ chối.
+    const list = await request(app.getHttpServer()).get('/api/v1/reference-catalog/NATIONALITY').set(authed(clinicAdminToken));
+    const row = list.body.data.items.find((i: { id: string }) => i.id === id);
+    expect(row).toMatchObject({ name: 'A sửa', isActive: true, version: 2 });
+
+    // Hai request ĐỒNG THỜI cùng version → đúng 1 thành công, 1 bị 409 (không bị trộn dữ liệu).
+    const [r1, r2] = await Promise.all([
+      request(app.getHttpServer()).patch(`/api/v1/reference-catalog/${id}`).set(authed(clinicAdminToken)).send({ name: 'Song song 1', version: 2 }),
+      request(app.getHttpServer()).patch(`/api/v1/reference-catalog/${id}`).set(authed(clinicAdminToken)).send({ name: 'Song song 2', version: 2 }),
+    ]);
+    expect([r1.status, r2.status].sort()).toEqual([200, 409]);
+
+    // Thiếu version → 400 (bắt buộc).
+    const noVersion = await request(app.getHttpServer()).patch(`/api/v1/reference-catalog/${id}`).set(authed(clinicAdminToken)).send({ name: 'Không version' });
+    expect(noVersion.status).toBe(400);
+    const noVersionDelete = await request(app.getHttpServer()).delete(`/api/v1/reference-catalog/${id}`).set(authed(clinicAdminToken));
+    expect(noVersionDelete.status).toBe(400);
   });
 
   it('DELETE = ẩn (soft) → biến mất khỏi GET mặc định, còn thấy khi includeInactive=true; reactivate khôi phục lại', async () => {
@@ -175,7 +217,7 @@ describe('HTTP e2e — /api/v1/reference-catalog', () => {
     const id = created.body.data.id as string;
 
     const del = await request(app.getHttpServer())
-      .delete(`/api/v1/reference-catalog/${id}`)
+      .delete(`/api/v1/reference-catalog/${id}?version=${created.body.data.version}`)
       .set(authed(clinicAdminToken));
     expect(del.status).toBe(200);
     expect(del.body.data.isActive).toBe(false);
@@ -191,7 +233,7 @@ describe('HTTP e2e — /api/v1/reference-catalog', () => {
     expect(listAll.body.data.items.some((i: { id: string }) => i.id === id)).toBe(true);
 
     const reactivate = await request(app.getHttpServer())
-      .post(`/api/v1/reference-catalog/${id}/reactivate`)
+      .post(`/api/v1/reference-catalog/${id}/reactivate?version=${del.body.data.version}`)
       .set(authed(clinicAdminToken));
     expect(reactivate.status).toBe(200);
     expect(reactivate.body.data.isActive).toBe(true);
@@ -211,7 +253,7 @@ describe('HTTP e2e — /api/v1/reference-catalog', () => {
     const id = created.body.data.id as string;
 
     const del = await request(app.getHttpServer())
-      .delete(`/api/v1/reference-catalog/${id}`)
+      .delete(`/api/v1/reference-catalog/${id}?version=1`)
       .set(authed(receptionistToken));
     expect(del.status).toBe(403);
   });
@@ -229,7 +271,7 @@ describe('HTTP e2e — /api/v1/reference-catalog', () => {
     const patched = await request(app.getHttpServer())
       .patch(`/api/v1/reference-catalog/${id}`)
       .set(authed(clinicAdminToken))
-      .send({ deactivatesAccount: false });
+      .send({ deactivatesAccount: false, version: created.body.data.version });
     expect(patched.status).toBe(200);
     expect(patched.body.data.deactivatesAccount).toBe(false);
 
@@ -260,7 +302,7 @@ describe('HTTP e2e — /api/v1/reference-catalog', () => {
     const patched = await request(app.getHttpServer())
       .patch(`/api/v1/reference-catalog/${id}`)
       .set(authed(clinicAdminToken))
-      .send({ description: 'Đổi mô tả', isActive: false });
+      .send({ description: 'Đổi mô tả', isActive: false, version: created.body.data.version });
     expect(patched.status).toBe(200);
     expect(patched.body.data.description).toBe('Đổi mô tả');
     expect(patched.body.data.isActive).toBe(false);
@@ -294,7 +336,7 @@ describe('HTTP e2e — /api/v1/reference-catalog', () => {
     const patched = await request(app.getHttpServer())
       .patch(`/api/v1/reference-catalog/${id}`)
       .set(authed(clinicAdminToken))
-      .send({ name: 'Nhóm tự thêm (đã sửa tên)' });
+      .send({ name: 'Nhóm tự thêm (đã sửa tên)', version: created.body.data.version });
     expect(patched.status).toBe(200);
     expect(patched.body.data.name).toBe('Nhóm tự thêm (đã sửa tên)');
     expect(patched.body.data.bytCode).toBe('X99');
@@ -324,7 +366,7 @@ describe('HTTP e2e — /api/v1/reference-catalog', () => {
     const patched = await request(app.getHttpServer())
       .patch(`/api/v1/reference-catalog/${id}`)
       .set(authed(clinicAdminToken))
-      .send({ bytCode: 'HC-TEST-02', fullName: 'Tên đầy đủ đã sửa', description: 'Mô tả đã sửa' });
+      .send({ bytCode: 'HC-TEST-02', fullName: 'Tên đầy đủ đã sửa', description: 'Mô tả đã sửa', version: created.body.data.version });
     expect(patched.status).toBe(200);
     expect(patched.body.data).toMatchObject({ bytCode: 'HC-TEST-02', fullName: 'Tên đầy đủ đã sửa', description: 'Mô tả đã sửa' });
   });
@@ -360,7 +402,7 @@ describe('HTTP e2e — /api/v1/reference-catalog', () => {
     const patched = await request(app.getHttpServer())
       .patch(`/api/v1/reference-catalog/${id}`)
       .set(authed(clinicAdminToken))
-      .send({ examTypePrices: [{ priceTypeCode: 'UU_DAI', unitCode: 'BUOI', amount: 200000, effectiveFrom: '2026-02-01' }] });
+      .send({ version: created.body.data.version, examTypePrices: [{ priceTypeCode: 'UU_DAI', unitCode: 'BUOI', amount: 200000, effectiveFrom: '2026-02-01' }] });
     expect(patched.status).toBe(200);
     expect(patched.body.data.prices).toHaveLength(1);
     expect(patched.body.data.prices[0]).toMatchObject({ priceTypeCode: 'UU_DAI', amount: 200000 });
@@ -369,15 +411,24 @@ describe('HTTP e2e — /api/v1/reference-catalog', () => {
     const untouchedPatch = await request(app.getHttpServer())
       .patch(`/api/v1/reference-catalog/${id}`)
       .set(authed(clinicAdminToken))
-      .send({ name: 'Đổi tên, không đụng đơn giá' });
+      .send({ name: 'Đổi tên, không đụng đơn giá', version: patched.body.data.version });
     expect(untouchedPatch.body.data.prices).toHaveLength(1);
 
     // PATCH gửi mảng RỖNG → chủ ý xoá hết.
     const cleared = await request(app.getHttpServer())
       .patch(`/api/v1/reference-catalog/${id}`)
       .set(authed(clinicAdminToken))
-      .send({ examTypePrices: [] });
+      .send({ examTypePrices: [], version: untouchedPatch.body.data.version });
     expect(cleared.body.data.prices).toHaveLength(0);
+
+    // PATCH CHỈ gửi đơn giá (bảng con) với version cũ vẫn bị khoá lạc quan → 409, đơn giá không đổi.
+    const staleOnlyPrices = await request(app.getHttpServer())
+      .patch(`/api/v1/reference-catalog/${id}`)
+      .set(authed(clinicAdminToken))
+      .send({ version: created.body.data.version, examTypePrices: [{ priceTypeCode: 'THUONG', unitCode: 'LUOT', amount: 1, effectiveFrom: '2026-03-01' }] });
+    expect(staleOnlyPrices.status).toBe(409);
+    const afterStale = await request(app.getHttpServer()).get('/api/v1/reference-catalog/EXAM_TYPE').set(authed(clinicAdminToken));
+    expect(afterStale.body.data.items.find((i: { id: string }) => i.id === id).prices).toHaveLength(0);
   });
 
   it('EXAM_TYPE — 2 dòng đơn giá CÙNG Loại giá dịch vụ chồng lấn ngày hiệu lực → 409 EXAM_TYPE_PRICE_OVERLAP (C20)', async () => {
@@ -448,7 +499,7 @@ describe('HTTP e2e — /api/v1/reference-catalog', () => {
     const patchFromTenantB = await request(app.getHttpServer())
       .patch(`/api/v1/reference-catalog/${id}`)
       .set(authed(tenantBAdminToken))
-      .send({ name: 'Sửa bởi tenant B' });
+      .send({ name: 'Sửa bởi tenant B', version: created.body.data.version });
     expect(patchFromTenantB.status).toBe(200);
     expect(patchFromTenantB.body.data.name).toBe('Sửa bởi tenant B');
   });

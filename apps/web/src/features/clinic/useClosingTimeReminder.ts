@@ -17,7 +17,8 @@ const DAY_KEYS: (keyof BusinessHours)[] = ['sunday', 'monday', 'tuesday', 'wedne
  * nhắc nhở PERSISTENT — không lặp lại popup mỗi 30s.
  */
 export function useClosingTimeReminder(enabled: boolean): boolean {
-  const scheduleConfigQuery = useScheduleConfigQuery();
+  // Chỉ bác sĩ chưa đóng ca mới cần giờ làm việc — các vai trò khác không gọi (tránh 403 ở vai trò không có `appointment.read`).
+  const scheduleConfigQuery = useScheduleConfigQuery({ enabled });
   const [pastClosingTime, setPastClosingTime] = useState(false);
 
   useEffect(() => {
