@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { Check as CheckIcon } from '@phosphor-icons/react';
 import type { PrintPaperInfo, PrintTemplateConfig } from '@nexamed/shared';
+import { Button } from '../../shared/ui/Button';
 
 const inputClassName =
   'w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
@@ -83,6 +85,8 @@ export function PrintTemplateConfigPanel({
   onConfigChange,
   defaultTitle,
   disabled,
+  isDefault,
+  onSetDefault,
 }: {
   name: string;
   onNameChange: (name: string) => void;
@@ -91,6 +95,10 @@ export function PrintTemplateConfigPanel({
   onConfigChange: (config: PrintTemplateConfig) => void;
   defaultTitle: string;
   disabled: boolean;
+  /** Bản mẫu này đang là khổ in mặc định của chứng từ. */
+  isDefault: boolean;
+  /** Đặt bản này làm khổ in mặc định; `null` = chưa đặt được (bản dựng sẵn chưa lưu, hoặc còn thay đổi chưa lưu). */
+  onSetDefault: (() => void) | null;
 }) {
   const setHeader = (key: HeaderKey, value: boolean) => onConfigChange({ ...config, header: { ...config.header, [key]: value } });
   const setMargin = (key: MarginKey, value: number) => onConfigChange({ ...config, margins: { ...config.margins, [key]: value } });
@@ -115,7 +123,23 @@ export function PrintTemplateConfigPanel({
         <p className="text-sm text-slate-700">
           <span className="font-semibold text-slate-900">{paper.label}</span> <span className="font-mono text-xs text-slate-500">· {paper.description}</span>
         </p>
-        <p className="mt-0.5 text-[11px] text-slate-400">Cần khổ giấy khác? Dùng nút &quot;Thêm bản mẫu&quot;.</p>
+        <div className="mt-2 flex items-center justify-between gap-2">
+          {isDefault ? (
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
+              <CheckIcon size={13} weight="bold" aria-hidden="true" />
+              Khổ in mặc định — bấm In sẽ in theo khổ này
+            </span>
+          ) : (
+            <>
+              <span className="text-xs text-slate-500">Chưa phải khổ in mặc định.</span>
+              <Button type="button" variant="secondary" className="h-8 flex-shrink-0 px-2.5 text-xs" onClick={onSetDefault ?? undefined} disabled={!onSetDefault}>
+                Đặt làm khổ in mặc định
+              </Button>
+            </>
+          )}
+        </div>
+        {!isDefault && !onSetDefault && <p className="mt-1 text-[11px] text-slate-400">Lưu thay đổi trước khi đặt làm mặc định.</p>}
+        <p className="mt-1 text-[11px] text-slate-400">Cần khổ giấy chưa có? Bấm &quot;Thêm bản mẫu&quot; ở trên, tick &quot;Đặt làm bản mặc định&quot; nếu muốn in theo khổ đó.</p>
         <div className="mt-3 grid grid-cols-4 gap-2">
           {MARGIN_FIELDS.map((f) => (
             <MarginInput key={f.key} id={`pt-margin-${f.key}`} label={f.label} value={config.margins[f.key]} onCommit={(v) => setMargin(f.key, v)} />
@@ -165,11 +189,11 @@ export function PrintTemplateConfigPanel({
           />
         </div>
 
-        <div className="mt-3 flex items-center justify-between gap-3">
-          <span id="pt-copies-label" className="text-sm font-semibold text-slate-800">
+        <div className="mt-3">
+          <span id="pt-copies-label" className="mb-1.5 block text-sm font-semibold text-slate-800">
             Số liên in mỗi lần
           </span>
-          <div role="radiogroup" aria-labelledby="pt-copies-label" className="flex gap-1.5">
+          <div role="radiogroup" aria-labelledby="pt-copies-label" className="grid grid-cols-3 gap-1.5">
             {[1, 2, 3].map((n) => (
               <button
                 key={n}
@@ -177,7 +201,7 @@ export function PrintTemplateConfigPanel({
                 role="radio"
                 aria-checked={config.copies.count === n}
                 onClick={() => setCopyCount(n)}
-                className={`h-8 rounded-md border px-3 text-sm font-semibold ${
+                className={`h-8 whitespace-nowrap rounded-md border px-2 text-sm font-semibold ${
                   config.copies.count === n ? 'border-brand-teal bg-brand-teal text-white' : 'border-slate-300 text-slate-600 hover:border-blue-400 hover:bg-brand-teal-tint'
                 }`}
               >

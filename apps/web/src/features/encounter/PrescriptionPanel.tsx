@@ -538,6 +538,7 @@ export function PrescriptionPanel({
           patientFullName={patientFullName}
           patientDob={patientDob}
           patientGender={patientGender}
+          diagnosisLabel={diagnosisLabel}
           items={prescription.items}
           signedAt={prescription.signedAt!}
         />

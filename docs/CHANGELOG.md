@@ -2,6 +2,12 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-10-06
+
+### Quản lý mẫu in (mỗi chứng từ nhiều bản mẫu theo khổ giấy, chọn khổ khi in)
+
+Trang mới Quản trị → "Mẫu in" quản lý 11 loại chứng từ: tên, khổ giấy (A4/A5 đứng/A5 ngang, K80 cho 4 chứng từ tiền), đầu trang, tiêu đề, lề, ghi chú, chữ ký, số liên; xem trước bằng view in thật; "Thiết lập nhanh" cho người mới. Chưa cấu hình gì vẫn in được (bản dựng sẵn). Mọi màn in được dựng lại trên khung chung `PrintDocument`; bấm "In phiếu" mở hộp thoại chọn khổ (khổ mặc định chọn sẵn), nút "Đặt làm khổ in mặc định" hiện ngay trong cấu hình. Bệnh án PDF dùng mẫu `MEDICAL_RECORD`. Migration `20261001150000_print_template`. Chi tiết `docs/DECISIONS.md` #211. Đã xác minh: 20 test HTTP, Chrome thật (PDF đúng khổ A4/A5/A5 ngang/K80, popup, đổi mặc định), chưa thử máy in nhiệt thật.
+
 ## 2026-10-01
 
 ### Nhập/Xuất Excel Thuốc & Vật tư (giúp phòng khám mới đưa danh sách có sẵn vào hệ thống)

@@ -14,6 +14,7 @@ export function PrescriptionPrintView({
   patientFullName,
   patientDob,
   patientGender,
+  diagnosisLabel,
   items,
   signedAt,
 }: {
@@ -21,6 +22,8 @@ export function PrescriptionPrintView({
   patientFullName: string;
   patientDob: string;
   patientGender: string;
+  /** Chẩn đoán của lượt khám (ví dụ "Viêm họng cấp (J02.9) / Sốt (R50.9)"); rỗng thì không in dòng này. */
+  diagnosisLabel?: string;
   items: PrescriptionItem[];
   signedAt: string;
 }) {
@@ -40,6 +43,11 @@ export function PrescriptionPrintView({
         <p>
           Bác sĩ khám: <strong>{doctorName}</strong>
         </p>
+        {diagnosisLabel && (
+          <p className="col-span-2">
+            Chẩn đoán: <strong>{diagnosisLabel}</strong>
+          </p>
+        )}
       </div>
 
       <table className="mt-6 w-full border-collapse">

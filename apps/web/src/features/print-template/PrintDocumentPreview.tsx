@@ -39,6 +39,7 @@ export function PrintDocumentPreview({ documentType }: { documentType: PrintDocu
           patientFullName="Lý Thị Hoài Thương"
           patientDob="14/03/1987"
           patientGender="Nữ"
+          diagnosisLabel="Viêm họng cấp (J02.9) / Sốt (R50.9)"
           items={SAMPLE_PRESCRIPTION_ITEMS}
           signedAt="2026-10-01T07:30:00.000Z"
         />

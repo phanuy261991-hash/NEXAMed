@@ -204,6 +204,8 @@ export function PrintTemplatePage() {
                   onConfigChange={(config) => setDraft({ key: effective.key, name: effective.name, config })}
                   defaultTitle={typeInfo.defaultTitle}
                   disabled={busy}
+                  isDefault={current.isDefault}
+                  onSetDefault={current.id !== null && !dirty ? () => void handleSetDefault() : null}
                 />
               )}
             </div>
